@@ -3,9 +3,10 @@
 Every picture here is drawn by `branding/generate.mjs` in the Amethystora repository and is part of
 Amethystora, under its licence (Apache License 2.0). Those directly in this folder are the
 Amethystora artwork: the crystal field, the cut stone's facets and the night sky the boot screen
-ends on. The facets, `amethystora-facets-d.png` by night and `amethystora-facets-l.png` by day, also come at dawn
-and at dusk, `amethystora-facets-dawn.png` and `amethystora-facets-dusk.png`, for Daylight, and by day for the dark
-theme as `amethystora-facets-day.png`.
+ends on. The facets come at four times of day for each Amethystora theme, for Daylight: the dark theme's are
+`amethystora-facets-dawn.png`, `amethystora-facets-day.png`, `amethystora-facets-dusk.png` and
+`amethystora-facets-d.png`, the light theme's `amethystora-facets-l-dawn.png`, `amethystora-facets-l.png`,
+`amethystora-facets-l-dusk.png` and `amethystora-facets-l-night.png`.
 
 The themes' own pictures, in the folders beside this file, are made-up places drawn in each theme's
 palette. Each theme's first picture also comes at the other three times of day (dawn, day, dusk or night),

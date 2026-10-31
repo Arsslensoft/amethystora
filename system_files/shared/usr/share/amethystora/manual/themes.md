@@ -101,8 +101,9 @@ cp ~/Pictures/mountains.jpg ~/.config/amethystora/backgrounds/amethystora/
 A theme's first wallpaper follows the time of day: the same place at **dawn**, by **day**, at **dusk** and at
 **night**, each drawn from the theme's own colours. Dawn is fully shown at 06:30, day at 12:00, dusk at 18:45 and
 night at 22:00, and GNOME fades from one to the next by itself over the three quarters of an hour to an hour and a half
-before each. The lock screen shows the same picture. Only the wallpaper changes: the theme stays light or dark. The
-Amethystora theme's day is still a dark amethyst; the pale facets are Amethystora Light's.
+before each. The lock screen shows the same picture. Only the wallpaper changes: the theme stays light or dark. Every
+theme has four pictures of its own. The Amethystora theme's day is still a dark amethyst; the pale facets are Amethystora
+Light's, which stays lilac through a peach dawn, a rose dusk and a pale moonlit night.
 
 When Night Light is on with hours of your own (Settings, Displays, Night Light, Manual Schedule), dawn comes when Night
 Light ends and dusk when it starts, and day and night follow from them. With Night Light's sunset schedule, which

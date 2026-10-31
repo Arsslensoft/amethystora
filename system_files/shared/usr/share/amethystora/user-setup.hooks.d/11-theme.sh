@@ -48,6 +48,7 @@
 #      palette's dim_alpha, 4.5:1), written only when the theme is applied again.
 #  20  The dark Amethystora theme's Daylight day, a dark amethyst in place of the light theme's near-white facets: an
 #      account's daylight.list is a copy made when the theme is applied, and its slideshow is written from that copy.
+#  22  Amethystora Light's own dawn, dusk and night (amethystora-facets-l-*.png), which were the dark theme's: the same copy.
 
 source /usr/lib/amethystora/setup-services/libsetup.sh
 
@@ -56,7 +57,7 @@ source /usr/lib/amethystora/setup-services/libsetup.sh
 # chose in GNOME Settings included: the theme is applied again without picking a new one.
 PREVIOUS="$(jq -r '.version.user.theme // 0' "${SETUP_CHECKER_FILE}" 2>/dev/null || echo 0)"
 
-version-script theme user 21 || exit 0
+version-script theme user 22 || exit 0
 
 [[ "$(cat "${XDG_CONFIG_HOME:-${HOME}/.config}/amethystora/icons" 2>/dev/null)" == candy-icons ]] &&
     rm -f "${XDG_CONFIG_HOME:-${HOME}/.config}/amethystora/icons"

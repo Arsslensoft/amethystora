@@ -2231,23 +2231,37 @@ const DAYLIGHT = Object.keys(THEME_WALLPAPERS).filter((theme) => !theme.startsWi
     [time, `${DAYLIGHT_DIR}/${theme}/${opening}${time === own ? "" : `-${time}`}.png`]));
   return { theme, opening, own, files };
 });
-// The two Amethystora themes open on the cut stone's facets, dark and light, which are their night and their day; dawn
-// and dusk are the dark facets' shades graded, and both themes share them. The near-white facets are the light theme's
-// alone: the dark theme's day is its own facets lifted a little, and stays a dark amethyst
+// The two Amethystora themes open on the cut stone's facets, dark and light, which are their night and their day, and each
+// has its own other three. The dark theme's are its facets' shades graded, and its day stays a dark amethyst. The light
+// theme's are shades of their own: its near-white graded turns to grey, and a palette's grade makes a night as dark as the
+// dark theme's. They stay lilac stone, under a peach dawn, a rose dusk and a pale moon, lit as the dark facets are (more of
+// the ramp shows than in the white facets, whose glow is all white)
 const FACETS_DAYLIGHT = {
-  dawn: `${DAYLIGHT_DIR}/amethystora-facets-dawn.png`, day: `${DAYLIGHT_DIR}/amethystora-facets-l.png`,
+  dawn: `${DAYLIGHT_DIR}/amethystora-facets-l-dawn.png`, day: `${DAYLIGHT_DIR}/amethystora-facets-l.png`,
+  dusk: `${DAYLIGHT_DIR}/amethystora-facets-l-dusk.png`, night: `${DAYLIGHT_DIR}/amethystora-facets-l-night.png`,
+};
+const FACETS_DARK_DAYLIGHT = {
+  dawn: `${DAYLIGHT_DIR}/amethystora-facets-dawn.png`, day: `${DAYLIGHT_DIR}/amethystora-facets-day.png`,
   dusk: `${DAYLIGHT_DIR}/amethystora-facets-dusk.png`, night: `${DAYLIGHT_DIR}/amethystora-facets-d.png`,
 };
-const FACETS_DARK_DAYLIGHT = { ...FACETS_DAYLIGHT, day: `${DAYLIGHT_DIR}/amethystora-facets-day.png` };
 const FACETS_DARK_DAY_GRADE = [(L) => L + 0.2 * (1 - L), (a) => a + 0.02, (b) => b - 0.05];
+const FACETS_LIGHT_TONES = {
+  dawn: ["#8660c4", "#9e78ce", "#bc94d6", "#dab4d8", "#efcfce", "#fce4ca"],
+  dusk: ["#5f42a6", "#7050b0", "#8a60b8", "#aa72b8", "#d08cb0", "#efaa9e"],
+  night: ["#3f3598", "#4a40a6", "#5650b4", "#6a68c4", "#8c8cd6", "#b4b6ea"],
+};
 const DAYLIGHT_PNGS = [
   ...[
-    [FACETS_DAYLIGHT.dawn, DAYLIGHT_GRADE.dark.dawn],
-    [FACETS_DAYLIGHT.dusk, DAYLIGHT_GRADE.dark.dusk],
+    [FACETS_DARK_DAYLIGHT.dawn, DAYLIGHT_GRADE.dark.dawn],
+    [FACETS_DARK_DAYLIGHT.dusk, DAYLIGHT_GRADE.dark.dusk],
     [FACETS_DARK_DAYLIGHT.day, FACETS_DARK_DAY_GRADE],
   ].map(([out, grade]) => ({
     out, width: WALL_W, height: WALL_H, daylight: true,
     html: () => svgPage(facetsSvg("dark", FACET_TONES.dark.map((hex) => graded(hex, grade))), WALL_W, WALL_H),
+  })),
+  ...["dawn", "dusk", "night"].map((time) => ({
+    out: FACETS_DAYLIGHT[time], width: WALL_W, height: WALL_H, daylight: true,
+    html: () => svgPage(facetsSvg("dark", FACETS_LIGHT_TONES[time]), WALL_W, WALL_H),
   })),
   ...DAYLIGHT.flatMap(({ theme, opening, own, files }) => ["dawn", "day", "dusk", "night"].filter((time) => time !== own)
     .map((time) => ({

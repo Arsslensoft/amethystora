@@ -1832,7 +1832,10 @@ done
 # size of the others and named in CREDITS.md, and the slideshow made of them is GNOME's format: nine slides of whole
 # seconds, a day in all, every file there. No picture has an alpha channel: Mutter 50.5 blends two such pictures without
 # the first one, so a fade would start near black. A theme's day is on its own side of the line between dark and light
-# themes, and every night under it: the dark Amethystora theme once took the light one's near-white day
+# themes, and its night under it: the dark Amethystora theme once took the light one's near-white day. A dark theme's night
+# stays under 0.5. A light theme's dusk stays at 0.45 or over and its night under 0.6: Amethystora Light's night is pale
+# moonlit stone at 0.56, and it once took the dark theme's dusk (0.40) and night (0.34), which its own have to stay above.
+# Every picture is one theme's and one time's, by name and by content
 daylight_lightness() {
     python3 -I -c 'import sys, gi
 gi.require_version("GdkPixbuf", "2.0")
@@ -1848,11 +1851,21 @@ for y in range(64):
         t -= 0.0040720468 * (0.0883024619 * R + 0.2817188376 * G + 0.6299787005 * B) ** (1 / 3)
 print("%.4f" % (t / 4096))' "$1"
 }
+DAYLIGHT_FILES="$(cut -d' ' -f2- /usr/share/amethystora/themes/*/daylight.list)"
+[[ "$(wc -l <<<"${DAYLIGHT_FILES}")" == "$((4 * $(find /usr/share/amethystora/themes -name daylight.list | wc -l)))" ]]
+[[ -z "$(sort <<<"${DAYLIGHT_FILES}" | uniq -d)" ]]
+[[ -z "$(xargs -d '\n' sha256sum <<<"${DAYLIGHT_FILES}" | cut -d' ' -f1 | sort | uniq -d)" ]]
+for time in dusk night; do
+    awk -v l="$(daylight_lightness "$(awk -v t="${time}" '$1 == t { print $2 }' /usr/share/amethystora/themes/amethystora-light/daylight.list)")" \
+        -v d="$(daylight_lightness "$(awk -v t="${time}" '$1 == t { print $2 }' /usr/share/amethystora/themes/amethystora/daylight.list)")" \
+        'BEGIN { exit !(l >= d + 0.1) }'
+done
 for theme in /usr/share/amethystora/themes/*/; do
     DAYLIGHT_DAY="$(daylight_lightness "$(awk '$1 == "day" { print $2 }' "${theme}daylight.list")")"
     DAYLIGHT_NIGHT="$(daylight_lightness "$(awk '$1 == "night" { print $2 }' "${theme}daylight.list")")"
     if [[ -f "${theme}light.mode" ]]; then
-        awk -v d="${DAYLIGHT_DAY}" -v n="${DAYLIGHT_NIGHT}" 'BEGIN { exit !(d >= 0.77 && n < 0.5) }'
+        DAYLIGHT_DUSK="$(daylight_lightness "$(awk '$1 == "dusk" { print $2 }' "${theme}daylight.list")")"
+        awk -v d="${DAYLIGHT_DAY}" -v k="${DAYLIGHT_DUSK}" -v n="${DAYLIGHT_NIGHT}" 'BEGIN { exit !(d >= 0.77 && k >= 0.45 && n < 0.6) }'
     else
         awk -v d="${DAYLIGHT_DAY}" -v n="${DAYLIGHT_NIGHT}" 'BEGIN { exit !(d < 0.77 && n < 0.5) }'
     fi

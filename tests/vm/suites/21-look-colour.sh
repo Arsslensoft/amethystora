@@ -5,7 +5,7 @@
 #     every accent in two themes, Follow the theme, and a bad accent refused, by the recipe and by the theme switch;
 #   - Daylight: the slideshow written and shown, parsed by GNOME's own reader, the picture of each hour with the clock
 #     set, Night Light's hours, a picture of one's own kept, the opening picture adopted, off and on, a light theme's;
-#     every theme's four pictures there, at size, darker by night than by day;
+#     every theme's four pictures there, its own, at size, darker by night than by day;
 #   - colours from the wallpaper: written, merged key by key, each way, a light theme kept light, worked out again when
 #     GNOME's Settings changes the picture and not when nothing changed, off, a chosen accent over them, the helper's
 #     refusals;
@@ -295,6 +295,7 @@ for list in /usr/share/amethystora/themes/*/daylight.list; do
     unset L
 done
 same "15 every theme's four pictures are there, at size, night < dusk < dawn < day by 0.25 or more (the dark Amethystora theme's by 0.12)" "${bad}" ""
+same "15 ...and no picture is on two lists, or twice on one" "$(cut -d' ' -f2- /usr/share/amethystora/themes/*/daylight.list | sort | uniq -d)" ""
 
 # --- 16-22: colours from the wallpaper -------------------------------------------------------------------------------
 ame_ desktop theme catppuccin >/dev/null
