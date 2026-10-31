@@ -1,8 +1,9 @@
 // Whether a share shows only windows, asked of Mutter itself. The handle Mutter gives the shell for a share does not
 // say what is shared, but its screen cast service lists every stream on the session bus, under
 // /org/gnome/Mutter/ScreenCast/Stream, each with its parameters: a window's stream gives its size and nothing else (and
-// may give the mapping id the portal uses), where a monitor's, an area's or a virtual monitor's gives more. The shell asks
-// its own service through the bus, so every call here is asynchronous.
+// may give the mapping id the portal uses), where a monitor's or a virtual monitor's gives more. An area's gives the same
+// keys as a window's with the size (0, 0) (GNOME 50), so a size of nothing is no window. The shell asks its own service
+// through the bus, so every call here is asynchronous.
 //
 // Only a positive answer counts: a stream is a window's when its parameters are exactly that, and every other case (a
 // stream described any other way, a stream that went between the two questions, no streams at all, an error) is a screen.
@@ -49,8 +50,9 @@ export async function windowsOnly(cancellable) {
             // eslint-disable-next-line no-await-in-loop
             const [parameters] = (await call(path, 'org.freedesktop.DBus.Properties', 'Get',
                 new GLib.Variant('(ss)', [STREAM, 'Parameters']), '(v)', cancellable)).deepUnpack();
-            const keys = Object.keys(parameters.deepUnpack() ?? {});
-            if (!keys.includes('size') || keys.some(key => !WINDOW_PARAMETERS.has(key)))
+            const values = parameters.recursiveUnpack() ?? {};
+            const keys = Object.keys(values);
+            if (!keys.includes('size') || keys.some(key => !WINDOW_PARAMETERS.has(key)) || !values.size[0] || !values.size[1])
                 return false;
         }
         return true;
