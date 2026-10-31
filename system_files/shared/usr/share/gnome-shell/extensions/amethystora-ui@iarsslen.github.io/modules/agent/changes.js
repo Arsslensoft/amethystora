@@ -293,8 +293,9 @@ export class AgentChanges {
     // Whether the agent waits for the person: a command or a change handed to a terminal, or a root command in the mode
     // that asks for a password every time, not yet answered
     get asking() {
-        return [...this.changes].reverse().find(r => r.result === 'opened' ||
-            (r.tool === 'run' && r.root === true && r.result === 'running' && r.mode === 'each')) ?? null;
+        // Only a server still running can be waiting: one that ended left its records as they were
+        return [...this.changes].reverse().find(r => this._servers.has(String(r.server)) && (r.result === 'opened' ||
+            (r.tool === 'run' && r.root === true && r.result === 'running' && r.mode === 'each'))) ?? null;
     }
 
     // Control's own titles of its settings and values, for the changes' rows: asked once, when the agent first changes

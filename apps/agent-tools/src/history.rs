@@ -85,9 +85,17 @@ pub fn line(record: &Value) -> String {
         "undo" => format!("undo of {}", record["of"].as_str().unwrap_or("?")),
         other => other.to_string(),
     };
-    let result = record["result"].as_str().unwrap_or("?");
+    let result = match record["result"].as_str().unwrap_or("?") {
+        "running" | "opened" if !server_alive(record) => "did not finish",
+        other => other,
+    };
     let undo = if record["undo"].is_object() { ", can be undone" } else { "" };
     format!("{} {} ago: {what} -> {result}{undo}", record["id"].as_str().unwrap_or("?"), ago(record["time"].as_u64().unwrap_or(0)))
+}
+
+/// Whether the tool server that wrote a record still runs. One that ended left its unfinished records as they were.
+pub fn server_alive(record: &Value) -> bool {
+    record["server"].as_u64().is_some_and(|pid| std::path::Path::new(&format!("/proc/{pid}")).exists())
 }
 
 /// An argument vector as one line, each word quoted when it needs to be
@@ -199,7 +207,7 @@ impl Drop for Session {
 
 /// A record of a change as it starts
 pub fn started(id: &str, tool: &str, fields: Value) -> Value {
-    let mut entry = json!({"id": id, "time": now(), "tool": tool, "result": "running"});
+    let mut entry = json!({"id": id, "time": now(), "tool": tool, "result": "running", "server": std::process::id()});
     if let (Some(entry), Some(fields)) = (entry.as_object_mut(), fields.as_object()) {
         for (key, value) in fields {
             entry.insert(key.clone(), value.clone());
@@ -222,6 +230,10 @@ mod tests {
             "result": "ok", "undo": {"tool": "change", "entry": "layout", "value": "tiling"}});
         assert_eq!(line(&record), "ab12cd34 0s ago: change layout=classic (was tiling) -> ok, can be undone");
         assert_eq!(words(&json!(["rpm-ostree", "install", "a b"])), "rpm-ostree install 'a b'");
+        let mut running = started("ab12cd34", "undo", json!({"of": "ef56"}));
+        assert!(line(&running).ends_with("undo of ef56 -> running"));
+        running["server"] = json!(u32::MAX);
+        assert!(line(&running).ends_with("undo of ef56 -> did not finish"));
     }
 
     #[test]

@@ -237,12 +237,17 @@ asking() { [[ "$(ev "${UI}.get('pill').state().text")" == "Agent asks you" ]]; }
 check "9 a hand-off waits: Agent asks you" wait_for 30 asking
 same "9 ... on the warning plate, with Show while its terminal is open" \
     "$(ev "${UI}.get('pill').clock.actor._plate.has_style_class_name('amethystora-pill-plate-agent-ask')") $(ev "${A}.changes.status.show")" "true true"
-printf '{"id":"'"${R3}"'","time":%s,"tool":"run","result":"opened","argv":["systemctl","restart","bluetooth"],"root":true,"mode":"terminal"}\n' \
-    "$(date +%s)" >>"${LOG}"
+printf '{"id":"'"${R3}"'","time":%s,"tool":"run","result":"opened","argv":["systemctl","restart","bluetooth"],"root":true,"mode":"terminal","server":%s}\n' \
+    "$(date +%s)" "$(pgrep -u "${TEST_USER}" -f 'amethystora-agent-tools mcp' | head -1)" >>"${LOG}"
 root_asking() { [[ "$(ev "${UI}.get('pill').state().text")" == "Agent asks for root" ]]; }
 check "9 a root command waiting in its terminal: Agent asks for root" wait_for 10 root_asking
 printf '{"id":"'"${R3}"'","time":%s,"tool":"run","result":"declined","argv":["systemctl","restart","bluetooth"],"root":true,"mode":"terminal"}\n' \
     "$(date +%s)" >>"${LOG}"
+# A server that ended leaves its record as it was, and nobody is asked for anything
+printf '{"id":"'"${R3}"'x","time":%s,"tool":"run","result":"opened","argv":["true"],"root":true,"mode":"terminal","server":4194000}\n' \
+    "$(date +%s)" >>"${LOG}"
+sleep 2
+same "9 a record of a server that ended asks nothing" "$(ev "${UI}.get('pill').state().text")" "Agent asks you"
 # The hand-off's server ended by systemd (SIGTERM): it takes its name away itself
 user_bus systemctl --user stop vmlab-mcp-b >/dev/null 2>&1
 pkill -u "${TEST_USER}" -f 'amethystora-in-terminal --agent' >/dev/null 2>&1
