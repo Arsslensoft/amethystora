@@ -58,6 +58,8 @@ for theme in "${SYSTEM_THEMES_DIR}"/*/; do
         output="${T}/stage/$(basename "${template}" .tpl)"
         [[ -f "${output}" ]] || fail "${slug}: $(basename "${template}") was not rendered"
         grep -q '{{ [A-Za-z0-9_]* }}' "${output}" && fail "${slug}: $(basename "${output}") has a value left unfilled"
+        # gdk-pixbuf knows an SVG only by its <svg within the first 256 bytes; past them the wallpaper is black
+        [[ "${output}" != *.svg ]] || head -c 256 "${output}" | grep -q '<svg' || fail "${slug}: $(basename "${output}") opens too late"
         # The last newline is kept, as sed kept it
         [[ "$(tail -c1 "${template}" | od -An -tx1 | tr -d ' ')" == "$(tail -c1 "${output}" | od -An -tx1 | tr -d ' ')" ]] ||
             fail "${slug}: $(basename "${output}") lost its last newline"
