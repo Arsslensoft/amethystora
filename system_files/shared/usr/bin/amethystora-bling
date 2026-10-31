@@ -81,4 +81,7 @@ test -f ${BLING_CLI_DIRECTORY}/${BLING_SCRIPT_SOURCE} && source ${BLING_CLI_DIRE
 ### ${BLING_SCRIPT_SOURCE} source end
 EOF
     echo "Installation complete. Reopen your terminal so that the configurations may be applied"
+    # What it dresses up comes from Homebrew: without it, a new terminal looks just as before
+    PATH="${PATH}:/home/linuxbrew/.linuxbrew/bin" command -v eza >/dev/null ||
+        echo "It uses the command line tools (eza, bat, ugrep and others), which are not installed yet: ame apps cli"
 fi
