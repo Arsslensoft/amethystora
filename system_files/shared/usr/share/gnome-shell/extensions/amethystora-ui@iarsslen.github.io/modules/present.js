@@ -149,7 +149,12 @@ export class Present {
         this._settings.connectObject(
             'changed::enabled', () => this._sync(),
             'changed::pointer-mark', () => this._syncMark(),
-            'changed::ask-on-screen', () => this._syncScreens(), this);
+            'changed::ask-on-screen', () => {
+                // Turned on: a screen plugged in while it was off is no new screen
+                for (const connector of this._connectors())
+                    seen?.add(connector);
+                this._syncScreens();
+            }, this);
         this._sync();
         // Presenting through a screen lock
         const resume = waiting;
