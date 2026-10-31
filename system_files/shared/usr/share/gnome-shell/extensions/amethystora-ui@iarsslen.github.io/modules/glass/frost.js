@@ -165,6 +165,10 @@ class Picture {
         return this._framebuffer;
     }
 
+    flush() {
+        this._framebuffer?.flush();
+    }
+
     // Called from the paint that drew a new picture: the surfaces showing it are drawn again before the next frame,
     // and the glass's own picture is read back once it has settled
     rendered() {
@@ -398,7 +402,9 @@ export class Frost {
     }
 
     // Surfaces that drew from a picture are drawn again once it changes. Queued from inside a paint, so it is done
-    // just before the next frame.
+    // just before the next frame. A picture nothing is drawing from (the overview's, while it is closed) is flushed too:
+    // Cogl keeps a target's drawing, and every texture that drawing used, until something samples it, which cost
+    // megabytes on every new picture until the overview next opened.
     redrawSoon(picture) {
         this._queued.add(picture);
         if (this._laterId)
@@ -406,6 +412,7 @@ export class Frost {
         this._laterId = global.compositor.get_laters().add(Meta.LaterType.BEFORE_REDRAW, () => {
             this._laterId = 0;
             for (const queued of this._queued) {
+                queued.flush();
                 for (const consumer of queued.consumers)
                     consumer.get_actor()?.queue_redraw();
             }
