@@ -228,8 +228,8 @@ class WorkspaceRow extends PanelMenu.Button {
 });
 
 // The workspaces in another screen's top bar (modules/bars.js): the same labels, lit for the workspace that screen
-// shows. A click shows the workspace there; a window dropped on a label moves to that workspace. Labels here start no
-// drag and open no menu, and the wheel does nothing: the main bar keeps those.
+// shows. A click does what it does on the main bar, on that screen; a window dropped on a label moves to that workspace.
+// Labels here start no drag and open no menu, and the wheel does nothing: the main bar keeps those.
 class OtherRow {
     constructor(module, monitor) {
         this._module = module;
@@ -244,7 +244,7 @@ class OtherRow {
     }
 
     clicked(index) {
-        this._module.showOn(index, this.monitor);
+        this._module.clicked(index, this.monitor);
     }
 
     landed(label) {
@@ -484,9 +484,10 @@ export class Workspaces {
 
     // Every click on the one you are on shows or hides the overview, even one that comes while it is still sliding. With
     // a workspace per screen the click is about this bar's screen: the workspace comes there, as the wheel's does.
-    clicked(index) {
+    // A click on a label of the bar of screen `monitor`: the workspace is shown on that screen, swapping with the screen
+    // that showed it; with GNOME's workspaces spanning every screen, every screen goes there
+    clicked(index, monitor = Main.layoutManager.primaryIndex) {
         const manager = global.workspace_manager;
-        const monitor = Main.layoutManager.primaryIndex;
         const shown = this._shownOn(monitor);
         if (index === (shown?.index() ?? manager.get_active_workspace_index())) {
             Main.overview.toggle();
@@ -530,19 +531,6 @@ export class Workspaces {
     _shownOn(monitor) {
         const screens = this._ext.modules?.get('tiling')?.engine?.screens;
         return screens?.separate ? screens.shownOn(monitor) : null;
-    }
-
-    // A click on another screen's label: the workspace is shown on that screen, swapping with the screen that showed it;
-    // with GNOME's workspaces spanning every screen, every screen goes there
-    showOn(index, monitor) {
-        const workspace = global.workspace_manager.get_workspace_by_index(index);
-        if (!workspace)
-            return;
-        const screens = this._ext.modules?.get('tiling')?.engine?.screens;
-        if (screens?.separate)
-            screens.bring(workspace, monitor);
-        else
-            this._goTo(workspace);
     }
 
     _goTo(workspace) {
