@@ -225,6 +225,15 @@ export default class TransitionsExtension extends Extension {
         });
         this._dbus.export(Gio.DBus.session, '/org/amethystora/Transitions');
 
+        // GNOME shows the other screens' wallpapers when it has started, and a wallpaper still loading then (a theme
+        // applied during the start: an account's first login) would come in hidden, for the rest of the session
+        if (Main.layoutManager._startingUp) {
+            Main.layoutManager.connectObject('startup-complete', () => {
+                for (const manager of Main.layoutManager._bgManagers ?? [])
+                    manager._newBackgroundActor?.show();
+            }, this);
+        }
+
         // The reveal at login, which only happens while GNOME is starting
         this._loginReveal = new Reveal(this._settings);
         this._loginReveal.start();
@@ -234,6 +243,7 @@ export default class TransitionsExtension extends Extension {
         // The top bar is never left hidden or out of place
         this._loginReveal?.stop();
         this._loginReveal = null;
+        Main.layoutManager.disconnectObject(this);
         this._dbus.unexport();
         this._injections.clear();
         for (const settings of this._watched)
