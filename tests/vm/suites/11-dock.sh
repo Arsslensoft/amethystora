@@ -426,6 +426,16 @@ done
 sleep 1
 check "recent apps: D, C, B, newest first" test "$(ev "JSON.stringify(${S}.recent.slice(0, 3))")" == \
     '["org.test.D.desktop","org.test.C.desktop","org.test.B.desktop"]'
+# A row redrawn while a recent app pops in takes its icon out of the row and ends the pop: the icon still comes to rest,
+# never left clear in its slot. Quit and redrawn just after, by what a focus change or another app ending would do
+ev "imports.gi.Shell.AppSystem.get_default().lookup_app('org.test.A.desktop').activate(); 1" >/dev/null
+wait_for 40 ev_is "global.get_window_actors().filter(a => a.meta_window.title === 'TestA 1').length" 1
+ev "Main.activateWindow(global.get_window_actors().map(a => a.meta_window).find(w => w.title === 'TestA 1')); 1" >/dev/null
+sleep 1
+ev "(() => { const {Shell, GLib} = imports.gi; const app = Shell.AppSystem.get_default().lookup_app('org.test.A.desktop'); const id = app.connect('notify::state', () => { if (app.state !== Shell.AppState.STOPPED) return; app.disconnect(id); GLib.timeout_add(GLib.PRIORITY_DEFAULT, 30, () => { ${DOCK}.docks[0].dash._queueRedisplay(); return GLib.SOURCE_REMOVE; }); }); app.request_quit(); return 1; })()" >/dev/null
+wait_for 20 ev_is "imports.gi.Shell.AppSystem.get_default().lookup_app('org.test.A.desktop').state" 0
+sleep 1
+check "a recent app's icon comes to rest though the row is redrawn as it pops in" test "$(ev "(() => { const d = ${DOCK}.docks[0].dash; const icon = [...d._recentItems].find(([app]) => app.get_id() === 'org.test.A.desktop')[1].child; return [icon.opacity, icon.scale_x, Boolean(icon._amethystoraBusy)].join(' '); })()")" == "235 1 false"
 in_session "ame desktop dock recent off" >/dev/null
 sleep 1
 check "recent off: no recent items and no focus signal" test "$(ev "JSON.stringify([${S}.recentShown.length, ${DOCK}.recent === null])")" == "[0,true]"

@@ -778,21 +778,21 @@ class AmethystoraDockDash extends Dash.Dash {
         const sf = scaleFactor();
         const toEdge = POP.from * sf * -this.edge.away;
         const short = this.edge.short === 'y' ? 'translation_y' : 'translation_x';
+        const opacity = actor.opacity || 255;
+        const rest = {scale_x: 1, scale_y: 1, opacity, [short]: 0};
+        // Not onComplete: _redisplay takes a recent item out of the row, which ends its pop unfinished, and an icon left
+        // where it stopped stays clear and small in its slot, seen by nothing else, for as long as the app is recent
+        const onStopped = () => {
+            actor.set(rest);
+            actor._amethystoraBusy = false;
+        };
         if (level === 'reduced') {
             actor.opacity = 0;
-            actor.ease({
-                opacity: actor._amethystoraOpacity ?? 255, duration: 150, mode: EASE.out,
-                onComplete: () => (actor._amethystoraBusy = false),
-            });
+            actor.ease({opacity, duration: 150, mode: EASE.out, onStopped});
             return;
         }
-        const opacity = actor.opacity || 255;
         actor.set({scale_x: POP.scale, scale_y: POP.scale, opacity: 0, [short]: toEdge});
-        actor.ease({
-            scale_x: 1, scale_y: 1, opacity, [short]: 0,
-            duration: POP.duration, mode: EASE.back,
-            onComplete: () => (actor._amethystoraBusy = false),
-        });
+        actor.ease({...rest, duration: POP.duration, mode: EASE.back, onStopped});
     }
 
     // The caption over the recent apps (the board's: its top 22 px above their icons, at the group's start), placed
