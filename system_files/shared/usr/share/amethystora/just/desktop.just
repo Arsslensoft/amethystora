@@ -2705,6 +2705,8 @@ sounds SET="":
             echo "$(gettext "Sounds: soft.")"
             ;;
         off)
+            # GNOME's volume keys play their step whatever event-sounds says: only this theme's silent step stops it
+            gsettings set "${schema}" theme-name amethystora-silent
             gsettings set "${schema}" event-sounds false
             echo "$(gettext "Sounds: off. Apps can still make sounds of their own.")"
             ;;

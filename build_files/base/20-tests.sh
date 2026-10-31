@@ -2272,6 +2272,9 @@ done
 GSETTINGS_BACKEND=memory ame desktop sounds loud >/dev/null 2>&1 && false
 GSETTINGS_BACKEND=memory ame desktop screen-corners maybe >/dev/null 2>&1 && false
 GSETTINGS_BACKEND=memory ame desktop sounds off >/dev/null
+# GNOME's volume keys play their step whatever event-sounds says, so off needs the silent theme's
+test -s /usr/share/sounds/amethystora-silent/stereo/audio-volume-change.wav
+grep -q 'theme-name amethystora-silent' /usr/share/amethystora/just/desktop.just
 GSETTINGS_BACKEND=memory ame desktop screen-corners on >/dev/null
 # Seeing and reading, touch and pen (plans/beyond/spec-r4-access.md; manual: themes.md#seeing-and-reading,
 # desktop.md#touch-and-pen): the access and touch modules' keys, everything off for a new account, their three shortcuts

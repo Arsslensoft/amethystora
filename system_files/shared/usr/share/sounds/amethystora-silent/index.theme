@@ -1,0 +1,8 @@
+[Sound Theme]
+Name=Amethystora silent
+Comment=The volume keys' step, silent, for ame desktop sounds off
+Inherits=freedesktop
+Directories=stereo
+
+[stereo]
+OutputProfile=stereo

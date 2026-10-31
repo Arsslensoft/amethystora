@@ -197,5 +197,13 @@ for (const [name, of] of COPIES) {
     writeFileSync(join(OUT, 'stereo', `${name}.wav`), written.get(of));
     console.log(`${name.padEnd(26)} the same as ${of}`);
 }
+// What `ame desktop sounds off` points the theme at: GNOME's volume keys play their step whatever event-sounds says,
+// so only a theme whose step is silent stops it
+const SILENT = join(OUT, '..', 'amethystora-silent');
+rmSync(SILENT, {recursive: true, force: true});
+mkdirSync(join(SILENT, 'stereo'), {recursive: true});
+writeFileSync(join(SILENT, 'index.theme'), INDEX.replace('Name=Amethystora', 'Name=Amethystora silent')
+    .replace(/^Comment=.*\n/m, "Comment=The volume keys' step, silent, for ame desktop sounds off\n"));
+writeFileSync(join(SILENT, 'stereo', 'audio-volume-change.wav'), wav(new Array(480).fill(0)));
 if (failed)
     process.exit(1);
