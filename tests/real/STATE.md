@@ -5,6 +5,8 @@ If the machine hung: first save the tails of `journalctl -b -1` into `tests/real
 
 ## Now
 
+- **Since 2026-10-31 the checklist was walked in the VM lab instead, and that walk is paused:** `tests/real/VM-WALK.md`
+  says what is fixed and waiting to be seen, the open bugs, and the lines not walked yet.
 - **Kernel panic, 2026-10-30 about 19:29, on 7.2.13, no dock attached:** "Fatal exception in interrupt" on the drm_panic screen. A photo of the QR
   decodes locally (`zxing-cpp`; never open its link), but it ends at the journal's last kernel line, 14 minutes earlier: no Oops, RIP or trace, so the
   cause is unknown. Nothing implicates amdgpu or a test. It weakens dock and evdi as the only cause, and doesn't show the silent hangs are the same fault.
