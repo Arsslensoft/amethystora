@@ -909,7 +909,8 @@ profile NAME="":
     sudo systemctl restart clamav-freshclam.service clamd@scan.socket amethystora-clamav-onaccess.service \
         amethystora-ips.service amethystora-security-realtime.service amethystora-dns-names.service \
         amethystora-behaviour.service || true
-    sudo systemctl start --no-block amethystora-ips-rules.service amethystora-yara.service || true
+    # A restart, since a run already under way has passed the sets this profile just turned off and would keep them
+    sudo systemctl restart --no-block amethystora-ips-rules.service amethystora-yara.service || true
     sudo systemctl start --no-block amethystora-security-watch.service || true
     echo "$(gettext "Done. The audit log and its rules follow at the next restart.")"
     echo
