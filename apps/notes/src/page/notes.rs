@@ -1052,8 +1052,9 @@ impl Notes {
             }
         });
 
-        // Files dropped on the note
+        // Files dropped on the note, ahead of the text view inside it, which would type their paths
         let target = gtk::DropTarget::new(gdk::FileList::static_type(), gdk::DragAction::COPY);
+        target.set_propagation_phase(gtk::PropagationPhase::Capture);
         let weak = self.me.clone();
         target.connect_drop(move |_, value, _, _| {
             let (Some(this), Ok(list)) = (weak.upgrade(), value.get::<gdk::FileList>()) else { return false };
