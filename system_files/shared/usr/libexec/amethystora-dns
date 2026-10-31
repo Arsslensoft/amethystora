@@ -168,8 +168,13 @@ EOF
         apply_resolved
         ;;
     off)
-        rm -f "${RESOLVED_DROP_IN}" "${PAUSE}"
+        # A reload forgets the servers but not the route-only domain, which only an empty Domains= clears
+        mkdir -p "${RESOLVED_DROP_IN%/*}"
+        printf '[Resolve]\nDomains=\n' >"${RESOLVED_DROP_IN}"
+        rm -f "${PAUSE}"
         systemctl stop amethystora-dns-resume.timer 2>/dev/null || true
+        apply_resolved
+        rm -f "${RESOLVED_DROP_IN}"
         apply_resolved
         rm -f "${NM_DROP_IN}"
         apply_networks off
