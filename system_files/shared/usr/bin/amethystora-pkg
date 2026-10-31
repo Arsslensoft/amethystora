@@ -905,7 +905,11 @@ container_remove() {
     require_manager
     # Out of the app grid first, while the package's file list still says which launchers are its own
     unexport_launchers "${packages[@]}"
-    pm "${action}" "${packages[@]}" || die "Not removed."
+    if ! pm "${action}" "${packages[@]}"; then
+        # Still installed, the person having said no: its launchers go back
+        export_launchers "${packages[@]}"
+        die "Not removed."
+    fi
     state_update "${C_NAME}" '.packages = ((.packages // []) - $p) | .aur_packages = ((.aur_packages // []) - $p)
         | .files = ((.files // []) | map(select(.name | IN($p[]) | not)))' \
         --argjson p "$(printf '%s\n' "${packages[@]}" | jq -R . | jq -sc .)"
