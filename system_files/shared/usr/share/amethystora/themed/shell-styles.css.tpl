@@ -427,7 +427,7 @@
 }
 
 #uiGroup.amethystora-style-neon .amethystora-workspaces-label.amethystora-workspaces-active {
-  color: {{ accent_text }};
+  color: {{ foreground }};
   border-color: {{ accent }};
   box-shadow: 0 0 10px rgba({{ accent_rgb }}, 0.6);
   text-shadow: 0 0 8px {{ accent }};
