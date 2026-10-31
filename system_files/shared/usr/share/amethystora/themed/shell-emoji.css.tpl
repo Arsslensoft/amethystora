@@ -46,7 +46,7 @@
 }
 
 #uiGroup .amethystora-emoji-tab:focus {
-  box-shadow: inset 0 0 0 2px {{ accent_text }};
+  border-color: {{ accent_text }};
 }
 
 #uiGroup .amethystora-emoji-tab:checked {
