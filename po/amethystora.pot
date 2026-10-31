@@ -12406,6 +12406,10 @@ msgid "CPU"
 msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/quit/list.js
+msgid "No app is open."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/quit/list.js
 msgid "Not responding"
 msgstr ""
 

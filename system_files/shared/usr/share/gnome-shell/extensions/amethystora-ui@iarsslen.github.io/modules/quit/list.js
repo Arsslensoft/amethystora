@@ -134,6 +134,9 @@ export class ForceQuitList {
         const scroll = new St.ScrollView({style_class: 'amethystora-quit-scroll', child: this._list, x_expand: true,
             hscrollbar_policy: St.PolicyType.NEVER, vscrollbar_policy: St.PolicyType.AUTOMATIC});
         box.add_child(scroll);
+        // Said instead of an empty list
+        this._none = new St.Label({style_class: 'amethystora-quit-text', text: _('No app is open.'), x_align: Clutter.ActorAlign.CENTER});
+        box.add_child(this._none);
         dialog.contentLayout.add_child(box);
 
         const buttons = dialog.buttonLayout;
@@ -211,6 +214,7 @@ export class ForceQuitList {
         }
         if (!this._selected || !this._rows.has(this._selected))
             this._select(this._order()[0] ?? null);
+        this._none.visible = this._rows.size === 0;
         this._updateQuit();
     }
 
@@ -262,6 +266,7 @@ export class ForceQuitList {
             return;
         this._quit.label = row ? _('Force quit %s').format(row.app.get_name()) : _('Force quit');
         this._quit.reactive = !!row;
+        this._quit.visible = !!row;
     }
 
     // Reads every process after `delay`, again every REFRESH while the list is open
