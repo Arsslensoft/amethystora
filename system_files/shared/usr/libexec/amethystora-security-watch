@@ -82,7 +82,7 @@ case "${1:-}" in
         if [[ -s "${HISTORY}" ]]; then
             echo
             echo "The last 20 in the history (${HISTORY}):"
-            tail -n 20 "${HISTORY}" | jq -r '[(.time | strftime("%F %T")), .level, .text] | join("  ")' 2>/dev/null |
+            tail -n 20 "${HISTORY}" | jq -r '[(.time | strflocaltime("%F %T")), .level, .text] | join("  ")' 2>/dev/null |
                 "${TEXT}" --lines | sed 's/^/  /'
         elif [[ -s "${OLD_HISTORY}" ]]; then
             echo
