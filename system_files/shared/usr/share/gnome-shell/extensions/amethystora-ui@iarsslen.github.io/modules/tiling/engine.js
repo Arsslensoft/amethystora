@@ -1444,7 +1444,9 @@ export class Engine {
         const outX = window.maximized_horizontally ? 0 : config.border;
         const outY = window.maximized_vertically ? 0 : config.border;
         box.set_position(vis.x - outX, vis.y - outY);
-        box.set_size(vis.width + 2 * outX, vis.height + 2 * outY);
+        // A window that cannot be resized (a program's own question) stays its own size in the place the strip gave it
+        const size = window.resizeable ? vis : window.get_frame_rect();
+        box.set_size(size.width + 2 * outX, size.height + 2 * outY);
         const style = `border-radius: ${config.radiusTop}px ${config.radiusTop}px ${config.radiusBottom}px ${config.radiusBottom}px;`;
         if (box.style !== style)
             box.style = style;
