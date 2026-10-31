@@ -70,6 +70,7 @@ CHOICE="${CONFIG_DIR}/agent"
 TOOLS=/usr/libexec/amethystora-agent-tools
 TOOLS_ENTRY="{\"command\": \"${TOOLS}\", \"args\": [\"mcp\"]}"
 READ_TOOLS=(search read state logs history)
+CHANGE_TOOLS=(change software run undo)
 
 usage() {
     sed -n '3,/^$/p' "$0" | sed 's/^# \?//'
@@ -246,11 +247,12 @@ tools_options() {
             done
             ;;
         opencode)
-            # A configuration of the user's own given this way is theirs, and stays as it is
+            # A configuration of the user's own given this way is theirs, and stays as it is. Opencode runs a tool
+            # it finds no permission for, so the tools that change something are named too
             if [[ -z ${OPENCODE_CONFIG_CONTENT:-} ]]; then
-                OPENCODE_CONFIG_CONTENT="$(jq -nc --argjson entry "${TOOLS_ENTRY}" '{mcp: {amethystora: {type: "local",
-                    command: ([$entry.command] + $entry.args)}}, permission: ($ARGS.positional | map({key: "amethystora_\(.)",
-                    value: "allow"}) | from_entries)}' --args "${READ_TOOLS[@]}")"
+                OPENCODE_CONFIG_CONTENT="$(jq -nc --argjson entry "${TOOLS_ENTRY}" --arg change "${CHANGE_TOOLS[*]}" '{mcp: {amethystora: {type: "local",
+                    command: ([$entry.command] + $entry.args)}}, permission: (($ARGS.positional | map({key: "amethystora_\(.)",
+                    value: "allow"})) + ($change | split(" ") | map({key: "amethystora_\(.)", value: "ask"})) | from_entries)}' --args "${READ_TOOLS[@]}")"
                 export OPENCODE_CONFIG_CONTENT
             fi
             ;;
