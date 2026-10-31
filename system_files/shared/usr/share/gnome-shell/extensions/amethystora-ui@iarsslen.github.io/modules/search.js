@@ -304,7 +304,12 @@ export class Search {
             this._queueFocusCheck();
             this._syncFocusHint();
         }, this._whileOpen);
-        global.display.connectObject('in-fullscreen-changed', () => this._close('animate'), this._whileOpen);
+        // Not for the previewer of a Glance: the first window it opens in a session makes this fire, and took the search
+        // and the preview with it. The box has stepped aside, and comes back as the preview closes
+        global.display.connectObject('in-fullscreen-changed', () => {
+            if (!this._glancing)
+                this._close('animate');
+        }, this._whileOpen);
         Main.layoutManager.connectObject('monitors-changed', () => this._close('now'), this._whileOpen);
         // An app dragged from the results (to the dock, say) keeps the box open until it is dropped
         Main.overview.connectObject(
