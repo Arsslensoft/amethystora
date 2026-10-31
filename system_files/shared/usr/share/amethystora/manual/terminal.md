@@ -39,12 +39,10 @@ switches it back ([Signed updates](updates.md#signed-updates)).
 
 ## Shells
 
-The shell is bash, with the Starship prompt. fish and zsh are installed too. The way to switch is in
-the terminal rather than system-wide, so that a broken shell configuration can never lock you out of
-logging in:
-
-1. Open the terminal's **Preferences** and edit your profile.
-2. Turn on **Use Custom Command** and enter `/usr/bin/fish` or `/usr/bin/zsh`.
+The shell is bash, with the Starship prompt. fish and zsh are installed too, with the same prompt. The way
+to switch is in the terminal rather than system-wide, so that a broken shell configuration can never lock you
+out of logging in: put `shell /usr/bin/fish` or `shell /usr/bin/zsh` in `~/.config/kitty/kitty.conf`, and open a
+new window.
 
 ## ame
 
