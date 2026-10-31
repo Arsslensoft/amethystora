@@ -1471,9 +1471,9 @@ provenance() {
                 signature="Its signature does NOT match its contents: it was changed after it was signed."
                 bad=true
             elif grep -qi "Signature.*NOKEY" <<<"${check}"; then
-                signature="Signed, with a key this machine does not know ($(grep -oi -m1 'key ID [0-9a-f]*' <<<"${check}"))."
+                signature="Signed, with a key this machine does not know ($(grep -oiE -m1 'key (ID|fingerprint:) [0-9a-f]+' <<<"${check}"))."
             elif grep -qi "Signature.*: OK" <<<"${check}"; then
-                signature="Signed, with a key this machine trusts ($(grep -oi -m1 'key ID [0-9a-f]*' <<<"${check}"))."
+                signature="Signed, with a key this machine trusts ($(grep -oiE -m1 'key (ID|fingerprint:) [0-9a-f]+' <<<"${check}"))."
             else
                 signature="Not signed."
             fi
