@@ -115,7 +115,7 @@ The same from a terminal: `amethystora-theme list`, `amethystora-theme set <name
 | `Ctrl+Z`, in the screenshot bar | Undo the last mark |
 | `Ctrl+C`, in the screenshot bar | Copy the picture without saving it |
 | `Ctrl+S`, in the screenshot bar | Save the picture where you choose |
-| `Ctrl+Shift+Alt+R` | Start or stop a screen recording |
+| `Ctrl+Shift+Alt+R` | Open the screen recorder (`Enter` starts), or stop a recording |
 | `Super+Shift+Space` | Next keyboard layout, when you have more than one |
 | `Super+Escape` | Take the keyboard back from an app that grabbed it, such as a virtual machine |
 | `Super+Ctrl+Shift+Esc` | Force quit: the running apps with what each uses, and end the one that hangs |
