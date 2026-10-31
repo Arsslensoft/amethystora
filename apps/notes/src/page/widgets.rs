@@ -163,13 +163,21 @@ pub fn select(accessible: &str, choices: &[(String, String)], value: &str, class
         words.add_named(&line, Some(&at.to_string()));
     }
     words.set_visible_child_name(&shown.to_string());
-    for (choice, label) in choices {
+    for (at, (choice, label)) in choices.iter().enumerate() {
         let option = gtk::Button::builder().child(&ui::line(label, &[])).css_classes(["plain", "option"]).build();
         if choice == value {
             option.add_css_class("current");
         }
-        let (popover, on_change, chosen) = (popover.clone(), on_change.clone(), choice.clone());
-        option.connect_clicked(move |_| {
+        let (popover, on_change, chosen, face, others) = (popover.clone(), on_change.clone(), choice.clone(), words.clone(), list.clone());
+        option.connect_clicked(move |option| {
+            // The choice shows at once: a page that is not drawn again would keep saying the last one
+            face.set_visible_child_name(&at.to_string());
+            let mut other = others.first_child();
+            while let Some(widget) = other {
+                widget.remove_css_class("current");
+                other = widget.next_sibling();
+            }
+            option.add_css_class("current");
             popover.popdown();
             on_change(chosen.clone());
         });
