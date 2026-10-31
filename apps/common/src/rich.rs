@@ -233,11 +233,19 @@ impl Rich {
         if decos.iter().any(|deco| deco.kind == Kind::Chip) {
             // A chip is clicked as a whole, wherever in it
             let click = gtk::GestureClick::new();
+            // Ahead of the label inside: a press on a chip is claimed, or the label takes it to select its text and
+            // this gesture never hears the release. A press anywhere else stays the label's
+            click.set_propagation_phase(gtk::PropagationPhase::Capture);
             let weak = rich.downgrade();
-            click.connect_released(move |gesture, _, x, y| {
+            click.connect_pressed(move |gesture, _, x, y| {
+                if weak.upgrade().is_some_and(|rich| rich.chip_at(x, y).is_some()) {
+                    gesture.set_state(gtk::EventSequenceState::Claimed);
+                }
+            });
+            let weak = rich.downgrade();
+            click.connect_released(move |_, _, x, y| {
                 let Some(rich) = weak.upgrade() else { return };
                 if let Some(target) = rich.chip_at(x, y) {
-                    gesture.set_state(gtk::EventSequenceState::Claimed);
                     if let Some(on_chip) = rich.imp().on_chip.borrow().clone() {
                         on_chip(&target);
                     }
