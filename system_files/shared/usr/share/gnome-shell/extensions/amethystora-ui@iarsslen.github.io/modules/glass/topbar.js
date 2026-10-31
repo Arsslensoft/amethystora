@@ -174,7 +174,10 @@ export class TopBar {
         if (!panel.mapped)
             return false;
         const [, top] = panel.get_transformed_position();
-        const limit = top + panel.height + NEAR * St.ThemeContext.get_for_stage(global.stage).scale_factor;
+        // As laid out: `height` is the height it asks for, margins included, from when a button is added until the next
+        // frame, which took a window under the bar for one touching it, and nothing looks again
+        const scale = St.ThemeContext.get_for_stage(global.stage).scale_factor;
+        const limit = top + panel.allocation.get_height() + NEAR * scale;
         const active = global.workspace_manager.get_active_workspace();
         // With the tiling on several screens the bar's screen may show a workspace GNOME does not have, whose windows
         // are drawn as pictures (tiling/screens.js) while their own actors are hidden
