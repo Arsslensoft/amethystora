@@ -306,6 +306,10 @@ in_session "ame desktop app-grid recent off" >/dev/null 2>&1
 same "22 recent off takes the row away" "$(ev "${UI}.get('appgrid')._row === null")" true
 in_session "ame desktop app-grid recent on" >/dev/null 2>&1
 same "22 on brings it back" "$(ev "!!${UI}.get('appgrid')._row")" true
+sleep 2
+# Added while the grid was already open, the row and labels still find its first column: nothing tells them it settled
+same "22 the labels and the row line up with the grid's first column" \
+    "$(ev "(() => { const g = ${UI}.get('appgrid'); const scale = imports.gi.St.ThemeContext.get_for_stage(global.stage).scale_factor; const first = ${AD}._orderedItems.find(i => i.visible); const rtl = ${AD}._box.get_text_direction() === imports.gi.Clutter.TextDirection.RTL; const inset = rtl ? ${AD}._scrollView.width - first.get_transformed_position()[0] - first.width : first.get_transformed_position()[0]; const want = 'padding-' + (rtl ? 'right' : 'left') + ': ' + Math.round(inset / scale) + 'px;'; return g._recentLabel.get_style() === want && g._allLabel.get_style() === want && g._row.get_style().startsWith(want) && inset > 0; })()")" true
 # A second page only once the first is full: a saved layout with one app on its first page closes up, in its order
 ids="$(ev "JSON.stringify(${AD}._orderedItems.filter(i => i.visible).map(i => i.id))")"
 ev "(() => { const G = imports.gi.GLib; const ids = ${AD}._orderedItems.filter(i => i.visible).map(i => i.id); const pack = list => Object.fromEntries(list.map((id, i) => [id, new G.Variant('a{sv}', {position: G.Variant.new_int32(i)})])); global.settings.set_value('app-picker-layout', new G.Variant('aa{sv}', [pack(ids.slice(0, 1)), pack(ids.slice(1))])); return true; })()" >/dev/null

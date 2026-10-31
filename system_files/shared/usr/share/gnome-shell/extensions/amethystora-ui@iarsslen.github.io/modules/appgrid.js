@@ -21,6 +21,7 @@ const MOST = 8;
 // GNOME's grid fits three rows to a page of any wide shape, so a short screen's icons shrink to make room for the row:
 // with the row, a page as wide as that may take two rows instead
 const TWO_ROWS = {rows: 2, columns: 8};
+const WAIT_FRAMES = 30;
 // The folder tile's square, as a share of its side: the corners, the inset of the four apps and the gap between them
 const TILE_RADIUS = 18 / 64;
 const TILE_INSET = 9 / 64;
@@ -82,6 +83,8 @@ export class AppGrid {
         box.insert_child_at_index(this._row, 1);
         box.insert_child_at_index(this._allLabel, 2);
         this._icons = new Map();
+        this._alignAgain = 0;
+        this._alignWaits = 0;
         this._show(false);
         const grid = this._appDisplay._grid;
         this._gridModes = grid._gridModes;
@@ -90,6 +93,7 @@ export class AppGrid {
         // Filled as the overview opens, and only then
         Main.overview.connectObject('showing', () => {
             this._alignAgain = 0;
+            this._alignWaits = 0;
             this._fill();
         },
             // Once the overview has opened, where the grid came to rest: its icons' size then is the row's (the
@@ -215,7 +219,7 @@ export class AppGrid {
         if (size > 0)
             this._rowSize = size;
         const [first, second] = (this._appDisplay._orderedItems ?? []).filter(item => item.visible);
-        const placed = first?.has_allocation() && first.width > 0;
+        const placed = first?.has_allocation() && first.width > 0 && this._appDisplay._scrollView.has_allocation();
         // The grid's own size stays as its icons change size and place: its first icon is followed instead
         if (first !== this._first) {
             this._first?.disconnectObject(this);
@@ -233,10 +237,15 @@ export class AppGrid {
                 changed = true;
             }
         }
-        if (placed)
+        if (placed) {
             changed = this._alignRow(first, second, layout) || changed;
+            this._alignWaits = 0;
+        }
         this._alignAgain = changed ? (this._alignAgain ?? 0) + 1 : 0;
-        if (changed)
+        // Adding the row takes its allocation from the first icon until the next layout, which gives it the same one
+        // back and so tells nobody: the row looks again at the next frames, for half a second at most
+        const waiting = !placed && first && Main.overview.visible && this._alignWaits++ < WAIT_FRAMES;
+        if (changed || waiting)
             this._queueAlign();
     }
 
@@ -246,16 +255,22 @@ export class AppGrid {
         const box = this._appDisplay._box;
         const at = item => item.apply_relative_transform_to_point(box, new Graphene.Point3D({x: 0, y: 0, z: 0})).x;
         const left = at(first);
-        if (left < 0 || left >= box.width)
+        // One page, as the box can hold all of them for a moment
+        const page = this._appDisplay._scrollView.width;
+        if (left < 0 || left >= page)
             return false;
         let spacing = layout.columnSpacing ?? 0;
         if (second?.has_allocation()) {
-            const step = at(second) - left;
+            const step = Math.abs(at(second) - left);
             if (step > first.width)
                 spacing = step - first.width;
         }
-        const pad = `padding-left: ${Math.round(left)}px;`;
-        const rowStyle = `${pad} spacing: ${Math.round(spacing)}px;`;
+        // Right to left, the grid starts at the right and so do the labels and the row. St scales a style's pixels.
+        const rtl = box.get_text_direction() === Clutter.TextDirection.RTL;
+        const {scale_factor: scale} = St.ThemeContext.get_for_stage(global.stage);
+        const inset = rtl ? page - left - first.width : left;
+        const pad = `padding-${rtl ? 'right' : 'left'}: ${Math.round(inset / scale)}px;`;
+        const rowStyle = `${pad} spacing: ${Math.round(spacing / scale)}px;`;
         // Set only when it changes: a new style lays the grid out again
         if (this._row.get_style() === rowStyle)
             return false;

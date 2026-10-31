@@ -13,6 +13,10 @@
 
 .amethystora-appgrid-row { padding-bottom: 16px; }
 
+/* Clear of the screen's edge until the module has lined them up with the grid's first column */
+.amethystora-appgrid-label:ltr, .amethystora-appgrid-row:ltr { padding-left: 48px; }
+.amethystora-appgrid-label:rtl, .amethystora-appgrid-row:rtl { padding-right: 48px; }
+
 /* The folder's tile: GNOME's tile stays clear, and the square of four apps is the tile */
 #overviewGroup .app-folder.amethystora-appgrid-tile,
 #overviewGroup.amethystora-glass-overview .app-folder.amethystora-appgrid-tile {
