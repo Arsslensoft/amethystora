@@ -43,6 +43,22 @@ function outputName(device) {
     return device.origin ? `${device.description} – ${device.origin}` : device.description;
 }
 
+// What tells each output's button from the others': their full names less the words at the start and the end that they
+// all share (HDMI / DisplayPort 2 Output and 3 Output: 2 and 3, which a button's width would otherwise cut off), or, for
+// names the same, a number after the name. The accessible name and the line under the rows keep the full name.
+function outputLabels(names) {
+    const lists = names.map(name => name.split(/\s+/));
+    const shortest = Math.min(...lists.map(list => list.length));
+    let start = 0;
+    while (start < shortest && lists.every(list => list[start] === lists[0][start]))
+        start++;
+    let end = 0;
+    while (end < shortest - start && lists.every(list => list.at(-1 - end) === lists[0].at(-1 - end)))
+        end++;
+    const parts = lists.map(list => list.slice(start, list.length - end).join(' '));
+    return parts.every(part => part) ? parts : names.map((name, i) => `${name} ${i + 1}`);
+}
+
 export class VolumeBlock {
     constructor() {
         // By the app's key (its id, or its name for a stream without one)
@@ -313,9 +329,10 @@ export class VolumeBlock {
                 shown[shown.length - 1] = active;
         }
         const box = new St.BoxLayout({style_class: 'amethystora-quick-outputs', y_align: Clutter.ActorAlign.CENTER});
-        for (const device of shown) {
-            const button = new St.Button({style_class: 'amethystora-quick-output', label: outputName(device),
-                can_focus: true});
+        const labels = outputLabels(shown.map(outputName));
+        for (const [i, device] of shown.entries()) {
+            const button = new St.Button({style_class: 'amethystora-quick-output', label: labels[i],
+                accessible_name: outputName(device), can_focus: true});
             button.get_child()?.clutter_text?.set({ellipsize: Pango.EllipsizeMode.END});
             if (device.get_id() === currentId)
                 button.add_style_pseudo_class('checked');
