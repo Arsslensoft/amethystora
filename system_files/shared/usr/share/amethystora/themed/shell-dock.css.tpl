@@ -1,5 +1,5 @@
 /* The dock in the colours of {{ theme_name }}: the veil on a light theme and the wash on a tile in the text colour (dark
-   on a light theme, light on a dark one), the dots in the text colour, the bar of progress from the accent's fill to its
+   on a light theme, light on a dark one), the dots and the app grid's in the text colour, the bar of progress from the accent's fill to its
    text colour, and the count's badge in the palette's red with the background's colour on it (the count and the bar on
    the apps' icons in the overview too); then the marks, the cards and the drops of the dock's newer parts.
    The selectors start from the shell's top group, one id more than the dock's own stylesheet has for them, which only stands in until a theme has been applied; the veil's does
@@ -16,6 +16,10 @@
 #uiGroup #dash.amethystora-dock-dash .dash-item-container .show-apps:focus .overview-icon,
 #uiGroup #dash.amethystora-dock-dash .dash-item-container .amethystora-dock-focused .overview-icon {
   background-color: rgba({{ foreground_rgb }}, 0.2);
+}
+
+#uiGroup #dash.amethystora-dock-dash .dash-item-container .show-apps .overview-icon {
+  color: {{ foreground }};
 }
 
 #uiGroup #dash.amethystora-dock-dash .dash-separator {

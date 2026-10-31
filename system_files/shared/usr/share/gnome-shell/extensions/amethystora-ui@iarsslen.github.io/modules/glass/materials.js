@@ -57,7 +57,7 @@ export const VARIANTS = {
                 guard: 0,
             },
             'pane': {...NONE, picture: 'glass', tint: 0.16, ...FROST_LENS},
-            'dock': {...NONE, picture: 'glass', tint: 0.16, ...FROST_DOCK_LENS},
+            'dock': {...NONE, picture: 'glass', tint: 0.16, ...FROST_DOCK_LENS, guard: 0},
             'menu-bar': {...NONE, picture: 'glass', dim: 0.85, guard: 0},
             'frost': OVERVIEW,
             'bare': BARE,
@@ -75,6 +75,7 @@ export const VARIANTS = {
             'pane': {...NONE, picture: 'glass', sat: 1.85, tint: 0.10, rim: [6, 3, 2, 0.024]},
             'dock': {
                 ...NONE, ...PRISM_LIGHTS, picture: 'glass', sat: 1.85, tint: 0.10, rim: [8, 3, 2, 0.028], edge: 0.08,
+                guard: 0.20,
             },
             'menu-bar': {
                 ...NONE, ...PRISM_LIGHTS, picture: 'glass', sat: 1.85, rim: [6, 3, 2, 0.024], edge: 0.08, guard: 0.20,
@@ -95,6 +96,7 @@ export const VARIANTS = {
             'pane': {...NONE, picture: 'glass', sat: 2.0, dim: 0.82, rim: [10, 3.5, 2, 0.024]},
             'dock': {
                 ...NONE, ...CLEAR_LIGHTS, picture: 'glass', sat: 2.0, dim: 0.82, rim: [13, 3.5, 2, 0.028], edge: 0.11,
+                guard: 0.14,
             },
             'menu-bar': {
                 ...NONE, ...CLEAR_LIGHTS, picture: 'glass', sat: 2.0, dim: 0.82, rim: [10, 3.5, 2, 0.024], edge: 0.11,
