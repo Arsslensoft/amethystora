@@ -5,6 +5,10 @@ If the machine hung: first save the tails of `journalctl -b -1` into `tests/real
 
 ## Now
 
+- **2026-10-31, walked live on a second machine:** a ThinkCentre M910q (Intel HD 530, two 2560x1440 screens, 4 cores, Secure Boot off, no KVM), not the machine with the bad RAM that the rest of this file describes. Its image is 587de45, with main's helpers, recipes and apps on the `/usr` overlay, which a restart throws away. Marks of this walk say `image 587de45`, later ones with what was loaded. What is left needs a logout, a person's hands or a device, a `risky` yes or a restart. Each open line says which.
+  - The share guard counts a RemoteDesktop session as sharing, so it covers Notes, Security, Backups and the password managers and takes their clicks, which is why clicks did not land before. Absolute pointer input through a Mutter ScreenCast stream linked to the RemoteDesktop session works elsewhere. Drive covered windows by AT-SPI and keys.
+  - Close test windows by recorded PID or unit, never by name: `pkill -x ptyxis` took a whole Ptyxis service, with the session running in it, at 15:32:55. The maintainer's rule for this walk: nothing records a microphone or other audio.
+  - To the maintainer: `systemd-modules-load.service` shows failed on a machine with Secure Boot off and lockdown on (`v4l2loopback` refused, as the driver check says). `systemd-remount-fs.service` shows failed at every boot here (`overlay: No changes allowed in reconfigure`), cause not found. `quay.io/toolbx` keeps a digest for weeks at most, and it alone publishes the Ubuntu and Arch templates, so an old image's pins stop working.
 - **Since 2026-10-31 the checklist was walked in the VM lab instead, and that walk is paused:** `tests/real/VM-WALK.md`
   says what is fixed and waiting to be seen, the open bugs, and the lines not walked yet.
 - **Kernel panic, 2026-10-30 about 19:29, on 7.2.13, no dock attached:** "Fatal exception in interrupt" on the drm_panic screen. A photo of the QR
