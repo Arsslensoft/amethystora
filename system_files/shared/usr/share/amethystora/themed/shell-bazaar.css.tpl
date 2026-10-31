@@ -1,5 +1,5 @@
 /* The Uninstall question's list in the colours of {{ theme_name }}: lights over the dialog in the theme's text colour,
-   its accent for the chosen mark and the focus ring, its own red for the button. Every selector starts from the shell's
+   its accent for the chosen mark and the focus ring, its own red as the button's fill, with the label the palette gives it. Every selector starts from the shell's
    top group, one id more than the module's stylesheet (stylesheets/bazaar.css), which stands in until a theme has been
    applied and is loaded after this one; the light variant of that stylesheet is not needed, since the text colour is
    dark on a light theme. */
@@ -40,19 +40,19 @@
 }
 
 #uiGroup .modal-dialog .modal-dialog-button-box .modal-dialog-button.amethystora-bazaar-uninstall {
-  color: {{ destructive_text }};
-  background-color: rgba({{ destructive_bg_rgb }}, 0.18);
+  color: {{ destructive_fg }};
+  background-color: {{ destructive_bg }};
 }
 
 #uiGroup .modal-dialog .modal-dialog-button-box .modal-dialog-button.amethystora-bazaar-uninstall:hover,
 #uiGroup .modal-dialog .modal-dialog-button-box .modal-dialog-button.amethystora-bazaar-uninstall:focus {
-  background-color: rgba({{ destructive_bg_rgb }}, 0.28);
+  background-color: rgba({{ destructive_bg_rgb }}, 0.88);
 }
 
 #uiGroup .modal-dialog .modal-dialog-button-box .modal-dialog-button.amethystora-bazaar-uninstall:active {
-  background-color: rgba({{ destructive_bg_rgb }}, 0.38);
+  background-color: rgba({{ destructive_bg_rgb }}, 0.76);
 }
 
 #uiGroup .modal-dialog .modal-dialog-button-box .modal-dialog-button.amethystora-bazaar-uninstall:focus {
-  box-shadow: inset 0 0 0 2px rgba({{ destructive_bg_rgb }}, 0.6);
+  box-shadow: inset 0 0 0 2px rgba({{ destructive_fg_rgb }}, 0.6);
 }
