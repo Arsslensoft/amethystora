@@ -4,13 +4,15 @@
 // (Phone pairing: On), runs an action, or opens the setting in Control. Matching is strict, every word typed the start
 // of a word, because Enter may change something at once. The only commands run are the list's own, and only when
 // they are an `ame` command; one that asks something or needs a password opens in a terminal. Nothing of security is
-// in Control's list, so nothing here switches a security feature.
+// in Control's list, so nothing here switches a security feature. The whole name of a GNOME power action asks for that
+// action, and Enter must not change a setting that only shares its words.
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
+import {namedAction} from '../fuzzy.js';
 import {words} from '../fuzzy/matcher.js';
 import {finished, output} from './run.js';
 
@@ -100,7 +102,7 @@ export class SettingsProvider {
         this._previous = this._found;
         this._found = found;
         const typed = terms.flatMap(words);
-        if (!this._items || typed.length === 0 || /^clip:/iu.test(terms.join(' ')))
+        if (!this._items || typed.length === 0 || /^clip:/iu.test(terms.join(' ')) || namedAction(terms))
             return Promise.resolve([]);
 
         const headings = this._headings();

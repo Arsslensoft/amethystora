@@ -15,10 +15,24 @@ import * as AppDisplay from 'resource:///org/gnome/shell/ui/appDisplay.js';
 import * as ParentalControlsManager from 'resource:///org/gnome/shell/misc/parentalControlsManager.js';
 import * as SystemActions from 'resource:///org/gnome/shell/misc/systemActions.js';
 
-import {makeEntry, rank} from './fuzzy/matcher.js';
+import {makeEntry, rank, words} from './fuzzy/matcher.js';
 
 // GNOME shows six app results; a longer list leaves room for it, and no more is ever needed
 const LONGEST = 30;
+
+// The power action whose name or keyword is what was typed, whole ("power off", "restart"), if it can be used now.
+// That is somebody asking for that action, so it goes first, and no setting that only shares the words comes before it
+export function namedAction(terms) {
+    const typed = terms.flatMap(words).join(' ');
+    const actions = SystemActions.getDefault()._actions;
+    if (!typed || !(actions instanceof Map))
+        return null;
+    for (const [id, {name, keywords, available}] of actions) {
+        if (available && [name, ...keywords ?? []].some(said => words(said).join(' ') === typed))
+            return id;
+    }
+    return null;
+}
 
 export class Fuzzy {
     constructor(ext) {
@@ -109,7 +123,9 @@ export class Fuzzy {
                 groups.set(id, index);
         });
         const usage = Shell.AppUsage.get_default();
-        return rank(entries, terms, found, (a, b) => usage.compare(a, b),
-            id => groups.get(id) ?? Infinity).slice(0, LONGEST);
+        const ranked = rank(entries, terms, found, (a, b) => usage.compare(a, b),
+            id => groups.get(id) ?? Infinity);
+        const named = namedAction(terms);
+        return (named ? [named, ...ranked.filter(id => id !== named)] : ranked).slice(0, LONGEST);
     }
 }
