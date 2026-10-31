@@ -286,10 +286,10 @@ export class Search {
         this._box.add_child(bin);
         this._box.add_child(results);
 
-        // Worked out again at every opening, for the screen as it is now: its top edge never moves, and it grows
-        // downwards as far as 70% of the work area, where the results scroll
+        // Worked out again at every opening, on the screen the pointer is on, as it is now: its top edge never moves, and
+        // it grows downwards as far as 70% of the work area, where the results scroll
         const scale = St.ThemeContext.get_for_stage(global.stage).scale_factor;
-        const area = Main.layoutManager.getWorkAreaForMonitor(Main.layoutManager.primaryIndex);
+        const area = Main.layoutManager.getWorkAreaForMonitor(global.display.get_current_monitor());
         const width = Math.min(WIDTH * scale, area.width - 2 * MARGIN * scale);
         this._box.set_style(`max-height: ${Math.floor(TALLEST * area.height / scale)}px;`);
         this._box.set_size(width, -1);
