@@ -876,6 +876,10 @@ container_install() {
         NONINTERACTIVE=false
     fi
 
+    # A container whose paru was not built when it was made, its PKGBUILD declined or the AUR out of reach
+    if [[ "${C_MANAGER}" == paru ]]; then
+        ensure_paru || die "Not installed: this container has no paru yet."
+    fi
     pm install "${packages[@]}" || die "Not installed."
     state_update "${C_NAME}" '.packages = ((.packages // []) + $p | unique)
         | .aur_packages = ((.aur_packages // []) + $a | unique)' \
