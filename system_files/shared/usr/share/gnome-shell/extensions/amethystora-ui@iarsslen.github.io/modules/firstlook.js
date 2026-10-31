@@ -1,7 +1,8 @@
 // Pick a look in front: Control's welcome page, which user-setup.hooks.d/25-first-look.sh starts a few seconds after
 // the Manual's welcome page at a new account's first login, is given the keyboard once the person is free to use it.
-// Started from a systemd unit, it comes without an activation token, so Mutter maps it behind the window that has the
-// focus; and a first login starts in the overview, with GNOME's own welcome dialog (which offers the Tour) over it.
+// Started from a systemd unit, it comes without an activation token, and a first login starts in the overview, with
+// GNOME's own welcome dialog (which offers the Tour) over it, so Mutter maps it behind. With nothing modal up, Mutter gives
+// a window without a token the focus: the window that had it before the page showed gets it back.
 // The page's window is activated once, when it shows or as soon as GNOME's dialog, or any other modal one, has
 // closed. The overview counts as free while it shows its windows (no search, no app grid): activating the page leaves
 // it, as Take Tour does. Never when the Tour was started, when a window other than the Manual has the focus, or when
@@ -76,6 +77,7 @@ export class FirstLook {
     // A window's first showing, when its class and its process are known
     _watch(window) {
         this._watched.add(window);
+        const before = global.display.focus_window;
         const forget = () => {
             window.disconnectObject(this);
             this._watched?.delete(window);
@@ -84,7 +86,7 @@ export class FirstLook {
             'shown', () => {
                 forget();
                 if (this._isPage(window))
-                    this._found(window);
+                    this._found(window, before);
             },
             'unmanaged', forget,
             this);
@@ -105,13 +107,14 @@ export class FirstLook {
         }
     }
 
-    _found(window) {
+    _found(window, before) {
         // Once: nothing else is watched from here on
         global.display.disconnectObject(this);
         for (const other of this._watched)
             other.disconnectObject(this);
         this._watched.clear();
         this._window = window;
+        this._before = before;
         this._picked = false;
         const queue = () => this._queue();
         window.connectObject('unmanaged', () => this._stop(), this);
@@ -143,6 +146,9 @@ export class FirstLook {
         const focus = global.display.focus_window;
         // Given the focus by Mutter, and in view
         if (focus === window && !Main.overview.visible) {
+            const before = this._before;
+            if (before?.get_compositor_private() && before.get_wm_class() !== MANUAL)
+                Main.activateWindow(before, global.display.get_current_time_roundtrip());
             this._stop();
             return;
         }
@@ -181,6 +187,7 @@ export class FirstLook {
         apps?.disconnectObject(this);
         this._window?.disconnectObject(this);
         this._window = null;
+        this._before = null;
         this._armed = false;
         this._picked = false;
         for (const window of this._watched ?? [])
