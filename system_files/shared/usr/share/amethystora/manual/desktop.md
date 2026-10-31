@@ -473,7 +473,8 @@ The folders fill themselves from what each app says it is: **Office**, **Graphic
 **Development** and **Utilities**, named in your language. An app that is two of these is in both folders. Security,
 Updates, Control, Backups, the Manual and Phone stay loose, and so do Steam and Lutris. The folders are GNOME's own:
 rename one, take an app out or move the icons, and that is kept for you. If you had changed your folders before, yours
-stay as they were.
+stay as they were. A second page starts only once the first is full: the icons stay in the order you gave them, and a
+gap on a page closes.
 
 ```bash
 ame desktop app-grid recent off        # no row of recent apps; on brings it back

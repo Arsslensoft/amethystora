@@ -45,6 +45,7 @@ export class AppGrid {
         // The theme's colours for the folders apply only while this runs
         Main.layoutManager.overviewGroup.add_style_class_name(GROUP_CLASS);
         this._folders();
+        this._fullPages();
         this._settings.connectObject('changed::recent', () => this._sync(), this);
         this._sync();
     }
@@ -52,6 +53,7 @@ export class AppGrid {
     disable() {
         this._settings?.disconnectObject(this);
         this._removeRow();
+        this._unFullPages();
         this._unfolders();
         Main.layoutManager.overviewGroup.remove_style_class_name(GROUP_CLASS);
         this._appDisplay = null;
@@ -261,6 +263,72 @@ export class AppGrid {
         this._recentLabel.set_style(pad);
         this._allLabel.set_style(pad);
         return true;
+    }
+
+    // --- The pages ------------------------------------------------------------------------------------------------------
+
+    // A second page only once the first is full. GNOME keeps each page as the account's saved layout has it, however much
+    // room is left, and puts a new app on the second page; the order of the apps stays the account's, the pages do not.
+    // Its folders' grids already work this way: the setting below fills a page as an app leaves it and offers no new page
+    // to drop on, and what GNOME places from the saved layout is packed here afterwards.
+    _fullPages() {
+        const display = this._appDisplay;
+        const layout = display._grid.layout_manager;
+        layout.allow_incomplete_pages = false;
+        const fill = () => this._fillPages();
+        this._injections.overrideMethod(AppDisplay.AppDisplay.prototype, '_redisplay', original => function (...args) {
+            original.apply(this, args);
+            fill();
+        });
+        // The grid picks its rows and columns as it is laid out, for the room it has: packed once that is over
+        this._pageSizeIds = ['notify::rows-per-page', 'notify::columns-per-page'].map(name =>
+            layout.connect(name, () => {
+                this._fillLater ||= global.compositor.get_laters().add(Meta.LaterType.BEFORE_REDRAW, () => {
+                    this._fillLater = 0;
+                    this._fillPages();
+                    return false;
+                });
+            }));
+        this._fillPages();
+    }
+
+    _unFullPages() {
+        if (this._fillLater)
+            global.compositor.get_laters().remove(this._fillLater);
+        this._fillLater = 0;
+        const layout = this._appDisplay?._grid.layout_manager;
+        for (const id of this._pageSizeIds ?? [])
+            layout?.disconnect(id);
+        this._pageSizeIds = null;
+        if (layout)
+            layout.allow_incomplete_pages = true;
+    }
+
+    // Each page as full as the grid's page size allows, the order kept; GNOME moves nothing when that size changes. Not
+    // during a drag, whose drop target is a place in the pages as they are. Saved only when something moved.
+    _fillPages() {
+        const display = this._appDisplay;
+        if (!display || display._dragMonitor)
+            return;
+        const grid = display._grid;
+        const visible = page => grid.getItemsAtPage(page).filter(item => item.visible);
+        let moved = false;
+        for (let page = 0; page < grid.nPages; page++) {
+            const items = visible(page);
+            for (let i = items.length - 1; i >= grid.itemsPerPage; i--) {
+                grid.moveItem(items[i], page + 1, 0);
+                moved = true;
+            }
+            for (let room = grid.itemsPerPage - items.length; room > 0 && page < grid.nPages - 1; room--) {
+                const next = visible(page + 1)[0];
+                if (!next)
+                    break;
+                grid.moveItem(next, page, -1);
+                moved = true;
+            }
+        }
+        if (moved)
+            display._savePages();
     }
 
     // --- The folders -------------------------------------------------------------------------------------------------

@@ -306,6 +306,14 @@ in_session "ame desktop app-grid recent off" >/dev/null 2>&1
 same "22 recent off takes the row away" "$(ev "${UI}.get('appgrid')._row === null")" true
 in_session "ame desktop app-grid recent on" >/dev/null 2>&1
 same "22 on brings it back" "$(ev "!!${UI}.get('appgrid')._row")" true
+# A second page only once the first is full: a saved layout with one app on its first page closes up, in its order
+ids="$(ev "JSON.stringify(${AD}._orderedItems.filter(i => i.visible).map(i => i.id))")"
+ev "(() => { const G = imports.gi.GLib; const ids = ${AD}._orderedItems.filter(i => i.visible).map(i => i.id); const pack = list => Object.fromEntries(list.map((id, i) => [id, new G.Variant('a{sv}', {position: G.Variant.new_int32(i)})])); global.settings.set_value('app-picker-layout', new G.Variant('aa{sv}', [pack(ids.slice(0, 1)), pack(ids.slice(1))])); return true; })()" >/dev/null
+sleep 2
+same "22 a saved page with room is filled from the next, and no arrow or dots for one page" \
+    "$(ev "(() => { const g = ${AD}._grid; const n = ${AD}._orderedItems.filter(i => i.visible).length; return g.getItemsAtPage(0).filter(i => i.visible).length === Math.min(n, g.itemsPerPage) && g.nPages === Math.ceil(n / g.itemsPerPage) && (g.nPages > 1 || !(${AD}._pageIndicators.visible || ${AD}._nextPageArrow.visible)); })()")" true
+same "22 ...in the same order" "$(ev "JSON.stringify(${AD}._orderedItems.filter(i => i.visible).map(i => i.id))")" "${ids}"
+gs reset org.gnome.shell app-picker-layout
 ev "Main.overview.hide(); true" >/dev/null
 
 # --- 10: locking the screen is not a session start -------------------------------------------------------------------
