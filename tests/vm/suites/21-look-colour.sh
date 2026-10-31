@@ -287,11 +287,14 @@ for list in /usr/share/amethystora/themes/*/daylight.list; do
         [[ "$(file -b "${picture}")" == "PNG image data, 3840 x 2160,"* ]] || bad+=" ${picture}:size"
         L[${time}]="$(mean_l "${picture}")"
     done <"${list}"
-    awk -v n="${L[night]}" -v k="${L[dusk]}" -v w="${L[dawn]}" -v d="${L[day]}" 'BEGIN { exit !(n < k && k < w && w < d && d - n >= 0.25) }' ||
+    # The Amethystora theme's day stays a dark amethyst, so it rises less
+    rise=0.25
+    [[ ${list} == */themes/amethystora/daylight.list ]] && rise=0.12
+    awk -v n="${L[night]}" -v k="${L[dusk]}" -v w="${L[dawn]}" -v d="${L[day]}" -v r="${rise}" 'BEGIN { exit !(n < k && k < w && w < d && d - n >= r) }' ||
         bad+=" ${list}:${L[night]}<${L[dusk]}<${L[dawn]}<${L[day]}"
     unset L
 done
-same "15 every theme's four pictures are there, at size, night < dusk < dawn < day by 0.25 or more" "${bad}" ""
+same "15 every theme's four pictures are there, at size, night < dusk < dawn < day by 0.25 or more (the dark Amethystora theme's by 0.12)" "${bad}" ""
 
 # --- 16-22: colours from the wallpaper -------------------------------------------------------------------------------
 ame_ desktop theme catppuccin >/dev/null

@@ -46,6 +46,8 @@
 #      theme is applied again.
 #  19  The top bar's empty workspaces as dim as a label may be and still read (themed/shell-workspaces.css.tpl, the
 #      palette's dim_alpha, 4.5:1), written only when the theme is applied again.
+#  20  The dark Amethystora theme's Daylight day, a dark amethyst in place of the light theme's near-white facets: an
+#      account's daylight.list is a copy made when the theme is applied, and its slideshow is written from that copy.
 
 source /usr/lib/amethystora/setup-services/libsetup.sh
 
@@ -54,7 +56,7 @@ source /usr/lib/amethystora/setup-services/libsetup.sh
 # chose in GNOME Settings included: the theme is applied again without picking a new one.
 PREVIOUS="$(jq -r '.version.user.theme // 0' "${SETUP_CHECKER_FILE}" 2>/dev/null || echo 0)"
 
-version-script theme user 19 || exit 0
+version-script theme user 20 || exit 0
 
 [[ "$(cat "${XDG_CONFIG_HOME:-${HOME}/.config}/amethystora/icons" 2>/dev/null)" == candy-icons ]] &&
     rm -f "${XDG_CONFIG_HOME:-${HOME}/.config}/amethystora/icons"
@@ -73,4 +75,5 @@ AMETHYSTORA_THEME_QUIET=1 /usr/bin/amethystora-theme set "$(/usr/bin/amethystora
 # theme's first picture is shown it by the time of day, and a picture of its own is kept
 if [[ -n ${AMETHYSTORA_THEME_SKIP_BACKGROUND:-} ]]; then
     /usr/bin/amethystora-theme daylight adopt || true
+    /usr/bin/amethystora-theme daylight refresh || true
 fi

@@ -1831,8 +1831,31 @@ done
 # Daylight: every theme has its four pictures, dawn, day, dusk and night in that order, each a wallpaper drawn at the
 # size of the others and named in CREDITS.md, and the slideshow made of them is GNOME's format: nine slides of whole
 # seconds, a day in all, every file there. No picture has an alpha channel: Mutter 50.5 blends two such pictures without
-# the first one, so a fade would start near black
+# the first one, so a fade would start near black. A theme's day is on its own side of the line between dark and light
+# themes, and every night under it: the dark Amethystora theme once took the light one's near-white day
+daylight_lightness() {
+    python3 -I -c 'import sys, gi
+gi.require_version("GdkPixbuf", "2.0")
+from gi.repository import GdkPixbuf
+p = GdkPixbuf.Pixbuf.new_from_file_at_scale(sys.argv[1], 64, 64, False)
+d, n, r, t = p.get_pixels(), p.get_n_channels(), p.get_rowstride(), 0
+lin = lambda v: v / 12.92 if v <= 0.04045 else ((v + 0.055) / 1.055) ** 2.4
+for y in range(64):
+    for x in range(64):
+        R, G, B = (lin(d[y * r + x * n + c] / 255) for c in range(3))
+        t += 0.2104542553 * (0.4122214708 * R + 0.5363325363 * G + 0.0514459929 * B) ** (1 / 3)
+        t += 0.793617785 * (0.2119034982 * R + 0.6806995451 * G + 0.1073969566 * B) ** (1 / 3)
+        t -= 0.0040720468 * (0.0883024619 * R + 0.2817188376 * G + 0.6299787005 * B) ** (1 / 3)
+print("%.4f" % (t / 4096))' "$1"
+}
 for theme in /usr/share/amethystora/themes/*/; do
+    DAYLIGHT_DAY="$(daylight_lightness "$(awk '$1 == "day" { print $2 }' "${theme}daylight.list")")"
+    DAYLIGHT_NIGHT="$(daylight_lightness "$(awk '$1 == "night" { print $2 }' "${theme}daylight.list")")"
+    if [[ -f "${theme}light.mode" ]]; then
+        awk -v d="${DAYLIGHT_DAY}" -v n="${DAYLIGHT_NIGHT}" 'BEGIN { exit !(d >= 0.77 && n < 0.5) }'
+    else
+        awk -v d="${DAYLIGHT_DAY}" -v n="${DAYLIGHT_NIGHT}" 'BEGIN { exit !(d < 0.77 && n < 0.5) }'
+    fi
     [[ "$(cut -d' ' -f1 "${theme}daylight.list" | paste -sd' ')" == "dawn day dusk night" ]]
     while read -r _ picture; do
         [[ "$(file -b "${picture}")" == "PNG image data, 3840 x 2160, 8-bit/color RGB,"* ]]

@@ -1334,7 +1334,8 @@ function facetsSvg(theme, tones = theme === "dark" ? FACET_TONES.dark : FACET_TO
       }
     }
   }
-  return wallSvg("", facets.join("\n  "));
+  // Under the facets, so that their antialiased seams come out opaque: Mutter blends two pictures with alpha without the first
+  return wallSvg("", `${fillAll("#2a0f4a")}\n  ${facets.join("\n  ")}`);
 }
 
 // A night sky in the boot splash's two colours, with violet smoke drawn off to the right, where the
@@ -2231,15 +2232,22 @@ const DAYLIGHT = Object.keys(THEME_WALLPAPERS).filter((theme) => !theme.startsWi
   return { theme, opening, own, files };
 });
 // The two Amethystora themes open on the cut stone's facets, dark and light, which are their night and their day; dawn
-// and dusk are the dark facets' shades graded, and both themes share the four
+// and dusk are the dark facets' shades graded, and both themes share them. The near-white facets are the light theme's
+// alone: the dark theme's day is its own facets lifted a little, and stays a dark amethyst
 const FACETS_DAYLIGHT = {
   dawn: `${DAYLIGHT_DIR}/amethystora-facets-dawn.png`, day: `${DAYLIGHT_DIR}/amethystora-facets-l.png`,
   dusk: `${DAYLIGHT_DIR}/amethystora-facets-dusk.png`, night: `${DAYLIGHT_DIR}/amethystora-facets-d.png`,
 };
+const FACETS_DARK_DAYLIGHT = { ...FACETS_DAYLIGHT, day: `${DAYLIGHT_DIR}/amethystora-facets-day.png` };
+const FACETS_DARK_DAY_GRADE = [(L) => L + 0.2 * (1 - L), (a) => a + 0.02, (b) => b - 0.05];
 const DAYLIGHT_PNGS = [
-  ...["dawn", "dusk"].map((time) => ({
-    out: FACETS_DAYLIGHT[time], width: WALL_W, height: WALL_H, daylight: true,
-    html: () => svgPage(facetsSvg("dark", FACET_TONES.dark.map((hex) => graded(hex, DAYLIGHT_GRADE.dark[time]))), WALL_W, WALL_H),
+  ...[
+    [FACETS_DAYLIGHT.dawn, DAYLIGHT_GRADE.dark.dawn],
+    [FACETS_DAYLIGHT.dusk, DAYLIGHT_GRADE.dark.dusk],
+    [FACETS_DARK_DAYLIGHT.day, FACETS_DARK_DAY_GRADE],
+  ].map(([out, grade]) => ({
+    out, width: WALL_W, height: WALL_H, daylight: true,
+    html: () => svgPage(facetsSvg("dark", FACET_TONES.dark.map((hex) => graded(hex, grade))), WALL_W, WALL_H),
   })),
   ...DAYLIGHT.flatMap(({ theme, opening, own, files }) => ["dawn", "day", "dusk", "night"].filter((time) => time !== own)
     .map((time) => ({
@@ -2677,6 +2685,7 @@ write("usr/share/amethystora/themed/wallpaper-contours.svg.tpl", contoursTemplat
 write("usr/share/amethystora/themed/wallpaper-ridges.svg.tpl", ridgesTemplate());
 write("usr/share/amethystora/themed/wallpaper-waves.svg.tpl", wavesTemplate());
 // Each theme's four pictures by the time of day, which amethystora-theme makes Daylight's slideshow of
-for (const theme of ["amethystora", "amethystora-light"]) write(`usr/share/amethystora/themes/${theme}/daylight.list`, daylightList(FACETS_DAYLIGHT));
+write("usr/share/amethystora/themes/amethystora/daylight.list", daylightList(FACETS_DARK_DAYLIGHT));
+write("usr/share/amethystora/themes/amethystora-light/daylight.list", daylightList(FACETS_DAYLIGHT));
 for (const { theme, files } of DAYLIGHT) write(`usr/share/amethystora/themes/${theme}/daylight.list`, daylightList(files));
 renderPngs();
