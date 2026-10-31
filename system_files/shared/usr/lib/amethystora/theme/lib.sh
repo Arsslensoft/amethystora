@@ -748,10 +748,14 @@ closest_gnome_accent() {
 fill_template() {
     local -n table="$1"
     local text key
+    # A theme switch fills some 60 templates, and this takes nearly all of its time: only the keys a template names, and
+    # byte by byte, since bash's replacement is many times slower in a UTF-8 locale
+    local LC_ALL=C
     IFS= read -r -d '' text <"$2" || true
-    for key in "${!table[@]}"; do
-        text="${text//"{{ ${key} }}"/"${table[${key}]}"}"
-    done
+    while IFS= read -r key; do
+        key="${key:3:-3}"
+        [[ -v table[${key}] ]] && text="${text//"{{ ${key} }}"/"${table[${key}]}"}"
+    done < <(grep -oE '\{\{ [A-Za-z0-9_]+ \}\}' "$2" | sort -u)
     printf '%s' "${text}"
 }
 
