@@ -50,13 +50,12 @@ const NUMBERED = 9;
 const PICTURE = 28;
 
 // The keys that open the result in focus, and the Super keys
-const OPENING_KEYS = [Clutter.KEY_Return, Clutter.KEY_KP_Enter, Clutter.KEY_ISO_Enter, Clutter.KEY_space,
-    Clutter.KEY_KP_Space];
+const OPENING_KEYS = [Clutter.KEY_Return, Clutter.KEY_KP_Enter, Clutter.KEY_ISO_Enter];
 const SUPER_KEYS = [Clutter.KEY_Super_L, Clutter.KEY_Super_R];
 // Moving between the results and opening one: St's focus manager and the results take these after the box has seen
 // them, so the box lets them through
-const RESULT_KEYS = [...OPENING_KEYS, Clutter.KEY_Up, Clutter.KEY_Down, Clutter.KEY_Left, Clutter.KEY_Right,
-    Clutter.KEY_Tab, Clutter.KEY_ISO_Left_Tab, Clutter.KEY_Page_Up, Clutter.KEY_Page_Down, Clutter.KEY_Home,
+const RESULT_KEYS = [...OPENING_KEYS, Clutter.KEY_space, Clutter.KEY_KP_Space, Clutter.KEY_Up, Clutter.KEY_Down,
+    Clutter.KEY_Left, Clutter.KEY_Right, Clutter.KEY_Tab, Clutter.KEY_ISO_Left_Tab, Clutter.KEY_Page_Up, Clutter.KEY_Page_Down, Clutter.KEY_Home,
     Clutter.KEY_End, Clutter.KEY_Menu];
 const KEY_EVENTS = [Clutter.EventType.KEY_PRESS, Clutter.EventType.KEY_RELEASE];
 const POINTER_EVENTS = [Clutter.EventType.BUTTON_PRESS, Clutter.EventType.BUTTON_RELEASE,
@@ -515,14 +514,21 @@ export class Search {
                 return Clutter.EVENT_STOP;
             }
         }
-        if (modifiers === 0 && (keyval === Clutter.KEY_space || keyval === Clutter.KEY_KP_Space) &&
-            this._settings.get_boolean('glance')) {
+        if (modifiers === 0 && (keyval === Clutter.KEY_space || keyval === Clutter.KEY_KP_Space)) {
             const focus = global.stage.get_key_focus();
             const result = this._resultOf(focus);
-            if (result && result === focus && fileOf(result)) {
-                this._glance ??= new Glance(this);
-                if (this._glance.show(result))
-                    return Clutter.EVENT_STOP;
+            if (result && result === focus) {
+                if (fileOf(result) && this._settings.get_boolean('glance')) {
+                    this._glance ??= new Glance(this);
+                    if (this._glance.show(result))
+                        return Clutter.EVENT_STOP;
+                }
+                // Only Enter opens a result, since a row may start something: on a row, Space goes on with the typing
+                const text = this._lent.entry.clutter_text;
+                text.grab_key_focus();
+                text.set_cursor_position(-1);
+                text.insert_text(' ', -1);
+                return Clutter.EVENT_STOP;
             }
         }
         return Clutter.EVENT_PROPAGATE;
