@@ -532,6 +532,9 @@ create_container() {
     args=(create --yes --no-entry --name "${real}" --image "${pull}" --additional-flags "${labels}")
     [[ -n "${home}" ]] && args+=(--home "${home}")
     [[ "${init}" == 1 ]] && args+=(--init)
+    # openSUSE's words package fails its script in an image without this file, as Leap's is, and distrobox gives up
+    # on a zypper that reports a failed script
+    [[ "${manager}" == zypper ]] && args+=(--pre-init-hooks "touch /etc/sysconfig/language")
     for option in ${unshare//,/ }; do
         args+=("--unshare-${option}")
     done
