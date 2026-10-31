@@ -482,6 +482,8 @@ if wait_for 120 files_found; then
     same "15 glance off: no Space previews hint" "$(q '[.sections[].rows[] | select(.hint == "Space previews")] | length')" 0
     keys space
     if soon 3 previewer; then not_ok "15 glance off: Space opened the previewer"; else ok "15 glance off: Space shows no preview"; fi
+    goes_on() { [[ "$(ev "Main.overview.searchEntry.get_text()")" == *' ' ]] && card_open; }
+    check "15 glance off: Space on a row goes on typing, the card stays" soon 3 goes_on
     gs set "${SEARCH}" glance true
     pkill -f loupe 2>/dev/null
 else
