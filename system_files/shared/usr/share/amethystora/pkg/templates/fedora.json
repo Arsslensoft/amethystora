@@ -1,7 +1,7 @@
 {
     "name": "fedora",
     "description": "Fedora 44",
-    "base": "quay.io/fedora/fedora-toolbox:44@sha256:08f9a04ed3ac5cd5c7058e297187b94d220582214cc96b6639c11c9c8330f794",
+    "base": "registry.fedoraproject.org/fedora-toolbox:44@sha256:08f9a04ed3ac5cd5c7058e297187b94d220582214cc96b6639c11c9c8330f794",
     "manager": "dnf",
     "packages": []
 }
