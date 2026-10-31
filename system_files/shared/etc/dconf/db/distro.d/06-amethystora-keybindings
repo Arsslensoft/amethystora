@@ -5,7 +5,7 @@
 
 [org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom20]
 binding='<Super>Return'
-command='xdg-terminal-exec'
+command='/usr/libexec/amethystora-workspace-terminal'
 name='Terminal'
 
 [org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom21]

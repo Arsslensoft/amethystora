@@ -1,0 +1,7 @@
+#!/usr/bin/bash
+# Super+Return: the default terminal, in the folder of the workspace on screen (Amethystora UI's tiling keeps that in a
+# file while a workspace has one). GNOME's custom shortcuts start from gnome-settings-daemon, whose folder the
+# tiling, which moves only the shell's own folder, cannot reach.
+folder="$(cat "${XDG_RUNTIME_DIR}/amethystora/workspace-folder" 2>/dev/null)"
+[[ -d "${folder}" ]] && cd -- "${folder}"
+exec xdg-terminal-exec "$@"

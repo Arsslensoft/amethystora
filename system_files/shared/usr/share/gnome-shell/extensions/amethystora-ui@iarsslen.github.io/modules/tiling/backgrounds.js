@@ -142,5 +142,24 @@ export class WorkspaceBackgrounds {
             return;
         if (GLib.chdir(folder) === 0)
             this._folder = folder;
+        this._tellTerminal();
+    }
+
+    // Super+Return starts from gnome-settings-daemon, which this folder does not reach: its command reads it from a file,
+    // there only while the workspace on screen has a folder
+    _tellTerminal() {
+        const file = Gio.File.new_for_path(
+            GLib.build_filenamev([GLib.get_user_runtime_dir(), 'amethystora', 'workspace-folder']));
+        try {
+            if (this._folder === this._startedIn) {
+                file.delete(null);
+            } else {
+                GLib.mkdir_with_parents(file.get_parent().get_path(), 0o700);
+                GLib.file_set_contents(file.get_path(), this._folder);
+            }
+        } catch (e) {
+            if (!e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.NOT_FOUND))
+                console.warn(`Amethystora UI: the terminal cannot be told this workspace's folder: ${e.message}`);
+        }
     }
 }
