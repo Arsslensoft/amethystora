@@ -143,6 +143,7 @@
 #uiGroup.amethystora-style-hairline .icon-button,
 #uiGroup.amethystora-style-hairline .quick-toggle,
 #uiGroup.amethystora-style-hairline .quick-toggle-menu-button,
+#uiGroup.amethystora-style-hairline .amethystora-focus-chip,
 #uiGroup.amethystora-style-hairline .switcher-list .item-box,
 #uiGroup.amethystora-style-hairline .calendar-day,
 #uiGroup.amethystora-style-hairline .events-button,
@@ -272,6 +273,8 @@
 #uiGroup.amethystora-style-terminal .icon-button,
 #uiGroup.amethystora-style-terminal .quick-toggle,
 #uiGroup.amethystora-style-terminal .quick-toggle-menu-button,
+#uiGroup.amethystora-style-terminal .quick-toggle-has-menu,
+#uiGroup.amethystora-style-terminal .amethystora-focus-chip,
 #uiGroup.amethystora-style-terminal .switcher-list .item-box,
 #uiGroup.amethystora-style-terminal .calendar-day,
 #uiGroup.amethystora-style-terminal .events-button,
@@ -492,6 +495,15 @@
 #uiGroup.amethystora-style-terminal .quick-settings.amethystora-quick .amethystora-quick-done,
 #uiGroup.amethystora-style-terminal .amethystora-quick-limit {
   border-radius: 0;
+}
+
+/* Monospaced text is wider: the longest name still fits its swatch, and Focus's line its row */
+#uiGroup.amethystora-style-terminal .amethystora-quick-swatch-name {
+  font-size: 10px;
+}
+
+#uiGroup.amethystora-style-terminal .amethystora-focus-line-text {
+  font-size: 10.5px;
 }
 
 #uiGroup.amethystora-style-segments .quick-settings.amethystora-quick .quick-slider,

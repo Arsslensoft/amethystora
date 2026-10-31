@@ -6,6 +6,8 @@
 
 import Atk from 'gi://Atk';
 import Clutter from 'gi://Clutter';
+import GLib from 'gi://GLib';
+import Meta from 'gi://Meta';
 import St from 'gi://St';
 
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
@@ -85,9 +87,27 @@ export class FocusTile {
         });
         ends.add_child(edit);
         this.block.add_child(ends);
+
+        // A wide font (the terminal style's) leaves no room for both on one line: Edit in Control goes under the choices,
+        // rather than the choices being cut off
+        const fit = () => {
+            this._fitId ||= global.compositor.get_laters().add(Meta.LaterType.BEFORE_REDRAW, () => {
+                this._fitId = 0;
+                const [, wanted] = choices.get_preferred_width(-1);
+                const [, editWanted] = edit.get_preferred_width(-1);
+                const below = ends.width > 0 && wanted + editWanted + 8 > ends.width;
+                ends.orientation = below ? Clutter.Orientation.VERTICAL : Clutter.Orientation.HORIZONTAL;
+                return GLib.SOURCE_REMOVE;
+            });
+        };
+        ends.connect('notify::width', fit);
+        ends.connect('style-changed', fit);
     }
 
     destroy() {
+        if (this._fitId)
+            global.compositor.get_laters().remove(this._fitId);
+        this._fitId = 0;
         this.block.destroy();
         this._chips.clear();
         this._ends.clear();

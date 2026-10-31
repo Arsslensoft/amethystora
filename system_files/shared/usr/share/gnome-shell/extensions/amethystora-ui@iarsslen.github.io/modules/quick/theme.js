@@ -27,7 +27,7 @@ const SLUG = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 const COLOUR = /^\s*(background|foreground|accent|color4)\s*=\s*["']?(#[0-9a-fA-F]{6})["']?\s*$/;
 // The swatches' grid: columns of 62 pixels, as many as fit in the block (378 less its padding of 14 on each side)
 const COLUMNS = 5;
-const NAME_WIDTH = 62;
+const NAME_WIDTH = 66;
 
 function userThemes() {
     return GLib.build_filenamev([GLib.get_user_config_dir(), 'amethystora', 'themes']);
