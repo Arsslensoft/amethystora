@@ -193,7 +193,7 @@ case "${action:-cancel}" in
     launch\ *) setsid -f gio launch "/usr/share/applications/${action#launch }" </dev/null >/dev/null 2>&1 ;;
     install\ *)
         id="${action#install }"
-        flatpak install flathub "${id}" && setsid -f flatpak run "${id}" </dev/null >/dev/null 2>&1
+        flatpak install --system flathub "${id}" && setsid -f flatpak run "${id}" </dev/null >/dev/null 2>&1
         ;;
     ame\ *)
         read -ra words <<<"${action#ame }"
@@ -205,7 +205,7 @@ case "${action:-cancel}" in
         say "$(gettext "Wine draws through X11, which the image takes from every app, since an app on X11 can read what you type into other X11 apps. X11 is granted back to Bottles alone, for your account: the Security app's Apps page lists it, and flatpak override --user --reset com.usebottles.bottles takes it back.")"
         gum confirm "$(gettext "Run it with Bottles?")" || exit 0
         if ! flatpak info "${BOTTLES}" >/dev/null 2>&1; then
-            flatpak install flathub "${BOTTLES}" || die "$(gettext "Bottles could not be installed.")"
+            flatpak install --system flathub "${BOTTLES}" || die "$(gettext "Bottles could not be installed.")"
         fi
         flatpak override --user --socket=x11 "${BOTTLES}"
         # The first bottle: one made for applications, which Bottles otherwise asks for in a window of its own
