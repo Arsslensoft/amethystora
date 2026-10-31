@@ -235,7 +235,8 @@ install_icon() {
         printf '%s\n' "${ref}"
         return 0
     fi
-    gtk-update-icon-cache "${DATA_HOME}/icons/hicolor" &>/dev/null || true
+    # What tells a running desktop to look again: the folder's date, since this one has no index.theme for a cache
+    touch "${DATA_HOME}/icons/hicolor"
     printf '%s\n' "${name}"
 }
 
