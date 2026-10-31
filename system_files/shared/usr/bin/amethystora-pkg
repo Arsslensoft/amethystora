@@ -522,7 +522,7 @@ create_container() {
     pull="$(pull_reference "${base}")"
     say "Getting ${base}"
     podman pull "${pull}" >&2 ||
-        die "podman could not pull ${pull}. If it says the signature is missing or wrong, the image is not the one the template names."
+        die "podman could not pull ${pull}. If it says the signature is missing or wrong, the image is not the one the template names. If it says manifest unknown, the registry has stopped keeping that version: an update of Amethystora pins a newer one."
 
     labels="--label ${LABEL}.manager=amethystora-pkg --label ${LABEL}.name=${name} --label ${LABEL}.template=${template}"
     labels+=" --label ${LABEL}.pkgmanager=${manager} --label ${LABEL}.image=${base} --label ${LABEL}.init=${init}"
