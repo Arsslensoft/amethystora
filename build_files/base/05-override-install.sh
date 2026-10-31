@@ -72,12 +72,16 @@ echo "${STARSHIP_SHA256}  /tmp/starship.tar.gz" | sha256sum -c -
 tar -xzf /tmp/starship.tar.gz -C /tmp
 install -c -m 0755 /tmp/starship /usr/bin
 # Its setup for each shell, as `starship init` prints it, written once here rather than by two runs of
-# starship in every new terminal (profile.d/90-amethystora-starship.sh, /etc/zsh/zshrc)
+# starship in every new terminal (profile.d/90-amethystora-starship.sh, /etc/zsh/zshrc,
+# fish/vendor_conf.d/amethystora-starship.fish)
 install -d /usr/share/amethystora/starship
-for shell in bash zsh; do
+for shell in bash zsh fish; do
     /usr/bin/starship init "${shell}" --print-full-init >"/usr/share/amethystora/starship/init.${shell}" 2>/dev/null
     grep -q "starship prompt" "/usr/share/amethystora/starship/init.${shell}"
 done
+# Fedora's zsh reads /etc/zshrc and never /etc/zsh, where the image's configuration is. Only zshrc is taken: the
+# folder's zprofile would set LC_ALL to English in every login
+echo 'source /etc/zsh/zshrc' >>/etc/zshrc
 
 # fprintd with the duress finger (packaging/fprintd), which the Containerfile's fprintd stage built, in place
 # of Fedora's. Its release begins with the highest of Fedora's it was made from, so a base image whose

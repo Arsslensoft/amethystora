@@ -1993,7 +1993,13 @@ grep -q "^Written offer" /usr/share/licenses/amethystora/NOTICE
 # from its release (05-override-install.sh), and the *-gdu.rules are game-devices-udev's
 test -x /usr/bin/starship
 # Its setup for each shell, written at build time (05-override-install.sh)
-grep -q "starship prompt" /usr/share/amethystora/starship/init.bash /usr/share/amethystora/starship/init.zsh
+grep -q "starship prompt" /usr/share/amethystora/starship/init.bash /usr/share/amethystora/starship/init.zsh \
+    /usr/share/amethystora/starship/init.fish
+grep -qx 'source /etc/zsh/zshrc' /etc/zshrc
+SHELL_HOME="$(mktemp -d)"
+HOME="${SHELL_HOME}" zsh -i -c '[[ -n "${_comps[ame]:-}" && "${STARSHIP_SHELL}" == zsh ]]' </dev/null
+HOME="${SHELL_HOME}" fish -i -c 'test "$STARSHIP_SHELL" = fish' </dev/null
+rm -rf "${SHELL_HOME}"
 test -s /usr/share/licenses/starship/LICENSE
 compgen -G "/usr/lib/udev/rules.d/71-*-gdu.rules" >/dev/null
 test -s /usr/share/licenses/game-devices-udev/LICENSE
