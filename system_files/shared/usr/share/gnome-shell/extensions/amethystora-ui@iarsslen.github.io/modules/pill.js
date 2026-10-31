@@ -101,7 +101,6 @@ export class Pill {
 
     disable() {
         this._settings?.disconnectObject(this);
-        Main.messageTray.disconnectObject(this);
         this._stopLive();
         // Turned off whole (as while the screen is locked): nothing waits; the timer rings at the next enable if it ended
         disarmOffRing();
@@ -164,10 +163,6 @@ export class Pill {
         this._toggle('_hold', on('quiet') || on('quiet-night') || on('digest') || on('later') || this._focusWants() ||
             !!this._presentMark,
             () => new Hold(this._settings, this._capture, this._activities, (...a) => this.notice(...a), () => this._glass()));
-        // Quiet off asks for banners over a fullscreen window, which GNOME's own rule keeps back
-        Main.messageTray.disconnectObject(this);
-        if (!on('quiet'))
-            Main.messageTray.connectObject('queue-changed', () => this._showOverFullscreen(), this);
         this._hold?.setFocus(this._focusRule ?? null);
         this._hold?.setPresenting(!!this._presentMark);
         if (on('live') || on('privacy-dots'))
@@ -243,15 +238,6 @@ export class Pill {
 
     agentChanged() {
         this._activities?.update('agent');
-    }
-
-    // GNOME lets only feedback and urgent banners over a fullscreen window. What nothing here holds counts as feedback, the
-    // moment GNOME looks at the queue. Do Not Disturb still holds it.
-    _showOverFullscreen() {
-        const tray = Main.messageTray;
-        const next = tray._notificationQueue?.[0];
-        if (next && Main.layoutManager.primaryMonitor?.inFullscreen && !tray._busy && !this._hold?._holding())
-            next.forFeedback = true;
     }
 
     _toggle(name, wanted, make) {
