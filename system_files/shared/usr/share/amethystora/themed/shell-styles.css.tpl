@@ -70,6 +70,18 @@
   background-color: {{ accent }};
 }
 
+/* In the overview the top bar's other labels take white text over its dark backdrop (workspaces.css): these stay dots,
+   and white ones, whatever the theme */
+#uiGroup.amethystora-style-islands #panel:overview .amethystora-workspaces-label.amethystora-workspaces-busy,
+#uiGroup.amethystora-style-islands #panel:overview .amethystora-workspaces-label.amethystora-workspaces-empty {
+  color: transparent;
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+#uiGroup.amethystora-style-islands #panel:overview .amethystora-workspaces-label.amethystora-workspaces-busy {
+  background-color: rgba(255, 255, 255, 0.75);
+}
+
 #uiGroup.amethystora-style-islands .amethystora-glass-surface.amethystora-glass-menu { border-radius: 18px; }
 #uiGroup.amethystora-style-islands .amethystora-glass-surface.amethystora-glass-panel { border-radius: 28px; }
 #uiGroup.amethystora-style-islands .amethystora-glass-surface.amethystora-glass-inner { border-radius: 22px; }
