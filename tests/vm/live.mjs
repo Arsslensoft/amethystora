@@ -53,8 +53,8 @@ async function unlock() {
 }
 
 // The test account's session, a new one when its shell was BEFORE, once the shell answers on the bus
-async function session(before = '') {
-  for (const until = Date.now() + 300000; Date.now() < until; await sleep(3000)) {
+async function session(before = '', wait = 300000) {
+  for (const until = Date.now() + wait; Date.now() < until; await sleep(3000)) {
     const r = await sh('[ "$(loginctl show-user tester -p State --value 2>/dev/null)" = active ] && pgrep -u tester -x gnome-shell', 20);
     const pid = r.out.trim();
     if (r.rc === 0 && pid && pid !== before) {
@@ -64,13 +64,20 @@ async function session(before = '') {
       return;
     }
   }
-  throw new Error('the test account got no session within 5 minutes');
+  throw new Error(`the test account got no session within ${Math.round(wait / 60000)} minutes`);
 }
 const hasAccount = async () => (await sh('grep -qs "^AutomaticLogin=tester" /etc/gdm/custom.conf', 20)).rc === 0;
 async function relogin() {
   const before = (await sh('pgrep -u tester -x gnome-shell', 20)).out.trim();
   await root('systemctl restart gdm');
-  await session(before);
+  // GDM 51 now and then shows its greeter instead of signing the account in again (seen on Fedora 45): once more
+  try {
+    await session(before, 90000);
+  } catch {
+    say('GDM showed its greeter, not the session: restarting it once more');
+    await root('systemctl restart gdm');
+    await session(before);
+  }
 }
 
 // Once the boot is over: /usr unlocked, the session there, and every file pushed since the last reset put back

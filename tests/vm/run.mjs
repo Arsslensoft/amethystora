@@ -12,7 +12,7 @@
 // 0 only when everything that ran passed. VMLAB_NAME (default test) names the run's image tag, disks and VMs,
 // so that two sessions' runs do not take each other's. --image builds amethystora-dx, or either with -nvidia-open or
 // -nvidia-lts, instead of amethystora; --tag builds that stream (beta, which can be on the next Fedora) instead of
-// latest; --suites runs only the suites with those numbers.
+// latest; --suites runs only the suites with those numbers or names (11, 11-dock-screens).
 //
 // --parallel N runs the suites in N VMs at once. VM NAME starts on the disk, runs the suites shards.json calls prep
 // (the boot, the first-run setup, the sign-in), waits for the first boot's Flatpaks and powers itself off: that is
@@ -57,6 +57,8 @@ if (!/^amethystora(-dx)?(-nvidia-(open|lts))?$/.test(BUILD)) throw new Error(`ru
 const TAG = option('--tag') || 'latest';
 if (!/^(latest|beta|stable)$/.test(TAG)) throw new Error(`run.mjs: no stream ${TAG}`);
 const ONLY = option('--suites')?.split(',');
+// A suite by its number (every suite of it) or by its whole name, with or without .sh
+const only = (f) => !ONLY || ONLY.some((o) => o === f.slice(0, 2) || o === f || `${o}.sh` === f);
 const BUILT = `localhost/${BUILD}:${TAG}`;
 // What `just build` tags, kept under the run's own name at once, which the disks are made from
 const IMAGE = `localhost/amethystora-run:${NAME}`;
@@ -169,7 +171,7 @@ const suiteHead = (f) => fs.readFileSync(`${SUITES}/${f}`, 'utf8').split('\n').s
 const comesLast = (f) => /^# vmlab-order: last$/m.test(suiteHead(f));
 const suitesOf = (machine) => {
   const names = fs.readdirSync(SUITES)
-    .filter((f) => /^\d\d-.+\.sh$/.test(f) && (!ONLY || ONLY.includes(f.slice(0, 2)))).sort()
+    .filter((f) => /^\d\d-.+\.sh$/.test(f) && only(f)).sort()
     .filter((f) => (suiteHead(f).match(/^# vmlab-vm: (installer|screens)$/m)?.[1] ?? 'default') === machine);
   return [...names.filter((f) => !comesLast(f)), ...names.filter(comesLast)];
 };
@@ -342,12 +344,34 @@ async function reboot(machine) {
   } else {
     await agent(vm, { op: 'exec', command: '(sleep 2; systemctl reboot) >/dev/null 2>&1 &' }, 30);
   }
-  const began = Date.now();
-  for (;;) {
-    await sleep(5000);
-    const now = await bootId(vm);
-    if (now && (now !== before || (await softReboots(vm)) !== softBefore)) break;
-    if (Date.now() - began > 900000) throw new Error('the VM did not come back within 15 minutes of a reboot');
+  // A restart that has not come back within 6 minutes (seen on a loaded lab, never alone) is kept as evidence, the
+  // screen and the serial console's tail, then powered off and on once; only a second miss stops the lane
+  for (let tries = 0; ; tries++) {
+    const began = Date.now();
+    let back = false;
+    while (Date.now() - began < 360000) {
+      await sleep(5000);
+      const now = await bootId(vm);
+      if (now && (now !== before || (await softReboots(vm)) !== softBefore)) {
+        back = true;
+        break;
+      }
+    }
+    if (back) break;
+    if (tries === 1) throw new Error('the VM did not come back after a reboot, nor after a power cycle');
+    say(`${lane(m)}the restart did not come back within 6 minutes: powering the VM off and on again`);
+    try {
+      fs.writeFileSync(`${RUN}/lost-reboot-${vm}.png`, await screendump(vm));
+    } catch {
+      // No screen to take
+    }
+    try {
+      fs.copyFileSync(`/vm/vms/${vm}.serial`, `${RUN}/lost-reboot-${vm}.serial`);
+    } catch {
+      // No console kept
+    }
+    await call('vm_stop', { name: vm, force: true });
+    await start(machine, request ?? {});
   }
   await call('vm_wait', { name: vm, timeout_s: 900 });
   // Once the test account signs in by itself, a boot that brings it no session stalled: now and then PID 1
@@ -554,7 +578,7 @@ const inOrder = (names) => [...names].sort().filter((f) => !comesLast(f)).concat
 // they are placed first and run while the prep VM gets it ready; nothing else starts before the prep has ended.
 function planLanes(n) {
   const all = fs.readdirSync(SUITES).filter((f) => /^\d\d-.+\.sh$/.test(f)).sort();
-  const wanted = (f) => !ONLY || ONLY.includes(f.slice(0, 2));
+  const wanted = only;
   const units = all.filter((f) => wanted(f) && kindOf(f) !== 'screens' && !SHARDS.prep.includes(f))
     .map((f) => ({ kind: kindOf(f), suites: [f], minutes: cost(f) }));
   const screens = all.filter((f) => wanted(f) && kindOf(f) === 'screens');
