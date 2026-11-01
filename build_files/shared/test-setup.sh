@@ -188,11 +188,14 @@ for table in BARS:org.gnome.shell.extensions.amethystora-ui.bars TODAY:org.gnome
     BREAKS:org.gnome.desktop.break-reminders BEZEL:org.gnome.shell.extensions.amethystora-ui.bezel \
     HINTS:org.gnome.shell.extensions.amethystora-ui.hints APPGRID:org.gnome.shell.extensions.amethystora-ui.appgrid \
     POWER:org.gnome.shell.extensions.amethystora-ui.power \
-    SHELF:org.gnome.shell.extensions.amethystora-ui.shelf DESKS:org.gnome.shell.extensions.amethystora-ui.desks; do
+    SHELF:org.gnome.shell.extensions.amethystora-ui.shelf DESKS:org.gnome.shell.extensions.amethystora-ui.desks \
+    BACKUPDISK:org.gnome.shell.extensions.amethystora-ui.backupdisk; do
     name="${table%%:*}" id="${table#*:}"
     TABLE="$(sed -n "s/^${name}_KEYS='\(.*\)'\$/\1/p" "${SETUP}")"
     listed="$(jq -r 'keys[]' <<<"${TABLE}" | sort)"
-    schema="$(GSETTINGS_BACKEND=memory /usr/bin/gsettings list-keys "${id}" | grep -vx weather | sort)"
+    # Never the app grid's names and icons of the account's own: a name is the person's text, a picture this machine's
+    schema="$(GSETTINGS_BACKEND=memory /usr/bin/gsettings list-keys "${id}" | grep -vx weather |
+        { if [[ "${name}" == APPGRID ]]; then grep -vxE 'names|icons'; else cat; fi; } | sort)"
     [[ -n "${listed}" && "${listed}" == "${schema}" ]] ||
         { echo "${name}_KEYS and ${id} differ:"; diff <(echo "${listed}") <(echo "${schema}"); false; }
     while read -r key; do
@@ -200,6 +203,7 @@ for table in BARS:org.gnome.shell.extensions.amethystora-ui.bars TODAY:org.gnome
         case "${key}:${range}" in
             *":type b") want='["b"]' ;;
             "selected-breaks:type as") want='["as","breaks"]' ;;
+            "hidden:type as") want='["as","launchers"]' ;;
             *":enum "*) want="$(jq -cn --arg r "${range#enum }" '["s", ($r | split(" "))]')" ;;
             *) want="? ${range}" ;;
         esac
@@ -452,6 +456,10 @@ org.gnome.shell.extensions.amethystora-ui.theme workspace-accents ['theme', 'sky
 org.gnome.shell.extensions.amethystora-transitions reveal true
 org.gnome.shell.extensions.amethystora-ui.hints enabled true
 org.gnome.shell.extensions.amethystora-ui.appgrid recent true
+org.gnome.shell.extensions.amethystora-ui.appgrid order 'custom'
+org.gnome.shell.extensions.amethystora-ui.appgrid hidden @as []
+org.gnome.shell.extensions.amethystora-ui.appgrid names {'org.gnome.Calculator.desktop': 'Sums'}
+org.gnome.shell.extensions.amethystora-ui.backupdisk ask true
 org.gnome.shell.extensions.amethystora-ui.power busy-app true
 org.gnome.shell.extensions.amethystora-ui.present enabled false
 org.gnome.shell.extensions.amethystora-ui.present pointer-mark 'halo'
@@ -594,7 +602,9 @@ jq '.flatpaks.system += [{"app": "org.gnome.Maps", "origin": "flathub"}] | .brew
     | .settings.dock += {"magnify": "off", "folders": {"Writing": ["org.gnome.Nautilus.desktop", "firefox.desktop"]}}
     | .settings.bezel = {"round-corners": true} | .settings.sound = {"event-sounds": false}
     | .settings.audio = {"pause-on-unplug": false}
-    | .settings.transitions = {"reveal": false} | .settings.hints = {"enabled": false} | .settings.appgrid = {"recent": false}
+    | .settings.transitions = {"reveal": false} | .settings.hints = {"enabled": false}
+    | .settings.appgrid = {"recent": false, "order": "kind", "hidden": ["org.gnome.Calculator.desktop"]}
+    | .settings.backupdisk = {"ask": false}
     | .settings.power = {"busy-app": false}
     | .settings.focus = {"games-power": "as-set", "trigger-sleep": true, "work-apps": ["org.gnome.Nautilus.desktop"]}
     | .settings.access = {"filter": "deutan", "filter-strength": 75}
@@ -628,6 +638,10 @@ grep -qxF "  ~ the desktop's event-sounds: false, in place of true" <<<"${out}"
 grep -qxF "  ~ the transitions' reveal: false, in place of true" <<<"${out}"
 grep -qxF "  ~ the tips' enabled: false, in place of true" <<<"${out}"
 grep -qxF "  ~ the app grid's recent: false, in place of true" <<<"${out}"
+grep -qxF '  ~ the app grid'"'"'s order: "kind", in place of "custom"' <<<"${out}"
+grep -qxF '  ~ the app grid'"'"'s hidden: ["org.gnome.Calculator.desktop"], in place of []' <<<"${out}"
+grep -qxF "  ~ the backup disk's ask: false, in place of true" <<<"${out}"
+grep -qF "app grid's names" <<<"${out}" && { echo "the app grid's names of the account's own reached a setup file's diff"; false; }
 grep -qxF "  ~ the power module's busy-app: false, in place of true" <<<"${out}"
 grep -qxF '  ~ focus profiles'"'"' games-power: "as-set", in place of "performance"' <<<"${out}"
 grep -qxF "  ~ focus profiles' trigger-sleep: true, in place of false" <<<"${out}"
@@ -667,6 +681,9 @@ grep -qx "gsettings set org.gnome.desktop.sound event-sounds false" "${LOG}"
 grep -qx "gsettings set org.gnome.shell.extensions.amethystora-transitions reveal false" "${LOG}"
 grep -qx "gsettings set org.gnome.shell.extensions.amethystora-ui.hints enabled false" "${LOG}"
 grep -qx "gsettings set org.gnome.shell.extensions.amethystora-ui.appgrid recent false" "${LOG}"
+grep -qxF 'gsettings set org.gnome.shell.extensions.amethystora-ui.appgrid order "kind"' "${LOG}"
+grep -qxF 'gsettings set org.gnome.shell.extensions.amethystora-ui.appgrid hidden ["org.gnome.Calculator.desktop"]' "${LOG}"
+grep -qx "gsettings set org.gnome.shell.extensions.amethystora-ui.backupdisk ask false" "${LOG}"
 grep -qx "gsettings set org.gnome.shell.extensions.amethystora-ui.power busy-app false" "${LOG}"
 grep -qxF 'gsettings set org.gnome.shell.extensions.amethystora-ui.access filter "deutan"' "${LOG}"
 grep -qx "gsettings set org.gnome.shell.extensions.amethystora-ui.access filter-strength 75" "${LOG}"

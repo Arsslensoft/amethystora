@@ -3,7 +3,8 @@
 // The row is GNOME's own app icons, so a click, a drag and the right-click menu are GNOME's; what it holds comes from
 // GNOME's own record of use, read only as the overview opens. An account that has used nothing yet sees no row and no
 // labels. The folders are drawn as the image draws them: a tile with its four apps in a square, and the open folder a
-// pane of glass with its name over its apps.
+// pane of glass with its name over its apps. The account may hide an app, give one a name or an icon of its own and put
+// the grid in an order (appgrid/looks.js).
 
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
@@ -17,6 +18,8 @@ import * as AppDisplay from 'resource:///org/gnome/shell/ui/appDisplay.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as ParentalControlsManager from 'resource:///org/gnome/shell/misc/parentalControlsManager.js';
 import {InjectionManager, gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
+
+import {Looks} from './appgrid/looks.js';
 
 const MOST = 8;
 // GNOME's grid fits three rows to a page of any wide shape, so a short screen's icons shrink to make room for the row:
@@ -47,6 +50,7 @@ export class AppGrid {
         if (!this._appDisplay?._box || !this._appDisplay._grid) {
             console.warn('Amethystora UI: appgrid: GNOME\'s app grid is not where it was, so it is left as it is');
             this._appDisplay = null;
+            this._startLooks();
             return;
         }
         // The theme's colours for the folders apply only while this runs
@@ -55,9 +59,31 @@ export class AppGrid {
         this._fullPages();
         this._settings.connectObject('changed::recent', () => this._sync(), this);
         this._sync();
+        this._startLooks();
+    }
+
+    // Hidden, renamed and re-iconed apps, and the grid's order (appgrid/looks.js), on the same settings
+    _startLooks() {
+        try {
+            this._looks = new Looks(this._settings, this._appDisplay);
+            this._looks.enable();
+        } catch (e) {
+            console.error(`Amethystora UI: appgrid: the apps' looks: ${e.message}`);
+            this._stopLooks();
+        }
+    }
+
+    _stopLooks() {
+        try {
+            this._looks?.disable();
+        } catch (e) {
+            console.error(`Amethystora UI: appgrid: the apps' looks: ${e.message}`);
+        }
+        this._looks = null;
     }
 
     disable() {
+        this._stopLooks();
         this._settings?.disconnectObject(this);
         this._removeRow();
         this._unFullPages();

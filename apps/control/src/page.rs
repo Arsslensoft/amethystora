@@ -604,6 +604,12 @@ impl Control {
         self.perform(card, async move { backend::perform(backend::pool(this.known().as_deref(), &action, &disk)).await });
     }
 
+    fn row_action(self: &Rc<Self>, card: &str, action: &str, row: &str) {
+        let this = self.clone();
+        let (card_id, action, row) = (card.to_string(), action.to_string(), row.to_string());
+        self.perform(card, async move { backend::perform(backend::row(this.known().as_deref(), &card_id, &action, &row)).await });
+    }
+
     fn setup(self: &Rc<Self>, card: &str, action: &str) {
         let this = self.clone();
         let action = action.to_string();
@@ -2217,6 +2223,44 @@ impl Control {
         self.card_frame(item, None, below, false, Vec::new())
     }
 
+    /// Rows of one entry, each with its words, the word on its tag and the actions the list gave it: what starts at
+    /// login, the apps changed in the app grid
+    fn rows_card(&self, item: &Item) -> gtk::Box {
+        let busy = self.busy(&item.id);
+        let below: Vec<gtk::Widget> = if item.rows.is_empty() {
+            Vec::new()
+        } else {
+            vec![Self::rows(
+                item.rows
+                    .iter()
+                    .map(|entry| {
+                        let row = ui::hbox(12, &["row"]);
+                        row.append(&Self::row_words(&entry.title, entry.text.as_deref(), false, false));
+                        if let Some(word) = entry.tag.as_deref() {
+                            let look = match entry.state.as_str() {
+                                "on" => "on",
+                                "check" => "check",
+                                _ => "plain",
+                            };
+                            let tag = ui::hbox(5, &["tag", look]);
+                            tag.append(&ui::line(word, &[]));
+                            tag.set_valign(gtk::Align::Center);
+                            row.append(&tag);
+                        }
+                        for action in &entry.actions {
+                            let (card, id, which) = (item.id.clone(), action.id.clone(), entry.id.clone());
+                            let look = Look { icon: action.terminal.then_some("terminal"), small: true, disabled: busy || !item.available, ..Default::default() };
+                            row.append(&self.button(&action.title, look, move |this| this.row_action(&card, &id, &which)));
+                        }
+                        row
+                    })
+                    .collect(),
+            )
+            .upcast()]
+        };
+        self.card_frame(item, None, below, false, Vec::new())
+    }
+
     fn card(&self, item: &Item) -> gtk::Box {
         match item.kind.as_str() {
             "switch" => self.switch_card(item),
@@ -2233,6 +2277,7 @@ impl Control {
             "trust-image" => self.trust_card(item),
             "setup" => self.setup_card(item),
             "disks" => self.disks_card(item),
+            "rows" => self.rows_card(item),
             _ => self.action_card(item),
         }
     }

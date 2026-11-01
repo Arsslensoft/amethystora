@@ -1,0 +1,426 @@
+#!/usr/bin/python3 -I
+# What starts when the account logs in, who put it there, and Off (`ame apps startup`, Control's Starting with you).
+# Run as the account, never as root.
+#
+#   amethystora-startup list --json     every program that starts at login, as JSON
+#   amethystora-startup off ID          ID is autostart:NAME.desktop or unit:NAME.service (or .timer, .socket, .path)
+#   amethystora-startup on ID
+#
+# What it lists:
+#   - autostart entries: ~/.config/autostart over $XDG_CONFIG_DIRS/autostart (/etc/xdg/autostart), by file name, but
+#     GNOME's own session parts (X-GNOME-Autostart-Phase, X-GNOME-HiddenUnderSystemd), entries for other desktops and
+#     a system entry that is off or whose TryExec is not installed;
+#   - the account's own services and timers (a link in ~/.config/systemd/user/*.wants), and the image's own
+#     amethystora-* ones enabled for every account. Other units enabled for everyone are the system's plumbing.
+#
+# Who put it there ("who"): app (an entry the background portal wrote for a Flatpak, X-Flatpak), you (the account's
+# own), system (a package's entry), image (Amethystora's own, amethystora-*, which is switched in its own place and
+# not here), unknown (its program is not installed).
+#
+# Off never deletes. An autostart entry is turned off by a file in ~/.config/autostart under its name holding exactly
+# "[Desktop Entry]" and "Hidden=true", the way GNOME has always let an account turn one off, written in place so that
+# the security watcher sees one write of a file of that shape, which it accepts (amethystora-security-watch). The
+# account's own entry is first copied to ~/.local/share/amethystora/startup-off, and a Flatpak's background
+# permission set to no. On takes the Hidden copy away and puts back what was there. A unit is disabled or enabled, from
+# the next login; nothing running is stopped.
+#
+# Exit status: 0 done, 2 an ID it does not switch, 64 usage.
+
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+
+import gi
+
+gi.require_version("GLib", "2.0")
+from gi.repository import GLib  # noqa: E402
+
+GROUP = "Desktop Entry"
+HIDDEN = "[Desktop Entry]\nHidden=true\n"
+NAME = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9._+@-]{0,200}[.]desktop$")
+UNIT = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9:._@\\-]{0,200}[.](service|timer|socket|path)$")
+FLATPAK_ID = re.compile(r"^[A-Za-z_][A-Za-z0-9_-]*([.][A-Za-z_][A-Za-z0-9_-]*)+$")
+IMAGE = re.compile(r"^(amethystora-|org[.]amethystora[.])")
+# A file larger than this is no autostart entry: read no further
+LARGEST = 65536
+# The roots of the system's own folders, a stand-in for the tests (AMETHYSTORA_STARTUP_ROOT)
+ROOT = os.environ.get("AMETHYSTORA_STARTUP_ROOT", "")
+SYSTEMCTL = os.environ.get("AMETHYSTORA_STARTUP_SYSTEMCTL", "systemctl")
+FLATPAK = os.environ.get("AMETHYSTORA_STARTUP_FLATPAK", "flatpak")
+
+
+def usage():
+    print("usage: amethystora-startup list --json | off ID | on ID", file=sys.stderr)
+    sys.exit(64)
+
+
+def refuse(what):
+    print(f"amethystora-startup: {what}", file=sys.stderr)
+    sys.exit(2)
+
+
+def config_home():
+    return os.environ.get("XDG_CONFIG_HOME") or os.path.join(os.path.expanduser("~"), ".config")
+
+
+def data_home():
+    return os.environ.get("XDG_DATA_HOME") or os.path.join(os.path.expanduser("~"), ".local", "share")
+
+
+def user_autostart():
+    return os.path.join(config_home(), "autostart")
+
+
+def stash():
+    return os.path.join(data_home(), "amethystora", "startup-off")
+
+
+def system_autostarts():
+    dirs = os.environ.get("XDG_CONFIG_DIRS") or "/etc/xdg"
+    return [ROOT + os.path.join(d, "autostart") for d in dirs.split(":") if d.startswith("/")]
+
+
+def plain(path):
+    return os.path.isfile(path) and not os.path.islink(path)
+
+
+def read(path):
+    # A plain file only, never through a link, and never much of one
+    if not plain(path):
+        return None
+    try:
+        with open(path, "rb") as f:
+            data = f.read(LARGEST + 1)
+    except OSError:
+        return None
+    if len(data) > LARGEST:
+        return None
+    return data.decode("utf-8", "replace")
+
+
+def is_hidden_copy(text):
+    return text is not None and text.replace("\r\n", "\n").rstrip("\n") + "\n" == HIDDEN
+
+
+def keyfile(text):
+    keys = GLib.KeyFile()
+    try:
+        keys.load_from_data(text, len(text.encode()), GLib.KeyFileFlags.NONE)
+    except GLib.Error:
+        return None
+    return keys if keys.has_group(GROUP) else None
+
+
+def value(keys, key, locale=False):
+    try:
+        if locale:
+            return keys.get_locale_string(GROUP, key, None)
+        return keys.get_string(GROUP, key)
+    except GLib.Error:
+        return None
+
+
+def true(keys, key):
+    return (value(keys, key) or "").strip().lower() == "true"
+
+
+def installed(program):
+    if not program:
+        return False
+    if program.startswith("/"):
+        return os.access(program, os.X_OK)
+    return GLib.find_program_in_path(program) is not None
+
+
+def program_of(keys):
+    try:
+        argv = GLib.shell_parse_argv(value(keys, "Exec") or "")[1]
+    except GLib.Error:
+        return None
+    while argv and (argv[0] == "env" or "=" in argv[0]):
+        argv = argv[1:]
+    return argv[0] if argv else None
+
+
+def desktops():
+    return [d for d in (os.environ.get("XDG_CURRENT_DESKTOP") or "GNOME").split(":") if d]
+
+
+def for_this_desktop(keys):
+    only = [d for d in (value(keys, "OnlyShowIn") or "").split(";") if d]
+    never = [d for d in (value(keys, "NotShowIn") or "").split(";") if d]
+    current = desktops()
+    if only and not any(d in only for d in current):
+        return False
+    return not any(d in never for d in current)
+
+
+def session_part(keys):
+    # What GNOME's session starts as part of itself, and what it starts only while a setting says so (the screen reader
+    # while it is on), which that setting switches
+    return (bool(value(keys, "X-GNOME-Autostart-Phase")) or true(keys, "X-GNOME-HiddenUnderSystemd")
+            or bool(value(keys, "AutostartCondition")))
+
+
+def turned_off(keys):
+    return true(keys, "Hidden") or (value(keys, "X-GNOME-Autostart-enabled") or "").strip().lower() == "false"
+
+
+def flatpak_installed(app_id):
+    for folder in (ROOT + "/var/lib/flatpak/app", os.path.join(data_home(), "flatpak", "app")):
+        if os.path.isdir(os.path.join(folder, app_id)):
+            return True
+    return False
+
+
+def background_allowed():
+    # The background portal's permissions, as Flatpak's own command prints them: TABLE ID APP PERMISSIONS DATA
+    try:
+        out = subprocess.run([FLATPAK, "permissions", "background", "background"], capture_output=True, text=True,
+                             timeout=10).stdout
+    except (OSError, subprocess.SubprocessError):
+        return {}
+    allowed = {}
+    for line in out.splitlines():
+        fields = line.split()
+        if len(fields) >= 4 and fields[0] == "background" and FLATPAK_ID.match(fields[2]):
+            allowed[fields[2]] = fields[3].strip("[]'") == "yes"
+    return allowed
+
+
+def describe(keys, name, where):
+    app = (value(keys, "X-Flatpak") or "").strip()
+    program = program_of(keys)
+    if app and FLATPAK_ID.match(app):
+        who = "app" if flatpak_installed(app) else "unknown"
+    elif where == "user":
+        who = "you" if installed(program) else "unknown"
+    elif IMAGE.match(name):
+        who = "image"
+    else:
+        who = "system" if installed(program) else "unknown"
+    return {
+        "title": value(keys, "Name", locale=True) or name[: -len(".desktop")],
+        "text": value(keys, "Comment", locale=True) or "",
+        "who": who,
+        "flatpak": app if app and FLATPAK_ID.match(app) else None,
+        "program": program or "",
+    }
+
+
+def autostarts():
+    entries = []
+    user = user_autostart()
+    names = set()
+    for folder in [user] + system_autostarts():
+        try:
+            names.update(n for n in os.listdir(folder) if NAME.match(n))
+        except OSError:
+            pass
+    for name in sorted(names):
+        mine = read(os.path.join(user, name))
+        system = None
+        for folder in system_autostarts():
+            system = read(os.path.join(folder, name))
+            if system is not None:
+                break
+        saved = read(os.path.join(stash(), name))
+        if mine is not None and is_hidden_copy(mine):
+            # Turned off here, or by hand the same way: what it was is the saved copy, or the system's entry
+            source = saved if saved is not None else system
+            keys = keyfile(source) if source is not None else None
+            if keys is None:
+                continue
+            entry = describe(keys, name, "user" if saved is not None else "system")
+            # Turned off by such a copy, it can always be turned on again here
+            entry.update(state="off", switch=True)
+        elif mine is not None:
+            keys = keyfile(mine)
+            if keys is None or not for_this_desktop(keys):
+                continue
+            entry = describe(keys, name, "user")
+            # Off some other way (a Hidden line among others, or GNOME's own key): said, and left to whoever did it
+            if turned_off(keys):
+                entry.update(state="off", switch=False)
+            else:
+                entry.update(state="on", switch=True)
+        elif system is not None:
+            keys = keyfile(system)
+            if keys is None or session_part(keys) or not for_this_desktop(keys) or turned_off(keys):
+                continue
+            tryexec = value(keys, "TryExec")
+            if tryexec and not installed(tryexec):
+                continue
+            entry = describe(keys, name, "system")
+            entry.update(state="on", switch=entry["who"] not in ("image",))
+        else:
+            continue
+        entry["id"] = f"autostart:{name}"
+        entry["kind"] = "autostart"
+        entries.append(entry)
+    return entries
+
+
+def unit_folders():
+    return [os.path.join(config_home(), "systemd", "user"), ROOT + "/etc/systemd/user", ROOT + "/usr/lib/systemd/user"]
+
+
+def wanted_in(folder):
+    found = set()
+    try:
+        subs = os.listdir(folder)
+    except OSError:
+        return found
+    for sub in subs:
+        if not sub.endswith((".wants", ".requires")):
+            continue
+        try:
+            found.update(n for n in os.listdir(os.path.join(folder, sub)) if UNIT.match(n))
+        except OSError:
+            pass
+    return found
+
+
+def unit_description(name):
+    for folder in unit_folders():
+        text = read(os.path.join(folder, name))
+        if text is None:
+            continue
+        for line in text.splitlines():
+            line = line.strip()
+            if line.startswith("Description="):
+                return line[len("Description="):].strip()
+    return ""
+
+
+def units():
+    entries = []
+    mine, *system = unit_folders()
+    own = wanted_in(mine)
+    everyone = set()
+    for folder in system:
+        everyone.update(wanted_in(folder))
+    masked = set()
+    try:
+        masked = {n for n in os.listdir(mine) if UNIT.match(n) and os.path.realpath(os.path.join(mine, n)) == "/dev/null"}
+    except OSError:
+        pass
+    # The account's own units that can be enabled, so that one turned off here is still listed, to be turned on again
+    installable = set()
+    try:
+        for name in os.listdir(mine):
+            text = read(os.path.join(mine, name)) if UNIT.match(name) and not IMAGE.match(name) else None
+            if text is not None and re.search(r"^\s*(WantedBy|RequiredBy)\s*=", text, re.M):
+                installable.add(name)
+    except OSError:
+        pass
+    for name in sorted(own | installable | {n for n in everyone if IMAGE.match(n)}):
+        image = bool(IMAGE.match(name))
+        if image:
+            state = "off" if name in masked else "on"
+        else:
+            state = "on" if name in own and name not in masked else "off"
+        entry = {
+            "id": f"unit:{name}",
+            "kind": "unit",
+            "title": unit_description(name) or name,
+            "text": name,
+            "who": "image" if image else "you",
+            "flatpak": None,
+            "program": "",
+            "state": state,
+            "switch": not image,
+        }
+        entries.append(entry)
+    return entries
+
+
+def listing():
+    entries = autostarts() + units()
+    allowed = background_allowed() if any(e["flatpak"] for e in entries) else {}
+    for entry in entries:
+        entry["background"] = allowed.get(entry["flatpak"]) if entry["flatpak"] else None
+    return {"entries": entries}
+
+
+def write_in_place(path, text):
+    # Opened, cut and written: no temporary file, so that one write of the final file is all the watcher sees
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW
+    fd = os.open(path, flags, 0o644)
+    try:
+        os.write(fd, text.encode())
+    finally:
+        os.close(fd)
+
+
+def permission(app, answer):
+    if app and FLATPAK_ID.match(app):
+        try:
+            subprocess.run([FLATPAK, "permission-set", "background", "background", app, answer],
+                           capture_output=True, timeout=10)
+        except (OSError, subprocess.SubprocessError):
+            pass
+
+
+def switch(entry_id, on):
+    entries = {e["id"]: e for e in listing()["entries"]}
+    entry = entries.get(entry_id)
+    if entry is None:
+        refuse(f"nothing starts at login as {entry_id}")
+    if not entry["switch"]:
+        refuse(f"{entry_id} is switched in its own place, not here")
+    if entry["kind"] == "unit":
+        name = entry_id[len("unit:"):]
+        result = subprocess.run([SYSTEMCTL, "--user", "enable" if on else "disable", "--", name],
+                                capture_output=True, text=True, timeout=30)
+        if result.returncode != 0:
+            print(result.stderr.strip(), file=sys.stderr)
+            sys.exit(1)
+        return
+    name = entry_id[len("autostart:"):]
+    path = os.path.join(user_autostart(), name)
+    saved_path = os.path.join(stash(), name)
+    mine = read(path)
+    if on:
+        if entry["state"] == "on":
+            return
+        if not is_hidden_copy(mine):
+            refuse(f"{name} is turned off some other way: change ~/.config/autostart/{name} itself")
+        saved = read(saved_path)
+        if saved is not None:
+            write_in_place(path, saved)
+            os.unlink(saved_path)
+        else:
+            os.unlink(path)
+        permission(entry["flatpak"], "yes")
+        return
+    if entry["state"] == "off":
+        return
+    if mine is not None:
+        os.makedirs(stash(), mode=0o700, exist_ok=True)
+        shutil.copyfile(path, saved_path, follow_symlinks=False)
+        os.chmod(saved_path, 0o600)
+    else:
+        os.makedirs(user_autostart(), mode=0o700, exist_ok=True)
+    write_in_place(path, HIDDEN)
+    permission(entry["flatpak"], "no")
+
+
+def main(argv):
+    if argv == ["list", "--json"]:
+        print(json.dumps(listing()))
+    elif len(argv) == 2 and argv[0] in ("on", "off"):
+        entry_id = argv[1]
+        kind, _, name = entry_id.partition(":")
+        if not ((kind == "autostart" and NAME.match(name)) or (kind == "unit" and UNIT.match(name))):
+            refuse(f"not an ID of the list: {entry_id!r}")
+        switch(entry_id, argv[0] == "on")
+    else:
+        usage()
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

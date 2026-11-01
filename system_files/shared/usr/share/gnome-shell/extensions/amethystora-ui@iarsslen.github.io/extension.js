@@ -25,6 +25,7 @@ import {Fuzzy} from './modules/fuzzy.js';
 import {Screenshot} from './modules/screenshot.js';
 import {Bazaar} from './modules/bazaar.js';
 import {Connect} from './modules/connect.js';
+import {BackupDisk} from './modules/backupdisk.js';
 import {Pill} from './modules/pill.js';
 import {Quick} from './modules/quick.js';
 import {Bars} from './modules/bars.js';
@@ -77,6 +78,7 @@ const MODULES = [
     ['screenshot', Screenshot],
     ['bazaar', Bazaar],
     ['connect', Connect],
+    ['backupdisk', BackupDisk],
     ['pill', Pill],
     ['quick', Quick],
     ['bars', Bars],

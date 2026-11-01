@@ -138,7 +138,10 @@ TRANSITIONS_KEYS=(reveal)
 HINTS=org.gnome.shell.extensions.amethystora-ui.hints
 HINTS_KEYS=(enabled)
 APPGRID=org.gnome.shell.extensions.amethystora-ui.appgrid
-APPGRID_KEYS=(recent)
+APPGRID_KEYS=(recent order hidden)
+# The backup disk recognized when it is plugged in, which amethystora-setup's BACKUPDISK_KEYS takes
+BACKUPDISK=org.gnome.shell.extensions.amethystora-ui.backupdisk
+BACKUPDISK_KEYS=(ask)
 # The battery explained and the busy app's chip, which amethystora-setup's POWER_KEYS takes
 POWER=org.gnome.shell.extensions.amethystora-ui.power
 POWER_KEYS=(battery-details busy-app device-batteries)
@@ -298,6 +301,7 @@ settings() {
         changed "${KEYS}" | awk 'NR == FNR { kept[$1]; next } $2 in kept' <(printf '%s\n' "${KEYS_KEYS[@]}") -
         changed "${REST}" | awk 'NR == FNR { kept[$1]; next } $2 in kept' <(printf '%s\n' "${REST_KEYS[@]}") -
         changed "${LIVING}" | awk 'NR == FNR { kept[$1]; next } $2 in kept' <(printf '%s\n' "${LIVING_KEYS[@]}") -
+        changed "${BACKUPDISK}" | awk 'NR == FNR { kept[$1]; next } $2 in kept' <(printf '%s\n' "${BACKUPDISK_KEYS[@]}") -
     } | while read -r schema key value; do
         value="$(as_json <<<"${value}")" && [[ -n "${value}" ]] || continue
         jq -nc --arg s "${schema}" --arg k "${key}" --argjson v "${value}" '{schema: $s, key: $k, value: $v}'
@@ -325,7 +329,8 @@ SETTINGS="$(settings | jq -sc --arg layout "${LAYOUT}" --arg tiling "${TILING}" 
     --arg present "${PRESENT}" --arg screenshot "${SCREENSHOT}" --arg deskwidgets "${DESKWIDGETS}" \
     --arg shelf "${SHELF}" --arg desks "${DESKS}" --arg quit "${QUIT}" --arg privacy "${PRIVACY}" --arg tools "${TOOLS}" \
     --arg input "${INPUT}" --arg keyboard "${KEYBOARD}" --arg paste "${PASTE}" --arg keys "${KEYS}" \
-    --arg rest "${REST}" --arg living "${LIVING}" '
+    --arg rest "${REST}" --arg living "${LIVING}" \
+    --arg backupdisk "${BACKUPDISK}" '
     map(if .schema == "custom" then .value |= (if . == "" then [] else [.] end) else . end) as $all
     | {layout: $layout}
     + ([$all[] | select(.schema == "org.gnome.shell")] | if length > 0 then {favorites: .[0].value} else {} end)
@@ -338,7 +343,7 @@ SETTINGS="$(settings | jq -sc --arg layout "${LAYOUT}" --arg tiling "${TILING}" 
             else .schema | IN("org.gnome.shell", $tiling, $pointer, $glass, $motion, $workspaces, $dock, $pill, $quick, $bars,
                 $today, $breaks, $bezel, $audio, $sound, $wm, $mutter, $transitions, $hints, $appgrid, $focus, $power,
                 $access, $touch, $present, $screenshot,
-                $deskwidgets, $shelf, $desks, $privacy, $input, $keyboard, $paste, $rest, $living) | not end))
+                $deskwidgets, $shelf, $desks, $privacy, $input, $keyboard, $paste, $rest, $living, $backupdisk) | not end))
         as $e ({}; .[$e.schema][$e.key] = $e.value))}
     + ([$all[] | select(.schema == $windows
             and (.key | IN("snap-chooser", "drop-down-key", "keep-on-top-key", "reopen-key") | not))]
@@ -389,7 +394,8 @@ SETTINGS="$(settings | jq -sc --arg layout "${LAYOUT}" --arg tiling "${TILING}" 
     + ([$all[] | select(.schema == $keys and .key != "plain-paste")]
         | if length > 0 then {keys: (map({(.key): .value}) | add)} else {} end)
     + ([$all[] | select(.schema == $rest)] | if length > 0 then {rest: (map({(.key): .value}) | add)} else {} end)
-    + ([$all[] | select(.schema == $living)] | if length > 0 then {living: (map({(.key): .value}) | add)} else {} end)')"
+    + ([$all[] | select(.schema == $living)] | if length > 0 then {living: (map({(.key): .value}) | add)} else {} end)
+    + ([$all[] | select(.schema == $backupdisk)] | if length > 0 then {backupdisk: (map({(.key): .value}) | add)} else {} end)')"
 
 # The look, where the account changed it from the image's: its accent, Daylight turned off and colours from the wallpaper
 # (the account's files, each only as one of its values), and an accent per workspace (the theme module's keys)

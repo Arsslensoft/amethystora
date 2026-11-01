@@ -743,6 +743,15 @@ the containers again and install what was in them; turn the extensions back on; 
 for the setup saved next from that machine; without one, it offers the newest few. Your files themselves come back in Backups. To
 keep your setup in a file of your own as well, in git, see [Your setup in a file](setup.md).
 
+### Your backup disk
+
+When your backup goes to a USB drive (a repository on a disk, as `ame backup setup` set it up), plugging that disk in
+asks **Back up now?**, with when the last backup was. **Back up now** starts the same backup as Backups' button and
+says when it is done; the disk is then put away and you are told it is **Safe to unplug**. If it cannot be put away,
+because a window still has a file open on it, you are told to put it away in Files first. **Not now** leaves it. The
+disk is known only by the folder your backup was set up in; its password and settings are not read.
+`ame desktop backup-disk off` (or Control's **Apps** page) asks nothing when it is plugged in.
+
 ### Ransomware protection
 
 ```bash

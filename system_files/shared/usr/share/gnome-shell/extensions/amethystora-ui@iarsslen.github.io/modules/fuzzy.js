@@ -16,6 +16,7 @@ import * as ParentalControlsManager from 'resource:///org/gnome/shell/misc/paren
 import * as SystemActions from 'resource:///org/gnome/shell/misc/systemActions.js';
 
 import {makeEntry, rank, words} from './fuzzy/matcher.js';
+import {renamed} from './appgrid/looks.js';
 
 // GNOME shows six app results; a longer list leaves room for it, and no more is ever needed
 const LONGEST = 30;
@@ -68,25 +69,37 @@ export class Fuzzy {
         this._original = null;
         Shell.AppSystem.get_default().disconnectObject(this);
         this._apps = null;
+        this._parts = null;
     }
 
     // Every launcher GNOME's search could show, in the session's language
     _read() {
         const apps = new Map();
+        const parts = new Map();
         for (const info of Shell.AppSystem.get_default().get_installed()) {
             const id = info.get_id();
             if (!id || !info.should_show())
                 continue;
             const executable = info.get_executable();
-            apps.set(id, makeEntry(id, {
+            const part = {
                 names: [info.get_name(), info.get_display_name()],
                 keywords: info.get_keywords?.() ?? [],
                 command: executable ? GLib.path_get_basename(executable) : '',
                 description: info.get_description() ?? '',
                 other: [info.get_generic_name?.() ?? '', id.replace(/\.desktop$/, '')],
-            }));
+            };
+            parts.set(id, part);
+            apps.set(id, makeEntry(id, part));
         }
         this._apps = apps;
+        this._parts = parts;
+    }
+
+    // An app the account gave a name of its own (the app grid's Rename) is found by that name first, and by its own
+    _entry(id, entry) {
+        const name = renamed.get(id);
+        const part = name ? this._parts?.get(id) : null;
+        return part ? makeEntry(id, {...part, names: [name, ...part.names]}) : entry;
     }
 
     // GNOME keeps each power action's name, keywords (already folded) and whether it can be used now together;
@@ -110,7 +123,7 @@ export class Fuzzy {
         for (const [id, entry] of this._apps) {
             const app = appSystem.lookup_app(id);
             if (app && parental.shouldShowApp(app.app_info))
-                entries.set(id, entry);
+                entries.set(id, this._entry(id, entry));
         }
         for (const entry of this._actions())
             entries.set(entry.id, entry);

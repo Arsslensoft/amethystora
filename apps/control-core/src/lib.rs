@@ -141,12 +141,15 @@ pub struct PoolAction {
     pub command: Option<Vec<String>>,
 }
 
+/// A pool of disks, or a row of a `rows` entry (what starts at login, the apps changed in the grid): its words, its
+/// state, the word on its tag (a row's only) and the actions the list gave it
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Disk {
     pub id: String,
     pub title: String,
     pub text: Option<String>,
     pub state: String,
+    pub tag: Option<String>,
     pub actions: Vec<PoolAction>,
 }
 
@@ -187,6 +190,8 @@ pub struct Item {
     pub saved: Option<f64>,
     // The pools of disks
     pub disks: Vec<Disk>,
+    // A rows entry's rows
+    pub rows: Vec<Disk>,
     // The text shortcuts
     pub shortcuts: Vec<Shortcut>,
     // The theme maker's palettes to start from
@@ -330,24 +335,8 @@ fn item(value: &Value) -> Item {
             .collect(),
         file: text(field("file")),
         saved: number(field("saved")),
-        disks: array(field("disks"))
-            .iter()
-            .map(|disk| Disk {
-                id: string(disk.get("id")),
-                title: string(disk.get("title")),
-                text: text(disk.get("text")),
-                state: string(disk.get("state")),
-                actions: array(disk.get("actions"))
-                    .iter()
-                    .map(|action| PoolAction {
-                        id: string(action.get("id")),
-                        title: string(action.get("title")),
-                        terminal: truthy(action.get("terminal")),
-                        command: words(action.get("command")),
-                    })
-                    .collect(),
-            })
-            .collect(),
+        disks: array(field("disks")).iter().map(disk).collect(),
+        rows: array(field("rows")).iter().map(disk).filter(|row| !row.id.is_empty()).collect(),
         shortcuts: array(field("shortcuts"))
             .iter()
             .map(|shortcut| Shortcut {
@@ -400,6 +389,25 @@ fn item(value: &Value) -> Item {
             .filter(|binding| !binding.schema.is_empty() && !binding.key.is_empty())
             .collect(),
         tiling: truthy(field("tiling")),
+    }
+}
+
+fn disk(disk: &Value) -> Disk {
+    Disk {
+        id: string(disk.get("id")),
+        title: string(disk.get("title")),
+        text: text(disk.get("text")),
+        state: string(disk.get("state")),
+        tag: text(disk.get("tag")),
+        actions: array(disk.get("actions"))
+            .iter()
+            .map(|action| PoolAction {
+                id: string(action.get("id")),
+                title: string(action.get("title")),
+                terminal: truthy(action.get("terminal")),
+                command: words(action.get("command")),
+            })
+            .collect(),
     }
 }
 
@@ -579,6 +587,16 @@ pub fn webapp(list: Option<&List>, action: &str, name: &str) -> Result<Run, Refu
 pub fn pool(list: Option<&List>, action: &str, id: &str) -> Result<Run, Refusal> {
     let item = list.and_then(|list| list.first_of_kind("disks")).ok_or(Refusal::Refused)?;
     let found = item.disks.iter().find(|disk| disk.id == id).and_then(|disk| disk.actions.iter().find(|candidate| candidate.id == action));
+    match found {
+        Some(found) if item.available => runnable(found.command.as_ref(), found.terminal),
+        _ => Err(Refusal::Refused),
+    }
+}
+
+/// One of the actions the list gave a row of a `rows` entry (CARD is the entry's id)
+pub fn row(list: Option<&List>, card: &str, action: &str, id: &str) -> Result<Run, Refusal> {
+    let item = list.and_then(|list| list.find(card)).filter(|item| item.kind == "rows").ok_or(Refusal::Refused)?;
+    let found = item.rows.iter().find(|row| row.id == id).and_then(|row| row.actions.iter().find(|candidate| candidate.id == action));
     match found {
         Some(found) if item.available => runnable(found.command.as_ref(), found.terminal),
         _ => Err(Refusal::Refused),
@@ -870,6 +888,10 @@ mod tests {
         {"page": "system", "id": "disks", "kind": "disks", "title": "Pools", "available": true,
          "disks": [{"id": "media", "title": "media, at /var/mnt/media", "text": "Two copies.", "state": "ok",
                     "actions": [{"id": "forget", "title": "Forget…", "terminal": true, "command": ["ame", "system", "raid", "forget", "media"]}]}]},
+        {"page": "apps", "id": "startup", "kind": "rows", "title": "Starting with you", "available": true,
+         "rows": [{"id": "autostart:chat.desktop", "title": "Chat", "text": "Starts hidden.", "state": "on", "tag": "You",
+                   "actions": [{"id": "off", "title": "Off", "terminal": false, "command": ["ame", "apps", "startup", "off", "autostart:chat.desktop"]}]},
+                  {"id": "", "title": "No id", "state": "on", "actions": []}]},
         {"page": "setup", "id": "setup-file", "kind": "setup", "title": "Your setup file", "available": true, "file": "/home/a/.config/amethystora/setup.json",
          "saved": 1760000000, "state": "saved",
          "commands": {"save": {"terminal": false, "command": ["ame", "setup", "save"]}, "apply": {"terminal": true, "command": ["ame", "setup", "apply"]}}},
@@ -893,7 +915,7 @@ mod tests {
         let list = list();
         assert_eq!(list.automatic_updates.as_deref(), Some("on"));
         assert!(list.backups);
-        assert_eq!(list.items.len(), 11);
+        assert_eq!(list.items.len(), 12);
         let greeting = list.find("greeting").unwrap();
         assert_eq!(greeting.choices[1].terminal, true);
         assert_eq!(greeting.group, None);
@@ -977,6 +999,15 @@ mod tests {
         assert_eq!(argv(pool(Some(&list), "forget", "media")), ["ame", "system", "raid", "forget", "media"]);
         assert!(pool(Some(&list), "forget", "archive").is_err());
         assert!(pool(Some(&list), "erase", "media").is_err());
+        let startup = list.find("startup").expect("the rows entry");
+        assert_eq!(startup.rows.len(), 1);
+        assert_eq!(startup.rows[0].tag.as_deref(), Some("You"));
+        assert_eq!(argv(row(Some(&list), "startup", "off", "autostart:chat.desktop")),
+            ["ame", "apps", "startup", "off", "autostart:chat.desktop"]);
+        assert!(!row(Some(&list), "startup", "off", "autostart:chat.desktop").unwrap().terminal);
+        assert!(row(Some(&list), "startup", "on", "autostart:chat.desktop").is_err());
+        assert!(row(Some(&list), "startup", "off", "autostart:other.desktop").is_err());
+        assert!(row(Some(&list), "disks", "forget", "media").is_err());
         assert_eq!(argv(setup(Some(&list), "save")), ["ame", "setup", "save"]);
         assert!(setup(Some(&list), "apply").unwrap().terminal);
         assert!(setup(Some(&list), "remove").is_err());

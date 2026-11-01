@@ -7,5 +7,31 @@
       <summary>Recently used apps</summary>
       <description>The apps used most, in a row at the top of the app grid, under "Recently used", with "All apps" over the grid.</description>
     </key>
+    <key name="order" type="s">
+      <choices>
+        <choice value="custom"/>
+        <choice value="name"/>
+        <choice value="use"/>
+        <choice value="kind"/>
+      </choices>
+      <default>'custom'</default>
+      <summary>The app grid's order</summary>
+      <description>custom: GNOME's own, where you put each icon. name: A to Z. use: the apps used most first, by GNOME's own record of use. kind: by what each app says it is, then A to Z. Your folders come first in every order but custom, and what you arranged by hand is kept for custom.</description>
+    </key>
+    <key name="hidden" type="as">
+      <default>[]</default>
+      <summary>Apps hidden from the grid and the search</summary>
+      <description>Launcher IDs (name.desktop) kept out of the app grid, its folders and the search. A hidden app still opens from a terminal and from Open With, and stays in the dock if it is pinned there. No launcher is written for it.</description>
+    </key>
+    <key name="names" type="a{ss}">
+      <default>{}</default>
+      <summary>Apps' names of your own</summary>
+      <description>A launcher ID and the name shown under its icon instead of its own, 64 characters at most. Only the label changes.</description>
+    </key>
+    <key name="icons" type="a{ss}">
+      <default>{}</default>
+      <summary>Apps' icons of your own</summary>
+      <description>A launcher ID and the icon shown for it: the name of an installed Amethystora icon pack (amethystora-neon...), whose drawing of the app is used, or picture:N, a picture of your own that amethystora-app-look wrote into ~/.local/share/amethystora/app-icons.</description>
+    </key>
   </schema>
 </schemalist>

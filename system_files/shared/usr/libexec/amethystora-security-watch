@@ -298,6 +298,21 @@ audit_events() {
         }' <<<"${output}" | sort | uniq -c
 }
 
+# Whether PATH, written under an account's ~/.config/autostart, is now a file holding exactly "[Desktop Entry]" and
+# "Hidden=true", each with its line end and nothing else: an entry turned off, which starts nothing. Read as the home
+# folders are read here: a plain file only, never through a link anywhere on its way, small, under a time limit.
+hidden_autostart() {
+    local path="$1" file root text
+    [[ "${path}" =~ ^/[^[:cntrl:]]*/\.config/autostart/[^/[:cntrl:]]+\.desktop$ && "${path}" != *"/../"* ]] || return 1
+    file="${ROOT}${path}"
+    [[ -f "${file}" && ! -L "${file}" ]] || return 1
+    root="$(realpath -e -- "${ROOT:-/}" 2>/dev/null)" || return 1
+    [[ "$(realpath -e -- "${file}" 2>/dev/null)" == "${root%/}${path}" ]] || return 1
+    [[ "$(stat -c %s -- "${file}" 2>/dev/null)" -le 64 ]] || return 1
+    text="$(timeout 5 head -c 64 -- "${file}" 2>/dev/null; echo .)"
+    [[ "${text}" == $'[Desktop Entry]\nHidden=true\n.' || "${text}" == $'[Desktop Entry]\r\nHidden=true\r\n.' ]]
+}
+
 read_audit() {
     local key count mark event exe level text object
     for key in "${AUDIT_KEYS[@]}"; do
@@ -347,6 +362,9 @@ read_audit() {
             if { [[ -n "${object}" ]] && allowed "${key}" "${object}"; } || { [[ -n "${exe}" ]] && allowed "${key}" "${exe}"; }; then
                 level=quiet ALLOWED_HIT=1
             fi
+            # An autostart entry turned off the way GNOME has always let an account do it (Control's Starting with
+            # you, amethystora-startup): a file of exactly that shape starts nothing, and is recorded only
+            [[ "${key}" == persistence && -n "${object}" ]] && hidden_autostart "${object}" && level=quiet
             text="${AUDIT_WHAT[${key}]}: ${event}"
             [[ "${count}" -gt 1 ]] && text+=" (${count} times)"
             # The first run has no "since": it only makes the checkpoints

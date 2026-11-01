@@ -620,7 +620,9 @@ outside `/usr` and listening ports, writes what only root can see to
 `/var/lib/amethystora/security/status.json` for the report, and runs the report to notify when a watched
 check turns bad. It also looks at what each account's session finds first: a command in `~/.local/bin`,
 `~/bin` or Homebrew's prefix named like a system one, and a launcher in `~/.local/share/applications` that
-no container export made. The audit rules ship one file per key in `/usr/share/amethystora/audit`, which
+no container export made. An autostart entry written as exactly `[Desktop Entry]` and `Hidden=true` (Control's
+Starting with you, `/usr/libexec/amethystora-startup`) starts nothing and is recorded quietly (`hidden_autostart`);
+anything more there is said. The app grid hides and renames apps with keys, never a launcher. The audit rules ship one file per key in `/usr/share/amethystora/audit`, which
 `amethystora-audit-home-rules` writes into `/etc/audit/rules.d/60-amethystora.rules` at every boot, beside
 the per-home rules (`persistence`, `user-programs`). Where the kernel takes it, the **file-watch sensor**
 records those keys instead, without audit's per-system-call cost (`apps/sensor`, `amethystora-sensor`,

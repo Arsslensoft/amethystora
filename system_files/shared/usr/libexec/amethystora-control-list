@@ -258,6 +258,12 @@ read_in_background kb-accents gsettings get org.gnome.shell.extensions.amethysto
 # The resting screen and the living wallpaper (R6-06, R6-07)
 read_in_background rest gsettings list-recursively org.gnome.shell.extensions.amethystora-ui.rest
 read_in_background living gsettings get org.gnome.shell.extensions.amethystora-ui.living wallpaper
+# Your apps: the grid's order, the apps changed in it, what starts at login, Downloads tidied, the backup disk
+read_in_background app-grid-order gsettings get org.gnome.shell.extensions.amethystora-ui.appgrid order
+read_in_background app-looks /usr/libexec/amethystora-app-look list --json
+read_in_background startup /usr/libexec/amethystora-startup list --json
+read_in_background tidy-downloads systemctl --user is-enabled amethystora-tidy-downloads.timer
+read_in_background backup-disk gsettings get org.gnome.shell.extensions.amethystora-ui.backupdisk ask
 wait
 
 # --- Appearance ------------------------------------------------------------------------------------
@@ -1229,6 +1235,19 @@ switch_choices false ame desktop app-grid recent
 USAGE="ame desktop app-grid recent on|off"
 item desktop app-grid-recent switch "${ gettext "Recently used apps"; }" \
     "${ gettext "The apps you use most, in a row at the top of the app grid."; }" "${RECENT}" desktop#the-app-grid
+# The grid's order (appgrid module): GNOME's own, where each icon was put, or sorted after the folders
+ORDER="${ said app-grid-order; }"
+ORDER="${ORDER//\'/}"
+ORDER="${ORDER%%$'\n'*}"
+[[ "${ORDER}" =~ ^(custom|name|use|kind)$ ]] || ORDER=custom
+[[ "${ ended app-grid-order; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
+choice custom "${ gettext "Where you put them"; }" "${ gettext "GNOME's own order: drag an icon to move it."; }" false ame desktop app-grid order custom
+choice name "${ gettext "A to Z"; }" "" false ame desktop app-grid order name
+choice use "${ gettext "By use"; }" "${ gettext "The apps you use most first."; }" false ame desktop app-grid order use
+choice kind "${ gettext "By kind"; }" "${ gettext "Work, pictures and sound, development, games, then the system's."; }" false ame desktop app-grid order kind
+USAGE="ame desktop app-grid order custom|name|use|kind"
+item desktop app-grid-order choice "${ gettext "The app grid's order"; }" \
+    "${ gettext "Your folders stay first, as you left them."; }" "${ORDER}" desktop#the-app-grid-in-order
 if [[ "${ said hints; }" == false ]]; then HINTS=off; else HINTS=on; fi
 [[ "${ ended hints; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
 switch_choices false ame desktop hints
@@ -2179,6 +2198,95 @@ EXTRA="$(jq -nc --argjson list "${WEBAPPS}" '{webapps: $list, commands: {
 USAGE="ame apps webapps install"
 item apps webapps webapps "${ gettext "Web apps"; }" \
     "${ gettext "Sites in a window of their own, with a launcher in the app grid."; }" "" web-apps
+
+# The apps hidden, renamed or given another icon in the app grid (its menu, or `ame desktop app`), each with the way
+# back; shown only when there is one. Nothing but the app grid's own settings: no launcher of the account's own.
+if [[ "${ ended app-looks; }" == 0 ]] && EXTRA="$(jq -ec --arg hidden "${ gettext "Hidden from the app grid and the search."; }" \
+        --arg renamed "${ gettext "Its own name is %s."; }" --arg pack "${ gettext "Its icon is another pack's."; }" \
+        --arg picture "${ gettext "Your picture is its icon."; }" --arg gone "${ gettext "Not installed now."; }" \
+        --arg show "${ gettext "Show"; }" --arg own_name "${ gettext "Its own name"; }" --arg own_icon "${ gettext "Its own icon"; }" '
+        if (.apps | length) == 0 then null else {rows: [.apps[] | . as $a | {
+            id: .id,
+            title: (.name // .own // .id),
+            text: ([(if .installed | not then $gone else empty end), (if .hidden then $hidden else empty end),
+                (if .name and .own then ($renamed | sub("%s"; $a.own)) else empty end),
+                (if .icon == "picture" then $picture elif .icon then $pack else empty end)] | join(" ")),
+            state: "plain",
+            actions: [
+                (if .hidden then {id: "show", title: $show, terminal: false, command: ["ame", "desktop", "app", "show", .id]} else empty end),
+                (if .name then {id: "name", title: $own_name, terminal: false, command: ["ame", "desktop", "app", "rename", .id]} else empty end),
+                (if .icon then {id: "icon", title: $own_icon, terminal: false, command: ["ame", "desktop", "app", "icon", .id, "reset"]} else empty end)
+            ]}]} end' <<<"${ said app-looks; }" 2>/dev/null)"; then
+    GROUP="${ gettext "Your apps"; }"
+    USAGE="ame desktop app show|rename|icon ID"
+    item apps app-grid-looks rows "${ gettext "Changed in the app grid"; }" \
+        "${ gettext "Apps you hid, renamed or gave another icon from their menu in the app grid. Each still opens from a terminal and from Open With."; }" \
+        "" desktop#hide-rename-or-change-an-app
+else
+    EXTRA=""
+fi
+
+# What starts when the account logs in (amethystora-startup): autostart entries, the account's services and the image's
+# own, who put each there, and Off. Off writes a copy of the entry that only says Hidden, which the security watcher
+# accepts; nothing is deleted. The image's own are said and switched in their own place.
+GROUP="${ gettext "Starting with you"; }"
+if [[ "${ ended startup; }" == 0 ]] && EXTRA="$(jq -ec --arg app "${ gettext "An app put it there when it was installed."; }" \
+        --arg background "${ gettext "It may also run in the background."; }" \
+        --arg you "${ gettext "You, or a program of yours, put it there."; }" \
+        --arg system "${ gettext "It came with the system."; }" --arg unknown "${ gettext "Its program is not installed."; }" \
+        --arg image "${ gettext "Part of Amethystora, which needs it."; }" \
+        --arg phone "${ gettext "Part of Amethystora: switched with Phone pairing, on the Desktop page."; }" \
+        --arg backups "${ gettext "Part of Amethystora: switched in Backups."; }" \
+        --arg tidy "${ gettext "Part of Amethystora: switched with Downloads keeps itself tidy, below."; }" \
+        --arg tablets "${ gettext "Part of Amethystora: switched with Drawing tablets, above."; }" \
+        --arg off_now "${ gettext "Off: it does not start when you log in."; }" \
+        --arg t_app "${ gettext "The app"; }" --arg t_you "${ gettext "You"; }" --arg t_system "${ gettext "The system"; }" \
+        --arg t_image "${ gettext "Amethystora"; }" --arg t_unknown "${ gettext "Unknown"; }" \
+        --arg on "${ gettext "On"; }" --arg off "${ gettext "Off"; }" '
+        def where: {"unit:amethystora-connect.service": $phone, "unit:amethystora-backup.timer": $backups,
+            "unit:amethystora-tidy-downloads.timer": $tidy, "unit:amethystora-opentabletdriver.service": $tablets}[.id] // $image;
+        {rows: [.entries[] | {
+            id: .id,
+            title: .title,
+            text: ([(if .text != "" and .text != .title then (.text | if test("[.!?…]$") then . else . + "." end) else empty end),
+                (if .who == "app" then $app elif .who == "you" then $you elif .who == "system" then $system
+                 elif .who == "unknown" then $unknown else where end),
+                (if .background == true then $background else empty end),
+                (if .state == "off" then $off_now else empty end)] | join(" ")),
+            state: (if .who == "unknown" then "check" else "plain" end),
+            tag: {app: $t_app, you: $t_you, system: $t_system, image: $t_image, unknown: $t_unknown}[.who],
+            actions: (if .switch | not then []
+                elif .state == "on" then [{id: "off", title: $off, terminal: false, command: ["ame", "apps", "startup", "off", .id]}]
+                else [{id: "on", title: $on, terminal: false, command: ["ame", "apps", "startup", "on", .id]}] end)
+        }], on: ([.entries[] | select(.state == "on")] | length)}' <<<"${ said startup; }" 2>/dev/null)"; then
+    count=0
+    [[ "${EXTRA}" =~ \"on\":([0-9]+)\}$ ]] && count="${BASH_REMATCH[1]}"
+    DETAIL="${ eval_ngettext "\${count} program starts when you log in." "\${count} programs start when you log in." "${count}"; }"
+else
+    REASON="${ gettext "What starts at login could not be read."; }"
+    EXTRA='{"rows": []}'
+fi
+USAGE="ame apps startup [off|on ID]"
+item apps startup rows "${ gettext "What starts with you"; }" \
+    "${ gettext "Every program that starts when you log in, and who put it there. Turning one off does not uninstall it, and it can be turned on again here."; }" \
+    "" software#what-starts-with-you
+
+# Files: Downloads tidied once a day (offered, off), and the backup's disk recognized when it is plugged in
+GROUP="${ gettext "Files"; }"
+if [[ "${ said tidy-downloads; }" == enabled* ]]; then TIDY=on; else TIDY=off; fi
+switch_choices false ame desktop tidy-downloads
+USAGE="ame desktop tidy-downloads on|off|undo"
+item apps tidy-downloads switch "${ gettext "Downloads keeps itself tidy"; }" \
+    "${ gettext "Once a day, installers opened more than a week ago go to the Trash, and other files older than a month into a folder for their month. Nothing is deleted: the Trash keeps what it is given for 30 days, and Undo puts the last tidying back."; }" \
+    "${TIDY}" desktop#downloads-keeps-itself-tidy
+if [[ "${ said backup-disk; }" == false ]]; then BACKUP_DISK=off; else BACKUP_DISK=on; fi
+[[ "${ ended backup-disk; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
+switch_choices false ame desktop backup-disk
+USAGE="ame desktop backup-disk on|off"
+item apps backup-disk switch "${ gettext "Your backup disk, recognized"; }" \
+    "${ gettext "Plugging in the disk your backup goes to asks whether to back up now, and says when it is safe to unplug."; }" \
+    "${BACKUP_DISK}" security#your-backup-disk
+GROUP=""
 
 GROUP="${ gettext "Add-ons"; }"
 if [[ -x "${XDG_DATA_HOME:-${HOME}/.local/share}/jetbrains-toolbox/bin/jetbrains-toolbox" ]]; then

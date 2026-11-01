@@ -1991,9 +1991,10 @@ jq -e '[.items[] | select(.id == "quick-theme" or .id == "quick-tiles")] | lengt
     (.choices // [] | .[].command) | select(.[0:3] != ["ame", "desktop", "quick-settings"])' <<<"${CONTROL_LIST}")" ]]
 [[ -z "$(jq -r '.items[].id' <<<"${CONTROL_LIST}" | sort | uniq -d)" ]]
 [[ -z "$(jq -r '.items[].kind' <<<"${CONTROL_LIST}" |
-    grep -vxE 'switch|choice|range|action|link|themes|theme-maker|wallpapers|widgets|webapps|shortcuts|trust-image|setup|disks')" ]]
+    grep -vxE 'switch|choice|range|action|link|themes|theme-maker|wallpapers|widgets|webapps|shortcuts|trust-image|setup|disks|rows')" ]]
 [[ -z "$(jq -c '.items[] | (.command // empty), (.choices // [] | .[].command), (.commands // {} | .[].command),
-    (.disks // [] | .[].actions[].command) | select(.[0] != "ame" or .[1] == "security")' <<<"${CONTROL_LIST}")" ]]
+    (.disks // [] | .[].actions[].command), (.rows // [] | .[].actions[].command)
+    | select(.[0] != "ame" or .[1] == "security")' <<<"${CONTROL_LIST}")" ]]
 # The text shortcuts' entries: the switch, and the list, which names abbreviations and line counts and never a text,
 # and whose commands take the abbreviation alone as an argument (a text goes on stdin, out of the process list)
 jq -e '[.items[] | select(.id == "text-shortcuts" and .kind == "switch")] | length == 1' <<<"${CONTROL_LIST}" >/dev/null
@@ -2890,7 +2891,7 @@ HINTS=org.gnome.shell.extensions.amethystora-ui.hints
 APPGRID=org.gnome.shell.extensions.amethystora-ui.appgrid
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${HINTS}" | paste -sd ' ')" == enabled ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${HINTS}" enabled)" == true ]]
-[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${APPGRID}" | paste -sd ' ')" == recent ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${APPGRID}" | sort | paste -sd ' ')" == "hidden icons names order recent" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${APPGRID}" recent)" == true ]]
 [[ " $(sed -n "s/^    \['\([a-z]*\)', [A-Za-z]*\],$/\1/p" "${UI_EXTENSION}/extension.js" | paste -sd ' ') " == *" dock appgrid "*" glass hints "* ]]
 grep -q "^export const KNOWN = \['shake', 'hold-super', 'search', 'snap', 'folder-colour', 'phone-drop', 'pinch'\];" \
@@ -2914,6 +2915,40 @@ GSETTINGS_BACKEND=memory ame desktop hints maybe >/dev/null 2>&1 && false
 GSETTINGS_BACKEND=memory ame desktop app-grid recent maybe >/dev/null 2>&1 && false
 GSETTINGS_BACKEND=memory ame desktop hints off >/dev/null
 GSETTINGS_BACKEND=memory ame desktop app-grid recent off >/dev/null
+# Your apps, your grid (plans/ui-ideas/spec-apps.md): hidden, renamed and re-iconed apps and the grid's order are keys
+# the shell applies, never a launcher of the account's own; nothing hidden, renamed or sorted as the image ships, and the
+# backup disk recognized. The helper takes only a launcher's ID, a pack that draws the app, and an order it knows.
+[[ "$(GSETTINGS_BACKEND=memory gsettings get "${APPGRID}" order)" == "'custom'" ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings get "${APPGRID}" hidden)" == "@as []" ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings get "${APPGRID}" names)" == "@a{ss} {}" ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings get "${APPGRID}" icons)" == "@a{ss} {}" ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.backupdisk ask)" == true ]]
+grep -qx "    \['backupdisk', BackupDisk\]," "${UI_EXTENSION}/extension.js"
+test -x /usr/libexec/amethystora-app-look
+GSETTINGS_BACKEND=memory /usr/libexec/amethystora-app-look hide ../evil >/dev/null 2>&1 && false
+GSETTINGS_BACKEND=memory /usr/libexec/amethystora-app-look order sideways >/dev/null 2>&1 && false
+GSETTINGS_BACKEND=memory /usr/libexec/amethystora-app-look icon org.gnome.Nautilus.desktop amethystora-nonesuch >/dev/null 2>&1 && false
+GSETTINGS_BACKEND=memory /usr/libexec/amethystora-app-look hide org.gnome.Nautilus.desktop
+[[ "$(GSETTINGS_BACKEND=memory /usr/libexec/amethystora-app-look list --json | jq -c .)" == '{"order":"custom","apps":[]}' ]]
+for recipe in "app *ARGS" "tidy-downloads ACTION=\"\"" "backup-disk STATE=\"\""; do
+    grep -qxF "${recipe}:" /usr/share/amethystora/just/desktop.just
+done
+grep -qxF "startup *ARGS:" /usr/share/amethystora/just/apps.just
+# What starts with you: the helper switches only the account's own, never deletes, and its Off is exactly the shape the
+# security watcher accepts (test-security-watch.sh plants both); its menu item in the grid only opens Security
+test -x /usr/libexec/amethystora-startup
+grep -qF 'HIDDEN = "[Desktop Entry]\nHidden=true\n"' /usr/libexec/amethystora-startup
+grep -q "hidden_autostart" /usr/libexec/amethystora-security-watch
+grep -qF "[SECURITY, \`apps/\${id}\`]" "${UI_EXTENSION}/modules/appgrid/looks.js"
+grep -qE "ame security|amethystora-security-config|hardening" "${UI_EXTENSION}/modules/appgrid/looks.js" && false
+# Templates seeded once, never executable; Downloads tidied by a user timer nobody has enabled
+test -x /usr/share/amethystora/user-setup.hooks.d/28-templates.sh
+grep -q "chmod 0644" /usr/share/amethystora/user-setup.hooks.d/28-templates.sh
+test -x /usr/libexec/amethystora-tidy-downloads
+test -s /usr/lib/systemd/user/amethystora-tidy-downloads.timer
+test ! -e /etc/systemd/user/timers.target.wants/amethystora-tidy-downloads.timer
+test ! -e /usr/lib/systemd/user/timers.target.wants/amethystora-tidy-downloads.timer
+grep -q "rmtree\|os.remove(\|shutil.rmtree" /usr/libexec/amethystora-tidy-downloads && false
 # The app grid's six folders, the image's default list, each filled from the apps' categories under a name GNOME
 # translates from a menu directory file the image has; the folders the list used to name stay defined
 [[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.desktop.app-folders folder-children)" == \

@@ -426,6 +426,36 @@ cli:
 webapps *ARGS:
     @amethystora-webapp "$@"
 
+# What starts when you log in, and who put it there; off ID or on ID switches one (IDs as the list prints them). Off
+# never uninstalls or deletes: an autostart entry gets a copy that only says Hidden, a service is disabled.
+[positional-arguments]
+startup *ARGS:
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    case "${1:-}" in
+        "")
+            list="$(/usr/libexec/amethystora-startup list --json)"
+            [[ "$(jq '.entries | length' <<<"${list}")" -gt 0 ]] || { echo "$(gettext "Nothing starts when you log in.")"; exit 0; }
+            jq -r '.entries[] | "\(.state)\t\(.who)\t\(.id)\t\(.title)"' <<<"${list}" | column -t -s $'\t'
+            ;;
+        off | on)
+            [[ $# -eq 2 ]] || { echo "usage: ame apps startup [off|on ID]"; exit 64; }
+            id="$2"
+            /usr/libexec/amethystora-startup "$1" "${id}"
+            if [[ "$1" == off ]]; then
+                echo "$(eval_gettext "\${id} does not start when you log in any more.")"
+            else
+                echo "$(eval_gettext "\${id} starts when you log in again.")"
+            fi
+            ;;
+        *)
+            echo "usage: ame apps startup [off|on ID]"
+            exit 64
+            ;;
+    esac
+
 # Let amethystora-pkg build packages from the Arch User Repository, or stop it again (ACTION: on or off; off by default, and without it, it flips)
 [positional-arguments]
 aur ACTION="":

@@ -420,6 +420,33 @@ jq -se --arg text "/var/tmp/watch-attach attached to ${REACHED_EXE} (process ${R
     fail "an attach from the audit rules: ${FOUND}"
 echo "INJECTION=off" >>"${AMETHYSTORA_SECURITY_CONF}"
 
+# An autostart entry turned off as Control's Starting with you does it (amethystora-startup): a file holding exactly
+# "[Desktop Entry]" and "Hidden=true" is recorded only; one with a command in it, or a link to such a file, is said
+echo "PERSISTENCE=on" >>"${AMETHYSTORA_SECURITY_CONF}"
+mkdir -p "${R}/var/home/alice/.config/autostart"
+printf '[Desktop Entry]\nHidden=true\n' >"${R}/var/home/alice/.config/autostart/watch-hidden.desktop"
+printf '[Desktop Entry]\nHidden=true\nExec=/var/tmp/watch-run\n' >"${R}/var/home/alice/.config/autostart/watch-hidden-exec.desktop"
+printf '[Desktop Entry]\nHidden=true\n' >"${T}/watch-hidden-elsewhere.desktop"
+ln -s "${T}/watch-hidden-elsewhere.desktop" "${R}/var/home/alice/.config/autostart/watch-hidden-link.desktop"
+STEP=300
+{
+    opened 1201 71 /usr/bin/python3.14 /var/home/alice/.config/autostart/watch-hidden.desktop persistence
+    opened 1202 72 /usr/bin/python3.14 /var/home/alice/.config/autostart/watch-hidden-exec.desktop persistence
+    opened 1203 73 /usr/bin/python3.14 /var/home/alice/.config/autostart/watch-hidden-link.desktop persistence
+    close 1299
+} >>"${AMETHYSTORA_WATCH_AUDIT}"
+before="$(wc -l <"${HISTORY}")"
+timeout 120 "${WATCH}" >/dev/null || fail "the run with autostart entries turned off failed"
+# (turned on again, the part reads from the last run, which says the earlier steps' entries once more)
+FOUND="$(tail -n +"$((before + 1))" "${HISTORY}" | jq -c 'select(.key == "persistence" and (.text | test("autostart/watch-hidden")))')"
+jq -se 'length == 3
+    and any(.[]; .level == "quiet" and (.text | test("autostart/watch-hidden[.]desktop using")))
+    and any(.[]; .level == "normal" and (.text | test("autostart/watch-hidden-exec[.]desktop using")))
+    and any(.[]; .level == "normal" and (.text | test("autostart/watch-hidden-link[.]desktop using")))' \
+    <<<"${FOUND}" >/dev/null || fail "autostart entries turned off: ${FOUND}"
+rm -f "${R}/var/home/alice/.config/autostart"/watch-hidden*.desktop "${T}/watch-hidden-elsewhere.desktop"
+echo "PERSISTENCE=off" >>"${AMETHYSTORA_SECURITY_CONF}"
+
 # Programs that accept connections, from a stand-in ss: the image's own passim is recorded, and one nobody
 # knows is said, with what allows it
 mkdir -p "${T}/ss-bin"

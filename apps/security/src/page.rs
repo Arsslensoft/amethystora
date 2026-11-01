@@ -831,7 +831,7 @@ fn nav_of(page: &str) -> &'static str {
     match page {
         "scan" | "scanning" | "result" => "scan",
         "network" => "network",
-        "apps" => "apps",
+        page if page == "apps" || page.starts_with("apps/") => "apps",
         "containers" => "containers",
         "events" => "events",
         page if page == "settings" || page.starts_with("settings/") => "settings",
@@ -1035,7 +1035,8 @@ impl Security {
             "scanning" => self.scanning_page(),
             "result" => self.result_page(),
             "network" => self.network_page(),
-            "apps" => self.apps_page(),
+            "apps" => self.apps_page(None),
+            page if page.starts_with("apps/") => self.apps_page(Some(&page["apps/".len()..])),
             "containers" => self.containers_page(),
             "settings" => self.settings_page(),
             "settings/duress" => self.duress_page(),
@@ -2384,7 +2385,8 @@ impl Security {
         row
     }
 
-    fn apps_page(&self) -> gtk::Widget {
+    /// What every Flatpak app can reach; with `focus`, the app the app grid's What can it reach? asked about comes first
+    fn apps_page(&self, focus: Option<&str>) -> gtk::Widget {
         let data = self.state.borrow().permissions.clone();
         let apps = data.as_ref().map(|d| d.apps.clone()).unwrap_or_default();
         let collator = i18n::with(|i18n| i18n.collator());
@@ -2409,6 +2411,28 @@ impl Security {
         )
         .upcast()];
         children.extend(self.notice_widget());
+        if let Some(id) = focus {
+            let found = apps.iter().find(|app| app.app == id);
+            let title = found.map(|app| app.name.clone()).filter(|name| !name.is_empty()).unwrap_or_else(|| id.to_string());
+            let shown = match (&data, found) {
+                (None, _) => empty(&t!("Reading…")),
+                (Some(data), _) if data.error.is_some() => empty(data.error.as_deref().unwrap_or("")),
+                (Some(_), None) => empty(&t!("No Flatpak app with that ID is installed.")),
+                (Some(_), Some(app)) => {
+                    let mut rows: Vec<gtk::Widget> = Vec::new();
+                    if app.reaches.is_empty() {
+                        rows.push(empty(&t!("It reaches nothing beyond its sandbox without asking.")).upcast());
+                    } else {
+                        rows.push(self.app_row(app).upcast());
+                    }
+                    if app.network || app.network_blocked {
+                        rows.push(self.app_network_row(app).upcast());
+                    }
+                    list_card(rows)
+                }
+            };
+            children.push(section(&title, &shown, None).upcast());
+        }
         if !leaving.is_empty() {
             let title = if leaving.len() == 1 {
                 t!("{name} can leave its sandbox", name = isolate(&leaving[0].name))
@@ -2979,6 +3003,18 @@ mod tests {
         assert!(!backend::openable("settings/duress"));
         assert!(!backend::openable("settings/"));
         assert!(!backend::openable("result"));
+    }
+
+    #[test]
+    fn opens_the_apps_page_on_one_flatpak() {
+        assert!(backend::openable("apps/org.gnome.TextEditor"));
+        assert!(backend::openable("apps/com.example.My_App-2"));
+        assert_eq!(nav_of("apps/org.gnome.TextEditor"), "apps");
+        assert_eq!(recipe("apps/org.gnome.TextEditor"), "ame security apps");
+        for wrong in ["apps/", "apps/firefox", "apps/-org.x.Y", "apps/org..x", "apps/org.x.Y/../z", "apps/org.x Y.z", "apps/1org.x.y"] {
+            assert!(!backend::openable(wrong), "{wrong}");
+        }
+        assert!(!backend::openable(&format!("apps/org.{}.x", "a".repeat(300))));
     }
 
     #[test]

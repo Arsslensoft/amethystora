@@ -1,0 +1,11 @@
+[Unit]
+Description=Downloads keeps itself tidy
+Documentation=file:///usr/share/amethystora/manual/software.md
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/amethystora-tidy-downloads run
+# The notice it raises waits ten minutes for Undo at most
+TimeoutStartSec=15min
+Nice=19
+IOSchedulingClass=idle

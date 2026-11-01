@@ -1,0 +1,12 @@
+[Unit]
+Description=Downloads keeps itself tidy
+Documentation=file:///usr/share/amethystora/manual/software.md
+
+[Timer]
+OnCalendar=daily
+# A computer that was off at the time tidies when it is next on
+Persistent=true
+RandomizedDelaySec=1h
+
+[Install]
+WantedBy=timers.target

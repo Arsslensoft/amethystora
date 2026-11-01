@@ -194,6 +194,11 @@ pub fn keybinding(list: Option<&List>, action: &str, schema: &str, key: &str, ac
     core::keybinding(list, action, schema, key, accel).map_err(words)
 }
 
+/// One of the actions the list gave a row of a rows entry: what starts at login, an app changed in the grid
+pub fn row(list: Option<&List>, card: &str, action: &str, id: &str) -> Result<Run, String> {
+    core::row(list, card, action, id).map_err(words)
+}
+
 // --- Text shortcuts ---------------------------------------------------------------------------------------
 
 /// A text shortcut added (or its text changed) or removed: an abbreviation the list named, or one with its text

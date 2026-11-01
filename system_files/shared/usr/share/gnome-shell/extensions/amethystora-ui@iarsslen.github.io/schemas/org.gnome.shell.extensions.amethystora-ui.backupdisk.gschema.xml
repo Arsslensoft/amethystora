@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Your backup disk, recognized: Amethystora UI's backupdisk module. -->
+<schemalist>
+  <schema id="org.gnome.shell.extensions.amethystora-ui.backupdisk" path="/org/gnome/shell/extensions/amethystora-ui/backupdisk/">
+    <key name="ask" type="b">
+      <default>true</default>
+      <summary>Your backup disk, recognized</summary>
+      <description>Plugging in the disk the backup goes to (a local restic repository on it, as ame backup setup wrote it in ~/.config/amethystora/backup.env) asks whether to back up now, starts the account's own backup, and says when the disk is safe to unplug. Nothing else is read, and the backup's key and settings are left alone.</description>
+    </key>
+  </schema>
+</schemalist>

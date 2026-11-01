@@ -317,7 +317,9 @@ const PYTHON = ['usr/libexec/amethystora-text-shortcuts',
     // Files' What is using this? and Convert (plans/ui-ideas/spec-tools.md)
     'usr/libexec/amethystora-what-uses', 'usr/libexec/amethystora-convert',
     // A missing command, found (plans/ui-ideas/spec-time.md)
-    'usr/libexec/amethystora-missing-command'];
+    'usr/libexec/amethystora-missing-command',
+    // Downloads tidied (plans/ui-ideas/spec-apps.md)
+    'usr/libexec/amethystora-tidy-downloads'];
 const SHELL = ['usr/libexec/amethystora-security-status', 'usr/libexec/amethystora-app-permissions', 'usr/libexec/amethystora-layout-offer',
     'usr/libexec/amethystora-control-list', 'usr/libexec/amethystora-security-config', 'usr/libexec/amethystora-hardening',
     'usr/libexec/amethystora-phone-link-notice', 'usr/libexec/amethystora-deja-dup-notice',
@@ -327,6 +329,8 @@ const SHELL = ['usr/libexec/amethystora-security-status', 'usr/libexec/amethysto
     'usr/libexec/amethystora-clean-copy',
     // Restart while you are away: its notice of a night that did not restart
     'usr/libexec/amethystora-night-restart',
+    // Files' New Document menu: the templates' names
+    'usr/share/amethystora/user-setup.hooks.d/28-templates.sh',
     // The callers of amethystora-notify-users --msgid, which mark their messages with N_
     'usr/libexec/amethystora-scan-alert', 'usr/libexec/amethystora-clamav-onaccess', 'usr/libexec/amethystora-lynis-audit',
     'usr/libexec/amethystora-driver-status', 'usr/libexec/amethystora-gpu-check', 'usr/libexec/amethystora-raid',

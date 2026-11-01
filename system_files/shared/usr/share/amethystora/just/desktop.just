@@ -3884,7 +3884,7 @@ hints ACTION="":
             ;;
     esac
 
-# The app grid: recent [on|off], the row of the apps used most at its top (without on or off, it flips); or folders reset, its folders as the image has them
+# The app grid: recent [on|off], the row of the apps used most at its top (without on or off, it flips); folders reset, its folders as the image has them; or order custom|name|use|kind, where you put each icon, A to Z, by use or by kind
 [positional-arguments]
 app-grid WHAT="" VALUE="":
     #!/usr/bin/bash
@@ -3921,8 +3921,140 @@ app-grid WHAT="" VALUE="":
             gsettings reset org.gnome.shell app-picker-layout
             echo "$(gettext "The app grid's folders are the image's again.")"
             ;;
+        order/custom | order/name | order/use | order/kind)
+            /usr/libexec/amethystora-app-look order "$2"
+            case "$2" in
+                custom) echo "$(gettext "The app grid is in your own order again: where you put each icon.")" ;;
+                name) echo "$(gettext "The app grid is in order from A to Z, after your folders.")" ;;
+                use) echo "$(gettext "The app grid has the apps you use most first, after your folders.")" ;;
+                kind) echo "$(gettext "The app grid has its apps by kind, after your folders.")" ;;
+            esac
+            ;;
+        order/)
+            echo "$(gsettings get "${schema}" order | tr -d "'")"
+            ;;
         *)
-            echo "usage: ame desktop app-grid recent [on|off] | folders reset"
+            echo "usage: ame desktop app-grid recent [on|off] | folders reset | order [custom|name|use|kind]"
+            exit 64
+            ;;
+    esac
+
+# One app in the app grid and the search: hide ID, show ID, rename ID [NAME] (without a name, its own again), icon ID
+# PACK|reset|picture FILE. ID is its launcher's, such as org.gnome.Calculator.desktop. Nothing is written but the app
+# grid's own settings: no launcher of your own, which the security watcher would read as planted.
+[positional-arguments]
+app *ARGS:
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    usage() {
+        echo "usage: ame desktop app hide ID | show ID | rename ID [NAME] | icon ID PACK|reset | icon ID picture FILE"
+        exit 64
+    }
+    [[ $# -ge 2 ]] || usage
+    what="$1" id="$2"
+    case "${what}" in
+        hide)
+            [[ $# -eq 2 ]] || usage
+            /usr/libexec/amethystora-app-look hide "${id}"
+            echo "$(eval_gettext "\${id} is hidden from the app grid and the search. It still opens from a terminal and from Open With.")"
+            ;;
+        show)
+            [[ $# -eq 2 ]] || usage
+            /usr/libexec/amethystora-app-look show "${id}"
+            echo "$(eval_gettext "\${id} is in the app grid and the search again.")"
+            ;;
+        rename)
+            [[ $# -le 3 ]] || usage
+            /usr/libexec/amethystora-app-look rename "${id}" "${3:-}"
+            if [[ -n "${3:-}" ]]; then
+                echo "$(eval_gettext "\${id} has a name of your own in the app grid.")"
+            else
+                echo "$(eval_gettext "\${id} has its own name again.")"
+            fi
+            ;;
+        icon)
+            [[ $# -ge 3 ]] || usage
+            if [[ "$3" == picture ]]; then
+                [[ $# -eq 4 ]] || usage
+                file="$(realpath -e -- "$4" 2>/dev/null)" || { echo "$(gettext "There is no such picture.")"; exit 1; }
+                if ! /usr/libexec/amethystora-app-look icon "${id}" picture "${file}"; then
+                    echo "$(gettext "That picture could not be used. Pick a PNG, JPEG, SVG or WebP picture.")"
+                    exit 1
+                fi
+                echo "$(eval_gettext "\${id} shows your picture as its icon.")"
+            else
+                [[ $# -eq 3 ]] || usage
+                /usr/libexec/amethystora-app-look icon "${id}" "$3"
+                if [[ "$3" == reset ]]; then
+                    echo "$(eval_gettext "\${id} has its own icon again.")"
+                else
+                    echo "$(eval_gettext "\${id} shows its icon from another pack.")"
+                fi
+            fi
+            ;;
+        *)
+            usage
+            ;;
+    esac
+
+# Downloads tidied once a day (off until turned on): installers opened more than a week ago to the Trash, other files
+# older than a month into a folder for their month. on, off, undo (the last tidying put back), or now
+[positional-arguments]
+tidy-downloads ACTION="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    timer=amethystora-tidy-downloads.timer
+    case "${1:-}" in
+        on)
+            systemctl --user enable --now "${timer}" >/dev/null 2>&1
+            echo "$(gettext "Downloads keeps itself tidy: once a day, from now on. Nothing is deleted, and Undo puts the last tidying back.")"
+            ;;
+        off)
+            systemctl --user disable --now "${timer}" >/dev/null 2>&1 || true
+            echo "$(gettext "Downloads is left as it is.")"
+            ;;
+        undo)
+            /usr/libexec/amethystora-tidy-downloads undo
+            ;;
+        now)
+            /usr/libexec/amethystora-tidy-downloads run
+            ;;
+        "")
+            if systemctl --user is-enabled --quiet "${timer}" 2>/dev/null; then echo on; else echo off; fi
+            ;;
+        *)
+            echo "usage: ame desktop tidy-downloads on|off|undo|now"
+            exit 64
+            ;;
+    esac
+
+# When the disk your backup goes to is plugged in: Back up now?, then Safe to unplug (on as the image ships)
+[positional-arguments]
+backup-disk STATE="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.backupdisk
+    state="${1:-}"
+    if [[ -z "${state}" ]]; then
+        if [[ "$(gsettings get "${schema}" ask)" == true ]]; then state=off; else state=on; fi
+    fi
+    case "${state}" in
+        on)
+            gsettings set "${schema}" ask true
+            echo "$(gettext "Plugging in your backup disk asks whether to back up now.")"
+            ;;
+        off)
+            gsettings set "${schema}" ask false
+            echo "$(gettext "Plugging in your backup disk asks nothing.")"
+            ;;
+        *)
+            echo "usage: ame desktop backup-disk on|off"
             exit 64
             ;;
     esac

@@ -25,7 +25,7 @@
 #                bars, today, breaks, search, emoji, bezel, audio, sound, wm, mutter, look, transitions, hints, appgrid,
 #                focus, power,
 #                access, touch, present, screenshot, deskwidgets, shelf, desks,
-#                quit, privacy, tools, input, keyboard, paste, keys, rest, living}: the window
+#                quit, privacy, tools, input, keyboard, paste, keys, rest, living, backupdisk}: the window
 #                layout, the dock's apps, the keys of
 #                keybindings (the image's custom keybindings by their id, never a command), the tiling's
 #                settings by their key in its schema (TILING_KEYS: numbers, switches and lists, never its
@@ -245,7 +245,12 @@ TRANSITIONS_KEYS='{"reveal": ["b"]}'
 HINTS=org.gnome.shell.extensions.amethystora-ui.hints
 HINTS_KEYS='{"enabled": ["b"]}'
 APPGRID=org.gnome.shell.extensions.amethystora-ui.appgrid
-APPGRID_KEYS='{"recent": ["b"]}'
+# ...its order and the apps hidden from it and the search, by their launchers' IDs. Never names or icons of the
+# account's own: a name is the person's own text, and a picture is a file of this machine.
+APPGRID_KEYS='{"recent": ["b"], "order": ["s", ["custom", "name", "use", "kind"]], "hidden": ["as", "launchers"]}'
+# Your backup disk recognized when it is plugged in: the switch only, never where the backup goes
+BACKUPDISK=org.gnome.shell.extensions.amethystora-ui.backupdisk
+BACKUPDISK_KEYS='{"ask": ["b"]}'
 # The battery explained and the busy app's chip (Power you can see)
 POWER=org.gnome.shell.extensions.amethystora-ui.power
 POWER_KEYS='{"battery-details": ["b"], "busy-app": ["b"], "device-batteries": ["b"]}'
@@ -459,7 +464,7 @@ if type != "object" then "it is not a JSON object" else
             "windows", "dock", "pill", "quick", "bars", "today", "breaks", "search", "emoji", "bezel", "audio", "sound",
             "wm", "mutter", "look", "transitions",
             "hints", "appgrid", "focus", "power", "access", "touch", "present",
-            "screenshot", "deskwidgets", "shelf", "desks", "quit", "privacy", "tools", "input", "keyboard", "paste", "keys", "rest", "living"]; "settings."),
+            "screenshot", "deskwidgets", "shelf", "desks", "quit", "privacy", "tools", "input", "keyboard", "paste", "keys", "rest", "living", "backupdisk"]; "settings."),
         (if type == "object" then
             at("layout"; if IN("tiling", "classic") then empty else "settings.layout is tiling or classic" end),
             at("favorites"; each("settings.favorites";
@@ -639,6 +644,10 @@ if type != "object" then "it is not a JSON object" else
             at("living"; only($living | keys; "settings.living."),
                 (if type == "object" then to_entries[] | select(.key | IN($living | keys[])) | $living[.key] as $spec
                     | if .value | valid($spec) then empty else "settings.living.\(.key) is \(wanted($spec))" end
+                 else empty end)),
+            at("backupdisk"; only($backupdisk | keys; "settings.backupdisk."),
+                (if type == "object" then to_entries[] | select(.key | IN($backupdisk | keys[])) | $backupdisk[.key] as $spec
+                    | if .value | valid($spec) then empty else "settings.backupdisk.\(.key) is \(wanted($spec))" end
                  else empty end))
         else empty end))
 end
@@ -668,6 +677,7 @@ check() {
         --argjson input "${INPUT_KEYS}" --argjson keyboard "${KEYBOARD_KEYS}" --argjson paste "${PASTE_KEYS}" \
         --argjson superkeys "${KEYS_KEYS}" \
         --argjson rest "${REST_KEYS}" --argjson living "${LIVING_KEYS}" \
+        --argjson backupdisk "${BACKUPDISK_KEYS}" \
         "${TILING_JQ} ${CHECK}" 2>&1)" ||
         die "$1 is not JSON."
     [[ -z "${problems}" ]] ||
@@ -810,7 +820,7 @@ current() {
             jq -nc --arg k "${key}" --argjson v "${value:-null}" '{pill: {($k): $v}}'
         done < <(jq -r '.settings.pill // {} | keys[]' <<<"$1")
         for area in quick bars today breaks search emoji bezel audio sound wm mutter transitions hints appgrid focus power \
-            access touch present screenshot deskwidgets shelf desks quit privacy tools input keyboard paste keys rest living; do
+            access touch present screenshot deskwidgets shelf desks quit privacy tools input keyboard paste keys rest living backupdisk; do
             case "${area}" in
                 input) schema="${INPUT}" ;;
                 keyboard) schema="${KEYBOARD}" ;;
@@ -844,6 +854,7 @@ current() {
                 tools) schema="${TOOLS}" ;;
                 rest) schema="${REST}" ;;
                 living) schema="${LIVING}" ;;
+                backupdisk) schema="${BACKUPDISK}" ;;
             esac
             while read -r key; do
                 value="$(gsettings get "${schema}" "${key}" 2>/dev/null | as_json)"
@@ -861,7 +872,8 @@ current() {
         power: {}, access: {},
         touch: {}, present: {},
         screenshot: {}, deskwidgets: {}, shelf: {}, desks: {},
-        quit: {}, privacy: {}, tools: {}, input: {}, keyboard: {}, paste: {}, keys: {}, rest: {}, living: {}};
+        quit: {}, privacy: {}, tools: {}, input: {}, keyboard: {}, paste: {}, keys: {}, rest: {}, living: {},
+        backupdisk: {}};
         . * $x)'
 }
 
@@ -1005,7 +1017,7 @@ def brew($x; $k): $x.brew[$k] // [];
     (("quick", "bars", "today", "breaks", "search", "emoji", "bezel", "audio", "sound", "wm", "mutter", "transitions",
         "hints", "appgrid", "focus", "power",
         "access", "touch", "present",
-        "screenshot", "deskwidgets", "shelf", "desks", "quit", "privacy", "tools", "input", "keyboard", "paste", "keys", "rest", "living") as $a
+        "screenshot", "deskwidgets", "shelf", "desks", "quit", "privacy", "tools", "input", "keyboard", "paste", "keys", "rest", "living", "backupdisk") as $a
     | ($fs[$a] // {} | to_entries[] | .key as $k | $now[$a][$k] as $v
         | select(.value != $v) | {area: $a, action: "set", key: $k, to: .value, from: $v}
         + if $v == null then {ok: false, why: "this machine has no such \({quick: "quick settings", bezel: "screen corners",
@@ -1087,7 +1099,8 @@ def text:
         or .area == "present" or .area == "screenshot" or .area == "deskwidgets"
         or .area == "shelf" or .area == "desks" or .area == "quit" or .area == "privacy" or .area == "tools"
         or .area == "input" or .area == "keyboard" or .area == "paste" or .area == "keys"
-        or .area == "rest" or .area == "living" then
+        or .area == "rest" or .area == "living"
+        or .area == "backupdisk" then
         {quick: "quick settings'", bars: "the top bar's", today: "the calendar's", breaks: "the rest reminders'",
             search: "the search's", emoji: "the emoji picker's", bezel: "the screen's", audio: "the audio module's", sound: "the desktop's",
             wm: "the windows'", mutter: "the windows'",
@@ -1099,7 +1112,8 @@ def text:
             privacy: "the privacy settings'", tools: "the tools'",
             input: "the input sources'", keyboard: "the keyboard's",
             paste: "middle-click paste's", keys: "the Super key's",
-            rest: "the resting screen's", living: "the living wallpaper's"}[.area]
+            rest: "the resting screen's", living: "the living wallpaper's",
+            backupdisk: "the backup disk's"}[.area]
         + " \(.key)"
         + if .action == "set" then ": \(.to | tojson)" + if .from == null then "" else ", in place of \(.from | tojson)" end
           else ", \(.from | tojson) here, back to the image's" end
@@ -1343,7 +1357,7 @@ add_all() {
         gsettings set "${PILL}" "${name}" "$(jq -c .to <<<"${change}")" || FAILED+=("the live pill's ${name}")
     done
     for area in quick bars today breaks search emoji bezel audio sound wm mutter transitions hints appgrid focus power \
-        access touch present screenshot deskwidgets shelf desks quit privacy tools input keyboard paste keys rest living; do
+        access touch present screenshot deskwidgets shelf desks quit privacy tools input keyboard paste keys rest living backupdisk; do
         case "${area}" in
             input) schema="${INPUT}" label="the input sources'" ;;
             keyboard) schema="${KEYBOARD}" label="the keyboard's" ;;
@@ -1377,6 +1391,7 @@ add_all() {
             tools) schema="${TOOLS}" label="the tools'" ;;
             rest) schema="${REST}" label="the resting screen's" ;;
             living) schema="${LIVING}" label="the living wallpaper's" ;;
+            backupdisk) schema="${BACKUPDISK}" label="the backup disk's" ;;
         esac
         mapfile -t changes < <(of "${todo}" "${area}")
         for change in "${changes[@]}"; do
@@ -1480,7 +1495,7 @@ remove_all() {
         gsettings reset "${PILL}" "${name}" || FAILED+=("the live pill's ${name}")
     done
     for area in quick bars today breaks search emoji bezel audio sound wm mutter transitions hints appgrid focus power \
-        access touch present screenshot deskwidgets shelf desks quit privacy tools input keyboard paste keys rest living; do
+        access touch present screenshot deskwidgets shelf desks quit privacy tools input keyboard paste keys rest living backupdisk; do
         case "${area}" in
             input) schema="${INPUT}" label="the input sources'" ;;
             keyboard) schema="${KEYBOARD}" label="the keyboard's" ;;
@@ -1514,6 +1529,7 @@ remove_all() {
             tools) schema="${TOOLS}" label="the tools'" ;;
             rest) schema="${REST}" label="the resting screen's" ;;
             living) schema="${LIVING}" label="the living wallpaper's" ;;
+            backupdisk) schema="${BACKUPDISK}" label="the backup disk's" ;;
         esac
         mapfile -t names < <(of "${gone}" "${area}" | jq -r .key)
         for name in "${names[@]}"; do
@@ -1642,6 +1658,7 @@ bake() {
           section("org.gnome.shell.extensions.amethystora-ui.keys"; ($s.keys // {})),
           section("org.gnome.shell.extensions.amethystora-ui.rest"; ($s.rest // {})),
           section("org.gnome.shell.extensions.amethystora-ui.living"; ($s.living // {})),
+          section("org.gnome.shell.extensions.amethystora-ui.backupdisk"; ($s.backupdisk // {})),
           section("org.gnome.shell.extensions.amethystora-ui.theme";
             ($s.look // {} | with_entries(select(.key | IN("accent-per-workspace", "workspace-accents"))))),
           section("org.gnome.shell.extensions.amethystora-transitions"; ($s.transitions // {})),

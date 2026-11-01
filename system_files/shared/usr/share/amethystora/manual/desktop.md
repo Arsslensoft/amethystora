@@ -565,6 +565,43 @@ ame desktop app-grid recent off        # no row of recent apps; on brings it bac
 ame desktop app-grid folders reset     # the folders as the image has them, forgetting your changes
 ```
 
+### Hide, rename or change an app
+
+Right-click an app in the grid, a folder or the search. **Rename…** changes the name under its icon, and only that:
+its launcher stays as it is, and the search finds it by both names. **Change icon…** shows the same app as each of the
+installed icon packs draws it, and **A picture of your own…** takes a picture (PNG, JPEG, SVG or WebP), which is made
+into an icon of its own in `~/.local/share/amethystora/app-icons`; **Reset** gives it its own icon back. The new name and
+icon show in the grid, the dock, the search and the window switcher. An app whose icon is its maker's logo has no other
+pack's drawing to choose: no pack draws another maker's logo.
+
+**Hide from the grid and search** takes it out of both at once, with **Undo** in the notice. A hidden app still opens
+from a terminal and from **Open With**, and stays in the dock if it is pinned there; shown again, it comes back at the
+end of the grid, as a newly installed app does. **What can it reach?**, on a
+Flatpak app, opens Security's Apps page on that app: what it can reach beyond its sandbox, and what Security can change
+about it. Nothing in the menu changes a permission.
+
+Control's **Apps** page lists every app you hid, renamed or gave another icon, each with the way back. Nothing is
+written but the app grid's own settings: no launcher of your own, which the [security watcher](security.md) would read
+as something planted.
+
+```bash
+ame desktop app hide org.gnome.Calculator.desktop                    # show brings it back
+ame desktop app rename org.gnome.Calculator.desktop "Sums"           # without a name, its own again
+ame desktop app icon org.gnome.Calculator.desktop amethystora-neon   # reset, or picture FILE
+```
+
+### The app grid in order
+
+The grid keeps the icons where you put them, as GNOME does. Control's **The app grid's order** (on the Desktop page)
+sorts it instead: **A to Z**, **By use**, the apps you use most first, from GNOME's own record of use, kept on this
+machine, or **By kind**, from what each app says it is (work, pictures and sound, development, games, then the
+system's). Your folders stay first, as you left them. Going back to **Where you put them** gives your own order back as
+it was.
+
+```bash
+ame desktop app-grid order name        # custom, name, use or kind
+```
+
 ## The clipboard
 
 `Super+Shift+V` opens the clipboard history: the last 15 things you copied. Pick one to copy it
@@ -1532,6 +1569,27 @@ needs a decoder Fedora does not ship. `ame desktop files-convert off` takes the 
 
 These are scripts in `~/.local/share/nautilus/scripts`. The first four are written once for each account: delete one
 and it stays gone. Convert is there exactly while it is on.
+
+### New documents
+
+Right-click inside a folder in Files and pick **New Document**: an **Empty text**, a **Markdown note**, a **Shell
+script** or a **Python script**, with its first line written, ready to be named. They are the files in your Templates
+folder, written once when it was empty, in your language; change them, add your own or delete them, and Files offers
+what is there. A script made this way is a text file until you make it executable yourself.
+
+### Downloads keeps itself tidy
+
+Off until you turn it on, in Control's **Apps** page or with `ame desktop tidy-downloads on`. Once a day, installers in
+your Downloads folder (`.exe`, `.msi`, `.deb`, `.rpm`, `.AppImage`, `.flatpakref` and the like) that were last opened
+more than a week ago go to the [trash](#the-trash), and other files last opened and changed more than a month ago go into
+a folder for their month, such as `2026-09`. The newest stay where they are. Only the files in Downloads itself are
+moved, never a folder, a hidden file or one still downloading, and never over another file. Nothing is deleted: the
+trash keeps what it is given for 30 days. A notice says what moved, with **Undo**, and `ame desktop tidy-downloads undo`
+puts the last tidying back later.
+
+```bash
+ame desktop tidy-downloads on          # off, undo, or now to tidy at once
+```
 
 ## The trash
 

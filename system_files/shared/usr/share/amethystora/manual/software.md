@@ -64,7 +64,28 @@ Refine, DistroShelf, and on the developer image Podman Desktop and Builder.
 
 What each app can reach beyond its sandbox, what it asked for and what you granted it, is on the
 **Apps** page of the Security app, and in a terminal with `ame security apps`
-([App permissions](security.md#app-permissions)).
+([App permissions](security.md#app-permissions)). **What can it reach?** in an app's menu in the app grid opens that
+page on the app.
+
+### What starts with you
+
+Control's **Apps** page, under **Starting with you**, lists every program that starts when you log in: the autostart
+entries apps and you put in `~/.config/autostart`, those that came with the system, and your account's own services,
+each with who put it there (**The app**, **You**, **The system**, **Amethystora** or **Unknown**, for an entry whose
+program is not installed). **Off** stops it starting from the next login, and does not uninstall it: an autostart entry
+gets a copy under its name in `~/.config/autostart` that only says `Hidden=true`, the way GNOME has always let an account
+turn one off, with your own entry kept aside in `~/.local/share/amethystora/startup-off`; a Flatpak app is also refused
+running in the background, through its portal permission; a service of yours is disabled. **On** puts back what was
+there. Nothing is deleted. Amethystora's own (the phone link, the containers' upgrade, the backup...) are listed, and
+switched where each is set.
+
+The [security watcher](security.md) reads every new autostart entry: one that only says `Hidden=true` starts nothing,
+so it is recorded and not said; anything more there is said as before.
+
+```bash
+ame apps startup                        # what starts, who put it there, and its ID
+ame apps startup off autostart:org.example.Chat.desktop   # on brings it back
+```
 
 ## Command line tools: Homebrew
 

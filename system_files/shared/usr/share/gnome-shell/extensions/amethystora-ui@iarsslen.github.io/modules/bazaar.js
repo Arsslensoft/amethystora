@@ -92,7 +92,8 @@ function flatpakOf(app) {
     return APP_ID.test(id) ? {id, installation: where[1]} : null;
 }
 
-function flatpakId(app) {
+// (the app grid's What can it reach? asks it too)
+export function flatpakId(app) {
     return flatpakOf(app)?.id ?? null;
 }
 

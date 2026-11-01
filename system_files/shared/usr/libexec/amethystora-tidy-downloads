@@ -1,0 +1,256 @@
+#!/usr/bin/python3 -I
+"""Downloads keeps itself tidy (offered, off): `ame desktop tidy-downloads`, amethystora-tidy-downloads.timer.
+
+    amethystora-tidy-downloads run          once: tidy the Downloads folder, and say what moved, with Undo
+    amethystora-tidy-downloads undo         put back what the last run moved, where it still can
+    amethystora-tidy-downloads status --json
+
+Run as the account, never as root, in the Downloads folder's own top level only (xdg-user-dirs' DOWNLOAD, never the
+home folder itself), on plain files only: never a folder, a link, a hidden file or a download still arriving.
+
+- An installer (.exe, .msi, .deb, .rpm, .AppImage, .flatpakref...) last opened and last changed more than 7 days ago
+  goes to the Trash, the freedesktop one Files empties, whose own 30 days then apply;
+- any other file last opened and last changed more than 30 days ago goes into a folder named for the month of its
+  change, YYYY-MM, beside it.
+
+Nothing is deleted and nothing is moved over another file. What moved is written to
+~/.local/state/amethystora/tidy-downloads.json (and a .bak copy), which `undo` reads. Exit 0, or 64 for usage.
+"""
+
+import gettext
+import json
+import os
+import re
+import subprocess
+import sys
+import time
+import urllib.parse
+
+import gi
+
+gi.require_version("GLib", "2.0")
+from gi.repository import GLib  # noqa: E402
+
+translation = gettext.translation("amethystora", fallback=True)
+_ = translation.gettext
+ngettext = translation.ngettext
+
+DAY = 24 * 3600
+INSTALLER_DAYS = 7
+OTHER_DAYS = 30
+INSTALLERS = (".exe", ".msi", ".msix", ".msixbundle", ".appx", ".appxbundle", ".deb", ".rpm", ".appimage",
+              ".flatpakref", ".flatpak", ".flatpakrepo", ".dmg", ".pkg", ".apk", ".snap")
+ARRIVING = (".part", ".crdownload", ".download", ".partial", ".tmp", ".opdownload")
+MONTH = re.compile(r"^[0-9]{4}-[0-9]{2}$")
+# Moves kept for undo, at most
+KEPT = 5000
+
+
+def downloads():
+    folder = os.environ.get("AMETHYSTORA_TIDY_DOWNLOADS") or GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DOWNLOAD)
+    home = os.path.realpath(os.path.expanduser("~"))
+    if not folder or not os.path.isabs(folder) or os.path.islink(folder) or not os.path.isdir(folder):
+        return None
+    if os.path.realpath(folder) == home:
+        return None
+    return os.path.realpath(folder)
+
+
+def data_home():
+    return os.environ.get("XDG_DATA_HOME") or os.path.join(os.path.expanduser("~"), ".local", "share")
+
+
+def state_file():
+    state = os.environ.get("XDG_STATE_HOME") or os.path.join(os.path.expanduser("~"), ".local", "state")
+    return os.path.join(state, "amethystora", "tidy-downloads.json")
+
+
+def now():
+    return float(os.environ.get("AMETHYSTORA_TIDY_NOW") or time.time())
+
+
+def load():
+    for path in (state_file(), state_file() + ".bak"):
+        try:
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, dict) and isinstance(data.get("moves"), list):
+                return data
+        except (OSError, ValueError):
+            continue
+    return {"version": 1, "at": 0, "moves": [], "made": []}
+
+
+def save(data):
+    path = state_file()
+    os.makedirs(os.path.dirname(path), mode=0o700, exist_ok=True)
+    text = json.dumps(data)
+    for target in (path, path + ".bak"):
+        with open(target + ".new", "w", encoding="utf-8") as f:
+            f.write(text)
+        os.replace(target + ".new", target)
+
+
+def move(source, target):
+    # A link, then the old name taken away: the move fails rather than replace a file of the same name
+    os.link(source, target, follow_symlinks=False)
+    os.unlink(source)
+
+
+def trash(path, when):
+    # The freedesktop Trash in the account's data folder: the .trashinfo first, under a name nobody has, then the file
+    root = os.path.join(data_home(), "Trash")
+    files, info = os.path.join(root, "files"), os.path.join(root, "info")
+    os.makedirs(files, mode=0o700, exist_ok=True)
+    os.makedirs(info, mode=0o700, exist_ok=True)
+    if os.stat(files).st_dev != os.stat(path).st_dev:
+        return None
+    name = os.path.basename(path)
+    stem, dot, ext = name.partition(".")
+    for n in range(1, 1000):
+        candidate = name if n == 1 else f"{stem}.{n}{dot}{ext}"
+        info_path = os.path.join(info, candidate + ".trashinfo")
+        try:
+            fd = os.open(info_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        except FileExistsError:
+            continue
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write("[Trash Info]\nPath=%s\nDeletionDate=%s\n" % (
+                urllib.parse.quote(path), time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(when))))
+        target = os.path.join(files, candidate)
+        try:
+            move(path, target)
+        except OSError:
+            os.unlink(info_path)
+            return None
+        return target, info_path
+    return None
+
+
+def run():
+    folder = downloads()
+    if folder is None:
+        return 0
+    at = now()
+    data = {"version": 1, "at": int(at), "moves": [], "made": []}
+    trashed = filed = 0
+    try:
+        names = sorted(os.listdir(folder))
+    except OSError:
+        return 0
+    for name in names:
+        lower = name.lower()
+        if name.startswith(".") or lower.endswith(ARRIVING) or len(data["moves"]) >= KEPT:
+            continue
+        path = os.path.join(folder, name)
+        try:
+            st = os.lstat(path)
+        except OSError:
+            continue
+        if not os.path.isfile(path) or os.path.islink(path):
+            continue
+        last = max(st.st_atime, st.st_mtime)
+        if last > at:
+            continue
+        if lower.endswith(INSTALLERS):
+            if at - last < INSTALLER_DAYS * DAY:
+                continue
+            done = trash(path, at)
+            if done:
+                data["moves"].append({"from": path, "to": done[0], "info": done[1]})
+                trashed += 1
+            continue
+        if at - last < OTHER_DAYS * DAY:
+            continue
+        month = os.path.join(folder, time.strftime("%Y-%m", time.localtime(st.st_mtime)))
+        if os.path.lexists(month) and (os.path.islink(month) or not os.path.isdir(month)):
+            continue
+        if not os.path.exists(month):
+            try:
+                os.mkdir(month, 0o755)
+                data["made"].append(month)
+            except OSError:
+                continue
+        target = os.path.join(month, name)
+        try:
+            move(path, target)
+        except OSError:
+            continue
+        data["moves"].append({"from": path, "to": target})
+        filed += 1
+    if not data["moves"]:
+        return 0
+    save(data)
+    tell(trashed, filed)
+    return 0
+
+
+def undo():
+    data = load()
+    back = 0
+    for entry in reversed(data["moves"]):
+        source, target = entry.get("from"), entry.get("to")
+        if not (isinstance(source, str) and isinstance(target, str)):
+            continue
+        if os.path.lexists(source) or not os.path.isfile(target) or os.path.islink(target):
+            continue
+        try:
+            move(target, source)
+        except OSError:
+            continue
+        back += 1
+        info = entry.get("info")
+        if isinstance(info, str) and info.endswith(".trashinfo") and os.path.isfile(info):
+            os.unlink(info)
+    for month in data.get("made", []):
+        if isinstance(month, str) and MONTH.match(os.path.basename(month)):
+            try:
+                os.rmdir(month)
+            except OSError:
+                pass
+    save({"version": 1, "at": data.get("at", 0), "moves": [], "made": []})
+    print(ngettext("{count} file is back in Downloads.", "{count} files are back in Downloads.", back).format(count=back))
+    return 0
+
+
+def tell(trashed, filed):
+    # Said once, with Undo, for as long as somebody might answer; the run then ends whatever happens
+    notify = os.environ.get("AMETHYSTORA_TIDY_NOTIFY", "notify-send")
+    if notify == "none":
+        return
+    words = []
+    if trashed:
+        words.append(ngettext("{count} installer opened more than a week ago went to the Trash.",
+                              "{count} installers opened more than a week ago went to the Trash.", trashed).format(count=trashed))
+    if filed:
+        words.append(ngettext("{count} file older than a month went into a folder for its month.",
+                              "{count} files older than a month went into folders for their month.", filed).format(count=filed))
+    try:
+        answer = subprocess.run([notify, "--app-name=Amethystora", "--icon=folder-download", "--wait",
+                                 f"--action=undo={_('Undo')}", _("Downloads tidied"), " ".join(words)],
+                                capture_output=True, text=True, timeout=600).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return
+    if answer == "undo":
+        undo()
+
+
+def status():
+    data = load()
+    print(json.dumps({"at": data.get("at", 0), "moved": len(data.get("moves", [])), "folder": downloads()}))
+    return 0
+
+
+def main(argv):
+    if argv == ["run"]:
+        return run()
+    if argv == ["undo"]:
+        return undo()
+    if argv == ["status", "--json"]:
+        return status()
+    print("usage: amethystora-tidy-downloads run | undo | status --json", file=sys.stderr)
+    return 64
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

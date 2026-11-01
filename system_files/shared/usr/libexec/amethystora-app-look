@@ -1,0 +1,253 @@
+#!/usr/bin/python3 -I
+# The app grid's looks of the account's own (Amethystora UI's appgrid module, `ame desktop app-grid`): apps hidden
+# from the grid and the search, a name or an icon of an app's own, and the grid's order. Each is a key of
+# org.gnome.shell.extensions.amethystora-ui.appgrid, which the shell reads live; no launcher is ever written, since
+# one in the home folder is what the security watcher reads as planted. Run as the account, never as root.
+#
+#   amethystora-app-look list --json             what is hidden, renamed or re-iconed, and the order, for Control
+#   amethystora-app-look hide ID | show ID       ID is a launcher's, name.desktop
+#   amethystora-app-look rename ID [NAME]        without a NAME (or with an empty one), its own name again
+#   amethystora-app-look icon ID PACK|reset      PACK is an installed Amethystora icon pack that draws the app
+#   amethystora-app-look icon ID picture FILE    a picture of the account's own, decoded and written again as a
+#                                                256-pixel PNG into ~/.local/share/amethystora/app-icons
+#   amethystora-app-look order custom|name|use|kind
+#
+# Exit status: 0 done, 2 a value it does not take, 3 a picture it could not read, 64 usage.
+
+import json
+import os
+import re
+import sys
+import time
+import unicodedata
+
+import gi
+
+gi.require_version("Gio", "2.0")
+gi.require_version("GLib", "2.0")
+from gi.repository import Gio, GLib  # noqa: E402
+
+# GLib 2.86 moved the launchers' class to GioUnix; an older one has it in Gio
+try:
+    gi.require_version("GioUnix", "2.0")
+    from gi.repository import GioUnix  # noqa: E402
+    DesktopAppInfo = GioUnix.DesktopAppInfo
+except (ValueError, ImportError):
+    DesktopAppInfo = Gio.DesktopAppInfo
+
+SCHEMA = "org.gnome.shell.extensions.amethystora-ui.appgrid"
+LAUNCHER = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9._+-]{0,250}[.]desktop$")
+PACK = re.compile(r"^amethystora-[a-z][a-z-]{0,30}$")
+PICTURE = re.compile(r"^picture:[0-9]{1,12}$")
+ORDERS = ("custom", "name", "use", "kind")
+NAME_MAX = 64
+ICONS = "/usr/share/icons"
+SIZE = 256
+# A picture larger than this is not one anybody means for an icon
+PICTURE_MAX = 25 * 1024 * 1024
+
+
+def usage():
+    print("usage: amethystora-app-look list --json | hide ID | show ID | rename ID [NAME] | "
+          "icon ID PACK|reset | icon ID picture FILE | order custom|name|use|kind", file=sys.stderr)
+    sys.exit(64)
+
+
+def refuse(what):
+    print(f"amethystora-app-look: {what}", file=sys.stderr)
+    sys.exit(2)
+
+
+def clean(name):
+    # One line, no control or format character, 64 characters at most, as the shell shows it
+    text = "".join(" " if unicodedata.category(c) in ("Cc", "Cf", "Zl", "Zp") else c for c in name)
+    return " ".join(text.split())[:NAME_MAX]
+
+
+def settings():
+    source = Gio.SettingsSchemaSource.get_default()
+    if source is None or source.lookup(SCHEMA, True) is None:
+        print("amethystora-app-look: Amethystora UI's settings are not installed", file=sys.stderr)
+        sys.exit(1)
+    return Gio.Settings.new(SCHEMA)
+
+
+def launcher(app_id):
+    if not LAUNCHER.match(app_id or ""):
+        refuse(f"not a launcher's ID: {app_id!r}")
+    return app_id
+
+
+def own(app_id):
+    # The launcher as GLib finds it, or None when no app of that ID is installed
+    try:
+        return DesktopAppInfo.new(app_id)
+    except TypeError:
+        return None
+
+
+def own_name(app_id):
+    info = own(app_id)
+    return info.get_name() if info else None
+
+
+def pairs(gsettings, key):
+    return dict(gsettings.get_value(key).unpack())
+
+
+def write_pairs(gsettings, key, value):
+    gsettings.set_value(key, GLib.Variant("a{ss}", value))
+    Gio.Settings.sync()
+
+
+def pack_draws(pack, app_id):
+    # Whether an installed pack draws this app, by the names its launcher gives its icon (apps/scalable/NAME.svg)
+    if not PACK.match(pack):
+        return False
+    info = own(app_id)
+    icon = info.get_icon() if info else None
+    names = list(icon.get_names()) if isinstance(icon, Gio.ThemedIcon) else [app_id[: -len(".desktop")]]
+    return any("/" not in name and os.path.isfile(os.path.join(ICONS, pack, "apps", "scalable", f"{name}.svg"))
+               for name in names)
+
+
+def pictures_dir():
+    return os.path.join(GLib.get_user_data_dir(), "amethystora", "app-icons")
+
+
+def set_picture(gsettings, app_id, path):
+    gi.require_version("GdkPixbuf", "2.0")
+    from gi.repository import GdkPixbuf
+    try:
+        st = os.stat(path)
+    except OSError:
+        sys.exit(3)
+    if not os.path.isfile(path) or st.st_size > PICTURE_MAX or st.st_size == 0:
+        sys.exit(3)
+    try:
+        # GdkPixbuf's loaders (glycin's sandboxed ones where gdk-pixbuf is built with them); the shell only ever reads
+        # the PNG written here
+        pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(path, SIZE, SIZE, True)
+    except GLib.Error:
+        sys.exit(3)
+    folder = pictures_dir()
+    os.makedirs(folder, mode=0o700, exist_ok=True)
+    base = app_id[: -len(".desktop")]
+    stamp = str(int(time.time()))
+    target = os.path.join(folder, f"{base}-{stamp}.png")
+    temporary = target + ".new"
+    try:
+        pixbuf.savev(temporary, "png", [], [])
+        os.replace(temporary, target)
+    except (GLib.Error, OSError):
+        try:
+            os.unlink(temporary)
+        except OSError:
+            pass
+        sys.exit(3)
+    value = pairs(gsettings, "icons")
+    value[app_id] = f"picture:{stamp}"
+    write_pairs(gsettings, "icons", value)
+    forget_pictures(app_id, keep=target)
+
+
+def forget_pictures(app_id, keep=None):
+    # The app's earlier pictures, which nothing names any more
+    folder = pictures_dir()
+    base = app_id[: -len(".desktop")]
+    pattern = re.compile(re.escape(base) + r"-[0-9]{1,12}[.]png$")
+    try:
+        names = os.listdir(folder)
+    except OSError:
+        return
+    for name in names:
+        path = os.path.join(folder, name)
+        if pattern.match(name) and path != keep and os.path.isfile(path) and not os.path.islink(path):
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
+
+
+def listing(gsettings):
+    hidden = [i for i in gsettings.get_strv("hidden") if LAUNCHER.match(i)]
+    names = {i: clean(n) for i, n in pairs(gsettings, "names").items() if LAUNCHER.match(i) and clean(n)}
+    icons = {i: v for i, v in pairs(gsettings, "icons").items()
+             if LAUNCHER.match(i) and (PACK.match(v) or PICTURE.match(v))}
+    apps = []
+    for app_id in sorted(set(hidden) | set(names) | set(icons)):
+        name = own_name(app_id)
+        apps.append({
+            "id": app_id,
+            "own": name,
+            "installed": name is not None,
+            "hidden": app_id in hidden,
+            "name": names.get(app_id),
+            "icon": ("picture" if icons.get(app_id, "").startswith("picture:") else icons.get(app_id)),
+        })
+    order = gsettings.get_string("order")
+    return {"order": order if order in ORDERS else "custom", "apps": apps}
+
+
+def main(argv):
+    if not argv:
+        usage()
+    command, rest = argv[0], argv[1:]
+    gsettings = settings()
+    if command == "list":
+        if rest != ["--json"]:
+            usage()
+        print(json.dumps(listing(gsettings)))
+    elif command in ("hide", "show"):
+        if len(rest) != 1:
+            usage()
+        app_id = launcher(rest[0])
+        hidden = [i for i in gsettings.get_strv("hidden") if i != app_id]
+        if command == "hide":
+            hidden.append(app_id)
+        gsettings.set_strv("hidden", hidden)
+        Gio.Settings.sync()
+    elif command == "rename":
+        if len(rest) not in (1, 2):
+            usage()
+        app_id = launcher(rest[0])
+        name = clean(rest[1]) if len(rest) == 2 else ""
+        value = pairs(gsettings, "names")
+        if name and name != own_name(app_id):
+            value[app_id] = name
+        else:
+            value.pop(app_id, None)
+        write_pairs(gsettings, "names", value)
+    elif command == "icon":
+        if len(rest) < 2:
+            usage()
+        app_id = launcher(rest[0])
+        if rest[1] == "picture":
+            if len(rest) != 3 or not rest[2].startswith("/"):
+                usage()
+            set_picture(gsettings, app_id, rest[2])
+            return
+        if len(rest) != 2:
+            usage()
+        value = pairs(gsettings, "icons")
+        if rest[1] == "reset":
+            value.pop(app_id, None)
+            write_pairs(gsettings, "icons", value)
+            forget_pictures(app_id)
+            return
+        if not pack_draws(rest[1], app_id):
+            refuse(f"no installed icon pack {rest[1]!r} draws {app_id}")
+        value[app_id] = rest[1]
+        write_pairs(gsettings, "icons", value)
+        forget_pictures(app_id)
+    elif command == "order":
+        if len(rest) != 1 or rest[0] not in ORDERS:
+            usage()
+        gsettings.set_string("order", rest[0])
+        Gio.Settings.sync()
+    else:
+        usage()
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

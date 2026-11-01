@@ -91,9 +91,19 @@ pub const PAGES: [&str; 6] = ["scan", "network", "apps", "containers", "events",
 pub const CATEGORIES: [&str; 11] =
     ["watching", "audit", "detection", "scans", "network", "logins", "devices", "apps", "system", "notices", "away"];
 
-/// A page the command line may open: one of PAGES, or settings/ and one of CATEGORIES
+/// A page the command line may open: one of PAGES, settings/ and one of CATEGORIES, or apps/ and a Flatpak app's ID
+/// (the app grid's What can it reach? opens the Apps page on that app)
 pub fn openable(page: &str) -> bool {
-    PAGES.contains(&page) || page.strip_prefix("settings/").is_some_and(|category| CATEGORIES.contains(&category))
+    PAGES.contains(&page)
+        || page.strip_prefix("settings/").is_some_and(|category| CATEGORIES.contains(&category))
+        || page.strip_prefix("apps/").is_some_and(flatpak_id)
+}
+
+/// Flatpak's own rule for an app's ID: two dots at least, each part a letter or underscore first, 255 at most
+pub fn flatpak_id(id: &str) -> bool {
+    static ID: OnceLock<Regex> = OnceLock::new();
+    id.len() <= 255
+        && ID.get_or_init(|| Regex::new(r"^[A-Za-z_][A-Za-z0-9_-]*(\.[A-Za-z_][A-Za-z0-9_-]*)+$").expect("a valid expression")).is_match(id)
 }
 
 // --- Where things are ---------------------------------------------------------------------------------------
