@@ -91,6 +91,9 @@ export class FocusTile {
         // A wide font (the terminal style's) leaves no room for both on one line: Edit in Control goes under the choices,
         // rather than the choices being cut off
         const fit = () => {
+            // Taking the block away notifies its width too: nothing is queued for actors on their way out
+            if (this._destroyed)
+                return;
             this._fitId ||= global.compositor.get_laters().add(Meta.LaterType.BEFORE_REDRAW, () => {
                 this._fitId = 0;
                 const [, wanted] = choices.get_preferred_width(-1);
@@ -105,6 +108,7 @@ export class FocusTile {
     }
 
     destroy() {
+        this._destroyed = true;
         if (this._fitId)
             global.compositor.get_laters().remove(this._fitId);
         this._fitId = 0;

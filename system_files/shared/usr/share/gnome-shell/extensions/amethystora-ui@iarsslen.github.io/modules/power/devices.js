@@ -134,13 +134,14 @@ export class DeviceBatteries {
             return;
         this._devices = new Map();
         this._cancellable = new Gio.Cancellable();
+        // The proxy may finish after the module stopped and disposed it: only the one still kept is used
         this._manager = new UPowerProxy(Gio.DBus.system, BUS_NAME, UPOWER_PATH, (proxy, error) => {
-            if (error || this._cancellable?.is_cancelled())
+            if (error || proxy !== this._manager)
                 return;
             proxy.connectSignal('DeviceAdded', (p, sender, [path]) => this._add(path));
             proxy.connectSignal('DeviceRemoved', (p, sender, [path]) => this._remove(path));
             proxy.EnumerateDevicesAsync().then(([paths]) => {
-                if (!this._cancellable?.is_cancelled())
+                if (proxy === this._manager)
                     paths.forEach(path => this._add(path));
             }).catch(() => {});
         }, this._cancellable, Gio.DBusProxyFlags.DO_NOT_AUTO_START);

@@ -30,6 +30,9 @@ export class OverviewNames {
 
     enable() {
         this._shown = new Map();
+        // The tiling's names and pictures, read through settings of its own: the tiling stops first and disposes its
+        this._tilingSettings = this._workspaces._ext?.modules?.has('tiling')
+            ? this._workspaces._ext.getSettings('org.gnome.shell.extensions.amethystora-ui.tiling') : null;
         const proto = WorkspaceThumbnail.ThumbnailsBox.prototype;
         this._original = proto.addThumbnails;
         const names = this;
@@ -56,6 +59,8 @@ export class OverviewNames {
             this._undecorate(thumbnail);
         this._shown = null;
         this._unwatch();
+        this._tilingSettings?.run_dispose();
+        this._tilingSettings = null;
     }
 
     // The strips the overview shows now: the main screen's and each other screen's
@@ -109,7 +114,7 @@ export class OverviewNames {
     // ---- What a workspace is called and has ----
 
     get _tiling() {
-        return this._workspaces._ext?.modules?.get('tiling')?.settings ?? null;
+        return this._tilingSettings ?? null;
     }
 
     nameOf(workspace) {

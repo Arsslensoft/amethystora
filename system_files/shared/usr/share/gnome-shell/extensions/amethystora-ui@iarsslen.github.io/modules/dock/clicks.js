@@ -17,6 +17,8 @@ import {sayUpdating} from './badges.js';
 
 // Milliseconds a walk through an app's windows is remembered after the last click
 const WALK_MEMORY = 3000;
+// Two clicks this close are a double click: GNOME's default, for GNOME 51, whose Clutter has no Settings any more
+const DOUBLE_CLICK_MS = 400;
 
 export class Clicks {
     // dash.windowsOf(key) gives an item's windows on its screen, most recently used first; dash.focusedKey() the app
@@ -88,7 +90,7 @@ export class Clicks {
 
         const last = this._lastClick;
         const second = !middle && last?.key === target.key &&
-            time - last.time <= Clutter.Settings.get_default().double_click_time;
+            time - last.time <= (Clutter.Settings?.get_default?.()?.double_click_time ?? DOUBLE_CLICK_MS);
         this._lastClick = second ? null : {key: target.key, time};
 
         if (target.updating()) {

@@ -1,8 +1,9 @@
 // A slow computer is noticed: once a session, shortly after it starts, whether the screen is drawn without a graphics
 // driver (in software, as GNOME itself tells by the same call) and how much memory the computer has. A computer that
 // draws in software, or has under 8 GB, is offered the light desktop once, in a notification with its two answers;
-// either answer is remembered for this computer's graphics and memory, so it is asked again only after they change (a
-// new graphics card or driver). Nothing here runs after that: no timer, no watch.
+// the offer is remembered for this computer's graphics and memory as it is made, answered, dismissed or left alone, so
+// it is asked again only after they change (a new graphics card or driver). Nothing here runs after that: no timer, no
+// watch.
 //
 // What was asked is kept in ~/.local/state/amethystora/light-desktop.json ({"version": 1, "asked": "<what was read>"}),
 // written whole with a copy beside it; a missing or bad file only means asking once more.
@@ -174,8 +175,9 @@ export class SlowCheck {
         const notification = new MessageTray.Notification({source, title, body, iconName: 'video-display-symbolic'});
         // Through a settings object of the answer's own: the module may have stopped and started again meanwhile
         const ext = this._ext;
+        // Asked once: a notice dismissed or left in the list is not offered again at the next login
+        writeAsked(print);
         const answer = light => {
-            writeAsked(print);
             if (!light)
                 return;
             const settings = ext.getSettings(SCHEMA);
