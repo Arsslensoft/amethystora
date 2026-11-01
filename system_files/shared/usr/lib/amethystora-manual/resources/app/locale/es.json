@@ -1,5 +1,6 @@
 {
   "Amethystora Manual": "Manual de Amethystora",
+  "Control": "Control",
   "Copied": "Copiado",
   "Copy": "Copiar",
   "Documentation": "Documentación",
@@ -14,10 +15,17 @@
   "Previous and next page": "Página anterior y siguiente",
   "Search results": "Resultados de la búsqueda",
   "Search the manual": "Buscar en el manual",
+  "Show the translated page": "Mostrar la página traducida",
   "Software": "Software",
   "Start here": "Para empezar",
   "The desktop": "El escritorio",
+  "The phone link": "El enlace con el teléfono",
   "The system": "El sistema",
+  "This section is not in the translation yet, so the page is shown in English.": "Esta sección aún no está en la traducción, por lo que la página se muestra en inglés.",
+  "What's new": "Novedades",
+  "Your setup in a file": "Su configuración en un archivo",
   "help;docs;documentation;manual;guide;hotkeys;shortcuts;keybindings;": "ayuda;documentación;manual;guía;atajos;atajos de teclado;teclas;combinaciones de teclas;docs;help;",
+  "{caption}, paused": "{caption}, en pausa",
+  "{caption}, playing": "{caption}, en reproducción",
   "{page} · Amethystora Manual": "{page} · Manual de Amethystora"
 }

@@ -515,7 +515,10 @@ it describes, and add to it when you add something a user would look for there.
   edit the English only. A translated page's headings take the ids of the English page's headings in
   the same order, so `updates.md#rolling-back` lands in every language; `check-manual.js` checks the
   translations' links against the English headings and warns when a translation has a different number
-  of headings.
+  of headings. Until Weblate brings such a page back in line, a link to a section it cannot find opens the
+  English page at that section, with a note over it and the way back. A page a language has not translated is
+  still named in that language in the sidebar, from the Manual's catalogs (`check-translations.js`'s `DATA`), and
+  reads left to right in Arabic.
 - `whats-new.md` is the build's, not written by hand: `just build` runs `build_files/shared/release-commits.sh` on the host,
   which reads the published image's `org.amethystora.whats-new` label and the `feat` subjects since its commit into
   `build_files/whats-new.json` (gitignored; nothing when offline, and the build goes on), and `build-whats-new.py` writes the

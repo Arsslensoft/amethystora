@@ -6,7 +6,7 @@
 # stays English; and an `ame` command's prompt in a terminal. The catalog is one this suite writes in French for the
 # messages it uses (the shipped ones are still machine translations or none): it tests the mechanism, not the words.
 # A stand-in notify-send logs what each account would have been shown.
-# vmlab-paths: po/* @sf/usr/libexec/amethystora-notify-users @sf/usr/share/amethystora/just/* @sf/usr/lib/amethystora-*/resources/app/locale/*
+# vmlab-paths: po/* @sf/usr/libexec/amethystora-notify-users @sf/usr/share/amethystora/just/* @sf/usr/lib/amethystora-*/resources/app/locale/* apps/manual/src/*
 source "$(dirname "$0")/lib.sh"
 
 # World-readable: the stand-in notify-send runs as the account
@@ -169,5 +169,26 @@ env PATH="${T}/bin:${PATH}" "/usr/libexec/amethystora-scan-alert" amethystora-ly
 grep -qx "arg L’audit de sécurité n’a pas pu s’exécuter" <(shown) &&
     ok "the shipped French catalog translates a notification" || not_ok "the shipped French catalog translates a notification" "$(shown)"
 set_language ""
+
+# 9. The Manual: a page with no translation is named in French in the sidebar, and while a translated page's headings
+# do not line up with the English, a link to one of its English sections opens the English page and says so
+MANUAL=/usr/share/amethystora/manual
+headings() { sed '/^```/,/^```/d' "$1" | grep -cE '^#{2,6} '; }
+install -m 0644 "$(dirname "$0")/atspi.py" "${T}/"
+manual() { user_bus python3 "${T}/atspi.py" amethystora-manual "$@"; }
+user_bus systemd-run --user --unit=vmlab-manual-fr --collect --quiet --setenv=LC_ALL=fr_FR.UTF-8 --setenv=LANGUAGE=fr \
+    -- /usr/bin/amethystora-manual 'updates#rolling-back'
+manual wait 30 "La liaison avec le téléphone" >/dev/null 2>&1 && ok "the sidebar names a page not translated in French" ||
+    not_ok "the sidebar names a page not translated in French" "$(manual text 2>&1 | head -40)"
+if [[ "$(headings "${MANUAL}/updates.md")" == "$(headings "${MANUAL}/fr/updates.md")" ]]; then
+    ok "fr/updates.md lines up with the English, so its links land by themselves"
+elif manual wait 10 "Afficher la page traduite" >/dev/null 2>&1 && manual click "Afficher la page traduite" >/dev/null 2>&1; then
+    sleep 2
+    manual has "Afficher la page traduite" >/dev/null 2>&1 && not_ok "the way back to the translated page" "$(manual text 2>&1 | head -20)" ||
+        ok "a section the translation lacks opens in English, with the way back"
+else
+    not_ok "a section the translation lacks opens in English, with the way back" "$(manual text 2>&1 | head -20)"
+fi
+user_systemctl kill --kill-whom=main --signal=SIGTERM vmlab-manual-fr.service >/dev/null 2>&1
 rm -rf "${T}"
 finish

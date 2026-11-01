@@ -6,7 +6,8 @@
 //! A page translated into the session's language is manual/<language>/<page>.md, which Weblate writes from
 //! the English one paragraph by paragraph; a page not translated yet is shown in English. A translation's
 //! sections keep the ids of the English ones, which links between pages and from the other apps go by:
-//! heading for heading, as long as it has as many as the English.
+//! heading for heading, as long as it has as many as the English. While it has not, nothing says which of its
+//! headings is which, so a link to a section it cannot find opens the English page at that section, and says so.
 //!
 //! A page is addressed by its file name: `updates`, or `updates/rolling-back` for a section, which is what
 //! `amethystora-manual updates#rolling-back` opens.
@@ -60,6 +61,23 @@ struct Page {
     ids: Vec<String>,
     /// What search looks through: the page split at its headings
     sections: Vec<Section>,
+    /// The English page, kept while a translation's headings do not line up with it
+    english: Option<English>,
+    /// Not translated into the session's language
+    in_english: bool,
+}
+
+struct English {
+    markdown: String,
+    ids: Vec<String>,
+}
+
+impl Page {
+    /// Whether a section only the English page can show is asked for
+    fn english_for(&self, anchor: &str) -> bool {
+        let has = |ids: &[String]| ids.iter().any(|id| id == anchor);
+        !has(&self.ids) && self.english.as_ref().is_some_and(|english| has(&english.ids))
+    }
 }
 
 /// The margins of the page's blocks, as manual.css set them (margin collapsing is markdown.rs's)
@@ -91,6 +109,10 @@ pub struct Manual {
     shell: Rc<Shell>,
     pages: Vec<Page>,
     shown: Cell<Option<usize>>,
+    /// The shown page is the English one, for a section its translation cannot show
+    in_english: Cell<bool>,
+    /// Says so, over the page
+    note: gtk::Box,
     /// The routes visited, and where in them the window is, for Alt+Left and Alt+Right
     history: RefCell<Vec<String>>,
     at: Cell<usize>,
@@ -176,16 +198,23 @@ fn read_pages() -> Vec<Page> {
                 .lines()
                 .find_map(|line| line.strip_prefix("# ").map(|t| t.trim().to_string()))
                 .unwrap_or_else(|| id.clone());
+            // A page not translated is still named in the session's language, where the catalogs have its title
+            let title = if translated.is_some() { title } else { i18n::dynamic(&title) };
             let own: Vec<String> = markdown::heading_texts(&markdown).iter().map(|h| markdown::slug(h)).collect();
-            let ids = match &translated {
+            let (ids, english) = match &translated {
                 Some(_) => {
                     let english_ids: Vec<String> = markdown::heading_texts(&english).iter().map(|h| markdown::slug(h)).collect();
-                    if english_ids.len() == own.len() { english_ids } else { own }
+                    if english_ids.len() == own.len() {
+                        (english_ids, None)
+                    } else {
+                        (own, Some(English { markdown: english, ids: english_ids }))
+                    }
                 }
-                None => own,
+                None => (own, None),
             };
             let sections = markdown::sections(&markdown, &title, &ids);
-            pages.push(Page { id, section: section.clone(), markdown, title, ids, sections });
+            let in_english = translated.is_none();
+            pages.push(Page { id, section: section.clone(), markdown, title, ids, sections, english, in_english });
         }
     }
     pages
@@ -254,6 +283,8 @@ impl Manual {
             shell: shell.clone(),
             pages,
             shown: Cell::new(None),
+            in_english: Cell::new(false),
+            note: ui::vbox(4, &["not-translated"]),
             history: RefCell::new(Vec::new()),
             at: Cell::new(0),
             toc,
@@ -352,7 +383,23 @@ impl Manual {
                 this.clear_search();
             }
         });
-        let layout = columns::Columns::new(&sidebar, &self.main);
+        self.note.set_halign(gtk::Align::Center);
+        self.note.set_valign(gtk::Align::End);
+        self.note.set_visible(false);
+        self.note.append(&ui::label(&t!("This section is not in the translation yet, so the page is shown in English."), &[]));
+        let weak = self.me.clone();
+        let back = ui::button(&t!("Show the translated page"), None, &["plain", "not-translated-back"], move || {
+            if let Some(this) = weak.upgrade() {
+                if let Some(page) = this.shown.get().and_then(|index| this.pages.get(index)) {
+                    this.navigate(&page.id);
+                }
+            }
+        });
+        back.set_halign(gtk::Align::Start);
+        self.note.append(&back);
+        let page_side = gtk::Overlay::builder().child(&self.main).build();
+        page_side.add_overlay(&self.note);
+        let layout = columns::Columns::new(&sidebar, &page_side);
         let overlay = gtk::Overlay::new();
         overlay.set_child(Some(&layout));
         let controls = frame::controls();
@@ -475,9 +522,11 @@ impl Manual {
             return;
         };
         // Within a page the view glides to the section; a new page opens straight at it
-        let same = self.shown.get() == Some(index);
+        let in_english = anchor.as_deref().is_some_and(|anchor| self.pages[index].english_for(anchor));
+        let same = self.shown.get() == Some(index) && self.in_english.get() == in_english;
         if !same {
             self.shown.set(Some(index));
+            self.in_english.set(in_english);
             self.render(index);
         }
         let target = anchor.and_then(|anchor| self.headings.borrow().iter().find(|(id, _)| *id == anchor).map(|(_, widget)| widget.clone()));
@@ -523,6 +572,10 @@ impl Manual {
         ui::clear(&self.article);
         let eyebrow = ui::label(&page.section.to_uppercase(), &["eyebrow"]);
         self.article.append(&eyebrow);
+        let english = page.english.as_ref().filter(|_| self.in_english.get());
+        // Over the page rather than at its top, which a link to a section has scrolled away
+        self.note.set_visible(english.is_some());
+        self.pager.set_margin_bottom(if english.is_some() { 96 } else { 0 });
         let weak = self.me.clone();
         let page_id = page.id.clone();
         let mut options = markdown::Options::new(
@@ -534,7 +587,7 @@ impl Manual {
             }),
             margins,
         );
-        options.ids = page.ids.clone();
+        options.ids = english.map_or(&page.ids, |english| &english.ids).clone();
         options.keycaps = true;
         options.key_color = hex(&self.article.color());
         options.plus_color = hex(&self.soft_probe.color());
@@ -547,7 +600,10 @@ impl Manual {
         // The moving cards: the manual's own clips only, side by side when a paragraph holds several
         options.image_rows = true;
         options.image = Some(Rc::new(cards::card));
-        let rendered = markdown::render(&page.markdown, &options);
+        let rendered = markdown::render(english.map_or(&page.markdown, |english| &english.markdown), &options);
+        if english.is_some() || page.in_english {
+            left_to_right(rendered.root.upcast_ref());
+        }
         self.article.append(&rendered.root);
         self.headings.replace(rendered.headings);
 
@@ -692,6 +748,16 @@ impl Manual {
     }
 }
 
+/// English reads left to right on its page, in a session in Arabic too: GTK gives each widget its direction itself
+fn left_to_right(widget: &gtk::Widget) {
+    widget.set_direction(gtk::TextDirection::Ltr);
+    let mut child = widget.first_child();
+    while let Some(next) = child {
+        left_to_right(&next);
+        child = next.next_sibling();
+    }
+}
+
 /// A colour as Pango markup takes it
 fn hex(color: &gdk::RGBA) -> String {
     let byte = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
@@ -757,6 +823,25 @@ mod tests {
         assert_eq!(route("#local", "faq"), "#faq/local");
         assert_eq!(route("https://example.org/x.md", "faq"), "https://example.org/x.md");
         assert_eq!(route("weird", "faq"), "weird");
+    }
+
+    #[test]
+    fn only_a_section_the_translation_lacks_opens_in_english() {
+        let ids = |list: &[&str]| list.iter().map(|id| id.to_string()).collect::<Vec<_>>();
+        let page = Page {
+            id: "updates".into(),
+            section: String::new(),
+            markdown: String::new(),
+            title: String::new(),
+            ids: ids(&["revenir-en-arriere"]),
+            sections: Vec::new(),
+            english: Some(English { markdown: String::new(), ids: ids(&["rolling-back", "stable"]) }),
+            in_english: false,
+        };
+        assert!(page.english_for("rolling-back"));
+        assert!(!page.english_for("revenir-en-arriere"));
+        assert!(!page.english_for("nowhere"));
+        assert!(!Page { english: None, ..page }.english_for("rolling-back"));
     }
 
     #[test]

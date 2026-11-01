@@ -140,9 +140,10 @@ function launcher(app) {
 
 // The messages an app reads from data rather than from its code (t.dynamic()), and its launcher's
 const DATA = {
-    // The names of the manual's sections, in its table of contents
+    // The names of the manual's sections, in its table of contents, and of the pages a language has not translated
     'amethystora-manual': () => [
         ...JSON.parse(fs.readFileSync(path.join(root, 'usr/share/amethystora/manual/pages.json'), 'utf8')).map((group) => group.section),
+        ...untranslatedTitles(),
         ...launcher('amethystora-manual'),
     ],
     // ...and the private folder's, which has no app of its own (translate-desktop.py's OTHERS)
@@ -156,6 +157,15 @@ const DATA = {
     'amethystora-phone': () => [...launcher('amethystora-phone'), ...launcher('amethystora-phone-send')],
     'amethystora-shelf': () => launcher('amethystora-shelf'),
 };
+
+// The title of every page of the manual that some language has no manual/<language>/<page>.md of
+function untranslatedTitles() {
+    const manual = path.join(root, 'usr/share/amethystora/manual');
+    const languages = fs.readdirSync(manual).filter((name) => /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/.test(name) && fs.statSync(path.join(manual, name)).isDirectory());
+    const files = JSON.parse(fs.readFileSync(path.join(manual, 'pages.json'), 'utf8')).flatMap((group) => group.pages);
+    return files.filter((file) => languages.some((language) => !fs.existsSync(path.join(manual, language, path.basename(file)))))
+        .map((file) => /^# (.+)$/m.exec(fs.readFileSync(path.join(manual, file), 'utf8'))[1].trim());
+}
 
 const problems = [];
 const notes = [];
@@ -284,6 +294,10 @@ for (const app of APPS) {
         }
         if (stale) {
             notes.push(`${app}: locale/${file} has ${stale} translation(s) of messages the code no longer has`);
+        }
+        const untranslated = sorted.filter((message) => !catalog[message]).length;
+        if (untranslated) {
+            notes.push(`${app}: locale/${file} leaves ${untranslated} message(s) in English`);
         }
         checked += 1;
     }

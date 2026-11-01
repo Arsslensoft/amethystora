@@ -4,7 +4,8 @@
 // every link between pages lands on a page that is listed and on a heading that page has. The same for
 // each translation, manual/<language>/<page>.md: it translates a listed page, and its links land on
 // the headings of the English pages, whose ids a translated page keeps (apps/manual). One whose headings
-// no longer match the English page's is only reported: Weblate brings it back in line at its next sync.
+// no longer match the English page's is only reported, since a link into it opens the English page at that
+// section (apps/manual), and Weblate brings it back in line at its next sync.
 // Run on the Node that 20-tests.sh installs for it and check-translations.js, and takes out again:
 //
 //   node check-manual.js [manual dir] [--links page#heading...]
@@ -125,7 +126,7 @@ for (const language of fs.readdirSync(manual).filter((name) => /^[a-z]{2,3}(-[A-
             problems.push(`${file}: no "# " title`);
         }
         if (headings(text) !== headings(english.text)) {
-            warnings.push(`${file} has ${headings(text)} headings where ${english.file} has ${headings(english.text)}, so links into it fall back to its own`);
+            warnings.push(`${file} has ${headings(text)} headings where ${english.file} has ${headings(english.text)}, so links into its sections open the English page`);
         }
         checkLinks(file, text);
         translated += 1;

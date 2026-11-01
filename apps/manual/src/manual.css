@@ -205,6 +205,20 @@ window.narrow .pager {
     padding-top: 44px;
 }
 
+.not-translated {
+    margin: 16px;
+    padding: 12px 16px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background-color: var(--bg);
+    box-shadow: 0 4px 16px color-mix(in oklab, var(--fg) 18%, transparent);
+}
+
+button.not-translated-back {
+    color: var(--link);
+    font-weight: 600;
+}
+
 .eyebrow {
     margin-bottom: 6px;
     color: var(--link);

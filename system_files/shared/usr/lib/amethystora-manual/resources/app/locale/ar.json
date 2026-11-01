@@ -1,5 +1,6 @@
 {
   "Amethystora Manual": "دليل Amethystora",
+  "Control": "التحكم",
   "Copied": "نُسخ",
   "Copy": "انسخ",
   "Documentation": "التوثيق",
@@ -14,10 +15,17 @@
   "Previous and next page": "الصفحة السابقة والتالية",
   "Search results": "نتائج البحث",
   "Search the manual": "ابحث في الدليل",
+  "Show the translated page": "اعرض الصفحة المترجمة",
   "Software": "البرمجيات",
   "Start here": "ابدأ من هنا",
   "The desktop": "سطح المكتب",
+  "The phone link": "وصلة الهاتف",
   "The system": "النظام",
+  "This section is not in the translation yet, so the page is shown in English.": "هذا القسم غير موجود في الترجمة بعد، لذا تُعرض الصفحة بالإنجليزية.",
+  "What's new": "ما الجديد",
+  "Your setup in a file": "إعدادك في ملف",
   "help;docs;documentation;manual;guide;hotkeys;shortcuts;keybindings;": "مساعدة;وثائق;توثيق;دليل;إرشادات;مفاتيح الاختصار;اختصارات;لوحة المفاتيح;help;docs;documentation;manual;guide;hotkeys;shortcuts;keybindings;",
+  "{caption}, paused": "{caption}، متوقف مؤقتًا",
+  "{caption}, playing": "{caption}، قيد التشغيل",
   "{page} · Amethystora Manual": "{page} · دليل Amethystora"
 }
