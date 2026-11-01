@@ -53,3 +53,5 @@ When the English changes, run `node build_files/shared/check-translations.js --w
 system_files/shared`, which rewrites each app's `locale/en.json` and `po/amethystora.pot` from the code,
 and commit them with the change. The build runs the same check and fails on a catalog that does not
 match the code.
+
+<!-- checks dry run -->
