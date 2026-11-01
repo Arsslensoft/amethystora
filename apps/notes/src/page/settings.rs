@@ -11,6 +11,8 @@ use gtk::prelude::*;
 use super::widgets::{self, button, key_status, password, row_icon, say, select, switch, toast, Action, Dialog, PassphraseFields};
 use super::Notes;
 use crate::backend::{self, Change, Passkey};
+use crate::data::{Fields, Kind};
+use crate::import::Counts;
 use crate::dates;
 use crate::passkeys;
 
@@ -173,7 +175,20 @@ impl Notes {
         code.set_direction(gtk::TextDirection::Ltr);
         code.set_hexpand(true);
         command.append(&code);
-        page.append(&section(&t!("Where they are"), &command));
+        let place = ui::vbox(10, &[]);
+        place.append(&command);
+        if let Some(store) = &self.backend.borrow().store {
+            let counts = Counts {
+                notes: store.values(Kind::Notes).filter(|note| !note.is("trashed")).count() as u64,
+                notebooks: store.kind(Kind::Notebooks).len() as u64,
+                tasks: store.kind(Kind::Tasks).len() as u64,
+                projects: store.kind(Kind::Projects).len() as u64,
+                attachments: store.resources.len() as u64,
+            };
+            let parts: Vec<String> = counts.list().into_iter().map(|(kind, n)| counted(kind, n)).collect();
+            place.append(&ui::label(&i18n::list(&parts), &["soft"]));
+        }
+        page.append(&section(&t!("Where they are"), &place));
 
         let clamp = adw::Clamp::builder().maximum_size(860).tightening_threshold(860).child(&page).build();
         let scroller = gtk::ScrolledWindow::builder().hscrollbar_policy(gtk::PolicyType::Never).vexpand(true).hexpand(true).child(&clamp).build();
