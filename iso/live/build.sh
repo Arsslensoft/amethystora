@@ -79,7 +79,7 @@ grep -qx -- "firewall --use-system-defaults" /usr/share/anaconda/interactive-def
 # The sealed images (:stable-sealed), which Anaconda cannot install yet, have an installer of their own:
 # a whole disk, the image downloaded from the registry, shim placed in front of systemd-boot. Amethystora's
 # own images only: an image of one's own built on one (its template runs this too) has no sealed variant
-if [[ "${BASE_IMAGE}" == ghcr.io/iarsslen/* ]]; then
+if [[ "${BASE_IMAGE}" == ghcr.io/arsslensoft/* ]]; then
     install -Dpm0755 "${LIVE}/amethystora-install-sealed" /usr/bin/amethystora-install-sealed
     install -Dpm0644 "${LIVE}/amethystora-install-sealed.desktop" \
         /usr/share/applications/amethystora-install-sealed.desktop

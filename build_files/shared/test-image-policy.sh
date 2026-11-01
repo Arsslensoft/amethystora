@@ -14,8 +14,8 @@ T="$(mktemp -d)"
 trap 'rm -rf "${T}"' EXIT
 ROOT="${T}/root"
 DIR="${T}/policy"
-UI=amethystora-ui@iarsslen.github.io
-CLIPBOARD=amethystora-clipboard@iarsslen.github.io
+UI=amethystora-ui@arsslensoft.github.io
+CLIPBOARD=amethystora-clipboard@arsslensoft.github.io
 
 stand_in() {
     rm -rf "${ROOT}" "${DIR}"
@@ -41,7 +41,7 @@ cat >"${DIR}/desktop.json" <<'EOF'
     "login-banner": "Property of Acme.\nAuthorised use only.", "sleep-on-mains": 3600
   },
   "lock": ["idle-delay", "screen-lock", "camera-off"],
-  "extensions-off": ["amethystora-clipboard@iarsslen.github.io"]
+  "extensions-off": ["amethystora-clipboard@arsslensoft.github.io"]
 }
 EOF
 echo "# Policy" >"${DIR}/README.md"
@@ -161,7 +161,7 @@ desktop '{"version": 1, "set": {"org.gnome.desktop.background picture-uri": "x"}
 desktop '{"version": 1, "set": {"login-banner": "a\u0007b"}}' "a banner with a control character"
 desktop '{"version": 1, "lock": ["idle-delay"]}' "a lock without a value"
 desktop '{"version": 1, "set": {"login-user-list-off": true}, "lock": ["login-user-list-off"]}' "a lock on the login screen"
-desktop '{"version": 1, "extensions-off": ["amethystora-ui@iarsslen.github.io"]}' "Amethystora UI turned off"
+desktop '{"version": 1, "extensions-off": ["amethystora-ui@arsslensoft.github.io"]}' "Amethystora UI turned off"
 desktop '{"version": 1, "extensions-off": ["someone@example.com"]}' "an extension the image lacks"
 desktop '{"version": 1, "command": "reboot"}' "a key desktop.json does not have"
 

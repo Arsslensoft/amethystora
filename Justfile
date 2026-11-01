@@ -1,4 +1,4 @@
-repo_organization := "iarsslen"
+repo_organization := "arsslensoft"
 rechunker_image := "ghcr.io/ublue-os/legacy-rechunk:v1.0.1-x86_64@sha256:2627cbf92ca60ab7372070dcf93b40f457926f301509ffba47a04d6a9e1ddaf7"
 brew_image := "ghcr.io/ublue-os/brew:latest"
 # Fedora's own image, for sbverify where the host has none (secureboot). From Fedora's registry, which

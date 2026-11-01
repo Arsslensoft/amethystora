@@ -64,7 +64,7 @@ fn day(seconds: f64) -> String {
     i18n::date(seconds, DateStyle::DayMonthYear)
 }
 
-/// ghcr.io/iarsslen/amethystora-dx:stable -> ("amethystora-dx", "stable")
+/// ghcr.io/arsslensoft/amethystora-dx:stable -> ("amethystora-dx", "stable")
 fn image_parts(image: &str) -> (String, String) {
     let before_digest = image.split('@').next().unwrap_or("");
     let last = before_digest.rsplit('/').next().unwrap_or("");
@@ -1214,10 +1214,10 @@ mod tests {
 
     #[test]
     fn held_builds() {
-        assert_eq!(held_on("ghcr.io/iarsslen/amethystora:stable-44.20260922"), "stable-44.20260922");
-        assert_eq!(held_on("ghcr.io/iarsslen/amethystora:44.20260922"), "44.20260922");
-        assert_eq!(held_on("ghcr.io/iarsslen/amethystora:stable"), "");
-        assert_eq!(held_on("ghcr.io/iarsslen/amethystora-dx:latest-44.2026"), "");
-        assert_eq!(image_parts("ghcr.io/iarsslen/amethystora-dx:stable"), ("amethystora-dx".into(), "stable".into()));
+        assert_eq!(held_on("ghcr.io/arsslensoft/amethystora:stable-44.20260922"), "stable-44.20260922");
+        assert_eq!(held_on("ghcr.io/arsslensoft/amethystora:44.20260922"), "44.20260922");
+        assert_eq!(held_on("ghcr.io/arsslensoft/amethystora:stable"), "");
+        assert_eq!(held_on("ghcr.io/arsslensoft/amethystora-dx:latest-44.2026"), "");
+        assert_eq!(image_parts("ghcr.io/arsslensoft/amethystora-dx:stable"), ("amethystora-dx".into(), "stable".into()));
     }
 }

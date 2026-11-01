@@ -41,7 +41,7 @@ lab() { docker exec -e VMLAB_MEM="${VMLAB_MEM:-}" amevm node /vm/live/live.mjs "
 # system_files/shared/, @ui/ Amethystora UI's folder, * matches / too), the suite itself, lib.sh (every suite), or a
 # helper beside the suites that the suite names. What a push cannot reach is said on stderr.
 affected() {
-    local changed suite name globs g f hit ui=system_files/shared/usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/
+    local changed suite name globs g f hit ui=system_files/shared/usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/
     changed="$({ git -c core.safecrlf=false diff --name-only "$1"; git ls-files --others --exclude-standard; } | sort -u)"
     grep -E '^(apps|build_files|po|packaging|branding|iso)/|^Containerfile' <<<"${changed}" |
         sed 's/^/live.sh: not pushed, needs an image build: /' >&2 || true

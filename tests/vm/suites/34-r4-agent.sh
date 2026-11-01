@@ -16,7 +16,7 @@
 # vmlab-paths: @ui/extension.js @ui/*agent* @ui/*quit* @ui/*pill* @sf/*themed/shell-agent* @sf/*themed/shell-quit* @sf/usr/bin/amethystora-agent @sf/usr/libexec/amethystora-agent-* @sf/usr/libexec/amethystora-notify-users @sf/usr/libexec/amethystora-scan-alert @sf/usr/libexec/amethystora-driver-status @sf/*just/agent.just @sf/*just/desktop.just @sf/usr/libexec/amethystora-control-list apps/agent-tools/*
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 HOME_DIR="/var/home/${TEST_USER}"
 AGENT_UI=org.gnome.shell.extensions.amethystora-ui.agent
 QUIT_UI=org.gnome.shell.extensions.amethystora-ui.quit

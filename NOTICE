@@ -10,7 +10,7 @@ contributors and licensed under the Apache License, Version 2.0, among them:
   - ublue-os/uupd  https://github.com/ublue-os/uupd
 
 Amethystora modifies these and renames them at build time, with the scripts in
-build_files/ of https://github.com/iarsslen/amethystora. Parts of that
+build_files/ of https://github.com/arsslensoft/amethystora. Parts of that
 repository began as files of Universal Blue's projects and are modified for
 Amethystora: the Containerfile, the Justfile, .github/ and build_files/, and
 the desktop layer in system_files/shared.
@@ -200,7 +200,7 @@ description of that protocol and not from the code of KDE Connect, GSConnect or
 Valent, none of which is in the image.
 
 Amethystora Clipboard, the GNOME Shell extension in
-usr/share/gnome-shell/extensions/amethystora-clipboard@iarsslen.github.io, is a
+usr/share/gnome-shell/extensions/amethystora-clipboard@arsslensoft.github.io, is a
 modified copy of Clipboard Indicator version 71 (commit
 c880c7fb88dc7232a61a5864d125989a4f375daa), Copyright (c) 2014 Yotam Bar-On, under
 the MIT License, which ships in the extension's folder as LICENSE.rst.
@@ -320,7 +320,7 @@ built from, and where that source package is:
   - the rest, from the maker and at the address named there.
 
 Everything not installed from a package is built from
-https://github.com/iarsslen/amethystora at the commit the image names as
+https://github.com/arsslensoft/amethystora at the commit the image names as
 BUILD_ID in /usr/lib/os-release; its build_files pin each upstream release
 they fetch.
 
@@ -348,5 +348,5 @@ installer ISO was last published, Arsslen Idadi will give anyone who asks the
 complete corresponding source code of any software in it whose licence
 requires its source to be made available, such as the licences named above,
 as a download at no charge. Ask through
-https://github.com/iarsslen/amethystora/issues, naming the image or ISO and
+https://github.com/arsslensoft/amethystora/issues, naming the image or ISO and
 its version.

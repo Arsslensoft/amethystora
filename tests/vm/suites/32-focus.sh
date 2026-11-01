@@ -14,7 +14,7 @@
 # vmlab-paths: @ui/extension.js @ui/*focus* @sf/*themed/shell-focus* @sf/usr/libexec/amethystora-setup* @sf/usr/libexec/amethystora-control-list @sf/*just/desktop.just
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 HOME_DIR="/var/home/${TEST_USER}"
 FOCUS=org.gnome.shell.extensions.amethystora-ui.focus
 DOCK=org.gnome.shell.extensions.amethystora-ui.dock

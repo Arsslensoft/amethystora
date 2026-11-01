@@ -23,7 +23,7 @@
 # vmlab-paths: @ui/extension.js @ui/modules/windows.js @ui/modules/windows/* @ui/modules/privacy/guard.js @ui/schemas/*windows* @ui/stylesheets/windows.css @sf/*themed/shell-windows* @sf/*just/desktop.just @sf/usr/libexec/amethystora-control-list @sf/usr/libexec/amethystora-setup*
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 HOME_DIR="/var/home/${TEST_USER}"
 SCHEMA=org.gnome.shell.extensions.amethystora-ui.windows
 keys() { python3 "$(dirname "$0")/keys.py" "$@"; }

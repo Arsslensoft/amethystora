@@ -7,4 +7,4 @@
 # The arguments are accepted for compatibility with the callers and ignored: every Amethystora image
 # comes from the same repository.
 
-printf '%s\n' "iarsslen/amethystora"
+printf '%s\n' "arsslensoft/amethystora"

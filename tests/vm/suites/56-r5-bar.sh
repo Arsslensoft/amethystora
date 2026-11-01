@@ -22,7 +22,7 @@
 # vmlab-paths: @ui/extension.js @ui/*bars* @ui/*tweaks* @ui/*comfort* @ui/*motion* @ui/*pill* @ui/*dock* @sf/usr/libexec/amethystora-bar-layout @sf/usr/libexec/amethystora-control-list @sf/usr/libexec/amethystora-setup* @sf/*just/desktop.just @sf/*manual/desktop.md @sf/*manual/themes.md
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 HERE="$(dirname "$0")"
 HOME_DIR="/var/home/${TEST_USER}"
 BARS=org.gnome.shell.extensions.amethystora-ui.bars

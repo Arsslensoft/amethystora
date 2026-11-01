@@ -23,7 +23,7 @@
 # vmlab-paths: @ui/extension.js @ui/*motion* @ui/*workspaces* @sf/*themed/shell-workspaces* @sf/*just/desktop.just
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 HOME_DIR="/var/home/${TEST_USER}"
 MOTION=org.gnome.shell.extensions.amethystora-ui.motion
 WORKSPACES=org.gnome.shell.extensions.amethystora-ui.workspaces

@@ -16,7 +16,7 @@
 # vmlab-paths: @ui/extension.js @ui/*theme* @ui/*workspaces* @sf/usr/libexec/amethystora-wallpaper-colours @sf/usr/bin/amethystora-theme @sf/usr/lib/amethystora/theme/* @sf/*themed/* @sf/usr/share/amethystora/themes/* @sf/usr/libexec/amethystora-control-list @sf/*just/desktop.just
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 OWN=/run/vmlab-21
 HOME_DIR="/var/home/${TEST_USER}"
 CFG="${HOME_DIR}/.config/amethystora"

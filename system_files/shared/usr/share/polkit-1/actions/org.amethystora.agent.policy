@@ -5,7 +5,7 @@
 <policyconfig>
 
   <vendor>Amethystora</vendor>
-  <vendor_url>https://github.com/iarsslen/amethystora</vendor_url>
+  <vendor_url>https://github.com/arsslensoft/amethystora</vendor_url>
 
   <!-- The AI agent's root commands (amethystora-agent-root, plans/done/PLAN-agentic-os.md), one action for each mode an
        administrator can choose in /etc/amethystora/agent.conf, so that the password dialog says what the password

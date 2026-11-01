@@ -16,7 +16,7 @@
 # vmlab-paths: @sf/usr/share/gnome-shell/extensions/amethystora-clipboard@* apps/clipboard-seal/*
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-clipboard@iarsslen.github.io
+UUID=amethystora-clipboard@arsslensoft.github.io
 SCHEMA=org.gnome.shell.extensions.amethystora-clipboard
 HELPER=/usr/libexec/amethystora-clipboard-seal
 HOME_DIR="/var/home/${TEST_USER}"

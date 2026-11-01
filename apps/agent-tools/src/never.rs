@@ -342,7 +342,7 @@ mod tests {
             "amethystora-agent stop",
             "amethystora-agent undo ab12cd34",
             "ame desktop pill off",
-            "gnome-extensions disable amethystora-ui@iarsslen.github.io",
+            "gnome-extensions disable amethystora-ui@arsslensoft.github.io",
             // A group's own justfile, and -- anywhere, for every rule
             "just -f /usr/share/amethystora/just/agent.just pill off",
             "just --justfile=/usr/share/amethystora/just/agent.just tools on",

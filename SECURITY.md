@@ -3,7 +3,7 @@
 ## Reporting a vulnerability
 
 Report a security problem privately, not in a public issue: use
-[Report a vulnerability](https://github.com/iarsslen/amethystora/security/advisories/new) on this
+[Report a vulnerability](https://github.com/arsslensoft/amethystora/security/advisories/new) on this
 repository's Security tab. The report stays between you and the maintainers until a fixed image is
 out, and the advisory is published with it. Please keep the details to yourself until then.
 

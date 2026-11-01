@@ -117,10 +117,10 @@ logged in as the maintainer, and git pushes over SSH.
 ```bash
 sha=$(git rev-parse --short HEAD)
 git push origin "HEAD:refs/heads/test/${sha}"
-gh workflow run "Latest Images" --repo iarsslen/amethystora --ref "test/${sha}"
-gh run list --repo iarsslen/amethystora --workflow "Latest Images" --branch "test/${sha}" --limit 1
-gh run watch RUN_ID --repo iarsslen/amethystora --exit-status
-gh run view RUN_ID --repo iarsslen/amethystora --log-failed | tail -n 200
+gh workflow run "Latest Images" --repo arsslensoft/amethystora --ref "test/${sha}"
+gh run list --repo arsslensoft/amethystora --workflow "Latest Images" --branch "test/${sha}" --limit 1
+gh run watch RUN_ID --repo arsslensoft/amethystora --exit-status
+gh run view RUN_ID --repo arsslensoft/amethystora --log-failed | tail -n 200
 git push origin --delete "test/${sha}"     # when done
 ```
 

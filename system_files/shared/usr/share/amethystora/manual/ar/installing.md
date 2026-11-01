@@ -14,7 +14,7 @@
 يُتحقق به من كل تحديث. للتأكد من أن ما نزّلته هو ما بُني فعلًا:
 
 ```bash
-curl -LO https://raw.githubusercontent.com/iarsslen/amethystora/main/cosign.pub
+curl -LO https://raw.githubusercontent.com/arsslensoft/amethystora/main/cosign.pub
 curl -LO https://download.amethystora.org/amethystora.iso.sha256
 curl -LO https://download.amethystora.org/amethystora.iso.sha256.bundle
 cosign verify-blob --key cosign.pub --bundle amethystora.iso.sha256.bundle amethystora.iso.sha256
@@ -100,7 +100,7 @@ Amethystora دون إعادة تثبيت. يستبدل الانتقال صورة
   وHomebrew والحاويات فتنتقل.
 
 ```bash
-sudo bootc switch ghcr.io/iarsslen/amethystora:stable
+sudo bootc switch ghcr.io/arsslensoft/amethystora:stable
 ```
 
 ثم أعد التشغيل. في الإقلاع الأول، تُجهّز خدمةٌ من تلقاء نفسها الانتقال إلى التحديثات المتحقَّق من
@@ -110,10 +110,10 @@ sudo bootc switch ghcr.io/iarsslen/amethystora:stable
 
 | الصورة | لمن |
 | --- | --- |
-| `ghcr.io/iarsslen/amethystora` | سطح المكتب القياسي |
-| `ghcr.io/iarsslen/amethystora-dx` | للمطورين: تضيف Docker وIncus وlibvirt وVSCodium وغيرها ([وضع المطوّر](developer.md)) |
-| `ghcr.io/iarsslen/amethystora-nvidia-open` | سطح المكتب القياسي مع مشغّل النواة المفتوح من NVIDIA |
-| `ghcr.io/iarsslen/amethystora-dx-nvidia-open` | وضع المطوّر مع مشغّل النواة المفتوح من NVIDIA |
+| `ghcr.io/arsslensoft/amethystora` | سطح المكتب القياسي |
+| `ghcr.io/arsslensoft/amethystora-dx` | للمطورين: تضيف Docker وIncus وlibvirt وVSCodium وغيرها ([وضع المطوّر](developer.md)) |
+| `ghcr.io/arsslensoft/amethystora-nvidia-open` | سطح المكتب القياسي مع مشغّل النواة المفتوح من NVIDIA |
+| `ghcr.io/arsslensoft/amethystora-dx-nvidia-open` | وضع المطوّر مع مشغّل النواة المفتوح من NVIDIA |
 
 تثبّت ملفات ISO الصور التي لا تتضمن مشغّل NVIDIA. وعلى حاسوب فيه بطاقة NVIDIA، يعرض الإقلاع الأول
 الانتقال إلى صورة NVIDIA المطابقة ([العتاد](hardware.md#graphics)).

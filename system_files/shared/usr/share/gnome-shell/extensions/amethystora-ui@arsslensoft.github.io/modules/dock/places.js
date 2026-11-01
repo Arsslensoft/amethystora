@@ -298,7 +298,7 @@ export class Places extends EventEmitter {
     // A drive kept busy: the notice offers to show what keeps it so (the tools module, plans/ui-ideas/spec-tools.md
     // R5-18); false when that module is not running, and the plain error is said instead
     _busyNotice(place, mount, eject) {
-        const tools = Main.extensionManager.lookup('amethystora-ui@iarsslen.github.io')?.stateObj?.modules?.get('tools');
+        const tools = Main.extensionManager.lookup('amethystora-ui@arsslensoft.github.io')?.stateObj?.modules?.get('tools');
         if (!tools?.showUsersOfMount)
             return false;
         const source = MessageTray.getSystemSource();

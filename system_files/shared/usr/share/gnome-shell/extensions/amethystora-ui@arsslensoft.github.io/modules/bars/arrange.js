@@ -15,7 +15,7 @@ import Meta from 'gi://Meta';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
-const LOGO = 'amethystora-logo-menu@iarsslen.github.io';
+const LOGO = 'amethystora-logo-menu@arsslensoft.github.io';
 // Each item's roles, in the order they sit together; a role ending in '*' stands for every role that begins so
 export const ITEMS = {
     logo: [LOGO],

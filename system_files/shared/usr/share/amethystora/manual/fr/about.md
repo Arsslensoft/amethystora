@@ -1,8 +1,8 @@
 # À propos
 
-Amethystora est créé et maintenu par Arsslen Idadi ([@iarsslen](https://github.com/iarsslen)). C’est un
+Amethystora est créé et maintenu par Arsslen Idadi ([@arsslensoft](https://github.com/arsslensoft)). C’est un
 logiciel libre sous licence Apache 2.0, développé ouvertement sur
-[github.com/iarsslen/amethystora](https://github.com/iarsslen/amethystora). Les tickets, les idées et
+[github.com/arsslensoft/amethystora](https://github.com/arsslensoft/amethystora). Les tickets, les idées et
 les pull requests y sont les bienvenus.
 
 Amethystora est basé sur [Universal Blue](https://universal-blue.org), © les contributeurs d’Universal Blue, sous licence Apache 2.0.
@@ -58,10 +58,10 @@ que la version actuelle de chacun. Lorsque la licence d’un tel paquet exige qu
 fourni, le paquet source à partir duquel cette image a été construite se trouve dans l’image elle-même,
 dans `/usr/src/amethystora`.
 
-Tout le reste est construit à partir du [dépôt d’Amethystora](https://github.com/iarsslen/amethystora)
+Tout le reste est construit à partir du [dépôt d’Amethystora](https://github.com/arsslensoft/amethystora)
 au commit indiqué par `BUILD_ID` dans `/usr/lib/os-release`. Pendant au moins trois ans après la
 dernière publication d’une image, le code source complet de tout ce qu’elle contient et dont la licence
 exige que le code source soit disponible (GNU GPL et LGPL, MPL, CDDL, licence du codec AAC de
 Fraunhofer) est également fourni à quiconque le demande via le
-[gestionnaire de tickets](https://github.com/iarsslen/amethystora/issues) ; l’offre écrite se trouve
+[gestionnaire de tickets](https://github.com/arsslensoft/amethystora/issues) ; l’offre écrite se trouve
 dans `/usr/share/licenses/amethystora/NOTICE`.

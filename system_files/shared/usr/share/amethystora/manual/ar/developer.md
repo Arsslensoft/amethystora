@@ -12,11 +12,11 @@
 انتقل إلى صورة dx، وأعد التشغيل:
 
 ```bash
-sudo bootc switch --enforce-container-sigpolicy ghcr.io/iarsslen/amethystora-dx:stable
+sudo bootc switch --enforce-container-sigpolicy ghcr.io/arsslensoft/amethystora-dx:stable
 ```
 
 إن كانت لديك [حزم مضافة كطبقات](software.md#layering-the-last-resort)، فاستخدم
-`sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/iarsslen/amethystora-dx:stable` بدلًا من
+`sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/arsslensoft/amethystora-dx:stable` بدلًا من
 ذلك، فهو يحتفظ بها. والعودة إلى `amethystora` تتم بالطريقة نفسها.
 
 في إقلاعها الأول، تضيف صورة dx كل حساب مدير إلى المجموعات `docker` و`incus-admin` و`libvirt`

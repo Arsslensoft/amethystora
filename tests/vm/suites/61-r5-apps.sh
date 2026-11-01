@@ -16,7 +16,7 @@
 # vmlab-paths: @ui/extension.js @ui/modules/appgrid* @ui/modules/fuzzy.js @ui/modules/bazaar.js @ui/modules/backupdisk.js @ui/stylesheets/appgrid.css @ui/schemas/*appgrid* @ui/schemas/*backupdisk* @sf/usr/libexec/amethystora-app-look @sf/usr/libexec/amethystora-startup @sf/usr/libexec/amethystora-tidy-downloads @sf/usr/lib/systemd/user/amethystora-tidy-downloads.* @sf/*28-templates.sh @sf/usr/libexec/amethystora-security-watch @sf/usr/libexec/amethystora-control-list @sf/usr/libexec/amethystora-setup* @sf/*just/desktop.just @sf/*just/apps.just apps/security/* apps/control/* apps/control-core/*
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 HOME_DIR="/var/home/${TEST_USER}"
 HERE="$(dirname "$(readlink -f "$0")")"
 WORK=/run/vmlab-61

@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 
-const dir = process.argv[2] ?? '/usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io';
+const dir = process.argv[2] ?? '/usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io';
 const {freeTopEdge, freeBottomEdge} = await import(pathToFileURL(path.join(dir, 'modules/bars/edge.js')).href);
 const m = (x, y, width, height) => ({x, y, width, height});
 

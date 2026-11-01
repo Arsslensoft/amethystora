@@ -25,7 +25,7 @@
 # vmlab-paths: @ui/extension.js @ui/*access* @ui/*touch* @ui/*quick* @ui/*pill* @ui/*screenshot* @ui/*dock* @sf/*themed/shell-access* @sf/*themed/shell-touch* @sf/usr/libexec/amethystora-control-list @sf/*just/desktop.just
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 HOME_DIR="/var/home/${TEST_USER}"
 ACCESS=org.gnome.shell.extensions.amethystora-ui.access
 TOUCH=org.gnome.shell.extensions.amethystora-ui.touch

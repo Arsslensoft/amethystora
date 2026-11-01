@@ -370,7 +370,7 @@ mod tests {
         assert_eq!(change(Some(&list), "greeting", "maybe"), Err(refused()));
         assert_eq!(new_widget(Some(&list), "My-clock", "hello"), Err(words(Refusal::WidgetName)));
         assert_ne!(words(Refusal::WidgetName), refused());
-        assert_eq!(trust_image(Some(&list), "ghcr.io/you/image", Some("ghcr.io/iarsslen"), None), Err(words(Refusal::NoKey)));
+        assert_eq!(trust_image(Some(&list), "ghcr.io/you/image", Some("ghcr.io/arsslensoft"), None), Err(words(Refusal::NoKey)));
     }
 
     #[test]

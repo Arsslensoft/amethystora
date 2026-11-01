@@ -93,7 +93,7 @@ test ! -e "${T}/etc/rpm-ostreed.conf"
 # Updates are still only accepted with this image's signature. Whether bootc's composefs backend applies
 # policy.json to every pull is not settled in its documentation: check it on a booted machine before
 # publishing (AGENTS.md, Sealed images)
-jq -e '.transports.docker["ghcr.io/iarsslen"] | any(.type == "sigstoreSigned")' "${T}/etc/containers/policy.json"
+jq -e '.transports.docker["ghcr.io/arsslensoft"] | any(.type == "sigstoreSigned")' "${T}/etc/containers/policy.json"
 
 # The source of every package is listed, after the packages changed (00-sealed.sh)
 diff <("${RPM[@]}" -qa --queryformat '%{NAME}\n' | grep -vx gpg-pubkey | sort) \

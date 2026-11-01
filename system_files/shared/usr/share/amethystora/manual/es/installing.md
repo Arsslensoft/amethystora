@@ -16,7 +16,7 @@ con la misma clave con la que se comprueba cada actualización. Para comprobar q
 descargado es lo que se compiló:
 
 ```bash
-curl -LO https://raw.githubusercontent.com/iarsslen/amethystora/main/cosign.pub
+curl -LO https://raw.githubusercontent.com/arsslensoft/amethystora/main/cosign.pub
 curl -LO https://download.amethystora.org/amethystora.iso.sha256
 curl -LO https://download.amethystora.org/amethystora.iso.sha256.bundle
 cosign verify-blob --key cosign.pub --bundle amethystora.iso.sha256.bundle amethystora.iso.sha256
@@ -109,7 +109,7 @@ todo lo que hay en `/home`, `/etc` y `/var`.
   Flatpak, Homebrew y los contenedores, sí.
 
 ```bash
-sudo bootc switch ghcr.io/iarsslen/amethystora:stable
+sudo bootc switch ghcr.io/arsslensoft/amethystora:stable
 ```
 
 Después reinicie. En el primer arranque, un servicio prepara por sí solo el paso a las actualizaciones
@@ -120,10 +120,10 @@ firma de Amethystora.
 
 | Imagen | Para |
 | --- | --- |
-| `ghcr.io/iarsslen/amethystora` | El escritorio estándar |
-| `ghcr.io/iarsslen/amethystora-dx` | Desarrolladores: añade Docker, Incus, libvirt, VSCodium y más ([Modo desarrollador](developer.md)) |
-| `ghcr.io/iarsslen/amethystora-nvidia-open` | El escritorio estándar con el controlador de núcleo abierto de NVIDIA |
-| `ghcr.io/iarsslen/amethystora-dx-nvidia-open` | El modo desarrollador con el controlador de núcleo abierto de NVIDIA |
+| `ghcr.io/arsslensoft/amethystora` | El escritorio estándar |
+| `ghcr.io/arsslensoft/amethystora-dx` | Desarrolladores: añade Docker, Incus, libvirt, VSCodium y más ([Modo desarrollador](developer.md)) |
+| `ghcr.io/arsslensoft/amethystora-nvidia-open` | El escritorio estándar con el controlador de núcleo abierto de NVIDIA |
+| `ghcr.io/arsslensoft/amethystora-dx-nvidia-open` | El modo desarrollador con el controlador de núcleo abierto de NVIDIA |
 
 Las ISO instalan las imágenes sin el controlador de NVIDIA. En un equipo con tarjeta NVIDIA, el primer
 arranque ofrece cambiar a la imagen NVIDIA correspondiente ([Hardware](hardware.md#graphics)).

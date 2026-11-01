@@ -198,8 +198,8 @@ machine. To give a machine away, install it again from the ISO instead, which er
 
 ## Reporting a problem
 
-Report bugs on [GitHub](https://github.com/iarsslen/amethystora/issues), and ask questions in the
-[discussions](https://github.com/iarsslen/amethystora/discussions), which **Community** in the app grid
+Report bugs on [GitHub](https://github.com/arsslensoft/amethystora/issues), and ask questions in the
+[discussions](https://github.com/arsslensoft/amethystora/discussions), which **Community** in the app grid
 opens. `ame report` gathers what a
 report needs into a file in your home folder (the image and its deployments, the kernel, the machine's maker
 and model, what the [driver check](hardware.md#when-a-device-does-not-work) found, your groups, failed

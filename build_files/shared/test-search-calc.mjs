@@ -4,7 +4,7 @@
 // Nothing here is node's or gjs's own: a failure throws, which makes either exit with an error.
 
 import {evaluate, localeTag, numericLocale} from
-    '../../system_files/shared/usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/search/calc.js';
+    '../../system_files/shared/usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/calc.js';
 
 const say = globalThis.print ?? console.log;
 const failures = [];

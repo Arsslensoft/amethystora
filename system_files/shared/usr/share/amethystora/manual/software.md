@@ -327,7 +327,7 @@ while you update through `rpm-ostree`. Two things to know:
 
 - **Switching images or streams:** `bootc switch` builds the new system from the image alone and
   drops layered packages without a word. On a machine with layered packages, switch with
-  `sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/iarsslen/<image>:<stream>` instead.
+  `sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/arsslensoft/<image>:<stream>` instead.
   Automatic updates handle this for you.
 - **Undoing it:** `sudo rpm-ostree uninstall <package>` removes one, and `sudo rpm-ostree reset`
   goes back to the plain image.

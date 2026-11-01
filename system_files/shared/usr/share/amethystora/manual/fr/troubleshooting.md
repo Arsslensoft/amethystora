@@ -120,8 +120,8 @@ Supprime les conteneurs, images et environnements d’exécution Flatpak inutili
 
 ## Signaler un problème
 
-Signalez les bogues sur [GitHub](https://github.com/iarsslen/amethystora/issues), et posez vos questions
-dans les [discussions](https://github.com/iarsslen/amethystora/discussions). `ame report` rassemble ce
+Signalez les bogues sur [GitHub](https://github.com/arsslensoft/amethystora/issues), et posez vos questions
+dans les [discussions](https://github.com/arsslensoft/amethystora/discussions). `ame report` rassemble ce
 dont un rapport a besoin dans un fichier de votre dossier personnel (l’image, vos groupes, les services
 en échec et les erreurs journalisées depuis ce démarrage), vous montre tout, puis, si vous le voulez,
 ouvre un nouveau ticket avec tout cela déjà rempli, sauf les erreurs. Rien n’est publié tant que vous

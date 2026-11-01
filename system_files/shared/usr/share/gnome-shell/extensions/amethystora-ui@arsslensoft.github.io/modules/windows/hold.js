@@ -25,7 +25,7 @@ const MODIFIERS = Clutter.ModifierType.SHIFT_MASK | Clutter.ModifierType.CONTROL
 // After a hold, how long the overview stays deaf to the release of Super if GNOME never asks for it
 const SWALLOW = 300;
 const CUSTOM = '/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/';
-const CLIPBOARD = 'amethystora-clipboard@iarsslen.github.io';
+const CLIPBOARD = 'amethystora-clipboard@arsslensoft.github.io';
 // The tip about holding Super is offered after Super alone has opened the overview this many times in a session
 const TIP_AFTER = 3;
 

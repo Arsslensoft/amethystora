@@ -235,10 +235,10 @@ async function reload(files) {
     // in the order the build added them, Amethystora UI's schemas system-wide too, each extension's own compiled with its sections of the image's
     // overrides (getSettings() reads those first), then the system's
     steps.push(`o=/usr/share/glib-2.0/schemas/zz0-amethystora-modifications.gschema.override
-      for u in $(cat /run/live-enabled; cd /usr/share/gnome-shell/extensions && ls -d -- *@iarsslen.github.io); do
+      for u in $(cat /run/live-enabled; cd /usr/share/gnome-shell/extensions && ls -d -- *@arsslensoft.github.io); do
         [ ! -d "/usr/share/gnome-shell/extensions/$u" ] || grep -q "'$u'" "$o" || sed -i "/^enabled-extensions/ s/\\]/, '$u'&/" "$o"
       done
-      ui=/usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/schemas
+      ui=/usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/schemas
       install -pm0644 -t /usr/share/glib-2.0/schemas "$ui"/*.gschema.xml
       for s in /usr/share/gnome-shell/extensions/*/schemas; do
         ids="$(cat "$s"/*.gschema.xml | tr -s '[:space:]' ' ' | grep -oE '<schema [^>]*id="[^"]+"' | sed -E 's/.*id="([^"]+)".*/\\1/' | tr '\\n' ' ')"

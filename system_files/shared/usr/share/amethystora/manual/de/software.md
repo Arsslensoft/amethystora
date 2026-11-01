@@ -240,7 +240,7 @@ Paket bleibt nur erhalten, solange Sie über `rpm-ostree` aktualisieren. Zwei Di
 - **Abbilder oder Kanäle wechseln:** `bootc switch` baut das neue System allein aus dem Abbild und lässt
   überlagerte Pakete kommentarlos fallen. Auf einem Rechner mit überlagerten Paketen wechseln Sie
   stattdessen mit
-  `sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/iarsslen/<image>:<stream>`.
+  `sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/arsslensoft/<image>:<stream>`.
   Automatische Aktualisierungen erledigen das für Sie.
 - **Rückgängig machen:** `sudo rpm-ostree uninstall <package>` entfernt eines, und
   `sudo rpm-ostree reset` kehrt zum reinen Abbild zurück.

@@ -20,7 +20,7 @@
 # vmlab-paths: @ui/extension.js @ui/*sounds* @ui/*bezel* @sf/usr/share/sounds/* @sf/usr/libexec/amethystora-login-background @sf/*just/desktop.just
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 HOME_DIR="/var/home/${TEST_USER}"
 HERE="$(dirname "$(readlink -f "$0")")"
 WORK=/run/vmlab-23

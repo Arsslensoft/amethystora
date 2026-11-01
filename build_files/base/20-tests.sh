@@ -200,7 +200,7 @@ assert (n.when, n.duration, n.action) == ("unfocused", 10.0, "notify"), n'
 test -x /usr/share/amethystora/user-setup.hooks.d/28-kitty-options.sh
 # ...the search's time and reminder answers and the pill's meetings, whose link the helper reads from Evolution Data
 # Server with the typelibs it needs, by rules that count a call's link and nothing else
-UI_EXTENSION=/usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io
+UI_EXTENSION=/usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io
 for file in modules/search/times.js modules/search/timesProvider.js modules/search/remind.js \
     modules/search/remindProvider.js modules/pill/meeting.js; do
     test -s "${UI_EXTENSION}/${file}"
@@ -374,10 +374,10 @@ grep -q 'exec /usr/bin/amethystora-phone ring' /usr/share/amethystora/just/deskt
 # Ringing, the phone's players and the clicker reach the module only through the program; Present presses the clicker's
 # three keys and no other (the program sends only these three words)
 for name in Ring MediaAction Players Presenting Clicker; do
-    grep -q "name=\"${name}\"" /usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/connect/interfaces.js
+    grep -q "name=\"${name}\"" /usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/connect/interfaces.js
 done
 grep -q "^const CLICKER_KEYS = {next: Clutter.KEY_Page_Down, previous: Clutter.KEY_Page_Up, blank: Clutter.KEY_b};" \
-    /usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/present.js
+    /usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/present.js
 [[ "$(GSETTINGS_BACKEND=memory gsettings get org.amethystora.Connect clipboard-send)" == false ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get org.amethystora.Connect clipboard-receive)" == false ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get org.amethystora.Connect photo-folder)" == "'pictures'" ]]
@@ -386,7 +386,7 @@ grep -q 'gsettings set org.amethystora.Connect photo-folder downloads' /usr/shar
 grep -q 'gsettings set org.amethystora.Connect computers true' /usr/share/amethystora/just/desktop.just
 # The phone's signal in the top bar comes from the program's two device properties, which the module reads
 for property in SignalStrength NetworkType; do
-    grep -q "<property name=\"${property}\"" /usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/connect/interfaces.js
+    grep -q "<property name=\"${property}\"" /usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/connect/interfaces.js
 done
 # Files' scripts menu (spec 3): the two helpers and the hook that writes their entries once per account, as marked
 # wrappers that pass Files' arguments on after --; the helpers read argv only, never Files' variables of names, and
@@ -447,7 +447,7 @@ for extension in /usr/share/gnome-shell/extensions/*/; do
 done
 
 # Extension Manager's row and GNOME's Extensions app show the image's version for each of its own
-for metadata in /usr/share/gnome-shell/extensions/amethystora-*@iarsslen.github.io/metadata.json; do
+for metadata in /usr/share/gnome-shell/extensions/amethystora-*@arsslensoft.github.io/metadata.json; do
     jq -e '(.version | type == "number") and (.["version-name"] | type == "string" and length > 0)' "${metadata}"
 done
 
@@ -471,17 +471,17 @@ GNOME_MAJOR="$(gnome-shell --version | grep -oE '[0-9]+' | head -n1)"
 # and claiming this GNOME, 50 and 51 both. It calls GNOME Shell's paint_to_content, which took a new
 # argument in GNOME 50, so read that call again before adding a version to its shell-version.
 jq -e --arg shell "${GNOME_MAJOR}" '.["shell-version"] | index($shell)' \
-    /usr/share/gnome-shell/extensions/amethystora-transitions@iarsslen.github.io/metadata.json
+    /usr/share/gnome-shell/extensions/amethystora-transitions@arsslensoft.github.io/metadata.json
 jq -e '.["shell-version"] | index("50") and index("51")' \
-    /usr/share/gnome-shell/extensions/amethystora-transitions@iarsslen.github.io/metadata.json
-grep -q "'amethystora-transitions@iarsslen.github.io'" /usr/share/glib-2.0/schemas/zz0-amethystora-modifications.gschema.override
+    /usr/share/gnome-shell/extensions/amethystora-transitions@arsslensoft.github.io/metadata.json
+grep -q "'amethystora-transitions@arsslensoft.github.io'" /usr/share/glib-2.0/schemas/zz0-amethystora-modifications.gschema.override
 [[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-transitions style)" == "'grow'" ]]
 # Amethystora Widgets, also written for this image: enabled, claiming this GNOME, and every example
 # amethystora-widgets new copies passing the same check as amethystora-widgets run. The check runs in a
 # home of its own, with settings in memory as there is no session here
-WIDGETS_EXTENSION=/usr/share/gnome-shell/extensions/amethystora-widgets@iarsslen.github.io
+WIDGETS_EXTENSION=/usr/share/gnome-shell/extensions/amethystora-widgets@arsslensoft.github.io
 jq -e --arg shell "${GNOME_MAJOR}" '.["shell-version"] | index($shell)' "${WIDGETS_EXTENSION}/metadata.json"
-grep -q "'amethystora-widgets@iarsslen.github.io'" /usr/share/glib-2.0/schemas/zz0-amethystora-modifications.gschema.override
+grep -q "'amethystora-widgets@arsslensoft.github.io'" /usr/share/glib-2.0/schemas/zz0-amethystora-modifications.gschema.override
 test -x /usr/bin/amethystora-widgets
 WIDGETS_HOME="$(mktemp -d)"
 for example in /usr/share/amethystora/widgets/examples/*/; do
@@ -500,14 +500,14 @@ HOME="${WIDGETS_HOME}" GSETTINGS_BACKEND=memory gjs -m "${WIDGETS_EXTENSION}/che
 echo '{"name": "Clock", "command": "./widget.sh", "place": "desktop", "position": "left"}' >"${DESK_WIDGET}/widget.json"
 HOME="${WIDGETS_HOME}" GSETTINGS_BACKEND=memory gjs -m "${WIDGETS_EXTENSION}/check.js" "${DESK_WIDGET}" >/dev/null 2>&1 && false
 grep -q "widget.manifest?.place === 'desktop'" "${WIDGETS_EXTENSION}/extension.js"
-grep -q "get_child('runner.js')" /usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/deskwidgets.js
+grep -q "get_child('runner.js')" /usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/deskwidgets.js
 rm -rf "${WIDGETS_HOME}"
 # Amethystora Clipboard, Clipboard Indicator's copy that seals its history: enabled, claiming this GNOME, its
 # settings where gsettings finds them and Control's command for keep-history there, nothing of Clipboard
 # Indicator left, and the sealing tried with a stand-in for the keyring (test-clipboard.sh)
-CLIPBOARD_EXTENSION=/usr/share/gnome-shell/extensions/amethystora-clipboard@iarsslen.github.io
+CLIPBOARD_EXTENSION=/usr/share/gnome-shell/extensions/amethystora-clipboard@arsslensoft.github.io
 jq -e --arg shell "${GNOME_MAJOR}" '.["shell-version"] | index($shell)' "${CLIPBOARD_EXTENSION}/metadata.json"
-grep -q "'amethystora-clipboard@iarsslen.github.io'" /usr/share/glib-2.0/schemas/zz0-amethystora-modifications.gschema.override
+grep -q "'amethystora-clipboard@arsslensoft.github.io'" /usr/share/glib-2.0/schemas/zz0-amethystora-modifications.gschema.override
 test ! -e /usr/share/gnome-shell/extensions/clipboard-indicator@tudmotu.com
 [[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-clipboard keep-history)" == "'always'" ]]
 GSETTINGS_BACKEND=memory gsettings list-keys org.gnome.shell.extensions.amethystora-clipboard | grep -qx cache-only-favorites && false
@@ -519,10 +519,10 @@ bash /ctx/build_files/shared/test-clipboard.sh
 # own gem; every app it names ships in the image or comes with every machine, and each command is installed.
 # Its labels are translated in every language the image has a catalog for, read from the catalog: "Terminal" is
 # the same word in three of them.
-LOGO_MENU_EXTENSION=/usr/share/gnome-shell/extensions/amethystora-logo-menu@iarsslen.github.io
+LOGO_MENU_EXTENSION=/usr/share/gnome-shell/extensions/amethystora-logo-menu@arsslensoft.github.io
 jq -e --arg shell "${GNOME_MAJOR}" '.["shell-version"] | index($shell)' "${LOGO_MENU_EXTENSION}/metadata.json"
-grep -q "'amethystora-logo-menu@iarsslen.github.io'" /usr/share/glib-2.0/schemas/zz0-amethystora-modifications.gschema.override
-test -s /usr/share/licenses/amethystora-logo-menu@iarsslen.github.io/LICENSE
+grep -q "'amethystora-logo-menu@arsslensoft.github.io'" /usr/share/glib-2.0/schemas/zz0-amethystora-modifications.gschema.override
+test -s /usr/share/licenses/amethystora-logo-menu@arsslensoft.github.io/LICENSE
 test -s "$(grep -oE "^const LOGO = '[^']+'" "${LOGO_MENU_EXTENSION}/extension.js" | cut -d "'" -f 2)"
 for app in $(grep -oE "app: '[^']+'" "${LOGO_MENU_EXTENSION}/extension.js" | cut -d "'" -f 2); do
     test -f "/usr/share/applications/${app}" ||
@@ -543,10 +543,10 @@ sys.exit(f"{sys.argv[1]} does not translate {missing}" if missing else 0)' "${mo
 done
 # Amethystora UI, the desktop's own modules (plans/PLAN-amethystora-ui.md): enabled, under the image's licence,
 # claiming this GNOME, and every module it imports is there. The third-party extensions it replaces are gone.
-UI_EXTENSION=/usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io
+UI_EXTENSION=/usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io
 jq -e --arg shell "${GNOME_MAJOR}" '.["shell-version"] | index($shell)' "${UI_EXTENSION}/metadata.json"
-grep -q "'amethystora-ui@iarsslen.github.io'" /usr/share/glib-2.0/schemas/zz0-amethystora-modifications.gschema.override
-test -s /usr/share/licenses/amethystora-ui@iarsslen.github.io/LICENSE
+grep -q "'amethystora-ui@arsslensoft.github.io'" /usr/share/glib-2.0/schemas/zz0-amethystora-modifications.gschema.override
+test -s /usr/share/licenses/amethystora-ui@arsslensoft.github.io/LICENSE
 for module in $(grep -oE "from './modules/[a-z]+\.js'" "${UI_EXTENSION}/extension.js" | cut -d / -f 3 | cut -d . -f 1); do
     test -s "${UI_EXTENSION}/modules/${module}.js"
 done
@@ -728,7 +728,7 @@ jq -e 'length > 0 and all(.[]; .id | startswith("manual/")) and any(.[]; .id == 
     <<<"${MANUAL_HITS}" >/dev/null
 [[ "$(/usr/libexec/amethystora-agent-tools manual-search -- )" == "[]" ]]
 # The clipboard extension gives the search its read-only view, and says so in its first comment
-CLIPBOARD_JS=/usr/share/gnome-shell/extensions/amethystora-clipboard@iarsslen.github.io/extension.js
+CLIPBOARD_JS=/usr/share/gnome-shell/extensions/amethystora-clipboard@arsslensoft.github.io/extension.js
 grep -q "^    history () {" "${CLIPBOARD_JS}"
 grep -q "^    content (id) {" "${CLIPBOARD_JS}"
 head -3 "${CLIPBOARD_JS}" | grep -q "search"
@@ -1303,7 +1303,7 @@ for file in modules/tools.js modules/tools/microphone.js modules/tools/picker.js
     test -s "${UI_EXTENSION}/${file}"
 done
 test -s /usr/share/amethystora/themed/shell-tools.css.tpl
-test -s /usr/share/gnome-shell/extensions/amethystora-clipboard@iarsslen.github.io/textActions.js
+test -s /usr/share/gnome-shell/extensions/amethystora-clipboard@arsslensoft.github.io/textActions.js
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-recursively "${TOOLS}" | grep -E ' (colour-picker|mute-microphone) ' | keycombos |
     paste -sd ' ')" == "<alt><super>c <alt><super>m" ]]
 for combo in "<alt><super>c" "<alt><super>m"; do
@@ -1317,7 +1317,7 @@ command -v qrencode >/dev/null
 grep -qF "run([QRENCODE, '-t', 'ASCII', '-m', '0', '-l', 'M', '-8']," "${UI_EXTENSION}/modules/tools/qr.js"
 [[ -z "$(grep -rnE 'use_markup = true|use_markup: true|set_markup\(|spawn_command_line|GLib\.spawn_async|Util\.spawn' \
     "${UI_EXTENSION}/modules/tools.js" "${UI_EXTENSION}/modules/tools" \
-    /usr/share/gnome-shell/extensions/amethystora-clipboard@iarsslen.github.io/textActions.js)" ]]
+    /usr/share/gnome-shell/extensions/amethystora-clipboard@arsslensoft.github.io/textActions.js)" ]]
 for helper in amethystora-what-uses amethystora-convert; do
     test -x "/usr/libexec/${helper}"
     python3 -I -c 'import ast, sys; ast.parse(open(sys.argv[1], encoding="utf-8").read())' "/usr/libexec/${helper}"
@@ -1339,14 +1339,14 @@ test -s "${UI_EXTENSION}/stylesheets/dock.css"
 [[ -z "$(grep -rn --include='*.js' GLSLEffect /usr/share/gnome-shell/extensions | grep -v ':[0-9]*: *//')" ]]
 # Every module of our extensions parses: one syntax error keeps the whole extension from loading, and nothing else
 # here would notice
-find /usr/share/gnome-shell/extensions/amethystora-*@iarsslen.github.io -name '*.js' -print0 |
+find /usr/share/gnome-shell/extensions/amethystora-*@arsslensoft.github.io -name '*.js' -print0 |
     while IFS= read -r -d '' js; do
         env LD_LIBRARY_PATH=/apps-stage/usr/lib64 /apps-stage/usr/bin/node --check --input-type=module <"${js}" ||
             { echo "${js} does not parse" >&2; exit 1; }
     done
 # Every relative import in our extensions names a file the image has. One missing file keeps the whole extension from
 # loading, and parsing each file alone does not notice (dock/flatpak.js, once left out by a .gitignore rule)
-find /usr/share/gnome-shell/extensions/amethystora-*@iarsslen.github.io -name '*.js' -print0 |
+find /usr/share/gnome-shell/extensions/amethystora-*@arsslensoft.github.io -name '*.js' -print0 |
     while IFS= read -r -d '' js; do
         { grep -oE "(from|import\() *['\"]\.\.?/[^'\"]+['\"]" "${js}" || true; } |
             sed -E "s/.*['\"](\.\.?\/[^'\"]+)['\"]/\1/" |
@@ -1357,7 +1357,7 @@ find /usr/share/gnome-shell/extensions/amethystora-*@iarsslen.github.io -name '*
 # Every Gio.Settings the shell code of our extensions makes is kept and run_dispose()d on the main thread at disable,
 # never left to the collector: GJS sweeping one while dconf's worker dispatches a change to it deadlocks the shell
 env LD_LIBRARY_PATH=/apps-stage/usr/lib64 NODE_ICU_DATA="$(echo /apps-stage/usr/share/node-*/icudata)" /apps-stage/usr/bin/node /ctx/build_files/shared/test-settings-disposed.mjs \
-    /usr/share/gnome-shell/extensions/amethystora-*@iarsslen.github.io
+    /usr/share/gnome-shell/extensions/amethystora-*@arsslensoft.github.io
 # The glass's two keys (ame desktop glass, ame desktop comfort reduce-transparency): Prism by default, the three
 # variants the schema offers each a table of materials.js
 GLASS=org.gnome.shell.extensions.amethystora-ui.glass
@@ -1486,7 +1486,7 @@ grep -qa -- '--now' /usr/lib/amethystora-phone/amethystora-phone
 # An account that holds a list of its own never sees the default list of extensions, so the user-setup hook
 # puts it back after every update; the default it reads has to be the one the image compiled
 test -x /usr/share/amethystora/user-setup.hooks.d/15-extensions.sh
-GSETTINGS_BACKEND=memory gsettings get org.gnome.shell enabled-extensions | grep -q "'amethystora-ui@iarsslen.github.io'"
+GSETTINGS_BACKEND=memory gsettings get org.gnome.shell enabled-extensions | grep -q "'amethystora-ui@arsslensoft.github.io'"
 # Xwayland only when an X11 app needs it, ibus-x11 with it (17-cleanup.sh), and no idle input engine
 test ! -e /etc/xdg/autostart/ibus-mozc-launch-xwayland.desktop
 test -x /etc/xdg/Xwayland-session.d/10-ibus-x11
@@ -2984,7 +2984,7 @@ grep -q '^desks \*ARGS:' /usr/share/amethystora/just/desktop.just
 )
 # First start (manual: desktop.md#the-reveal-at-login, #tips, #the-app-grid, #gestures-and-keys). The reveal at login, a
 # key of the transitions extension, its own file, imported; ame desktop transition reveal on|off
-TRANSITIONS_EXTENSION=/usr/share/gnome-shell/extensions/amethystora-transitions@iarsslen.github.io
+TRANSITIONS_EXTENSION=/usr/share/gnome-shell/extensions/amethystora-transitions@arsslensoft.github.io
 # A field named as a method hides it: the reveal after every theme or wallpaper change threw once one did
 grep -q 'this\._reveal = ' "${TRANSITIONS_EXTENSION}/extension.js" && false
 [[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-transitions reveal)" == true ]]
@@ -3310,7 +3310,7 @@ grep -q "^origin = pam://amethystora$" /etc/security/pam_u2f.conf
 # Hardening (08-hardening.sh and its files in system_files)
 # Updates must carry a valid signature from the key CI signs with
 test -s /etc/pki/containers/amethystora.pub
-jq -e '.transports.docker["ghcr.io/iarsslen"][0] == {"type": "sigstoreSigned",
+jq -e '.transports.docker["ghcr.io/arsslensoft"][0] == {"type": "sigstoreSigned",
     "keyPath": "/etc/pki/containers/amethystora.pub", "signedIdentity": {"type": "matchRepository"}}' \
     /etc/containers/policy.json
 grep -q "use-sigstore-attachments: true" /etc/containers/registries.d/amethystora.yaml
@@ -3346,11 +3346,11 @@ openssl pkey -in "${TRUST_ROOT}/cosign.key" -pubout -out "${TRUST_ROOT}/cosign.p
 /usr/libexec/amethystora-trust-image --root "${TRUST_ROOT}" ghcr.io/someone/my-image "${TRUST_ROOT}/cosign.pub"
 jq -e '.transports.docker["ghcr.io/someone/my-image"] == [{"type": "sigstoreSigned",
     "keyPath": "/etc/pki/containers/ghcr.io-someone-my-image.pub", "signedIdentity": {"type": "matchRepository"}}]
-    and .transports.docker["ghcr.io/iarsslen"][0].keyPath == "/etc/pki/containers/amethystora.pub"
+    and .transports.docker["ghcr.io/arsslensoft"][0].keyPath == "/etc/pki/containers/amethystora.pub"
     and .default == [{"type": "reject"}]' "${TRUST_ROOT}/etc/containers/policy.json" >/dev/null
 cmp "${TRUST_ROOT}/cosign.pub" "${TRUST_ROOT}/etc/pki/containers/ghcr.io-someone-my-image.pub"
 grep -qxF "  ghcr.io/someone/my-image:" "${TRUST_ROOT}/etc/containers/registries.d/ghcr.io-someone-my-image.yaml"
-/usr/libexec/amethystora-trust-image --root "${TRUST_ROOT}" ghcr.io/iarsslen/amethystora "${TRUST_ROOT}/cosign.pub" && false
+/usr/libexec/amethystora-trust-image --root "${TRUST_ROOT}" ghcr.io/arsslensoft/amethystora "${TRUST_ROOT}/cosign.pub" && false
 /usr/libexec/amethystora-trust-image --root "${TRUST_ROOT}" ghcr.io/someone/other "${TRUST_ROOT}/cosign.key" && false
 rm -rf "${TRUST_ROOT}"
 # The rest of an image of your own, while it builds: its setup.json as every account's defaults (amethystora-setup

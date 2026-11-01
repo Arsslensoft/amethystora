@@ -1,8 +1,8 @@
 {
-  "uuid": "amethystora-logo-menu@iarsslen.github.io",
+  "uuid": "amethystora-logo-menu@arsslensoft.github.io",
   "name": "Amethystora Logo Menu",
   "description": "The Amethystora logo at the left of the top bar, and a menu of the system's tools: Settings, the Manual, the software centre, Extensions, Mission Center, the terminal and DistroShelf. A middle click opens the overview.",
   "shell-version": ["50", "51"],
   "gettext-domain": "amethystora",
-  "url": "https://github.com/iarsslen/amethystora"
+  "url": "https://github.com/arsslensoft/amethystora"
 }

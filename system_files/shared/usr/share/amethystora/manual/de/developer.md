@@ -13,11 +13,11 @@ und das System darunter bleibt sauber genug, um es ohne Bedenken zu aktualisiere
 Wechseln Sie zum dx-Abbild und starten Sie neu:
 
 ```bash
-sudo bootc switch --enforce-container-sigpolicy ghcr.io/iarsslen/amethystora-dx:stable
+sudo bootc switch --enforce-container-sigpolicy ghcr.io/arsslensoft/amethystora-dx:stable
 ```
 
 Wenn Sie [überlagerte Pakete](software.md#layering-the-last-resort) haben, verwenden Sie stattdessen
-`sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/iarsslen/amethystora-dx:stable`, was sie
+`sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/arsslensoft/amethystora-dx:stable`, was sie
 behält. Der Wechsel zurück zu `amethystora` funktioniert auf dieselbe Weise.
 
 Beim ersten Start fügt das dx-Abbild jedes Administratorkonto den Gruppen `docker`, `incus-admin`,

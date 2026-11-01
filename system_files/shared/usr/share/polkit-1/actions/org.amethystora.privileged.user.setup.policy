@@ -5,7 +5,7 @@
 <policyconfig>
 
   <vendor>Amethystora</vendor>
-  <vendor_url>https://github.com/iarsslen/amethystora</vendor_url>
+  <vendor_url>https://github.com/arsslensoft/amethystora</vendor_url>
 
   <action id="org.amethystora.policykit.privileged.user.setup">
     <description>Allows certain user configuration tasks to run as root</description>

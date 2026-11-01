@@ -25,7 +25,7 @@ import subprocess
 import sys
 
 ROOT = os.environ.get("DEBRAND_ROOT", "/")
-REPO = "iarsslen/amethystora"
+REPO = "arsslensoft/amethystora"
 REPO_URL = f"https://github.com/{REPO}"
 VENDOR = REPO.split("/")[0]
 

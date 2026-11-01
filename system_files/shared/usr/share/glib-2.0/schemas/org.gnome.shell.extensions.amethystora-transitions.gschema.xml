@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- The settings of Amethystora Transitions (amethystora-transitions@iarsslen.github.io). Installed
+<!-- The settings of Amethystora Transitions (amethystora-transitions@arsslensoft.github.io). Installed
      system-wide rather than in the extension's own folder, so that gsettings and ame desktop
      transition can reach them. -->
 <schemalist>

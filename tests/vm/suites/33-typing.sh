@@ -14,7 +14,7 @@
 # vmlab-paths: @ui/extension.js @ui/*typing* @ui/*emoji* @sf/usr/libexec/amethystora-text-shortcuts @sf/*themed/shell-emoji* @sf/usr/libexec/amethystora-control-list @sf/*just/desktop.just
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 HOME_DIR="/var/home/${TEST_USER}"
 EMOJI=org.gnome.shell.extensions.amethystora-ui.emoji
 A11Y=org.gnome.desktop.a11y.interface

@@ -9,7 +9,7 @@ import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 import System from 'system';
 import { Store, stamp, survivors, readOldCache, forgetOldCache } from
-    'file:///usr/share/gnome-shell/extensions/amethystora-clipboard@iarsslen.github.io/store.js';
+    'file:///usr/share/gnome-shell/extensions/amethystora-clipboard@arsslensoft.github.io/store.js';
 
 const [marker] = System.programArgs;
 const encoder = new TextEncoder();

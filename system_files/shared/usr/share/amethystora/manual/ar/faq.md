@@ -67,5 +67,5 @@
 
 ## هل أستطيع الوثوق بالصورة؟
 
-تُبنى علنًا على GitHub من الشيفرة المصدرية في [iarsslen/amethystora](https://github.com/iarsslen/amethystora)،
+تُبنى علنًا على GitHub من الشيفرة المصدرية في [arsslensoft/amethystora](https://github.com/arsslensoft/amethystora)،
 وتُوقَّع بمفتاح يأتي نصفه العام في كل صورة، ولا يقبلها جهازك إلا إذا صحّ ذلك التوقيع.

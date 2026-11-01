@@ -16,7 +16,7 @@
 # vmlab-paths: @ui/extension.js @ui/*glass* @ui/*comfort* @ui/*style* @sf/*themed/shell-glass* @sf/*themed/shell-styles* @sf/*just/desktop.just
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 HOME_DIR="/var/home/${TEST_USER}"
 GLASS=org.gnome.shell.extensions.amethystora-ui.glass
 A11Y=org.gnome.desktop.a11y.interface

@@ -9,7 +9,7 @@ source "$(dirname "$0")/lib.sh"
 
 GRADIA=be.alexandervanhee.gradia
 # The screenshot module of Amethystora UI, which took Gradia's integration over (plans/PLAN-amethystora-ui.md)
-EXTENSION=amethystora-ui@iarsslen.github.io
+EXTENSION=amethystora-ui@arsslensoft.github.io
 HOME_DIR="/var/home/${TEST_USER}"
 TESSDATA="${HOME_DIR}/.var/app/${GRADIA}/data/tessdata"
 OWN=/run/vmlab-22

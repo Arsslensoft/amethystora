@@ -81,9 +81,9 @@ jobs:
             amethystora | amethystora-dx | amethystora-nvidia-open | amethystora-dx-nvidia-open | amethystora-nvidia-lts | amethystora-dx-nvidia-lts) ;;
             *) echo "::error::${IMAGE} has no ISO: it is not one of the six stable images"; exit 1 ;;
           esac
-          digest="$(skopeo inspect --retry-times 3 "docker://ghcr.io/iarsslen/${IMAGE}:stable" | jq -r .Digest)"
+          digest="$(skopeo inspect --retry-times 3 "docker://ghcr.io/arsslensoft/${IMAGE}:stable" | jq -r .Digest)"
           [[ "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]]
-          cosign verify --key cosign.pub "ghcr.io/iarsslen/${IMAGE}@${digest}" > /dev/null
+          cosign verify --key cosign.pub "ghcr.io/arsslensoft/${IMAGE}@${digest}" > /dev/null
           echo "digest=${digest}" >> "$GITHUB_OUTPUT"
 
   build-iso:
@@ -114,7 +114,7 @@ jobs:
             amethystora | amethystora-dx | amethystora-nvidia-open | amethystora-dx-nvidia-open | amethystora-nvidia-lts | amethystora-dx-nvidia-lts) ;;
             *) echo "::error::${IMAGE} has no ISO: it is not one of the six stable images"; exit 1 ;;
           esac
-          sed -i "s|@IMAGE@|ghcr.io/iarsslen/${IMAGE}|" iso/iso.toml
+          sed -i "s|@IMAGE@|ghcr.io/arsslensoft/${IMAGE}|" iso/iso.toml
           # The machine it installs takes updates signature-checked from the first one
           grep -q -- "--enforce-container-sigpolicy" iso/iso.toml
           if grep -E "^[^#]*bootc switch" iso/iso.toml | grep -v -- "--enforce-container-sigpolicy"; then
@@ -149,7 +149,7 @@ jobs:
       - name: Build ISO
         env:
           BUILDER: quay.io/centos-bootc/bootc-image-builder@sha256:2b52843ea2bfda73b0a08d97e76b734393b1d3a804681b9fabb26723bd3a2f0b
-          IMAGE_REF: ghcr.io/iarsslen/${{ env.IMAGE }}:stable
+          IMAGE_REF: ghcr.io/arsslensoft/${{ env.IMAGE }}:stable
         run: |
           sudo rm -rf /var/lib/containers/storage
           sudo mkdir -p /etc/containers
@@ -227,7 +227,7 @@ jobs:
     permissions:
       contents: read
     env:
-      IMAGE_REF: ghcr.io/iarsslen/${{ inputs.image || 'amethystora' }}:stable
+      IMAGE_REF: ghcr.io/arsslensoft/${{ inputs.image || 'amethystora' }}:stable
       DIGEST: ${{ needs.image.outputs.digest }}
       ISO: ${{ inputs.image || 'amethystora' }}.iso
 

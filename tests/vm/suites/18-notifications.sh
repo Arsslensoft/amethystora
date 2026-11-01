@@ -13,7 +13,7 @@
 # vmlab-paths: @ui/extension.js @ui/*pill* @sf/*themed/shell-pill* @sf/*just/desktop.just
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 HOME_DIR="/var/home/${TEST_USER}"
 PILL=org.gnome.shell.extensions.amethystora-ui.pill
 COLOR=org.gnome.settings-daemon.plugins.color

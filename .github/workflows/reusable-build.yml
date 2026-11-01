@@ -20,7 +20,8 @@ on:
         type: string
 
 env:
-  IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
+  # Written out, not the repository owner: GitHub reports that as Arsslensoft, and a registry path must be lowercase
+  IMAGE_REGISTRY: ghcr.io/arsslensoft
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ inputs.brand_name}}-${{ inputs.stream_name }}
@@ -144,7 +145,7 @@ jobs:
             printenv AKMODS_PRIVKEY > "${key_file}"
           fi
           sudo env AKMODS_PRIVKEY_FILE="${key_file}" \
-               $(command -v just) repo_organization="${{ github.repository_owner }}" \
+               $(command -v just) \
                     build-ghcr "${{ matrix.base_name }}" \
                                "${{ matrix.stream_name }}" \
                                "${{ matrix.image_flavor }}" \
@@ -172,7 +173,7 @@ jobs:
             printenv SECUREBOOT_KEY > "${key_file}"
           fi
           sudo env SECUREBOOT_KEY_FILE="${key_file}" \
-               $(command -v just) repo_organization="${{ github.repository_owner }}" \
+               $(command -v just) \
                     seal "${{ matrix.base_name }}" "${{ matrix.stream_name }}" "${{ matrix.image_flavor }}"
           key="$(sudo podman inspect "localhost/${IMAGE_NAME}:stable-sealed" | jq -r '.[0].Config.Labels["org.amethystora.secure-boot-key"]')"
           echo "key=${key}" >> "$GITHUB_OUTPUT"

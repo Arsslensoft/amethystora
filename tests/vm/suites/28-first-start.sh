@@ -12,7 +12,7 @@
 # vmlab-paths: @ui/*hints* @ui/*appgrid* @sf/usr/share/amethystora/user-setup.hooks.d/* @sf/usr/libexec/amethystora-layout-offer @sf/*just/desktop.just @sf/usr/share/gnome-shell/extensions/amethystora-transitions*
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 TRANSITIONS=org.gnome.shell.extensions.amethystora-transitions
 ORIGINAL="${TEST_USER}"
 NEW=vmlab-first
@@ -104,7 +104,7 @@ MONITOR=$!
 
 # --- 9: the reveal ran once, and left nothing behind -----------------------------------------------------------------
 sleep 3
-echo "# the new account's shell: $(pgrep -a -u "${NEW}" gnome-shell | head -n 1 | cut -c1-120); animations $(ev 'imports.gi.St.Settings.get().enable_animations'); transitions $(ev "Main.extensionManager.lookup('amethystora-transitions@iarsslen.github.io')?.state"); ui $(ev "Main.extensionManager.lookup('${UUID}')?.state")"
+echo "# the new account's shell: $(pgrep -a -u "${NEW}" gnome-shell | head -n 1 | cut -c1-120); animations $(ev 'imports.gi.St.Settings.get().enable_animations'); transitions $(ev "Main.extensionManager.lookup('amethystora-transitions@arsslensoft.github.io')?.state"); ui $(ev "Main.extensionManager.lookup('${UUID}')?.state")"
 # The reveal plays once GNOME has finished starting, which the lab takes its time over
 revealed() { (($(reveal_lines) >= 1)); }
 wait_for 30 revealed
@@ -358,7 +358,7 @@ in_session "ame desktop transition reveal on" >/dev/null 2>&1
 
 # 24: a change after the login reveal opens its frozen picture, and takes it away. Only this shell has animations in
 # the lab, and without them nothing ever freezes (a reveal that threw left the old picture over the desktop for good)
-T="Main.extensionManager.lookup('amethystora-transitions@iarsslen.github.io').stateObj"
+T="Main.extensionManager.lookup('amethystora-transitions@arsslensoft.github.io').stateObj"
 frozen() { [[ "$(ev "${T}._frozen")" == true ]]; }
 shown() { [[ "$(ev 'Main.layoutManager.screenTransition.visible')" == true ]]; }
 open() { ! frozen && ! shown; }

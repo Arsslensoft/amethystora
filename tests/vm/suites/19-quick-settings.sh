@@ -21,7 +21,7 @@
 # vmlab-paths: @ui/extension.js @ui/*quick* @sf/*themed/shell-quick* @sf/*just/desktop.just
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 HOME_DIR="/var/home/${TEST_USER}"
 QUICK=org.gnome.shell.extensions.amethystora-ui.quick
 HERE="$(dirname "$(readlink -f "$0")")"

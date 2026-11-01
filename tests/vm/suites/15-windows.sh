@@ -21,7 +21,7 @@
 # vmlab-paths: @ui/extension.js @ui/*windows* @sf/*themed/shell-windows* @sf/*just/desktop.just
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 HOME_DIR="/var/home/${TEST_USER}"
 STATE_DIR="${HOME_DIR}/.local/state/amethystora"
 SCHEMA=org.gnome.shell.extensions.amethystora-ui.windows

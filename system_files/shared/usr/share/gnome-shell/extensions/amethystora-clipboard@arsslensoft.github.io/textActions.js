@@ -23,7 +23,7 @@ const ngettext = Domain.ngettext.bind(Domain);
 
 // Past this, only the count is offered: a change of a large text is not worth holding twice
 const LONGEST = 1024 * 1024;
-const UI = 'amethystora-ui@iarsslen.github.io';
+const UI = 'amethystora-ui@arsslensoft.github.io';
 
 function locale() {
     const name = GLib.get_language_names_with_category('LC_CTYPE')[0] ?? 'C';

@@ -6,7 +6,7 @@
 # vmlab-paths: apps/connect/* apps/phone/* @ui/*connect* @ui/*present* @ui/*pill/media* @sf/*just/desktop.just @sf/*amethystora-control-list @sf/*org.amethystora.Connect.gschema.xml
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 UNIT=amethystora-connect.service
 HOME_DIR="/var/home/${TEST_USER}"
 HERE="$(dirname "$(readlink -f "$0")")"

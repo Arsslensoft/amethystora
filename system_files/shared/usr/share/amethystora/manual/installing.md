@@ -24,7 +24,7 @@ update is checked against. To check that what you downloaded is what was built (
 its name in place of `amethystora.iso`):
 
 ```bash
-curl -LO https://raw.githubusercontent.com/iarsslen/amethystora/main/cosign.pub
+curl -LO https://raw.githubusercontent.com/arsslensoft/amethystora/main/cosign.pub
 curl -LO https://download.amethystora.org/amethystora.iso.sha256
 curl -LO https://download.amethystora.org/amethystora.iso.sha256.bundle
 cosign verify-blob --key cosign.pub --bundle amethystora.iso.sha256.bundle amethystora.iso.sha256
@@ -37,7 +37,7 @@ that Amethystora made it. The last line prints `True` when the ISO matches:
 
 ```powershell
 curl.exe -LO https://github.com/sigstore/cosign/releases/latest/download/cosign-windows-amd64.exe
-curl.exe -LO https://raw.githubusercontent.com/iarsslen/amethystora/main/cosign.pub
+curl.exe -LO https://raw.githubusercontent.com/arsslensoft/amethystora/main/cosign.pub
 curl.exe -LO https://download.amethystora.org/amethystora.iso.sha256
 curl.exe -LO https://download.amethystora.org/amethystora.iso.sha256.bundle
 .\cosign-windows-amd64.exe verify-blob --key cosign.pub --bundle amethystora.iso.sha256.bundle amethystora.iso.sha256
@@ -131,7 +131,7 @@ everything in `/home`, `/etc` and `/var`.
   Homebrew and containers do.
 
 ```bash
-sudo bootc switch ghcr.io/iarsslen/amethystora:stable
+sudo bootc switch ghcr.io/arsslensoft/amethystora:stable
 ```
 
 Then restart. On the first boot a service stages the switch to signature-checked updates by itself,
@@ -141,12 +141,12 @@ and from the restart after that, an update is only accepted if it carries Amethy
 
 | Image | For |
 | --- | --- |
-| `ghcr.io/iarsslen/amethystora` | The standard desktop |
-| `ghcr.io/iarsslen/amethystora-dx` | Developers: adds Docker, Incus, libvirt, VSCodium and more ([Developer mode](developer.md)) |
-| `ghcr.io/iarsslen/amethystora-nvidia-open` | The standard desktop with NVIDIA's open kernel driver |
-| `ghcr.io/iarsslen/amethystora-dx-nvidia-open` | Developer mode with NVIDIA's open kernel driver |
-| `ghcr.io/iarsslen/amethystora-nvidia-lts` | The standard desktop with NVIDIA's driver for the GeForce 900 and 10 series |
-| `ghcr.io/iarsslen/amethystora-dx-nvidia-lts` | Developer mode with NVIDIA's driver for the GeForce 900 and 10 series |
+| `ghcr.io/arsslensoft/amethystora` | The standard desktop |
+| `ghcr.io/arsslensoft/amethystora-dx` | Developers: adds Docker, Incus, libvirt, VSCodium and more ([Developer mode](developer.md)) |
+| `ghcr.io/arsslensoft/amethystora-nvidia-open` | The standard desktop with NVIDIA's open kernel driver |
+| `ghcr.io/arsslensoft/amethystora-dx-nvidia-open` | Developer mode with NVIDIA's open kernel driver |
+| `ghcr.io/arsslensoft/amethystora-nvidia-lts` | The standard desktop with NVIDIA's driver for the GeForce 900 and 10 series |
+| `ghcr.io/arsslensoft/amethystora-dx-nvidia-lts` | Developer mode with NVIDIA's driver for the GeForce 900 and 10 series |
 
 Each has its own ISOs ([Download](#download)). On a computer with an NVIDIA card installed without the
 driver that drives it, the first boot offers to switch to the NVIDIA image that does
@@ -192,7 +192,7 @@ The next start begins with the blue MOK manager, which asks you to trust Amethys
 disk passphrase, and the first start's setup creates your account, as after any installation.
 
 The sealed images are the regular four, tagged `stable-sealed`:
-`ghcr.io/iarsslen/amethystora:stable-sealed`, `ghcr.io/iarsslen/amethystora-dx:stable-sealed`, and the
+`ghcr.io/arsslensoft/amethystora:stable-sealed`, `ghcr.io/arsslensoft/amethystora-dx:stable-sealed`, and the
 same for the two NVIDIA images.
 
 ## After the first boot

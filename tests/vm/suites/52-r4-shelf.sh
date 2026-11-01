@@ -19,7 +19,7 @@
 # vmlab-paths: @ui/extension.js @ui/*shelf* @ui/*desks* @ui/*dock/drops* @ui/*dock/dash* @ui/*pointer* @sf/*themed/shell-shelf* @sf/*themed/shell-desks* @sf/usr/bin/amethystora-shelf @sf/usr/lib/amethystora-shelf/* @sf/usr/share/applications/amethystora-shelf.desktop apps/* @sf/usr/libexec/amethystora-control-list @sf/*just/desktop.just
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 HOME_DIR="/var/home/${TEST_USER}"
 HERE="$(dirname "$0")"
 SHELF_SCHEMA=org.gnome.shell.extensions.amethystora-ui.shelf

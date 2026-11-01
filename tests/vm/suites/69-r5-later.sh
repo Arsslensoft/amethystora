@@ -13,7 +13,7 @@
 # vmlab-paths: @ui/*captions* @ui/*search* @ui/*access* @sf/usr/libexec/amethystora-captions @sf/usr/libexec/amethystora-bookmarks @sf/usr/libexec/amethystora-file-meaning @sf/usr/libexec/amethystora-letters @sf/usr/libexec/amethystora-guest @sf/usr/libexec/amethystora-hardening @sf/usr/libexec/amethystora-security-status @sf/usr/libexec/amethystora-sends @sf/usr/libexec/amethystora-control-list @sf/*just/desktop.just @sf/*just/security.just @sf/*systemd/user/amethystora-file-meaning* apps/notes/* apps/agent-tools/*
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 HOME_DIR="/var/home/${TEST_USER}"
 WORK=/run/vmlab-69
 CAPTIONS=/usr/libexec/amethystora-captions

@@ -65,11 +65,11 @@ if [[ "${SUITE_PHASE}" == 1 ]]; then
     openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -out "${STATE}/cosign.key" 2>/dev/null
     openssl pkey -in "${STATE}/cosign.key" -pubout -out "${HOME_DIR}/cosign.pub" && chown "${TEST_USER}:" "${HOME_DIR}/cosign.pub"
 
-    out="$(ame system trust-image ghcr.io/iarsslen/amethystora "${HOME_DIR}/cosign.pub" 2>&1)"
+    out="$(ame system trust-image ghcr.io/arsslensoft/amethystora "${HOME_DIR}/cosign.pub" 2>&1)"
     status=$?
     if [[ ${status} != 0 && "${out}" == *"Amethystora's own images are checked against Amethystora's key"* ]] &&
         cmp -s "${POLICY}" "${STATE}/policy.json"; then
-        ok "trust-image refuses ghcr.io/iarsslen/amethystora, and the policy stays as it was"
+        ok "trust-image refuses ghcr.io/arsslensoft/amethystora, and the policy stays as it was"
     else
         not_ok "trust-image did not refuse Amethystora's own repository" "exit status ${status}" "${out}"
     fi
@@ -103,7 +103,7 @@ if [[ "${SUITE_PHASE}" == 1 ]]; then
     else
         not_ok "bootc switch did not refuse ${REPO}:latest for its signature" "exit status ${status}, staged: ${staged}" "${out}"
     fi
-    skip "ame system rebase refusing an unsigned image: it offers only Amethystora's four images under ghcr.io/iarsslen" \
+    skip "ame system rebase refusing an unsigned image: it offers only Amethystora's four images under ghcr.io/arsslensoft" \
         "(amethystora-rollback-helper), all signed, so it cannot be pointed at one without switching; the refusal is the" \
         "signature policy's, which the bootc switch above applies as rebase's own commands do"
     # Taken back as it was: the policy from its copy (the manual's cp from /usr/etc is for after a switch)

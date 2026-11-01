@@ -242,7 +242,7 @@ conservé que tant que vous faites vos mises à jour avec `rpm-ostree`. Deux cho
 - **Changer d’image ou de flux :** `bootc switch` construit le nouveau système à partir de l’image
   seule et abandonne sans un mot les paquets superposés. Sur une machine avec des paquets superposés,
   changez plutôt avec
-  `sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/iarsslen/<image>:<stream>`. Les mises
+  `sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/arsslensoft/<image>:<stream>`. Les mises
   à jour automatiques s’en chargent pour vous.
 - **L’annuler :** `sudo rpm-ostree uninstall <package>` en retire un, et `sudo rpm-ostree reset`
   revient à l’image d’origine.

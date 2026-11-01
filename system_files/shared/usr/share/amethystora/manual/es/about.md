@@ -1,8 +1,8 @@
 # Acerca de
 
-Amethystora lo crea y lo mantiene Arsslen Idadi ([@iarsslen](https://github.com/iarsslen)). Es
+Amethystora lo crea y lo mantiene Arsslen Idadi ([@arsslensoft](https://github.com/arsslensoft)). Es
 software libre bajo la Apache License 2.0, desarrollado de forma abierta en
-[github.com/iarsslen/amethystora](https://github.com/iarsslen/amethystora). Allí son bienvenidas las
+[github.com/arsslensoft/amethystora](https://github.com/arsslensoft/amethystora). Allí son bienvenidas las
 incidencias, las ideas y las pull requests.
 
 Amethystora se basa en [Universal Blue](https://universal-blue.org), copyright de los colaboradores de Universal Blue, con licencia Apache License 2.0.
@@ -57,10 +57,10 @@ Algunos paquetes los compilan otros (RPM Fusion, negativo17, Fedora Copr), que s
 compilación actual de cada uno. Cuando la licencia de uno de esos paquetes exige su código fuente, el
 paquete fuente con el que se compiló esta imagen está en la propia imagen, en `/usr/src/amethystora`.
 
-Todo lo demás se compila a partir del [repositorio de Amethystora](https://github.com/iarsslen/amethystora)
+Todo lo demás se compila a partir del [repositorio de Amethystora](https://github.com/arsslensoft/amethystora)
 en el commit indicado como `BUILD_ID` en `/usr/lib/os-release`. Durante al menos tres años después de
 la última publicación de una imagen, el código fuente completo de todo lo que contiene cuya licencia
 exige que su código fuente esté disponible (la GNU GPL y la LGPL, la MPL, la CDDL, la licencia del
 códec AAC de Fraunhofer) se proporciona también a quien lo pida mediante el
-[gestor de incidencias](https://github.com/iarsslen/amethystora/issues); la oferta por escrito está en
+[gestor de incidencias](https://github.com/arsslensoft/amethystora/issues); la oferta por escrito está en
 `/usr/share/licenses/amethystora/NOTICE`.

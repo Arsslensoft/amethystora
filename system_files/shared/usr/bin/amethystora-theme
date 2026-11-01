@@ -198,7 +198,7 @@ apply_starship() {
     ln -snf "${CURRENT_THEME_DIR}/starship.toml" "${config}"
 }
 
-# Amethystora Transitions (the extension amethystora-transitions@iarsslen.github.io) freezes the
+# Amethystora Transitions (the extension amethystora-transitions@arsslensoft.github.io) freezes the
 # screen on Hold and, once Release comes, reveals the new desktop with an animation, so a theme switch
 # is one transition rather than the panel, the apps and the wallpaper changing one after another.
 # Without the extension, or outside a session, the call fails and the theme is applied as it always was.

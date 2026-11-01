@@ -78,6 +78,6 @@ fusionnées à chaque mise à jour. Les paramètres de votre compte vont dans vo
 ## Puis-je faire confiance à l’image ?
 
 Elle est construite publiquement sur GitHub à partir des sources de
-[iarsslen/amethystora](https://github.com/iarsslen/amethystora), signée avec une clé dont la moitié
+[arsslensoft/amethystora](https://github.com/arsslensoft/amethystora), signée avec une clé dont la moitié
 publique est livrée dans chaque image, et n’est acceptée par votre machine que si cette signature est
 valide.

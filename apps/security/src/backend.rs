@@ -1396,13 +1396,13 @@ mod tests {
     #[test]
     fn reads_the_report() {
         let report = parse_report(
-            r#"{"image":"ghcr.io/iarsslen/amethystora:stable","settings":{"on_detection":"quarantine","realtime":"off","network":"watch","virus_scan":"weekly","profile":"default"},
+            r#"{"image":"ghcr.io/arsslensoft/amethystora:stable","settings":{"on_detection":"quarantine","realtime":"off","network":"watch","virus_scan":"weekly","profile":"default"},
             "checks":[{"group":"updates","id":"signed-updates","state":"ok","title":"Signed updates","text":"Updates are checked","details":["a","Run:"],"command":"ame security signed-updates","accepted":null,"switched_off":false},
             {"group":"optional","id":"usb-protection","state":"off","title":"USB","text":"x","details":[],"command":null,"accepted":"check","switched_off":true},
             {"group":"sends","id":"sends-countme","state":"off","title":"Count","text":"x","details":[],"command":"ame security countme","accepted":null,"switched_off":false}]}"#,
         )
         .unwrap();
-        assert_eq!(report.image, "ghcr.io/iarsslen/amethystora:stable");
+        assert_eq!(report.image, "ghcr.io/arsslensoft/amethystora:stable");
         assert_eq!(report.settings.on_detection, "quarantine");
         assert_eq!(report.settings.network, "watch");
         assert_eq!(report.checks.len(), 3);

@@ -19,7 +19,7 @@
 # vmlab-paths: @ui/extension.js @ui/*workspaces* @ui/*pill* @ui/*privacy* @sf/usr/libexec/amethystora-soft-reboot @sf/usr/libexec/amethystora-night-restart @sf/usr/libexec/amethystora-metered @sf/usr/lib/systemd/*uupd* @sf/usr/lib/systemd/user/amethystora-backup.service @sf/usr/lib/systemd/user/amethystora-pkg-upgrade.service @sf/*just/desktop.just @sf/*just/update.just @sf/usr/libexec/amethystora-control-list @sf/usr/libexec/amethystora-setup apps/update/*
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 HERE="$(dirname "$0")"
 HOME_DIR="/var/home/${TEST_USER}"
 WORKSPACES=org.gnome.shell.extensions.amethystora-ui.workspaces

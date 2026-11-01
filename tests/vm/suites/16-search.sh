@@ -11,7 +11,7 @@
 # vmlab-paths: @ui/extension.js @ui/*search* @ui/*fuzzy* @sf/*themed/shell-search* @sf/*just/desktop.just
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 HOME_DIR="/var/home/${TEST_USER}"
 SEARCH=org.gnome.shell.extensions.amethystora-ui.search
 HERE="$(dirname "$(readlink -f "$0")")"
@@ -360,7 +360,7 @@ ev "global.display.get_tab_list(0, null).filter(w => w.get_wm_class() === 'org.a
 # wl-copy takes the clipboard only once a surface of its own gets the keyboard, which nothing of the shell may hold then
 close_card
 user_bus systemd-run --user --quiet --collect --unit=vmlab-16-clip -- wl-copy --foreground "vmlab-clip-${RUN}"
-recorded() { [[ "$(ev "Main.extensionManager.lookup('amethystora-clipboard@iarsslen.github.io')?.stateObj?.history?.().some(i => i.text === 'vmlab-clip-${RUN}')")" == true ]]; }
+recorded() { [[ "$(ev "Main.extensionManager.lookup('amethystora-clipboard@arsslensoft.github.io')?.stateObj?.history?.().some(i => i.text === 'vmlab-clip-${RUN}')")" == true ]]; }
 if soon 10 recorded; then
     ok "12 the clipboard extension recorded the copy"
 else
@@ -390,7 +390,7 @@ user_bus systemctl --user stop vmlab-16-editor >/dev/null 2>&1
 user_bus flatpak kill org.gnome.TextEditor >/dev/null 2>&1
 # Private mode is the clipboard menu's switch, kept in no setting
 private_mode() {
-    ev "(() => { const c = Main.extensionManager.lookup('amethystora-clipboard@iarsslen.github.io').stateObj.clipboardIndicator; if (c.privateModeMenuItem.state !== $1) c.togglePrivateMode(); return String(c.privateModeMenuItem.state); })()"
+    ev "(() => { const c = Main.extensionManager.lookup('amethystora-clipboard@arsslensoft.github.io').stateObj.clipboardIndicator; if (c.privateModeMenuItem.state !== $1) c.togglePrivateMode(); return String(c.privateModeMenuItem.state); })()"
 }
 same "12 private mode on" "$(private_mode true)" true
 search "clip:"

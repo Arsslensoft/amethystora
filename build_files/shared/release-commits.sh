@@ -14,7 +14,7 @@
 set -uo pipefail
 
 image="${1:?image}" tag="${2:?tag}" version="${3:?version}"
-org="${REPO_ORGANIZATION:-iarsslen}"
+org="${REPO_ORGANIZATION:-arsslensoft}"
 here="$(dirname "$0")"
 
 for tool in git jq skopeo python3 timeout; do

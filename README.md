@@ -1,12 +1,12 @@
 # Amethystora
 
-[![Stable Images](https://github.com/iarsslen/amethystora/actions/workflows/build-image-stable.yml/badge.svg)](https://github.com/iarsslen/amethystora/actions/workflows/build-image-stable.yml)[![Latest Images](https://github.com/iarsslen/amethystora/actions/workflows/build-image-latest-main.yml/badge.svg)](https://github.com/iarsslen/amethystora/actions/workflows/build-image-latest-main.yml)
+[![Stable Images](https://github.com/arsslensoft/amethystora/actions/workflows/build-image-stable.yml/badge.svg)](https://github.com/arsslensoft/amethystora/actions/workflows/build-image-stable.yml)[![Latest Images](https://github.com/arsslensoft/amethystora/actions/workflows/build-image-latest-main.yml/badge.svg)](https://github.com/arsslensoft/amethystora/actions/workflows/build-image-latest-main.yml)
 
 **Amethystora** is a cloud-native desktop operating system built on Fedora, using container technology and atomic updates. Its desktop is [GNOME](https://www.gnome.org).
 
 For end users, it aims to be as reliable as a Chromebook with near-zero maintenance. For developers, it offers a cloud-native workflow with integrated container tools, declarative system management and CI/CD-built images.
 
-Amethystora is created and maintained by **Arsslen Idadi** ([@iarsslen](https://github.com/iarsslen)).
+Amethystora is created and maintained by **Arsslen Idadi** ([@arsslensoft](https://github.com/arsslensoft)).
 
 ## Mission
 
@@ -20,12 +20,12 @@ Amethystora aims to be a robust, cloud-native desktop that brings enterprise-gra
 
 | Image | Description |
 | --- | --- |
-| `ghcr.io/iarsslen/amethystora` | The standard desktop |
-| `ghcr.io/iarsslen/amethystora-dx` | Developer Experience: adds Docker, Incus, libvirt and developer tools |
-| `ghcr.io/iarsslen/amethystora-nvidia-open` | Standard desktop with the open NVIDIA kernel modules |
-| `ghcr.io/iarsslen/amethystora-dx-nvidia-open` | Developer Experience with the open NVIDIA kernel modules |
-| `ghcr.io/iarsslen/amethystora-nvidia-lts` | Standard desktop with NVIDIA's closed driver of its 580 branch, for the GeForce 900 and 10 series |
-| `ghcr.io/iarsslen/amethystora-dx-nvidia-lts` | Developer Experience with NVIDIA's closed driver of its 580 branch |
+| `ghcr.io/arsslensoft/amethystora` | The standard desktop |
+| `ghcr.io/arsslensoft/amethystora-dx` | Developer Experience: adds Docker, Incus, libvirt and developer tools |
+| `ghcr.io/arsslensoft/amethystora-nvidia-open` | Standard desktop with the open NVIDIA kernel modules |
+| `ghcr.io/arsslensoft/amethystora-dx-nvidia-open` | Developer Experience with the open NVIDIA kernel modules |
+| `ghcr.io/arsslensoft/amethystora-nvidia-lts` | Standard desktop with NVIDIA's closed driver of its 580 branch, for the GeForce 900 and 10 series |
+| `ghcr.io/arsslensoft/amethystora-dx-nvidia-lts` | Developer Experience with NVIDIA's closed driver of its 580 branch |
 
 Each image is published in the `stable`, `latest` and `beta` streams.
 
@@ -40,7 +40,7 @@ Download [amethystora.iso](https://download.amethystora.org/amethystora.iso), wr
 From an existing Fedora Atomic or Universal Blue system, switch to Amethystora with:
 
 ```bash
-sudo bootc switch ghcr.io/iarsslen/amethystora:stable
+sudo bootc switch ghcr.io/arsslensoft/amethystora:stable
 ```
 
 Then reboot. Replace `amethystora` with any image name from the table above, and `stable` with the stream you want.
@@ -199,7 +199,7 @@ node branding/generate.mjs
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Issues and pull requests are welcome at [iarsslen/amethystora](https://github.com/iarsslen/amethystora).
+See [CONTRIBUTING.md](CONTRIBUTING.md). Issues and pull requests are welcome at [arsslensoft/amethystora](https://github.com/arsslensoft/amethystora).
 
 ## Acknowledgements
 

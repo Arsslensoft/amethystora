@@ -102,5 +102,5 @@ Settings for your account go in your home folder.
 ## Can I trust the image?
 
 It is built in public on GitHub from the source in
-[iarsslen/amethystora](https://github.com/iarsslen/amethystora), signed with a key whose public half
+[arsslensoft/amethystora](https://github.com/arsslensoft/amethystora), signed with a key whose public half
 ships in every image, and only accepted by your machine if that signature checks out.

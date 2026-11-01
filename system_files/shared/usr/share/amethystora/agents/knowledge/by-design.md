@@ -208,7 +208,7 @@ restart).
 
 Symptom: the top bar, the dock, menus and notifications are frosted, and an application window that is not the
 focused one lets a little of what is behind it through; a window under a menu is not blurred through it.
-Confirm: it is Amethystora UI's `glass` module (`gnome-extensions info amethystora-ui@iarsslen.github.io`), with
+Confirm: it is Amethystora UI's `glass` module (`gnome-extensions info amethystora-ui@arsslensoft.github.io`), with
 nothing to set: a stylesheet and a shader. The glass blurs the wallpaper once per picture and draws that behind each
 surface, never the windows behind it. Change: nothing; turning the Amethystora UI extension off removes it and the
 rest of the desktop's modules with it, until the next update turns it back on.

@@ -12,7 +12,7 @@
 # vmlab-paths: @ui/extension.js @ui/*dock* @sf/*themed/shell-dock* @sf/*just/desktop.just
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 HOME_DIR="/var/home/${TEST_USER}"
 DOCK_SCHEMA=org.gnome.shell.extensions.amethystora-ui.dock
 # Eval's answer is JSON.stringify of the value, which gdbus prints as a GVariant string: decoded once here, a string

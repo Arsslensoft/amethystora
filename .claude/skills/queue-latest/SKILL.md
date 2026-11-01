@@ -7,7 +7,7 @@ description: Queue GitHub's "Latest Images" build of a commit the VM lab has jus
 
 The maintainer's rule (2026-10-30): once a commit is fully built and validated in the VM lab, GitHub's
 `Latest Images` workflow builds it from `main`, which publishes `:latest` (`PUBLISH` in `reusable-build.yml`).
-`gh` is logged in as the maintainer (admin on `iarsslen/amethystora`).
+`gh` is logged in as the maintainer (admin on `arsslensoft/amethystora`).
 
 ## 1. Only a validated commit
 
@@ -32,12 +32,12 @@ If `SHA` is not on `origin/main` yet, push exactly it, fast-forward only, never 
 ## 3. Queue and follow it
 
 ```bash
-gh run list -R iarsslen/amethystora --workflow "Latest Images" --limit 3 \
+gh run list -R arsslensoft/amethystora --workflow "Latest Images" --limit 3 \
     --json databaseId,status,headSha,createdAt --jq '.[] | "\(.databaseId) \(.status) \(.headSha[0:7]) \(.createdAt)"'
-gh workflow run "Latest Images" -R iarsslen/amethystora --ref main
-gh run list -R iarsslen/amethystora --workflow "Latest Images" --limit 1 --json databaseId,headSha --jq '.[0]'
-gh run watch RUN_ID -R iarsslen/amethystora --exit-status     # run_in_background, the longest timeout
-gh run view RUN_ID -R iarsslen/amethystora --log-failed | tail -n 200   # when it fails
+gh workflow run "Latest Images" -R arsslensoft/amethystora --ref main
+gh run list -R arsslensoft/amethystora --workflow "Latest Images" --limit 1 --json databaseId,headSha --jq '.[0]'
+gh run watch RUN_ID -R arsslensoft/amethystora --exit-status     # run_in_background, the longest timeout
+gh run view RUN_ID -R arsslensoft/amethystora --log-failed | tail -n 200   # when it fails
 ```
 
 - Skip the dispatch when a `Latest Images` run of the same `SHA` is already queued or in progress; follow

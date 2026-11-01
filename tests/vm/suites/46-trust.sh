@@ -62,7 +62,7 @@ if [[ "${SUITE_PHASE}" == 1 ]]; then
     # A machine whose image came from the registry unchecked, as a disk made from a published image does: at its
     # first boot with a network the safety net stages the switch to checked updates. Taken away once seen, so that
     # what follows starts from one deployment, as an installer's %post does.
-    if [[ "${reference}" == ostree-unverified-registry:ghcr.io/iarsslen/* ]]; then
+    if [[ "${reference}" == ostree-unverified-registry:ghcr.io/arsslensoft/* ]]; then
         settled() { [[ "$(systemctl show -P ActiveState amethystora-signed-updates.service)" != activating ]]; }
         wait_for 1200 settled
         same "at its first boot with a network, amethystora-signed-updates staged the switch to checked updates" \
@@ -73,14 +73,14 @@ if [[ "${SUITE_PHASE}" == 1 ]]; then
     # has it (its Network module is off)
     nmcli networking off
     out="$(rw_sysroot bootc switch --mutate-in-place --enforce-container-sigpolicy --transport registry \
-        ghcr.io/iarsslen/amethystora:stable 2>&1)"
+        ghcr.io/arsslensoft/amethystora:stable 2>&1)"
     status=$?
     nmcli networking on
     if [[ "${status}" == 0 ]]; then ok "the kickstarts' bootc switch --mutate-in-place --enforce-container-sigpolicy works with no network"; else
         not_ok "the kickstarts' switch" "exit status ${status}" "${out}"; fi
-    same "the machine then follows ghcr.io/iarsslen/amethystora:stable, signature-checked" \
+    same "the machine then follows ghcr.io/arsslensoft/amethystora:stable, signature-checked" \
         "$(booted '.status.booted.image.image.image + " " + (.status.booted.image.image.signature | tostring)')" \
-        "ghcr.io/iarsslen/amethystora:stable containerPolicy"
+        "ghcr.io/arsslensoft/amethystora:stable containerPolicy"
     systemctl start amethystora-signed-updates.service
     if journalctl -u amethystora-signed-updates.service -n 3 --no-pager -o cat | grep -q 'are signature-checked$' &&
         [[ "$(booted '.status.staged')" == null ]]; then
@@ -91,7 +91,7 @@ if [[ "${SUITE_PHASE}" == 1 ]]; then
     # A plain `bootc switch` afterwards, here in place: the next start of the service stages the signed one again.
     # Staging fetches the image, so only where the image booted is the registry's own (a disk of a published
     # image), and not a lab build, which it would download whole.
-    if [[ "${reference}" == ostree-*registry:ghcr.io/iarsslen/* ]]; then
+    if [[ "${reference}" == ostree-*registry:ghcr.io/arsslensoft/* ]]; then
         image="${reference#*registry:}"
         rw_sysroot bootc switch --mutate-in-place --transport registry "${image}" >/dev/null 2>&1
         unchecked="$(booted '.status.booted.image.image.signature | tostring')"

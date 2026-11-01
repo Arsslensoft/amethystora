@@ -18,7 +18,7 @@
 # vmlab-paths: @ui/extension.js @ui/*tools* @ui/modules/pill/privacy.js @ui/modules/search/clipboard.js @ui/modules/dock/places.js @sf/*themed/shell-tools* @sf/usr/libexec/amethystora-what-uses @sf/usr/libexec/amethystora-convert @sf/*24-files-menu.sh @sf/*just/desktop.just @sf/usr/libexec/amethystora-control-list @sf/usr/libexec/amethystora-setup* @sf/usr/share/gnome-shell/extensions/amethystora-clipboard@*
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 HOME_DIR="/var/home/${TEST_USER}"
 HERE="$(dirname "$(readlink -f "$0")")"
 WORK=/run/vmlab-59

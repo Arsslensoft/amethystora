@@ -12,7 +12,7 @@
 # vmlab-paths: @ui/extension.js @ui/*today* @ui/*bars* @sf/*themed/shell-today* apps/notes/* @sf/*just/desktop.just
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 HOME_DIR="/var/home/${TEST_USER}"
 NOTES_DIR="${HOME_DIR}/.local/share/amethystora-notes"
 # The encrypted fixture's passphrase (apps/notes/tests/compat.rs)

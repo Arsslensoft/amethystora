@@ -238,7 +238,7 @@ conserva mientras actualice mediante `rpm-ostree`. Dos cosas que conviene saber:
 - **Al cambiar de imagen o de canal:** `bootc switch` construye el sistema nuevo solo a partir de la
   imagen y descarta los paquetes superpuestos sin avisar. En un equipo con paquetes superpuestos,
   cambie en su lugar con
-  `sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/iarsslen/<image>:<stream>`. Las
+  `sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/arsslensoft/<image>:<stream>`. Las
   actualizaciones automáticas se encargan de esto por usted.
 - **Para deshacerlo:** `sudo rpm-ostree uninstall <package>` quita uno, y `sudo rpm-ostree reset`
   vuelve a la imagen sin cambios.

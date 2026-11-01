@@ -14,7 +14,7 @@ source "$(dirname "$0")/lib.sh"
 OWN=/run/vmlab-96
 HOME_DIR="/var/home/${TEST_USER}"
 TILING=org.gnome.shell.extensions.amethystora-ui.tiling
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 
 if ! wait_for 300 has_session; then
     skip "no session for ${TEST_USER} (10-account.sh)"

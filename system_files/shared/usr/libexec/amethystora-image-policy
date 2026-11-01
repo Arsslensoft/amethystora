@@ -98,7 +98,7 @@ if type != "object" then "it is not a JSON object" else
         | "lock: \(.) is locked without a value in set"),
     (.["extensions-off"] // [] | if type != "array" then "extensions-off is not a list" else .[]
         | if type != "string" or (test("^[A-Za-z0-9][A-Za-z0-9._+@-]*$") | not) then "extensions-off: \(tojson) is not an extension"
-          elif . == "amethystora-ui@iarsslen.github.io" then "extensions-off: Amethystora UI is the desktop itself"
+          elif . == "amethystora-ui@arsslensoft.github.io" then "extensions-off: Amethystora UI is the desktop itself"
           else empty end end)
 end
 EOF

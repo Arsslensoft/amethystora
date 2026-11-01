@@ -23,7 +23,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 const SCHEMA = 'org.gnome.shell.extensions.amethystora-ui.deskwidgets';
-const WIDGETS_UUID = 'amethystora-widgets@iarsslen.github.io';
+const WIDGETS_UUID = 'amethystora-widgets@arsslensoft.github.io';
 // The theme amethystora-theme applies, whose palette colours a widget's class, as the bar's
 const THEME_DIR = GLib.build_filenamev([GLib.get_user_config_dir(), 'amethystora', 'current']);
 // The account turned the AI agent on (ame agent toggle on): the agent is offered only then

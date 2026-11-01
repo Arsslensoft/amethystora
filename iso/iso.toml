@@ -2,7 +2,7 @@
 #
 # The image is carried on the ISO, so installing needs no network. Anaconda asks only for the disk,
 # where it offers encryption; GNOME Initial Setup creates the user on first boot, as on Silverblue.
-# The workflow replaces @IMAGE@ with the repository of the image the ISO carries (ghcr.io/iarsslen/amethystora,
+# The workflow replaces @IMAGE@ with the repository of the image the ISO carries (ghcr.io/arsslensoft/amethystora,
 # or an image of one's own, whose template runs the same steps).
 
 [customizations.iso]

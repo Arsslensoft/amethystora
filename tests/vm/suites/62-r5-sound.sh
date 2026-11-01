@@ -19,7 +19,7 @@
 # vmlab-paths: @ui/extension.js @ui/*audio* @ui/*brightness* @ui/modules/power.js @ui/modules/power/* @ui/modules/quick.js @ui/modules/quick/* @sf/usr/libexec/amethystora-sound @sf/usr/lib/systemd/user/amethystora-clear-voice.service @sf/usr/lib/systemd/user/amethystora-sound-presets.service @sf/usr/share/amethystora/sound/* @sf/usr/share/amethystora/ddc/* @sf/usr/share/sounds/* @sf/usr/libexec/amethystora-security-status @sf/usr/libexec/amethystora-security-watch @sf/usr/libexec/amethystora-control-list @sf/usr/libexec/amethystora-setup* @sf/*just/desktop.just branding/sounds.mjs build_files/base/08-hardening.sh
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 HOME_DIR="/var/home/${TEST_USER}"
 WORK=/run/vmlab-62
 AUDIO=org.gnome.shell.extensions.amethystora-ui.audio

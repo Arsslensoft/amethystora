@@ -37,7 +37,7 @@ system, the first one is what the theme opens on), `backgrounds/`.
 - A light theme gets a faint dark veil over the dock's glass: Amethystora UI's `dock` module draws it because the theme is
   light, with nothing to set and no key to reset.
 - The animation that reveals a new theme or wallpaper is the extension
-  `amethystora-transitions@iarsslen.github.io`: `ame desktop transition
+  `amethystora-transitions@arsslensoft.github.io`: `ame desktop transition
   <grow|outer|wipe|wave|fade|random|none> [milliseconds]`, which sets
   `org.gnome.shell.extensions.amethystora-transitions` `style` and `duration`. It does nothing while
   GNOME's animations are off.

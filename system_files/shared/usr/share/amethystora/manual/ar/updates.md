@@ -37,7 +37,7 @@ ame update
 | `rpm-ostree status` | النظام العامل، والتحديث المُجهَّز، والنظام الذي يمكن الرجوع إليه |
 | `fwupdmgr get-updates` | تحديثات البرامج الثابتة لهذا الجهاز، من صانعه |
 
-ملاحظات الإصدار لكل بنية مستقرة موجودة على [GitHub](https://github.com/iarsslen/amethystora/releases).
+ملاحظات الإصدار لكل بنية مستقرة موجودة على [GitHub](https://github.com/arsslensoft/amethystora/releases).
 
 ## البرامج الثابتة
 
@@ -92,7 +92,7 @@ systemctl reboot
 للانتقال إلى مسار أو صورة أخرى، بدّل إليها وأعد التشغيل:
 
 ```bash
-sudo bootc switch --enforce-container-sigpolicy ghcr.io/iarsslen/amethystora:latest
+sudo bootc switch --enforce-container-sigpolicy ghcr.io/arsslensoft/amethystora:latest
 ```
 
 استبدل `amethystora` بـ`amethystora-dx` من أجل [وضع المطوّر](developer.md)، و`latest` بالمسار الذي تريده.
@@ -101,7 +101,7 @@ sudo bootc switch --enforce-container-sigpolicy ghcr.io/iarsslen/amethystora:lat
 لأن `bootc switch` يبني النظام الجديد من الصورة وحدها وسيُسقطها:
 
 ```bash
-sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/iarsslen/amethystora:latest
+sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/arsslensoft/amethystora:latest
 ```
 
 ## التثبيت على بنية واحدة

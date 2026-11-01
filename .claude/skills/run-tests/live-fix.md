@@ -33,7 +33,7 @@ tester before they are relied on.
 ## What cannot be fixed live
 
 The kernel, the initramfs, a package, a change to `20-tests.sh` or another build-time script. Check such a fix
-in a container of the image (`ghcr.io/iarsslen/amethystora:stable` or the run's own image) and leave it to the
+in a container of the image (`ghcr.io/arsslensoft/amethystora:stable` or the run's own image) and leave it to the
 final run.
 
 ## Exact commands

@@ -14,7 +14,7 @@
 # vmlab-paths: @ui/* @sf/*themed/* @sf/usr/share/icons/* @sf/usr/lib/amethystora/theme/*
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 OWN=/run/vmlab-27
 HOME_DIR="/var/home/${TEST_USER}"
 TILING=org.gnome.shell.extensions.amethystora-ui.tiling

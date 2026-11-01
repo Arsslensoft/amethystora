@@ -28,7 +28,7 @@ jobs:
       contents: read
       actions: write
     env:
-      IMAGE: ghcr.io/iarsslen/amethystora
+      IMAGE: ghcr.io/arsslensoft/amethystora
 
     steps:
       - name: Checkout

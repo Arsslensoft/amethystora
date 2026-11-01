@@ -111,8 +111,8 @@ ame system clean
 
 ## الإبلاغ عن مشكلة
 
-أبلغ عن العلل على [GitHub](https://github.com/iarsslen/amethystora/issues)، واطرح الأسئلة في
-[النقاشات](https://github.com/iarsslen/amethystora/discussions). يجمع `ame report` ما يحتاج إليه البلاغ في
+أبلغ عن العلل على [GitHub](https://github.com/arsslensoft/amethystora/issues)، واطرح الأسئلة في
+[النقاشات](https://github.com/arsslensoft/amethystora/discussions). يجمع `ame report` ما يحتاج إليه البلاغ في
 ملف في مجلد المنزل (الصورة، ومجموعاتك، والخدمات الفاشلة، والأخطاء المسجّلة منذ هذا الإقلاع)، ويعرض عليك كل
 ذلك، ثم يفتح، إن وافقت، بلاغًا جديدًا مملوءًا بكل شيء ما عدا الأخطاء. لا يُنشر شيء حتى ترسله أنت؛ واسحب
 الملف إليه إن كانت الأخطاء مفيدة. وإلا فأرفق:

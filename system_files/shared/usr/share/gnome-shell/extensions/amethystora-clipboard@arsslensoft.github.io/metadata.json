@@ -7,10 +7,10 @@
         "50",
         "51"
     ],
-    "uuid": "amethystora-clipboard@iarsslen.github.io",
+    "uuid": "amethystora-clipboard@arsslensoft.github.io",
     "name": "Amethystora Clipboard",
     "description": "The clipboard history on Super+Shift+V, sealed on disk under a key in the login keyring. A copy of Clipboard Indicator by Yotam Bar-On and its contributors (MIT).",
-    "url": "https://github.com/iarsslen/amethystora",
+    "url": "https://github.com/arsslensoft/amethystora",
     "gettext-domain": "amethystora-clipboard",
     "settings-schema": "org.gnome.shell.extensions.amethystora-clipboard"
 }

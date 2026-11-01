@@ -29,8 +29,8 @@ floating ones, a theme change freezes the screen for a moment, or a top-bar widg
    error, comes back. The classic layout is not an extension turned off: it is the `enabled` key of
    `org.gnome.shell.extensions.amethystora-ui.tiling`, which an update leaves as it is. Tell: that key is
    `true` although the user wanted floating windows; the extension back in `list --enabled`.
-3. **Amethystora's own extensions.** `amethystora-transitions@iarsslen.github.io` reveals a new theme or
-   wallpaper and holds the screen for five seconds at most; `amethystora-widgets@iarsslen.github.io` runs
+3. **Amethystora's own extensions.** `amethystora-transitions@arsslensoft.github.io` reveals a new theme or
+   wallpaper and holds the screen for five seconds at most; `amethystora-widgets@arsslensoft.github.io` runs
    the widgets in `~/.config/amethystora/widgets`. Tell: their uuid in the JS errors. A widget whose
    command fails shows that in the bar, not as a GNOME error.
 4. **New extensions are blocked** (`block-user-extensions`, off as shipped). Extension Manager cannot
@@ -62,7 +62,7 @@ Wayland ends every open app.
 - Widgets: `amethystora-widgets run ID` runs one as the bar does and checks what it prints;
   `amethystora-widgets off ID` hides it; `amethystora-widgets restart` starts every widget again. The
   `amethystora-widgets` skill explains the format.
-- Report an error of either at https://github.com/iarsslen/amethystora/issues, with `gnome-shell --version`
+- Report an error of either at https://github.com/arsslensoft/amethystora/issues, with `gnome-shell --version`
   and the error lines, if the user agrees.
 
 ### 4. Blocked installs

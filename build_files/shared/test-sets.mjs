@@ -5,7 +5,7 @@
 // throws, which makes either exit with an error.
 
 import {MAX_SETS, addSet, clean, cleanName, cleanResume, isAppId, isName, slot, tileOrder} from
-    '../../system_files/shared/usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/workspaces/setsdata.js';
+    '../../system_files/shared/usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/workspaces/setsdata.js';
 
 const say = globalThis.print ?? console.log;
 const failures = [];

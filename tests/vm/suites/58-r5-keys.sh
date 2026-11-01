@@ -15,7 +15,7 @@
 # vmlab-paths: @ui/extension.js @ui/modules/keys.js @ui/modules/typing.js @ui/modules/typing/* @ui/modules/emoji/paste.js @ui/schemas/*keys* @ui/schemas/*typing* @ui/stylesheets/typing.css @sf/usr/libexec/amethystora-keybindings @sf/usr/libexec/amethystora-control-list @sf/usr/libexec/amethystora-setup* @sf/*just/desktop.just apps/control/* apps/control-core/* apps/agent-tools/src/never.rs
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 HOME_DIR="/var/home/${TEST_USER}"
 HERE="$(dirname "$(readlink -f "$0")")"
 WORK=/run/vmlab-58

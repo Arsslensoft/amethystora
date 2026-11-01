@@ -52,7 +52,7 @@ ame update
 | `fwupdmgr get-updates` | Firmware updates for this machine, from its maker |
 
 The release notes for every stable build are on
-[GitHub](https://github.com/iarsslen/amethystora/releases).
+[GitHub](https://github.com/arsslensoft/amethystora/releases).
 
 ## Restarting in seconds
 
@@ -201,7 +201,7 @@ image is out.
 To move to another stream or image, switch to it and restart:
 
 ```bash
-sudo bootc switch --enforce-container-sigpolicy ghcr.io/iarsslen/amethystora:latest
+sudo bootc switch --enforce-container-sigpolicy ghcr.io/arsslensoft/amethystora:latest
 ```
 
 Replace `amethystora` with `amethystora-dx` for [developer mode](developer.md), add `-nvidia-open` or
@@ -219,7 +219,7 @@ If you have [layered packages](software.md#layering-the-last-resort), switch wit
 because `bootc switch` builds the new system from the image alone and would drop them:
 
 ```bash
-sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/iarsslen/amethystora:latest
+sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/arsslensoft/amethystora:latest
 ```
 
 ## Holding on to one build

@@ -212,7 +212,7 @@ sudo rpm-ostree install <package>
 
 - **تبديل الصور أو المسارات:** يبني `bootc switch` النظام الجديد من الصورة وحدها ويُسقط الحزم المضافة
   كطبقات دون أي تنبيه. وعلى جهاز فيه حزم مضافة كطبقات، بدّل
-  بـ`sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/iarsslen/<image>:<stream>` بدلًا من ذلك.
+  بـ`sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/arsslensoft/<image>:<stream>` بدلًا من ذلك.
   والتحديثات التلقائية تتولى هذا عنك.
 - **التراجع عنها:** يزيل `sudo rpm-ostree uninstall <package>` حزمة واحدة، ويعيد `sudo rpm-ostree reset`
   الصورة إلى حالتها المجردة.

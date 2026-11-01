@@ -339,13 +339,13 @@ const SHELL = ['usr/libexec/amethystora-security-status', 'usr/libexec/amethysto
     'usr/libexec/amethystora-security-watch', 'usr/libexec/amethystora-sends',
     // The text shortcuts' helper, in Python, whose _("...") is read as an extension's is
     ...PYTHON,
-    'usr/share/gnome-shell/extensions/amethystora-widgets@iarsslen.github.io/extension.js',
-    'usr/share/gnome-shell/extensions/amethystora-logo-menu@iarsslen.github.io/extension.js',
+    'usr/share/gnome-shell/extensions/amethystora-widgets@arsslensoft.github.io/extension.js',
+    'usr/share/gnome-shell/extensions/amethystora-logo-menu@arsslensoft.github.io/extension.js',
     // Amethystora Clipboard's text actions, Amethystora's own file in it, in domain amethystora
-    'usr/share/gnome-shell/extensions/amethystora-clipboard@iarsslen.github.io/textActions.js',
+    'usr/share/gnome-shell/extensions/amethystora-clipboard@arsslensoft.github.io/textActions.js',
     ...['agent', 'apps', 'backup', 'changelog', 'desktop', 'report', 'security', 'system', 'update'].map((group) => `usr/share/amethystora/just/${group}.just`),
     // Amethystora UI: every module, however deep it is split
-    ...jsFiles('usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io')];
+    ...jsFiles('usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io')];
 
 // The .js files under a folder of the root, sorted, so that the template keeps one order
 function jsFiles(folder) {
@@ -451,7 +451,7 @@ function template(entries) {
         'msgid ""',
         'msgstr ""',
         '"Project-Id-Version: amethystora\\n"',
-        '"Report-Msgid-Bugs-To: https://github.com/iarsslen/amethystora/issues\\n"',
+        '"Report-Msgid-Bugs-To: https://github.com/arsslensoft/amethystora/issues\\n"',
         '"MIME-Version: 1.0\\n"',
         '"Content-Type: text/plain; charset=UTF-8\\n"',
         '"Content-Transfer-Encoding: 8bit\\n"',

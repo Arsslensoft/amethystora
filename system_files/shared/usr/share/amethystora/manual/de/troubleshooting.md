@@ -119,8 +119,8 @@ Entfernt ungenutzte Container, Abbilder und Flatpak-Laufzeitumgebungen. `flatpak
 
 ## Ein Problem melden
 
-Melden Sie Fehler auf [GitHub](https://github.com/iarsslen/amethystora/issues) und stellen Sie Fragen in
-den [Diskussionen](https://github.com/iarsslen/amethystora/discussions). `ame report` sammelt, was ein
+Melden Sie Fehler auf [GitHub](https://github.com/arsslensoft/amethystora/issues) und stellen Sie Fragen in
+den [Diskussionen](https://github.com/arsslensoft/amethystora/discussions). `ame report` sammelt, was ein
 Bericht braucht, in einer Datei in Ihrem persönlichen Ordner (das Abbild, Ihre Gruppen, fehlgeschlagene
 Dienste und die seit diesem Systemstart protokollierten Fehler), zeigt Ihnen alles davon und öffnet dann,
 wenn Sie zustimmen, ein neues Issue, in dem alles außer den Fehlern ausgefüllt ist. Nichts wird

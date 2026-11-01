@@ -115,7 +115,7 @@ Each package in this image, with its licence, the source package it was built fr
 source package is: an address in Fedora's build system for what Fedora built, a file in
 ${SOURCES_DIR} for the source packages this image carries, and otherwise the package's maker and the
 address its source is published at. Everything not installed from a package is built from
-https://github.com/iarsslen/amethystora at commit ${BUILD_ID:-unknown}, whose build_files pin each
+https://github.com/arsslensoft/amethystora at commit ${BUILD_ID:-unknown}, whose build_files pin each
 upstream release they fetch. The written offer for the source of anything under a licence that asks
 for it is in NOTICE, beside this file.
 

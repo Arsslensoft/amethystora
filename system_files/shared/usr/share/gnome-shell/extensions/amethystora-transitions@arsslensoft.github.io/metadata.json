@@ -1,8 +1,8 @@
 {
-  "uuid": "amethystora-transitions@iarsslen.github.io",
+  "uuid": "amethystora-transitions@arsslensoft.github.io",
   "name": "Amethystora Transitions",
   "description": "A new wallpaper or theme is revealed with an animation: a circle opening from the pointer, a wipe, a wave or a fade.",
   "shell-version": ["48", "49", "50", "51"],
   "settings-schema": "org.gnome.shell.extensions.amethystora-transitions",
-  "url": "https://github.com/iarsslen/amethystora"
+  "url": "https://github.com/arsslensoft/amethystora"
 }

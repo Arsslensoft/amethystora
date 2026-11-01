@@ -13,11 +13,11 @@ system underneath stays clean enough to update without a second thought.
 Switch to the dx image, and restart:
 
 ```bash
-sudo bootc switch --enforce-container-sigpolicy ghcr.io/iarsslen/amethystora-dx:stable
+sudo bootc switch --enforce-container-sigpolicy ghcr.io/arsslensoft/amethystora-dx:stable
 ```
 
 If you have [layered packages](software.md#layering-the-last-resort), use
-`sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/iarsslen/amethystora-dx:stable` instead,
+`sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/arsslensoft/amethystora-dx:stable` instead,
 which keeps them. Switching back to `amethystora` works the same way. The **Developer mode** switch on
 [Control](control.md)'s **System** page does it for you, on the stream and driver you are on, keeping layered packages
 (`ame system devmode on` or `off`; without either it switches to the other). It asks first, and on
@@ -129,7 +129,7 @@ something against a real cluster. `ame apps cncf`, **Cloud native tools** on [Co
 For what has to be in the system itself, such as a driver, a system service or a tool every account
 on the machine needs, build an image of your own on top of Amethystora rather than
 [layering](software.md#layering-the-last-resort) packages. The
-[image template](https://github.com/iarsslen/amethystora-image-template) is a repository to start
+[image template](https://github.com/arsslensoft/amethystora-image-template) is a repository to start
 from: a `Containerfile` that builds `FROM` Amethystora, a script where your packages and files go, and
 a GitHub workflow that builds the image whenever you push and once a day, signs it with a key of your
 own and publishes it to your account's registry. Renovate moves it onto each new Amethystora release.

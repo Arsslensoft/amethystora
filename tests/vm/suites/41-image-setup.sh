@@ -19,7 +19,7 @@ REPO=/sysroot/ostree/repo
 ACCOUNT=vmlab-baked
 CUSTOM=/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings
 TILING=org.gnome.shell.extensions.amethystora-ui.tiling
-UI=/usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io
+UI=/usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io
 WALLPAPER="'file:///usr/share/amethystora/image-setup/backgrounds/wallpaper.svg'"
 install -d -m 0700 "${STATE}"
 systemctl stop uupd.timer 2>/dev/null
@@ -98,7 +98,7 @@ method=auto
 EOF
         cat >"${files}/policy/desktop.json" <<'EOF'
 {"version": 1, "set": {"idle-delay": 600, "camera-off": true, "clock-format": "24h", "login-banner": "Vmlab only."},
- "lock": ["idle-delay", "camera-off"], "extensions-off": ["amethystora-widgets@iarsslen.github.io"]}
+ "lock": ["idle-delay", "camera-off"], "extensions-off": ["amethystora-widgets@arsslensoft.github.io"]}
 EOF
 
         dir="${REPO}/tmp/vmlab-image-setup"
@@ -152,7 +152,7 @@ EOF
         same "...in the schemas GNOME Shell gives the extension too" \
             "$(GSETTINGS_SCHEMA_DIR="${UI}/schemas" GSETTINGS_BACKEND=memory gsettings get "${TILING}" window-gap)" 20
         extensions="$(fresh gsettings get org.gnome.shell enabled-extensions)"
-        grep -qF "'amethystora-ui@iarsslen.github.io'" <<<"${extensions}" && ok "the image's own extensions stay on" ||
+        grep -qF "'amethystora-ui@arsslensoft.github.io'" <<<"${extensions}" && ok "the image's own extensions stay on" ||
             not_ok "the image's extensions are not on" "${extensions}"
         # Its first login applies the theme: the file's, and every theme opens on the image's wallpaper
         out="$(fresh /usr/share/amethystora/user-setup.hooks.d/11-theme.sh)"

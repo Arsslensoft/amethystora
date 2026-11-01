@@ -16,7 +16,7 @@ Schlüssel, gegen den jede Aktualisierung geprüft wird. So prüfen Sie, ob das 
 entspricht, was gebaut wurde:
 
 ```bash
-curl -LO https://raw.githubusercontent.com/iarsslen/amethystora/main/cosign.pub
+curl -LO https://raw.githubusercontent.com/arsslensoft/amethystora/main/cosign.pub
 curl -LO https://download.amethystora.org/amethystora.iso.sha256
 curl -LO https://download.amethystora.org/amethystora.iso.sha256.bundle
 cosign verify-blob --key cosign.pub --bundle amethystora.iso.sha256.bundle amethystora.iso.sha256
@@ -113,7 +113,7 @@ Betriebssystems und behält alles in `/home`, `/etc` und `/var`.
   Flatpaks, Homebrew und Container schon.
 
 ```bash
-sudo bootc switch ghcr.io/iarsslen/amethystora:stable
+sudo bootc switch ghcr.io/arsslensoft/amethystora:stable
 ```
 
 Starten Sie dann neu. Beim ersten Start bereitet ein Dienst von selbst den Wechsel zu signaturgeprüften
@@ -124,10 +124,10 @@ Signatur von Amethystora trägt.
 
 | Abbild | Für |
 | --- | --- |
-| `ghcr.io/iarsslen/amethystora` | Den Standard-Desktop |
-| `ghcr.io/iarsslen/amethystora-dx` | Entwickler: bringt zusätzlich Docker, Incus, libvirt, VSCodium und mehr ([Entwicklermodus](developer.md)) |
-| `ghcr.io/iarsslen/amethystora-nvidia-open` | Den Standard-Desktop mit NVIDIAs offenem Kernel-Treiber |
-| `ghcr.io/iarsslen/amethystora-dx-nvidia-open` | Den Entwicklermodus mit NVIDIAs offenem Kernel-Treiber |
+| `ghcr.io/arsslensoft/amethystora` | Den Standard-Desktop |
+| `ghcr.io/arsslensoft/amethystora-dx` | Entwickler: bringt zusätzlich Docker, Incus, libvirt, VSCodium und mehr ([Entwicklermodus](developer.md)) |
+| `ghcr.io/arsslensoft/amethystora-nvidia-open` | Den Standard-Desktop mit NVIDIAs offenem Kernel-Treiber |
+| `ghcr.io/arsslensoft/amethystora-dx-nvidia-open` | Den Entwicklermodus mit NVIDIAs offenem Kernel-Treiber |
 
 Die ISOs installieren die Abbilder ohne NVIDIAs Treiber. Auf einem Rechner mit einer NVIDIA-Karte bietet
 der erste Start an, zum passenden NVIDIA-Abbild zu wechseln ([Hardware](hardware.md#graphics)).

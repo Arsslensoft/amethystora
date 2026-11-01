@@ -13,7 +13,7 @@
 # vmlab-paths: @ui/extension.js @ui/*search* @ui/*pill* @sf/usr/libexec/amethystora-meeting-link @sf/usr/libexec/amethystora-missing-command @sf/etc/xdg/kitty/kitty.conf @sf/etc/zsh/zshrc @sf/etc/profile.d/zz-amethystora-missing-command.sh @sf/*fish/vendor_conf.d/amethystora-missing-command.fish @sf/*user-setup.hooks.d/28-kitty-options.sh apps/notes/* build_files/shared/build-missing-command-index.sh @sf/usr/libexec/amethystora-control-list @sf/*just/desktop.just
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 HERE="$(dirname "$0")"
 HOME_DIR="/var/home/${TEST_USER}"
 PILL=org.gnome.shell.extensions.amethystora-ui.pill

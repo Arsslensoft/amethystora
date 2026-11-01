@@ -15,7 +15,7 @@
 # vmlab-paths: @ui/extension.js @ui/*pointer* @sf/usr/share/icons/amethystora-pointer-* @sf/usr/lib/amethystora/theme/* @sf/*just/desktop.just
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 HOME_DIR="/var/home/${TEST_USER}"
 POINTER=org.gnome.shell.extensions.amethystora-ui.pointer
 keys() { python3 "$(dirname "$0")/keys.py" "$@"; }

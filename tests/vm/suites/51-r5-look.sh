@@ -15,7 +15,7 @@
 # vmlab-paths: @ui/modules/theme.js @ui/modules/theme/* @ui/schemas/*theme* @sf/usr/lib/amethystora/theme/* @sf/usr/bin/amethystora-theme @sf/usr/libexec/amethystora-theme-file @sf/usr/libexec/amethystora-control-list @sf/usr/libexec/amethystora-setup* @sf/*just/desktop.just @sf/usr/share/applications/amethystora-look.desktop @sf/usr/share/applications/amethystora-theme-import.desktop @sf/usr/share/mime/packages/amethystora-look.xml apps/control/* apps/control-core/* build_files/base/09-fonts.sh
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 HOME_DIR="/var/home/${TEST_USER}"
 CONFIG="${HOME_DIR}/.config/amethystora"
 # Not under /run: amethystora-theme-file refuses to read /proc, /sys, /dev and /run, as a person's files are never there

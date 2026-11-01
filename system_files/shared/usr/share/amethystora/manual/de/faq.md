@@ -78,6 +78,6 @@ persönlichen Ordner.
 ## Kann ich dem Abbild vertrauen?
 
 Es wird öffentlich auf GitHub aus dem Quellcode in
-[iarsslen/amethystora](https://github.com/iarsslen/amethystora) gebaut, mit einem Schlüssel signiert,
+[arsslensoft/amethystora](https://github.com/arsslensoft/amethystora) gebaut, mit einem Schlüssel signiert,
 dessen öffentliche Hälfte in jedem Abbild mitgeliefert wird, und von Ihrem Rechner nur angenommen, wenn
 diese Signatur stimmt.

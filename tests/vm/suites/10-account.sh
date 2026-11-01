@@ -18,7 +18,7 @@ if ! getent passwd "${TEST_USER}" >/dev/null; then
     chown "${TEST_USER}:" "/var/home/${TEST_USER}/.local/share/amethystora/setup_versioning.json"
     seen="$(date +%s)"
     ids="$(sed -n "s/^export const KNOWN = \[\(.*\)\];\$/\1/p" \
-        /usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/hints.js | tr -d "' ")"
+        /usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/hints.js | tr -d "' ")"
     hints="$(jq -nc --argjson t "${seen}" --arg ids "${ids}" '{version: 1, since: $t, last: $t,
         shown: ($ids | split(",") | map(select(. != "") | {(.): $t}) | add // {})}')"
     for file in hints.json hints.json.bak; do

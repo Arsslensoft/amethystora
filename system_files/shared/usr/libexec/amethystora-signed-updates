@@ -45,7 +45,7 @@ if [[ "${layered}" != "true" ]]; then
     fi
 fi
 
-if [[ "${booted}" != ghcr.io/iarsslen/* ]]; then
+if [[ "${booted}" != ghcr.io/arsslensoft/* ]]; then
     echo "Not an Amethystora image (${booted:-unknown}), leaving update verification alone"
     exit 0
 fi

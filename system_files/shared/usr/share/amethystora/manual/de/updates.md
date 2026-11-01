@@ -43,7 +43,7 @@ ame update
 | `fwupdmgr get-updates` | Firmware-Aktualisierungen für diesen Rechner, von seinem Hersteller |
 
 Die Versionshinweise zu jedem stabilen Build stehen auf
-[GitHub](https://github.com/iarsslen/amethystora/releases).
+[GitHub](https://github.com/arsslensoft/amethystora/releases).
 
 ## Firmware
 
@@ -103,7 +103,7 @@ sobald ein korrigiertes Abbild erscheint.
 Um zu einem anderen Kanal oder Abbild zu wechseln, wechseln Sie dorthin und starten neu:
 
 ```bash
-sudo bootc switch --enforce-container-sigpolicy ghcr.io/iarsslen/amethystora:latest
+sudo bootc switch --enforce-container-sigpolicy ghcr.io/arsslensoft/amethystora:latest
 ```
 
 Ersetzen Sie `amethystora` durch `amethystora-dx` für den [Entwicklermodus](developer.md) und `latest`
@@ -113,7 +113,7 @@ Wenn Sie [überlagerte Pakete](software.md#layering-the-last-resort) haben, wech
 `rpm-ostree`, weil `bootc switch` das neue System allein aus dem Abbild baut und sie fallen lassen würde:
 
 ```bash
-sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/iarsslen/amethystora:latest
+sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/arsslensoft/amethystora:latest
 ```
 
 ## Bei einem Build bleiben

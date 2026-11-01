@@ -1,7 +1,7 @@
 # حول
 
-أنشأ Amethystora ويصونه Arsslen Idadi ([@iarsslen](https://github.com/iarsslen)). وهو برمجية حرة بموجب
-Apache License 2.0، تُبنى علنًا على [github.com/iarsslen/amethystora](https://github.com/iarsslen/amethystora).
+أنشأ Amethystora ويصونه Arsslen Idadi ([@arsslensoft](https://github.com/arsslensoft)). وهو برمجية حرة بموجب
+Apache License 2.0، تُبنى علنًا على [github.com/arsslensoft/amethystora](https://github.com/arsslensoft/amethystora).
 والبلاغات والأفكار وطلبات الدمج مرحَّب بها هناك.
 
 يستند Amethystora إلى [Universal Blue](https://universal-blue.org)، حقوق النشر © للمساهمين في Universal Blue، ومرخّص بموجب Apache License 2.0.
@@ -50,8 +50,8 @@ dnf download --srpm <package>    # the source of the version Fedora has now
 وحيث تطلب رخصة حزمة كهذه مصدرها، تكون الحزمة المصدرية التي بُنيت منها هذه الصورة داخل الصورة نفسها، في
 `/usr/src/amethystora`.
 
-وكل ما عدا ذلك يُبنى من [مستودع Amethystora](https://github.com/iarsslen/amethystora) عند الإيداع المسمّى
+وكل ما عدا ذلك يُبنى من [مستودع Amethystora](https://github.com/arsslensoft/amethystora) عند الإيداع المسمّى
 `BUILD_ID` في `/usr/lib/os-release`. ولمدة ثلاث سنوات على الأقل بعد آخر نشر لصورة، تُعطى الشيفرة المصدرية
 الكاملة لكل ما فيها مما تطلب رخصته إتاحة مصدره (GNU GPL وLGPL، وMPL، وCDDL، ورخصة مرماز Fraunhofer AAC) لكل
-من يطلبها عبر [متتبّع البلاغات](https://github.com/iarsslen/amethystora/issues)؛ والعرض المكتوب موجود في
+من يطلبها عبر [متتبّع البلاغات](https://github.com/arsslensoft/amethystora/issues)؛ والعرض المكتوب موجود في
 `/usr/share/licenses/amethystora/NOTICE`.

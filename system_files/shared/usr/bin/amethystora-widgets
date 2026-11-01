@@ -23,7 +23,7 @@ set -euo pipefail
 # shellcheck source=../lib/amethystora/theme/lib.sh
 source /usr/lib/amethystora/theme/lib.sh
 
-UUID=amethystora-widgets@iarsslen.github.io
+UUID=amethystora-widgets@arsslensoft.github.io
 CHECK="/usr/share/gnome-shell/extensions/${UUID}/check.js"
 EXAMPLES=/usr/share/amethystora/widgets/examples
 SKILL=/usr/share/amethystora/agents/skills/amethystora-widgets/SKILL.md

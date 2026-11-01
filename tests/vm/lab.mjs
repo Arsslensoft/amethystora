@@ -221,8 +221,8 @@ export const tools = [
   {
     name: 'disk_build',
     description: 'Install an image onto a lab disk with `bootc install to-disk` (pulls it first; about 10 minutes). Runs in the background: follow it with disk_list.',
-    schema: { image: { type: 'string', description: 'default ghcr.io/iarsslen/amethystora:latest' }, disk: { type: 'string', description: 'the disk\'s name, default latest' } },
-    async call({ image = 'ghcr.io/iarsslen/amethystora:latest', disk = 'latest' }) {
+    schema: { image: { type: 'string', description: 'default ghcr.io/arsslensoft/amethystora:latest' }, disk: { type: 'string', description: 'the disk\'s name, default latest' } },
+    async call({ image = 'ghcr.io/arsslensoft/amethystora:latest', disk = 'latest' }) {
       checkName(disk, 'disk');
       if (alive(`${DISKS}/${disk}.build.pid`)) throw new Error(`disk ${disk} is being built already`);
       const log = fs.openSync(`${DISKS}/${disk}.log`, 'w');

@@ -9,7 +9,7 @@
 # vmlab-paths: @sf/usr/share/gnome-shell/extensions/amethystora-logo-menu@*
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-logo-menu@iarsslen.github.io
+UUID=amethystora-logo-menu@arsslensoft.github.io
 OWN=/run/vmlab-26
 HOME_DIR="/var/home/${TEST_USER}"
 ENTRIES='About this computer|Manual|-|Settings|Software centre|-|Extensions|System monitor|Terminal|-|Containers'

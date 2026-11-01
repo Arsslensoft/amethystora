@@ -16,7 +16,7 @@ signée avec la clé qui sert à vérifier chaque mise à jour. Pour vérifier q
 téléchargé est bien ce qui a été construit :
 
 ```bash
-curl -LO https://raw.githubusercontent.com/iarsslen/amethystora/main/cosign.pub
+curl -LO https://raw.githubusercontent.com/arsslensoft/amethystora/main/cosign.pub
 curl -LO https://download.amethystora.org/amethystora.iso.sha256
 curl -LO https://download.amethystora.org/amethystora.iso.sha256.bundle
 cosign verify-blob --key cosign.pub --bundle amethystora.iso.sha256.bundle amethystora.iso.sha256
@@ -112,7 +112,7 @@ d’exploitation et conserve tout ce qui se trouve dans `/home`, `/etc` et `/var
   Les Flatpak, Homebrew et les conteneurs, si.
 
 ```bash
-sudo bootc switch ghcr.io/iarsslen/amethystora:stable
+sudo bootc switch ghcr.io/arsslensoft/amethystora:stable
 ```
 
 Redémarrez ensuite. Au premier démarrage, un service prépare de lui-même le passage aux mises à jour
@@ -123,10 +123,10 @@ elle porte la signature d’Amethystora.
 
 | Image | Pour |
 | --- | --- |
-| `ghcr.io/iarsslen/amethystora` | Le bureau standard |
-| `ghcr.io/iarsslen/amethystora-dx` | Les développeurs : ajoute Docker, Incus, libvirt, VSCodium et plus encore ([Mode développeur](developer.md)) |
-| `ghcr.io/iarsslen/amethystora-nvidia-open` | Le bureau standard avec le pilote noyau ouvert de NVIDIA |
-| `ghcr.io/iarsslen/amethystora-dx-nvidia-open` | Le mode développeur avec le pilote noyau ouvert de NVIDIA |
+| `ghcr.io/arsslensoft/amethystora` | Le bureau standard |
+| `ghcr.io/arsslensoft/amethystora-dx` | Les développeurs : ajoute Docker, Incus, libvirt, VSCodium et plus encore ([Mode développeur](developer.md)) |
+| `ghcr.io/arsslensoft/amethystora-nvidia-open` | Le bureau standard avec le pilote noyau ouvert de NVIDIA |
+| `ghcr.io/arsslensoft/amethystora-dx-nvidia-open` | Le mode développeur avec le pilote noyau ouvert de NVIDIA |
 
 Les ISO installent les images sans le pilote NVIDIA. Sur un ordinateur doté d’une carte NVIDIA, le
 premier démarrage propose de passer à l’image NVIDIA correspondante ([Matériel](hardware.md#graphics)).

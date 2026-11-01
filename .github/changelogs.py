@@ -9,7 +9,7 @@ import re
 import shlex
 from collections import defaultdict
 
-REGISTRY = "ghcr.io/iarsslen/"
+REGISTRY = "ghcr.io/arsslensoft/"
 
 IMAGE_MATRIX_LATEST = {
     "experience": ["base"],  # "dx" paused for now
@@ -38,12 +38,12 @@ COMMON_PAT = "### All Images\n| | Name | Previous | New |\n| --- | --- | --- | -
 OTHER_NAMES = {
     "base": "### Base Images\n| | Name | Previous | New |\n| --- | --- | --- | --- |{changes}\n\n",
     "dx": "### Dev Experience Images\n| | Name | Previous | New |\n| --- | --- | --- | --- |{changes}\n\n",
-    "gnome": "### [Amethystora Images](https://github.com/iarsslen/amethystora)\n| | Name | Previous | New |\n| --- | --- | --- | --- |{changes}\n\n",
+    "gnome": "### [Amethystora Images](https://github.com/arsslensoft/amethystora)\n| | Name | Previous | New |\n| --- | --- | --- | --- |{changes}\n\n",
     "nvidia-open": "### Nvidia Images\n| | Name | Previous | New |\n| --- | --- | --- | --- |{changes}\n\n",
 }
 
 COMMITS_FORMAT = "### Commits\n| Hash | Subject | Author |\n| --- | --- | --- |{commits}\n\n"
-COMMIT_FORMAT = "\n| **[{short}](https://github.com/iarsslen/amethystora/commit/{githash})** | {subject} | {author} |"
+COMMIT_FORMAT = "\n| **[{short}](https://github.com/arsslensoft/amethystora/commit/{githash})** | {subject} | {author} |"
 
 CHANGELOG_TITLE = "{tag}: {pretty}"
 CHANGELOG_FORMAT = """\
@@ -75,19 +75,19 @@ For current users, type the following to rebase to this version:
 IMAGE_NAME=$(jq -r '.["image-name"]' < /usr/share/amethystora/image-info.json)
 
 # For this Stream
-sudo bootc switch --enforce-container-sigpolicy ghcr.io/iarsslen/$IMAGE_NAME:{target}
+sudo bootc switch --enforce-container-sigpolicy ghcr.io/arsslensoft/$IMAGE_NAME:{target}
 
 # For this Specific Image:
-sudo bootc switch --enforce-container-sigpolicy ghcr.io/iarsslen/$IMAGE_NAME:{curr}
+sudo bootc switch --enforce-container-sigpolicy ghcr.io/arsslensoft/$IMAGE_NAME:{curr}
 ```
 
 If you layered packages with `rpm-ostree install`, `bootc switch` drops them. Use this instead:
 ```bash
-sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/iarsslen/$IMAGE_NAME:{target}
+sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/arsslensoft/$IMAGE_NAME:{target}
 ```
 
 ### Documentation
-Be sure to read the [README](https://github.com/iarsslen/amethystora#readme) for more information
+Be sure to read the [README](https://github.com/arsslensoft/amethystora#readme) for more information
 on how to use your cloud native system.
 """
 HANDWRITTEN_PLACEHOLDER = """\

@@ -567,14 +567,14 @@ EOF
     stream="$(jq -r '."image-tag"' "${IMAGE_INFO}")"
     other="$(item image | jq -r --arg i "${image}" '[.choices[].value | select(. != $i)][0]')"
     in_card 120 'Select your image' $'\r' 'for testers' $'\r' 'Confirm rebase to' n -- image "${other}"
-    if grep -q "Confirm rebase to ghcr.io/iarsslen/${other}:${stream}?" <<<"${OUT}" &&
+    if grep -q "Confirm rebase to ghcr.io/arsslensoft/${other}:${stream}?" <<<"${OUT}" &&
         [[ "$(bootc status --json | jq -r '.status.staged')" == null ]]; then
         ok "the image card offers ${other} on the stream followed, and switches nothing when declined"
     else
         not_ok "the image card did not offer ${other}:${stream}" "$(tail -n 20 <<<"${OUT}")"
     fi
     in_card 120 'Select your image' $'\r' 'for testers' $'\r' 'Confirm rebase to' n -- stream stable
-    if grep -q "Confirm rebase to ghcr.io/iarsslen/${image}:stable?" <<<"${OUT}"; then
+    if grep -q "Confirm rebase to ghcr.io/arsslensoft/${image}:stable?" <<<"${OUT}"; then
         ok "the stream card offers ${image} on stable"
     else
         not_ok "the stream card did not offer ${image}:stable" "$(tail -n 20 <<<"${OUT}")"

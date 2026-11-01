@@ -43,7 +43,7 @@ use serde_json::Value;
 pub const MANUAL_UNIT: &str = "uupd-manual.service";
 pub const UNITS: [&str; 2] = [MANUAL_UNIT, "uupd.service"];
 pub const TIMER: &str = "uupd.timer";
-pub const RELEASES: &str = "https://github.com/iarsslen/amethystora/releases";
+pub const RELEASES: &str = "https://github.com/arsslensoft/amethystora/releases";
 /// Lines of what the updater said, kept for the page's details
 pub const LOG_LENGTH: usize = 400;
 /// The containers' upgrade, a unit of the account's own, and what it logs each container under
@@ -400,7 +400,7 @@ pub async fn metered() -> Metered {
     read_metered(&process::run(METERED, &["status", "--json"]).await.stdout)
 }
 
-/// "ostree-image-signed:docker://ghcr.io/iarsslen/amethystora:stable" -> "ghcr.io/iarsslen/amethystora:stable"
+/// "ostree-image-signed:docker://ghcr.io/arsslensoft/amethystora:stable" -> "ghcr.io/arsslensoft/amethystora:stable"
 fn image_of(reference: &str) -> String {
     match reference.find(':') {
         Some(at) if at > 0 => {
@@ -824,7 +824,7 @@ mod tests {
 
     #[test]
     fn images_and_times() {
-        assert_eq!(image_of("ostree-image-signed:docker://ghcr.io/iarsslen/amethystora:stable"), "ghcr.io/iarsslen/amethystora:stable");
+        assert_eq!(image_of("ostree-image-signed:docker://ghcr.io/arsslensoft/amethystora:stable"), "ghcr.io/arsslensoft/amethystora:stable");
         assert_eq!(image_of("ostree-unverified-registry:ghcr.io/x/y:latest"), "ghcr.io/x/y:latest");
         assert_eq!(unix_time(Some(&"@1758330764".to_string())), Some(1758330764.0));
         assert_eq!(unix_time(Some(&"".to_string())), None);

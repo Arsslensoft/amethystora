@@ -762,7 +762,7 @@ wordmark.sprite = Sprite(wordmark.image);
 wordmark_y = screen_y + screen_h * 0.94;
 wordmark.sprite.SetPosition(origin_x - wordmark.image.GetWidth() / 2, wordmark_y - wordmark.image.GetHeight() / 2, 6);
 
-credit.image = sized(Image("credit.png"), 110 * scale, 18 * scale);
+credit.image = sized(Image("credit.png"), 130 * scale, 18 * scale);
 credit.sprite = Sprite(credit.image);
 credit.sprite.SetPosition(origin_x - credit.image.GetWidth() / 2, wordmark_y + 34 * scale - credit.image.GetHeight() / 2, 6);
 credit.sprite.SetOpacity(0.22);

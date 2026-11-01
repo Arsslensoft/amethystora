@@ -1,8 +1,8 @@
 # About
 
-Amethystora is created and maintained by Arsslen Idadi ([@iarsslen](https://github.com/iarsslen)).
+Amethystora is created and maintained by Arsslen Idadi ([@arsslensoft](https://github.com/arsslensoft)).
 It is free software under the Apache License 2.0, built in the open at
-[github.com/iarsslen/amethystora](https://github.com/iarsslen/amethystora). Issues, ideas and pull
+[github.com/arsslensoft/amethystora](https://github.com/arsslensoft/amethystora). Issues, ideas and pull
 requests are welcome there.
 
 Amethystora is based on [Universal Blue](https://universal-blue.org), copyright its contributors and licensed under the Apache License 2.0.
@@ -27,7 +27,7 @@ and forward, `Ctrl+=` and `Ctrl+-` change the text size, and `Ctrl+0` resets it.
 **Copy** button. A page shows in the session's language where it has been translated, and in English
 otherwise.
 
-French, Arabic, Spanish and German were first translated by machine, and no person has read them all yet: until a reader has approved the security report and the welcome page in a language, take a doubtful sentence there as a question and check it against the English. What the `ame` commands say and ask, and the text of a notification, show in your language where there is a translation of it and in English where there is not yet; what the security watcher found, the names of files and programs, and what other programs print stay as they were written. To read, correct or add a language, see [CONTRIBUTING.md](https://github.com/iarsslen/amethystora/blob/main/CONTRIBUTING.md#translating).
+French, Arabic, Spanish and German were first translated by machine, and no person has read them all yet: until a reader has approved the security report and the welcome page in a language, take a doubtful sentence there as a question and check it against the English. What the `ame` commands say and ask, and the text of a notification, show in your language where there is a translation of it and in English where there is not yet; what the security watcher found, the names of files and programs, and what other programs print stay as they were written. To read, correct or add a language, see [CONTRIBUTING.md](https://github.com/arsslensoft/amethystora/blob/main/CONTRIBUTING.md#translating).
 
 ## Standing on the shoulders of
 
@@ -59,9 +59,9 @@ A few packages are built by others (RPM Fusion, negativo17, Fedora Copr), who pu
 current build of each. Where such a package's licence asks for its source, the source package this
 image was built from is in the image itself, in `/usr/src/amethystora`.
 
-Everything else is built from [the Amethystora repository](https://github.com/iarsslen/amethystora)
+Everything else is built from [the Amethystora repository](https://github.com/arsslensoft/amethystora)
 at the commit named as `BUILD_ID` in `/usr/lib/os-release`. For at least three years after an image
 was last published, the complete source of anything in it whose licence asks for its source to be
 available (the GNU GPL and LGPL, the MPL, the CDDL, the Fraunhofer AAC codec's licence) is also
-given to anyone who asks through the [issue tracker](https://github.com/iarsslen/amethystora/issues);
+given to anyone who asks through the [issue tracker](https://github.com/arsslensoft/amethystora/issues);
 the written offer is in `/usr/share/licenses/amethystora/NOTICE`.

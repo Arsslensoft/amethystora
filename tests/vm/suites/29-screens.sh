@@ -15,7 +15,7 @@
 # vmlab-paths: @ui/extension.js @ui/*tiling* @ui/*glass* @ui/*bars* @ui/*workspaces*
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 HOME_DIR="/var/home/${TEST_USER}"
 keys() { python3 "$(dirname "$0")/keys.py" "$@"; }
 # The value Eval gives back, a string as the expression made it

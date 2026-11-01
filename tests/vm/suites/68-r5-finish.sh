@@ -10,7 +10,7 @@
 # vmlab-paths: @ui/extension.js @ui/*workspaces* @ui/*pill* @ui/*dock* @ui/*glass* @ui/*rest* @ui/*living* @ui/*screenshot* @ui/*deskwidgets* @sf/*themed/shell-dock* @sf/*themed/shell-living* @sf/*widgets* @sf/usr/bin/amethystora-trim @sf/*amethystora-trim* apps/trim apps/control apps/control-core @sf/usr/libexec/amethystora-control-list @sf/usr/libexec/amethystora-setup* @sf/*just/desktop.just
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 HERE="$(dirname "$0")"
 HOME_DIR="/var/home/${TEST_USER}"
 PILL=org.gnome.shell.extensions.amethystora-ui.pill
@@ -217,7 +217,7 @@ same "6 Control's gallery" "$(jq -r '.items[] | select(.id == "widgets") | [.gal
 same "6 none is on" "$(in_session "ls ~/.config/amethystora/widgets 2>/dev/null | grep -cE '^(clock|calendar|now-playing|system)$'" 2>/dev/null)" 0
 for example in clock calendar now-playing system; do
     check "6 ${example} passes the widgets' check" in_session \
-        "WIDGET_STATE=\$(mktemp -d) gjs -m /usr/share/gnome-shell/extensions/amethystora-widgets@iarsslen.github.io/check.js /usr/share/amethystora/widgets/examples/${example}"
+        "WIDGET_STATE=\$(mktemp -d) gjs -m /usr/share/gnome-shell/extensions/amethystora-widgets@arsslensoft.github.io/check.js /usr/share/amethystora/widgets/examples/${example}"
 done
 in_session "ame desktop widgets add clock desktop" >/dev/null
 same "6 one click puts the clock on the desktop" \

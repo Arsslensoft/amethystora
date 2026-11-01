@@ -43,7 +43,7 @@ ame update
 | `fwupdmgr get-updates` | Actualizaciones de firmware para este equipo, de su fabricante |
 
 Las notas de la versión de cada compilación estable están en
-[GitHub](https://github.com/iarsslen/amethystora/releases).
+[GitHub](https://github.com/arsslensoft/amethystora/releases).
 
 ## Firmware
 
@@ -104,7 +104,7 @@ salga una imagen corregida.
 Para pasar a otro canal o a otra imagen, haga el cambio y reinicie:
 
 ```bash
-sudo bootc switch --enforce-container-sigpolicy ghcr.io/iarsslen/amethystora:latest
+sudo bootc switch --enforce-container-sigpolicy ghcr.io/arsslensoft/amethystora:latest
 ```
 
 Sustituya `amethystora` por `amethystora-dx` para el [modo desarrollador](developer.md), y `latest`
@@ -114,7 +114,7 @@ Si tiene [paquetes superpuestos](software.md#layering-the-last-resort), cambie c
 lugar, porque `bootc switch` construye el sistema nuevo solo a partir de la imagen y los descartaría:
 
 ```bash
-sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/iarsslen/amethystora:latest
+sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/arsslensoft/amethystora:latest
 ```
 
 ## Quedarse en una compilación

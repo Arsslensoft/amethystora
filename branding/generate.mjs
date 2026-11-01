@@ -613,7 +613,7 @@ function bootPreviewHtml() {
     <img id="stem" src="${svgData(stemSvg)}">
     ${img("gem", gemSvg(), 256 * k, 256 * k)}
     ${img("light", lightSvg, 256 * k, 256 * k)}
-  </div><div id="mark">${wordmark(true)}</div><div id="credit">by iarsslen</div></div>
+  </div><div id="mark">${wordmark(true)}</div><div id="credit">by Arsslensoft</div></div>
   <div id="bar"><button id="replay">Replay</button><button id="slow">Slow motion: off</button><span id="clock"></span></div>
   <script>
     ${BOOT_TIMELINE}
@@ -862,7 +862,7 @@ const GEM_PX = 256 * BOOT.unit; // the gem's 256-unit box, in 1080p pixels
 // glow is scaled with it, so the lettering comes out at the 34px the credit below is spaced for.
 const WORDMARK = { box: [276, 90], glow: 6, fit: 0.66 };
 const TEXT = {
-  credit: { text: "by iarsslen", size: 13, weight: 500, spacing: "0.04em", color: SHADES[7], box: [110, 18], opacity: 0.22 },
+  credit: { text: "by Arsslensoft", size: 13, weight: 500, spacing: "0.04em", color: SHADES[7], box: [130, 18], opacity: 0.22 },
 };
 // Centre of the name, as a share of the screen height, and of the credit below it, in 1080p pixels
 const WORDMARK_Y = 0.94;

@@ -41,7 +41,7 @@ A build is most of an hour, so check the fix on its own first:
 
 - **A line of a build script** (a glob, a `sed`, a package name): run it in a container of the published
   image, or of the base image the build starts from, in the lab:
-  `docker exec amevm podman run --rm --entrypoint bash ghcr.io/iarsslen/amethystora:latest -c '...'`.
+  `docker exec amevm podman run --rm --entrypoint bash ghcr.io/arsslensoft/amethystora:latest -c '...'`.
   After a failed build there is no new image; the published one or `ghcr.io/ublue-os/silverblue-main:44`
   stand in.
 - **A check in `20-tests.sh`**: run its lines in the published image with the changed files copied over it.

@@ -15,11 +15,11 @@ assez propre pour être mis à jour sans arrière-pensée.
 Passez à l’image dx, et redémarrez :
 
 ```bash
-sudo bootc switch --enforce-container-sigpolicy ghcr.io/iarsslen/amethystora-dx:stable
+sudo bootc switch --enforce-container-sigpolicy ghcr.io/arsslensoft/amethystora-dx:stable
 ```
 
 Si vous avez des [paquets superposés](software.md#layering-the-last-resort), utilisez plutôt
-`sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/iarsslen/amethystora-dx:stable`, qui les
+`sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/arsslensoft/amethystora-dx:stable`, qui les
 conserve. Revenir à `amethystora` se fait de la même façon.
 
 Au premier démarrage, l’image dx ajoute chaque compte administrateur aux groupes `docker`,

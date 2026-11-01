@@ -7,12 +7,12 @@ set -eoux pipefail
 # System hardening that needs more than the files in system_files (sysctl.d, modprobe.d, bootc kargs.d,
 # sshd_config.d). Runs after 07-debrand.sh, which gives the kernel's certificate its Amethystora name.
 
-# Signed updates: images from ghcr.io/iarsslen are only accepted with a cosign signature made with the key
+# Signed updates: images from ghcr.io/arsslensoft are only accepted with a cosign signature made with the key
 # CI signs them with (cosign.pub, installed as /etc/pki/containers/amethystora.pub by the Containerfile).
 # The sigstore attachments are looked up as set in /etc/containers/registries.d/amethystora.yaml.
 # Other registries keep Fedora's default, so pulling other container images works as before.
 test -s /etc/pki/containers/amethystora.pub
-jq '.transports.docker["ghcr.io/iarsslen"] = [{
+jq '.transports.docker["ghcr.io/arsslensoft"] = [{
         "type": "sigstoreSigned",
         "keyPath": "/etc/pki/containers/amethystora.pub",
         "signedIdentity": {"type": "matchRepository"}

@@ -946,11 +946,11 @@ grep -qx "ame desktop pattern dots" "${LOG}"
 # schemas and dconf files, with the real tools (no stand-ins on the PATH). What it writes is read back as GNOME
 # reads it: the system's schemas, the tiling's own compiled copy, which GNOME Shell reads first, and dconf's database.
 ROOT="${T}/root"
-UI=usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io
+UI=usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io
 bake_root() {
     rm -rf "${ROOT}"
     mkdir -p "${ROOT}/usr/share/glib-2.0" "${ROOT}/${UI}" "${ROOT}/etc/dconf/db" "${ROOT}/usr/share/amethystora/themes/nord" \
-        "${ROOT}/usr/share/gnome-shell/extensions/amethystora-clipboard@iarsslen.github.io"
+        "${ROOT}/usr/share/gnome-shell/extensions/amethystora-clipboard@arsslensoft.github.io"
     cp -r /usr/share/glib-2.0/schemas "${ROOT}/usr/share/glib-2.0/"
     cp -r "/${UI}/schemas" "${ROOT}/${UI}/"
     cp -r /etc/dconf/db/distro.d "${ROOT}/etc/dconf/db/"
@@ -960,7 +960,7 @@ bake() { env -u HOME PATH=/usr/bin:/usr/sbin "${SETUP}" bake "$@" --root "${ROOT
 image() { GSETTINGS_SCHEMA_DIR="${ROOT}/usr/share/glib-2.0/schemas" GSETTINGS_BACKEND=memory /usr/bin/gsettings get "$@"; }
 bake_root
 jq '.image = {"name": "amethystora", "stream": "stable"}
-    | .flatpaks.system += [{"app": "org.gnome.Maps", "origin": "flathub"}] | .extensions = ["amethystora-clipboard@iarsslen.github.io"]
+    | .flatpaks.system += [{"app": "org.gnome.Maps", "origin": "flathub"}] | .extensions = ["amethystora-clipboard@arsslensoft.github.io"]
     | .settings.layout = "classic" | .brew.taps = ["someone/tools"] | .brew.formulae = ["fd", "someone/tools/lint"]
     | .settings.motion = {"minimize": "shrink"} | .settings.workspaces = {"auto-names": false, "sets": false}
     | .settings.look = {"accent": "jade", "colours": "soft", "accent-per-workspace": true,
@@ -975,8 +975,8 @@ grep -qxF "[Flatpak Preinstall org.gimp.GIMP]" "${PRE}"
 [[ "$(image org.gnome.shell favorite-apps)" == "['org.gnome.Nautilus.desktop', 'firefox.desktop']" ]]
 # ...the image's extensions kept, the file's added
 extensions="$(image org.gnome.shell enabled-extensions)"
-grep -qF "'amethystora-ui@iarsslen.github.io'" <<<"${extensions}"
-grep -qF "'amethystora-clipboard@iarsslen.github.io'" <<<"${extensions}"
+grep -qF "'amethystora-ui@arsslensoft.github.io'" <<<"${extensions}"
+grep -qF "'amethystora-clipboard@arsslensoft.github.io'" <<<"${extensions}"
 [[ "$(image org.gnome.desktop.wm.keybindings close)" == "['<Super>q']" ]]
 [[ "$(image "${TILING}.keybindings" cycle-width)" == "['<Super>e']" ]]
 [[ "$(image "${TILING}" enabled)" == false && "$(image "${TILING}" window-gap)" == 12 ]]

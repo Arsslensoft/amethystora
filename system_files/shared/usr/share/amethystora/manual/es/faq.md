@@ -77,5 +77,5 @@ actualización. La configuración de su cuenta va en su carpeta personal.
 ## ¿Puedo confiar en la imagen?
 
 Se compila públicamente en GitHub a partir del código fuente de
-[iarsslen/amethystora](https://github.com/iarsslen/amethystora), se firma con una clave cuya mitad
+[arsslensoft/amethystora](https://github.com/arsslensoft/amethystora), se firma con una clave cuya mitad
 pública va en cada imagen, y su equipo solo la acepta si esa firma es válida.

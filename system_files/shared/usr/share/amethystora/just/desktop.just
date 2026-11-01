@@ -1122,7 +1122,7 @@ zone-notice VALUE="":
 tiling-settings:
     #!/usr/bin/bash
     set -euo pipefail
-    gnome-extensions prefs amethystora-ui@iarsslen.github.io
+    gnome-extensions prefs amethystora-ui@arsslensoft.github.io
 
 # Windows in the classic layout: snap layouts, the switcher, the Super card, hot corners, show desktop, gestures,
 # places and dimming, and for every layout the drop-down terminal and the scratchpad, keep on top, see-through

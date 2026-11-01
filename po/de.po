@@ -3,7 +3,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: amethystora\n"
-"Report-Msgid-Bugs-To: https://github.com/iarsslen/amethystora/issues\n"
+"Report-Msgid-Bugs-To: https://github.com/arsslensoft/amethystora/issues\n"
 "Language: de\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -1972,31 +1972,31 @@ msgstr "Papierkorb leeren"
 msgid "What was deleted longer ago than this leaves the trash by itself, checked every hour while you are logged in. The snapshots and the backup still have it."
 msgstr "Was früher gelöscht wurde, verlässt den Papierkorb von selbst, stündlich geprüft, solange Sie angemeldet sind. Die Schnappschüsse und die Sicherung haben es noch."
 
-#: usr/share/gnome-shell/extensions/amethystora-logo-menu@iarsslen.github.io/extension.js
+#: usr/share/gnome-shell/extensions/amethystora-logo-menu@arsslensoft.github.io/extension.js
 msgid "Logo menu"
 msgstr "Logo-Menü"
 
-#: usr/share/gnome-shell/extensions/amethystora-logo-menu@iarsslen.github.io/extension.js
+#: usr/share/gnome-shell/extensions/amethystora-logo-menu@arsslensoft.github.io/extension.js
 msgid "About this computer"
 msgstr "Über diesen Computer"
 
-#: usr/share/gnome-shell/extensions/amethystora-logo-menu@iarsslen.github.io/extension.js
+#: usr/share/gnome-shell/extensions/amethystora-logo-menu@arsslensoft.github.io/extension.js
 msgid "Manual"
 msgstr "Handbuch"
 
-#: usr/share/gnome-shell/extensions/amethystora-logo-menu@iarsslen.github.io/extension.js
+#: usr/share/gnome-shell/extensions/amethystora-logo-menu@arsslensoft.github.io/extension.js
 msgid "Settings"
 msgstr "Einstellungen"
 
-#: usr/share/gnome-shell/extensions/amethystora-logo-menu@iarsslen.github.io/extension.js
+#: usr/share/gnome-shell/extensions/amethystora-logo-menu@arsslensoft.github.io/extension.js
 msgid "Software centre"
 msgstr "Software-Center"
 
-#: usr/share/gnome-shell/extensions/amethystora-logo-menu@iarsslen.github.io/extension.js
+#: usr/share/gnome-shell/extensions/amethystora-logo-menu@arsslensoft.github.io/extension.js
 msgid "Extensions"
 msgstr "Erweiterungen"
 
-#: usr/share/gnome-shell/extensions/amethystora-logo-menu@iarsslen.github.io/extension.js
+#: usr/share/gnome-shell/extensions/amethystora-logo-menu@arsslensoft.github.io/extension.js
 msgid "System monitor"
 msgstr "Systemmonitor"
 
@@ -2198,11 +2198,11 @@ msgstr "Ansehen mit: ame security events"
 msgid "See them all with: ame security events"
 msgstr "Alle ansehen mit: ame security events"
 
-#: usr/share/gnome-shell/extensions/amethystora-widgets@iarsslen.github.io/extension.js
+#: usr/share/gnome-shell/extensions/amethystora-widgets@arsslensoft.github.io/extension.js
 msgid "Fix it with the AI agent"
 msgstr "Mit dem KI-Agenten beheben"
 
-#: usr/share/gnome-shell/extensions/amethystora-widgets@iarsslen.github.io/extension.js
+#: usr/share/gnome-shell/extensions/amethystora-widgets@arsslensoft.github.io/extension.js
 msgid "Open its folder"
 msgstr "Ordner öffnen"
 
@@ -2576,7 +2576,7 @@ msgstr "Kein Netzwerk ist als Heimnetzwerk benannt, daher ist die Telefonkopplun
 msgid "Name yours with:"
 msgstr "Benennen Sie Ihres mit:"
 
-#: usr/libexec/amethystora-security-status usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/privacy/shield.js
+#: usr/libexec/amethystora-security-status usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/privacy/shield.js
 msgid "Encrypted DNS"
 msgstr "Verschlüsseltes DNS"
 
@@ -2926,7 +2926,7 @@ msgstr "Blockiert neue USB-Geräte, solange der Bildschirm gesperrt ist, oder je
 msgid "Blocks new USB devices while the screen is locked; a plain keyboard or mouse still works, so that you can unlock"
 msgstr "Blockiert neue USB-Geräte, solange der Bildschirm gesperrt ist; eine einfache Tastatur oder Maus funktioniert weiter, damit Sie entsperren können"
 
-#: usr/libexec/amethystora-security-status usr/share/amethystora/just/security.just usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/privacy/shield.js
+#: usr/libexec/amethystora-security-status usr/share/amethystora/just/security.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/privacy/shield.js
 msgid "Private folder"
 msgstr "Privater Ordner"
 
@@ -2989,60 +2989,60 @@ msgid "Loads code chosen outside the app into it"
 msgstr "Lädt außerhalb der App gewählten Code in sie"
 
 #. Translators: the colours of folders in Files' Scripts menu, which sorts them by name
-#: usr/libexec/amethystora-control-list usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/theme/accents.js
+#: usr/libexec/amethystora-control-list usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/theme/accents.js
 msgid "Amethyst"
 msgstr "Amethyst"
 
-#: usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/theme/accents.js
+#: usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/theme/accents.js
 msgid "Iris"
 msgstr "Iris"
 
 #. Translators: the colours of folders in Files' Scripts menu, which sorts them by name
-#: usr/libexec/amethystora-control-list usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/theme/accents.js
+#: usr/libexec/amethystora-control-list usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/theme/accents.js
 msgid "Sky"
 msgstr "Himmel"
 
-#: usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/theme/accents.js
+#: usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/theme/accents.js
 msgid "Lagoon"
 msgstr "Lagune"
 
 #. Translators: the colours of folders in Files' Scripts menu, which sorts them by name
-#: usr/libexec/amethystora-control-list usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/theme/accents.js
+#: usr/libexec/amethystora-control-list usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/theme/accents.js
 msgid "Jade"
 msgstr "Jade"
 
-#: usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/theme/accents.js
+#: usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/theme/accents.js
 msgid "Moss"
 msgstr "Moos"
 
 #. Translators: the colours of folders in Files' Scripts menu, which sorts them by name
-#: usr/libexec/amethystora-control-list usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/theme/accents.js
+#: usr/libexec/amethystora-control-list usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/theme/accents.js
 msgid "Amber"
 msgstr "Bernstein"
 
-#: usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/theme/accents.js
+#: usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/theme/accents.js
 msgid "Ember"
 msgstr "Glut"
 
 #. Translators: the colours of folders in Files' Scripts menu, which sorts them by name
-#: usr/libexec/amethystora-control-list usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/theme/accents.js
+#: usr/libexec/amethystora-control-list usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/theme/accents.js
 msgid "Coral"
 msgstr "Koralle"
 
-#: usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/theme/accents.js
+#: usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/theme/accents.js
 msgid "Rose"
 msgstr "Rose"
 
-#: usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/theme/accents.js
+#: usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/theme/accents.js
 msgid "Orchid"
 msgstr "Orchidee"
 
 #. Translators: the colours of folders in Files' Scripts menu, which sorts them by name
-#: usr/libexec/amethystora-control-list usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/theme/accents.js
+#: usr/libexec/amethystora-control-list usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/theme/accents.js
 msgid "Slate"
 msgstr "Schiefer"
 
-#: usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/workspaces.js
+#: usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/workspaces.js
 msgid "Follow the theme"
 msgstr "Dem Thema folgen"
 
@@ -3051,7 +3051,7 @@ msgstr "Dem Thema folgen"
 msgid "The theme's own: ${own}"
 msgstr "Die des Themas: ${own}"
 
-#: usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/workspaces.js
+#: usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/workspaces.js
 msgid "Accent"
 msgstr "Akzent"
 
@@ -3156,7 +3156,7 @@ msgid "Soft matte volumes, a highlight above and a shade below"
 msgstr "Weiche, matte Körper mit Licht oben und Schatten unten"
 
 #. Translators: the heading of the notifications that wait, with how many
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/pill/later.js
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/later.js
 msgid "Muted"
 msgstr "Gedämpft"
 
@@ -3260,7 +3260,7 @@ msgstr "Prisma"
 msgid "Less tint, more colour, a lit top edge and light along the bottom"
 msgstr "Weniger Tönung, mehr Farbe, eine beleuchtete Oberkante und Licht am unteren Rand"
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/pill/digest.js
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/digest.js
 msgid "Clear"
 msgstr "Klar"
 
@@ -3312,7 +3312,7 @@ msgstr "GNOMEs „Hoher Kontrast“: stärkere Umrisse, schlichter Text und umra
 msgid "The speech recognizer is not in this image."
 msgstr "Die Spracherkennung ist nicht in diesem Abbild."
 
-#: usr/libexec/amethystora-control-list usr/libexec/amethystora-sends usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/captions.js
+#: usr/libexec/amethystora-control-list usr/libexec/amethystora-sends usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/captions.js
 msgid "Live captions"
 msgstr "Live-Untertitel"
 
@@ -3324,7 +3324,7 @@ msgstr "Untertitel zu Sprache, die der Computer abspielt, auf diesem Computer er
 msgid "Seeing and reading"
 msgstr "Sehen und Lesen"
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/access/filter.js
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/access/filter.js
 msgid "Red (protan)"
 msgstr "Rot (Protan)"
 
@@ -3332,7 +3332,7 @@ msgstr "Rot (Protan)"
 msgid "Pulls apart reds and greens for an eye that sees red weakly"
 msgstr "Trennt Rot und Grün deutlicher für ein Auge, das Rot schwach sieht"
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/access/filter.js
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/access/filter.js
 msgid "Green (deutan)"
 msgstr "Grün (Deutan)"
 
@@ -3340,7 +3340,7 @@ msgstr "Grün (Deutan)"
 msgid "Pulls apart reds and greens for an eye that sees green weakly"
 msgstr "Trennt Rot und Grün deutlicher für ein Auge, das Grün schwach sieht"
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/access/filter.js
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/access/filter.js
 msgid "Blue-yellow"
 msgstr "Blau-Gelb"
 
@@ -3348,7 +3348,7 @@ msgstr "Blau-Gelb"
 msgid "Pulls apart blues and yellows"
 msgstr "Trennt Blau und Gelb deutlicher"
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/access/filter.js
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/access/filter.js
 msgid "Grey"
 msgstr "Grau"
 
@@ -3360,7 +3360,7 @@ msgstr "Der ganze Bildschirm in Grau, für weniger Ablenkung"
 msgid "Switched off for now in quick settings."
 msgstr "Vorerst in den Schnelleinstellungen ausgeschaltet."
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/access/filter.js
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/access/filter.js
 msgid "Colour filter"
 msgstr "Farbfilter"
 
@@ -3368,15 +3368,15 @@ msgstr "Farbfilter"
 msgid "The whole screen, every app, through a filter. Screenshots are saved without it."
 msgstr "Der ganze Bildschirm, jede App, durch einen Filter. Bildschirmfotos werden ohne ihn gespeichert."
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/access/filter.js
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/access/filter.js
 msgid "Half"
 msgstr "Halb"
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/access/filter.js
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/access/filter.js
 msgid "¾"
 msgstr "¾"
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/access/filter.js
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/access/filter.js
 msgid "Full"
 msgstr "Voll"
 
@@ -3488,7 +3488,7 @@ msgstr "Rundet die Ecken des eckigen eingebauten Bildschirms eines Laptops ab."
 msgid "Pointer"
 msgstr "Zeiger"
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/present.js
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/present.js
 msgid "Halo"
 msgstr "Halo"
 
@@ -3560,7 +3560,7 @@ msgstr "Tiefer und runder, für einen ruhigen Raum"
 msgid "The desktop makes no sound of its own; apps still can"
 msgstr "Die Arbeitsoberfläche gibt keine eigenen Klänge aus; Apps können es weiterhin"
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/desks.js
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/desks.js
 msgid "Sound"
 msgstr "Klang"
 
@@ -3580,7 +3580,7 @@ msgstr "Ändern …"
 msgid "They apply once the layout is tiling again."
 msgstr "Sie gelten, sobald die Anordnung wieder gekachelt ist."
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/tiling/topbar.js
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/tiling/topbar.js
 msgid "Tiling settings"
 msgstr "Kachel-Einstellungen"
 
@@ -3656,7 +3656,7 @@ msgstr "Nicht genutzte Fenster abdunkeln"
 msgid "The windows behind the one you are using are drawn a little darker."
 msgstr "Die Fenster hinter dem, das Sie benutzen, werden etwas dunkler gezeichnet."
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/quit/frozen.js usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/quit/list.js
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/quit/frozen.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/quit/list.js
 msgid "Force quit"
 msgstr "Beenden erzwingen"
 
@@ -3696,7 +3696,7 @@ msgstr "Ecke unten rechts"
 msgid "Nothing"
 msgstr "Nichts"
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/prefs.js
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/prefs.js
 msgid "Overview"
 msgstr "Übersicht"
 
@@ -3752,7 +3752,7 @@ msgstr "Dem Scharnier folgen"
 msgid "On while the computer is folded into a tablet"
 msgstr "Eingeschaltet, solange der Computer zum Tablet gefaltet ist"
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/touch/mode.js
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/touch/mode.js
 msgid "Touch mode"
 msgstr "Touch-Modus"
 
@@ -3785,7 +3785,7 @@ msgid "Scribble, a screenshot of an area, a note, the text in an area, right cli
 msgstr "Kritzeln, Bildschirmfoto eines Bereichs, eine Notiz, der Text in einem Bereich, Rechtsklick und Zurück, über die Seitentaste des Stifts oder Super+Ctrl+P."
 
 #. Translators: a choice in a menu: to set gaming up
-#: usr/libexec/amethystora-control-list usr/share/amethystora/just/apps.just usr/share/amethystora/just/backup.just usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/desks.js
+#: usr/libexec/amethystora-control-list usr/share/amethystora/just/apps.just usr/share/amethystora/just/backup.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/desks.js
 msgid "Set up"
 msgstr "Einrichten"
 
@@ -3801,7 +3801,7 @@ msgstr "Die Seitentaste des Stifts"
 msgid "Makes the side button of each pen open the tools, keeping what it did to give back."
 msgstr "Lässt die Seitentaste jedes Stifts die Werkzeuge öffnen und merkt sich ihre bisherige Aufgabe, um sie zurückzugeben."
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/dock/dash.js
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/dock/dash.js
 msgid "Dock"
 msgstr "Dock"
 
@@ -3961,7 +3961,7 @@ msgstr "Jeder mit den Apps, deren Fenster auf ihm sind"
 msgid "Main screen only"
 msgstr "Nur Hauptbildschirm"
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/prefs.js
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/prefs.js
 msgid "Screens"
 msgstr "Bildschirme"
 
@@ -4025,7 +4025,7 @@ msgstr "„Bewegung reduzieren“ ist eingeschaltet: Fenster und Arbeitsflächen
 msgid "Animations are off in Settings, so nothing moves."
 msgstr "Animationen sind in den Einstellungen ausgeschaltet, also bewegt sich nichts."
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/prefs.js
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/prefs.js
 msgid "Motion"
 msgstr "Bewegung"
 
@@ -4077,7 +4077,7 @@ msgstr "Arbeitsflächenwechsel"
 msgid "How one workspace gives way to the next."
 msgstr "Wie eine Arbeitsfläche der nächsten Platz macht."
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/bars.js usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/workspaces.js usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/prefs.js
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/bars.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/workspaces.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/prefs.js
 msgid "Workspaces"
 msgstr "Arbeitsflächen"
 
@@ -4097,7 +4097,7 @@ msgstr "Gespeicherte Sätze"
 msgid "Save a workspace’s apps and their places from its menu, and open them again."
 msgstr "Speichern Sie die Apps einer Arbeitsfläche und ihre Plätze aus deren Menü und öffnen Sie sie wieder."
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/windows/hold.js
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/windows/hold.js
 msgid "Search"
 msgstr "Suche"
 
@@ -4125,7 +4125,7 @@ msgstr "Das Handbuch"
 msgid "Finds the pages of this manual that answer what you typed."
 msgstr "Findet die Seiten dieses Handbuchs, die Ihre Eingabe beantworten."
 
-#: usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/dock/menus.js usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/search/providers.js
+#: usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/dock/menus.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/providers.js
 msgid "Open windows"
 msgstr "Offene Fenster"
 
@@ -4289,7 +4289,7 @@ msgstr "Wetter neben der Uhr"
 msgid "Sends the place you chose in Weather to a weather service."
 msgstr "Sendet den in Wetter gewählten Ort an einen Wetterdienst."
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/today/getting.js
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/today/getting.js
 msgid "Getting set"
 msgstr "Erste Schritte"
 
@@ -4423,7 +4423,7 @@ msgstr "Neuigkeiten nach einer Aktualisierung"
 msgid "The first session after an update, the pill says Updated once and shows what it brought."
 msgstr "In der ersten Sitzung nach einer Aktualisierung meldet die Live-Anzeige einmal „Aktualisiert“ und zeigt, was sie gebracht hat."
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/desks.js usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/quick.js
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/desks.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/quick.js
 msgid "Power"
 msgstr "Energie"
 
@@ -4443,11 +4443,11 @@ msgstr "Melden, wenn eine App beschäftigt ist"
 msgid "A chip beside the meters names an app that has kept the processor busy for two minutes."
 msgstr "Ein Chip neben den Messwerten nennt eine App, die den Prozessor zwei Minuten lang beschäftigt hat."
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/desks.js usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/focus/tile.js
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/desks.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/focus/tile.js
 msgid "Focus"
 msgstr "Fokus"
 
-#: usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/desks.js usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/focus/profiles.js
+#: usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/desks.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/focus/profiles.js
 msgid "Work"
 msgstr "Arbeit"
 
@@ -4459,7 +4459,7 @@ msgstr "Banner der gewählten Apps, keine Benachrichtigungsklänge"
 msgid "Banners held, performance power, the dock out of the way"
 msgstr "Banner zurückgehalten, Leistungsmodus, das Dock aus dem Weg"
 
-#: usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/desks.js usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/focus/profiles.js
+#: usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/desks.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/focus/profiles.js
 msgid "Sleep"
 msgstr "Schlaf"
 
@@ -4531,7 +4531,7 @@ msgstr "Wie eingestellt"
 msgid "Hides while a window touches it"
 msgstr "Blendet sich aus, solange ein Fenster es berührt"
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/desks.js
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/desks.js
 msgid "The dock"
 msgstr "Das Dock"
 
@@ -4555,11 +4555,11 @@ msgstr "Am wärmsten"
 msgid "Night Light"
 msgstr "Nachtlicht"
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/desks.js
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/desks.js
 msgid "Performance"
 msgstr "Leistung"
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/desks.js
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/desks.js
 msgid "Power saver"
 msgstr "Energiesparmodus"
 
@@ -4607,7 +4607,7 @@ msgstr "Fokus: Spiele"
 msgid "Focus: Sleep"
 msgstr "Fokus: Schlaf"
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/present.js
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/present.js
 msgid "Presenting"
 msgstr "Präsentieren"
 
@@ -4623,7 +4623,7 @@ msgstr "Eine Präsentieren-Kachel in den Schnelleinstellungen: Der Bildschirm bl
 msgid "A disc round the pointer"
 msgstr "Eine Scheibe um den Zeiger"
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/present.js
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/present.js
 msgid "Torch"
 msgstr "Taschenlampe"
 
@@ -4631,7 +4631,7 @@ msgstr "Taschenlampe"
 msgid "Everything but a circle round the pointer dimmed"
 msgstr "Alles außer einem Kreis um den Zeiger abgedunkelt"
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/present.js
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/present.js
 msgid "No mark"
 msgstr "Keine Markierung"
 
@@ -4707,7 +4707,7 @@ msgstr "Aus meinen Änderungen hier lernen"
 msgid "Picking another sound output or moving the dock at a desk asks whether the desk should remember it."
 msgstr "Wählen Sie an einem Arbeitsplatz eine andere Tonausgabe oder verschieben das Dock, wird gefragt, ob er sich das merken soll."
 
-#: usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/desks/identity.js
+#: usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/desks/identity.js
 msgid "The laptop alone"
 msgstr "Nur der Laptop"
 
@@ -4742,7 +4742,7 @@ msgstr "das Dock rechts auf dem Hauptbildschirm"
 msgid "the dock on the right"
 msgstr "das Dock rechts"
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/desks.js
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/desks.js
 msgid "Balanced"
 msgstr "Ausgewogen"
 
@@ -4847,7 +4847,7 @@ msgstr "Das Menü der Netzwerkanzeige listet, solange es offen ist, welche Apps 
 msgid "The logo, a summary of the machine and a tip, in the first terminal of a session."
 msgstr "Das Logo, eine Übersicht des Rechners und ein Tipp, im ersten Terminal einer Sitzung."
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/quick/tiles.js usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/today/getting.js apps/connect/src/notify.rs apps/connect/src/text.rs
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/quick/tiles.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/today/getting.js apps/connect/src/notify.rs apps/connect/src/text.rs
 msgid "Phone"
 msgstr "Telefon"
 
@@ -4927,7 +4927,7 @@ msgstr "Seine Werkzeuge setzen Amethystoras Einstellungen, installieren Apps und
 msgid "The agent that Super+Ctrl+Shift+A and Ask the agent open. Each installs the first time you open it, and is kept up to date."
 msgstr "Der Agent, den Super+Ctrl+Shift+A und Den Agenten fragen öffnen. Jeder installiert sich beim ersten Öffnen und wird aktuell gehalten."
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/agent/changes.js apps/connect/src/plugins.rs
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/changes.js apps/connect/src/plugins.rs
 msgid "Show"
 msgstr "Zeigen"
 
@@ -5761,7 +5761,7 @@ msgid "From the next restart, when the audit rules are written."
 msgstr "Ab dem nächsten Neustart, wenn die Audit-Regeln geschrieben werden."
 
 #. Translators: choices of a menu that turns automatic updates on or off
-#: usr/libexec/amethystora-private-folder usr/libexec/amethystora-windows-program usr/share/amethystora/just/apps.just usr/share/amethystora/just/backup.just usr/share/amethystora/just/desktop.just usr/share/amethystora/just/security.just usr/share/amethystora/just/system.just usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/agent/selection.js usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/bazaar/dialog.js usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/pill/timer.js usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/quit/list.js usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/prefs.js apps/connect/src/service.rs apps/connect/src/transfers.rs
+#: usr/libexec/amethystora-private-folder usr/libexec/amethystora-windows-program usr/share/amethystora/just/apps.just usr/share/amethystora/just/backup.just usr/share/amethystora/just/desktop.just usr/share/amethystora/just/security.just usr/share/amethystora/just/system.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/selection.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/bazaar/dialog.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/timer.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/quit/list.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/prefs.js apps/connect/src/service.rs apps/connect/src/transfers.rs
 msgid "Cancel"
 msgstr "Abbrechen"
 
@@ -5943,7 +5943,7 @@ msgid "Type the text, then press Ctrl+D on a line of its own."
 msgstr "Tippen Sie den Text und drücken Sie dann Ctrl+D in einer eigenen Zeile."
 
 #. Translators: a choice about the private folder, which is closed: open it.
-#: usr/share/amethystora/just/security.just usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/connect.js usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/desks.js usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/focus.js usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/pill/phone.js apps/connect/src/plugins.rs apps/connect/src/transfers.rs
+#: usr/share/amethystora/just/security.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/connect.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/desks.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/focus.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/phone.js apps/connect/src/plugins.rs apps/connect/src/transfers.rs
 msgid "Open"
 msgstr "Öffnen"
 

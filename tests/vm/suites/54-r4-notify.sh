@@ -18,7 +18,7 @@
 # vmlab-paths: @ui/extension.js @ui/*pill* @ui/*today* @ui/*power* @ui/*quick* @sf/*themed/shell-pill* @sf/*themed/shell-today* @sf/*themed/shell-power* @sf/*manual/whats-new.md build_files/shared/*whats-new* @sf/usr/libexec/amethystora-control-list @sf/*just/desktop.just
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 HERE="$(dirname "$0")"
 HOME_DIR="/var/home/${TEST_USER}"
 PILL=org.gnome.shell.extensions.amethystora-ui.pill

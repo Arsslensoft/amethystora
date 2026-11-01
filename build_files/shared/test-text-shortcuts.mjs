@@ -7,7 +7,7 @@
 // repository's. A failure throws, which makes either exit with an error.
 
 import {LIMITS, endsWithTyped, fillText, find, isPrintable, localeTag, parseShortcuts, textProblem, validAbbr} from
-    '../../system_files/shared/usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/typing/match.js';
+    '../../system_files/shared/usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/typing/match.js';
 
 const say = globalThis.print ?? console.log;
 const failures = [];

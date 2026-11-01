@@ -44,7 +44,7 @@ ame update
 | `fwupdmgr get-updates` | Les mises à jour de micrologiciel de cette machine, de son fabricant |
 
 Les notes de version de chaque version stable se trouvent sur
-[GitHub](https://github.com/iarsslen/amethystora/releases).
+[GitHub](https://github.com/arsslensoft/amethystora/releases).
 
 ## Micrologiciels
 
@@ -106,7 +106,7 @@ image corrigée est sortie.
 Pour passer à un autre flux ou à une autre image, changez et redémarrez :
 
 ```bash
-sudo bootc switch --enforce-container-sigpolicy ghcr.io/iarsslen/amethystora:latest
+sudo bootc switch --enforce-container-sigpolicy ghcr.io/arsslensoft/amethystora:latest
 ```
 
 Remplacez `amethystora` par `amethystora-dx` pour le [mode développeur](developer.md), et `latest` par
@@ -117,7 +117,7 @@ Si vous avez des [paquets superposés](software.md#layering-the-last-resort), ch
 abandonnerait :
 
 ```bash
-sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/iarsslen/amethystora:latest
+sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/arsslensoft/amethystora:latest
 ```
 
 ## Rester sur une version précise

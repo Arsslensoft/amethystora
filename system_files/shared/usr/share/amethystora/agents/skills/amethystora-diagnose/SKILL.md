@@ -115,6 +115,6 @@ Keep it short, in this order:
    Prefer the least invasive fix: a setting before a package, a rollback before a layered package.
 4. **Report upstream?** Only when it is a bug and not local configuration, and only if the user
    agrees. Amethystora's own files (`/usr/bin/amethystora-*`, `/usr/share/amethystora`, the
-   theme, keybindings, hardening) go to https://github.com/iarsslen/amethystora/issues. Other
+   theme, keybindings, hardening) go to https://github.com/arsslensoft/amethystora/issues. Other
    packages go to their own project, or to Fedora's Bugzilla for Fedora packages. Draft the report
    for the user to file; do not file it yourself.

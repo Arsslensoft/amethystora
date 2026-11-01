@@ -1,8 +1,8 @@
 {
-  "uuid": "amethystora-ui@iarsslen.github.io",
+  "uuid": "amethystora-ui@arsslensoft.github.io",
   "name": "Amethystora UI",
   "description": "Amethystora's desktop: the theme's colours in the shell, and the changes Amethystora makes to GNOME Shell, each written for this image.",
   "shell-version": ["50", "51"],
   "gettext-domain": "amethystora",
-  "url": "https://github.com/iarsslen/amethystora"
+  "url": "https://github.com/arsslensoft/amethystora"
 }

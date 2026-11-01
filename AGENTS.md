@@ -4,10 +4,10 @@ This document provides essential information for coding agents working with the 
 
 ## Repository Overview
 
-**Amethystora** is a cloud-native desktop operating system, based on Universal Blue and maintained by Arsslen Idadi (@iarsslen). It is an OS built on Fedora Linux using container technologies with atomic updates.
+**Amethystora** is a cloud-native desktop operating system, based on Universal Blue and maintained by Arsslen Idadi (@arsslensoft). It is an OS built on Fedora Linux using container technologies with atomic updates.
 
 - **Type**: Container-based Linux distribution build system
-- **Base**: `ghcr.io/ublue-os/silverblue-main` (Fedora with the GNOME desktop and GDM) + Universal Blue infrastructure; GNOME Shell extensions are kept in `system_files/shared/usr/share/gnome-shell/extensions` and set up by `build_files/shared/build-gnome-extensions.sh`: `amethystora-transitions@iarsslen.github.io` (see The transitions), `amethystora-widgets@iarsslen.github.io` (see Widgets), `amethystora-logo-menu@iarsslen.github.io` (see The logo menu), `amethystora-clipboard@iarsslen.github.io` (a modified copy of Clipboard Indicator, see `NOTICE`) and `amethystora-ui@iarsslen.github.io` (see Amethystora UI); none is a git submodule any more
+- **Base**: `ghcr.io/ublue-os/silverblue-main` (Fedora with the GNOME desktop and GDM) + Universal Blue infrastructure; GNOME Shell extensions are kept in `system_files/shared/usr/share/gnome-shell/extensions` and set up by `build_files/shared/build-gnome-extensions.sh`: `amethystora-transitions@arsslensoft.github.io` (see The transitions), `amethystora-widgets@arsslensoft.github.io` (see Widgets), `amethystora-logo-menu@arsslensoft.github.io` (see The logo menu), `amethystora-clipboard@arsslensoft.github.io` (a modified copy of Clipboard Indicator, see `NOTICE`) and `amethystora-ui@arsslensoft.github.io` (see Amethystora UI); none is a git submodule any more
 - **Languages**: Bash scripts, JSON configuration, Python utilities
 - **Build System**: Just (command runner), Podman/Docker containers, GitHub Actions
 - **Target**: desktop OS with two variants (base + developer experience)
@@ -1086,7 +1086,7 @@ replaces, adds, opens and forgets them. Its plan, done and tested in the VM lab 
 
 ### The transitions
 
-Amethystora Transitions (`amethystora-transitions@iarsslen.github.io`, written for this image and
+Amethystora Transitions (`amethystora-transitions@arsslensoft.github.io`, written for this image and
 kept in `system_files/shared/usr/share/gnome-shell/extensions`, not a submodule) reveals a new theme
 or wallpaper with an animation, as swww does on Hyprland. It freezes the screen in GNOME Shell's own
 `screenTransition` actor, which makes the background manager swap the wallpaper at once instead of
@@ -1103,7 +1103,7 @@ that call before adding a GNOME to its `shell-version`, which `20-tests.sh` requ
 
 ### Widgets
 
-Amethystora Widgets (`amethystora-widgets@iarsslen.github.io`, in `system_files` like the transitions)
+Amethystora Widgets (`amethystora-widgets@arsslensoft.github.io`, in `system_files` like the transitions)
 is the top bar's counterpart of Omarchy's bar plugins, made for agents to write. A widget is a folder in
 `~/.config/amethystora/widgets` holding `widget.json` and a command; the extension runs the command and
 shows what it prints as a label, an icon and a menu, and loads a widget again whenever its folder
@@ -1123,7 +1123,7 @@ desktop-widgets` is on; the bar leaves it alone.
 ### The logo menu
 
 The Amethystora gem at the left of the top bar and its menu of the system's tools is
-`amethystora-logo-menu@iarsslen.github.io`, written for this image in `system_files` (Apache-2.0), in place
+`amethystora-logo-menu@arsslensoft.github.io`, written for this image in `system_files` (Apache-2.0), in place
 of the Logo Menu submodule, which claimed no GNOME past 50 and shipped sixty-five other makers' logos.
 It has no settings: its entries are one table in `extension.js`, each an app by its launcher's ID
 (`Shell.AppSystem`, hidden while not installed, never installed from the click) or an argument vector,
@@ -1134,7 +1134,7 @@ each entry.
 
 ### Amethystora UI
 
-`amethystora-ui@iarsslen.github.io` (Apache-2.0, in `system_files`) is the desktop's own extension, replacing the
+`amethystora-ui@arsslensoft.github.io` (Apache-2.0, in `system_files`) is the desktop's own extension, replacing the
 third-party ones one module at a time (`plans/done/PLAN-amethystora-ui.md`). Each module is `modules/<module>.js`, started
 on its own by `extension.js` so that one that throws leaves the rest running, with its layout in
 `stylesheets/<module>.css`, its keys (if any) in its own schema `org.gnome.shell.extensions.amethystora-ui.<module>`,
@@ -1525,7 +1525,7 @@ the command over Amethystora's own; `amy` is a Homebrew formula, so nothing may 
   (custom manager, depType `pkg-template`) and never moves a template to a new release, which is done
   by hand with its `description`. Images are pulled by digest before `distrobox create`, so neither the
   pin nor `policy.json` can be skipped. Leave the policy's catch-all as it is, and do not re-sign third-
-  party images under `ghcr.io/iarsslen`. `import` shows what a definition runs and asks before keeping
+  party images under `ghcr.io/arsslensoft`. `import` shows what a definition runs and asks before keeping
   it (`--yes` skips that): a pin chosen by a template's author proves nothing about the image. A
   template's packages are names, and the AUR packages a paru template names are left to `install`.
 - `policy.json` checks `registry.opensuse.org/opensuse/leap` against openSUSE's two container keys
@@ -1616,7 +1616,7 @@ against stand-ins for flatpak, brew and GNOME, checks all of this. The manual pa
 
 ### An image of your own
 
-`iarsslen/amethystora-image-template`, a repository of its own, builds an image `FROM` the stable image,
+`arsslensoft/amethystora-image-template`, a repository of its own, builds an image `FROM` the stable image,
 signed with its owner's cosign key. Its build runs two scripts shipped here, so keep their arguments as
 they are: `/usr/libexec/amethystora-trust-image` (`ame system trust-image` on a machine, before it
 switches) writes the owner's key, a `registries.d` file and a `sigstoreSigned` policy entry for the
@@ -1657,7 +1657,7 @@ three more scripts shipped here, so keep their arguments too (`plans/done/PLAN-i
   the scripts (`npm run sync:image-editor`): keep their shapes, or change the reader with them.
 `test-setup.sh`, `test-brand.sh` and `test-image-policy.sh` check all three against stand-ins in `20-tests.sh`. The template's `build-iso.yml` builds
 an owner's two ISOs from this repository's `iso/` at a pinned commit: keep `@IMAGE@` in `iso.toml` the image's whole
-repository, and the live ISO's sealed installer for `ghcr.io/iarsslen` images only. The editor that writes the files
+repository, and the live ISO's sealed installer for `ghcr.io/arsslensoft` images only. The editor that writes the files
 is `/build` on the website (`../amethystora-website`, `src/lib/image-editor.mjs`).
 
 ### Sealed images
@@ -2002,7 +2002,7 @@ the latter silently returns nothing.
 
 - Ensure that [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/#specification) are used and enforced for every commit and pull request title. A `feat` subject is shown to users as a line of What's new (see The manual): write it in plain words, or it is left out.
 - Always be surgical with the least amount of code, the project strives to be easy to maintain.
-- This project is published at iarsslen/amethystora
+- This project is published at arsslensoft/amethystora
 - The desktop layer is maintained here, in `system_files/shared`; it is not pulled from upstream
 
 ## Attribution Requirements

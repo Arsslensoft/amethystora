@@ -119,8 +119,8 @@ Elimina los contenedores, las imágenes y los entornos de ejecución de Flatpak 
 
 ## Informar de un problema
 
-Informe de los errores en [GitHub](https://github.com/iarsslen/amethystora/issues), y haga sus
-preguntas en las [discusiones](https://github.com/iarsslen/amethystora/discussions). `ame report`
+Informe de los errores en [GitHub](https://github.com/arsslensoft/amethystora/issues), y haga sus
+preguntas en las [discusiones](https://github.com/arsslensoft/amethystora/discussions). `ame report`
 reúne lo que necesita un informe en un archivo de su carpeta personal (la imagen, sus grupos, los
 servicios que fallaron y los errores registrados desde este arranque), se lo muestra todo y después,
 si usted lo indica, abre una incidencia nueva con todo rellenado salvo los errores. No se publica nada

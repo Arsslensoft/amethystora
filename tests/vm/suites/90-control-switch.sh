@@ -66,7 +66,7 @@ if [[ "${SUITE_PHASE}" == 1 ]]; then
     # Developer mode switches to the published developer image of the stream followed, which a build of a stream
     # nothing is published for (beta, on the next Fedora) has not got
     stream="$(jq -r '."image-tag"' "${IMAGE_INFO}")"
-    if skopeo inspect --raw "docker://ghcr.io/iarsslen/amethystora-dx:${stream}" 2>&1 | grep -q 'manifest unknown'; then
+    if skopeo inspect --raw "docker://ghcr.io/arsslensoft/amethystora-dx:${stream}" 2>&1 | grep -q 'manifest unknown'; then
         skip "developer mode and starting over need a published amethystora-dx:${stream}, and there is none"
         finish
     fi
@@ -83,7 +83,7 @@ if [[ "${SUITE_PHASE}" == 2 ]]; then
     allow_root
     in_card 2400 'Would you like to enable developer mode\?' y 'extra monospace fonts\?' n -- devmode on
     target="$(staged | jq -r '.image.image.image // ""')"
-    if [[ ${STATUS} == 0 && "${target}" == ghcr.io/iarsslen/amethystora-dx:* ]]; then
+    if [[ ${STATUS} == 0 && "${target}" == ghcr.io/arsslensoft/amethystora-dx:* ]]; then
         ok "Developer mode on stages ${target}, its signature checked: ${CARD}"
     else
         not_ok "Developer mode on did not stage the developer image" "exit status ${STATUS}, staged: $(staged)" "$(tail -n 25 <<<"${OUT}")"

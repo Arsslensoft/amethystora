@@ -6,10 +6,10 @@ set -xeuo pipefail
 
 IMAGE_PRETTY_NAME="Amethystora"
 IMAGE_LIKE="fedora"
-HOME_URL="https://github.com/iarsslen/amethystora"
-DOCUMENTATION_URL="https://github.com/iarsslen/amethystora#readme"
-SUPPORT_URL="https://github.com/iarsslen/amethystora/issues/"
-BUG_SUPPORT_URL="https://github.com/iarsslen/amethystora/issues/"
+HOME_URL="https://github.com/arsslensoft/amethystora"
+DOCUMENTATION_URL="https://github.com/arsslensoft/amethystora#readme"
+SUPPORT_URL="https://github.com/arsslensoft/amethystora/issues/"
+BUG_SUPPORT_URL="https://github.com/arsslensoft/amethystora/issues/"
 CODE_NAME="Amethystora"
 VERSION="${VERSION:-00.00000000}"
 

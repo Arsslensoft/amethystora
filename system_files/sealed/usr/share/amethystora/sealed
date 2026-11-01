@@ -1,4 +1,4 @@
-This image is sealed (Containerfile.sealed in https://github.com/iarsslen/amethystora): its kernel, its
+This image is sealed (Containerfile.sealed in https://github.com/arsslensoft/amethystora): its kernel, its
 kernel command line and the digest of every file in it are one signed UKI, and the system is mounted
 only if its files match that digest. It has no rpm-ostree, and its kernel arguments cannot be changed.
 Scripts that act differently on a sealed machine test for this file.

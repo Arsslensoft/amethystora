@@ -18,7 +18,7 @@
 # vmlab-paths: @ui/extension.js @ui/*present* @ui/*deskwidgets* @ui/*screenshot* @ui/*pill* @ui/*tiling/backgrounds* @ui/*focus/picture* @sf/*themed/shell-present* @sf/*themed/shell-deskwidgets* @sf/*themed/shell-screenshot* @sf/usr/share/gnome-shell/extensions/amethystora-widgets@* @sf/usr/libexec/amethystora-control-list @sf/*just/desktop.just
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 HOME_DIR="/var/home/${TEST_USER}"
 PRESENT=org.gnome.shell.extensions.amethystora-ui.present
 SHOT=org.gnome.shell.extensions.amethystora-ui.screenshot
@@ -524,7 +524,7 @@ broken() { [[ "$(ev "${W}.cards().find(x => x.id === 'vmlab-build')?.error ?? ''
 check "23 a broken widget.json shows its warning card" wait_for 5 broken
 same "23 whose menu opens its folder" "$(ev "String(${W}._cards.get('vmlab-build')._items.some(i => i.label === 'Open its folder'))")" true
 same "24 the check passes a desktop widget and refuses a bar position there" \
-    "$(in_session "gjs -m /usr/share/gnome-shell/extensions/amethystora-widgets@iarsslen.github.io/check.js ${WIDGETS}/vmlab-clock >/dev/null 2>&1 && echo pass; gjs -m /usr/share/gnome-shell/extensions/amethystora-widgets@iarsslen.github.io/check.js ${WIDGETS}/vmlab-build >/dev/null 2>&1 || echo refused")" \
+    "$(in_session "gjs -m /usr/share/gnome-shell/extensions/amethystora-widgets@arsslensoft.github.io/check.js ${WIDGETS}/vmlab-clock >/dev/null 2>&1 && echo pass; gjs -m /usr/share/gnome-shell/extensions/amethystora-widgets@arsslensoft.github.io/check.js ${WIDGETS}/vmlab-build >/dev/null 2>&1 || echo refused")" \
     "pass
 refused"
 # A workspace's own picture: the cards stay over it (with the tiling on, which draws it)
@@ -537,10 +537,10 @@ same "21 over a workspace's own picture" \
 gs reset org.gnome.shell.extensions.amethystora-ui.tiling workspace-backgrounds
 gs set org.gnome.shell.extensions.amethystora-ui.tiling enabled false
 # The widgets extension off: the cards go, on again: they come back
-ev "Main.extensionManager.disableExtension('amethystora-widgets@iarsslen.github.io'); 'off'" >/dev/null
+ev "Main.extensionManager.disableExtension('amethystora-widgets@arsslensoft.github.io'); 'off'" >/dev/null
 sleep 2
 same "24 with the widgets extension off, no card runs" "$(ev "${W}.cards().length")" 0
-ev "Main.extensionManager.enableExtension('amethystora-widgets@iarsslen.github.io'); 'on'" >/dev/null
+ev "Main.extensionManager.enableExtension('amethystora-widgets@arsslensoft.github.io'); 'on'" >/dev/null
 cards_back() { [[ "$(ev "${W}.cards().length")" -gt 0 ]]; }
 check "24 and with it on again, they are back" wait_for 10 cards_back
 

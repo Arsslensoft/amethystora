@@ -13,7 +13,7 @@ import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js'
 import {fold} from '../fuzzy/matcher.js';
 import {paste} from '../emoji/paste.js';
 
-const CLIPBOARD = 'amethystora-clipboard@iarsslen.github.io';
+const CLIPBOARD = 'amethystora-clipboard@arsslensoft.github.io';
 const PREFIX = /^\s*clip:\s*/iu;
 // The most of a text handed to a row's label
 const LONGEST = 200;
@@ -38,7 +38,7 @@ function cssColour(text) {
 }
 
 function toolsModule() {
-    return Main.extensionManager.lookup('amethystora-ui@iarsslen.github.io')?.stateObj?.modules?.get('tools') ?? null;
+    return Main.extensionManager.lookup('amethystora-ui@arsslensoft.github.io')?.stateObj?.modules?.get('tools') ?? null;
 }
 
 function clipboardExtension() {

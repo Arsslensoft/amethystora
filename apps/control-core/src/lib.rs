@@ -1152,7 +1152,7 @@ mod tests {
             "ghcr.io/you/-image", "ghcr.io//image", "-ghcr.io/you/image"] {
             assert!(!valid_repository(bad), "{bad}");
         }
-        assert_eq!(own_repository(r#"{"image-vendor": "iarsslen"}"#).as_deref(), Some("ghcr.io/iarsslen"));
+        assert_eq!(own_repository(r#"{"image-vendor": "arsslensoft"}"#).as_deref(), Some("ghcr.io/arsslensoft"));
         assert_eq!(own_repository(r#"{"image-vendor": ""}"#), None);
         assert_eq!(own_repository("nope"), None);
     }
@@ -1162,13 +1162,13 @@ mod tests {
         let list = list();
         let key = std::env::temp_dir().join("amethystora-control-core-test-cosign.pub");
         std::fs::write(&key, "key").unwrap();
-        let own = Some("ghcr.io/iarsslen");
+        let own = Some("ghcr.io/arsslensoft");
         let run = trust_image(Some(&list), "ghcr.io/you/image", own, Some(&key)).unwrap();
         assert!(run.terminal);
         assert_eq!(run.argv, ["ame", "system", "trust-image", "ghcr.io/you/image", key.to_str().unwrap()]);
-        assert_eq!(trust_image(Some(&list), "ghcr.io/iarsslen/amethystora", own, Some(&key)), Err(Refusal::OwnRepository));
-        assert!(trust_image(Some(&list), "ghcr.io/iarsslen", own, Some(&key)).is_err());
-        assert!(trust_image(Some(&list), "ghcr.io/iarsslenx/image", own, Some(&key)).is_ok());
+        assert_eq!(trust_image(Some(&list), "ghcr.io/arsslensoft/amethystora", own, Some(&key)), Err(Refusal::OwnRepository));
+        assert!(trust_image(Some(&list), "ghcr.io/arsslensoft", own, Some(&key)).is_err());
+        assert!(trust_image(Some(&list), "ghcr.io/arsslensoftx/image", own, Some(&key)).is_ok());
         assert_eq!(trust_image(Some(&list), "ghcr.io/you/image:tag", own, Some(&key)), Err(Refusal::Repository));
         assert_eq!(trust_image(Some(&list), "ghcr.io/you/image", own, None), Err(Refusal::NoKey));
         assert!(trust_image(Some(&list), "ghcr.io/you/image", own, Some(Path::new("/nonexistent/cosign.pub"))).is_err());

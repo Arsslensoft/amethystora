@@ -2,7 +2,7 @@
 
 [org.gnome.shell]
 favorite-apps = ['org.mozilla.firefox.desktop', 'org.mozilla.thunderbird_esr.desktop', 'org.gnome.Nautilus.desktop', 'io.github.kolunmi.Bazaar.desktop', 'codium.desktop']
-enabled-extensions = ['amethystora-ui@iarsslen.github.io']
+enabled-extensions = ['amethystora-ui@arsslensoft.github.io']
 
 [org.gnome.desktop.background]
 picture-options='zoom'

@@ -22,7 +22,7 @@
 # vmlab-paths: @ui/extension.js @ui/*sets* @ui/*workspaces* @sf/*just/desktop.just
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 HOME_DIR="/var/home/${TEST_USER}"
 STATE="${HOME_DIR}/.local/state/amethystora"
 APPS="${HOME_DIR}/.local/share/applications"

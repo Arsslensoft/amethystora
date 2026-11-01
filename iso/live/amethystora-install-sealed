@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-REGISTRY=ghcr.io/iarsslen
+REGISTRY=ghcr.io/arsslensoft
 STREAM=stable-sealed
 IMAGES=(amethystora amethystora-dx amethystora-nvidia-open amethystora-dx-nvidia-open amethystora-nvidia-lts
     amethystora-dx-nvidia-lts)

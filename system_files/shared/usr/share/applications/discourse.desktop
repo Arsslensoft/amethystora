@@ -2,7 +2,7 @@
 Type=Application
 NoDisplay=false
 Terminal=false
-Exec=xdg-open https://github.com/iarsslen/amethystora/discussions
+Exec=xdg-open https://github.com/arsslensoft/amethystora/discussions
 Icon=amethystora-community
 Name=Community
 Name[cs]=Komunita

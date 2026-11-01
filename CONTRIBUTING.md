@@ -2,7 +2,7 @@
 
 Thanks for helping out!
 
-This repository builds the Amethystora images. Open an issue or pull request on [iarsslen/amethystora](https://github.com/iarsslen/amethystora).
+This repository builds the Amethystora images. Open an issue or pull request on [arsslensoft/amethystora](https://github.com/arsslensoft/amethystora).
 
 Amethystora is based on [Universal Blue](https://universal-blue.org). Its desktop layer lives in this repository, under `system_files/shared`, and is not pulled from upstream, so changes to it are made here.
 

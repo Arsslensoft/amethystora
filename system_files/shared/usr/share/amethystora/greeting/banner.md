@@ -9,6 +9,6 @@
 
 %TIP%
 
-- **Issues** https://github.com/iarsslen/amethystora/issues
-- **Ask Amethystora** https://github.com/iarsslen/amethystora/discussions
+- **Issues** https://github.com/arsslensoft/amethystora/issues
+- **Ask Amethystora** https://github.com/arsslensoft/amethystora/discussions
 - **Manual** `amethystora-manual`, or `Super+F1`

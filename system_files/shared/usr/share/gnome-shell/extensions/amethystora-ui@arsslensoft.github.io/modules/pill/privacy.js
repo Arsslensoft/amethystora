@@ -404,7 +404,7 @@ export class Privacy {
     }
 
     _toggleMute() {
-        const tools = Main.extensionManager.lookup('amethystora-ui@iarsslen.github.io')?.stateObj?.modules?.get('tools');
+        const tools = Main.extensionManager.lookup('amethystora-ui@arsslensoft.github.io')?.stateObj?.modules?.get('tools');
         if (tools) {
             tools.toggleMicrophone();
         } else {

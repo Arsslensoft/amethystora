@@ -16,7 +16,7 @@
 # vmlab-paths: @ui/*style* @sf/*themed/* @sf/usr/lib/amethystora/theme/* @sf/usr/bin/amethystora-theme @sf/usr/share/icons/amethystora-*
 source "$(dirname "$0")/lib.sh"
 
-UUID=amethystora-ui@iarsslen.github.io
+UUID=amethystora-ui@arsslensoft.github.io
 OWN=/run/vmlab-98
 HOME_DIR="/var/home/${TEST_USER}"
 CONFIG="${HOME_DIR}/.config/amethystora"
