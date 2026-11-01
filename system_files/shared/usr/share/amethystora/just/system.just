@@ -143,6 +143,7 @@ devmode ACTION="":
     }
 
     if [[ "${DX}" == true ]] ; then
+        echo "$(gettext "This switches the system back to the image without the developer tools, at the next restart.")"
         gum confirm "$(gettext "Would you like to disable developer mode?")" || exit 0
         echo "$(gettext "Rebasing to a non developer image")"
         NEW_IMAGE="$(sed "s/\-dx//" <<< $CURRENT_IMAGE)"
@@ -150,6 +151,7 @@ devmode ACTION="":
         exit 0
     fi
 
+    echo "$(gettext "This switches the system to the developer image, with VSCodium, Docker and Podman, Incus and virtual machines, at the next restart.")"
     gum confirm "$(gettext "Would you like to enable developer mode?")" || exit 0
     echo "$(gettext "Rebasing to a developer image")"
     NEW_IMAGE="$(sed "s/${IMAGE_BASE_NAME}/${IMAGE_BASE_NAME}-dx/" <<< "${CURRENT_IMAGE}")"

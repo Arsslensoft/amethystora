@@ -10082,11 +10082,19 @@ msgid "Developer mode is already off: this is ${IMAGE_NAME}."
 msgstr ""
 
 #: usr/share/amethystora/just/system.just
+msgid "This switches the system back to the image without the developer tools, at the next restart."
+msgstr ""
+
+#: usr/share/amethystora/just/system.just
 msgid "Would you like to disable developer mode?"
 msgstr ""
 
 #: usr/share/amethystora/just/system.just
 msgid "Rebasing to a non developer image"
+msgstr ""
+
+#: usr/share/amethystora/just/system.just
+msgid "This switches the system to the developer image, with VSCodium, Docker and Podman, Incus and virtual machines, at the next restart."
 msgstr ""
 
 #: usr/share/amethystora/just/system.just
