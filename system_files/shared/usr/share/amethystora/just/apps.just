@@ -151,6 +151,11 @@ android ACTION="":
     stop_label="$(gettext "Stop")"
 
     take_away="$(gettext "Take it all away")"
+    # Waydroid's container opens these to every account (chmod 777) and leaves them so: back to what udev gives them
+    close_devices() {
+        sudo chmod 0666 /dev/dri/renderD* 2>/dev/null || true
+        sudo chmod 0660 /dev/dma_heap/system 2>/dev/null || true
+    }
     # Written by `waydroid init`, so there whenever Android has been set up
     if sudo test -e /var/lib/waydroid/waydroid.cfg; then
         container_state="$(systemctl is-active waydroid-container.service || true)"
@@ -188,12 +193,14 @@ android ACTION="":
         "${stop_label}" | "Stop" | stop)
             waydroid session stop 2>/dev/null || true
             sudo systemctl stop waydroid-container.service
+            close_devices
             echo "$(gettext "Stopped. It starts again with ame apps android start.")"
             ;;
         "${take_away}" | "Take it all away" | off)
             gum confirm --default=false "$(gettext "Remove Android, with every app and everything saved in it?")" || exit 0
             waydroid session stop 2>/dev/null || true
             sudo systemctl disable --now waydroid-container.service
+            close_devices
             sudo rm -rf /var/lib/waydroid
             # What Android saved in the home belongs to the container's own users, not to you
             sudo rm -rf -- "${XDG_DATA_HOME:-${HOME}/.local/share}/waydroid"
