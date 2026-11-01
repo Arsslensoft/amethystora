@@ -1566,7 +1566,8 @@ impl Security {
         words.set_hexpand(true);
         words.set_valign(gtk::Align::Center);
         words.append(&wrapping(&label.to_uppercase(), &["label"]));
-        words.append(&ellipsized(value, &["value"]));
+        // Wrapped, not cut: four cells side by side leave little room at the window's default width
+        words.append(&wrapping(value, &["value"]));
         cell.append(&words);
         cell
     }
