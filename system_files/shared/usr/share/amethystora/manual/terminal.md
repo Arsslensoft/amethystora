@@ -44,6 +44,33 @@ to switch is in the terminal rather than system-wide, so that a broken shell con
 out of logging in: put `shell /usr/bin/fish` or `shell /usr/bin/zsh` in `~/.config/kitty/kitty.conf`, and open a
 new window.
 
+## Told when a command ends
+
+Start something long, a build or a download, and go and read something else: when a command that ran ten
+seconds or more ends while its terminal is behind, a notification says so, and clicking it brings the
+terminal to the front. It is kitty's own setting (`notify_on_cmd_finish`), and the words are kitty's: the
+command, never what it printed. `ame desktop command-done off` turns it off, and `on` back on; Control has
+it as **Told when a long command ends**. A line of your own in `~/.config/kitty/kitty.conf` wins over
+both.
+
+## A missing command
+
+Type a command this computer does not have, and the terminal can say where it can come from instead of a
+bare *command not found*:
+
+```text
+htop is not on this computer. It can come from:
+  A container  ame pkg containers new --template fedora --name fedora && ame pkg fedora install htop
+Nothing was installed.
+```
+
+It looks only at what is already on this computer: Fedora's packages as the system was built (for a
+[container](software.md)), Homebrew's list of formulas once Homebrew has fetched it, the apps Flathub
+lists once Flatpak has fetched its list, and the programs an `ame` command brings, such as Steam. It never
+installs anything and asks nothing of the network, so it says *can come from*: a list can be out of date.
+It is off until you turn it on with `ame desktop missing-command on`, or **Where a missing command comes
+from** in Control; new terminals follow it, in bash, zsh and fish.
+
 ## ame
 
 `ame` runs the commands that come with the system: small, tested scripts for the jobs that would

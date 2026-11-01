@@ -49,6 +49,11 @@
       <summary>This evening and tomorrow morning</summary>
       <description>When Later's "This evening" and "Tomorrow morning" come back, as HH:MM on the 24-hour clock, in that order. A missing or bad one takes its default.</description>
     </key>
+    <key name="meetings" type="b">
+      <default>true</default>
+      <summary>Meetings in the pill</summary>
+      <description>Five minutes before an event of today's calendar that carries a video-call link, the pill shows it with a countdown and Join. The link opens only when Join is clicked.</description>
+    </key>
     <key name="whats-new" type="b">
       <default>true</default>
       <summary>What's new after an update</summary>

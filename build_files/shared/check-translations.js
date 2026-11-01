@@ -314,7 +314,9 @@ for (const app of APPS) {
 
 const PYTHON = ['usr/libexec/amethystora-text-shortcuts',
     // Files' What is using this? and Convert (plans/ui-ideas/spec-tools.md)
-    'usr/libexec/amethystora-what-uses', 'usr/libexec/amethystora-convert'];
+    'usr/libexec/amethystora-what-uses', 'usr/libexec/amethystora-convert',
+    // A missing command, found (plans/ui-ideas/spec-time.md)
+    'usr/libexec/amethystora-missing-command'];
 const SHELL = ['usr/libexec/amethystora-security-status', 'usr/libexec/amethystora-app-permissions', 'usr/libexec/amethystora-layout-offer',
     'usr/libexec/amethystora-control-list', 'usr/libexec/amethystora-security-config', 'usr/libexec/amethystora-hardening',
     'usr/libexec/amethystora-phone-link-notice', 'usr/libexec/amethystora-deja-dup-notice',

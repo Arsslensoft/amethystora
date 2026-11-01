@@ -14,6 +14,16 @@
       <summary>Sums and units</summary>
       <description>Answers sums and conversions as they are typed, in the numbers of the session's language.</description>
     </key>
+    <key name="times" type="b">
+      <default>true</default>
+      <summary>Time in other places</summary>
+      <description>Answers "time in Tokyo" and "15:00 Paris in Tokyo" as they are typed, from the places and time zones on this computer.</description>
+    </key>
+    <key name="reminders" type="b">
+      <default>true</default>
+      <summary>Reminders into Notes</summary>
+      <description>"remind me at 17:00 to call the garage" becomes a task in Notes' inbox with a reminder, with Enter.</description>
+    </key>
     <key name="settings" type="b">
       <default>true</default>
       <summary>Settings from Control</summary>

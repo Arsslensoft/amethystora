@@ -1,5 +1,5 @@
 // The live pill and what goes with it. The clock in the middle of the top bar becomes whatever is happening now (a
-// call, a recording, a link from the phone, the battery's question, a timer, what an update brought, music, an update
+// call, a recording, a meeting about to start, a link from the phone, the battery's question, a timer, what an update brought, music, an update
 // ready, quiet), and a click opens its card; with nothing happening it is GNOME's clock, exactly. Beside it: the
 // privacy dots, the glow round the screen while it is recorded or shared, quiet (banners held while fullscreen, sharing
 // or at night), the digest, Later and mute on banners, the count on a stack of notifications, and volume and
@@ -24,6 +24,7 @@ import {Clock, chip, retire} from './pill/clock.js';
 import {Glow} from './pill/glow.js';
 import {Hold} from './pill/hold.js';
 import {Media} from './pill/media.js';
+import {Meetings} from './pill/meeting.js';
 import {Osd} from './pill/osd.js';
 import {Phone} from './pill/phone.js';
 import {Privacy} from './pill/privacy.js';
@@ -95,6 +96,7 @@ export class Pill {
             'changed::quiet-night', () => this._sync(),
             'changed::digest', () => this._sync(),
             'changed::later', () => this._sync(),
+            'changed::meetings', () => this._sync(),
             this);
         this._sync();
     }
@@ -165,6 +167,9 @@ export class Pill {
             () => new Hold(this._settings, this._capture, this._activities, (...a) => this.notice(...a), () => this._glass()));
         this._hold?.setFocus(this._focusRule ?? null);
         this._hold?.setPresenting(!!this._presentMark);
+        // A meeting about to start: a part of the live pill, while both keys are on
+        const notice = (...a) => this.notice(...a);
+        this._toggle('_meetings', !!this._clock && on('meetings'), () => new Meetings(this._activities, notice));
         if (on('live') || on('privacy-dots'))
             this._hideGnomeCapture();
         else
@@ -315,6 +320,7 @@ export class Pill {
         for (const name of [...this._live ?? []].reverse())
             this._stopPart(name);
         this._live = null;
+        this._stopPart('_meetings');
         this._endNotice();
     }
 
@@ -420,6 +426,10 @@ export class Pill {
         return this._phone;
     }
 
+    get meetings() {
+        return this._meetings ?? null;
+    }
+
     // What the battery would show for a reading (a pure function, for the suites): {offer, hover}
     batteryView(reading) {
         const {offer, hover} = batteryView(reading);
@@ -444,6 +454,7 @@ export class Pill {
             osd: this._osd?.state ?? null,
             timer: {running: this._timer?.running ?? false, paused: this._timer?.paused ?? false, left: Math.round(this._timer?.left ?? 0)},
             paused: this._media?.paused === true,
+            meeting: this._meetings?.state() ?? null,
             relayouts: this._clock?.relayouts ?? 0,
             motion: {
                 morphing: this._clock?.morphing ?? false,

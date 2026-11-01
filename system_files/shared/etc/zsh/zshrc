@@ -211,6 +211,16 @@ if [[ -o interactive ]] && [[ -d /home/linuxbrew/.linuxbrew ]] && [[ ${EUID} -ne
   fi
 fi
 
+# A command this computer lacks: where it can come from, while `ame desktop missing-command` is on (read when the
+# shell starts; bash's is /etc/profile.d/zz-amethystora-missing-command.sh). It only suggests: nothing is installed.
+if [[ -o interactive && -e "${XDG_CONFIG_HOME:-$HOME/.config}/amethystora/missing-command" ]]; then
+  command_not_found_handler() {
+    /usr/libexec/amethystora-missing-command "$1" >&2 && return 127
+    print -u2 "zsh: command not found: $1"
+    return 127
+  }
+fi
+
 # Starship
 if type "starship" > /dev/null; then
   # What `starship init zsh` prints, written by the build for this starship (05-override-install.sh)

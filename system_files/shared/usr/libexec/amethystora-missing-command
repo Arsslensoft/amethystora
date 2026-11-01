@@ -1,0 +1,186 @@
+#!/usr/bin/python3 -I
+"""amethystora-missing-command: where a command this computer lacks can come from, for the shells' missing-command hook
+(bash, zsh and fish, while `ame desktop missing-command` is on).
+
+    amethystora-missing-command NAME    says where NAME can come from, exit 0; nothing said and exit 1 when nowhere
+
+It suggests and never installs, and asks nothing of the network: it answers from what is already on the machine, each
+read only when it is there, and so says "can come from", never "is" (an index can be out of date):
+
+  - Amethystora's own commands, for the programs an `ame` command brings (a fixed table below);
+  - Fedora's packages, for a container made from the fedora template (/usr/share/amethystora/missing-command/fedora.tsv,
+    every /usr/bin and /usr/sbin name of the image's Fedora release and its package, written when the image was built);
+  - Homebrew's formula names, from Homebrew's own cache of its index (formula_names.txt, else formula.jws.json);
+  - Flathub's apps, from the appstream data flatpak keeps for its remotes: an app answers when the last part of its id,
+    its name or a binary it says it provides is the command (boiled down into a cache of the account's own, made again
+    when flatpak's data is newer).
+
+Runs as the account, never as root. The name is the shell's word, checked here: letters, digits and . _ + - only.
+"""
+
+import gettext
+import gzip
+import os
+import re
+import subprocess
+import sys
+import xml.etree.ElementTree as ElementTree
+
+_ = gettext.translation("amethystora", fallback=True).gettext
+
+NAME = re.compile(r"^[A-Za-z0-9_+][A-Za-z0-9._+-]{0,63}$")
+FEDORA = os.environ.get("AMETHYSTORA_MISSING_FEDORA", "/usr/share/amethystora/missing-command/fedora.tsv")
+HOME = os.path.expanduser("~")
+CACHE = os.environ.get("XDG_CACHE_HOME") or os.path.join(HOME, ".cache")
+OWN_CACHE = os.path.join(CACHE, "amethystora", "missing-command")
+BREW = "/home/linuxbrew/.linuxbrew/bin/brew"
+BREW_CACHE = os.environ.get("HOMEBREW_CACHE") or os.path.join(CACHE, "Homebrew")
+APPSTREAM = [
+    "/var/lib/flatpak/appstream/flathub/{arch}/active/appstream.xml.gz",
+    os.path.join(HOME, ".local/share/flatpak/appstream/flathub/{arch}/active/appstream.xml.gz"),
+]
+ARCH = os.uname().machine
+
+# The commands an `ame` command brings, and that command (each held to an existing recipe by 20-tests.sh)
+DEV_TOOLS = ["codium", "docker", "podman-compose", "incus", "lxc", "virsh", "virt-install", "qemu-system-x86_64",
+             "qemu-img", "strace", "ltrace", "gdb", "perf", "bpftrace", "sysprof", "flatpak-builder", "adb", "fastboot",
+             "podman-tui", "trace-cmd", "iotop"]
+AME = {name: "ame system devmode on" for name in DEV_TOOLS}
+AME.update({
+    "steam": "ame apps gaming",
+    "protonplus": "ame apps gaming",
+    "otd": "ame apps opentabletdriver",
+    "otd-daemon": "ame apps opentabletdriver",
+    "opentabletdriver": "ame apps opentabletdriver",
+})
+
+
+def fedora_package(name):
+    """The Fedora package a command comes in, from the image's own index"""
+    try:
+        with open(FEDORA, encoding="utf-8") as index:
+            prefix = name + "\t"
+            for line in index:
+                if line.startswith(prefix):
+                    return line.rstrip("\n").split("\t", 1)[1]
+    except OSError:
+        pass
+    return None
+
+
+def fedora_container():
+    """One of the account's containers made from the fedora template, by its name, or None. podman is asked only by an
+    account that has container storage, and briefly."""
+    storage = os.path.join(os.environ.get("XDG_DATA_HOME") or os.path.join(HOME, ".local/share"), "containers/storage")
+    if not os.path.isdir(storage):
+        return None
+    try:
+        out = subprocess.run(
+            ["podman", "ps", "-a", "--filter", "label=amethystora.pkg.manager=amethystora-pkg",
+             "--filter", "label=amethystora.pkg.template=fedora", "--format", '{{index .Labels "amethystora.pkg.name"}}'],
+            capture_output=True, text=True, timeout=3, check=False).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    names = [line.strip() for line in out.splitlines() if NAME.match(line.strip())]
+    return names[0] if names else None
+
+
+def homebrew(names):
+    """The first of these names Homebrew's cached index has as a formula"""
+    if not os.path.exists(BREW):
+        return None
+    api = os.path.join(BREW_CACHE, "api")
+    try:
+        with open(os.path.join(api, "formula_names.txt"), encoding="utf-8") as listed:
+            known = {line.strip() for line in listed}
+        return next((name for name in names if name in known), None)
+    except OSError:
+        pass
+    try:
+        with open(os.path.join(api, "formula.jws.json"), encoding="utf-8") as index:
+            text = index.read()
+    except OSError:
+        return None
+    for name in names:
+        if f'\\"name\\":\\"{name}\\"' in text or f'"name":"{name}"' in text:
+            return name
+    return None
+
+
+def flathub_index():
+    """{word: (app id, name)} from flatpak's appstream data, through the account's own boiled-down copy"""
+    sources = [path.format(arch=ARCH) for path in APPSTREAM]
+    sources = [path for path in sources if os.path.isfile(path)]
+    if not sources:
+        return {}
+    cache = os.path.join(OWN_CACHE, "flathub.tsv")
+    newest = max(os.path.getmtime(path) for path in sources)
+    if not os.path.isfile(cache) or os.path.getmtime(cache) < newest:
+        rows = {}
+        for path in sources:
+            try:
+                with gzip.open(path, "rb") as data:
+                    for _event, element in ElementTree.iterparse(data):
+                        if element.tag != "component":
+                            continue
+                        app = (element.findtext("id") or "").strip()
+                        app = app[:-len(".desktop")] if app.endswith(".desktop") else app
+                        title = next((node.text for node in element.findall("name") if not node.attrib), "") or ""
+                        words = {app.rsplit(".", 1)[-1].lower(), re.sub(r"\s+", "", title).lower()}
+                        words.update((node.text or "").strip() for node in element.findall("provides/binary"))
+                        for word in words:
+                            if word and NAME.match(word) and app:
+                                rows.setdefault(word, (app, title.strip()))
+                        element.clear()
+            except (OSError, EOFError, ElementTree.ParseError):
+                continue
+        try:
+            os.makedirs(OWN_CACHE, mode=0o700, exist_ok=True)
+            with open(cache + ".new", "w", encoding="utf-8") as out:
+                for word, (app, title) in sorted(rows.items()):
+                    out.write(f"{word}\t{app}\t{title.replace(chr(9), ' ')}\n")
+            os.replace(cache + ".new", cache)
+        except OSError:
+            return rows
+        return rows
+    rows = {}
+    with open(cache, encoding="utf-8") as listed:
+        for line in listed:
+            parts = line.rstrip("\n").split("\t")
+            if len(parts) == 3:
+                rows[parts[0]] = (parts[1], parts[2])
+    return rows
+
+
+def main():
+    if len(sys.argv) != 2 or not NAME.match(sys.argv[1]):
+        return 1
+    name = sys.argv[1]
+    found = []
+    if name in AME:
+        found.append((_("Amethystora"), AME[name]))
+    package = fedora_package(name)
+    formula = homebrew([name] + ([package] if package and package != name else []))
+    if formula:
+        found.append((_("Homebrew"), f"brew install {formula}"))
+    if package:
+        container = fedora_container()
+        if container:
+            found.append((_("A container"), f"ame pkg {container} install {package}"))
+        else:
+            found.append((_("A container"), f"ame pkg containers new --template fedora --name fedora && ame pkg fedora install {package}"))
+    app = flathub_index().get(name.lower())
+    if app:
+        found.append((_("Flathub"), f"flatpak install flathub {app[0]}"))
+    if not found:
+        return 1
+    print(_("{name} is not on this computer. It can come from:").format(name=name))
+    width = max(len(label) for label, _command in found)
+    for label, command in found:
+        print(f"  {label.ljust(width)}  {command}")
+    print(_("Nothing was installed."))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

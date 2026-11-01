@@ -84,10 +84,17 @@ class AmethystoraSearchRow extends Search.SearchResult {
             this._title = leftToRight(plainLabel('amethystora-search-answer-value', meta.name));
             this._title.y_align = Clutter.ActorAlign.END;
             content.add_child(this._title);
+            // What the answer is about, always shown ("in Tokyo, the same day"); the hint after it
+            if (meta.description) {
+                const note = plainLabel('amethystora-search-answer-hint amethystora-search-answer-note', meta.description);
+                note.y_align = Clutter.ActorAlign.END;
+                content.add_child(note);
+            }
             this._hint = plainLabel('amethystora-search-answer-hint');
             this._hint.y_align = Clutter.ActorAlign.END;
             content.add_child(this._hint);
-            this.accessible_name = `${meta.expression} = ${meta.name}`;
+            this.accessible_name = meta.description
+                ? `${meta.expression} = ${meta.name}, ${meta.description}` : `${meta.expression} = ${meta.name}`;
         } else {
             content.add_child(picture(meta));
             this._title = plainLabel('amethystora-search-row-title', meta.name);

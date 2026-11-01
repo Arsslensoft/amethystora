@@ -82,6 +82,9 @@ are locked, it asks for the passphrase (or a passkey) first, and locks them agai
 window is open. The text is never written anywhere until you save it. `amethystora-notes capture` does the
 same.
 
+From the search (`Super+Space`), `remind me at 17:00 to call the garage` makes the same task, with its
+reminder, when you press `Enter` ([Finding things](desktop.md#finding-things)).
+
 ### Reminders
 
 A task with a time can remind you, from **At the time** to **1 day before**. Reminders appear as

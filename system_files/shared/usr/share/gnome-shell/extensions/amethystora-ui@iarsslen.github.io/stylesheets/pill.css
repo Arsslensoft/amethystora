@@ -403,3 +403,16 @@
   font-size: 11.5px;
   font-weight: 600;
 }
+
+/* A meeting about to start (pill/meeting.js): the board R6-09 */
+.amethystora-pill-meeting { spacing: 6px; }
+.amethystora-pill-meeting StLabel { max-width: 220px; }
+.amethystora-pill-meeting-card { spacing: 10px; }
+.amethystora-pill-meeting-title { font-size: 15px; font-weight: 700; }
+.amethystora-pill-meeting-when { font-size: 12px; }
+.amethystora-pill-meeting-link {
+  font-size: 11.5px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background-color: rgba(127, 127, 127, 0.14);
+}

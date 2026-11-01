@@ -176,12 +176,32 @@ fn is_capture(args: &[String]) -> bool {
     args.iter().find(|arg| !arg.starts_with('-')).map(String::as_str) == Some("capture")
 }
 
+/// `amethystora-notes remind`: the search's reminder, a task read from the standard input (page/capture.rs)
+fn is_remind(args: &[String]) -> bool {
+    args.iter().find(|arg| !arg.starts_with('-')).map(String::as_str) == Some("remind")
+}
+
 impl App for Notes {
     fn presents(&self, args: &[String]) -> bool {
-        !is_capture(args)
+        !is_capture(args) && !is_remind(args)
+    }
+
+    fn command_line(&self, line: &gtk::gio::ApplicationCommandLine) {
+        let args: Vec<String> = line.arguments().iter().skip(1).map(|arg| arg.to_string_lossy().into_owned()).collect();
+        if is_remind(&args) {
+            self.read_remind(line);
+        }
     }
 
     fn open(&self, args: &[String]) {
+        if is_remind(args) {
+            // As for the quick note: at start the window is made but not shown; the line on stdin does the rest
+            if self.first_open.replace(false) {
+                self.hidden.set(true);
+                self.render();
+            }
+            return;
+        }
         if is_capture(args) {
             // At start, the window is made but not shown, as in the background
             if self.first_open.replace(false) {

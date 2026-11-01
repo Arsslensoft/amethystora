@@ -1,5 +1,5 @@
-// Amethystora's own search providers, in GNOME's own search: the clipboard (clip:), sums and units, Control's
-// settings, open windows, the manual and the agent row. They are added to the overview's search controller, so the
+// Amethystora's own search providers, in GNOME's own search: the clipboard (clip:), sums and units, the time in other
+// places, reminders into Notes, Control's settings, open windows, the manual and the agent row. They are added to the overview's search controller, so the
 // overview and the search box show the same sections in the same order, each drawn by section.js. Each is there while
 // its key is on and taken away when it is turned off, at once.
 //
@@ -25,11 +25,15 @@ import {WindowsProvider} from './windows.js';
 import {ManualProvider} from './manual.js';
 import {ClipboardProvider} from './clipboard.js';
 import {AgentProvider} from './agent.js';
+import {TimesProvider} from './timesProvider.js';
+import {RemindProvider} from './remindProvider.js';
 
 // The key that turns each on, its place, and how many rows it shows at most; GNOME's own come between 4 and 6
 const PROVIDERS = [
     {key: 'clipboard', rank: 0, max: 8},
     {key: 'answers', rank: 1, max: 1},
+    {key: 'times', rank: 1, max: 2},
+    {key: 'reminders', rank: 1, max: 2},
     {key: 'settings', rank: 2, max: 5},
     {key: 'windows', rank: 3, max: 5},
     {key: 'manual', rank: 6, max: 3},
@@ -100,6 +104,8 @@ export class Providers {
         case 'manual': return new ManualProvider();
         case 'clipboard': return new ClipboardProvider(this._host);
         case 'agent': return new AgentProvider(this._ext);
+        case 'times': return new TimesProvider();
+        case 'reminders': return new RemindProvider();
         }
         return null;
     }
@@ -111,6 +117,8 @@ export class Providers {
                 note: _('The history Amethystora Clipboard already keeps, in memory. Search stores nothing new.'),
             },
             answers: {},
+            times: {},
+            reminders: {title: _('Remind me')},
             settings: {title: _('Do it')},
             windows: {title: _('Open windows')},
             manual: {title: _('Manual')},

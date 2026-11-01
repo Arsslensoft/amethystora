@@ -1,0 +1,141 @@
+#!/usr/bin/python3 -I
+"""amethystora-meeting-link: the video-call link of one calendar event, for the live pill's "Join" (Amethystora UI's
+modules/pill/meeting.js).
+
+    amethystora-meeting-link            the event's id on stdin, as GNOME's calendar server gives it (SOURCE, UID and
+                                        RID, a line each); prints {"link": ..., "calendar": ...} on one line, or nothing
+    amethystora-meeting-link --rules    the same rules on an event given as JSON on stdin ({"conference": [...],
+                                        "x": [...], "url": ..., "location": ..., "description": ...}), for the tests
+
+GNOME's calendar server tells the shell an event's title and times only, so the link is read from the calendar itself,
+through Evolution Data Server, as the account (never root), only when the pill asks: for an event that starts within
+five minutes. It reads one event and writes nothing. Where it looks, in order: the event's CONFERENCE property (RFC
+7986), any X- property whose name says CONFERENCE, its URL, its location, its description. A link counts when it is
+https and, outside the first two, looks like a call: its host starts with meet., video. or call., or a label of it is
+meet, or its path has a part j, join, meet, meeting, call, room, rooms or webinar, or a part with "join" in it. No
+service is named here. Ten seconds at most; exit 0 whether or not a link was found.
+"""
+
+import json
+import re
+import signal
+import sys
+from urllib.parse import urlsplit
+
+MOST = 4096
+LINK = re.compile(r"https://[^\s<>\"'()\[\]{}]+", re.IGNORECASE)
+HOST_STARTS = ("meet.", "video.", "call.")
+PATH_PARTS = {"j", "join", "meet", "meeting", "call", "room", "rooms", "webinar"}
+
+
+def links_in(text):
+    """Every https address in a text, its trailing punctuation left off"""
+    if not isinstance(text, str):
+        return []
+    return [found.rstrip(".,;:!?") for found in LINK.findall(text)][:20]
+
+
+def looks_like_call(link):
+    try:
+        parts = urlsplit(link)
+    except ValueError:
+        return False
+    host = (parts.hostname or "").lower()
+    if parts.scheme.lower() != "https" or not host:
+        return False
+    if host.startswith(HOST_STARTS) or "meet" in host.split("."):
+        return True
+    segments = [segment.lower() for segment in parts.path.split("/") if segment]
+    return any(segment in PATH_PARTS or "join" in segment for segment in segments)
+
+
+def pick(event):
+    """The link of an event's fields, or None"""
+    for text in list(event.get("conference") or []) + list(event.get("x") or []):
+        for link in links_in(text):
+            return link
+    for name in ("url", "location", "description"):
+        for link in links_in(event.get(name)):
+            if looks_like_call(link):
+                return link
+    return None
+
+
+def read_event(source_uid, uid, rid):
+    """The fields pick() reads, and the calendar's name, from Evolution Data Server"""
+    import gi
+
+    gi.require_version("EDataServer", "1.2")
+    gi.require_version("ECal", "2.0")
+    gi.require_version("ICalGLib", "3.0")
+    from gi.repository import ECal, EDataServer, GLib, ICalGLib
+
+    registry = EDataServer.SourceRegistry.new_sync(None)
+    source = registry.ref_source(source_uid)
+    if source is None:
+        return None, ""
+    client = ECal.Client.connect_sync(source, ECal.ClientSourceType.EVENTS, 8, None)
+    component = None
+    for wanted in ([rid, None] if rid else [None]):
+        try:
+            found = client.get_object_sync(uid, wanted, None)
+            component = found[1] if isinstance(found, tuple) else found
+            if component is not None:
+                break
+        except GLib.Error:
+            continue
+    if component is None:
+        return None, source.get_display_name() or ""
+    event = {"conference": [], "x": [], "url": None, "location": component.get_location(),
+             "description": component.get_description()}
+    kind_any = ICalGLib.PropertyKind.ANY_PROPERTY
+    prop = component.get_first_property(kind_any)
+    while prop is not None:
+        kind = prop.isa()
+        # CONFERENCE has no name in ICalGLib's enumeration (libical 3.0.20): known by its property name
+        name = (prop.get_property_name() or "").upper()
+        if kind == ICalGLib.PropertyKind.X_PROPERTY:
+            name = (prop.get_x_name() or name).upper()
+        if kind == ICalGLib.PropertyKind.URL_PROPERTY:
+            event["url"] = prop.get_value_as_string()
+        elif name == "CONFERENCE":
+            event["conference"].append(prop.get_value_as_string())
+        elif name.startswith("X-") and "CONFERENCE" in name:
+            event["x"].append(prop.get_value_as_string())
+        elif kind == ICalGLib.PropertyKind.DESCRIPTION_PROPERTY and not event["description"]:
+            event["description"] = prop.get_value_as_string()
+        prop = component.get_next_property(kind_any)
+    return event, source.get_display_name() or ""
+
+
+def main():
+    signal.signal(signal.SIGALRM, lambda *_: sys.exit(0))
+    signal.alarm(10)
+    data = sys.stdin.buffer.read(MOST + 1)
+    if len(data) > MOST:
+        return 0
+    text = data.decode("utf-8", "replace")
+    if sys.argv[1:] == ["--rules"]:
+        link = pick(json.loads(text or "{}"))
+        if link:
+            print(json.dumps({"link": link, "calendar": ""}))
+        return 0
+    if sys.argv[1:]:
+        print("usage: amethystora-meeting-link [--rules] < event", file=sys.stderr)
+        return 2
+    parts = text.split("\n")
+    if len(parts) < 2 or not parts[0] or not parts[1]:
+        return 0
+    try:
+        event, calendar = read_event(parts[0], parts[1], parts[2] if len(parts) > 2 else "")
+    except Exception as error:  # Evolution Data Server not there, or the calendar gone: no link
+        print(f"amethystora-meeting-link: {error}", file=sys.stderr)
+        return 0
+    link = pick(event) if event else None
+    if link:
+        print(json.dumps({"link": link, "calendar": calendar}))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -7,6 +7,8 @@
 //! The window is a plain window of Notes' application, not its application window: the tiling floats it and gives it
 //! the keyboard for that (Amethystora UI's tiling/config.js).
 
+use std::rc::Rc;
+
 use serde_json::{json, Map, Value};
 
 use amethystora_ui::adw::prelude::*;
@@ -380,6 +382,89 @@ impl Notes {
             if let Some(this) = weak.upgrade() {
                 this.capture_leave();
             }
+        });
+    }
+
+    /// `amethystora-notes remind` (the search's "remind me at 17:00 to ..."): its line read whole from the standard
+    /// input, which the launch keeps until it is let go, never from the command line, which every account can read
+    pub fn read_remind(&self, line: &gtk::gio::ApplicationCommandLine) {
+        let Some(stream) = line.stdin() else { return };
+        let line = line.clone();
+        self.spawn(async move |this| {
+            let mut bytes: Vec<u8> = Vec::new();
+            loop {
+                match stream.read_bytes_future(4096, glib::Priority::DEFAULT).await {
+                    Ok(chunk) if !chunk.is_empty() && bytes.len() <= crate::capture::REMIND_MOST => bytes.extend_from_slice(&chunk),
+                    _ => break,
+                }
+            }
+            let _ = stream.close_future(glib::Priority::DEFAULT).await;
+            drop(line);
+            let text = crate::capture::remind_line(&bytes);
+            bytes.fill(0);
+            match text {
+                Some(text) => this.remind(text),
+                None => this.capture_leave(),
+            }
+        });
+    }
+
+    /// The reminder: into the inbox now when the notes are open, said in a notification whose click shows the task;
+    /// while they are locked (or were never set up), the quick note's window with the text in it asks first, and saves
+    /// it as a quick note is saved
+    fn remind(&self, text: String) {
+        if self.backend.borrow().status() != "open" {
+            let open = self.capture.borrow().as_ref().map(|c| c.text.buffer());
+            match open {
+                // A quick note being written is never written over
+                Some(buffer) if buffer.char_count() > 0 => {
+                    self.notifier.show(&t!("Notes"), &t!("The quick note is open: save it first, then ask again."), Rc::new(|| {}));
+                    return;
+                }
+                _ => {}
+            }
+            self.open_capture();
+            let parts = self.capture.borrow().as_ref().map(|c| (c.text.clone(), c.entry.clone()));
+            if let Some((view, entry)) = parts {
+                view.buffer().set_text(&text);
+                self.capture_state();
+                if self.backend.borrow().status() == "locked" {
+                    entry.grab_focus();
+                }
+            }
+            return;
+        }
+        let mut fields: Map<String, Value> = Map::new();
+        fields.insert("labels".into(), json!([]));
+        for (name, value) in self.parse_quick(&text) {
+            fields.insert(name, value);
+        }
+        let title = fields.get("title").and_then(Value::as_str).unwrap_or_default().to_string();
+        let due = fields.get("due").and_then(Value::as_str).unwrap_or_default().to_string();
+        let time = fields.get("time").and_then(Value::as_str).unwrap_or_default().to_string();
+        let id = self.new_task(fields);
+        self.commit();
+        let shown = self.shell.window.is_visible() && !self.hidden.get();
+        if shown {
+            self.render_nav();
+            if self.ui.borrow().mode == super::Mode::Tasks {
+                self.render_task_list();
+            }
+        }
+        let body = if due.is_empty() || time.is_empty() {
+            title.clone()
+        } else {
+            t!("{task}, {day} at {time}", task = title.clone(), day = crate::dates::day_label(&due, false), time = crate::dates::time_label(&time))
+        };
+        let weak = self.me.clone();
+        self.notifier.show(&t!("Reminder set"), &body, Rc::new(move || {
+            if let Some(this) = weak.upgrade() {
+                this.show_task(&id);
+            }
+        }));
+        self.spawn(async move |this| {
+            backend::flush(&this.backend).await;
+            this.capture_leave();
         });
     }
 

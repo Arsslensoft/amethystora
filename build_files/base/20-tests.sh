@@ -189,6 +189,60 @@ from kitty.cli import create_default_opts
 o = create_default_opts()
 assert o.font_size == 11.0 and o.update_check_interval == 0, (o.font_size, o.update_check_interval)'
 
+# Time and the terminal (plans/ui-ideas/spec-time.md). kitty says when a long command ends while its window is behind
+# (its own setting), and reads the options `ame desktop` writes for the account last, which user-setup makes for
+# every account so that kitty never warns about a missing include
+kitty +runpy '
+from kitty.cli import create_default_opts
+n = create_default_opts().notify_on_cmd_finish
+assert (n.when, n.duration, n.action) == ("unfocused", 10.0, "notify"), n'
+[[ "$(grep -v '^#' /etc/xdg/kitty/kitty.conf | grep -v '^$' | tail -n1)" == "include ~/.config/amethystora/kitty.conf" ]]
+test -x /usr/share/amethystora/user-setup.hooks.d/28-kitty-options.sh
+# ...the search's time and reminder answers and the pill's meetings, whose link the helper reads from Evolution Data
+# Server with the typelibs it needs, by rules that count a call's link and nothing else
+for file in modules/search/times.js modules/search/timesProvider.js modules/search/remind.js \
+    modules/search/remindProvider.js modules/pill/meeting.js; do
+    test -s "${UI_EXTENSION}/${file}"
+done
+grep -q "'present', 'meeting', 'link'" "${UI_EXTENSION}/modules/pill/activities.js"
+test -x /usr/libexec/amethystora-meeting-link
+python3 -I -c 'import gi
+for name, version in (("EDataServer", "1.2"), ("ECal", "2.0"), ("ICalGLib", "3.0")):
+    gi.require_version(name, version)
+from gi.repository import ECal, EDataServer, ICalGLib'
+[[ "$(printf '{"location": "https://meet.example.org/abc-defg"}' | /usr/libexec/amethystora-meeting-link --rules)" == \
+    '{"link": "https://meet.example.org/abc-defg", "calendar": ""}' ]]
+[[ "$(printf '{"conference": ["https://example.org/x"]}' | /usr/libexec/amethystora-meeting-link --rules)" == *'"link": "https://example.org/x"'* ]]
+[[ -z "$(printf '{"url": "https://example.org/about", "description": "menu at http://example.org/j/1"}' |
+    /usr/libexec/amethystora-meeting-link --rules)" ]]
+# ...and a missing command: the index of Fedora's commands, the helper answering from it as an account would and never
+# naming a recipe the image lacks, and the shells' hooks, which only an account that turned it on gets
+test -x /usr/libexec/amethystora-missing-command
+[[ "$(wc -l </usr/share/amethystora/missing-command/fedora.tsv)" -gt 10000 ]]
+grep -qx "$(printf 'rg\tripgrep')" /usr/share/amethystora/missing-command/fedora.tsv
+MISSING_HOME="$(mktemp -d)"
+HOME="${MISSING_HOME}" /usr/libexec/amethystora-missing-command rg | grep -q "ame pkg fedora install ripgrep"
+HOME="${MISSING_HOME}" /usr/libexec/amethystora-missing-command steam | grep -q "ame apps gaming"
+if HOME="${MISSING_HOME}" /usr/libexec/amethystora-missing-command "rm -rf" >/dev/null; then
+    echo "amethystora-missing-command answered for a name that is not a command's"
+    exit 1
+fi
+grep -q "^gaming ACTION" /usr/share/amethystora/just/apps.just
+grep -q "^opentabletdriver ACTION" /usr/share/amethystora/just/apps.just
+grep -q "^devmode ACTION" /usr/share/amethystora/just/system.just
+for recipe in command-done missing-command; do
+    grep -q "^${recipe} ACTION=\"\":" /usr/share/amethystora/just/desktop.just
+done
+HOOK=/etc/profile.d/zz-amethystora-missing-command.sh
+[[ -z "$(HOME="${MISSING_HOME}" bash --norc -i -c "source ${HOOK}; declare -F command_not_found_handle" 2>/dev/null)" ]]
+mkdir -p "${MISSING_HOME}/.config/amethystora"
+touch "${MISSING_HOME}/.config/amethystora/missing-command"
+[[ -n "$(HOME="${MISSING_HOME}" bash --norc -i -c "source ${HOOK}; declare -F command_not_found_handle" 2>/dev/null)" ]]
+grep -q "command_not_found_handler()" /etc/zsh/zshrc
+zsh -n /etc/zsh/zshrc
+fish --no-execute /usr/share/fish/vendor_conf.d/amethystora-missing-command.fish
+rm -rf "${MISSING_HOME}"
+
 # Animated boot splash: the script theme, the images it loads, and both in the initramfs, which shows the
 # splash up to and including the LUKS password prompt
 [[ "$(plymouth-set-default-theme)" == "amethystora" ]]
@@ -553,10 +607,10 @@ rm -rf "${UI_RENDER}"
 # The search box is on Super+Space alone, which GNOME's input-source switch must not take (zz0 moves it to
 # Shift+Super+Space): on a base without that line the box never opened
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys org.gnome.shell.extensions.amethystora-ui.search | sort | paste -sd ' ')" == \
-    "agent answers clipboard glance manual open settings windows" ]]
+    "agent answers clipboard glance manual open reminders settings times windows" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.search open)" == "['<Super>space']" ]]
 # Search that answers (plans/beyond/spec-search.md): each part on, the emoji picker on Super+. in the yellow tone
-for key in answers settings manual windows clipboard agent glance; do
+for key in answers times reminders settings manual windows clipboard agent glance; do
     [[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.search "${key}")" == true ]]
 done
 EMOJI=org.gnome.shell.extensions.amethystora-ui.emoji
@@ -664,8 +718,8 @@ grep -q "shouldShowApp" "${UI_EXTENSION}/modules/fuzzy.js"
 # apps, its three recipes, and quiet holding banners in memory only: nothing of it writes GNOME's show-banners
 PILL=org.gnome.shell.extensions.amethystora-ui.pill
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${PILL}" | sort | paste -sd ' ')" == \
-    "digest digest-times glow later later-times live privacy-dots quiet quiet-night whats-new" ]]
-for key in live privacy-dots glow quiet later whats-new; do
+    "digest digest-times glow later later-times live meetings privacy-dots quiet quiet-night whats-new" ]]
+for key in live privacy-dots glow quiet later whats-new meetings; do
     [[ "$(GSETTINGS_BACKEND=memory gsettings get "${PILL}" "${key}")" == true ]]
 done
 for key in quiet-night digest; do

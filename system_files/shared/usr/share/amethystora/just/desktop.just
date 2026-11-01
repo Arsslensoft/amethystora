@@ -1284,6 +1284,75 @@ greeting ACTION="":
             ;;
     esac
 
+# A long command (ten seconds or more) that ends while its terminal is not in front says so in a notification, which
+# brings the terminal forward when clicked: kitty's own setting, on as the image ships (ACTION: on or off; without
+# it, it says which). Written in ~/.config/amethystora/kitty.conf, which the image's kitty.conf reads last
+[positional-arguments]
+command-done ACTION="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    FILE="${XDG_CONFIG_HOME:-$HOME/.config}/amethystora/kitty.conf"
+    LINE="notify_on_cmd_finish never"
+    off() { [[ -f "${FILE}" ]] && grep -qx "${LINE}" "${FILE}"; }
+    case "${1:-}" in
+        "")
+            if off; then echo off; else echo on; fi
+            exit 0
+            ;;
+        on | off) ;;
+        *)
+            echo "usage: ame desktop command-done [on|off]"
+            exit 64
+            ;;
+    esac
+    mkdir -p "$(dirname "${FILE}")"
+    kept=""
+    [[ -f "${FILE}" ]] && kept="$(grep -vx "${LINE}" "${FILE}" || true)"
+    [[ -n "${kept}" ]] || kept="# Written by ame desktop commands (ame desktop command-done). Your own settings go in ~/.config/kitty/kitty.conf."
+    if [[ "$1" == off ]]; then
+        printf '%s\n%s\n' "${kept}" "${LINE}" >"${FILE}.new"
+    else
+        printf '%s\n' "${kept}" >"${FILE}.new"
+    fi
+    mv "${FILE}.new" "${FILE}"
+    # The account's open kitty windows read their settings again, as a theme switch has them do
+    pkill -USR1 -U "$(id -u)" -x kitty 2>/dev/null || true
+    if [[ "$1" == on ]]; then
+        echo "$(gettext "A long command that ends while its terminal is behind now says so in a notification.")"
+    else
+        echo "$(gettext "A long command that ends no longer says so in a notification.")"
+    fi
+
+# Where a missing command can come from: type a command this computer lacks, in bash, zsh or fish, and the terminal
+# says where it can come from on this system (Homebrew, a container, Flathub, an ame command) instead of a bare
+# "command not found"; it never installs anything. Off as the image ships (ACTION: on or off; without it, it says
+# which). New terminals follow it
+[positional-arguments]
+missing-command ACTION="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    FLAG="${XDG_CONFIG_HOME:-$HOME/.config}/amethystora/missing-command"
+    case "${1:-}" in
+        "") if [[ -e "${FLAG}" ]]; then echo on; else echo off; fi ;;
+        on)
+            mkdir -p "$(dirname "${FLAG}")"
+            touch "${FLAG}"
+            echo "$(gettext "A command this computer lacks now says where it can come from, in new terminals. Nothing is installed by it.")"
+            ;;
+        off)
+            rm -f "${FLAG}"
+            echo "$(gettext "A command this computer lacks says only that it was not found, in new terminals.")"
+            ;;
+        *)
+            echo "usage: ame desktop missing-command [on|off]"
+            exit 64
+            ;;
+    esac
+
 # Your Android phone through Amethystora Connect, which speaks KDE Connect's protocol: notifications, files, texts and
 # calls (ACTION: on or off; without it, it flips). Off until turned on: the program listens only while its user
 # service is enabled. `phone clipboard send|receive [on|off]` shares the clipboard one way or the other, both off;
@@ -1490,7 +1559,8 @@ captions *ARGS:
     esac
 
 # The live pill: the clock shows what is happening now (ame desktop pill [on|off]); the privacy dots and the
-# recording glow beside it (ame desktop pill dots|glow [on|off]). Without on or off, it asks
+# recording glow beside it (ame desktop pill dots|glow [on|off]); a meeting about to start, with Join (ame desktop pill
+# meetings [on|off]). Without on or off, it asks
 [positional-arguments]
 pill *ARGS:
     #!/usr/bin/bash
@@ -1499,13 +1569,14 @@ pill *ARGS:
     source gettext.sh
     schema=org.gnome.shell.extensions.amethystora-ui.pill
     usage() {
-        echo "usage: ame desktop pill [dots|glow] [on|off]"
+        echo "usage: ame desktop pill [dots|glow|meetings] [on|off]"
         exit 64
     }
     what=live
     case "${1:-}" in
         dots) what=privacy-dots; shift ;;
         glow) what=glow; shift ;;
+        meetings) what=meetings; shift ;;
     esac
     [[ $# -le 1 ]] || usage
     state="${1:-}"
@@ -1520,6 +1591,8 @@ pill *ARGS:
         privacy-dots:off) echo "$(gettext "The privacy dots are off: GNOME's own icons show what is in use.")" ;;
         glow:on) echo "$(gettext "The recording glow is on: a red glow round the screen while it is recorded or shared. It shows in a recording of the whole screen.")" ;;
         glow:off) echo "$(gettext "The recording glow is off.")" ;;
+        meetings:on) echo "$(gettext "Meetings in the pill are on: five minutes before an event with a video-call link, the pill shows it with Join, while the live pill is on.")" ;;
+        meetings:off) echo "$(gettext "Meetings in the pill are off.")" ;;
         *) usage ;;
     esac
     if [[ "${state}" == on ]]; then gsettings set "${schema}" "${what}" true; else gsettings set "${schema}" "${what}" false; fi
@@ -2759,10 +2832,10 @@ dock *ARGS:
             ;;
     esac
 
-# What the search (Super+Space, and the overview's) finds besides GNOME's own: sums and units, Control's settings, the
-# manual, open windows, the clipboard after clip:, the agent row, and Glance on a file (WHAT: answers, settings,
-# manual, windows, clipboard, agent or glance; STATE: on or off). Without STATE it says what WHAT is; without WHAT,
-# all seven
+# What the search (Super+Space, and the overview's) finds besides GNOME's own: sums and units, the time in other places,
+# reminders into Notes, Control's settings, the manual, open windows, the clipboard after clip:, the agent row, and
+# Glance on a file (WHAT: answers, times, reminders, settings, manual, windows, clipboard, agent or glance; STATE: on or
+# off). Without STATE it says what WHAT is; without WHAT, all of them
 [positional-arguments]
 search WHAT="" STATE="":
     #!/usr/bin/bash
@@ -2770,9 +2843,9 @@ search WHAT="" STATE="":
     # shellcheck source=/dev/null
     source gettext.sh
     schema=org.gnome.shell.extensions.amethystora-ui.search
-    parts=(answers settings manual windows clipboard agent glance)
+    parts=(answers times reminders settings manual windows clipboard agent glance)
     usage() {
-        echo "usage: ame desktop search [answers|settings|manual|windows|clipboard|agent|glance] [on|off]"
+        echo "usage: ame desktop search [answers|times|reminders|settings|manual|windows|clipboard|agent|glance] [on|off]"
         exit 2
     }
     state_of() {
@@ -2789,6 +2862,8 @@ search WHAT="" STATE="":
     # Each part by the name Control gives it
     case "${what}" in
         answers) title="$(gettext "Sums and units")" ;;
+        times) title="$(gettext "Time in other places")" ;;
+        reminders) title="$(gettext "Reminders into Notes")" ;;
         settings) title="$(gettext "Settings from Control")" ;;
         manual) title="$(gettext "The manual")" ;;
         windows) title="$(gettext "Open windows")" ;;

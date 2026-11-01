@@ -133,7 +133,7 @@ gently when a break begins. The times are in Settings, under **Wellbeing**.
 While something is happening, the clock in the middle of the top bar shows it, on a small round pill.
 When nothing is, it is the clock again, exactly as before. Only one thing shows at a time, the first of
 these that is happening: a call ringing on your phone, a recording of the screen, a link from your phone,
-the battery's question at 20%, a word that something just finished, a timer, what is playing, an update
+a meeting about to start, the battery's question at 20%, a word that something just finished, a timer, what is playing, an update
 ready, and quiet. Click the pill for its card, with its buttons and, below them, whatever else is
 happening; the card's last row is the date and time, which opens the calendar. A right-click on the
 pill, or `Super+V`, always opens the calendar.
@@ -159,10 +159,25 @@ pill, or `Super+V`, always opens the calendar.
   which asks before it restarts anything; **Tonight** puts it out of sight until 8 in the evening.
 - **Updated**, once, the first time you log in after an update: what it brought, and
   [What's new](updates.md#whats-new) in the Manual.
+- **A meeting about to start**: see [Meetings in the pill](#meetings-in-the-pill).
 - **The battery.** Rest the pointer on the battery in the top bar for the time left, or the time until
   it is full. At 20%, the pill turns amber and offers power saving, once: it never turns it on by itself.
 
 `ame desktop pill off` gives you GNOME's clock alone; `ame desktop pill on` brings the pill back.
+
+### Meetings in the pill
+
+Five minutes before an event of today's calendar that has a video-call link, the pill shows it with a
+countdown, *Design review in 4 min*, and then *Design review now* for ten minutes or until it ends. Its card
+has the times, the calendar it is in, the link, **Later** and **Join**. **Join** opens the link in your
+browser; nothing opens until you click it. **Later** puts it away until the meeting starts, and for good once
+it has.
+
+The events are the ones the calendar menu shows, from the calendars you added in Settings › Online Accounts
+or in Calendar. The link is read from the event itself, as the calendar keeps it: its conference link, its
+location, its link or its description, and only a link that looks like a call counts. Nothing is sent
+anywhere. `ame desktop pill meetings off` turns it off, and `on` back on; Control has it as **Meetings in
+the pill**.
 
 ## Privacy dots
 
@@ -480,6 +495,16 @@ anywhere:
   copies the answer. It converts lengths (mm, cm, m, km, in, ft, yd, mi, nautical miles), weights (mg, g,
   kg, t, oz, lb, stone), temperatures (°C, °F, K), data (bits and bytes, kB to PB, KiB to PiB) and time
   (ms to weeks). No currencies: their rates would have to come from the internet.
+- **The time in other places**: `time in Tokyo` gives the time there now, with the day and how far ahead
+  or behind you it is; `15:00 Paris in Tokyo` gives 23:00 in Tokyo, the same day, and `15:00 in Tokyo` starts
+  from your own time. A place is any city or country the world clocks know, in your language or in English,
+  a time zone such as `Europe/Paris`, or `UTC`, `UTC+2`. The clock is yours: 24 or 12 hours, as the top bar
+  shows it. `Enter` copies the answer. It is worked out from this computer's own time-zone data.
+- **Reminders**: `remind me at 17:00 to call the garage`, `remind me tomorrow at 9:00 to pay the rent`,
+  `remind me in 20 minutes to take the pizza out`. The row shows the task and when; `Enter` makes it a task in
+  [Notes](notes.md#reminders)' inbox with a reminder at that time, and the row under it does the same a day
+  later. When Notes is locked, its quick note opens with the task in it and asks for the passphrase first.
+  The words are English, as Notes' task box reads them, and a reminder needs a time.
 - **Do it**: [Control](control.md)'s settings, found by their words. `Enter` on a row such as
   *Phone pairing: On* changes the setting at once; one that asks something or needs a password opens a
   terminal. *Control › …* opens it in Control.
@@ -498,7 +523,7 @@ Each can be turned off, in Control's **Search** group or in a terminal:
 
 ```bash
 ame desktop search                     # each, and whether it is on
-ame desktop search answers off         # answers, settings, manual, windows, clipboard, agent or glance
+ame desktop search answers off         # answers, times, reminders, settings, manual, windows, clipboard, agent or glance
 ```
 
 ## The app grid

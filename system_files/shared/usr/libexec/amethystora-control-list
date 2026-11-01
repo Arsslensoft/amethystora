@@ -1180,6 +1180,10 @@ search_item() {
 }
 search_item answers "${ gettext "Sums and units"; }" \
     "${ gettext "Answers sums and conversions as you type, in your language's numbers."; }"
+search_item times "${ gettext "Time in other places"; }" \
+    "${ gettext "Answers “time in Tokyo” and “15:00 Paris in Tokyo” as you type, from this computer's own places and time zones."; }"
+search_item reminders "${ gettext "Reminders into Notes"; }" \
+    "${ gettext "“remind me at 17:00 to call the garage” becomes a task in Notes with a reminder, when you press Enter."; }"
 search_item settings "${ gettext "Settings from Control"; }" "${ gettext "Finds Control's settings, and changes one with Enter."; }"
 search_item manual "${ gettext "The manual"; }" "${ gettext "Finds the pages of this manual that answer what you typed."; }"
 search_item windows "${ gettext "Open windows"; }" "${ gettext "Finds an open window by its title, on any workspace."; }"
@@ -1326,6 +1330,9 @@ PILLKEY=privacy-dots pill_item privacy-dots "${ gettext "Privacy dots"; }" \
 PILLKEY=glow pill_item glow "${ gettext "Recording glow"; }" \
     "${ gettext "A thin red glow round the screen while it is recorded or shared. It shows in a recording of the whole screen."; }" \
     desktop#privacy-dots ame desktop pill glow
+PILLKEY=meetings pill_item pill-meetings "${ gettext "Meetings in the pill"; }" \
+    "${ gettext "Five minutes before an event of today's calendar that has a video-call link, the live pill shows it with a countdown and Join. The link opens only when you click Join."; }" \
+    desktop#meetings-in-the-pill ame desktop pill meetings
 
 # A top bar on every screen, the bar over fullscreen, Today's tasks and the weather
 # (org.gnome.shell.extensions.amethystora-ui.bars and .today)
@@ -1806,6 +1813,23 @@ USAGE="ame desktop bling on|off"
 item desktop bling switch "${ gettext "Terminal tools"; }" \
     "${ gettext "Your shell uses eza for ls, bat for cat and ugrep for grep, with zoxide, direnv and mise, wherever they are installed."; }" \
     "${BLING}" terminal#command-line-tools
+
+# A long command that ends while its terminal is behind says so (kitty's own setting), and a missing command says where
+# it can come from (off as shipped): each a file of the account's, read without a process
+if grep -qsx "notify_on_cmd_finish never" "${CONFIG_DIR}/kitty.conf"; then COMMAND_DONE=off; else COMMAND_DONE=on; fi
+switch_choices false ame desktop command-done
+GROUP="${ gettext "Terminal"; }"
+USAGE="ame desktop command-done on|off"
+item desktop command-done switch "${ gettext "Told when a long command ends"; }" \
+    "${ gettext "A command that ran ten seconds or more and ends while its terminal is behind says so in a notification. Click it to see the terminal."; }" \
+    "${COMMAND_DONE}" terminal#told-when-a-command-ends
+if [[ -e "${CONFIG_DIR}/missing-command" ]]; then MISSING=on; else MISSING=off; fi
+switch_choices false ame desktop missing-command
+GROUP="${ gettext "Terminal"; }"
+USAGE="ame desktop missing-command on|off"
+item desktop missing-command switch "${ gettext "Where a missing command comes from"; }" \
+    "${ gettext "A command this computer lacks says where it can come from: Homebrew, a container or Flathub. It never installs anything. In new terminals."; }" \
+    "${MISSING}" terminal#a-missing-command
 
 if [[ "${ said phone; }" == enabled ]]; then PHONE=on; else PHONE=off; fi
 switch_choices false ame desktop phone

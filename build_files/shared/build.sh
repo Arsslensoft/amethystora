@@ -12,6 +12,9 @@ export PATH="/tmp/scripts/helpers:$PATH"
 # Install Additional Packages
 /ctx/build_files/base/04-packages.sh
 
+# Where a missing command can come from: Fedora's commands and their packages, while Fedora's repositories are there
+/usr/bin/bash /ctx/build_files/shared/build-missing-command-index.sh
+
 # Install Overrides and Fetch Install
 /ctx/build_files/base/05-override-install.sh
 

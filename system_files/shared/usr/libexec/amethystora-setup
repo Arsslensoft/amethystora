@@ -163,7 +163,8 @@ DOCK_KEYS='{
 PILL=org.gnome.shell.extensions.amethystora-ui.pill
 PILL_KEYS='{
     "live": ["b"], "privacy-dots": ["b"], "glow": ["b"], "quiet": ["b"], "quiet-night": ["b"],
-    "digest": ["b"], "digest-times": ["as", "times"], "later": ["b"], "later-times": ["as", "times"], "whats-new": ["b"]
+    "digest": ["b"], "digest-times": ["as", "times"], "later": ["b"], "later-times": ["as", "times"], "whats-new": ["b"],
+    "meetings": ["b"]
 }'
 # Quick settings' tiles: the order they come first in and the ones put away, each a tile's short name
 QUICK=org.gnome.shell.extensions.amethystora-ui.quick
@@ -183,7 +184,7 @@ BREAKS_KEYS='{"selected-breaks": ["as", "breaks"]}'
 SEARCH=org.gnome.shell.extensions.amethystora-ui.search
 SEARCH_KEYS='{
     "answers": ["b"], "settings": ["b"], "manual": ["b"], "windows": ["b"], "clipboard": ["b"], "agent": ["b"],
-    "glance": ["b"]
+    "glance": ["b"], "times": ["b"], "reminders": ["b"]
 }'
 # The emoji picker's skin tone. Never emoji-picker, its key, which the keybindings part keeps.
 EMOJI=org.gnome.shell.extensions.amethystora-ui.emoji

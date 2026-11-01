@@ -17,10 +17,11 @@
 // The agent's changes (modules/agent/changes.js) come after the battery's question: the agent may be waiting for the
 // person. Reading aloud (modules/access/speech.js) comes after what waits for the person and before what runs by
 // itself: the person has just asked for it. A focus profile's mark (modules/focus/mark.js) comes last: it says what the
-// desktop is set to, not what happens.
+// desktop is set to, not what happens. A meeting about to start (pill/meeting.js) comes before a link: it waits for
+// the person, at a time the person set.
 
-export const ORDER = ['call', 'recording', 'present', 'link', 'battery', 'agent', 'waiting', 'reading', 'timer', 'news',
-    'media', 'update', 'quiet', 'focus'];
+export const ORDER = ['call', 'recording', 'present', 'meeting', 'link', 'battery', 'agent', 'waiting', 'reading', 'timer',
+    'news', 'media', 'update', 'quiet', 'focus'];
 
 // At most this many others are listed in a card
 const OTHERS = 3;
