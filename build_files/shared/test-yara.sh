@@ -165,4 +165,17 @@ as_clamupdate update >/dev/null || fail "the update after turning two off failed
 as_clamupdate update >/dev/null
 "${YARA}" due && fail "something to do with every source off and taken away"
 
+# A run that was stopped leaves its pieces. They count as something to do with every source off, the next run takes
+# them away, and what a link of that name leads to is left alone
+mkdir -p "${T}/root/yara/forge.pieces.ABC123/one" "${T}/kept"
+touch "${T}/kept/file"
+ln -s "${T}/kept" "${T}/root/yara/forge.pieces.LINK12"
+: >"${T}/root/yara/credits.tsv.new"
+chown -R clamupdate "${T}/root/yara"
+"${YARA}" due || fail "nothing to do with a stopped run's pieces left behind"
+as_clamupdate update >/dev/null
+[[ ! -e "${T}/root/yara/forge.pieces.ABC123" ]] || fail "a stopped run's pieces stayed"
+[[ -e "${T}/kept/file" ]] || fail "what a link leads to was taken away"
+[[ ! -e "${T}/root/yara/credits.tsv.new" ]] || fail "a stopped run's credits stayed"
+
 echo "test-yara: what ClamAV loads, and only that, with its authors named"

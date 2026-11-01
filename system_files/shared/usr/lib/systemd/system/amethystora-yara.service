@@ -10,6 +10,8 @@ Type=oneshot
 # ClamAV's folder, which this then takes away
 ExecCondition=/usr/libexec/amethystora-yara due
 ExecStart=/usr/libexec/amethystora-yara update
+# A stop reaches its trap, which clears up and then exits so
+SuccessExitStatus=143
 # freshclam's account, which owns ClamAV's folder: never root for what comes from the network
 User=clamupdate
 Group=clamupdate

@@ -44,8 +44,21 @@ on() {
     "${CONFIG}" --is "${KEY[$1]}" on && ! "${CONFIG}" --is VIRUS_SCAN off
 }
 
+# What a run that was stopped leaves in the rules' own folder: a set's pieces, each folder named as update names it
+# and only ever directly in that folder (never through a link), and the credits it was still writing
+clear_leftovers() {
+    local folder
+    for folder in "${WORK:?}"/*.pieces.??????; do
+        [[ -d "${folder}" && ! -L "${folder}" ]] && rm -rf --one-file-system -- "${folder}"
+    done
+    rm -f -- "${CREDITS:?}.new"
+    return 0
+}
+
 due() {
     local source
+    # Leftovers count: with every source off, nothing else would ever take them away
+    compgen -G "${WORK:?}/*.pieces.??????" >/dev/null && return 0
     for source in "${SOURCES[@]}"; do
         on "${source}" && return 0
         [[ -e "${DATABASE}/amethystora-yara-${source}.yar" ]] && return 0
@@ -86,6 +99,10 @@ assemble() {
 update() {
     local source archive pieces out kept tag
     install -d -m 0755 "${WORK}"
+    clear_leftovers
+    trap clear_leftovers EXIT
+    # systemd stops a run with SIGTERM, on which bash runs no EXIT trap by itself
+    trap 'exit 143' TERM INT HUP
     for source in "${SOURCES[@]}"; do
         out="${DATABASE}/amethystora-yara-${source}.yar"
         if ! on "${source}"; then
