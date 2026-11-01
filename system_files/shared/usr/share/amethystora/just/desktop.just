@@ -2137,7 +2137,7 @@ digest *ARGS:
         gsettings set "${schema}" "${key}" "@as [${list}]"
         # Off the other list
         # A list as words: the IDs hold no space, quote or comma
-        words() { gsettings get "${schema}" "$1" | sed -e 's/^@as //' -e "s/[][',]/ /g" | xargs -n1; }
+        words() { gsettings get "${schema}" "$1" | sed -e 's/^@as //' -e "s/[][',]/ /g" | xargs -r -n1; }
         rest="$(words "${other}" | grep -vxF -f <(printf '%s\n' "${apps[@]}") | sed "s/.*/'&'/" | paste -sd, - || true)"
         gsettings set "${schema}" "${other}" "@as [${rest}]"
         shown="$(words "${key}" | paste -sd, - | sed 's/,/, /g')"

@@ -113,7 +113,10 @@ export class OverviewNames {
 
     // ---- What a workspace is called and has ----
 
+    // The workspaces module starts before the tiling, so the tiling's settings are taken when first wanted
     get _tiling() {
+        if (!this._tilingSettings && this._shown && this._workspaces._ext?.modules?.has('tiling'))
+            this._tilingSettings = this._workspaces._ext.getSettings('org.gnome.shell.extensions.amethystora-ui.tiling');
         return this._tilingSettings ?? null;
     }
 

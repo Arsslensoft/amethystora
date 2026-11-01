@@ -6,7 +6,6 @@
 
 import Cairo from 'cairo';
 import GLib from 'gi://GLib';
-import GObject from 'gi://GObject';
 import Meta from 'gi://Meta';
 import St from 'gi://St';
 
@@ -75,21 +74,18 @@ export class Frame {
             this._area.get_parent()?.remove_child(this._area);
             parent.add_child(this._area);
         }
-        this._bindings = ['translation-x', 'translation-y'].map(name =>
-            this._actor.bind_property(name, this._area, name, GObject.BindingFlags.SYNC_CREATE));
+        this._placed = null;
         const sync = () => this._sync();
         window.connectObject('position-changed', sync, 'size-changed', sync, 'notify::fullscreen', sync,
             'notify::maximized-horizontally', sync, 'notify::maximized-vertically', sync, 'notify::above', sync,
             'notify::minimized', sync, 'unmanaging', () => this._unfollow(), this);
-        this._actor.connectObject('notify::visible', sync, 'effects-completed', sync, this);
+        this._actor.connectObject('notify::visible', sync, 'effects-completed', sync,
+            'notify::translation-x', sync, 'notify::translation-y', sync, this);
         this._restack();
         this._sync();
     }
 
     _unfollow() {
-        for (const binding of this._bindings ?? [])
-            binding.unbind();
-        this._bindings = null;
         this._window?.disconnectObject(this);
         this._actor?.disconnectObject(this);
         this._window = null;
@@ -111,10 +107,16 @@ export class Frame {
         const out = OUT * scale();
         const f = window.get_frame_rect();
         const [width, height] = [Math.round(f.width + 2 * out), Math.round(f.height + 2 * out)];
-        this._area.set_position(Math.round(f.x - out), Math.round(f.y - out));
-        // A new size is painted again; a move only moves what was painted
-        if (this._area.width !== width || this._area.height !== height)
+        const [x, y] = [Math.round(f.x - out), Math.round(f.y - out)];
+        // A new size is painted again; a move only moves what was painted: St paints again whenever an actor's own
+        // position changes, so the place is set with the size and a move is a translation from it
+        if (!this._placed || this._area.width !== width || this._area.height !== height) {
+            this._area.set_position(x, y);
+            this._placed = [x, y];
             this._area.set_size(width, height);
+        }
+        this._area.translation_x = this._actor.translation_x + x - this._placed[0];
+        this._area.translation_y = this._actor.translation_y + y - this._placed[1];
         this._area.show();
     }
 

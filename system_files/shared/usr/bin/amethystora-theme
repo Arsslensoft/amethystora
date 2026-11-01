@@ -793,7 +793,13 @@ case "${1:-list}" in
     toggle) theme_toggle ;;
     reload)
         current="$(theme_current)" || die "no theme is set yet"
-        AMETHYSTORA_THEME_SKIP_BACKGROUND=1 theme_set "${current}"
+        # A drawn wallpaper is drawn again under a new name when the palette or the accent changed: it is shown again
+        # too, since the old drawing is taken away once it is two minutes old
+        if [[ -n "$(account_pattern)" ]]; then
+            theme_set "${current}"
+        else
+            AMETHYSTORA_THEME_SKIP_BACKGROUND=1 theme_set "${current}"
+        fi
         ;;
     bg | background)
         case "${2:-next}" in

@@ -260,11 +260,18 @@ class AmethystoraPill extends St.Widget {
         if (!actor || actor.get_parent() !== this)
             return;
         actor.remove_transition('opacity');
+        // An activity may destroy its content before the fade ends: a disposed actor is not touched
+        let gone = false;
+        const tag = {};
+        actor.connectObject('destroy', () => { gone = true; }, tag);
         actor.ease({
             opacity: 0,
             duration: reduce ? REDUCED : OUT,
             mode: Clutter.AnimationMode.EASE_OUT_QUAD,
             onStopped: () => {
+                if (gone)
+                    return;
+                actor.disconnectObject(tag);
                 if (this._shown === actor || actor.get_parent() !== this)
                     return;
                 // GNOME's clock box stays a child of the pill; an activity's content goes back to its activity
@@ -291,8 +298,16 @@ class AmethystoraPill extends St.Widget {
     // Lets go of an activity's content without destroying it (the activity owns it)
     release(actor) {
         if (actor?.get_parent() === this) {
+            // Stopping a transition runs its completion, which may take the actor out of the pill or destroy it
+            let gone = false;
+            const tag = {};
+            actor.connectObject('destroy', () => { gone = true; }, tag);
             actor.remove_all_transitions();
-            this.remove_child(actor);
+            if (!gone) {
+                actor.disconnectObject(tag);
+                if (actor.get_parent() === this)
+                    this.remove_child(actor);
+            }
         }
         if (this._shown === actor)
             this._shown = this._clockBox;

@@ -96,6 +96,9 @@ export class FocusTile {
                 return;
             this._fitId ||= global.compositor.get_laters().add(Meta.LaterType.BEFORE_REDRAW, () => {
                 this._fitId = 0;
+                // A later queued before the block went may still be run: it touches nothing destroyed
+                if (this._destroyed)
+                    return GLib.SOURCE_REMOVE;
                 const [, wanted] = choices.get_preferred_width(-1);
                 const [, editWanted] = edit.get_preferred_width(-1);
                 const below = ends.width > 0 && wanted + editWanted + 8 > ends.width;
@@ -103,6 +106,13 @@ export class FocusTile {
                 return GLib.SOURCE_REMOVE;
             });
         };
+        // The menu may take the block away without asking the tile: what is queued goes with it
+        ends.connect('destroy', () => {
+            this._destroyed = true;
+            if (this._fitId)
+                global.compositor.get_laters().remove(this._fitId);
+            this._fitId = 0;
+        });
         ends.connect('notify::width', fit);
         ends.connect('style-changed', fit);
     }

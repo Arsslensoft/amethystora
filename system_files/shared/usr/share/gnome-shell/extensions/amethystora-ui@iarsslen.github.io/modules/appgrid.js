@@ -461,8 +461,15 @@ export class AppGrid {
             const icon = original.call(this, size, ...rest);
             try {
                 shapeFolder(icon, size);
-                if (rest[0] instanceof AppDisplay.FolderIcon)
-                    rest[0].add_style_class_name(TILE_CLASS);
+                // GNOME can ask for an icon of a folder that is gone; touching it would log a fault
+                const folder = rest[0];
+                if (folder instanceof AppDisplay.FolderIcon && !goneFolders.has(folder)) {
+                    if (!seenFolders.has(folder)) {
+                        seenFolders.add(folder);
+                        folder.connect('destroy', () => goneFolders.add(folder));
+                    }
+                    folder.add_style_class_name(TILE_CLASS);
+                }
             } catch (e) {
                 console.error(`Amethystora UI: appgrid: a folder's tile: ${e.message}`);
             }
@@ -487,6 +494,9 @@ export class AppGrid {
         }
     }
 }
+
+const seenFolders = new WeakSet();
+const goneFolders = new WeakSet();
 
 // The square: rounded, its four apps set in from its edges and apart by the image's measures, the whole as large as
 // GNOME made it
