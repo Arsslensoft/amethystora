@@ -3044,6 +3044,186 @@ text-shortcut *ARGS:
         *) usage ;;
     esac
 
+# Every keyboard shortcut, GNOME's, the desktop's, the tiling's and the custom ones (Control's Keyboard page): list them,
+# set one to a combination (set SCHEMA KEY ACCEL, such as set org.gnome.shell.extensions.amethystora-ui.keys plain-paste
+# '<Super><Alt>v'), take one off (clear SCHEMA KEY) or put it back as the image ships it (reset SCHEMA KEY). SCHEMA is the
+# shortcut's GSettings schema, or custom with KEY a custom keybinding's id
+[positional-arguments]
+shortcut *ARGS:
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    helper=/usr/libexec/amethystora-keybindings
+    case "${1:-}:$#" in
+        :0 | list:1) "${helper}" list ;;
+        set:4)
+            "${helper}" set "$2" "$3" "$4"
+            key="$3"
+            echo "$(eval_gettext "The shortcut \${key} is set.")"
+            ;;
+        clear:3)
+            "${helper}" clear "$2" "$3"
+            key="$3"
+            echo "$(eval_gettext "The shortcut \${key} is off.")"
+            ;;
+        reset:3)
+            "${helper}" reset "$2" "$3"
+            key="$3"
+            echo "$(eval_gettext "The shortcut \${key} is as the image ships it.")"
+            ;;
+        *)
+            echo "usage: ame desktop shortcut list | set SCHEMA KEY ACCEL | clear SCHEMA KEY | reset SCHEMA KEY"
+            exit 64
+            ;;
+    esac
+
+# The keyboard settings GNOME keeps out of sight (Control's Keyboard page): what Caps Lock does (caps normal, escape, ctrl,
+# backspace or none), the Compose key (compose off, ralt, rctrl, menu, rwin or caps), what Super on its own opens (super
+# overview, search or nothing), middle-click paste (middle-paste on|off), Num Lock on at start (numlock on|off), how long a
+# key is held before it repeats (repeat-delay 150 to 1000 ms) and whether each window keeps its keyboard layout
+# (per-window on|off). Without WHAT, how each is set now
+[positional-arguments]
+keyboard WHAT="" VALUE="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    input=org.gnome.desktop.input-sources
+    keyboard=org.gnome.desktop.peripherals.keyboard
+    keys=org.gnome.shell.extensions.amethystora-ui.keys
+    what="${1:-}"
+    value="${2:-}"
+    usage() {
+        echo "usage: ame desktop keyboard caps normal|escape|ctrl|backspace|none | compose off|ralt|rctrl|menu|rwin|caps"
+        echo "       | super overview|search|nothing | middle-paste on|off | numlock on|off | repeat-delay MS | per-window on|off"
+        exit 64
+    }
+    # xkb-options, one option a line: names such as caps:escape, which hold no quote or comma
+    options() {
+        local raw
+        raw="$(gsettings get "${input}" xkb-options)"
+        raw="${raw#@as }"
+        raw="${raw#[}"
+        raw="${raw%]}"
+        tr ',' '\n' <<<"${raw}" | sed -E "s/^ *'//; s/' *$//" | grep -v '^$' || true
+    }
+    # The options but those matching $1 (an extended expression), with $2 added unless it is empty
+    replace() {
+        local list=() option out="[" first=true
+        while IFS= read -r option; do
+            [[ "${option}" =~ $1 ]] || list+=("${option}")
+        done < <(options)
+        [[ -n "$2" ]] && list+=("$2")
+        for option in "${list[@]}"; do
+            ${first} || out+=", "
+            out+="'${option}'"
+            first=false
+        done
+        gsettings set "${input}" xkb-options "${out}]"
+    }
+    onoff() {
+        [[ "${value}" == on || "${value}" == off ]] || usage
+    }
+    case "${what}" in
+        "")
+            echo "xkb-options: $(options | paste -sd ' ')"
+            echo "super: $(gsettings get "${keys}" super-alone 2>/dev/null | tr -d "'")"
+            echo "middle-paste: $(gsettings get org.gnome.desktop.interface gtk-enable-primary-paste)"
+            echo "numlock: remember $(gsettings get "${keyboard}" remember-numlock-state), on $(gsettings get "${keyboard}" numlock-state)"
+            echo "repeat-delay: $(gsettings get "${keyboard}" delay | sed 's/^uint32 //')"
+            echo "per-window: $(gsettings get "${input}" per-window)"
+            ;;
+        caps)
+            case "${value}" in
+                normal) option="" ;;
+                escape) option=caps:escape ;;
+                ctrl) option=ctrl:nocaps ;;
+                backspace) option=caps:backspace ;;
+                none) option=caps:none ;;
+                *) usage ;;
+            esac
+            replace '^(caps:.*|ctrl:nocaps|ctrl:swapcaps)$' "${option}"
+            echo "$(eval_gettext "Caps Lock: \${value}.")"
+            ;;
+        compose)
+            case "${value}" in
+                off) option="" ;;
+                ralt | rctrl | menu | rwin | caps) option="compose:${value}" ;;
+                *) usage ;;
+            esac
+            replace '^compose:.*$' "${option}"
+            echo "$(eval_gettext "Compose key: \${value}.")"
+            ;;
+        super)
+            case "${value}" in
+                overview | search | nothing) gsettings set "${keys}" super-alone "${value}" ;;
+                *) usage ;;
+            esac
+            echo "$(eval_gettext "Super on its own opens: \${value}.")"
+            ;;
+        middle-paste)
+            onoff
+            gsettings set org.gnome.desktop.interface gtk-enable-primary-paste "$([[ "${value}" == on ]] && echo true || echo false)"
+            echo "$(eval_gettext "Middle-click paste: \${value}. Apps that are open take it when they next start.")"
+            ;;
+        numlock)
+            onoff
+            if [[ "${value}" == on ]]; then
+                gsettings set "${keyboard}" remember-numlock-state false
+                gsettings set "${keyboard}" numlock-state true
+                echo "$(gettext "Num Lock is on at every start.")"
+            else
+                gsettings set "${keyboard}" remember-numlock-state true
+                echo "$(gettext "Num Lock starts as it was left.")"
+            fi
+            ;;
+        repeat-delay)
+            [[ "${value}" =~ ^[0-9]{3,4}$ ]] && ((10#${value} >= 150 && 10#${value} <= 1000)) || usage
+            gsettings set "${keyboard}" delay "$((10#${value}))"
+            ms="$((10#${value}))"
+            echo "$(eval_gettext "A held key repeats after \${ms} ms.")"
+            ;;
+        per-window)
+            onoff
+            gsettings set "${input}" per-window "$([[ "${value}" == on ]] && echo true || echo false)"
+            if [[ "${value}" == on ]]; then
+                echo "$(gettext "Each window keeps its own keyboard layout.")"
+            else
+                echo "$(gettext "One keyboard layout for every window.")"
+            fi
+            ;;
+        *) usage ;;
+    esac
+
+# Hold a key for accents: a letter held shows its accented forms over the text cursor, and a number picks one (STATE: on
+# or off; without it, it flips). Off until you turn it on, since it looks at what you type
+[positional-arguments]
+accents STATE="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.typing
+    state="${1:-}"
+    if [[ -z "${state}" ]]; then
+        if [[ "$(gsettings get "${schema}" accents)" == true ]]; then state=off; else state=on; fi
+    fi
+    case "${state}" in
+        on)
+            gsettings set "${schema}" accents true
+            echo "$(gettext "Hold a key for accents: on. Hold a letter in an app, then press a number.")"
+            ;;
+        off)
+            gsettings set "${schema}" accents false
+            echo "$(gettext "Hold a key for accents: off.")"
+            ;;
+        *)
+            echo "usage: ame desktop accents on|off"
+            exit 64
+            ;;
+    esac
+
 # The terminal's own tools in place of the usual ones: eza for ls, bat for cat, ugrep for grep, with zoxide, direnv and mise (ACTION: on or off)
 [positional-arguments]
 bling ACTION="":

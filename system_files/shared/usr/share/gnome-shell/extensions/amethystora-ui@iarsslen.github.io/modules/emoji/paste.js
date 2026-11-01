@@ -62,7 +62,7 @@ export function giveBackTextInput() {
     rejoin = GLib.timeout_add_once(GLib.PRIORITY_DEFAULT, 0, look);
 }
 
-function onClipboard(text) {
+function putOnClipboard(text) {
     if (text)
         St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, text);
 }
@@ -85,8 +85,11 @@ function press(keys) {
     GLib.timeout_add_once(GLib.PRIORITY_DEFAULT, DISPOSE, () => device.run_dispose());
 }
 
-// {text, keysOnly, window}: keysOnly when the clipboard already holds what is to be pasted (a picture, say)
-export function paste({text = null, keysOnly = false, window = null}) {
+// {text, keysOnly, window, keep}: keysOnly when the clipboard already holds what is to be pasted (a picture, say); keep
+// when the clipboard holds the text already and must never be written (a password a password manager marks secret,
+// which the clipboard's history would keep once it is put there again): typed in, or pasted with the keys as it is
+export function paste({text = null, keysOnly = false, window = null, keep = false}) {
+    const onClipboard = keep ? () => {} : putOnClipboard;
     const started = GLib.get_monotonic_time();
     let source = 0;
     const stop = () => {

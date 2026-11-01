@@ -16,6 +16,7 @@ use serde_json::Value;
 
 use crate::backend::{self, Item, Outcome, PICTURES};
 use crate::icons::icon;
+use amethystora_control_core::{Clash, Keybinding};
 use crate::layout::{Aspect, AutoGrid, Flex, Grow, Pretty, SwatchBar};
 use crate::{Banner, Control, Diff};
 
@@ -87,6 +88,7 @@ fn page_words(page: &str) -> (String, String) {
     match page {
         "appearance" => (t!("Appearance"), t!("The theme, the wallpaper, and how a new one is revealed.")),
         "desktop" => (t!("Desktop"), t!("How windows are arranged, the top bar and the terminal.")),
+        "keyboard" => (t!("Keyboard"), t!("Every shortcut in one place, and the keyboard settings GNOME keeps out of sight.")),
         "apps" => (t!("Apps"), t!("Games, Android apps, drawing tablets and web apps, and what else installs with one command.")),
         "agent" => (t!("The AI agent"), t!("An AI agent that knows this system, and which one opens.")),
         "system" => (t!("System"), t!("The image this machine runs and the stream it follows, the CPU scheduler, and the firmware.")),
@@ -188,8 +190,79 @@ fn matches(item: &Item, words: &[String]) -> bool {
         page_words(&item.page).0,
     ];
     parts.extend(item.choices.iter().map(|choice| format!("{} {}", choice.title, choice.text.clone().unwrap_or_default())));
+    // Every shortcut is found by its words, and its card then shows the ones that match
+    parts.extend(item.keybindings.iter().map(|binding| binding.title.clone()));
     let haystack = plain(&parts.join(" "));
     words.iter().all(|word| haystack.contains(word.as_str()))
+}
+
+// --- The Keyboard page's shortcuts ------------------------------------------------------------------------
+
+/// The most rows the shortcuts' card draws at once; its search finds the rest
+const KEYBINDING_ROWS: usize = 150;
+
+/// A shortcut's keys as GTK names them in the session's language, each its own cap: Super, Alt, V
+fn key_caps(accel: &str) -> Vec<String> {
+    let label = gtk::accelerator_parse(accel)
+        .map(|(key, mods)| gtk::accelerator_get_label(key, mods).to_string())
+        .unwrap_or_else(|| accel.to_string());
+    split_label(&label)
+}
+
+/// "Ctrl+Alt+T" as its caps; "Ctrl++" is Ctrl and the plus key
+fn split_label(label: &str) -> Vec<String> {
+    let mut caps = Vec::new();
+    let mut rest = label;
+    while let Some(at) = rest.find('+').filter(|at| *at > 0) {
+        caps.push(rest[..at].to_string());
+        rest = &rest[at + 1..];
+    }
+    caps.push(rest.to_string());
+    caps.retain(|cap| !cap.is_empty());
+    caps
+}
+
+/// Whose a shortcut is, as its tag says: Yours once the account changed it
+fn owner_words(binding: &Keybinding) -> String {
+    if binding.changed {
+        return t!("Yours");
+    }
+    match binding.owner.as_str() {
+        "gnome" => t!("GNOME"),
+        "tiling" => t!("Tiling"),
+        "custom" => t!("Yours"),
+        _ => t!("Desktop"),
+    }
+}
+
+/// The line under a shortcut that clashes, naming the other one and whose it is
+fn clash_words(clash: &Clash) -> String {
+    match clash.owner.as_str() {
+        "gnome" => t!("Clash: GNOME's {title}", title = &clash.title),
+        "tiling" => t!("Clash: the tiling's {title}", title = &clash.title),
+        "custom" => t!("Clash: your {title}", title = &clash.title),
+        _ => t!("Clash: the desktop's {title}", title = &clash.title),
+    }
+}
+
+/// What a shortcut is found by: its words, whose it is, its keys and its key's name
+fn keybinding_words(binding: &Keybinding) -> String {
+    let caps: Vec<String> = binding.value.iter().flat_map(|accel| key_caps(accel)).collect();
+    plain(&format!("{} {} {} {}", binding.title, owner_words(binding), caps.join(" "), binding.key))
+}
+
+/// The keys recorded as a shortcut holds them, such as <Super><Alt>v: None for a modifier alone, which is waited past
+pub fn recorded_accel(key: gdk::Key, modifiers: gdk::ModifierType) -> Option<String> {
+    let lone = [
+        gdk::Key::Shift_L, gdk::Key::Shift_R, gdk::Key::Control_L, gdk::Key::Control_R, gdk::Key::Alt_L, gdk::Key::Alt_R,
+        gdk::Key::Super_L, gdk::Key::Super_R, gdk::Key::Meta_L, gdk::Key::Meta_R, gdk::Key::Hyper_L, gdk::Key::Hyper_R,
+        gdk::Key::ISO_Level3_Shift, gdk::Key::Caps_Lock, gdk::Key::Num_Lock,
+    ];
+    if lone.contains(&key) {
+        return None;
+    }
+    let mods = modifiers & gtk::accelerator_get_default_mod_mask();
+    Some(gtk::accelerator_name(key.to_lower(), mods).to_string())
 }
 
 // --- What one difference of the setup file is about -----------------------------------------------------
@@ -1699,6 +1772,195 @@ impl Control {
         self.card_frame(item, None, vec![rows, form.upcast(), try_box.upcast()], false, Vec::new())
     }
 
+    // --- Every shortcut (R5-13) ------------------------------------------------------------------------------
+
+    /// A shortcut the list named changed: set to the keys recorded, taken off, or put back as the image ships it
+    fn keybinding(self: &Rc<Self>, card: &str, action: &str, schema: &str, key: &str, accel: &str) {
+        let this = self.clone();
+        let (action, schema, key, accel) = (action.to_string(), schema.to_string(), key.to_string(), accel.to_string());
+        self.perform(card, async move {
+            backend::perform(backend::keybinding(this.known().as_deref(), &action, &schema, &key, &accel)).await
+        });
+    }
+
+    /// The row of a shortcut waits for its new keys; the window keeps the system's shortcuts from GNOME meanwhile, so
+    /// that Super's combinations reach it
+    fn start_recording(self: &Rc<Self>, schema: &str, key: &str, title: &str) {
+        self.state.borrow_mut().recording = Some((schema.to_string(), key.to_string(), title.to_string()));
+        if let Some(toplevel) = self.shell.window.surface().and_then(|surface| surface.downcast::<gdk::Toplevel>().ok()) {
+            toplevel.inhibit_system_shortcuts(None::<&gdk::Event>);
+        }
+        self.render();
+    }
+
+    pub(crate) fn stop_recording(self: &Rc<Self>) {
+        self.state.borrow_mut().recording = None;
+        if let Some(toplevel) = self.shell.window.surface().and_then(|surface| surface.downcast::<gdk::Toplevel>().ok()) {
+            toplevel.restore_system_shortcuts();
+        }
+        self.render();
+    }
+
+    /// A key pressed while a shortcut is recorded: Escape gives up, BackSpace turns the shortcut off, a modifier alone is
+    /// waited past, and anything else is the shortcut's new keys, which control-core checks before they are written
+    pub(crate) fn recorded(self: &Rc<Self>, key: gdk::Key, modifiers: gdk::ModifierType) {
+        let Some((schema, name, _)) = self.state.borrow().recording.clone() else { return };
+        let bare = (modifiers & gtk::accelerator_get_default_mod_mask()).is_empty();
+        let card = "keyboard-shortcuts";
+        if key == gdk::Key::Escape && bare {
+            self.stop_recording();
+            return;
+        }
+        if key == gdk::Key::BackSpace && bare {
+            self.stop_recording();
+            self.keybinding(card, "clear", &schema, &name, "");
+            return;
+        }
+        let Some(accel) = recorded_accel(key, modifiers) else { return };
+        self.stop_recording();
+        self.keybinding(card, "set", &schema, &name, &accel);
+    }
+
+    fn keybinding_row(&self, card: &str, binding: &Keybinding, busy: bool, recording: bool) -> gtk::Box {
+        let mut classes = vec!["keybinding-row"];
+        if !binding.clash.is_empty() {
+            classes.push("clash");
+        }
+        if !binding.active {
+            classes.push("inactive");
+        }
+        if recording {
+            classes.push("recording");
+        }
+        let row = ui::hbox(12, &classes);
+        let words = ui::vbox(2, &[]);
+        words.set_hexpand(true);
+        if recording {
+            let prompt = role_box(gtk::Orientation::Vertical, 2, &[], gtk::AccessibleRole::Status);
+            prompt.append(&ui::label(&t!("Press the new keys for {title}", title = &binding.title), &["keybinding-title"]));
+            prompt.append(&ui::label(&t!("Escape gives up; Backspace turns the shortcut off."), &["form-note"]));
+            words.append(&prompt);
+            row.append(&words);
+            row.append(&ltr(ui::line(&t!("Esc"), &["keybinding-cap"])));
+            let cancel = self.button(&t!("Cancel"), Look { small: true, ..Default::default() }, |this| this.stop_recording());
+            cancel.add_css_class("flat");
+            row.append(&cancel);
+            return row;
+        }
+        let title = ui::label(&binding.title, &["keybinding-title"]);
+        words.append(&title);
+        for clash in &binding.clash {
+            words.append(&ui::label(&clash_words(clash), &["form-note", "bad", "keybinding-clash"]));
+        }
+        if !binding.active {
+            words.append(&ui::label(&t!("Works while the tiling is on."), &["form-note"]));
+        }
+        row.append(&words);
+        let owner = ui::line(&owner_words(binding), &["tag", "keybinding-owner"]);
+        owner.set_valign(gtk::Align::Center);
+        row.append(&owner);
+        let keys = ui::hbox(4, &["keybinding-keys"]);
+        keys.set_direction(gtk::TextDirection::Ltr);
+        keys.set_valign(gtk::Align::Center);
+        if binding.value.is_empty() {
+            keys.append(&ui::line(&t!("Off"), &["faint"]));
+        }
+        // The first combination, as GNOME's Settings shows it; the others are counted, and found by the search
+        if let Some(accel) = binding.value.first() {
+            for cap in key_caps(accel) {
+                keys.append(&ui::line(&cap, &["keybinding-cap"]));
+            }
+        }
+        if binding.value.len() > 1 {
+            let others = binding.value.len() - 1;
+            keys.append(&ui::line(&t!("{count, plural, one {and one more} other {and # more}}", count = others), &["faint"]));
+        }
+        row.append(&keys);
+        let (schema, key, words_of) = (binding.schema.clone(), binding.key.clone(), binding.title.clone());
+        let change = self.button(&t!("Change"), Look { small: true, disabled: busy, ..Default::default() }, move |this| {
+            this.start_recording(&schema, &key, &words_of)
+        });
+        change.add_css_class("flat");
+        change.update_property(&[gtk::accessible::Property::Label(&t!("Change the shortcut {title}", title = &binding.title))]);
+        row.append(&change);
+        if binding.changed {
+            let (card, schema, key) = (card.to_string(), binding.schema.clone(), binding.key.clone());
+            let reset = self.button(&t!("Reset"), Look { small: true, disabled: busy, ..Default::default() }, move |this| {
+                this.keybinding(&card, "reset", &schema, &key, "")
+            });
+            reset.add_css_class("flat");
+            reset.update_property(&[gtk::accessible::Property::Label(&t!("Reset the shortcut {title}", title = &binding.title))]);
+            row.append(&reset);
+        }
+        row
+    }
+
+    fn keybindings_card(&self, item: &Item) -> gtk::Box {
+        if !item.available {
+            return self.card_frame(item, None, Vec::new(), false, Vec::new());
+        }
+        let busy = self.busy(&item.id);
+        let (typed, recording, global) = {
+            let state = self.state.borrow();
+            (state.kb_search.clone(), state.recording.clone(), state.search.clone())
+        };
+        let field = gtk::Entry::builder().text(&typed).placeholder_text(t!("Find a shortcut")).css_classes(["field", "keybinding-search"]).build();
+        field.update_property(&[gtk::accessible::Property::Label(&t!("Find a shortcut"))]);
+        let list = ui::vbox(4, &["keybinding-rows"]);
+        let mut rows = Vec::new();
+        for binding in &item.keybindings {
+            let here = recording.as_ref().is_some_and(|(schema, key, _)| *schema == binding.schema && *key == binding.key);
+            let row = self.keybinding_row(&item.id, binding, busy, here);
+            list.append(&row);
+            rows.push((row, keybinding_words(binding), here));
+        }
+        let more = ui::label("", &["form-note"]);
+        let none = ui::label(&t!("No shortcut matches."), &["row-empty"]);
+        // Shown are the rows every word matches, and the one being recorded always: KEYBINDING_ROWS at most
+        let rows = Rc::new(rows);
+        let show = {
+            let (rows, more, none) = (rows.clone(), more.downgrade(), none.downgrade());
+            move |text: &str| {
+                let words: Vec<String> = plain(text).split_whitespace().map(str::to_string).collect();
+                let (mut shown, mut left) = (0usize, 0usize);
+                for (row, haystack, here) in rows.iter() {
+                    let found = *here || words.iter().all(|word| haystack.contains(word.as_str()));
+                    let visible = found && (*here || shown < KEYBINDING_ROWS);
+                    if visible {
+                        shown += 1;
+                    } else if found {
+                        left += 1;
+                    }
+                    row.set_visible(visible);
+                }
+                if let Some(more) = more.upgrade() {
+                    more.set_text(&t!("{count, plural, one {One more: type to find it.} other {# more: type to find them.}}", count = left));
+                    more.set_visible(left > 0);
+                }
+                if let Some(none) = none.upgrade() {
+                    none.set_visible(shown == 0);
+                }
+            }
+        };
+        // Found from the window's search too: its words narrow the card until the card's own field says otherwise
+        show(if typed.is_empty() { &global } else { &typed });
+        {
+            let me = self.me.clone();
+            field.connect_changed(move |field| {
+                let text = field.text().to_string();
+                if let Some(this) = me.upgrade() {
+                    this.state.borrow_mut().kb_search = text.clone();
+                }
+                show(&text);
+            });
+        }
+        let note = ui::label(
+            &t!("Change one by pressing its new keys. It is written where GNOME Settings and the tiling's own window read it."),
+            &["form-note"],
+        );
+        self.card_frame(item, None, vec![field.upcast(), note.upcast(), list.upcast(), none.upcast(), more.upcast()], false, Vec::new())
+    }
+
     fn trust_card(&self, item: &Item) -> gtk::Box {
         let busy = self.busy(&item.id);
         let (repository, key, trusted) = {
@@ -1932,6 +2194,7 @@ impl Control {
             "widgets" => self.widgets_card(item),
             "webapps" => self.webapps_card(item),
             "shortcuts" => self.shortcuts_card(item),
+            "keybindings" => self.keybindings_card(item),
             "trust-image" => self.trust_card(item),
             "setup" => self.setup_card(item),
             "disks" => self.disks_card(item),

@@ -244,6 +244,13 @@ read_in_background waydroid-enabled systemctl is-enabled waydroid-container.serv
 read_in_background waydroid-active systemctl is-active waydroid-container.service
 read_in_background uupd systemctl is-enabled uupd.timer
 read_in_background rpm-ostree systemctl is-enabled rpm-ostreed-automatic.timer
+# The Keyboard page: every shortcut, and the keyboard's own settings
+read_in_background keybindings /usr/libexec/amethystora-keybindings list --json
+read_in_background kb-input gsettings list-recursively org.gnome.desktop.input-sources
+read_in_background kb-keyboard gsettings list-recursively org.gnome.desktop.peripherals.keyboard
+read_in_background kb-paste gsettings get org.gnome.desktop.interface gtk-enable-primary-paste
+read_in_background kb-super gsettings get org.gnome.shell.extensions.amethystora-ui.keys super-alone
+read_in_background kb-accents gsettings get org.gnome.shell.extensions.amethystora-ui.typing accents
 wait
 
 # --- Appearance ------------------------------------------------------------------------------------
@@ -2481,6 +2488,102 @@ item system powerwash action "${ gettext "Start over"; }" \
     "" troubleshooting#starting-over
 GROUP=""
 
+# --- Keyboard --------------------------------------------------------------------------------------
+
+# Every shortcut, as /usr/libexec/amethystora-keybindings lists them: each with its schema and key, whose they are, what
+# they are set to and what they clash with. The window sends back a schema and key the list named and a combination it
+# recorded, which control-core checks before the command runs, and the helper again. Without what each ships with, which
+# the window does not show: the entry is one argument of items_json's jq, which the kernel keeps under 128 KiB
+GROUP="${ gettext "Shortcuts"; }"
+KEYBINDINGS="${ said keybindings; }"
+if [[ "${ ended keybindings; }" != 0 ]] || ! jq -e '.bindings | type == "array"' <<<"${KEYBINDINGS}" >/dev/null 2>&1; then
+    KEYBINDINGS='{"tiling": false, "bindings": []}'
+    REASON="${ gettext "The shortcuts could not be read."; }"
+fi
+EXTRA="$(jq -c '{keybindings: [.bindings[] | del(.default)], tiling: (.tiling == true), commands: {
+    set: {terminal: false, command: ["ame", "desktop", "shortcut", "set", "{schema}", "{key}", "{accel}"]},
+    clear: {terminal: false, command: ["ame", "desktop", "shortcut", "clear", "{schema}", "{key}"]},
+    reset: {terminal: false, command: ["ame", "desktop", "shortcut", "reset", "{schema}", "{key}"]}}}' <<<"${KEYBINDINGS}")"
+USAGE="ame desktop shortcut set SCHEMA KEY ACCEL"
+item keyboard keyboard-shortcuts keybindings "${ gettext "Every shortcut"; }" \
+    "${ gettext "GNOME's, the desktop's, the tiling's and your own, in one list. Change one by pressing the new keys; a clash is marked with both names."; }" \
+    "" desktop#every-shortcut
+
+GROUP="${ gettext "Keyboard"; }"
+XKB="${ value_of "${ said kb-input; }" xkb-options "(.*)\$"; }"
+KB="${ said kb-keyboard; }"
+kb_key() {
+    local value
+    value="${ value_of "${KB}" "$1" "(.*)\$"; }"
+    value="${value%$'\n'}"
+    printf '%s' "${value#uint32 }"
+}
+CAPS=normal
+case "${XKB}" in
+    *"'caps:escape'"*) CAPS=escape ;;
+    *"'ctrl:nocaps'"*) CAPS=ctrl ;;
+    *"'caps:backspace'"*) CAPS=backspace ;;
+    *"'caps:none'"*) CAPS=none ;;
+esac
+choice normal "${ gettext "Caps Lock"; }" "" false ame desktop keyboard caps normal
+choice escape "${ gettext "Escape"; }" "" false ame desktop keyboard caps escape
+choice ctrl "${ gettext "Ctrl"; }" "" false ame desktop keyboard caps ctrl
+choice backspace "${ gettext "Backspace"; }" "" false ame desktop keyboard caps backspace
+choice none "${ gettext "Nothing"; }" "" false ame desktop keyboard caps none
+USAGE="ame desktop keyboard caps normal|escape|ctrl|backspace|none"
+item keyboard keyboard-caps choice "${ gettext "Caps Lock acts as"; }" \
+    "${ gettext "Escape suits a text editor; Ctrl a hand that reaches for shortcuts."; }" "${CAPS}" desktop#keyboard-settings
+COMPOSE=off
+[[ "${XKB}" =~ \'compose:(ralt|rctrl|menu|rwin|caps)\' ]] && COMPOSE="${BASH_REMATCH[1]}"
+choice off "${ gettext "None"; }" "" false ame desktop keyboard compose off
+choice ralt "${ gettext "Right Alt"; }" "" false ame desktop keyboard compose ralt
+choice rctrl "${ gettext "Right Ctrl"; }" "" false ame desktop keyboard compose rctrl
+choice menu "${ gettext "Menu"; }" "" false ame desktop keyboard compose menu
+choice rwin "${ gettext "Right Super"; }" "" false ame desktop keyboard compose rwin
+choice caps "${ gettext "Caps Lock"; }" "" false ame desktop keyboard compose caps
+USAGE="ame desktop keyboard compose off|ralt|rctrl|menu|rwin|caps"
+item keyboard keyboard-compose choice "${ gettext "Compose key"; }" \
+    "${ gettext "Compose, then ' and e, types é."; }" "${COMPOSE}" desktop#keyboard-settings
+SUPER_ALONE="$(said kb-super | tr -d "'")"
+[[ "${ ended kb-super; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
+choice overview "${ gettext "The overview"; }" "" false ame desktop keyboard super overview
+choice search "${ gettext "The search box"; }" "" false ame desktop keyboard super search
+choice nothing "${ gettext "Nothing"; }" "" false ame desktop keyboard super nothing
+USAGE="ame desktop keyboard super overview|search|nothing"
+item keyboard keyboard-super choice "${ gettext "Super on its own opens"; }" \
+    "${ gettext "Pressing and letting go of Super, with no other key. Super's shortcuts work either way."; }" \
+    "${SUPER_ALONE:-overview}" desktop#keyboard-settings
+switch_choices false ame desktop keyboard middle-paste
+USAGE="ame desktop keyboard middle-paste on|off"
+item keyboard keyboard-middle-paste switch "${ gettext "Middle click pastes"; }" \
+    "${ gettext "The middle button pastes the last text selected, anywhere. Off, nothing is pasted by a stray click."; }" \
+    "$([[ "${ said kb-paste; }" == true ]] && echo on || echo off)" desktop#keyboard-settings
+switch_choices false ame desktop keyboard numlock
+USAGE="ame desktop keyboard numlock on|off"
+item keyboard keyboard-numlock switch "${ gettext "Num Lock on at start"; }" \
+    "${ gettext "Off, Num Lock starts as it was left."; }" \
+    "$([[ "${ kb_key remember-numlock-state; }" == false && "${ kb_key numlock-state; }" == true ]] && echo on || echo off)" \
+    desktop#keyboard-settings
+EXTRA='{"min": 150, "max": 1000, "step": 50, "unit": "ms", "terminal": false,
+    "command": ["ame", "desktop", "keyboard", "repeat-delay", "{value}"]}'
+USAGE="ame desktop keyboard repeat-delay 150..1000"
+item keyboard keyboard-repeat-delay range "${ gettext "Repeat after"; }" \
+    "${ gettext "How long a key is held before it repeats, in milliseconds."; }" "${ kb_key delay; }" desktop#keyboard-settings
+switch_choices false ame desktop keyboard per-window
+USAGE="ame desktop keyboard per-window on|off"
+item keyboard keyboard-per-window switch "${ gettext "Each window keeps its keyboard layout"; }" \
+    "${ gettext "The layout chosen in a window comes back when you return to it: one language in a chat, another in mail."; }" \
+    "$([[ "${ value_of "${ said kb-input; }" per-window "(.*)\$"; }" == true ]] && echo on || echo off)" desktop#a-layout-for-each-window
+
+GROUP="${ gettext "Typing"; }"
+[[ "${ ended kb-accents; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
+switch_choices false ame desktop accents
+USAGE="ame desktop accents on|off"
+item keyboard keyboard-accents switch "${ gettext "Hold a key for accents"; }" \
+    "${ gettext "Hold a letter in an app and its accented forms appear over the text cursor; a number types one. Not in terminals or games. It looks at what you type, keeps none of it, and is off until you turn it on."; }" \
+    "$([[ "${ said kb-accents; }" == true ]] && echo on || echo off)" desktop#hold-a-key-for-accents
+GROUP=""
+
 # --- Your setup ------------------------------------------------------------------------------------
 
 SETUP="${CONFIG_DIR}/setup.json"
@@ -2547,9 +2650,10 @@ declare -A HEADINGS=(
     [apps]="${ gettext "Apps"; }"
     [agent]="${ gettext "The AI agent"; }"
     [system]="${ gettext "System"; }"
+    [keyboard]="${ gettext "Keyboard"; }"
     [setup]="${ gettext "Your setup"; }"
 )
-for page in appearance desktop apps agent system setup; do
+for page in appearance desktop keyboard apps agent system setup; do
     printf '\n  %s\n' "${HEADINGS[${page}]}"
     jq -r --arg page "${page}" \
         'select(.page == $page and .kind != "link")

@@ -237,8 +237,11 @@ export class Keys {
 
     _gnomeChanged(id, key) {
         const record = this._record(id, key);
-        // Our own write coming back
-        if (record && JSON.stringify(this._gnome.get(id).get_strv(key)) === JSON.stringify(record.wrote))
+        // Our own write coming back. Never a reset, which takes the account's value away (ours is always one): GNOME's own
+        // value is then the person's choice (Control's Reset), even where it reads the same as what was written
+        const gnome = this._gnome.get(id);
+        if (record && gnome.get_user_value(key) !== null &&
+            JSON.stringify(gnome.get_strv(key)) === JSON.stringify(record.wrote))
             return;
         // The person changed a GNOME shortcut we had taken a combination from: what they set is theirs now
         if (record)

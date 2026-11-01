@@ -2,7 +2,8 @@
 
 Amethystora is built to be driven from the keyboard. `Super` is the key with the Windows or Command
 logo on it. This list is also what `ame desktop keybindings` shows, and the Amethystora menu
-(`Super+Alt+Space`) reaches most of what these keys do.
+(`Super+Alt+Space`) reaches most of what these keys do. Control's **Keyboard** page lists every shortcut, these and GNOME's,
+and changes any of them.
 
 ## Tiling
 
@@ -109,6 +110,7 @@ The same from a terminal: `amethystora-theme list`, `amethystora-theme set <name
 | --- | --- |
 | `Super+V` | Notifications and the calendar |
 | `Super+Shift+V` | The clipboard history |
+| `Super+Alt+V` | Paste what is copied as plain text, without its fonts, colours and links |
 | `Super+L` | Lock the screen |
 | `Super+D` | Show the desktop |
 | `Print` | Take a screenshot or record the screen |

@@ -106,6 +106,10 @@ struct PageState {
     try_text: String,
     try_waiting: Option<(String, String)>,
     try_said: Option<(String, String)>,
+    /// The Keyboard page's shortcuts: what their own search field holds, and the shortcut whose new keys are being
+    /// recorded (its schema, key and words), while the window keeps the system's shortcuts from GNOME
+    kb_search: String,
+    recording: Option<(String, String, String)>,
     /// When the list was last read, and whether it is being read now
     read: f64,
     reading: bool,
@@ -140,6 +144,8 @@ impl Default for PageState {
             try_text: String::new(),
             try_waiting: None,
             try_said: None,
+            kb_search: String::new(),
+            recording: None,
             read: 0.0,
             reading: false,
             started: false,
@@ -303,6 +309,7 @@ impl Control {
         for (page, name, title) in [
             ("appearance", "palette", t!("Appearance")),
             ("desktop", "desktop", t!("Desktop")),
+            ("keyboard", "key", t!("Keyboard")),
             ("apps", "apps", t!("Apps")),
             ("agent", "sparkle", t!("AI agent")),
             ("system", "chip", t!("System")),
@@ -460,6 +467,20 @@ impl Control {
             glib::Propagation::Proceed
         });
         self.shell.window.add_controller(keys);
+
+        // The keys pressed for a shortcut being recorded, before any widget of the window sees them
+        let record = gtk::EventControllerKey::new();
+        record.set_propagation_phase(gtk::PropagationPhase::Capture);
+        let me = self.me.clone();
+        record.connect_key_pressed(move |_, key, _, modifiers| {
+            let Some(this) = me.upgrade() else { return glib::Propagation::Proceed };
+            if this.state.borrow().recording.is_none() {
+                return glib::Propagation::Proceed;
+            }
+            this.recorded(key, modifiers);
+            glib::Propagation::Stop
+        });
+        self.shell.window.add_controller(record);
     }
 
     fn searched(self: &Rc<Self>, text: &str) {

@@ -1,0 +1,376 @@
+#!/usr/bin/python3 -I
+# Every keyboard shortcut of the session in one list: GNOME's, the desktop's (Amethystora UI's and the clipboard's), the
+# tiling's and the custom ones, with what each is set to, whether the account changed it and whether two of them
+# clash. Control's Keyboard page shows the list and `ame desktop shortcut` changes it; this is the one place that
+# reads and writes them for both, so that a value is checked here whoever sends it.
+#
+#   amethystora-keybindings list [--json]        every shortcut
+#   amethystora-keybindings set SCHEMA KEY ACCEL  the shortcut set to that one combination, such as <Super><Alt>v
+#   amethystora-keybindings clear SCHEMA KEY      the shortcut taken off
+#   amethystora-keybindings reset SCHEMA KEY      the shortcut as the image ships it
+#
+# SCHEMA is a GSettings schema of the list, or `custom` with KEY a custom keybinding's id (custom20). Each value is
+# written into that schema's own key, so GNOME Settings, the tiling's window and the setup file (which carries
+# keybindings by schema and key) keep agreeing. Nothing here runs a command a custom keybinding holds, or shows it.
+
+import gettext
+import json
+import locale
+import os
+import re
+import sys
+
+from gi.repository import Gio, GLib
+
+TEXTDOMAIN = 'amethystora'
+
+# Where the shortcuts are, and whose they are. A desktop schema is one of Amethystora's extensions', whose keybindings
+# are its `as` keys that ship holding combinations (its other lists hold apps, times or tiles)
+GNOME = [
+    ('org.gnome.desktop.wm.keybindings', 'gsettings-desktop-schemas'),
+    ('org.gnome.mutter.keybindings', 'mutter'),
+    ('org.gnome.mutter.wayland.keybindings', 'mutter'),
+    ('org.gnome.shell.keybindings', 'gnome-shell'),
+    ('org.gnome.settings-daemon.plugins.media-keys', 'gnome-settings-daemon'),
+]
+UI_PREFIX = 'org.gnome.shell.extensions.amethystora-ui.'
+TILING = 'org.gnome.shell.extensions.amethystora-ui.tiling.keybindings'
+TILING_SWITCH = ('org.gnome.shell.extensions.amethystora-ui.tiling', 'enabled')
+DESKTOP_EXTRA = ['org.gnome.shell.extensions.amethystora-clipboard']
+# Desktop keybindings the image ships empty, which their default does not tell from another list
+EMPTY_BINDINGS = {
+    'org.gnome.shell.extensions.amethystora-clipboard': ['clear-history', 'prev-entry', 'next-entry', 'private-mode-binding'],
+}
+MEDIA_KEYS = 'org.gnome.settings-daemon.plugins.media-keys'
+RELOCATABLE = 'org.gnome.settings-daemon.plugins.media-keys.custom-keybinding'
+CUSTOM_PATH = '/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/'
+OWNERS = ['gnome', 'desktop', 'tiling', 'custom']
+
+ACCEL = re.compile(r'^((?:<[A-Za-z0-9_]+>)*)([A-Za-z0-9_]+)$')
+MODIFIER = re.compile(r'<([A-Za-z0-9_]+)>')
+# The modifiers GTK and Mutter read, by the one name each is compared under
+MODIFIERS = {
+    'shift': 'shift', 'control': 'control', 'ctrl': 'control', 'ctl': 'control', 'primary': 'control',
+    'alt': 'alt', 'mod1': 'alt', 'super': 'super', 'mod4': 'super', 'meta': 'meta', 'hyper': 'hyper',
+}
+WORDS = {'shift': 'Shift', 'control': 'Ctrl', 'alt': 'Alt', 'super': 'Super', 'meta': 'Meta', 'hyper': 'Hyper'}
+# A key that may be a shortcut on its own: anything else needs Super, Control or Alt, or it could no longer be typed
+ALONE = re.compile(r'^(F[1-9][0-9]?|Print|Pause|Scroll_Lock|Break|Sys_Req|XF86[A-Za-z0-9_]+)$')
+ID = re.compile(r'^[a-z0-9][a-z0-9-]*$')
+CUSTOM_ID = re.compile(r'^custom[0-9]{1,4}$')
+
+
+def die(message, code=1):
+    print(f'amethystora-keybindings: {message}', file=sys.stderr)
+    sys.exit(code)
+
+
+def parse(accel):
+    """(modifiers, key) of an accelerator, or None when it is not one"""
+    match = ACCEL.match(accel or '')
+    if not match:
+        return None
+    mods = set()
+    for name in MODIFIER.findall(match.group(1)):
+        known = MODIFIERS.get(name.lower())
+        if known is None:
+            return None
+        mods.add(known)
+    key = match.group(2)
+    if len(key) == 1:
+        key = key.lower()
+    return frozenset(mods), key
+
+
+def normal(accel):
+    parsed = parse(accel)
+    if not parsed:
+        return None
+    mods, key = parsed
+    return '+'.join(sorted(mods) + [key.lower() if len(key) == 1 else key])
+
+
+def words(accel):
+    parsed = parse(accel)
+    if not parsed:
+        return accel
+    mods, key = parsed
+    order = ['super', 'control', 'alt', 'shift', 'meta', 'hyper']
+    return '+'.join([WORDS[m] for m in order if m in mods] + [key.upper() if len(key) == 1 else key])
+
+
+def source():
+    found = Gio.SettingsSchemaSource.get_default()
+    if found is None:
+        die('there are no GSettings schemas here')
+    return found
+
+
+def translated(domain, text):
+    if not text:
+        return text
+    try:
+        return gettext.dgettext(domain, text) if domain else text
+    except Exception:
+        return text
+
+
+def is_accel(value):
+    """A combination, as a keybinding holds it: with a modifier, or a key that may be a shortcut on its own (a word
+    such as 'theme' or 'sky', which other lists hold, is neither)"""
+    parsed = parse(value) if isinstance(value, str) else None
+    return bool(parsed) and (bool(parsed[0]) or bool(ALONE.match(parsed[1])))
+
+
+def is_accels(variant):
+    try:
+        values = variant.unpack()
+    except Exception:
+        return False
+    return isinstance(values, list) and len(values) > 0 and all(is_accel(v) for v in values)
+
+
+def retired(info):
+    """A key its schema keeps only for old settings, which GNOME no longer reads ("DEPRECATED", "Don't use")"""
+    words = f'{info.get_summary() or ""} {info.get_description() or ""}'.lower()
+    return 'deprecated' in words or words.startswith(("don't use", "don’t use", "do not use"))
+
+
+def keys_of(schema_id, schema):
+    """The keybinding keys of a schema of the list"""
+    if schema_id == TILING or any(schema_id == gnome for gnome, _ in GNOME):
+        out = []
+        for key in schema.list_keys():
+            if schema.get_key(key).get_value_type().dup_string() != 'as':
+                continue
+            if schema_id == MEDIA_KEYS and (key == 'custom-keybindings' or key.endswith('-static')):
+                continue
+            if retired(schema.get_key(key)):
+                continue
+            out.append(key)
+        return out
+    out = []
+    empty = EMPTY_BINDINGS.get(schema_id, [])
+    for key in schema.list_keys():
+        info = schema.get_key(key)
+        if info.get_value_type().dup_string() == 'as' and (key in empty or is_accels(info.get_default_value())):
+            out.append(key)
+    return out
+
+
+def schemas(src):
+    """[(schema id, owner, gettext domain)] of every schema the list reads that is installed"""
+    found = []
+    for schema_id, domain in GNOME:
+        found.append((schema_id, 'gnome', domain))
+    non_relocatable, _ = src.list_schemas(True)
+    for schema_id in sorted(non_relocatable):
+        if schema_id == TILING:
+            found.append((schema_id, 'tiling', TEXTDOMAIN))
+        elif (schema_id.startswith(UI_PREFIX) and schema_id != TILING_SWITCH[0]) or schema_id in DESKTOP_EXTRA:
+            found.append((schema_id, 'desktop', TEXTDOMAIN))
+    return [entry for entry in found if src.lookup(entry[0], True) is not None]
+
+
+def strv(settings, key, default=False):
+    value = settings.get_default_value(key) if default else settings.get_value(key)
+    if value is None:
+        value = settings.props.settings_schema.get_key(key).get_default_value()
+    return [v for v in value.unpack() if v]
+
+
+def custom_rows(src):
+    rows = []
+    if src.lookup(RELOCATABLE, True) is None or src.lookup(MEDIA_KEYS, True) is None:
+        return rows
+    media = Gio.Settings.new(MEDIA_KEYS)
+    image = set(media.get_default_value('custom-keybindings').unpack())
+    for path in media.get_strv('custom-keybindings'):
+        if not path.startswith(CUSTOM_PATH) or not path.endswith('/'):
+            continue
+        ident = path[len(CUSTOM_PATH):-1]
+        if not CUSTOM_ID.match(ident):
+            continue
+        settings = Gio.Settings.new_with_path(RELOCATABLE, path)
+        value = settings.get_string('binding')
+        default = settings.get_default_value('binding')
+        default = default.unpack() if default is not None else ''
+        name = settings.get_string('name')
+        rows.append({
+            'schema': 'custom', 'key': ident, 'owner': 'desktop' if path in image else 'custom',
+            'title': name or ident, 'value': [value] if value else [], 'default': [default] if default else [],
+            'changed': settings.get_user_value('binding') is not None and value != default,
+        })
+    return rows
+
+
+def taken_by_tiling():
+    """What the tiling, while it runs, took out of GNOME's keys where one of its own collides, as its state file
+    (~/.local/state/amethystora/tiling.json, or its copy) records it: {(schema, key): (what it wrote, the account's own)}.
+    The account's own is what it wrote with the combinations it took put back where they were"""
+    state = os.path.join(GLib.get_user_state_dir(), 'amethystora', 'tiling.json')
+    for path in (state, f'{state}.bak'):
+        try:
+            with open(path, encoding='utf-8') as file:
+                records = json.load(file).get('taken', [])
+            out = {}
+            for record in records:
+                wrote = [a for a in record.get('wrote', []) if isinstance(a, str)]
+                own = list(wrote)
+                for removed in sorted(record.get('removed', []), key=lambda r: r.get('index', 0)):
+                    if isinstance(removed.get('accelerator'), str):
+                        own.insert(int(removed.get('index', len(own))), removed['accelerator'])
+                out[(record.get('schema'), record.get('key'))] = (wrote, own)
+            return out
+        except (OSError, ValueError, AttributeError, TypeError):
+            continue
+    return {}
+
+
+def rows():
+    src = source()
+    tiling_on = True
+    if src.lookup(TILING_SWITCH[0], True) is not None:
+        tiling_on = Gio.Settings.new(TILING_SWITCH[0]).get_boolean(TILING_SWITCH[1])
+    taken = taken_by_tiling() if tiling_on else {}
+    out = []
+    for schema_id, owner, domain in schemas(src):
+        schema = src.lookup(schema_id, True)
+        settings = Gio.Settings.new(schema_id)
+        for key in keys_of(schema_id, schema):
+            value = strv(settings, key)
+            default = strv(settings, key, default=True)
+            # A combination the tiling holds for itself is still the account's: it comes back when the tiling is off
+            wrote, own = taken.get((schema_id, key), (None, None))
+            if own is not None and value == wrote:
+                value = own
+            out.append({
+                'schema': schema_id, 'key': key, 'owner': owner,
+                'title': translated(domain, schema.get_key(key).get_summary()) or key,
+                'value': value, 'default': default,
+                'changed': value != default and (settings.get_user_value(key) is not None or own is not None),
+            })
+    out.extend(custom_rows(src))
+    for row in out:
+        row['active'] = row['owner'] != 'tiling' or tiling_on
+        row['clash'] = []
+    # Two active shortcuts on the same combination, unless both are as the image ships them: the image's own overlaps
+    # are by design (the tiling takes GNOME's combination while it is on)
+    by_combo = {}
+    for row in out:
+        if not row['active']:
+            continue
+        for accel in row['value']:
+            combo = normal(accel)
+            if combo:
+                by_combo.setdefault(combo, []).append(row)
+    for group in by_combo.values():
+        if len(group) < 2:
+            continue
+        for row in group:
+            for other in group:
+                if other is row or (not row['changed'] and not other['changed']):
+                    continue
+                if any(c['schema'] == other['schema'] and c['key'] == other['key'] for c in row['clash']):
+                    continue
+                row['clash'].append({'schema': other['schema'], 'key': other['key'], 'owner': other['owner'],
+                                     'title': other['title']})
+    # Clashes first, then what is bound, each by owner and words, then what is not
+    out.sort(key=lambda r: (not r['clash'], not r['value'], OWNERS.index(r['owner']) if r['owner'] in OWNERS else 9,
+                           r['title'].lower()))
+    return tiling_on, out
+
+
+def find(schema_id, key):
+    """The Gio.Settings and key of a shortcut of the list, or exit saying why not"""
+    src = source()
+    if schema_id == 'custom':
+        if not CUSTOM_ID.match(key):
+            die(f'{key} is not a custom keybinding', 64)
+        media = Gio.Settings.new(MEDIA_KEYS)
+        path = f'{CUSTOM_PATH}{key}/'
+        if path not in media.get_strv('custom-keybindings'):
+            die(f'there is no custom keybinding {key}', 64)
+        return Gio.Settings.new_with_path(RELOCATABLE, path), 'binding'
+    if not ID.match(key):
+        die(f'{key} is not a key', 64)
+    known = {entry[0] for entry in schemas(src)}
+    if schema_id not in known:
+        die(f'{schema_id} is not a schema of shortcuts', 64)
+    if key not in keys_of(schema_id, src.lookup(schema_id, True)):
+        die(f'{schema_id} has no shortcut {key}', 64)
+    return Gio.Settings.new(schema_id), key
+
+
+def keysym_known(name):
+    try:
+        import gi
+        gi.require_version('Gdk', '4.0')
+        from gi.repository import Gdk
+    except Exception:
+        return True
+    return Gdk.keyval_from_name(name) not in (0, 0xffffff)
+
+
+def check_accel(accel):
+    parsed = parse(accel)
+    if not parsed:
+        die(f'{accel!r} is not a combination such as <Super><Alt>v', 64)
+    mods, key = parsed
+    if key.lower() in ('shift_l', 'shift_r', 'control_l', 'control_r', 'alt_l', 'alt_r', 'super_l', 'super_r',
+                       'meta_l', 'meta_r', 'hyper_l', 'hyper_r', 'iso_level3_shift'):
+        die(f'{accel!r} is only modifiers', 64)
+    if not mods & {'super', 'control', 'alt'} and not ALONE.match(key):
+        die(f'{accel!r} needs Super, Ctrl or Alt: without one, the key could no longer be typed', 64)
+    if not keysym_known(key):
+        die(f'{key!r} is not a key', 64)
+
+
+def write(settings, key, values):
+    if key == 'binding':
+        settings.set_string(key, values[0] if values else '')
+    else:
+        settings.set_strv(key, values)
+    Gio.Settings.sync()
+
+
+def main(argv):
+    try:
+        locale.setlocale(locale.LC_ALL, '')
+    except locale.Error:
+        pass
+    if not argv:
+        die('usage: amethystora-keybindings list [--json] | set SCHEMA KEY ACCEL | clear SCHEMA KEY | reset SCHEMA KEY', 64)
+    command, args = argv[0], argv[1:]
+    if command == 'list' and args in ([], ['--json']):
+        tiling_on, found = rows()
+        if args:
+            print(json.dumps({'tiling': tiling_on, 'bindings': found}, ensure_ascii=False))
+            return
+        for row in found:
+            keys = ', '.join(words(a) for a in row['value']) or '-'
+            clash = ''.join(f'  (clashes with {c["title"]})' for c in row['clash'])
+            print(f'{row["owner"]:<8} {row["title"]:<52} {keys}{clash}')
+        return
+    if command == 'set' and len(args) == 3:
+        settings, key = find(args[0], args[1])
+        check_accel(args[2])
+        write(settings, key, [args[2]])
+        return
+    if command == 'clear' and len(args) == 2:
+        settings, key = find(args[0], args[1])
+        write(settings, key, [])
+        return
+    if command == 'reset' and len(args) == 2:
+        settings, key = find(args[0], args[1])
+        settings.reset(key)
+        Gio.Settings.sync()
+        return
+    die('usage: amethystora-keybindings list [--json] | set SCHEMA KEY ACCEL | clear SCHEMA KEY | reset SCHEMA KEY', 64)
+
+
+if __name__ == '__main__':
+    try:
+        main(sys.argv[1:])
+    except GLib.Error as error:
+        die(error.message)

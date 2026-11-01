@@ -205,6 +205,25 @@ done
 [[ "$(sed -n "s/^SOUND_KEYS='\(.*\)'\$/\1/p" "${SETUP}" | jq -c .)" == '{"event-sounds":["b"]}' ]]
 [[ "$(GSETTINGS_BACKEND=memory /usr/bin/gsettings range org.gnome.desktop.sound event-sounds | xargs)" == "type b" ]]
 [[ "$(sed -n 's/^SOUND_KEYS=(\(.*\))$/\1/p' "$(dirname "${SETUP}")/amethystora-setup-manifest")" == "event-sounds" ]]
+# The keyboard GNOME keeps out of sight (spec-keys): exactly these keys of four schemas, each of the type its schema gives
+# it (the repeat delay a uint32), never accents or the input sources themselves, and the manifest saves the same keys
+for part in "INPUT org.gnome.desktop.input-sources per-window:b xkb-options:as" \
+    "KEYBOARD org.gnome.desktop.peripherals.keyboard remember-numlock-state:b numlock-state:b delay:u" \
+    "PASTE org.gnome.desktop.interface gtk-enable-primary-paste:b" \
+    "KEYS org.gnome.shell.extensions.amethystora-ui.keys super-alone:s"; do
+    read -r name schema_id pairs <<<"${part}"
+    TABLE="$(sed -n "s/^${name}_KEYS='\(.*\)'\$/\1/p" "${SETUP}")"
+    listed="$(jq -r 'keys[]' <<<"${TABLE}" | sort | paste -sd ' ')"
+    wanted="$(tr ' ' '\n' <<<"${pairs}" | cut -d: -f1 | sort | paste -sd ' ')"
+    [[ "${listed}" == "${wanted}" ]] || { echo "${name}_KEYS holds ${listed}, not ${wanted}"; false; }
+    for pair in ${pairs}; do
+        range="$(GSETTINGS_BACKEND=memory /usr/bin/gsettings range "${schema_id}" "${pair%%:*}" | sed -n 1p | xargs)"
+        [[ "${range}" == "type ${pair#*:}" || ("${pair#*:}" == s && "${range}" == enum) ]] ||
+            { echo "${schema_id} ${pair%%:*} is ${range}"; false; }
+    done
+    saved="$(sed -n "s/^${name}_KEYS=(\(.*\))\$/\1/p" "$(dirname "${SETUP}")/amethystora-setup-manifest" | tr ' ' '\n' | sort | paste -sd ' ')"
+    [[ "${saved}" == "${listed}" ]] || { echo "the manifest saves ${saved} of ${schema_id}, not ${listed}"; false; }
+done
 # The search's switches, the emoji picker's skin tone and the not-responding question likewise, each schema less its
 # keybinding (open, emoji-picker, force-quit), which the keybindings part keeps, and the audio module's switches less
 # presets, which name this machine's outputs; and the manifest saves the same keys
@@ -404,7 +423,14 @@ org.gnome.shell.extensions.amethystora-ui.screenshot capture-pin true
 org.gnome.shell.extensions.amethystora-ui.deskwidgets enabled false
 org.gnome.shell.extensions.amethystora-ui.quit frozen-dialog true
 org.gnome.shell.extensions.amethystora-ui.privacy shield 'tile'
-org.gnome.shell.extensions.amethystora-ui.privacy network-apps false"
+org.gnome.shell.extensions.amethystora-ui.privacy network-apps false
+org.gnome.desktop.input-sources per-window false
+org.gnome.desktop.input-sources xkb-options ['grp:alt_shift_toggle']
+org.gnome.desktop.peripherals.keyboard remember-numlock-state true
+org.gnome.desktop.peripherals.keyboard delay uint32 500
+org.gnome.desktop.interface gtk-enable-primary-paste true
+org.gnome.shell.extensions.amethystora-ui.keys plain-paste ['<Super><Alt>v']
+org.gnome.shell.extensions.amethystora-ui.keys super-alone 'overview'"
         values="org.gnome.shell favorite-apps ['org.gnome.Nautilus.desktop', 'firefox.desktop']
 org.gnome.shell enabled-extensions ['clipboard-indicator@tudmotu.com']
 org.gnome.desktop.wm.keybindings close ['<Super>q']
@@ -539,7 +565,11 @@ jq '.flatpaks.system += [{"app": "org.gnome.Maps", "origin": "flathub"}] | .brew
     | .settings.deskwidgets = {"enabled": true}
     | .settings.shelf = {"shelf": "edge"} | .settings.desks = {"desks": true}
     | .settings.quit = {"frozen-dialog": false}
-    | .settings.privacy = {"shield": "attention", "network-apps": true}' \
+    | .settings.privacy = {"shield": "attention", "network-apps": true}
+    | .settings.input = {"per-window": true, "xkb-options": ["grp:alt_shift_toggle", "caps:escape"]}
+    | .settings.keyboard = {"delay": 300} | .settings.paste = {"gtk-enable-primary-paste": false}
+    | .settings.keys = {"super-alone": "search"}
+    | .settings.keybindings["org.gnome.shell.extensions.amethystora-ui.keys"] = {"plain-paste": ["<Super><Shift>v"]}' \
     "${FILE}" >"${T}/more.json"
 out="$("${SETUP}" diff "${T}/more.json")"
 grep -qxF "  ~ the windows' dim: false, in place of true" <<<"${out}"
@@ -575,7 +605,19 @@ grep -qxF "  ~ the desks' desks: true, in place of false" <<<"${out}"
 grep -qxF "  ~ force quit's frozen-dialog: false, in place of true" <<<"${out}"
 grep -qxF '  ~ the privacy settings'"'"' shield: "attention", in place of "tile"' <<<"${out}"
 grep -qxF "  ~ the privacy settings' network-apps: true, in place of false" <<<"${out}"
+# The keyboard GNOME keeps out of sight (spec-keys): each window's layout, the xkb options, the repeat delay (a uint32,
+# which GSettings prints with its type), middle-click paste and what Super alone opens
+grep -qxF "  ~ the input sources' per-window: true, in place of false" <<<"${out}"
+grep -qxF '  ~ the input sources'"'"' xkb-options: ["grp:alt_shift_toggle","caps:escape"], in place of ["grp:alt_shift_toggle"]' <<<"${out}"
+grep -qxF "  ~ the keyboard's delay: 300, in place of 500" <<<"${out}"
+grep -qxF "  ~ middle-click paste's gtk-enable-primary-paste: false, in place of true" <<<"${out}"
+grep -qxF '  ~ the Super key'"'"'s super-alone: "search", in place of "overview"' <<<"${out}"
 "${SETUP}" apply --yes "${T}/more.json" >/dev/null
+grep -qx "gsettings set org.gnome.desktop.input-sources per-window true" "${LOG}"
+grep -qxF 'gsettings set org.gnome.desktop.input-sources xkb-options ["grp:alt_shift_toggle","caps:escape"]' "${LOG}"
+grep -qx "gsettings set org.gnome.desktop.peripherals.keyboard delay 300" "${LOG}"
+grep -qx "gsettings set org.gnome.desktop.interface gtk-enable-primary-paste false" "${LOG}"
+grep -qxF 'gsettings set org.gnome.shell.extensions.amethystora-ui.keys super-alone "search"' "${LOG}"
 grep -qxF 'gsettings set org.gnome.shell.extensions.amethystora-ui.focus games-power "as-set"' "${LOG}"
 grep -qx "gsettings set org.gnome.shell.extensions.amethystora-ui.focus trigger-sleep true" "${LOG}"
 grep -qxF 'gsettings set org.gnome.shell.extensions.amethystora-ui.focus work-apps ["org.gnome.Nautilus.desktop"]' "${LOG}"
@@ -701,6 +743,17 @@ for bad in '{"version": 1, "token": "x"}' '{"version": 2}' \
     '{"version": 1, "settings": {"pill": {"show-banners": false}}}' \
     '{"version": 1, "settings": {"quick": {"no-such-setting": []}}}' \
     '{"version": 1, "settings": {"quick": {"tile-order": ["Wifi"]}}}' \
+    '{"version": 1, "settings": {"input": {"sources": [["xkb", "us"]]}}}' \
+    '{"version": 1, "settings": {"input": {"xkb-options": ["caps escape"]}}}' \
+    '{"version": 1, "settings": {"input": {"xkb-options": ["caps:escape", "caps:escape"]}}}' \
+    '{"version": 1, "settings": {"input": {"per-window": "on"}}}' \
+    '{"version": 1, "settings": {"keyboard": {"delay": 50}}}' \
+    '{"version": 1, "settings": {"keyboard": {"repeat-interval": 30}}}' \
+    '{"version": 1, "settings": {"paste": {"font-name": "Sans 30"}}}' \
+    '{"version": 1, "settings": {"keys": {"super-alone": "dock"}}}' \
+    '{"version": 1, "settings": {"keys": {"plain-paste": ["<Super>v"]}}}' \
+    '{"version": 1, "settings": {"typing": {"accents": true}}}' \
+    '{"version": 1, "settings": {"keybindings": {"org.gnome.shell.extensions.amethystora-ui.keys": {"super-alone": ["<Super>a"]}}}}' \
     '{"version": 1, "settings": {"quick": {"tile-hidden": ["../dnd"]}}}' \
     '{"version": 1, "settings": {"quick": {"tile-hidden": ["dnd", "dnd"]}}}' \
     '{"version": 1, "settings": {"quick": {"tile-order": "wifi"}}}' \

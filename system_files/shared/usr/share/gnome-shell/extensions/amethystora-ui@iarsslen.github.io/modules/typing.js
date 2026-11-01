@@ -6,10 +6,14 @@
 //
 // Off, nothing is held or watched: no wrapper on the input method, no file monitor, no signal but the switch's own.
 // On, nothing runs until a key is typed into an app (typing/expand.js).
+//
+// Hold a key for accents (the key accents, offered and off: ame desktop accents on, Control's Keyboard page) is here
+// too, at the same place in the shell (typing/accents.js): a letter held shows its accented forms over the cursor.
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 
+import {Accents} from './typing/accents.js';
 import {Expander, inputMethodFits} from './typing/expand.js';
 import {LIMITS, parseShortcuts} from './typing/match.js';
 
@@ -89,15 +93,20 @@ export class Typing {
         this._counts = {
             observed: 0, expansions: 0, errors: 0, maxUs: 0, totalUs: 0, timed: 0, expandMaxUs: 0,
             skipped: {password: 0, purpose: 0, shell: 0, preedit: 0, filtered: 0, terminal: 0, unseen: 0},
+            accentsOpened: 0, accentsPicked: 0, accentsGaveUp: 0, accentsNoCaret: 0,
         };
         this._settings = this._ext.getSettings(SCHEMA);
-        this._settings.connectObject('changed::expand', () => this._sync(), this);
+        this._settings.connectObject('changed::expand', () => this._sync(), 'changed::accents',
+            () => this._syncAccents(), this);
+        // The accents first, so that the shortcuts' observer, put on top of them, sees what the app sees
+        this._syncAccents();
         this._sync();
     }
 
     disable() {
         this._settings?.disconnectObject(this);
         this._stop();
+        this._stopAccents();
         // Disposed now rather than by the collector (dock.js says why)
         this._settings?.run_dispose();
         this._settings = null;
@@ -108,6 +117,33 @@ export class Typing {
             this._start();
         else
             this._stop();
+    }
+
+    _syncAccents() {
+        if (!this._settings.get_boolean('accents')) {
+            this._stopAccents();
+            return;
+        }
+        if (this._accents)
+            return;
+        if (!inputMethodFits()) {
+            if (!this._unfit)
+                console.warn('Amethystora UI: accents: GNOME\'s input method changed');
+            this._unfit = true;
+            return;
+        }
+        this._accents = new Accents(this._counts);
+        try {
+            this._accents.start();
+        } catch (e) {
+            console.error(`Amethystora UI: accents did not start: ${e.message}`);
+            this._stopAccents();
+        }
+    }
+
+    _stopAccents() {
+        this._accents?.stop();
+        this._accents = null;
     }
 
     _start() {
@@ -213,6 +249,11 @@ export class Typing {
             monitor: !!this._monitor,
             shortcuts: this._expander?.count ?? 0,
             unfit: !!this._unfit,
+            accents: {
+                on: !!this._settings?.get_boolean('accents'), wrapped: !!this._accents?.wrapped,
+                open: !!this._accents?.open, opened: counts.accentsOpened, picked: counts.accentsPicked,
+                gaveUp: counts.accentsGaveUp, noCaret: counts.accentsNoCaret,
+            },
         });
     }
 }

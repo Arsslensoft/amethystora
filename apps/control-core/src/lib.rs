@@ -98,6 +98,30 @@ pub struct Shortcut {
     pub lines: u32,
 }
 
+/// Another shortcut on the same keys, as the keybindings helper names it
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Clash {
+    pub schema: String,
+    pub key: String,
+    pub owner: String,
+    pub title: String,
+}
+
+/// A keyboard shortcut as /usr/libexec/amethystora-keybindings lists it: its schema and key (or custom and an id), whose
+/// it is (gnome, desktop, tiling or custom), its words, the combinations it holds and ships with, and its clashes
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Keybinding {
+    pub schema: String,
+    pub key: String,
+    pub owner: String,
+    pub title: String,
+    pub value: Vec<String>,
+    pub default: Vec<String>,
+    pub changed: bool,
+    pub active: bool,
+    pub clash: Vec<Clash>,
+}
+
 /// One of the actions the list gives a pool of disks
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct PoolAction {
@@ -156,6 +180,9 @@ pub struct Item {
     pub shortcuts: Vec<Shortcut>,
     // The theme maker's palettes to start from
     pub starts: Vec<Start>,
+    // Every keyboard shortcut, and whether the tiling is on (its shortcuts work only then)
+    pub keybindings: Vec<Keybinding>,
+    pub tiling: bool,
 }
 
 /// The list as the script gave it: {version, sealed, elsewhere, items}, of which the page uses the last two
@@ -328,6 +355,30 @@ fn item(value: &Value) -> Item {
             })
             .filter(|start| !start.value.is_empty() && start.colors.contains_key("background") && start.colors.contains_key("foreground"))
             .collect(),
+        keybindings: array(field("keybindings"))
+            .iter()
+            .map(|binding| Keybinding {
+                schema: string(binding.get("schema")),
+                key: string(binding.get("key")),
+                owner: string(binding.get("owner")),
+                title: string(binding.get("title")),
+                value: words(binding.get("value")).unwrap_or_default(),
+                default: words(binding.get("default")).unwrap_or_default(),
+                changed: truthy(binding.get("changed")),
+                active: truthy(binding.get("active")),
+                clash: array(binding.get("clash"))
+                    .iter()
+                    .map(|clash| Clash {
+                        schema: string(clash.get("schema")),
+                        key: string(clash.get("key")),
+                        owner: string(clash.get("owner")),
+                        title: string(clash.get("title")),
+                    })
+                    .collect(),
+            })
+            .filter(|binding| !binding.schema.is_empty() && !binding.key.is_empty())
+            .collect(),
+        tiling: truthy(field("tiling")),
     }
 }
 
@@ -376,6 +427,8 @@ pub enum Refusal {
     ThemeName,
     /// A palette with a key missing or a value that is not a colour
     ThemeColours,
+    /// Keys that are not a shortcut: no Super, Ctrl or Alt with a key that would then not be typed, or not keys at all
+    Accelerator,
 }
 
 /// A command of the list with values checked here in the place of its placeholders, {value} and the like,
@@ -618,6 +671,94 @@ pub fn import_theme(list: Option<&List>, file: Option<&Path>) -> Result<Run, Ref
         return Err(Refusal::Refused);
     };
     filled(command.command.as_ref(), command.terminal, &[("{file}", file)])
+}
+
+// --- Keyboard shortcuts ----------------------------------------------------------------------------------
+//
+// The rules of /usr/libexec/amethystora-keybindings, which checks them again: a combination is modifiers in angle
+// brackets and one key, the modifiers GTK and Mutter know, and Super, Ctrl or Alt among them unless the key is a
+// function key, Print, Pause, Scroll_Lock, Break, Sys_Req or an XF86 key; a modifier alone is not one.
+
+const MODIFIER_NAMES: &[(&str, &str)] = &[
+    ("shift", "shift"), ("control", "control"), ("ctrl", "control"), ("ctl", "control"), ("primary", "control"),
+    ("alt", "alt"), ("mod1", "alt"), ("super", "super"), ("mod4", "super"), ("meta", "meta"), ("hyper", "hyper"),
+];
+const MODIFIER_KEYS: &[&str] = &[
+    "shift_l", "shift_r", "control_l", "control_r", "alt_l", "alt_r", "super_l", "super_r", "meta_l", "meta_r", "hyper_l",
+    "hyper_r", "iso_level3_shift",
+];
+
+/// (modifiers, key) of a combination such as <Super><Alt>v, or None when it is not one
+pub fn parse_accel(accel: &str) -> Option<(Vec<&'static str>, String)> {
+    let mut rest = accel;
+    let mut mods: Vec<&'static str> = Vec::new();
+    while let Some(after) = rest.strip_prefix('<') {
+        let end = after.find('>')?;
+        let name = &after[..end];
+        if name.is_empty() || !name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+            return None;
+        }
+        let known = MODIFIER_NAMES.iter().find(|(n, _)| name.eq_ignore_ascii_case(n))?.1;
+        if !mods.contains(&known) {
+            mods.push(known);
+        }
+        rest = &after[end + 1..];
+    }
+    if rest.is_empty() || rest.len() > 64 || !rest.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+        return None;
+    }
+    Some((mods, rest.to_string()))
+}
+
+fn alone(key: &str) -> bool {
+    let function = key.strip_prefix('F').is_some_and(|n| !n.is_empty() && n.len() <= 2 && n.chars().all(|c| c.is_ascii_digit()) && !n.starts_with('0'));
+    function || matches!(key, "Print" | "Pause" | "Scroll_Lock" | "Break" | "Sys_Req") || (key.starts_with("XF86") && key.len() > 4)
+}
+
+/// A combination amethystora-keybindings takes for a shortcut
+pub fn valid_accel(accel: &str) -> bool {
+    let Some((mods, key)) = parse_accel(accel) else { return false };
+    if MODIFIER_KEYS.contains(&key.to_ascii_lowercase().as_str()) {
+        return false;
+    }
+    mods.iter().any(|m| matches!(*m, "super" | "control" | "alt")) || alone(&key)
+}
+
+/// A shortcut the list named set to a combination, taken off, or put back as the image ships it: the schema and key
+/// each one argument, the combination checked first
+pub fn keybinding(list: Option<&List>, action: &str, schema: &str, key: &str, accel: &str) -> Result<Run, Refusal> {
+    let item = list.and_then(|list| list.first_of_kind("keybindings")).filter(|item| item.available).ok_or(Refusal::Refused)?;
+    let command = item.commands.get(action).ok_or(Refusal::Refused)?;
+    // A list that would put anything else in the arguments is not followed
+    if command.command.as_ref().is_some_and(|words| words.iter().any(|word| word.contains('{') && !matches!(word.as_str(), "{schema}" | "{key}" | "{accel}"))) {
+        return Err(Refusal::Refused);
+    }
+    if !item.keybindings.iter().any(|binding| binding.schema == schema && binding.key == key) {
+        return Err(Refusal::Refused);
+    }
+    let accel = match action {
+        "set" if valid_accel(accel) => accel,
+        "set" => return Err(Refusal::Accelerator),
+        "clear" | "reset" => "",
+        _ => return Err(Refusal::Refused),
+    };
+    let run = filled(command.command.as_ref(), command.terminal, &[("{schema}", schema), ("{key}", key), ("{accel}", accel)])?;
+    if run.argv.iter().any(String::is_empty) {
+        return Err(Refusal::Refused);
+    }
+    Ok(run)
+}
+
+/// The same keys, as GNOME compares them: the modifiers as a set (Primary and Ctrl as Control), a letter in either case
+pub fn same_keys(a: &str, b: &str) -> bool {
+    match (parse_accel(a), parse_accel(b)) {
+        (Some((mut ma, ka)), Some((mut mb, kb))) => {
+            ma.sort_unstable();
+            mb.sort_unstable();
+            ma == mb && (ka == kb || (ka.len() == 1 && ka.eq_ignore_ascii_case(&kb)))
+        }
+        _ => false,
+    }
 }
 
 // --- An image of one's own --------------------------------------------------------------------------------
@@ -906,5 +1047,58 @@ mod tests {
         assert!(import_theme(Some(&list), Some(Path::new("/nonexistent/x.conf"))).is_err());
         assert!(import_theme(Some(&list), None).is_err());
         let _ = std::fs::remove_file(file);
+    }
+
+    const KEYS_JSON: &str = r#"{"items": [
+        {"page": "keyboard", "id": "keyboard-shortcuts", "kind": "keybindings", "title": "Every shortcut", "available": true,
+         "tiling": true,
+         "keybindings": [
+            {"schema": "org.gnome.settings-daemon.plugins.media-keys", "key": "previous", "owner": "gnome", "title": "Previous track",
+             "value": ["<Super>Left"], "default": ["AudioPrev"], "changed": true, "active": true,
+             "clash": [{"schema": "org.gnome.shell.extensions.amethystora-ui.tiling.keybindings", "key": "switch-left", "owner": "tiling",
+                        "title": "Switch to the window on the left"}]},
+            {"schema": "custom", "key": "custom27", "owner": "desktop", "title": "AI agent", "value": [], "default": ["<Super><Control><Shift>a"],
+             "changed": true, "active": true, "clash": []},
+            {"schema": "", "key": "nothing", "owner": "gnome", "title": "No schema", "value": [], "default": []}],
+         "commands": {"set": {"terminal": false, "command": ["ame", "desktop", "shortcut", "set", "{schema}", "{key}", "{accel}"]},
+                      "clear": {"terminal": false, "command": ["ame", "desktop", "shortcut", "clear", "{schema}", "{key}"]},
+                      "reset": {"terminal": false, "command": ["ame", "desktop", "shortcut", "reset", "{schema}", "{key}"]}}}
+    ]}"#;
+
+    #[test]
+    fn keybindings_by_the_helpers_rules() {
+        let list = parse_list(KEYS_JSON).unwrap();
+        let item = list.find("keyboard-shortcuts").unwrap();
+        assert!(item.tiling);
+        // A row without a schema is left out
+        assert_eq!(item.keybindings.len(), 2);
+        assert_eq!(item.keybindings[0].clash[0].owner, "tiling");
+        assert!(item.keybindings[1].value.is_empty());
+        const MEDIA: &str = "org.gnome.settings-daemon.plugins.media-keys";
+        assert_eq!(argv(keybinding(Some(&list), "set", MEDIA, "previous", "<Super><Alt>v")),
+            ["ame", "desktop", "shortcut", "set", MEDIA, "previous", "<Super><Alt>v"]);
+        assert_eq!(argv(keybinding(Some(&list), "clear", MEDIA, "previous", "ignored")), ["ame", "desktop", "shortcut", "clear", MEDIA, "previous"]);
+        assert_eq!(argv(keybinding(Some(&list), "reset", "custom", "custom27", "")), ["ame", "desktop", "shortcut", "reset", "custom", "custom27"]);
+        // Only a shortcut the list named, only its three actions
+        assert_eq!(keybinding(Some(&list), "set", MEDIA, "next", "<Super>n"), Err(Refusal::Refused));
+        assert_eq!(keybinding(Some(&list), "set", "org.gnome.nope", "previous", "<Super>n"), Err(Refusal::Refused));
+        assert_eq!(keybinding(Some(&list), "remove", MEDIA, "previous", ""), Err(Refusal::Refused));
+        assert_eq!(keybinding(None, "set", MEDIA, "previous", "<Super>n"), Err(Refusal::Refused));
+        for bad in ["a", "<Shift>a", "Return", "<Super>", "<Super>Super_L", "<Super", "<Nope>a", "<Super>a b", "<Super>a;rm", "--yes", "",
+            "<Super>é"] {
+            assert_eq!(keybinding(Some(&list), "set", MEDIA, "previous", bad), Err(Refusal::Accelerator), "{bad:?}");
+        }
+        for good in ["F5", "<Shift>F12", "Print", "XF86AudioPlay", "<Primary>q", "<Control><Alt>t", "<Mod4>Left", "<super>v"] {
+            assert!(valid_accel(good), "{good}");
+        }
+        assert!(same_keys("<Super><Alt>v", "<Alt><Super>V"));
+        assert!(same_keys("<Primary>q", "<Control>q"));
+        assert!(!same_keys("<Super>Left", "<Super><Shift>Left"));
+        assert!(!same_keys("<Super>Left", "Left"));
+        // Not a setting with values: the agent's change never reaches it
+        assert_eq!(change(Some(&list), "keyboard-shortcuts", "on"), Err(Refusal::Refused));
+        // A list that would put anything else among the arguments is not followed
+        let leaky = parse_list(&KEYS_JSON.replace(r#""{key}", "{accel}"]"#, r#""{key}", "{accel}", "{title}"]"#)).unwrap();
+        assert_eq!(keybinding(Some(&leaky), "set", MEDIA, "previous", "<Super>n"), Err(Refusal::Refused));
     }
 }

@@ -31,7 +31,7 @@ use amethystora_control_core as core;
 pub const SETUP: &str = "/usr/libexec/amethystora-setup";
 pub const IMAGE_INFO: &str = "/usr/share/amethystora/image-info.json";
 /// The pages of the sidebar, in its order
-pub const PAGES: [&str; 6] = ["appearance", "desktop", "apps", "agent", "system", "setup"];
+pub const PAGES: [&str; 7] = ["appearance", "desktop", "keyboard", "apps", "agent", "system", "setup"];
 /// Pick a look, the page a new account sees once (`amethystora-control welcome`), which is not in the sidebar
 pub const WELCOME: &str = "welcome";
 /// The pictures a wallpaper can be, by their extension
@@ -79,6 +79,7 @@ fn words(refusal: Refusal) -> String {
         // amethystora-theme-file says the same when it refuses
         Refusal::ThemeName => t!("A theme's name is 1 to 40 letters, digits, spaces and dashes."),
         Refusal::ThemeColours => t!("Every colour of the theme has to be chosen."),
+        Refusal::Accelerator => t!("A shortcut needs Super, Ctrl or Alt with a key, or a function key."),
     }
 }
 
@@ -179,6 +180,13 @@ pub fn save_theme(list: Option<&List>, name: &str, colors: &std::collections::BT
 /// A colour file picked in the file dialog, imported in a terminal, which shows it and asks first
 pub fn import_theme(list: Option<&List>, file: Option<&Path>) -> Result<Run, String> {
     core::import_theme(list, file).map_err(words)
+}
+
+// --- Keyboard shortcuts ----------------------------------------------------------------------------------
+
+/// A shortcut the list named set to the keys recorded, taken off or put back as the image ships it
+pub fn keybinding(list: Option<&List>, action: &str, schema: &str, key: &str, accel: &str) -> Result<Run, String> {
+    core::keybinding(list, action, schema, key, accel).map_err(words)
 }
 
 // --- Text shortcuts ---------------------------------------------------------------------------------------

@@ -641,8 +641,13 @@ env LD_LIBRARY_PATH=/apps-stage/usr/lib64 NODE_ICU_DATA="$(echo /apps-stage/usr/
 # module after the emoji picker, the helper the only writer of the file, its rules and the shell's one list of cases (the
 # installed helper, on the apps stage's Node), its two commands, and neither the switch nor a text in the setup file
 TYPING=org.gnome.shell.extensions.amethystora-ui.typing
-[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${TYPING}")" == expand ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${TYPING}" | sort | paste -sd ' ')" == "accents expand" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${TYPING}" expand)" == false ]]
+# Hold a key for accents (plans/ui-ideas/spec-keys.md): offered and off, in the same module, never in the setup file
+[[ "$(GSETTINGS_BACKEND=memory gsettings get "${TYPING}" accents)" == false ]]
+test -s "${UI_EXTENSION}/modules/typing/accents.js"
+test -s "${UI_EXTENSION}/stylesheets/typing.css"
+grep -q '^accents STATE="":' /usr/share/amethystora/just/desktop.just
 for file in modules/typing.js modules/typing/match.js modules/typing/expand.js; do
     test -s "${UI_EXTENSION}/${file}"
 done
@@ -668,6 +673,32 @@ if grep -nE 'prototype\.notify_key_event|InputMethod\.prototype|eval\(|new Funct
     echo "the text shortcuts module touches GNOME's input method class, writes a file or logs what was typed"
     exit 1
 fi
+# Keys (plans/ui-ideas/spec-keys.md): paste as plain text on Super+Alt+V and what Super alone opens, the module after
+# typing; every shortcut in one list (Control's Keyboard page), Super+Alt+V in it once and no shortcut of the image
+# clashing with another as the image ships them; a bare letter never taken as a shortcut; the keyboard's recipes
+KEYS_SCHEMA=org.gnome.shell.extensions.amethystora-ui.keys
+[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${KEYS_SCHEMA}" | sort | paste -sd ' ')" == "plain-paste super-alone" ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings get "${KEYS_SCHEMA}" plain-paste)" == "['<Super><Alt>v']" ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings get "${KEYS_SCHEMA}" super-alone)" == "'overview'" ]]
+test -s "${UI_EXTENSION}/modules/keys.js"
+[[ "$(grep -oE "^    \['(typing|keys)'," "${UI_EXTENSION}/extension.js" | paste -sd ' ')" == "    ['typing',     ['keys'," ]]
+test -x /usr/libexec/amethystora-keybindings
+KEYBINDINGS_JSON="$(GSETTINGS_BACKEND=memory /usr/libexec/amethystora-keybindings list --json)"
+jq -e '[.bindings[] | select(.owner == "tiling")] | length == 100' <<<"${KEYBINDINGS_JSON}" >/dev/null
+jq -e '[.bindings[] | select(.owner == "gnome")] | length > 100' <<<"${KEYBINDINGS_JSON}" >/dev/null
+jq -e '[.bindings[] | select(.schema == "org.gnome.shell.extensions.amethystora-ui.keys" and .key == "plain-paste")] | length == 1' \
+    <<<"${KEYBINDINGS_JSON}" >/dev/null
+SUPER_ALT_V="$(jq -r '[.bindings[] | .value[] | ascii_downcase | select(test("^(<(super|alt)>){2}v$"))
+    | select(contains("<super>") and contains("<alt>"))] | length' <<<"${KEYBINDINGS_JSON}")"
+[[ "${SUPER_ALT_V}" == 1 ]] || { echo "Super+Alt+V is bound ${SUPER_ALT_V} times"; exit 1; }
+[[ "$(jq '[.bindings[] | select(.clash != [])] | length' <<<"${KEYBINDINGS_JSON}")" == 0 ]]
+if GSETTINGS_BACKEND=memory /usr/libexec/amethystora-keybindings set org.gnome.desktop.wm.keybindings close a 2>/dev/null; then
+    echo "amethystora-keybindings takes a bare letter as a shortcut"
+    exit 1
+fi
+for recipe in 'shortcut \*ARGS:' 'keyboard WHAT="" VALUE="":'; do
+    grep -q "^${recipe}" /usr/share/amethystora/just/desktop.just
+done
 # The emoji data, made by 09-emoji.sh from Unicode's pinned files: every tab, every character named in English, the sizes
 # the picker reads in one go when it opens, and the licence
 python3 -I - <<'PYEOF'

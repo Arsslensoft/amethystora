@@ -193,6 +193,17 @@ fn ame_refusal(args: &[String]) -> Option<String> {
         ["desktop", "text-shortcut", rest @ ..] if rest.first() != Some(&"list") => {
             Some("the text shortcuts are the user's own writing: the user adds, changes and reads them".into())
         }
+        // Hold a key for accents looks at what is typed, as text shortcuts do: turning it on is the person's alone
+        ["desktop", "accents"] | ["desktop", "accents", "on", ..] => {
+            Some("holding a key for accents lets the desktop look at what is typed: the user turns it on".into())
+        }
+        // The agent's own keys (its schema's, the selection's) and its launcher, Super+Ctrl+Shift+A (the image's custom27),
+        // are the person's way to it: Control's Keyboard page changes them, never the agent
+        ["desktop", "shortcut", rest @ ..]
+            if rest.iter().any(|word| *word == "custom27" || AGENT_UI.iter().any(|name| word.contains(name))) =>
+        {
+            Some("the agent's own shortcuts are the user's to change".into())
+        }
         ["system", "raid", rest @ ..] if rest.first() != Some(&"status") => {
             Some("pools of disks are made, changed and erased only by the user, in a terminal".into())
         }
@@ -342,6 +353,16 @@ mod tests {
             "ame agent -- tools on",
             "ame security -- firewall off",
             "ame -- agent -- root each",
+            // Hold a key for accents, and the agent's own shortcuts on the Keyboard page
+            "ame desktop accents on",
+            "ame desktop accents",
+            "ame -q desktop::accents on",
+            "gsettings set org.gnome.shell.extensions.amethystora-ui.typing accents true",
+            "ame desktop shortcut clear custom custom27",
+            "ame desktop shortcut set custom custom27 <Super>F12",
+            "ame desktop shortcut reset custom custom27",
+            "ame desktop shortcut clear org.gnome.shell.extensions.amethystora-ui.agent ask-selection",
+            "ame desktop::shortcut set org.gnome.shell.extensions.amethystora-ui.agent ask-selection <Super>F11",
         ] {
             assert!(refusal(&argv(words)).is_some(), "{words}");
         }
@@ -391,6 +412,11 @@ mod tests {
             "just -f /usr/share/amethystora/just/agent.just history",
             "ame desktop pill on",
             "gnome-extensions list",
+            "ame desktop accents off",
+            "ame desktop shortcut list",
+            "ame desktop shortcut set org.gnome.shell.extensions.amethystora-ui.keys plain-paste <Super><Alt>v",
+            "ame desktop shortcut reset custom custom20",
+            "ame desktop keyboard caps escape",
         ] {
             assert_eq!(refusal(&argv(words)), None, "{words}");
         }

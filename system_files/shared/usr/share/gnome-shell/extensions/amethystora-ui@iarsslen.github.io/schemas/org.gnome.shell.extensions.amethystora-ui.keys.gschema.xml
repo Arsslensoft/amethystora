@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Keys (modules/keys.js): paste as plain text, and what Super pressed on its own opens. Control's Keyboard page and
+     `ame desktop shortcut` write plain-paste (a keybinding: the setup file carries it with the others), `ame desktop
+     keyboard super` and Control write super-alone, which the setup file keeps under keys. -->
+<schemalist>
+  <schema id="org.gnome.shell.extensions.amethystora-ui.keys" path="/org/gnome/shell/extensions/amethystora-ui/keys/">
+    <key name="plain-paste" type="as">
+      <default><![CDATA[['<Super><Alt>v']]]></default>
+      <summary>Paste as plain text</summary>
+      <description>Types what is copied into the window in use without its fonts, colours and links. Ctrl+V still pastes as the app does. An empty list turns it off.</description>
+    </key>
+    <key name="super-alone" type="s">
+      <choices>
+        <choice value="overview"/>
+        <choice value="search"/>
+        <choice value="nothing"/>
+      </choices>
+      <default>'overview'</default>
+      <summary>Super on its own opens</summary>
+      <description>What pressing and letting go of Super, with no other key, opens: the overview (GNOME's way), the search box, or nothing. Super's shortcuts work either way.</description>
+    </key>
+  </schema>
+</schemalist>

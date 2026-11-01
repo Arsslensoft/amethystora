@@ -20,6 +20,7 @@ import {Tray} from './modules/tray.js';
 import {Search} from './modules/search.js';
 import {Emoji} from './modules/emoji.js';
 import {Typing} from './modules/typing.js';
+import {Keys} from './modules/keys.js';
 import {Fuzzy} from './modules/fuzzy.js';
 import {Screenshot} from './modules/screenshot.js';
 import {Bazaar} from './modules/bazaar.js';
@@ -84,6 +85,7 @@ const MODULES = [
     ['appgrid', AppGrid],
     ['emoji', Emoji],
     ['typing', Typing],
+    ['keys', Keys],
     ['glass', Glass],
     ['hints', Hints],
     ['firstlook', FirstLook],

@@ -961,6 +961,50 @@ entry.field.shortcut-try {
     font-weight: 600;
 }
 
+/* --- Every shortcut (board 53): rows, their owner and their keys as caps ------------------------------------ */
+
+entry.field.keybinding-search {
+    min-height: 38px;
+}
+
+.keybinding-row {
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: color-mix(in oklab, var(--fg) 5%, transparent);
+}
+
+.keybinding-row.clash {
+    background: color-mix(in oklab, var(--bad) 8%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--bad) 35%, transparent);
+}
+
+.keybinding-row.recording {
+    background: color-mix(in oklab, var(--accent) 12%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 50%, transparent);
+}
+
+.keybinding-row.inactive .keybinding-title,
+.keybinding-row.inactive .keybinding-keys {
+    opacity: 0.6;
+}
+
+.keybinding-title {
+    font-size: 14px;
+    line-height: 21px;
+}
+
+.keybinding-cap {
+    min-width: 14px;
+    padding: 2px 7px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: var(--code-bg);
+    font-family: "JetBrains Mono", "Adwaita Mono", monospace;
+    font-size: 12px;
+    line-height: 18px;
+    font-weight: 600;
+}
+
 .shortcut-try-said {
     color: var(--soft);
     font-size: 13.5px;

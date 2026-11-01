@@ -9,5 +9,12 @@
       <summary>Expand text shortcuts</summary>
       <description>Replace an abbreviation you type, followed by a space, with its text, in apps that use GNOME's input method. Off by default.</description>
     </key>
+    <!-- Hold a key for accents (modules/typing/accents.js), offered and off: `ame desktop accents on|off` and Control's
+         Keyboard page write it, never the setup file, since it looks at what is typed too -->
+    <key name="accents" type="b">
+      <default>false</default>
+      <summary>Hold a key for accents</summary>
+      <description>Holding a letter shows its accented forms over the text cursor; a number or the arrows and Enter pick one. In apps that tell GNOME's input method their text; not in terminals or fullscreen windows. Off by default.</description>
+    </key>
   </schema>
 </schemalist>
