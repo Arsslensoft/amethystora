@@ -53,6 +53,7 @@ if [[ "${SUITE_PHASE}" == 1 ]]; then
     # the English one, the on-screen keyboard and larger text
     user_bus dconf write /org/gnome/desktop/interface/clock-show-seconds true
     user_bus dconf write /org/gnome/desktop/input-sources/sources "[('xkb', 'us'), ('xkb', 'fr')]"
+    user_bus dconf write /system/locale/region "'fr_FR.UTF-8'"
     user_bus dconf write /org/gnome/desktop/a11y/applications/screen-keyboard-enabled true
     user_bus dconf write /org/gnome/desktop/interface/text-scaling-factor 1.25
     in_session amethystora-theme set tokyo-night >/dev/null 2>&1
@@ -76,6 +77,7 @@ if [[ "${SUITE_PHASE}" == 1 ]]; then
     check "and the layout tiles again, with the tiling on" sh -c "runuser -u ${TEST_USER} -- gsettings get org.gnome.shell.extensions.amethystora-ui.tiling enabled | grep -qx true"
     check "the icon pack it chose goes with the other settings" sh -c "[ ! -e ${icons_flag} ] && runuser -u ${TEST_USER} -- gsettings get org.gnome.desktop.interface icon-theme | grep -qx '.amethystora-glass.'"
     check "the keyboards stay" test "$(dconf_get /org/gnome/desktop/input-sources/sources)" == "[('xkb', 'us'), ('xkb', 'fr')]"
+    check "the date and number formats stay" test "$(dconf_get /system/locale/region)" == "'fr_FR.UTF-8'"
     check "the on-screen keyboard and the larger text stay" test \
         "$(dconf_get /org/gnome/desktop/a11y/applications/screen-keyboard-enabled) $(dconf_get /org/gnome/desktop/interface/text-scaling-factor)" == "true 1.25"
     check "and GNOME's welcome dialog, seen already, stays seen" test "$(dconf_get /org/gnome/shell/welcome-dialog-last-shown-version)" == "${welcome}"
@@ -95,6 +97,7 @@ if [[ "${SUITE_PHASE}" == 1 ]]; then
     fi
     # The account as the suites after this one expect it
     in_session "${HELPER}" account >/dev/null 2>&1
+    user_bus dconf reset /system/locale/region
     for key in input-sources/sources a11y/applications/screen-keyboard-enabled interface/text-scaling-factor; do
         user_bus dconf reset "/org/gnome/desktop/${key}"
     done
