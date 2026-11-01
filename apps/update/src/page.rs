@@ -873,7 +873,7 @@ impl Updates {
     /// The window: the top bar with the wordmark, and the page under it
     pub(crate) fn frame(&self) -> gtk::Widget {
         let top = ui::hbox(16, &["top"]);
-        let brand = amethystora_ui::brand::brand(&t!("Updates"), 22.0);
+        let brand = amethystora_ui::brand::in_a_line(&t!("Updates"), 22.0);
         brand.update_property(&[gtk::accessible::Property::Label(&t!("Amethystora Updates"))]);
         brand.set_hexpand(true);
         brand.set_halign(gtk::Align::Start);

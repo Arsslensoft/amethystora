@@ -197,6 +197,12 @@ button.plain:focus-visible {
     margin-right: 0.3em;
 }
 
+.brand.stacked .product:dir(ltr),
+.brand.stacked .product:dir(rtl) {
+    margin-left: 0;
+    margin-right: 0;
+}
+
 /* The stone's halo is the accent */
 gem {
     color: var(--accent);
