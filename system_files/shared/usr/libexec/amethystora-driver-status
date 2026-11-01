@@ -13,7 +13,8 @@
 # The JSON is {checked, findings: [{id, kind, device, text, fix, manual}]}, kind one of no-driver, firmware,
 # refused, nvidia, broadcom-wifi and xbox-adapter. AMETHYSTORA_DRIVERS_ROOT (a stand-in /sys, /proc/cmdline,
 # image-info.json and firmware folder), AMETHYSTORA_DRIVERS_LOG (the kernel's log) and AMETHYSTORA_DRIVERS_MOK
-# (what amethystora-mok-status says) are for the tests in 20-tests.sh.
+# (what amethystora-mok-status says) are for the tests in 20-tests.sh, AMETHYSTORA_DRIVERS_STATE (the folder of what
+# it saved and said) and AMETHYSTORA_DRIVERS_NOTIFY (amethystora-notify-users) for test-driver-status.sh.
 
 set -uo pipefail
 
@@ -21,7 +22,8 @@ set -uo pipefail
 N_() { printf '%s' "$1"; }
 
 ROOT="${AMETHYSTORA_DRIVERS_ROOT:-}"
-STATE=/var/lib/amethystora/drivers
+STATE="${AMETHYSTORA_DRIVERS_STATE:-/var/lib/amethystora/drivers}"
+NOTIFY="${AMETHYSTORA_DRIVERS_NOTIFY:-/usr/libexec/amethystora-notify-users}"
 SAVED="${STATE}/status.json"
 INFO="${ROOT}/usr/share/amethystora/image-info.json"
 FIRMWARE=/var/lib/amethystora/firmware
@@ -214,10 +216,10 @@ mkdir -p "${STATE}"
 chmod 0755 "${STATE}"
 printf '%s\n' "${STATUS}" >"${SAVED}.new" && chmod 0644 "${SAVED}.new" && mv "${SAVED}.new" "${SAVED}"
 
-# Each new finding is said once per machine, while somebody is logged in to hear it
+# Each new finding is said once per machine, to somebody logged in to hear it: the login screen has a session bus
+# too, and a finding that reached nobody is said at a later check
 SAID="${STATE}/said"
-compgen -G '/run/user/*/bus' >/dev/null || exit 0
-while IFS=$'\t' read -r -u 3 id device text fix manual; do
+while IFS=$'\t' read -r -u 3 id device text manual fix; do
     grep -qxF -- "${id}" "${SAID}" 2>/dev/null && continue
     echo "${id}" >>"${SAID}"
     if [[ -n "${fix}" ]]; then
@@ -233,8 +235,12 @@ while IFS=$'\t' read -r -u 3 id device text fix manual; do
     # are translated for each account (amethystora-notify-users)
     export device
     # Ask the agent, for an account whose agentic features are on: the finding's id, never its words
-    ANSWERS="$(/usr/libexec/amethystora-notify-users "${actions[@]}" --agent "agent=$(N_ 'Ask the agent')" --msgid-summary \
-        "$(N_ 'A device does not work: ${device}')" "${text}")" || continue
+    ANSWERS="$("${NOTIFY}" "${actions[@]}" --agent "agent=$(N_ 'Ask the agent')" --msgid-summary \
+        "$(N_ 'A device does not work: ${device}')" "${text}")" || {
+        grep -vxF -- "${id}" "${SAID}" >"${SAID}.new"
+        mv "${SAID}.new" "${SAID}"
+        continue
+    }
     while read -r user answer; do
         [[ -n "${answer}" ]] || continue
         uid="$(id -u "${user}")" || continue
@@ -243,5 +249,6 @@ while IFS=$'\t' read -r -u 3 id device text fix manual; do
         runuser -u "${user}" -- env "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/${uid}/bus" \
             "XDG_RUNTIME_DIR=/run/user/${uid}" systemd-run --user --collect --quiet "${command[@]}" || true
     done <<<"${ANSWERS}"
-done 3< <(jq -r '.findings[] | [.id, .device, .text, (.fix // ""), .manual] | @tsv' <<<"${STATUS}")
+# The fix last: a tab is whitespace to read, which would close up an empty field in the middle
+done 3< <(jq -r '.findings[] | [.id, .device, .text, .manual, (.fix // "")] | @tsv' <<<"${STATUS}")
 exit 0

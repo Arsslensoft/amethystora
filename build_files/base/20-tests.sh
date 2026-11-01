@@ -4063,6 +4063,7 @@ jq -e '[.findings[] | "\(.kind) \(.id) \(.fix // "")"] | sort == ([
 mapfile -t DRIVERS_MANUAL < <(jq -r '.findings[].manual' <<<"${DRIVERS_FOUND}" | sort -u)
 "${NODE[@]}" /ctx/build_files/shared/check-manual.js /usr/share/amethystora/manual --links "${DRIVERS_MANUAL[@]}"
 rm -rf "${DRIVERS_TEST}"
+bash /ctx/build_files/shared/test-driver-status.sh
 
 # Make sure this garbage never makes it to an image
 test -f /usr/lib/systemd/system/flatpak-add-fedora-repos.service && false
