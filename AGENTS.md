@@ -193,6 +193,7 @@ The repository uses mandatory pre-commit validation:
 - `build-iso.yml` - Builds the installer ISO of a stable image, `<image>-non-uefi.iso` (the only one that starts computers without UEFI), with bootc-image-builder and uploads it, with its checksum signed by cosign, to Cloudflare R2 (a Release asset is limited to 2 GiB). Both of its ISOs are built from one digest of the published image, resolved and checked against `cosign.pub` once (the `image` job), so that the image cannot change between the check and either build. The builders run privileged and hold no secret: each hands its ISO, as an artifact, to the `publish` job on a runner of its own, which works out the checksum again, signs and uploads, and only on main. `Stable Images` runs it after scheduled and dispatched builds for each of the six images, each upload replacing the last under the same name, and the workflow fails on any other image. bootc-image-builder picks the installer's packages by os-release `ID` and has no definition for `amethystora`, so the workflow runs its container by hand and writes Fedora's definition out under that name, with `generic-logos` and `generic-release` added so that the installer carries neither `fedora-logos` nor `fedora-release`; do not switch back to its GitHub action, which cannot. `iso/installer-packages.py` then lists the installer's packages from the builder's manifest for the ISO to carry beside `LICENSE` and `NOTICE`, and fails the workflow before the upload if one of Fedora's two is among them. Both kickstarts (`iso/iso.toml`, `iso/live/installer.ks`) switch the installed machine with `--enforce-container-sigpolicy`, which only rewrites the origin and needs no network, and both ISO builds fail on a switch without it. Their `%post` runs under `set -e`, since Anaconda goes by its last exit status only, and on an NVIDIA image with Secure Boot on queues the image's certificates for the MOK manager (password `amethystora`), since the kernel refuses NVIDIA's driver until its key is enrolled and the image's kernel arguments turn off the display driver that would stand in. The builder is pinned by digest to its last build that reads definitions from a folder; its successor compiles them in, so moving to it means rewriting that step. Its second job, `live-iso`, builds the live ISO of the image, `<image>.iso` (`amethystora.iso` is https://download.amethystora.org/amethystora.iso): it builds `iso/live` `FROM` the checked digest with `podman build --cap-add sys_admin` (`iso/live/build.sh` pulls the offline copy by the same digest), and has Titanoboa (`ublue-os/titanoboa`, Apache-2.0, pinned to a commit of its main branch from the first that takes only an image) squash it into a UEFI-only ISO, then lists the live system's packages, fails on Fedora's logo or release package, adds `LICENSE`, `NOTICE` and the list, and hands it to `publish` as the installer job does. Titanoboa's offline-install store in `/usr/lib/containers/storage` does not work with Fedora 45's podman 6 (ublue-os/titanoboa#151): solve that before the stable image moves to 45
 - `bump-base-images.yml` - Daily on main: resolves every tag in `image-versions.yml` to its digest, checks each against `keys/ublue-os-cosign.pub`, and proposes the changed digests in one pull request from `automation/base-images`. Its pull requests start their checks only with a `BASE_BUMP_TOKEN` secret (a token with Contents and Pull requests write on this repository); `20-tests.sh` warns when the base is more than 10 days older than the build
 - `security-rebuild.yml` - Daily on main, read-only but for the dispatch: compares the published stable image's source packages (its SBOM) with Fedora's security updates in Bodhi, and starts `Stable Images` when one was pushed after the published image's base was built and before the pinned base was. The kernel is left to the weekly build. Images carry `org.amethystora.base-created` for it
+- `checks.yml` - The quick checks the `main` ruleset requires of a pull request and a merge group: `Lint` (pre-commit and ShellCheck on the files the change touches, `just check`, `check-translations.js` and `check-manual.js` as `20-tests.sh` runs them, actionlint), `Title` (a Conventional Commits title, which squash-merging makes the commit's) and `Dependencies` (`dependency-review-action`). Renaming a job means changing the ruleset with it. CodeQL's default setup scans the code and the workflows, and CodeRabbit comments on each pull request (`.coderabbit.yaml`); neither decides a merge
 - `validate-renovate.yml` - Validates the Renovate configuration on pull requests
 - `check-windows-programs.yml` - Weekly, and on a change to the map: every Flatpak ID in `windows-programs.json` is still on Flathub (see Windows programs)
 - `scorecard.yml` - OpenSSF Scorecard supply-chain checks (weekly)
@@ -1915,6 +1916,9 @@ the image but never push. `Latest Images` publishes only on `merge_group` and
 (Tuesdays 01:00 UTC). Merging directly to `main` and bypassing the merge queue
 therefore publishes nothing.
 
+The `main` ruleset asks of everyone but the repository's administrators, who bypass it: a pull request,
+an approval from a code owner, the `Checks` workflow's three jobs, and the merge queue, which squashes.
+
 ### Build Script Execution Order
 The build runs the scripts in `build_files/base/` in this order, which is not the numerical one:
 `build_files/shared/prepare.sh` the first, `03-install-kernel-akmods.sh` as a step of its own, and
@@ -1981,8 +1985,8 @@ This repository is complex but well-structured. Following these instructions wil
 
 ## Dependency Updates (Renovate)
 
-Renovate is configured in `.github/renovate.json5` and tracks its work on the
-Dependency Dashboard, issue #2680.
+Renovate is configured in `.github/renovate.json5` and tracks its work on its
+Dependency Dashboard issue.
 
 Never hand-edit a `renovate/*` branch and never merge `main` into one. Renovate
 will not update or replace a branch it no longer owns; the PR moves to "PR
@@ -1995,8 +1999,7 @@ Closing a Renovate PR is not a fix either. It moves the entry to "PR Closed
 (Blocked)" and Renovate stops recreating it. Only close one once the dependency
 has actually been updated by other means, and say so in the closing comment.
 
-Renovate PRs are authored by `app/ubot-7274`, not `app/renovate`. Filtering by
-the latter silently returns nothing.
+Renovate PRs are authored by `app/renovate`.
 
 ## Other Rules that are Important to the Maintainers
 

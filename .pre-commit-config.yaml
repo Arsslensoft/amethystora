@@ -5,6 +5,8 @@ repos:
     rev: v6.0.0
     hooks:
         - id: check-json
+          # JSON with comments, which the dev container reads
+          exclude: ^\.devcontainer\.json$
         - id: check-toml
         - id: check-yaml
         # A patch's blank context lines are one space, and it must stay byte for byte as git wrote it; so must

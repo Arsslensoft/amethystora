@@ -9,7 +9,6 @@ on:
       brand_name:
         description: "The Brand Name: amethystora"
         required: true
-        default: amethystora
         type: string
       stream_name:
         description: "The Fedora Version: stable, latest, or beta"
@@ -449,7 +448,7 @@ jobs:
           done
 
   check:
-    name: Check all ${{ matrix.stream_name }} builds successful
+    name: Check all ${{ inputs.stream_name }} builds successful
     if: always()
     runs-on: ubuntu-latest
     needs: [build_container]

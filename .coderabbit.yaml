@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# CodeRabbit's review of pull requests, which takes AGENTS.md as the project's guidelines by itself.
+# It only comments: the checks and the maintainer's review decide what merges.
+language: en-US
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  collapse_walkthrough: true
+  auto_review:
+    enabled: true
+    drafts: false
+  # What Weblate writes from the English and what branding/*.mjs draws are not reviewed by hand
+  path_filters:
+    - "!po/*.po"
+    - "!system_files/shared/usr/lib/amethystora-*/resources/app/locale/*.json"
+    - "!system_files/shared/usr/share/amethystora/manual/*/**"
+    - "!system_files/shared/usr/share/icons/**"
+    - "!**/*.png"
+    - "!packaging/**/*.patch"
+    - "!apps/Cargo.lock"
+chat:
+  auto_reply: true

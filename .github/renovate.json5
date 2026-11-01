@@ -82,6 +82,19 @@
       depNameTemplate: 'casey/just',
       datasourceTemplate: 'github-release-attachments',
     },
+    // The actionlint release the Checks workflow runs, with the SHA-256 of its tarball
+    {
+      customType: 'regex',
+      managerFilePatterns: [
+        '/^\\.github/workflows/checks\\.yml$/',
+      ],
+      matchStrings: [
+        'ACTIONLINT_VERSION: (?<currentValue>\\S+)\\s+ACTIONLINT_SHA256: (?<currentDigest>[a-f0-9]{64})',
+      ],
+      depNameTemplate: 'rhysd/actionlint',
+      datasourceTemplate: 'github-release-attachments',
+      extractVersionTemplate: '^v(?<version>.*)$',
+    },
     {
       customType: 'regex',
       managerFilePatterns: [

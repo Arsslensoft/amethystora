@@ -8,6 +8,21 @@ Amethystora is based on [Universal Blue](https://universal-blue.org). Its deskto
 
 Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/).
 
+## Pull requests
+
+A pull request merges once the maintainer has approved it and these checks pass:
+
+- **Lint**: `pre-commit` and ShellCheck on the files you changed, the `just` recipes' format, and the
+  translations and manual checks the image build runs. `pre-commit run --all-files` and `just check` run
+  the first ones on your machine.
+- **Title**: the title is a Conventional Commit (`fix(dock): ...`), since it becomes the commit's subject
+  when the pull request is squashed. A `feat` title is shown to users in What's new, so write it in plain
+  words.
+- **Dependencies**: nothing the change adds has a known serious vulnerability.
+
+The images are built for every pull request too, which takes about an hour. CodeRabbit and CodeQL comment
+on the change; their comments are advice for you and the maintainer, not a condition for merging.
+
 ## Translating
 
 Amethystora's own apps, the security report and the manual are meant to be translated on Weblate, but
