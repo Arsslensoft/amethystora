@@ -11,7 +11,7 @@ mod page;
 mod welcome;
 
 use std::cell::{Cell, RefCell};
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::future::Future;
 use std::path::PathBuf;
 use std::rc::{Rc, Weak};
@@ -66,6 +66,15 @@ struct Banner {
     text: String,
 }
 
+/// The theme maker's palette as it is being made, kept between drawings of the page and written nowhere until Save
+#[derive(Debug, Clone, Default)]
+struct Maker {
+    /// The palette it started from, by the list's value; empty before the first drawing
+    start: String,
+    colors: BTreeMap<String, String>,
+    name: String,
+}
+
 /// What the page keeps between drawings, as control.js's `state`
 struct PageState {
     page: &'static str,
@@ -104,6 +113,8 @@ struct PageState {
     started: bool,
     /// What was picked on the welcome page, by entry, until the list says so too
     picked: HashMap<String, String>,
+    /// The theme maker's palette
+    maker: Maker,
 }
 
 impl Default for PageState {
@@ -133,6 +144,7 @@ impl Default for PageState {
             reading: false,
             started: false,
             picked: HashMap::new(),
+            maker: Maker::default(),
         }
     }
 }
@@ -677,6 +689,32 @@ impl Control {
                 this.state.borrow_mut().key = name;
                 this.render();
             }
+        });
+    }
+}
+
+impl Control {
+    /// A colour file from elsewhere, from the window's own file dialog, imported in a terminal that shows it and asks
+    fn import_theme(self: &Rc<Self>, card: &str) {
+        let filters = gio::ListStore::new::<gtk::FileFilter>();
+        let colours = gtk::FileFilter::new();
+        colours.set_name(Some(&t!("Colour files")));
+        for suffix in ["conf", "toml", "yaml", "yml"] {
+            colours.add_suffix(suffix);
+        }
+        colours.add_pattern("*Xresources*");
+        filters.append(&colours);
+        let every = gtk::FileFilter::new();
+        every.set_name(Some(&t!("Every file")));
+        every.add_pattern("*");
+        filters.append(&every);
+        let dialog = gtk::FileDialog::builder().title(t!("Import a theme")).accept_label(t!("Import")).modal(true).filters(&filters).default_filter(&colours).build();
+        let (this, card) = (self.clone(), card.to_string());
+        glib::spawn_future_local(async move {
+            let Ok(file) = dialog.open_future(Some(&this.shell.window)).await else { return };
+            let Some(path) = file.path() else { return };
+            let me = this.clone();
+            this.perform(&card, async move { backend::perform(backend::import_theme(me.known().as_deref(), Some(&path))).await });
         });
     }
 }

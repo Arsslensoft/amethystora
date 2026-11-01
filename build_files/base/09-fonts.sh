@@ -15,6 +15,14 @@ GOOGLE_FONTS_URL="https://raw.githubusercontent.com/google/fonts/${GOOGLE_FONTS_
 
 # folder/file in the repository's ofl/, and its SHA-256; a folder's OFL.txt is its licence
 FONTS=(
+    # Atkinson Hyperlegible Next and Mono, drawn so that the letters people confuse (I l 1, O 0, rn m) look different:
+    # offered to every theme as the interface and monospace font (`ame desktop font`, `mono-font`), named by none
+    "atkinsonhyperlegiblemono/AtkinsonHyperlegibleMono[wght].ttf 5ce8b1698d1ded7dff2178c1a3ad159470085a58ea239e8b2cb88f4fb4a6f646"
+    "atkinsonhyperlegiblemono/AtkinsonHyperlegibleMono-Italic[wght].ttf e18f523877530e4abe229df6a36d394326254da488a7f5abb9b7b5ea8f780cd4"
+    "atkinsonhyperlegiblemono/OFL.txt 1ebb31cf7393164f20d10c1d48406cddb5314feff8465531cf1e4ba37e9dd740"
+    "atkinsonhyperlegiblenext/AtkinsonHyperlegibleNext[wght].ttf 5a455d1cfa099b601ab70751bb9673e8fe1854dc4500c80e1a220d0d75e31745"
+    "atkinsonhyperlegiblenext/AtkinsonHyperlegibleNext-Italic[wght].ttf ce9cffed32742ad2d9238c561a93220385e5934cdc02b8eb4097a50efa957dc6"
+    "atkinsonhyperlegiblenext/OFL.txt aca6a428580965d2297d1b718042dd427c2a9443ece3b0d02d758e161e0c4030"
     "dmmono/DMMono-Regular.ttf 55b4c98f123daebb3ed27947ba47b2af00554fc6284d639a540bcef5e6258ad2"
     "dmmono/DMMono-Italic.ttf 32b5bad9cbce64eac6d05c8abbeb619317f7e4cb354e1c33db761adbfaae1b16"
     "dmmono/DMMono-Medium.ttf fd327daf461db87b44a87def475d251bf03b997f7c07d9680592d75dbbfaad0b"

@@ -19,6 +19,11 @@
 #                                          theme changed (ame desktop colours), and apply them
 #   amethystora-theme accents              render the shell's colours for each workspace's accent (ame desktop
 #                                          accent-per-workspace), or take them away when that is off
+#   amethystora-theme pattern NAME|shuffle|off|previews
+#                                          a wallpaper drawn from the theme's colours (ame desktop pattern), another
+#                                          one, the theme's own pictures again, or Control's tiles of the seven
+#   amethystora-theme daynight day|night   the light or the dark side of a theme that has a pair (ame desktop
+#                                          day-night, which the shell asks at sunrise and sunset)
 #
 # See /usr/lib/amethystora/theme/lib.sh for what a theme directory holds.
 
@@ -28,7 +33,7 @@ set -euo pipefail
 source /usr/lib/amethystora/theme/lib.sh
 
 usage() {
-    sed -n '3,23p' "$0" | sed 's/^# \?//'
+    sed -n '3,28p' "$0" | sed 's/^# \?//'
 }
 
 # --- Applying a theme -------------------------------------------------------------------------
@@ -51,6 +56,10 @@ stage_theme() {
     chmod -R u+w "${staging}"
 
     [[ -f "${staging}/colors.toml" ]] || die "theme '${slug}' has no colors.toml"
+
+    # A wallpaper drawn from the theme's colours, when the account chose one (before the wallpaper's own colours are
+    # merged, which are worked out of the picture shown: a drawing of them would chase itself)
+    stage_pattern "${staging}"
 
     # The account's colours over the theme's, key by key, so that its mode, style, fonts and terminal colours stay the
     # theme's: the wallpaper's (ame desktop colours), then a chosen accent, the more specific choice, over them
@@ -244,6 +253,7 @@ theme_set() {
         stage_theme "${slug}"
         apply_all
     fi
+    prune_patterns
     run_hooks
     transition Release
     trap - EXIT
@@ -286,6 +296,10 @@ background_list() {
     local slug pictures
     slug="$(theme_current)" || return 0
     pictures="$({
+        # A wallpaper drawn from the theme (ame desktop pattern) is the account's own choice, and comes first
+        if [[ -n "$(account_pattern)" ]]; then
+            opening_picture
+        fi
         # An image of one's own built on Amethystora opens every theme on its own wallpaper (amethystora-brand)
         find "${IMAGE_BACKGROUNDS_DIR}" -maxdepth 1 -type f 2>/dev/null | sort || true
         # A backgrounds.list entry can point anywhere on the system, so it may name a wallpaper that
@@ -296,7 +310,7 @@ background_list() {
         find -L "${USER_BACKGROUNDS_DIR}/${slug}" "${CURRENT_THEME_DIR}/backgrounds" -maxdepth 1 -type f \
             \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' -o -iname '*.svg' \) \
             2>/dev/null | sort || true
-    } | while read -r image; do
+    } | awk '!seen[$0]++' | while read -r image; do
         if [[ -f ${image} ]]; then printf '%s\n' "${image}"; fi
     done)"
     if [[ -n ${pictures} ]]; then
@@ -384,8 +398,15 @@ daylight_shows() {
     return 1
 }
 
+# The slideshow's file. GNOME Shell keeps a slideshow it has read by its path and never reads that path again
+# (BackgroundCache.getAnimation), so the drawn wallpaper's, whose pictures change with every drawing, is named after its
+# list (<theme>-<sum>-daylight.xml); a theme's own pictures keep the one name they always had
 daylight_file() {
-    echo "${CURRENT_DIR}/backgrounds/$(theme_current)-daylight.xml"
+    local sum=""
+    if grep -qsF -- "${PATTERN_DIR}/" "${CURRENT_THEME_DIR}/daylight.list"; then
+        sum="-$(cksum <"${CURRENT_THEME_DIR}/daylight.list" | cut -d' ' -f1)"
+    fi
+    echo "${CURRENT_DIR}/backgrounds/$(theme_current)${sum}-daylight.xml"
 }
 
 # Writes the current theme's slideshow, atomically, and prints its path: only when what it says would change (its
@@ -603,12 +624,161 @@ background_next() {
     fi
 }
 
+# --- Wallpapers drawn from the theme ---------------------------------------------------------
+
+# The account's pattern drawn in the staged theme's colours with its accent, in its four tones, into current/patterns
+# (each file named by what it is drawn from, and drawn only when it is not there yet), and the staged theme made to
+# open on it: its backgrounds.list with the drawing of the theme's own time (night for a dark theme, day for a light
+# one) first and the theme's pictures after it, and its daylight.list the four, so that Super+Ctrl+Space, Daylight and
+# colours from the wallpaper treat it as one of the theme's pictures. Nothing while no pattern is chosen.
+stage_pattern() {
+    local staging="$1" name seed hash tone accent own work file
+    read -r name seed <<<"$(account_pattern)"
+    [[ -n ${name} ]] || return 0
+    work="${staging}/.pattern"
+    mkdir -p "${work}"
+    cp "${staging}/colors.toml" "${work}/colors.toml"
+    [[ -f "${staging}/light.mode" ]] && : >"${work}/light.mode"
+    accent="$(account_accent)"
+    if [[ -n ${accent} ]]; then
+        colors_merge "${work}/colors.toml" accent "$(accent_fill "${accent}")"
+    fi
+    hash="$(pattern_hash "${work}" "${name}" "${seed}")"
+    for tone in "${DAYLIGHT_TIMES[@]}"; do
+        file="${PATTERN_DIR}/${name}-${hash}-${tone}.svg"
+        if [[ ! -s ${file} ]] && ! draw_pattern "${work}" "${name}" "${seed}" "${tone}" "${file}"; then
+            echo "amethystora-theme: the ${name} pattern could not be drawn" >&2
+            rm -rf "${work}"
+            return 0
+        fi
+    done
+    if [[ -f "${work}/light.mode" ]]; then own=day; else own=night; fi
+    rm -rf "${work}"
+    {
+        echo "${PATTERN_DIR}/${name}-${hash}-${own}.svg"
+        grep -v '^[[:space:]]*\(#\|$\)' "${staging}/backgrounds.list" 2>/dev/null || true
+    } >"${staging}/backgrounds.list.new"
+    mv "${staging}/backgrounds.list.new" "${staging}/backgrounds.list"
+    for tone in "${DAYLIGHT_TIMES[@]}"; do
+        echo "${tone} ${PATTERN_DIR}/${name}-${hash}-${tone}.svg"
+    done >"${staging}/daylight.list"
+}
+
+# The drawings the current theme no longer names (none while no pattern is chosen), taken away once they are two minutes
+# old: GNOME reads Daylight's slideshow again only some moments after it is written, and meanwhile still loads the last
+# one's pictures, which must be there. What a switch leaves goes at the next one; the folder goes once it is empty.
+prune_patterns() {
+    local file current chosen
+    chosen="$(account_pattern)"
+    if [[ -d ${PATTERN_DIR} ]]; then
+        while IFS= read -r file; do
+            if [[ -z ${chosen} ]] ||
+                ! grep -qsF -- "${file}" "${CURRENT_THEME_DIR}/backgrounds.list" "${CURRENT_THEME_DIR}/daylight.list"; then
+                rm -f "${file}"
+            fi
+        done < <(find "${PATTERN_DIR}" -maxdepth 1 -type f -mmin +2)
+        rmdir "${PATTERN_DIR}" 2>/dev/null || true
+    fi
+    # ...and the drawn wallpapers' slideshows that are not the current one, as old
+    current="$(daylight_file)"
+    while IFS= read -r file; do
+        [[ ${file} == "${current}" ]] || rm -f "${file}"
+    done < <(find "${CURRENT_DIR}/backgrounds" -maxdepth 1 -type f -name '*-[0-9]*-daylight.xml' -mmin +2 2>/dev/null)
+}
+
+pattern_command() {
+    local choice="${1:-}" name seed current
+    case "${choice}" in
+        off)
+            rm -f "${CONFIG_DIR}/pattern"
+            ;;
+        shuffle)
+            # Another of the seven, at random, with a new seed
+            read -r current _ <<<"$(account_pattern)"
+            local -a others=()
+            for name in "${PATTERNS[@]}"; do
+                [[ ${name} == "${current}" ]] || others+=("${name}")
+            done
+            name="${others[RANDOM % ${#others[@]}]}"
+            seed=$((RANDOM * 32768 + RANDOM + 1))
+            mkdir -p "${CONFIG_DIR}"
+            printf '%s\n%s\n' "${name}" "${seed}" >"${CONFIG_DIR}/pattern"
+            ;;
+        previews)
+            pattern_previews
+            return 0
+            ;;
+        *)
+            is_pattern "${choice}" || die "no pattern '${choice}': ${PATTERNS[*]}, shuffle or off"
+            read -r _ seed <<<"$(account_pattern)"
+            mkdir -p "${CONFIG_DIR}"
+            printf '%s\n%s\n' "${choice}" "${seed:-1}" >"${CONFIG_DIR}/pattern"
+            ;;
+    esac
+    current="$(theme_current)" || die "no theme is set yet"
+    # The theme again, opening on the drawing, or on its own first picture again
+    AMETHYSTORA_THEME_QUIET=1 theme_set "${current}" >/dev/null
+}
+
+# Control's tiles: each of the seven drawn once in the current theme's colours and the account's seed, at the theme's own
+# time, into the account's cache (and only when it is not there yet), each line `PATTERN PATH`. Drawings of other colours
+# are taken away. Written only to the cache: the account's choice is left alone.
+pattern_previews() {
+    local name seed hash file slug work accent
+    slug="$(theme_current 2>/dev/null)" || return 0
+    # The colours stage_pattern draws from: the theme's own with the account's accent, never the wallpaper's
+    work="$(mktemp -d)"
+    cp "$(theme_source_dir "${slug}")/colors.toml" "${work}/colors.toml" 2>/dev/null || { rm -rf "${work}"; return 0; }
+    theme_source_is_light "${slug}" && : >"${work}/light.mode"
+    accent="$(account_accent)"
+    [[ -n ${accent} ]] && colors_merge "${work}/colors.toml" accent "$(accent_fill "${accent}")"
+    read -r _ seed <<<"$(account_pattern)"
+    seed="${seed:-1}"
+    mkdir -p "${PATTERN_PREVIEWS}"
+    local -a keep=()
+    # One name for the colours and the seed, the pattern's name before it: the list asks for these each time it is read
+    hash="$(pattern_hash "${work}" previews "${seed}")"
+    for name in "${PATTERNS[@]}"; do
+        file="${PATTERN_PREVIEWS}/${name}-${hash}.svg"
+        [[ -s ${file} ]] || draw_pattern "${work}" "${name}" "${seed}" "" "${file}" || continue
+        keep+=("${file}")
+        printf '%s %s\n' "${name}" "${file}"
+    done
+    rm -rf "${work}"
+    for file in "${PATTERN_PREVIEWS}"/*; do
+        [[ -e ${file} && " ${keep[*]} " != *" ${file} "* ]] && rm -f "${file}"
+    done
+    return 0
+}
+
+# --- Light by day, dark by night --------------------------------------------------------------
+
+# The side of the day asked for (day: the light side, night: the dark one) of a theme that has a pair whose other side
+# that is, applied quietly through the transitions' reveal; a theme without a pair, or on that side already, is left alone
+daynight_command() {
+    local want="${1:-}" pair
+    [[ ${want} == day || ${want} == night ]] || die "usage: amethystora-theme daynight day|night"
+    theme_current >/dev/null || return 0
+    pair="$(theme_slug "$(theme_file pair.theme)")"
+    if [[ -z ${pair} ]] || ! theme_exists "${pair}"; then
+        return 0
+    fi
+    if [[ ${want} == day ]]; then
+        theme_is_light && return 0
+        theme_source_is_light "${pair}" || return 0
+    else
+        theme_is_light || return 0
+        theme_source_is_light "${pair}" && return 0
+    fi
+    AMETHYSTORA_THEME_QUIET=1 theme_set "${pair}"
+}
+
 # --- Entry point ------------------------------------------------------------------------------
 
 # Every command that writes takes the account's lock first (theme_lock)
 case "${1:-list} ${2:-}" in
-    "bg list" | "background list" | "daylight now" | "daylight status" | "daylight ") ;;
-    set\ * | toggle\ * | reload\ * | bg\ * | background\ * | daylight\ * | colours\ * | accents\ *) theme_lock ;;
+    "bg list" | "background list" | "daylight now" | "daylight status" | "daylight " | "pattern previews") ;;
+    set\ * | toggle\ * | reload\ * | bg\ * | background\ * | daylight\ * | colours\ * | accents\ * | pattern\ * | daynight\ *) theme_lock ;;
 esac
 
 case "${1:-list}" in
@@ -639,6 +809,8 @@ case "${1:-list}" in
         colours_refresh
         ;;
     accents) accents_command ;;
+    pattern) shift; pattern_command "$@" ;;
+    daynight) shift; daynight_command "$@" ;;
     -h | --help | help) usage ;;
     *) die "unknown command: ${1}. Run amethystora-theme --help" ;;
 esac

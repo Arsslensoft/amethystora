@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Amethystora Look
+GenericName=Look Opener
+Comment=Show what an .amethystora-look file holds and ask before applying it, while opening looks from files is on
+Exec=/usr/libexec/amethystora-in-terminal /usr/bin/ame desktop theme look %f
+Icon=preferences-desktop-theme
+Terminal=false
+NoDisplay=true
+MimeType=application/x-amethystora-look;
+Categories=Settings;DesktopSettings;
+Keywords=theme;look;wallpaper;

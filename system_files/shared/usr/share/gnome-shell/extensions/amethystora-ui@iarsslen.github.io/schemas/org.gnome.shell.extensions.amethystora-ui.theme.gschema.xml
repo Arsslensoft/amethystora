@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- The keys of the theme module (modules/theme.js): an accent for each workspace. The accent of the whole desktop, Daylight
+<!-- The keys of the theme module (modules/theme.js): an accent for each workspace, and light by day and dark by night
+     (modules/theme/daynight.js). The accent of the whole desktop, Daylight, the drawn wallpaper
      and colours from the wallpaper are the account's files in ~/.config/amethystora, which amethystora-theme reads
      (ame desktop accent, daylight, colours). -->
 <schemalist>
@@ -13,6 +14,32 @@
       <default>['theme', 'sky', 'coral', 'jade', 'amber', 'orchid']</default>
       <summary>Each workspace's accent</summary>
       <description>One of amethyst, iris, sky, lagoon, jade, moss, amber, ember, coral, rose, orchid and slate for each workspace in order, or theme for the desktop's own. A workspace past the list, and anything else in it, takes the desktop's own.</description>
+    </key>
+    <key name="day-night" type="b">
+      <default>false</default>
+      <summary>Light by day, dark by night</summary>
+      <description>A theme with a light and a dark pair is switched to its light side when the day starts and to its dark side when the night does (ame desktop day-night). A theme without a pair is left as it is.</description>
+    </key>
+    <key name="day-night-times" type="s">
+      <choices>
+        <choice value="night-light"/>
+        <choice value="hours"/>
+      </choices>
+      <default>'night-light'</default>
+      <summary>When the day and the night start</summary>
+      <description>night-light: Night Light's times (its own hours, or sunrise and sunset where it knows the location; 07:00 and 19:00 where it knows neither). hours: day-starts and night-starts.</description>
+    </key>
+    <key name="day-starts" type="d">
+      <range min="0" max="23.99"/>
+      <default>7.0</default>
+      <summary>The hour the day starts</summary>
+      <description>In hours after midnight, as Night Light writes its own (7.5 is half past seven), while day-night-times is hours.</description>
+    </key>
+    <key name="night-starts" type="d">
+      <range min="0" max="23.99"/>
+      <default>19.0</default>
+      <summary>The hour the night starts</summary>
+      <description>In hours after midnight, while day-night-times is hours.</description>
     </key>
   </schema>
 </schemalist>

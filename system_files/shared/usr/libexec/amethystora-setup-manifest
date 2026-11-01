@@ -122,7 +122,7 @@ SOUND=org.gnome.desktop.sound
 SOUND_KEYS=(event-sounds)
 # The theme module's keys amethystora-setup's LOOK_KEYS takes beside the account's look files: an accent per workspace
 THEME_UI=org.gnome.shell.extensions.amethystora-ui.theme
-THEME_UI_KEYS=(accent-per-workspace workspace-accents)
+THEME_UI_KEYS=(accent-per-workspace workspace-accents day-night day-night-times day-starts night-starts)
 # The reveal at login, the tips and the app grid's recent row, which amethystora-setup's TRANSITIONS_KEYS, HINTS_KEYS
 # and APPGRID_KEYS take
 TRANSITIONS=org.gnome.shell.extensions.amethystora-transitions
@@ -347,7 +347,7 @@ SETTINGS="$(settings | jq -sc --arg layout "${LAYOUT}" --arg tiling "${TILING}" 
 # The look, where the account changed it from the image's: its accent, Daylight turned off and colours from the wallpaper
 # (the account's files, each only as one of its values), and an accent per workspace (the theme module's keys)
 look() {
-    local config="${XDG_CONFIG_HOME:-${HOME}/.config}/amethystora" accent colours image_accent image_colours schema key value
+    local config="${XDG_CONFIG_HOME:-${HOME}/.config}/amethystora" accent colours image_accent image_colours schema key value pattern
     # What is in force (the account's choice, else its image's), saved where it is not the image's own
     accent="$(source /usr/lib/amethystora/theme/lib.sh && account_accent)"
     colours="$(source /usr/lib/amethystora/theme/lib.sh && colours_way)"
@@ -357,6 +357,9 @@ look() {
         [[ "${accent:-theme}" != "${image_accent:-theme}" ]] && jq -nc --arg v "${accent:-theme}" '{accent: $v}'
         [[ "$(head -n1 "${config}/daylight" 2>/dev/null || true)" == off ]] && jq -nc '{daylight: "off"}'
         [[ "${colours:-off}" != "${image_colours:-off}" ]] && jq -nc --arg v "${colours:-off}" '{colours: $v}'
+        # The drawn wallpaper's pattern, while one is chosen
+        pattern="$(source /usr/lib/amethystora/theme/lib.sh && account_pattern)"
+        [[ -n "${pattern}" ]] && jq -nc --arg v "${pattern%% *}" '{pattern: $v}'
         changed "${THEME_UI}" | awk 'NR == FNR { kept[$1]; next } $2 in kept' <(printf '%s\n' "${THEME_UI_KEYS[@]}") - |
             while read -r schema key value; do
                 value="$(as_json <<<"${value}")" && [[ -n "${value}" ]] || continue

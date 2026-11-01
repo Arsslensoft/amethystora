@@ -234,11 +234,11 @@ for part in "SEARCH org.gnome.shell.extensions.amethystora-ui.search open" \
     [[ "${saved}" == "${listed}" ]] ||
         { echo "the manifest saves other ${name} keys than amethystora-setup reads:"; diff <(echo "${saved}") <(echo "${listed}"); false; }
 done
-# The look: the theme module's keys are LOOK_KEYS' schema keys (the rest are the account's files), its accents are the
+# The look: the theme module's keys are LOOK_KEYS' schema keys (the rest, the drawn wallpaper's pattern among them, are the account's files), its accents are the
 # twelve of the theme library's ACCENTS and theme, and the manifest saves the module's same keys
 LOOK_TABLE="$(bash -c "$(sed -n '/^LOOK_ACCENTS=/p; /^LOOK_KEYS=/,/^}'"'"'$/p' "${SETUP}")"'; printf "%s" "${LOOK_KEYS}"')"
 jq -e '.accent and .daylight and .colours' <<<"${LOOK_TABLE}" >/dev/null || { echo "LOOK_KEYS cannot be read"; false; }
-listed="$(jq -r 'keys[] | select(. != "accent" and . != "daylight" and . != "colours")' <<<"${LOOK_TABLE}" | sort)"
+listed="$(jq -r 'keys[] | select(. != "accent" and . != "daylight" and . != "colours" and . != "pattern")' <<<"${LOOK_TABLE}" | sort)"
 schema="$(GSETTINGS_BACKEND=memory /usr/bin/gsettings list-keys org.gnome.shell.extensions.amethystora-ui.theme | sort)"
 [[ "${listed}" == "${schema}" ]] ||
     { echo "LOOK_KEYS and the theme module's schema differ:"; diff <(echo "${listed}") <(echo "${schema}"); false; }
@@ -776,6 +776,14 @@ grep -qx "amethystora-theme accents" "${LOG}"
 : >"${LOG}"
 # ...and nothing is saved for a look that is the image's own
 [[ "$("${SETUP}" save - | jq -c '.settings.look // {}')" == '{}' ]]
+# The drawn wallpaper's pattern is saved, never its seed, and applied through its own command
+printf 'dots\n42\n' >"${LOOK_DIR}/pattern"
+[[ "$("${SETUP}" save - | jq -c .settings.look)" == '{"pattern":"dots"}' ]]
+"${SETUP}" save - >"${T}/pattern.json"
+rm -f "${LOOK_DIR}/pattern"
+"${SETUP}" apply --yes "${T}/pattern.json" >/dev/null
+grep -qx "ame desktop pattern dots" "${LOG}"
+: >"${LOG}"
 
 # bake: the same file as an image's defaults, into a stand-in for the image made of its own schemas, extensions'
 # schemas and dconf files, with the real tools (no stand-ins on the PATH). What it writes is read back as GNOME

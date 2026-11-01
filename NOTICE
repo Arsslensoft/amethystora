@@ -142,7 +142,8 @@ Nunito, Rubik and Work Sans (Fira Code's package carries no licence file, and
 its licence is in usr/share/licenses/google-fonts/firacode).
 The others are copied unchanged from Google Fonts' repository
 (https://github.com/google/fonts) into usr/share/fonts/amethystora, each with
-its licence in usr/share/licenses/google-fonts: DM Mono, DM Sans, Figtree, Fira
+its licence in usr/share/licenses/google-fonts: Atkinson Hyperlegible Next,
+Atkinson Hyperlegible Mono, DM Mono, DM Sans, Figtree, Fira
 Sans, Karla, Lexend, Manrope, Outfit, Plus Jakarta Sans, Quicksand, Sora, Space
 Grotesk, Space Mono and Victor Mono. Their names are their authors' Reserved Font Names
 where they have one.

@@ -1760,7 +1760,7 @@ jq -e '[.items[] | select(.id == "quick-theme" or .id == "quick-tiles")] | lengt
     (.choices // [] | .[].command) | select(.[0:3] != ["ame", "desktop", "quick-settings"])' <<<"${CONTROL_LIST}")" ]]
 [[ -z "$(jq -r '.items[].id' <<<"${CONTROL_LIST}" | sort | uniq -d)" ]]
 [[ -z "$(jq -r '.items[].kind' <<<"${CONTROL_LIST}" |
-    grep -vxE 'switch|choice|range|action|link|themes|wallpapers|widgets|webapps|shortcuts|trust-image|setup|disks')" ]]
+    grep -vxE 'switch|choice|range|action|link|themes|theme-maker|wallpapers|widgets|webapps|shortcuts|trust-image|setup|disks')" ]]
 [[ -z "$(jq -c '.items[] | (.command // empty), (.choices // [] | .[].command), (.commands // {} | .[].command),
     (.disks // [] | .[].actions[].command) | select(.[0] != "ame" or .[1] == "security")' <<<"${CONTROL_LIST}")" ]]
 # The text shortcuts' entries: the switch, and the list, which names abbreviations and line counts and never a text,
@@ -1878,6 +1878,39 @@ bash /ctx/build_files/shared/test-theme-render.sh
 # status colours and the segments of the top bar) reads at the contrast WCAG asks, on every surface it is drawn on, with
 # each of the twelve accents and with the colours of every shipped wallpaper in each of their three ways
 bash /ctx/build_files/shared/test-theme-palette.sh
+# Make it yours (rounds 5 and 6, plans/ui-ideas/spec-look.md). Themes into files and out of them: colour files from
+# elsewhere read for their colours only, a palette from the theme maker, look files read whole or refused whole
+test -x /usr/libexec/amethystora-theme-file
+bash /ctx/build_files/shared/test-theme-file.sh
+# The theme maker's three checks are palette.awk's (checks=1), which apps/control-core/src/contrast.rs is held to
+[[ "$(bash -c 'source /usr/lib/amethystora/theme/lib.sh; palette_checks /usr/share/amethystora/themes/nord' | cut -d' ' -f1 | tr '\n' ' ')" == "text label outline " ]]
+# Every one of the seven drawn wallpapers is a whole SVG in every shipped theme's colours, and in the first's at each time
+# of day
+PATTERN_LIST="$(bash -c 'source /usr/lib/amethystora/theme/lib.sh; echo "${PATTERNS[*]}"')"
+[[ "${PATTERN_LIST}" == "facets waves contour mesh grain dots bands" ]]
+for theme_dir in /usr/share/amethystora/themes/*/; do
+    for pattern in ${PATTERN_LIST}; do
+        tones=(night)
+        [[ "${theme_dir}" == */amethystora/ ]] && tones=(dawn day dusk night)
+        for tone in "${tones[@]}"; do
+            bash -c 'source /usr/lib/amethystora/theme/lib.sh; pattern_input "$1" "$2" 7 "$3"' _ "${theme_dir%/}" "${pattern}" "${tone}" |
+                awk -f /usr/lib/amethystora/theme/pattern.awk >/tmp/pattern.svg
+            python3 -I -c 'import sys, xml.etree.ElementTree as ET; r = ET.parse(sys.argv[1]).getroot(); assert r.tag.endswith("svg") and len(r) > 1' /tmp/pattern.svg ||
+                { echo "${pattern} in ${theme_dir} at ${tone} is not a whole SVG"; exit 1; }
+        done
+    done
+done
+rm -f /tmp/pattern.svg
+# A look shared is a type of its own, opened by its handler (which says while opening looks is off), and a colour file
+# can be imported from Open With, never by default
+grep -q '^application/x-amethystora-look' /usr/share/mime/globs2 2>/dev/null || grep -q 'amethystora-look' /usr/share/mime/globs
+grep -qx "application/x-amethystora-look=amethystora-look.desktop" /etc/xdg/mimeapps.list
+grep -qx "Exec=/usr/libexec/amethystora-in-terminal /usr/bin/ame desktop theme look %f" /usr/share/applications/amethystora-look.desktop
+grep -qx "Exec=/usr/libexec/amethystora-in-terminal /usr/bin/ame desktop theme import %f" /usr/share/applications/amethystora-theme-import.desktop
+if grep -q "=amethystora-theme-import.desktop" /etc/xdg/mimeapps.list; then echo "a colour file opens as a theme by default"; exit 1; fi
+# Light by day, dark by night: the theme module's keys, off as the image ships; only the two pairs it names have a pair
+[[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.theme day-night)" == false ]]
+[[ "$(cat /usr/share/amethystora/themes/*/pair.theme | sort | tr '\n' ' ')" == "amethystora amethystora-light catppuccin catppuccin-latte " ]]
 # The twelve accents are one list: the theme library's ACCENTS, which Control offers, the recipe's usage names, the setup
 # file takes, the shell's workspaces' menu and the apps' palette know
 ACCENT_IDS="$(bash -c 'source /usr/lib/amethystora/theme/lib.sh; for e in "${ACCENTS[@]}"; do echo "${e%% *}"; done')"

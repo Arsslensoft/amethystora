@@ -10,7 +10,8 @@
 // (modules/focus.js, setFocusAccent) is put on the same way, over every workspace's, its rules rendered with the
 // workspaces' (AMETHYSTORA_FOCUS_ACCENT). It also keeps the wallpaper's two other links to the theme up to date by asking
 // amethystora-theme: colours from the wallpaper when the picture changes (in GNOME Settings, say), and Daylight's
-// slideshow when Night Light's hours change or a session starts after the clocks changed.
+// slideshow when Night Light's hours change or a session starts after the clocks changed. Light by day and dark by night
+// (theme/daynight.js) asks it for a theme's other side at the start of the day and of the night, while it is on.
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
@@ -19,6 +20,7 @@ import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {IDS, SCHEMA, workspaceAccent} from './theme/accents.js';
+import {DayNight} from './theme/daynight.js';
 
 const CONFIG = GLib.build_filenamev([GLib.get_user_config_dir(), 'amethystora']);
 const CURRENT = GLib.build_filenamev([CONFIG, 'current']);
@@ -102,6 +104,8 @@ export class Theme {
                 }, this);
             }
         }
+        // Light by day, dark by night: nothing while its key is off
+        this._dayNight = new DayNight(this._settings, this._nightLight, (kind, args, then) => this._run(kind, args, then));
         // A session that starts (or comes back from the lock screen) after the clocks changed shows the slideshow an
         // hour off until it is written again
         if (this._daylightShown())
@@ -109,6 +113,8 @@ export class Theme {
     }
 
     disable() {
+        this._dayNight?.destroy();
+        this._dayNight = null;
         St.Settings.get().disconnectObject(this);
         Main.uiGroup.remove_style_class_name(UNTHEMED_LIGHT);
         this._monitor?.cancel();
@@ -165,6 +171,11 @@ export class Theme {
         }
         // Ending, the accents' rules stay loaded until the theme's are next loaded: a class swap, not a restyle
         this._apply();
+    }
+
+    // Light by day, dark by night as it is now, for the lab
+    get dayNight() {
+        return this._dayNight?.state ?? null;
     }
 
     get focusAccent() {

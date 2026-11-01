@@ -41,7 +41,9 @@
 #                corners on a laptop's own screen (BEZEL_KEYS), the audio module's switches (AUDIO_KEYS; never
 #                the presets, which name this machine's outputs), whether the desktop makes its own sounds (SOUND_KEYS;
 #                never the sound theme's name, which Settings sets to a folder of the account's), the look: the
-#                accent, Daylight, colours from the wallpaper and an accent per workspace (LOOK_KEYS), the reveal at
+#                accent, Daylight, colours from the wallpaper, the drawn wallpaper, an accent per workspace and light by
+#                day and dark by night (LOOK_KEYS; never a theme made or imported, which is the account's own folder),
+#                the reveal at
 #                login, the tips and the app grid's row of recent apps (TRANSITIONS_KEYS, HINTS_KEYS, APPGRID_KEYS), what
 #                each focus profile does and its two triggers (FOCUS_KEYS; never the profile on now, when it ends, or
 #                a saved set it names, which are this machine's), colour filters, the reading ruler and reading
@@ -207,7 +209,10 @@ THEME_UI=org.gnome.shell.extensions.amethystora-ui.theme
 LOOK_ACCENTS='["amethyst", "iris", "sky", "lagoon", "jade", "moss", "amber", "ember", "coral", "rose", "orchid", "slate", "theme"]'
 LOOK_KEYS='{
     "accent": ["s", '"${LOOK_ACCENTS}"'], "daylight": ["s", ["on", "off"]], "colours": ["s", ["vivid", "soft", "mono", "off"]],
-    "accent-per-workspace": ["b"], "workspace-accents": ["as", "accents"]
+    "accent-per-workspace": ["b"], "workspace-accents": ["as", "accents"],
+    "pattern": ["s", ["off", "facets", "waves", "contour", "mesh", "grain", "dots", "bands"]],
+    "day-night": ["b"], "day-night-times": ["s", ["night-light", "hours"]], "day-starts": ["d", 0, 23.99],
+    "night-starts": ["d", 0, 23.99]
 }'
 # The first start's three switches: the reveal at login, the tips, and the app grid's row of the apps used most. Never
 # the tips' state file or the app grid's folders, which are GNOME's and may name another machine's apps.
@@ -793,7 +798,14 @@ look_value() {
             value="$(source /usr/lib/amethystora/theme/lib.sh && colours_way)"
             jq -nc --arg v "${value}" 'if $v | IN("vivid", "soft", "mono") then $v else "off" end'
             ;;
-        accent-per-workspace | workspace-accents) gsettings get "${THEME_UI}" "$1" 2>/dev/null | as_json ;;
+        pattern)
+            # The drawn wallpaper's pattern, never its seed, which Shuffle draws afresh
+            value="$(source /usr/lib/amethystora/theme/lib.sh && account_pattern)"
+            jq -nc --arg v "${value%% *}" 'if $v == "" then "off" else $v end'
+            ;;
+        accent-per-workspace | workspace-accents | day-night | day-night-times | day-starts | night-starts)
+            gsettings get "${THEME_UI}" "$1" 2>/dev/null | as_json
+            ;;
     esac
 }
 
@@ -1276,7 +1288,9 @@ add_all() {
     for change in "${changes[@]}"; do
         name="$(jq -r .key <<<"${change}")"
         case "${name}" in
-            accent | daylight | colours) ame desktop "${name}" "$(jq -r .to <<<"${change}")" >/dev/null ;;
+            accent | daylight | colours | pattern) ame desktop "${name}" "$(jq -r .to <<<"${change}")" >/dev/null ;;
+            day-night | day-night-times | day-starts | night-starts)
+                gsettings set "${THEME_UI}" "${name}" "$(jq -c .to <<<"${change}")" ;;
             accent-per-workspace) ame desktop accent-per-workspace "$(jq -r 'if .to then "on" else "off" end' <<<"${change}")" >/dev/null ;;
             workspace-accents) gsettings set "${THEME_UI}" workspace-accents "$(jq -r "${GVARIANT}"' .to | gv' <<<"${change}")" &&
                 amethystora-theme accents ;;
@@ -1403,6 +1417,8 @@ remove_all() {
             accent) ame desktop accent theme >/dev/null ;;
             daylight) ame desktop daylight on >/dev/null ;;
             colours) ame desktop colours off >/dev/null ;;
+            pattern) ame desktop pattern off >/dev/null ;;
+            day-night | day-night-times | day-starts | night-starts) gsettings reset "${THEME_UI}" "${name}" ;;
             accent-per-workspace) ame desktop accent-per-workspace off >/dev/null ;;
             workspace-accents) gsettings reset "${THEME_UI}" workspace-accents && amethystora-theme accents ;;
         esac || FAILED+=("the look's ${name}")

@@ -145,6 +145,36 @@ function strength(from, to, step, target, line, what,   p, k, ok) {
     return to
 }
 
+# The theme maker's nearest text (checks=1): the text moved in lightness, away from the ground, until it reads at 4.5:1
+# and the outline drawn from it reaches 3:1, each on the surfaces that text makes (they are mixed from it); the last
+# colour tried when none does
+function text_fix(   dir, i, c, k, p, ok, line, GR) {
+    dir = lum(BG) >= 0.18 ? -1 : 1
+    to_oklab(FG)
+    L0 = OL; A0 = OA; B0 = OB
+    for (i = 0; i <= 100; i++) {
+        c = from_oklab(L0 + dir * i * 0.01, A0, B0)
+        if (light) {
+            GR[1] = BG; GR[2] = mix(BG, "#ffffff", 0.55); GR[3] = mix(BG, "#ffffff", 0.35); GR[4] = mix(BG, c, 0.05)
+            GR[5] = mix(BG, "#ffffff", 0.7); GR[6] = mix(BG, "#ffffff", 0.75); GR[7] = BG
+        } else {
+            GR[1] = BG; GR[2] = mix(BG, "#000000", 0.18); GR[3] = mix(BG, c, 0.06); GR[4] = mix(BG, c, 0.035)
+            GR[5] = mix(BG, c, 0.07); GR[6] = mix(BG, c, 0.1); GR[7] = mix(BG, c, 0.08)
+        }
+        ok = 1
+        for (k = 1; k <= 7; k++) if (cr(c, GR[k]) < 4.5) ok = 0
+        if (ok) {
+            ok = 0
+            for (p = 30; p <= 90 && !ok; p += 5) {
+                line = mix(BG, c, p / 100); ok = 1
+                for (k = 1; k <= 7; k++) if (cr(line, GR[k]) < 3) ok = 0
+            }
+        }
+        if (ok) return c
+    }
+    return c
+}
+
 BEGIN { FS = "=" }
 { IN[$1] = tolower($2) }
 END {
@@ -195,4 +225,23 @@ END {
         printf "segment%d_bg=%s\nsegment%d_fg=%s\n", i, PAIR_BG, i, PAIR_FG
     }
     printf "unmet=%s\n", UNMET
+    # With checks=1 (Control's theme maker and `ame desktop theme import`, never a theme switch): the three pairs a person
+    # chooses colours for, each `RATIO NEAREST`, the lowest ratio over every surface and the nearest colour that passes:
+    # the text on the surfaces (4.5:1, the text moved in lightness: text_fix), a label on the accent (4.5:1, the accent as the
+    # palette deepens or lightens it) and the outline at the strength the palette draws it (3:1, the same text, with which
+    # it reaches 3:1 too). apps/control-core/src/contrast.rs does the same sums, held to these.
+    if (IN["checks"] == 1) {
+        low = 99
+        for (k = 1; k <= NGROUND; k++) if (cr(FG, GROUND[k]) < low) low = cr(FG, GROUND[k])
+        fixed = text_fix()
+        printf "check_text=%.2f %s\n", low, fixed
+        label = cr("#ffffff", IN["accent"])
+        if (cr(BG, IN["accent"]) > label) label = cr(BG, IN["accent"])
+        if (cr(FG, IN["accent"]) > label) label = cr(FG, IN["accent"])
+        printf "check_label=%.2f %s\n", label, accent_bg
+        line = mix(BG, FG, strength(30, 90, 5, 3, 1, "check") / 100)
+        low = 99
+        for (k = 1; k <= NGROUND; k++) if (cr(line, GROUND[k]) < low) low = cr(line, GROUND[k])
+        printf "check_outline=%.2f %s\n", low, fixed
+    }
 }

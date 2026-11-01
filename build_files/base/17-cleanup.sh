@@ -141,6 +141,10 @@ systemctl enable fwupd-refresh.timer
 #disable the old rpm-ostreed-automatic.timer
 systemctl disable rpm-ostreed-automatic.timer
 
+# The image's own file types (usr/share/mime/packages: a shared look, ame desktop theme share), which the package
+# manager's trigger would read in for a package's file but not for one the build copies in
+update-mime-database /usr/share/mime
+
 # Hide Desktop Files. Hidden removes mime associations
 for file in fish htop nvtop kitty-open; do
     if [[ -f "/usr/share/applications/$file.desktop" ]]; then

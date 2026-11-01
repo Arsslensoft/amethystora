@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A look shared from Amethystora (ame desktop theme share): a tar of look.conf, colors.toml and wallpaper.png,
+     opened by amethystora-look.desktop while ame desktop look-files is on -->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-amethystora-look">
+    <comment>Amethystora look</comment>
+    <sub-class-of type="application/x-tar"/>
+    <glob pattern="*.amethystora-look" weight="90"/>
+  </mime-type>
+</mime-info>

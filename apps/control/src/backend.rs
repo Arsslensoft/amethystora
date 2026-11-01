@@ -76,6 +76,9 @@ fn words(refusal: Refusal) -> String {
         Refusal::ShortcutAbbr => t!("A shortcut is 2 to 32 characters, with no spaces."),
         Refusal::ShortcutLength => t!("The text is 1 to 2000 characters."),
         Refusal::ShortcutCharacter => t!("The text has a character that cannot be typed."),
+        // amethystora-theme-file says the same when it refuses
+        Refusal::ThemeName => t!("A theme's name is 1 to 40 letters, digits, spaces and dashes."),
+        Refusal::ThemeColours => t!("Every colour of the theme has to be chosen."),
     }
 }
 
@@ -164,6 +167,18 @@ pub fn webapp(list: Option<&List>, action: &str, name: &str) -> Result<Run, Stri
 /// One of the actions the list gave a pool of disks
 pub fn pool(list: Option<&List>, action: &str, id: &str) -> Result<Run, String> {
     core::pool(list, action, id).map_err(words)
+}
+
+// --- A theme of one's own --------------------------------------------------------------------------------
+
+/// A palette made in the theme maker, saved as the account's theme: the name one argument, the palette on stdin
+pub fn save_theme(list: Option<&List>, name: &str, colors: &std::collections::BTreeMap<String, String>) -> Result<Run, String> {
+    core::save_theme(list, name, colors).map_err(words)
+}
+
+/// A colour file picked in the file dialog, imported in a terminal, which shows it and asks first
+pub fn import_theme(list: Option<&List>, file: Option<&Path>) -> Result<Run, String> {
+    core::import_theme(list, file).map_err(words)
 }
 
 // --- Text shortcuts ---------------------------------------------------------------------------------------

@@ -15,7 +15,7 @@
 #
 #   {page, id, kind, group, title, text, state, detail, available, reason, manual, usage, choices, ...}
 #
-# where kind is switch (its choices are on and off), choice, range, action, link, themes, wallpapers,
+# where kind is switch (its choices are on and off), choice, range, action, link, themes, theme-maker, wallpapers,
 # widgets, webapps, shortcuts, trust-image or setup, each of which the window knows how to draw. A choice is
 # {value, title, text, terminal, command}, made by choice(). A command is an argument vector, which the
 # window runs as it is: the page only ever sends back an entry's id and one of the values listed for it.
@@ -212,6 +212,24 @@ read_in_background night-light gsettings list-recursively org.gnome.settings-dae
 read_in_background look gsettings list-recursively org.gnome.shell.extensions.amethystora-ui.theme
 read_in_background daylight amethystora-theme daylight status
 read_in_background daylight-now amethystora-theme daylight now
+# The look group: the drawn wallpapers' tiles (drawn once per palette into the account's cache) and the wallpaper's
+# colours for the theme maker's "Start from the wallpaper"
+read_in_background patterns amethystora-theme pattern previews
+read_in_background wallpaper-start bash -c 'source /usr/lib/amethystora/theme/lib.sh
+    slug="$(theme_current)" && own="$(theme_source_dir "${slug}")" && picture="$(readlink -f "${CURRENT_BACKGROUND}")" &&
+    [[ -f "${picture}" ]] || exit 1
+    mode=dark; theme_source_is_light "${slug}" && mode=light
+    # Kept in the account'"'"'s cache by what it was worked from, so that the list reads the picture once
+    cache="${XDG_CACHE_HOME:-${HOME}/.cache}/amethystora/maker-wallpaper.toml"
+    stamp="# stamp ${mode} ${picture} $(stat -c "%Y %s" -- "${picture}") ${own}"
+    if [[ "$(head -n1 "${cache}" 2>/dev/null)" == "${stamp}" ]]; then exec cat "${cache}"; fi
+    mkdir -p "${cache%/*}"
+    { echo "${stamp}"; /usr/libexec/amethystora-wallpaper-colours --print --way vivid --mode "${mode}" \
+        --background "$(colors_get "${own}" background | tr "[:upper:]" "[:lower:]")" \
+        --foreground "$(colors_get "${own}" foreground | tr "[:upper:]" "[:lower:]")" "${picture}"; } >"${cache}.new" &&
+        mv "${cache}.new" "${cache}" && exec cat "${cache}"
+    rm -f "${cache}.new"
+    exit 1'
 read_in_background a11y gsettings list-recursively org.gnome.desktop.a11y.interface
 read_in_background profile busctl --system get-property org.freedesktop.UPower.PowerProfiles /org/freedesktop/UPower/PowerProfiles org.freedesktop.UPower.PowerProfiles ActiveProfile
 read_in_background phone systemctl --user is-enabled amethystora-connect.service
@@ -518,6 +536,137 @@ USAGE="ame desktop daylight on|off"
 item appearance daylight switch "${ gettext "Daylight wallpapers"; }" \
     "${ gettext "The theme's first wallpaper follows the time of day: dawn, day, dusk and night."; }" \
     "$([[ "${DAYLIGHT}" == off ]] && echo off || echo on)" themes#daylight
+
+# --- Make it yours (rounds 5 and 6): a theme of your own, a look in one file, drawn wallpapers, light by day ---------
+
+# Make a theme: every theme's whole palette to start from, and the wallpaper's colours over the current theme's (later
+# keys win), each colour only one of a palette's keys. The window checks every colour and the name again before it sends
+# them, and the helper once more.
+THEME_KEYS='["background","foreground","accent","cursor","selection_foreground","selection_background","color0","color1","color2","color3","color4","color5","color6","color7","color8","color9","color10","color11","color12","color13","color14","color15"]'
+# Each palette a head (its value, title and lightness) and a file, read by one awk: the wallpaper's is the current theme's
+# file and then what the wallpaper gave, under one head
+MAKER_HEADS=()
+MAKER_FILES=()
+while read -r slug; do
+    [[ -n "${slug}" ]] || continue
+    light=false
+    theme_source_is_light "${slug}" && light=true
+    MAKER_HEADS+=("${slug}"$'\x1e'"${ pretty "${slug}"; }"$'\x1e'"${light}")
+    MAKER_FILES+=("${ theme_source_dir "${slug}"; }/colors.toml")
+done < <(theme_list)
+if [[ "${ ended wallpaper-start; }" == 0 && -n "${THEME}" ]]; then
+    light=false
+    theme_source_is_light "${THEME}" && light=true
+    MAKER_HEADS+=(wallpaper$'\x1e'"${ gettext "The wallpaper"; }"$'\x1e'"${light}" "")
+    MAKER_FILES+=("${ theme_source_dir "${THEME}"; }/colors.toml" "${WORK}/wallpaper-start")
+fi
+EXTRA="$(
+    awk -v heads="$(printf '%s\n' "${MAKER_HEADS[@]}")" 'BEGIN { split(heads, H, "\n") }
+        BEGINFILE { f++; if (H[f] != "") print "\036" H[f] }
+        match($0, /^[[:space:]]*([a-z0-9_]+)[[:space:]]*=[[:space:]]*"(#[0-9a-fA-F]{6})"/, m) { print m[1] " " m[2] }' \
+        "${MAKER_FILES[@]}" 2>/dev/null |
+        jq -Rnc --argjson keys "${THEME_KEYS}" '[inputs] | reduce .[] as $line ([];
+            if ($line | startswith("\u001e")) then ($line[1:] | split("\u001e")) as $head
+                | . + [{value: $head[0], title: $head[1], light: ($head[2] == "true"), colors: {}}]
+            else ($line | split(" ")) as $kv
+                | if ($keys | index($kv[0])) then .[-1].colors[$kv[0]] = ($kv[1] | ascii_downcase) else . end end)
+        | {starts: ., commands: {
+            save: {terminal: false, command: ["ame", "desktop", "theme", "save", "{name}"]},
+            import: {terminal: true, command: ["ame", "desktop", "theme", "import", "{file}"]}}}'
+)"
+USAGE="ame desktop theme save NAME"
+item appearance theme-maker theme-maker "${ gettext "Make a theme"; }" \
+    "${ gettext "Start from a theme or the wallpaper, pick the ground, the text, the accent, the selection and the terminal's sixteen colours, and see each pair measured as you pick."; }" \
+    "" themes#make-a-theme
+
+# A look in one file: shared any time; opened only while the account turned that on
+[[ -n "${THEME}" ]] || REASON="${ gettext "Pick a theme first."; }"
+COMMAND=(ame desktop theme share)
+TERMINAL=true
+BUTTON="${ gettext "Share"; }"
+USAGE="ame desktop theme share [THEME] [FILE]"
+item appearance look-share action "${ gettext "Share this look"; }" \
+    "${ gettext "The colours, the wallpaper and the names of the style, icons, fonts and pointer, in one .amethystora-look file in your home folder. Nothing in it runs."; }" \
+    "" themes#a-look-in-one-file
+LOOK_FILES=""
+[[ -r "${CONFIG_DIR}/look-files" ]] && IFS= read -r LOOK_FILES <"${CONFIG_DIR}/look-files"
+switch_choices false ame desktop look-files
+USAGE="ame desktop look-files on|off"
+item appearance look-files switch "${ gettext "Open looks from files"; }" \
+    "${ gettext "Opening a .amethystora-look file shows what it holds and asks before anything changes. Off, since a file from a stranger is still a file from a stranger."; }" \
+    "$([[ "${LOOK_FILES}" == on ]] && echo on || echo off)" themes#a-look-in-one-file
+
+# A wallpaper drawn from the theme: the theme's own pictures (its first as the tile), then the seven, each tile drawn in the
+# theme's colours
+PATTERN_SET=""
+read -r PATTERN_SET _ <<<"${ account_pattern; }"
+declare -A PATTERN_NAMES=(
+    [facets]="${ gettext "Facets"; }" [waves]="${ gettext "Waves"; }" [contour]="${ gettext "Contour"; }"
+    [mesh]="${ gettext "Mesh"; }" [grain]="${ gettext "Grain"; }" [dots]="${ gettext "Dots"; }" [bands]="${ gettext "Bands"; }"
+)
+OWN_PICTURE=""
+[[ -n "${THEME}" ]] && OWN_PICTURE="$(grep -m1 '^/' "${ theme_source_dir "${THEME}"; }/backgrounds.list" 2>/dev/null || true)"
+# A theme with no pictures of its own opens on the one drawn from its palette
+[[ -z "${OWN_PICTURE}" && -f "${CURRENT_THEME_DIR}/wallpaper.svg" ]] && OWN_PICTURE="${CURRENT_THEME_DIR}/wallpaper.svg"
+[[ -n "${THEME}" ]] || REASON="${ gettext "Pick a theme first: the drawings are in its colours."; }"
+mapfile -t -O "${#CHOICES[@]}" CHOICES < <(
+    {
+        printf 'off\t%s\t%s\n' "${ gettext "The theme's own pictures"; }" "${OWN_PICTURE}"
+        while read -r name path; do
+            [[ -n "${PATTERN_NAMES[${name}]:-}" ]] && printf '%s\t%s\t%s\n' "${name}" "${PATTERN_NAMES[${name}]}" "${path}"
+        done < <(said patterns)
+    } | jq -Rc 'split("\t") | {value: .[0], title: .[1], text: null, terminal: false,
+        command: ["ame", "desktop", "pattern", .[0]], thumbnail: (if .[2] == "" then null else .[2] end)}'
+)
+USAGE="ame desktop pattern PATTERN|shuffle|off"
+item appearance pattern wallpapers "${ gettext "Drawn wallpapers"; }" \
+    "${ gettext "Seven patterns drawn in the theme's colours, drawn again when the theme or the accent changes. Daylight shows them at dawn, day, dusk and night."; }" \
+    "${PATTERN_SET:-off}" themes#drawn-wallpapers
+[[ -n "${PATTERN_SET}" ]] || REASON="${ gettext "Choose a drawn wallpaper first."; }"
+COMMAND=(ame desktop pattern shuffle)
+TERMINAL=false
+BUTTON="${ gettext "Shuffle"; }"
+USAGE="ame desktop pattern shuffle"
+item appearance pattern-shuffle action "${ gettext "Another drawing"; }" \
+    "${ gettext "Another of the seven patterns, drawn afresh."; }" "" themes#drawn-wallpapers
+
+# Light by day, dark by night: the theme module's keys
+DAY_NIGHT=off
+[[ "${ said look; }" =~ \ day-night\ true ]] && DAY_NIGHT=on
+[[ "${ said look; }" =~ \ day-night-times\ \'hours\' ]] && [[ "${DAY_NIGHT}" == on ]] && DAY_NIGHT=hours
+[[ "${DAY_NIGHT}" == on ]] && DAY_NIGHT=night-light
+DAY_STARTS=7 NIGHT_STARTS=19
+[[ "${ said look; }" =~ \ day-starts\ ([0-9]+)(\.[0-9]+)? ]] && DAY_STARTS="${BASH_REMATCH[1]}"
+[[ "${ said look; }" =~ \ night-starts\ ([0-9]+)(\.[0-9]+)? ]] && NIGHT_STARTS="${BASH_REMATCH[1]}"
+[[ "${ ended look; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
+if [[ -n "${THEME}" && ! -f "${CURRENT_THEME_DIR}/pair.theme" ]]; then
+    DETAIL="${ gettext "This theme has no light and dark pair, so it stays as it is: Amethystora and Amethystora Light, and Catppuccin Mocha and Latte, have one."; }"
+fi
+choice off "${OFF}" "" false ame desktop day-night off
+choice night-light "${ gettext "Night Light's times"; }" "${ gettext "Sunrise and sunset, or Night Light's own hours"; }" false \
+    ame desktop day-night night-light
+choice hours "${ gettext "Hours you choose"; }" "${ gettext "The two hours below"; }" false \
+    ame desktop day-night hours "${DAY_STARTS}" "${NIGHT_STARTS}"
+USAGE="ame desktop day-night on|off|hours FROM TO"
+item appearance day-night choice "${ gettext "Light by day, dark by night"; }" \
+    "${ gettext "A theme with a light and a dark side switches to its light side when the day starts and to its dark side when the night does."; }" \
+    "${DAY_NIGHT}" themes#light-by-day-dark-by-night
+for which in day night; do
+    [[ "${DAY_NIGHT}" == hours ]] || REASON="${ gettext "Choose Hours you choose first."; }"
+    if [[ "${which}" == day ]]; then
+        EXTRA="$(jq -nc --arg night "${NIGHT_STARTS}" '{min: 0, max: 23, step: 1, unit: "h", terminal: false,
+            command: ["ame", "desktop", "day-night", "hours", "{value}", $night]}')"
+        USAGE="ame desktop day-night hours FROM TO"
+        item appearance day-starts range "${ gettext "The day starts at"; }" "${ gettext "The hour, from 0 to 23."; }" \
+            "${DAY_STARTS}" themes#light-by-day-dark-by-night
+    else
+        EXTRA="$(jq -nc --arg day "${DAY_STARTS}" '{min: 0, max: 23, step: 1, unit: "h", terminal: false,
+            command: ["ame", "desktop", "day-night", "hours", $day, "{value}"]}')"
+        USAGE="ame desktop day-night hours FROM TO"
+        item appearance night-starts range "${ gettext "The night starts at"; }" "${ gettext "The hour, from 0 to 23."; }" \
+            "${NIGHT_STARTS}" themes#light-by-day-dark-by-night
+    fi
+done
 
 # An accent for each workspace, in the shell and Amethystora's apps; each workspace's own is chosen in its menu
 [[ "${ ended look; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"

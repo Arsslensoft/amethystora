@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Import as a Theme
+GenericName=Theme Importer
+Comment=Make an Amethystora theme of a kitty, Alacritty, base16, base24 or Xresources colour file, after showing its colours
+Exec=/usr/libexec/amethystora-in-terminal /usr/bin/ame desktop theme import %f
+Icon=preferences-desktop-theme
+Terminal=false
+NoDisplay=true
+MimeType=application/toml;application/yaml;application/x-yaml;text/plain;
+Categories=Settings;DesktopSettings;
+Keywords=theme;colours;colors;kitty;alacritty;base16;xresources;

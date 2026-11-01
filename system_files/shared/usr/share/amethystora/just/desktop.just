@@ -2,17 +2,169 @@
 
 set default-list
 
-# Pick the desktop theme: colours, terminal palette, prompt and wallpaper (Super+Ctrl+Shift+Space)
+# Pick the desktop theme: colours, terminal palette, prompt and wallpaper (Super+Ctrl+Shift+Space); or save NAME (a
+# palette on stdin, from Control's theme maker), import FILE (a kitty, Alacritty, base16, base24 or Xresources colour
+# file), share [THEME] [FILE] (the look as one .amethystora-look file) and look FILE (open one, while ame desktop
+# look-files is on)
 [positional-arguments]
-theme THEME="":
+theme *ARGS:
     #!/usr/bin/bash
     set -euo pipefail
     # shellcheck source=/dev/null
     source gettext.sh
-    if [[ -n "${1:-}" ]]; then
-        amethystora-theme set "${1:-}"
-        exit 0
-    fi
+    # shellcheck source=/dev/null
+    source /usr/lib/amethystora/theme/lib.sh
+    helper=/usr/libexec/amethystora-theme-file
+    # A palette's colours as blocks of themselves, for a terminal: the ground, the text, the accent, then the sixteen
+    swatches() {
+        jq -r '.colors | [.background, .foreground, .accent, .color0, .color1, .color2, .color3, .color4, .color5, .color6,
+            .color7, .color8, .color9, .color10, .color11, .color12, .color13, .color14, .color15][]' <<<"$1" |
+            while read -r hex; do
+                printf '\e[48;2;%d;%d;%dm   \e[0m ' "0x${hex:1:2}" "0x${hex:3:2}" "0x${hex:5:2}"
+            done
+        echo
+    }
+    # The three checks of Control's theme maker for a palette in JSON, each its ratio and what it needs
+    checks() {
+        local dir name ratio nearest
+        dir="$(mktemp -d)"
+        jq -r '.colors | to_entries[] | "\(.key) = \"\(.value)\""' <<<"$1" >"${dir}/colors.toml"
+        if [[ "$(jq -r .light <<<"$1")" == true ]]; then : >"${dir}/light.mode"; fi
+        while read -r name ratio nearest; do
+            case "${name}" in
+                text) name="$(gettext "Text on the surfaces")" need=4.5 ;;
+                label) name="$(gettext "A label on the accent")" need=4.5 ;;
+                outline) name="$(gettext "Outlines")" need=3 ;;
+                *) continue ;;
+            esac
+            if awk -v r="${ratio}" -v n="${need}" 'BEGIN { exit !(r >= n) }'; then
+                echo "  ${name}: ${ratio}:1, $(gettext "passes")"
+            else
+                echo "  ${name}: ${ratio}:1, $(eval_gettext "needs \${need}:1: the theme draws it as \${nearest}")"
+            fi
+        done < <(palette_checks "${dir}")
+        rm -rf "${dir}"
+    }
+    # A name of the account's own for a theme: one a shipped theme has gets a number
+    own_name() {
+        local name="$1" n=2
+        while [[ -d "${SYSTEM_THEMES_DIR}/$(theme_slug "${name}")" ]]; do
+            name="${1} ${n}"
+            n=$((n + 1))
+        done
+        echo "${name}"
+    }
+    # Asked first when the account has a theme of that name already
+    replace_ok() {
+        local slug shown="$1"
+        slug="$(theme_slug "$1")"
+        [[ -d "${USER_THEMES_DIR}/${slug}" ]] || return 0
+        gum confirm --default=false "$(eval_gettext "You have a theme called \${shown}. Replace it?")"
+    }
+    case "${1:-}" in
+        save)
+            # The palette Control's theme maker made, on stdin; the helper takes it only whole
+            [[ $# == 2 ]] || { echo "usage: ame desktop theme save NAME"; exit 64; }
+            slug="$("${helper}" save "$2")"
+            AMETHYSTORA_THEME_QUIET=1 amethystora-theme set "${slug}" >/dev/null
+            name="$2"
+            echo "$(eval_gettext "Theme saved as \${name}, and applied.")"
+            ;;
+        import)
+            [[ $# == 2 || $# == 3 ]] || { echo "usage: ame desktop theme import FILE [NAME]"; exit 64; }
+            info="$("${helper}" read "$2")" || exit 3
+            name="$(own_name "${3:-$(jq -r .name <<<"${info}")}")"
+            file="${2##*/}"
+            kind="$(jq -r .format <<<"${info}")"
+            read_lines="$(jq -r .read <<<"${info}")"
+            left_lines="$(jq -r .left_out <<<"${info}")"
+            echo "$(eval_gettext "\${file}: a \${kind} colour file")"
+            swatches "${info}"
+            echo "$(eval_gettext "Colour lines read: \${read_lines}. Other lines left out: \${left_lines}.")"
+            picture="$(jq -r '.picture // empty' <<<"${info}")"
+            if [[ -n "${picture}" ]]; then
+                picture="${picture##*/}"
+                echo "$(eval_gettext "The picture beside it becomes its wallpaper: \${picture}")"
+            fi
+            checks "${info}"
+            gum confirm "$(eval_gettext "Import it as the theme \${name}?")" || exit 0
+            replace_ok "${name}" || exit 0
+            slug="$("${helper}" import "$2" "${name}")"
+            AMETHYSTORA_THEME_QUIET=1 amethystora-theme set "${slug}" >/dev/null
+            echo "$(eval_gettext "Imported as \${name}, and applied.")"
+            ;;
+        share)
+            slug="${2:-$(theme_current 2>/dev/null || true)}"
+            slug="$(theme_slug "${slug}")"
+            theme_exists "${slug}" || { echo "$(gettext "No such theme. Try: amethystora-theme list")" >&2; exit 64; }
+            out="${3:-${HOME}/${slug}.amethystora-look}"
+            [[ "${out}" == *.amethystora-look ]] || out="${out}.amethystora-look"
+            dir="$(theme_source_dir "${slug}")"
+            args=(--theme "${dir}" --name "${slug//-/ }")
+            # The look as this account has it when the theme shared is the current one; else the theme's own
+            if [[ "${slug}" == "$(theme_current 2>/dev/null || true)" ]]; then
+                picture="$(readlink "${CURRENT_BACKGROUND}" 2>/dev/null || true)"
+                if [[ -f "${picture}" ]]; then args+=(--picture "${picture}"); fi
+                args+=(--style "$(desktop_style)" --icons "$(icon_theme)" --font "$(ui_font)" --mono-font "$(mono_font)"
+                    --pointer "$(pointer_theme)")
+                accent="$(account_accent)"
+                if [[ -n "${accent}" ]]; then args+=(--accent "${accent}"); fi
+            fi
+            if [[ -e "${out}" ]]; then
+                gum confirm --default=false "$(eval_gettext "\${out} is there already. Write over it?")" || exit 0
+            fi
+            "${helper}" share "${out}" "${args[@]}" >/dev/null
+            echo "$(eval_gettext "The look is in \${out}: it holds the colours, the wallpaper and the names of the style, icons, fonts and pointer, and nothing that runs.")"
+            ;;
+        look)
+            [[ $# == 2 ]] || { echo "usage: ame desktop theme look FILE"; exit 64; }
+            if [[ "$(head -n1 "${CONFIG_DIR}/look-files" 2>/dev/null || true)" != on ]]; then
+                echo "$(gettext "Opening looks from files is off, since a file from a stranger is still a file from a stranger.")"
+                echo "$(gettext "To turn it on: ame desktop look-files on, or Control, under Appearance.")"
+                exit 0
+            fi
+            info="$("${helper}" look "$2")" || exit 3
+            name="$(own_name "$(jq -r .name <<<"${info}")")"
+            echo "$(eval_gettext "The look \${name}")"
+            swatches "${info}"
+            if [[ "$(jq -r .picture <<<"${info}")" == true ]]; then echo "  $(gettext "Wallpaper"): $(gettext "1 picture")"; fi
+            # Each name the look gives, kept only when this computer has it
+            declare -A keep=()
+            while IFS=$'\t' read -r key value; do
+                case "${key}" in
+                    style) is_style "${value}" && keep[style]="${value}" ;;
+                    icons) icon_theme_installed "${value}" && keep[icons]="${value}" ;;
+                    font) font_installed "${value}" && keep[font]="${value}" ;;
+                    mono-font) font_installed "${value}" && keep[mono-font]="${value}" ;;
+                    pointer) cursor_theme_installed "${value}" && keep[pointer]="${value}" ;;
+                    accent) is_accent "${value}" && keep[accent]="${value}" ;;
+                    *) continue ;;
+                esac
+                if [[ -n "${keep[${key}]:-}" ]]; then
+                    echo "  ${key}: ${value}"
+                else
+                    echo "  ${key}: ${value} ($(gettext "this computer does not have it: left out"))"
+                fi
+            done < <(jq -r '.look | to_entries[] | select(.key != "name") | "\(.key)\t\(.value)"' <<<"${info}")
+            checks "${info}"
+            gum confirm "$(eval_gettext "Apply the look \${name}?")" || exit 0
+            replace_ok "${name}" || exit 0
+            slug="$("${helper}" look-import "$2" "${name}" | jq -r .slug)"
+            mkdir -p "${CONFIG_DIR}"
+            for key in style icons font mono-font pointer accent; do
+                if [[ -n "${keep[${key}]:-}" ]]; then echo "${keep[${key}]}" >"${CONFIG_DIR}/${key}"; fi
+            done
+            AMETHYSTORA_THEME_QUIET=1 amethystora-theme set "${slug}" >/dev/null
+            echo "$(eval_gettext "The look \${name} is applied.")"
+            ;;
+        "")
+            ;;
+        *)
+            amethystora-theme set "$1"
+            exit 0
+            ;;
+    esac
+    [[ -z "${1:-}" ]] || exit 0
     current="$(amethystora-theme current 2>/dev/null || true)"
     shown="${current:-$(gettext "none")}"
     choice="$(amethystora-theme list | sed 's/^[*] /  /' | awk '{ print $1 }' |
@@ -104,6 +256,107 @@ daylight STATE="":
     else
         echo "$(gettext "Daylight wallpapers: off.")"
     fi
+
+# A wallpaper drawn from the theme's colours: facets, waves, contour, mesh, grain, dots or bands; shuffle for another;
+# off for the theme's own pictures again
+[positional-arguments]
+pattern PATTERN="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    # shellcheck source=/dev/null
+    source /usr/lib/amethystora/theme/lib.sh
+    pattern="${1:-}"
+    if [[ -z "${pattern}" ]]; then
+        read -r current _ <<<"$(account_pattern)"
+        pattern="$(gum choose --header "$(gettext "A wallpaper drawn from the theme")" --selected "${current:-off}" \
+            "${PATTERNS[@]}" shuffle off)" || exit 0
+    fi
+    if [[ "${pattern}" != shuffle && "${pattern}" != off ]] && ! is_pattern "${pattern}"; then
+        echo "usage: ame desktop pattern $(IFS='|'; echo "${PATTERNS[*]}")|shuffle|off"
+        exit 64
+    fi
+    amethystora-theme pattern "${pattern}"
+    if [[ "${pattern}" == off ]]; then
+        echo "$(gettext "The theme's own pictures again.")"
+    else
+        read -r drawn _ <<<"$(account_pattern)"
+        echo "$(eval_gettext "Wallpaper drawn from the theme: \${drawn}.")"
+    fi
+
+# The theme's light side by day and its dark side by night, for a theme with a pair (Amethystora and Amethystora Light,
+# Catppuccin Mocha and Latte): on (Night Light's times), off, or hours FROM TO (each 0 to 23.75, as Night Light writes them)
+[positional-arguments]
+day-night STATE="" FROM="" TO="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.theme
+    usage() { echo "usage: ame desktop day-night on|off|night-light|hours FROM TO"; exit 64; }
+    state="${1:-}"
+    if [[ -z "${state}" ]]; then
+        if [[ "$(gsettings get "${schema}" day-night)" == true ]]; then state=off; else state=on; fi
+    fi
+    case "${state}" in
+        on | night-light)
+            gsettings set "${schema}" day-night-times night-light
+            gsettings set "${schema}" day-night true
+            ;;
+        off) gsettings set "${schema}" day-night false ;;
+        hours)
+            [[ $# == 3 ]] || usage
+            for value in "$2" "$3"; do
+                [[ "${value}" =~ ^([0-9]|1[0-9]|2[0-3])(\.[0-9]{1,2})?$ ]] || usage
+            done
+            awk -v a="$2" -v b="$3" 'BEGIN { exit !(a + 0 != b + 0) }' || usage
+            gsettings set "${schema}" day-starts "$2"
+            gsettings set "${schema}" night-starts "$3"
+            gsettings set "${schema}" day-night-times hours
+            gsettings set "${schema}" day-night true
+            ;;
+        *) usage ;;
+    esac
+    if [[ "${state}" == off ]]; then
+        echo "$(gettext "Light by day, dark by night: off.")"
+        exit 0
+    fi
+    # shellcheck source=/dev/null
+    source /usr/lib/amethystora/theme/lib.sh
+    if [[ -z "$(theme_file pair.theme)" ]]; then
+        echo "$(gettext "Light by day, dark by night: on. This theme has no light and dark pair, so it stays as it is: Amethystora and Amethystora Light, and Catppuccin Mocha and Latte, have one.")"
+    else
+        echo "$(gettext "Light by day, dark by night: on.")"
+    fi
+
+# Open looks from .amethystora-look files (ame desktop theme look FILE, and Open With): on or off (without STATE, it flips)
+[positional-arguments]
+look-files STATE="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    flag="${XDG_CONFIG_HOME:-${HOME}/.config}/amethystora/look-files"
+    state="${1:-}"
+    if [[ -z "${state}" ]]; then
+        if [[ "$(head -n1 "${flag}" 2>/dev/null || true)" == on ]]; then state=off; else state=on; fi
+    fi
+    case "${state}" in
+        on)
+            mkdir -p "${flag%/*}"
+            echo on >"${flag}"
+            echo "$(gettext "Looks from files: on. Opening one shows what it holds and asks before anything changes.")"
+            ;;
+        off)
+            rm -f "${flag}"
+            echo "$(gettext "Looks from files: off.")"
+            ;;
+        *)
+            echo "usage: ame desktop look-files on|off"
+            exit 64
+            ;;
+    esac
 
 # Take the desktop's colours from the wallpaper: vivid, soft (on), mono or off
 [positional-arguments]

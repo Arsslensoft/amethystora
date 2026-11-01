@@ -14,6 +14,8 @@ use std::sync::OnceLock;
 use regex::Regex;
 use serde_json::Value;
 
+pub mod contrast;
+
 pub const LIST: &str = "/usr/libexec/amethystora-control-list";
 /// A widget's name, as amethystora-widgets new takes it
 const WIDGET_ID: &str = r"^[a-z0-9][a-z0-9-]*$";
@@ -69,6 +71,25 @@ pub struct Webapp {
     pub name: String,
     pub address: String,
 }
+
+/// A palette the theme maker can start from (a theme, or the wallpaper's colours over the current theme's), as the
+/// list gives it: only a theme's palette keys, each a colour
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Start {
+    pub value: String,
+    pub title: String,
+    pub light: bool,
+    pub colors: BTreeMap<String, String>,
+}
+
+/// A theme's palette keys, which a theme's colors.toml holds and the theme maker sends, in the order it writes them
+pub const THEME_KEYS: [&str; 22] = [
+    "background", "foreground", "accent", "cursor", "selection_foreground", "selection_background", "color0", "color1",
+    "color2", "color3", "color4", "color5", "color6", "color7", "color8", "color9", "color10", "color11", "color12",
+    "color13", "color14", "color15",
+];
+/// A theme's name as amethystora-theme-file takes it
+const THEME_NAME: &str = r"^[A-Za-z0-9][A-Za-z0-9 _-]{0,39}$";
 
 /// A text shortcut as the list names it: its abbreviation and how many lines its text has, never the text
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -133,6 +154,8 @@ pub struct Item {
     pub disks: Vec<Disk>,
     // The text shortcuts
     pub shortcuts: Vec<Shortcut>,
+    // The theme maker's palettes to start from
+    pub starts: Vec<Start>,
 }
 
 /// The list as the script gave it: {version, sealed, elsewhere, items}, of which the page uses the last two
@@ -285,6 +308,26 @@ fn item(value: &Value) -> Item {
             })
             .filter(|shortcut| !shortcut.abbr.is_empty())
             .collect(),
+        starts: array(field("starts"))
+            .iter()
+            .map(|start| Start {
+                value: string(start.get("value")),
+                title: string(start.get("title")),
+                light: truthy(start.get("light")),
+                colors: start
+                    .get("colors")
+                    .and_then(Value::as_object)
+                    .map(|colors| {
+                        colors
+                            .iter()
+                            .filter(|(key, _)| THEME_KEYS.contains(&key.as_str()))
+                            .filter_map(|(key, value)| Some((key.clone(), value.as_str().filter(|v| is_colour(v))?.to_string())))
+                            .collect()
+                    })
+                    .unwrap_or_default(),
+            })
+            .filter(|start| !start.value.is_empty() && start.colors.contains_key("background") && start.colors.contains_key("foreground"))
+            .collect(),
     }
 }
 
@@ -329,6 +372,10 @@ pub enum Refusal {
     /// A text shortcut's text that is empty or too long, or that has a character that cannot be typed
     ShortcutLength,
     ShortcutCharacter,
+    /// A theme's name amethystora-theme-file would not take
+    ThemeName,
+    /// A palette with a key missing or a value that is not a colour
+    ThemeColours,
 }
 
 /// A command of the list with values checked here in the place of its placeholders, {value} and the like,
@@ -525,6 +572,52 @@ pub fn shortcut(list: Option<&List>, action: &str, abbr: &str, text: &str) -> Re
         }
         _ => Err(Refusal::Refused),
     }
+}
+
+// --- A theme of one's own ---------------------------------------------------------------------------------
+
+/// #rrggbb, in lower case, as the helper takes it
+pub fn is_colour(value: &str) -> bool {
+    value.len() == 7 && value.starts_with('#') && value[1..].chars().all(|c| c.is_ascii_digit() || ('a'..='f').contains(&c))
+}
+
+/// A theme's name the helper takes: 1 to 40 letters, digits, spaces, dashes and underscores, a letter or digit first
+pub fn valid_theme_name(name: &str) -> bool {
+    static CELL: OnceLock<Regex> = OnceLock::new();
+    regex(&CELL, THEME_NAME).is_match(name)
+}
+
+/// A palette made in the theme maker saved as the account's theme and applied: the name one argument, the palette on
+/// stdin, every one of THEME_KEYS a colour and nothing else, as `key = "#rrggbb"` lines
+pub fn save_theme(list: Option<&List>, name: &str, colors: &BTreeMap<String, String>) -> Result<Run, Refusal> {
+    let item = list.and_then(|list| list.first_of_kind("theme-maker")).filter(|item| item.available).ok_or(Refusal::Refused)?;
+    let command = item.commands.get("save").ok_or(Refusal::Refused)?;
+    if command.command.as_ref().is_some_and(|words| words.iter().any(|word| word.contains('{') && word != "{name}")) {
+        return Err(Refusal::Refused);
+    }
+    if !valid_theme_name(name) {
+        return Err(Refusal::ThemeName);
+    }
+    if colors.len() != THEME_KEYS.len() || !THEME_KEYS.iter().all(|key| colors.get(*key).is_some_and(|value| is_colour(value))) {
+        return Err(Refusal::ThemeColours);
+    }
+    let run = filled(command.command.as_ref(), command.terminal, &[("{name}", name)])?;
+    if run.terminal {
+        return Err(Refusal::Refused);
+    }
+    let palette: String = THEME_KEYS.iter().map(|key| format!("{key} = \"{}\"\n", colors[*key])).collect();
+    Ok(Run { stdin: Some(palette), ..run })
+}
+
+/// A colour file from elsewhere imported as a theme, in a terminal, which shows it and asks first: the file picked in
+/// the window's own file dialog, which has to be there
+pub fn import_theme(list: Option<&List>, file: Option<&Path>) -> Result<Run, Refusal> {
+    let item = list.and_then(|list| list.first_of_kind("theme-maker")).filter(|item| item.available).ok_or(Refusal::Refused)?;
+    let command = item.commands.get("import").ok_or(Refusal::Refused)?;
+    let Some(file) = file.filter(|file| file.is_file()).and_then(Path::to_str) else {
+        return Err(Refusal::Refused);
+    };
+    filled(command.command.as_ref(), command.terminal, &[("{file}", file)])
 }
 
 // --- An image of one's own --------------------------------------------------------------------------------
@@ -769,5 +862,49 @@ mod tests {
         assert_eq!(trust_image(Some(&list), "ghcr.io/you/image", own, None), Err(Refusal::NoKey));
         assert!(trust_image(Some(&list), "ghcr.io/you/image", own, Some(Path::new("/nonexistent/cosign.pub"))).is_err());
         let _ = std::fs::remove_file(key);
+    }
+
+    #[test]
+    fn the_theme_maker_sends_only_a_whole_palette() {
+        let list = parse_list(
+            r##"{"items": [{"page": "appearance", "id": "theme-maker", "kind": "theme-maker", "title": "Make a theme", "available": true,
+            "starts": [{"value": "nord", "title": "Nord", "light": false, "colors": {"background": "#2e3440", "foreground": "#d8dee9",
+                "accent": "#81a1c1", "evil": "#000000", "color1": "$(id)"}},
+                {"value": "broken", "title": "Broken", "colors": {"accent": "#000000"}}],
+            "commands": {"save": {"terminal": false, "command": ["ame", "desktop", "theme", "save", "{name}"]},
+                "import": {"terminal": true, "command": ["ame", "desktop", "theme", "import", "{file}"]}}}]}"##,
+        )
+        .unwrap();
+        let item = list.first_of_kind("theme-maker").unwrap();
+        // Only a palette's keys, each a colour, and only a start with a ground and a text
+        assert_eq!(item.starts.len(), 1);
+        assert_eq!(item.starts[0].colors.keys().map(String::as_str).collect::<Vec<_>>(), ["accent", "background", "foreground"]);
+        let colors: BTreeMap<String, String> = THEME_KEYS.iter().map(|key| (key.to_string(), "#123abc".to_string())).collect();
+        let run = save_theme(Some(&list), "My Theme", &colors).unwrap();
+        assert_eq!(run.argv, ["ame", "desktop", "theme", "save", "My Theme"]);
+        assert!(!run.terminal);
+        let stdin = run.stdin.unwrap();
+        assert_eq!(stdin.lines().count(), 22);
+        assert!(stdin.starts_with("background = \"#123abc\"\n"));
+        for bad in ["", " lead", "../x", "a/b", "x".repeat(41).as_str(), "name;rm"] {
+            assert_eq!(save_theme(Some(&list), bad, &colors), Err(Refusal::ThemeName), "{bad}");
+        }
+        let mut short = colors.clone();
+        short.remove("color15");
+        assert_eq!(save_theme(Some(&list), "Mine", &short), Err(Refusal::ThemeColours));
+        let mut upper = colors.clone();
+        upper.insert("accent".into(), "#ABCDEF".into());
+        assert_eq!(save_theme(Some(&list), "Mine", &upper), Err(Refusal::ThemeColours));
+        let mut extra = colors.clone();
+        extra.insert("evil".into(), "#000000".into());
+        assert_eq!(save_theme(Some(&list), "Mine", &extra), Err(Refusal::ThemeColours));
+        let file = std::env::temp_dir().join("amethystora-control-core-test-kitty.conf");
+        std::fs::write(&file, "background #000000\n").unwrap();
+        let run = import_theme(Some(&list), Some(&file)).unwrap();
+        assert!(run.terminal);
+        assert_eq!(run.argv, ["ame", "desktop", "theme", "import", file.to_str().unwrap()]);
+        assert!(import_theme(Some(&list), Some(Path::new("/nonexistent/x.conf"))).is_err());
+        assert!(import_theme(Some(&list), None).is_err());
+        let _ = std::fs::remove_file(file);
     }
 }

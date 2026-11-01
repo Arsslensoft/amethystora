@@ -92,7 +92,7 @@ DEFAULT_FONT="Adwaita Sans"
 FONT_SIZE=11
 # The families offered for the interface (ame desktop font, Control): the desktop's own and the ones the themes are
 # written in, each installed by 04-packages.sh or 09-fonts.sh. Any other installed family can be typed.
-UI_FONTS=("Adwaita Sans" Comfortaa "DM Sans" Figtree "Fira Sans" Geist "IBM Plex Mono" "IBM Plex Sans" Inter
+UI_FONTS=("Adwaita Sans" "Atkinson Hyperlegible Next" Comfortaa "DM Sans" Figtree "Fira Sans" Geist "IBM Plex Mono" "IBM Plex Sans" Inter
     "JetBrains Mono" Karla Lexend Manrope Nunito Outfit "Plus Jakarta Sans" Quicksand Rubik Sora "Space Grotesk"
     "Space Mono" "Work Sans")
 # The monospace font (terminals, code, Text Editor, anything asking GNOME for the system's fixed-width face) when neither
@@ -100,7 +100,7 @@ UI_FONTS=("Adwaita Sans" Comfortaa "DM Sans" Figtree "Fira Sans" Geist "IBM Plex
 # 04-packages.sh or 09-fonts.sh. Any other installed family can be typed.
 DEFAULT_MONO_FONT="JetBrains Mono"
 MONO_FONT_SIZE=11
-MONO_FONTS=("Adwaita Mono" "DM Mono" "Fira Code" "Geist Mono" "IBM Plex Mono" "JetBrains Mono" "Space Mono" "Victor Mono")
+MONO_FONTS=("Adwaita Mono" "Atkinson Hyperlegible Mono" "DM Mono" "Fira Code" "Geist Mono" "IBM Plex Mono" "JetBrains Mono" "Space Mono" "Victor Mono")
 
 # The twelve accents any theme can take in place of its own (ame desktop accent, Control's Accent), in the order Control
 # shows them, each an id and the fill a button, a switch or a selection is drawn in. Every one carries a white label at
@@ -696,6 +696,65 @@ daylight_index_now() {
         { start = end }'
 }
 
+# --- Wallpapers drawn from the theme ------------------------------------------------------------
+
+# The seven patterns pattern.awk draws (ame desktop pattern), in the order Control shows them
+PATTERNS=(facets waves contour mesh grain dots bands)
+PATTERN_DIR="${CURRENT_DIR}/patterns"
+PATTERN_PREVIEWS="${XDG_CACHE_HOME:-${HOME}/.cache}/amethystora/patterns"
+
+is_pattern() {
+    local pattern
+    for pattern in "${PATTERNS[@]}"; do
+        [[ $1 == "${pattern}" ]] && return 0
+    done
+    return 1
+}
+
+# The drawn wallpaper the account chose, as `PATTERN SEED`, or nothing while it is off: ~/.config/amethystora/pattern,
+# its first line a pattern and its second the seed Shuffle last drew (1 when there is none). Anything else counts as off.
+account_pattern() {
+    local name="" seed=""
+    [[ -r "${CONFIG_DIR}/pattern" ]] || return 0
+    { IFS= read -r name; IFS= read -r seed; } <"${CONFIG_DIR}/pattern" || true
+    name="${name%$'\r'}"
+    seed="${seed%$'\r'}"
+    is_pattern "${name}" || return 0
+    [[ ${seed} =~ ^[0-9]{1,9}$ ]] || seed=1
+    echo "${name} $((10#${seed}))"
+}
+
+# What a pattern is drawn from, as pattern.awk reads it: the palette of a theme folder, its lightness and the choice
+pattern_input() {
+    local dir="$1" name="$2" seed="$3" tone="${4:-}"
+    # The keys it draws with, each the first line that gives it (as colors_get reads them), in one read of the file
+    awk 'match($0, /^[[:space:]]*["\047]?(background|foreground|accent|color[1-6])["\047]?[[:space:]]*=[[:space:]]*["\047](#[0-9a-fA-F]{6})["\047]/, m) &&
+        !seen[m[1]]++ { print m[1] "=" tolower(m[2]) }' "${dir}/colors.toml" 2>/dev/null
+    [[ -f "${dir}/light.mode" ]] && echo "light=1"
+    echo "pattern=${name}"
+    echo "seed=${seed}"
+    [[ -n ${tone} ]] && echo "tone=${tone}"
+    return 0
+}
+
+# A short name for what a drawing is drawn from, so that a new palette or seed is a new file: GNOME keeps a picture by
+# its path, and a drawing written over the one it shows would not be shown again
+pattern_hash() {
+    pattern_input "$1" "$2" "$3" | cksum | cut -d' ' -f1
+}
+
+# A pattern drawn into OUT, whole or not at all
+draw_pattern() {
+    local dir="$1" name="$2" seed="$3" tone="$4" out="$5"
+    mkdir -p "${out%/*}"
+    if pattern_input "${dir}" "${name}" "${seed}" "${tone}" | awk -f "$(dirname "${BASH_SOURCE[0]}")/pattern.awk" >"${out}.new"; then
+        mv "${out}.new" "${out}"
+    else
+        rm -f "${out}.new"
+        return 1
+    fi
+}
+
 # The colours an interface needs beyond a palette's, as key=value lines: the surfaces, an accent and a label that can be
 # read on it, status colours, the line a control is drawn with and how much of the text a dimmed label keeps, each at
 # the ratio WCAG asks (palette.awk, which says which). A theme's folder holds colors.toml, and light.mode when it is light.
@@ -709,6 +768,19 @@ derive_palette() {
             echo "light=1"
         fi
     } | awk -f "$(dirname "${BASH_SOURCE[0]}")/palette.awk"
+}
+
+# The three checks Control's theme maker shows, for a theme's folder (palette.awk with checks=1): `NAME RATIO NEAREST`
+# lines for text, label and outline
+palette_checks() {
+    local dir="$1" key
+    {
+        for key in background foreground accent color1 color2 color3 color4 color5 color6 success warning error; do
+            echo "${key}=$(colors_get "${dir}" "${key}")"
+        done
+        [[ -f "${dir}/light.mode" ]] && echo "light=1"
+        echo "checks=1"
+    } | awk -f "$(dirname "${BASH_SOURCE[0]}")/palette.awk" | sed -n 's/^check_\([a-z]*\)=\(.*\)$/\1 \2/p'
 }
 
 hex_to_rgb() {

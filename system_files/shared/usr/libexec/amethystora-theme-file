@@ -1,0 +1,620 @@
+#!/usr/bin/python3 -I
+# Themes into files and out of them, for `ame desktop theme save|import|share|look` and Control's theme maker:
+#
+#   amethystora-theme-file save NAME                 a palette on stdin (`key = "#rrggbb"` lines) as the account's theme
+#   amethystora-theme-file read FILE                 what a colour file from elsewhere holds, as JSON, writing nothing
+#   amethystora-theme-file import FILE NAME          such a file as the account's theme, with the picture beside it
+#   amethystora-theme-file share OUT --theme DIR --name NAME [--picture P] [--style S] [--icons I] [--font F]
+#                          [--mono-font M] [--pointer P] [--accent A]
+#                                                    the look as one file: a tar of look.conf, colors.toml, wallpaper.png
+#   amethystora-theme-file look FILE                 what a look file holds, as JSON, writing nothing
+#   amethystora-theme-file look-import FILE NAME     its colours and picture as the account's theme; prints its look.conf
+#
+# A colour file from elsewhere is a kitty .conf, an Alacritty .toml, a base16 or base24 .yaml or an Xresources file.
+# Only the lines that name a colour are read, and the rest is counted and left out: nothing in such a file is ever
+# followed (no include, no import, no command), and a file is only ever a local file, never an address.
+#
+# A look file is a tar of fixed names, 25 MiB at most, read into memory member by member and never extracted: a member
+# that is not a regular file of one of the three names, a name twice, or one larger than its share refuses the whole
+# file. Its picture, and a picture beside a colour file, is decoded and written again as PNG, by the account.
+#
+# A theme is written to ~/.config/amethystora/themes/<slug> (the folder lib.sh reads), built beside it and moved into
+# place whole. The name of a theme the image ships is refused: a folder of that name would be laid over the shipped one.
+# It runs as the account and never as root. Exit status: 0 done, 2 a wrong argument, 3 the file refused, 1 not written.
+
+import io
+import json
+import os
+import re
+import shutil
+import stat
+import sys
+import tarfile
+import tempfile
+import time
+
+SYSTEM_THEMES = os.environ.get('AMETHYSTORA_SYSTEM_THEMES_DIR', '/usr/share/amethystora/themes')
+CONFIG = os.path.join(os.environ.get('XDG_CONFIG_HOME') or os.path.join(os.path.expanduser('~'), '.config'),
+                      'amethystora')
+USER_THEMES = os.path.join(CONFIG, 'themes')
+PSEUDO = ('/proc', '/sys', '/dev', '/run')
+# The palette's keys, which a theme's colors.toml holds and nothing else here writes
+KEYS = (['background', 'foreground', 'accent', 'cursor', 'selection_foreground', 'selection_background'] +
+        [f'color{i}' for i in range(16)])
+COLOUR_FILE_MAX = 1024 * 1024
+PICTURE_MAX = 64 * 1024 * 1024
+MAX_SIDE = 16384
+# A look file and what each of its members may weigh
+LOOK_MAX = 25 * 1024 * 1024
+LOOK_MEMBERS = {'look.conf': 4096, 'colors.toml': 16384, 'wallpaper.png': 24 * 1024 * 1024}
+LOOK_KEYS = ('name', 'style', 'icons', 'font', 'mono-font', 'pointer', 'accent')
+LOOK_VALUE = re.compile(r'^[A-Za-z0-9][A-Za-z0-9 ._+-]{0,63}$')
+# A picture is shared at most this wide, so that a photograph fits the file
+SHARE_WIDTH = 3840
+PICTURES = ('.png', '.jpg', '.jpeg', '.webp')
+HEX = re.compile(r'^#[0-9a-f]{6}$')
+
+
+class Refused(Exception):
+    pass
+
+
+def usage(message):
+    print(f'amethystora-theme-file: {message}', file=sys.stderr)
+    sys.exit(2)
+
+
+# --- Colours -------------------------------------------------------------------------------------
+
+def colour(value):
+    """#rrggbb from #rgb, #rrggbb, #rrggbbaa, 0xrrggbb or rrggbb, or None"""
+    if not isinstance(value, str):
+        return None
+    v = value.strip().strip('\'"').lower()
+    if v.startswith('0x'):
+        v = v[2:]
+    elif v.startswith('#'):
+        v = v[1:]
+    if re.fullmatch(r'[0-9a-f]{3}', v):
+        v = ''.join(c * 2 for c in v)
+    elif re.fullmatch(r'[0-9a-f]{8}', v):
+        v = v[:6]
+    return f'#{v}' if re.fullmatch(r'[0-9a-f]{6}', v) else None
+
+
+def channel(h, i):
+    return int(h[1 + 2 * i:3 + 2 * i], 16)
+
+
+def luminance(h):
+    def lin(v):
+        v /= 255
+        return v / 12.92 if v <= 0.04045 else ((v + 0.055) / 1.055) ** 2.4
+    return 0.2126 * lin(channel(h, 0)) + 0.7152 * lin(channel(h, 1)) + 0.0722 * lin(channel(h, 2))
+
+
+def mix(a, b, t):
+    return '#' + ''.join(f'{round(channel(a, i) * (1 - t) + channel(b, i) * t):02x}' for i in range(3))
+
+
+def complete(colours):
+    """The palette with every key: what a file leaves out is worked out of what it has, as a terminal would"""
+    if not colours.get('background') or not colours.get('foreground'):
+        raise Refused('the file names no background colour or no text colour')
+    out = dict(colours)
+    bg, fg = out['background'], out['foreground']
+    out.setdefault('color0', mix(bg, fg, 0.15))
+    out.setdefault('color7', fg)
+    for i, fallback in ((1, '#e5484d'), (2, '#3fa65a'), (3, '#d9a21b'), (4, '#3b82f6'), (5, '#a855f7'), (6, '#14b8a6')):
+        out.setdefault(f'color{i}', fallback)
+    for i in range(8):
+        out.setdefault(f'color{i + 8}', out[f'color{i}'])
+    out.setdefault('accent', out['color4'])
+    out.setdefault('cursor', fg)
+    out.setdefault('selection_background', mix(bg, out['accent'], 0.4))
+    out.setdefault('selection_foreground', fg)
+    return {key: out[key] for key in KEYS}
+
+
+def light(colours):
+    # As palette.awk tells a light ground from a dark one
+    return luminance(colours['background']) >= 0.18
+
+
+def toml_text(colours, source):
+    lines = [f'# {source}, written by amethystora-theme-file: colours only']
+    lines += [f'{key} = "{colours[key]}"' for key in KEYS]
+    return '\n'.join(lines) + '\n'
+
+
+# --- Colour files from elsewhere -----------------------------------------------------------------
+
+KITTY = {k: k for k in KEYS if k != 'accent'}
+BASE16 = {'background': '00', 'foreground': '05', 'selection_background': '02', 'cursor': '05', 'accent': '0D',
+          'color0': '00', 'color1': '08', 'color2': '0B', 'color3': '0A', 'color4': '0D', 'color5': '0E',
+          'color6': '0C', 'color7': '05', 'color8': '03', 'color15': '07'}
+# base24's bright colours have slots of their own; base16 repeats the normal ones
+BASE24_BRIGHT = {'color9': '12', 'color10': '14', 'color11': '13', 'color12': '16', 'color13': '17', 'color14': '15'}
+BASE16_BRIGHT = {'color9': '08', 'color10': '0B', 'color11': '0A', 'color12': '0D', 'color13': '0E', 'color14': '0C'}
+ALACRITTY_NORMAL = ('black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white')
+
+
+def parse_base16(text):
+    slots, read, left = {}, 0, 0
+    name = None
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith('#'):
+            continue
+        m = re.match(r'^(base[0-9A-Fa-f]{2})\s*:\s*["\']?(#?[0-9A-Fa-f]{6})\b', stripped)
+        if m and colour(m.group(2)):
+            slots[m.group(1)[4:].upper()] = colour(m.group(2))
+            read += 1
+            continue
+        m = re.match(r'^(scheme|name)\s*:\s*["\']?([^"\']+?)["\']?\s*$', stripped)
+        if m and name is None:
+            name = m.group(2)
+            continue
+        left += 1
+    base24 = any(k in slots for k in ('10', '11', '12', '13', '14', '15', '16', '17'))
+    table = dict(BASE16, **(BASE24_BRIGHT if base24 else BASE16_BRIGHT))
+    colours = {key: slots[slot] for key, slot in table.items() if slot in slots}
+    return ('base24' if base24 else 'base16'), name, colours, read, left
+
+
+def parse_kitty(text):
+    colours, read, left = {}, 0, 0
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith('#'):
+            continue
+        parts = stripped.split(None, 1)
+        if len(parts) == 2 and parts[0] in KITTY and colour(parts[1].split()[0]):
+            colours[KITTY[parts[0]]] = colour(parts[1].split()[0])
+            read += 1
+        else:
+            left += 1
+    return 'kitty', None, colours, read, left
+
+
+def parse_alacritty(text):
+    import tomllib
+    try:
+        data = tomllib.loads(text)
+    except tomllib.TOMLDecodeError:
+        raise Refused('the file is not TOML that can be read')
+    colours, read, left = {}, 0, 0
+    table = data.get('colors') if isinstance(data.get('colors'), dict) else {}
+    left += sum(1 for key in data if key != 'colors')
+
+    def take(key, value):
+        nonlocal read, left
+        c = colour(value)
+        if c:
+            colours[key] = c
+            read += 1
+        else:
+            left += 1
+
+    for section, fields in table.items():
+        if not isinstance(fields, dict):
+            left += 1
+            continue
+        for field, value in fields.items():
+            if section == 'primary' and field in ('background', 'foreground'):
+                take(field, value)
+            elif section in ('normal', 'bright') and field in ALACRITTY_NORMAL:
+                take(f'color{ALACRITTY_NORMAL.index(field) + (8 if section == "bright" else 0)}', value)
+            elif section == 'cursor' and field == 'cursor':
+                take('cursor', value)
+            elif section == 'selection' and field == 'background':
+                take('selection_background', value)
+            elif section == 'selection' and field == 'text':
+                take('selection_foreground', value)
+            else:
+                left += 1
+    return 'alacritty', None, colours, read, left
+
+
+XRESOURCE = re.compile(r'^[\w.*-]*?[.*]?(foreground|background|cursorColor|color(\d{1,2}))\s*:\s*(\S+)\s*$')
+
+
+def parse_xresources(text):
+    defines, colours, read, left = {}, {}, 0, 0
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith('!'):
+            continue
+        m = re.match(r'^#define\s+(\w+)\s+(\S+)\s*$', stripped)
+        if m:
+            # Text put in for text, and only a colour: nothing in a define is ever run
+            if colour(m.group(2)):
+                defines[m.group(1)] = colour(m.group(2))
+            continue
+        if stripped.startswith('#'):
+            left += 1
+            continue
+        m = XRESOURCE.match(stripped)
+        value = colour(defines.get(m.group(3), m.group(3))) if m else None
+        if m and value and (m.group(2) is None or int(m.group(2)) < 16):
+            key = {'foreground': 'foreground', 'background': 'background', 'cursorColor': 'cursor'}.get(
+                m.group(1), f'color{m.group(2)}')
+            colours[key] = value
+            read += 1
+        else:
+            left += 1
+    return 'xresources', None, colours, read, left
+
+
+def detect(text):
+    if re.search(r'^\s*base0[0-9A-Fa-f]\s*:', text, re.M):
+        return parse_base16
+    if re.search(r'^\s*\[colors(\.|\])', text, re.M):
+        return parse_alacritty
+    if re.search(r'^\s*[\w.*-]*[.*](foreground|background|color\d{1,2})\s*:', text, re.M):
+        return parse_xresources
+    if re.search(r'^\s*(foreground|background|color\d{1,2})\s+\S', text, re.M):
+        return parse_kitty
+    raise Refused('the file is not a kitty, Alacritty, base16, base24 or Xresources colour file')
+
+
+def local_file(path, largest):
+    """The real path of a local regular file no larger than `largest`, or Refused"""
+    if re.match(r'^[A-Za-z][A-Za-z0-9+.-]*://', path):
+        raise Refused('only a file on this computer is read, never an address')
+    if any(ord(c) < 32 or ord(c) == 127 for c in path):
+        raise Refused('the file has a control character in its name')
+    real = os.path.realpath(path)
+    if any(real == p or real.startswith(p + '/') for p in PSEUDO):
+        raise Refused('the file is not a file of the computer')
+    try:
+        info = os.stat(real)
+    except OSError:
+        raise Refused('the file cannot be read')
+    if not stat.S_ISREG(info.st_mode):
+        raise Refused('the file is not a regular file')
+    if info.st_size > largest:
+        raise Refused(f'the file is larger than {largest // (1024 * 1024)} MiB')
+    return real
+
+
+def picture_beside(real):
+    stem = os.path.splitext(real)[0]
+    for extension in PICTURES:
+        for candidate in (stem + extension, stem + extension.upper()):
+            if os.path.isfile(candidate):
+                return candidate
+    return None
+
+
+def read_colour_file(path):
+    real = local_file(path, COLOUR_FILE_MAX)
+    with open(real, 'rb') as f:
+        text = f.read().decode('utf-8', errors='replace')
+    kind, name, found, read, left = detect(text)(text)
+    if not read:
+        raise Refused('the file names no colour')
+    colours = complete(found)
+    stem = os.path.splitext(os.path.basename(real))[0]
+    return {'format': kind, 'name': clean_name(name or stem), 'colors': colours, 'light': light(colours),
+            'read': read, 'left_out': left, 'picture': picture_beside(real), 'file': real}
+
+
+# --- Names and folders ---------------------------------------------------------------------------
+
+def clean_name(name):
+    name = re.sub(r'[^A-Za-z0-9 _-]+', ' ', name or '').strip()
+    name = re.sub(r'\s+', ' ', name)[:40].strip()
+    return name or 'Imported'
+
+
+def slug(name):
+    # theme_slug in lib.sh, letter for letter: never only dots, never the folder above
+    s = re.sub(r'[^a-z0-9._-]+', '-', name.lower())
+    s = re.sub(r'^[.-]*', '', s)
+    return re.sub(r'-$', '', s)
+
+
+def checked_slug(name):
+    if not isinstance(name, str) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9 _-]{0,39}', name):
+        raise Refused('a theme\'s name is 1 to 40 letters, digits, spaces and dashes')
+    s = slug(name)
+    if not s:
+        raise Refused('a theme\'s name needs a letter or a digit')
+    if os.path.isdir(os.path.join(SYSTEM_THEMES, s)):
+        raise Refused(f'{s} is the name of a theme the system has: choose another')
+    return s
+
+
+def write_theme(s, colours, source, picture=None, picture_name='wallpaper'):
+    """The theme folder, built beside its place and moved in whole; the account's own of that name is replaced"""
+    os.makedirs(USER_THEMES, mode=0o755, exist_ok=True)
+    build = tempfile.mkdtemp(prefix=f'.{s}.', dir=USER_THEMES)
+    try:
+        with open(os.path.join(build, 'colors.toml'), 'w', encoding='utf-8') as f:
+            f.write(toml_text(colours, source))
+        if light(colours):
+            open(os.path.join(build, 'light.mode'), 'w').close()
+        if picture is not None:
+            os.makedirs(os.path.join(build, 'backgrounds'))
+            picture(os.path.join(build, 'backgrounds', f'{picture_name}.png'))
+        os.chmod(build, 0o755)
+        target = os.path.join(USER_THEMES, s)
+        old = None
+        if os.path.lexists(target):
+            old = tempfile.mkdtemp(prefix=f'.{s}.old.', dir=USER_THEMES)
+            os.rename(target, os.path.join(old, 'theme'))
+        os.rename(build, target)
+        if old:
+            shutil.rmtree(old, ignore_errors=True)
+    except BaseException:
+        shutil.rmtree(build, ignore_errors=True)
+        raise
+
+
+# --- Pictures ------------------------------------------------------------------------------------
+
+def gdk():
+    import gi
+    gi.require_version('GdkPixbuf', '2.0')
+    from gi.repository import GdkPixbuf, GLib
+    return GdkPixbuf, GLib
+
+
+def header_size(head):
+    """A PNG's, JPEG's or WebP's width and height from its first bytes, or None (as amethystora-wallpaper-colours reads
+    them, for the formats a wallpaper beside a colour file comes in; a JPEG's size is in a frame marker, found below)"""
+    if head[:8] == b'\x89PNG\r\n\x1a\n' and head[12:16] == b'IHDR':
+        return int.from_bytes(head[16:20], 'big'), int.from_bytes(head[20:24], 'big')
+    if head[:4] == b'RIFF' and head[8:12] == b'WEBP':
+        kind = head[12:16]
+        if kind == b'VP8X':
+            return 1 + int.from_bytes(head[24:27], 'little'), 1 + int.from_bytes(head[27:30], 'little')
+        if kind == b'VP8L':
+            bits = int.from_bytes(head[21:25], 'little')
+            return 1 + (bits & 0x3fff), 1 + ((bits >> 14) & 0x3fff)
+        if kind == b'VP8 ':
+            return int.from_bytes(head[26:28], 'little') & 0x3fff, int.from_bytes(head[28:30], 'little') & 0x3fff
+    return None
+
+
+def jpeg_size(data):
+    i = 2
+    for _ in range(4096):
+        if i + 9 > len(data) or data[i] != 0xff:
+            return None
+        while i < len(data) and data[i] == 0xff:
+            i += 1
+        marker = data[i]
+        i += 1
+        if marker in (0xd8, 0x01) or 0xd0 <= marker <= 0xd7:
+            continue
+        length = int.from_bytes(data[i:i + 2], 'big')
+        if 0xc0 <= marker <= 0xcf and marker not in (0xc4, 0xc8, 0xcc):
+            return int.from_bytes(data[i + 5:i + 7], 'big'), int.from_bytes(data[i + 3:i + 5], 'big')
+        if length < 2:
+            return None
+        i += length
+    return None
+
+
+def decoded(data, only_png=False):
+    """A pixbuf of a picture's bytes, its size read from its own header before anything decodes it"""
+    if only_png and data[:8] != b'\x89PNG\r\n\x1a\n':
+        raise Refused('the picture is not a PNG')
+    size = header_size(data[:64]) or (jpeg_size(data) if data[:2] == b'\xff\xd8' else None)
+    if size is None or not (0 < size[0] <= MAX_SIDE and 0 < size[1] <= MAX_SIDE):
+        raise Refused('the picture is larger than 16384 pixels a side, or says no size')
+    GdkPixbuf, GLib = gdk()
+    try:
+        loader = GdkPixbuf.PixbufLoader.new_with_type('png') if only_png else GdkPixbuf.PixbufLoader()
+        loader.write(data)
+        loader.close()
+        pixbuf = loader.get_pixbuf()
+    except GLib.Error:
+        raise Refused('the picture cannot be read')
+    if pixbuf is None:
+        raise Refused('the picture cannot be read')
+    return pixbuf
+
+
+def png_writer(pixbuf, width=None):
+    """A function writing the pixbuf as PNG to a path, scaled down to `width` when it is wider"""
+    def write(path):
+        GdkPixbuf, _ = gdk()
+        p = pixbuf
+        if width and p.get_width() > width:
+            p = p.scale_simple(width, max(1, round(p.get_height() * width / p.get_width())), GdkPixbuf.InterpType.BILINEAR)
+        p.savev(path, 'png', [], [])
+    return write
+
+
+def picture_file(path):
+    real = local_file(path, PICTURE_MAX)
+    with open(real, 'rb') as f:
+        return decoded(f.read())
+
+
+# --- Look files ----------------------------------------------------------------------------------
+
+def read_look(path):
+    real = local_file(path, LOOK_MAX)
+    members, total = {}, 0
+    try:
+        with tarfile.open(real, 'r:') as tar:
+            for _ in range(len(LOOK_MEMBERS) + 1):
+                member = tar.next()
+                if member is None:
+                    break
+                if not member.isreg() or member.name not in LOOK_MEMBERS or member.name in members:
+                    raise Refused(f'the look file holds {member.name!r}, which a look file does not')
+                if member.size > LOOK_MEMBERS[member.name]:
+                    raise Refused(f'{member.name} in the look file is larger than a look file allows')
+                total += member.size
+                if total > LOOK_MAX:
+                    raise Refused('the look file is larger than 25 MiB')
+                data = tar.extractfile(member).read(member.size + 1)
+                if len(data) != member.size:
+                    raise Refused('the look file is cut short')
+                members[member.name] = data
+            else:
+                raise Refused('the look file holds more than a look file does')
+    except tarfile.TarError:
+        raise Refused('the file is not a look file')
+    if 'colors.toml' not in members or 'look.conf' not in members:
+        raise Refused('the look file has no colours or no look.conf')
+    found, left = {}, 0
+    for line in members['colors.toml'].decode('utf-8', errors='replace').splitlines():
+        m = re.match(r'^\s*([a-z0-9_]+)\s*=\s*"(#[0-9a-fA-F]{6})"\s*$', line)
+        if m and m.group(1) in KEYS:
+            found[m.group(1)] = m.group(2).lower()
+        elif line.strip() and not line.strip().startswith('#'):
+            left += 1
+    colours = complete(found)
+    look = {}
+    for line in members['look.conf'].decode('utf-8', errors='replace').splitlines():
+        m = re.match(r'^\s*([a-z-]+)\s*=\s*(.*?)\s*$', line)
+        if m and m.group(1) in LOOK_KEYS and LOOK_VALUE.match(m.group(2)) and m.group(1) not in look:
+            look[m.group(1)] = m.group(2)
+        elif line.strip() and not line.strip().startswith('#'):
+            left += 1
+    pixbuf = decoded(members['wallpaper.png'], only_png=True) if 'wallpaper.png' in members else None
+    look['name'] = clean_name(look.get('name') or os.path.splitext(os.path.basename(real))[0])
+    return {'name': look['name'], 'colors': colours, 'light': light(colours), 'look': look,
+            'picture': pixbuf is not None, 'left_out': left, 'size': os.path.getsize(real)}, pixbuf
+
+
+def share(out, theme_dir, name, picture, values):
+    colours = {}
+    for line in open(os.path.join(theme_dir, 'colors.toml'), encoding='utf-8', errors='replace'):
+        m = re.match(r'^\s*([a-z0-9_]+)\s*=\s*["\'](#[0-9a-fA-F]{6})["\']', line)
+        if m and m.group(1) in KEYS:
+            colours[m.group(1)] = m.group(2).lower()
+    colours = complete(colours)
+    conf = [f'name = {clean_name(name)}']
+    for key in LOOK_KEYS[1:]:
+        value = values.get(key)
+        if value and LOOK_VALUE.match(value):
+            conf.append(f'{key} = {value}')
+    members = [('look.conf', ('\n'.join(conf) + '\n').encode()), ('colors.toml', toml_text(colours, name).encode())]
+    if picture:
+        pixbuf = picture_file(picture) if not picture.lower().endswith('.svg') else svg_pixbuf(picture)
+        with tempfile.TemporaryDirectory() as work:
+            png = os.path.join(work, 'wallpaper.png')
+            for width in (SHARE_WIDTH, 2560, 1920):
+                png_writer(pixbuf, width)(png)
+                if os.path.getsize(png) <= LOOK_MEMBERS['wallpaper.png']:
+                    break
+            else:
+                raise Refused('the wallpaper does not fit a look file')
+            with open(png, 'rb') as f:
+                members.append(('wallpaper.png', f.read()))
+    out = os.path.abspath(out)
+    if not out.endswith('.amethystora-look'):
+        raise Refused('a look file is named NAME.amethystora-look')
+    fd, temporary = tempfile.mkstemp(prefix='.look.', dir=os.path.dirname(out))
+    try:
+        with os.fdopen(fd, 'wb') as f, tarfile.open(fileobj=f, mode='w:', format=tarfile.USTAR_FORMAT) as tar:
+            for member, data in members:
+                info = tarfile.TarInfo(member)
+                info.size, info.mode, info.mtime = len(data), 0o644, int(time.time())
+                tar.addfile(info, io.BytesIO(data))
+        os.chmod(temporary, 0o644)
+        os.rename(temporary, out)
+    except BaseException:
+        os.unlink(temporary)
+        raise
+    print(out)
+
+
+def svg_pixbuf(path):
+    real = local_file(path, PICTURE_MAX)
+    GdkPixbuf, GLib = gdk()
+    try:
+        return GdkPixbuf.Pixbuf.new_from_file_at_scale(real, SHARE_WIDTH, -1, True)
+    except GLib.Error:
+        raise Refused('the picture cannot be read')
+
+
+# --- The commands --------------------------------------------------------------------------------
+
+def save(name):
+    s = checked_slug(name)
+    text = sys.stdin.read(65536)
+    found = {}
+    for line in text.splitlines():
+        if not line.strip() or line.strip().startswith('#'):
+            continue
+        m = re.match(r'^\s*([a-z0-9_]+)\s*=\s*"(#[0-9a-f]{6})"\s*$', line)
+        if not m or m.group(1) not in KEYS or m.group(1) in found:
+            raise Refused('the palette is lines of key = "#rrggbb", each key a theme\'s and given once')
+        found[m.group(1)] = m.group(2)
+    missing = [key for key in KEYS if key not in found]
+    if missing:
+        raise Refused(f'the palette has no {missing[0]}')
+    write_theme(s, found, name)
+    print(s)
+
+
+def options(argv, known):
+    values, rest, i = {}, [], 0
+    while i < len(argv):
+        if argv[i] in known:
+            if i + 1 >= len(argv):
+                usage(f'{argv[i]} needs a value')
+            values[argv[i][2:]] = argv[i + 1]
+            i += 2
+        elif argv[i].startswith('--'):
+            usage(f'unknown option {argv[i]}')
+        else:
+            rest.append(argv[i])
+            i += 1
+    return values, rest
+
+
+def main(argv):
+    if os.geteuid() == 0:
+        usage('this is run as the account whose theme it is, never as root')
+    if not argv:
+        usage('save, read, import, share, look or look-import')
+    command, args = argv[0], argv[1:]
+    try:
+        if command == 'save' and len(args) == 1:
+            save(args[0])
+        elif command == 'read' and len(args) == 1:
+            info = read_colour_file(args[0])
+            print(json.dumps(info))
+        elif command == 'import' and len(args) == 2:
+            info = read_colour_file(args[0])
+            s = checked_slug(args[1])
+            picture = info['picture']
+            writer = png_writer(picture_file(picture)) if picture else None
+            write_theme(s, info['colors'], f'Imported from {os.path.basename(info["file"])}', writer,
+                        clean_name(os.path.splitext(os.path.basename(picture))[0]).replace(' ', '-') if picture else 'wallpaper')
+            print(s)
+        elif command == 'share':
+            values, rest = options(args, ('--theme', '--name', '--picture', '--style', '--icons', '--font',
+                                          '--mono-font', '--pointer', '--accent'))
+            if len(rest) != 1 or 'theme' not in values or 'name' not in values:
+                usage('share OUT --theme DIR --name NAME')
+            share(rest[0], values['theme'], values['name'], values.get('picture'), values)
+        elif command == 'look' and len(args) == 1:
+            info, _ = read_look(args[0])
+            print(json.dumps(info))
+        elif command == 'look-import' and len(args) == 2:
+            info, pixbuf = read_look(args[0])
+            s = checked_slug(args[1])
+            write_theme(s, info['colors'], f'The look {info["name"]}', png_writer(pixbuf) if pixbuf else None)
+            print(json.dumps(dict(info['look'], slug=s)))
+        else:
+            usage(f'unknown command or arguments: {command}')
+    except Refused as e:
+        print(f'amethystora-theme-file: {e}', file=sys.stderr)
+        sys.exit(3)
+    except OSError as e:
+        print(f'amethystora-theme-file: nothing was written: {e.strerror}', file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == '__main__':
+    main(sys.argv[1:])

@@ -351,6 +351,15 @@ The terminal, code and Text Editor have a monospace font of their own, which goe
 `ame desktop mono-font "Fira Code"` keeps one whatever the theme, `ame desktop mono-font theme` goes back,
 and Control has the choice too. kitty takes it at once, and so does the top bar of the terminal style.
 
+For reading, any theme can take **Atkinson Hyperlegible Next**, a typeface drawn so that the letters people confuse
+look different (capital I, small l and 1, O and 0, rn and m), and its monospace cut **Atkinson Hyperlegible Mono** for
+the terminal and code:
+
+```bash
+ame desktop font "Atkinson Hyperlegible Next"
+ame desktop mono-font "Atkinson Hyperlegible Mono"
+```
+
 ## Icons
 
 Eight icon packs are drawn for Amethystora, each icon in colours of its own, so that a theme has one
@@ -456,6 +465,89 @@ amethystora-theme set sunset
 ```
 
 Edit the colours, run `amethystora-theme set sunset` again, and look at the result.
+
+## Make a theme
+
+Control's Appearance page has **Make a theme**, which does the same in a window. Start from any theme, or from **The
+wallpaper** (the current theme's palette with the colours of the picture you are looking at), then pick the ground,
+the text, the accent, the selection and the terminal's sixteen colours, each in GNOME's colour picker. As you pick,
+three pairs are measured the way every theme is drawn: the text on every surface (4.5:1), a label on the accent
+(4.5:1) and the outlines of controls (3:1). One that falls short says what it needs, with **Use** and the nearest colour
+that passes. **Preview** shows the colours on the theme card's little desktop; nothing changes until you save.
+
+Name the theme and press **Save**: it is written to `~/.config/amethystora/themes/NAME`, the folder described above,
+and applied. A name a theme of the system has is refused. In a terminal, the same palette on standard input saves
+it:
+
+```bash
+grep ' = "#' ~/.config/amethystora/themes/sunset/colors.toml | ame desktop theme save "Sunset Two"
+```
+
+### Bring a theme from elsewhere
+
+A colour file written for another program becomes a theme: a kitty `.conf`, an Alacritty `.toml`, a base16 or
+base24 `.yaml`, or an Xresources file. Open it with **Import as a Theme** (Files, Open With), press **Import a theme…**
+in Control's **Make a theme**, or:
+
+```bash
+ame desktop theme import ~/Downloads/kanagawa.conf
+```
+
+It shows the colours it found, how many lines named a colour and how many were left out, and the three checks above,
+and asks before it writes anything. Only the lines that name a colour are read: an `include`, an `import` or anything
+else in the file is counted and left out, nothing in it runs, and only a file on this computer is read, never an
+address. A picture beside the file with the same name (`kanagawa.png` beside `kanagawa.conf`) becomes the theme's
+wallpaper, read and written again as a PNG.
+
+### A look in one file
+
+**Share this look** in Control (or `ame desktop theme share`) writes the current theme as one file in your home
+folder, `NAME.amethystora-look`: its colours, the wallpaper on screen, and the names of your style, icons, fonts,
+pointer and accent. It holds no apps, no keys and nothing that runs, unlike [the setup file](setup.md).
+
+Opening such a file is off until you turn it on, since a file from a stranger is still a file from a stranger:
+**Open looks from files** in Control, or `ame desktop look-files on`. Then opening one (or
+`ame desktop theme look FILE`) shows what it holds and asks before anything changes. A style, icon pack, font or
+pointer this computer does not have is left out and said. The file is read piece by piece and never unpacked: one that
+holds anything but its three pieces, or more than 25 MB, is refused whole, and its picture is read and written again as
+a PNG.
+
+## Drawn wallpapers
+
+Seven patterns can be drawn in the theme's own colours: **Facets**, **Waves**, **Contour**, **Mesh**, **Grain**,
+**Dots** and **Bands**. Pick one in Control (Appearance, **Drawn wallpapers**) or:
+
+```bash
+ame desktop pattern facets
+ame desktop pattern shuffle
+ame desktop pattern off
+```
+
+The drawing is made once, when the theme is applied, and drawn again when the theme or the accent changes; nothing
+is drawn while you are not changing anything. **Another drawing** (`ame desktop pattern shuffle`) picks another
+pattern and draws it afresh. The drawing comes before the theme's own pictures, so `Super+Ctrl+Space` still goes on to
+them, and with [Daylight](#daylight) on it is shown at dawn, by day, at dusk and at night in tones of the same palette.
+`ame desktop pattern off` gives the theme's own pictures back.
+
+## Light by day, dark by night
+
+A theme with a light and a dark side can follow the day: its light side when the day starts and its dark side when
+the night does, revealed by the [transition](#transitions) as any theme switch is. Amethystora and Amethystora Light,
+and Catppuccin Mocha and Catppuccin Latte, have both sides; Everforest, Gruvbox, Matte Black, Nord, Rosé Pine Dawn
+and Tokyo Night have one, and stay as they are. A theme of your own has a pair when its `pair.theme` names one.
+
+It is off unless you turn it on, in Control (Appearance, **Light by day, dark by night**), or:
+
+```bash
+ame desktop day-night on
+ame desktop day-night hours 7 19
+ame desktop day-night off
+```
+
+With `on`, the day starts and ends with Night Light: its own hours, or sunrise and sunset when Night Light follows
+them; when Night Light is off, at 07:00 and 19:00. `hours` sets the two hours yourself. Switching to the other side by
+hand (`Super+Ctrl+D`) is kept until the next start of the day or night. Open applications take the new colours when
+they next start, as with any theme switch.
 
 ## Going further
 

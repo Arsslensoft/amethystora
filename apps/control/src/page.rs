@@ -67,6 +67,11 @@ fn preview_css(choice: &amethystora_control_core::Choice) -> String {
     )
 }
 
+/// A palette the theme maker starts from, with every key a theme has
+fn start_palette(start: &amethystora_control_core::Start) -> std::collections::BTreeMap<String, String> {
+    amethystora_control_core::contrast::complete(&start.colors)
+}
+
 /// How a button looks, as the page's button() was told
 #[derive(Debug, Clone, Copy, Default)]
 struct Look {
@@ -1090,6 +1095,220 @@ impl Control {
         });
     }
 
+    /// Make a theme: a palette to start from, the ground, text, accent and selection and the sixteen terminal colours each
+    /// picked in GTK's own colour dialog, the three checks measured as a colour is picked (contrast.rs, palette.awk's
+    /// sums), each failing one with the nearest colour that passes a click away, and Save, which sends the palette on stdin.
+    /// Nothing runs until Save or Import; Preview draws the palette on the theme card's preview.
+    fn theme_maker_card(&self, item: &Item) -> gtk::Box {
+        if !item.available || item.starts.is_empty() {
+            return self.card_frame(item, None, Vec::new(), false, Vec::new());
+        }
+        let busy = self.busy(&item.id);
+        // The first drawing starts from the theme in use, else the first the list gives
+        {
+            let mut state = self.state.borrow_mut();
+            if state.maker.start.is_empty() || !item.starts.iter().any(|start| start.value == state.maker.start) {
+                let current = self.known().and_then(|list| list.find("theme").and_then(|theme| theme.state.clone()));
+                let start = item.starts.iter().find(|start| Some(&start.value) == current.as_ref()).unwrap_or(&item.starts[0]);
+                state.maker.start = start.value.clone();
+                state.maker.colors = start_palette(start);
+            }
+        }
+        let (start, colors, name) = {
+            let state = self.state.borrow();
+            (state.maker.start.clone(), state.maker.colors.clone(), state.maker.name.clone())
+        };
+
+        // Start from
+        let from = ui::hbox(10, &["maker-from"]);
+        let from_label = ui::label(&t!("Start from"), &["strong"]);
+        from_label.set_hexpand(true);
+        from_label.set_xalign(0.0);
+        from.append(&from_label);
+        let titles: Vec<&str> = item.starts.iter().map(|start| start.title.as_str()).collect();
+        let pick = gtk::DropDown::from_strings(&titles);
+        pick.update_property(&[gtk::accessible::Property::Label(&t!("Start from"))]);
+        if let Some(at) = item.starts.iter().position(|s| s.value == start) {
+            pick.set_selected(at as u32);
+        }
+        pick.set_sensitive(!busy);
+        {
+            let (me, starts) = (self.me.clone(), item.starts.clone());
+            pick.connect_selected_notify(move |pick| {
+                let Some(start) = starts.get(pick.selected() as usize) else { return };
+                let Some(this) = me.upgrade() else { return };
+                {
+                    let mut state = this.state.borrow_mut();
+                    if state.maker.start == start.value {
+                        return;
+                    }
+                    state.maker.start = start.value.clone();
+                    state.maker.colors = start_palette(start);
+                }
+                let me = this.me.clone();
+                glib::idle_add_local_once(move || {
+                    if let Some(this) = me.upgrade() {
+                        this.render();
+                    }
+                });
+            });
+        }
+        from.append(&pick);
+
+        // The four big colours, then the sixteen
+        let big = ui::hbox(14, &["maker-big"]);
+        for (key, label) in [
+            ("background", t!("Ground")),
+            ("foreground", t!("Text")),
+            ("accent", t!("Accent")),
+            ("selection_background", t!("Selection")),
+        ] {
+            let column = ui::vbox(4, &["maker-colour"]);
+            column.append(&self.colour_button(key, &label, colors.get(key), &["maker-swatch", "big"], busy));
+            column.append(&ui::label(&label, &["maker-label"]));
+            big.append(&column);
+        }
+        let terminal = Flex::new(6, 6, &["maker-terminal"]);
+        for i in 0..16 {
+            let key = format!("color{i}");
+            let label = t!("Terminal colour {number}", number = i.to_string());
+            terminal.append(&self.colour_button(&key, &label, colors.get(&key), &["maker-swatch"], busy));
+        }
+
+        // The checks, as palette.awk would give them
+        let checks = ui::vbox(5, &["maker-checks"]);
+        for check in amethystora_control_core::contrast::checks(&colors) {
+            let row = ui::hbox(10, &["maker-check"]);
+            let what = match check.name {
+                "text" => t!("Text on the surfaces"),
+                "label" => t!("A label on the accent"),
+                _ => t!("Outlines"),
+            };
+            let words = ui::label(&what, &["strong"]);
+            words.set_hexpand(true);
+            words.set_xalign(0.0);
+            row.append(&words);
+            let ratio = i18n::number((check.ratio * 10.0).floor() / 10.0);
+            let need = i18n::number(check.need);
+            let said = if check.passes() {
+                t!("{ratio} : 1, passes", ratio = &ratio)
+            } else {
+                t!("{ratio} : 1, needs {need} : 1", ratio = &ratio, need = &need)
+            };
+            row.append(&ui::label(&said, &[if check.passes() { "ok" } else { "bad" }]));
+            if !check.passes() {
+                let (key, nearest) = (check.key, check.nearest.clone());
+                let fix = self.button(&t!("Use {colour}", colour = &nearest), Look { small: true, disabled: busy, ..Default::default() }, move |this| {
+                    this.state.borrow_mut().maker.colors.insert(key.to_string(), nearest.clone());
+                    this.render();
+                });
+                fix.update_property(&[gtk::accessible::Property::Label(&t!("Use {colour}, the nearest colour that passes", colour = &check.nearest))]);
+                row.append(&fix);
+            }
+            checks.append(&row);
+        }
+
+        // The name, Preview, Import and Save
+        let field = gtk::Entry::builder().text(&name).max_length(40).placeholder_text(t!("Name")).css_classes(["field", "maker-name"]).build();
+        field.update_property(&[gtk::accessible::Property::Label(&t!("The theme's name"))]);
+        {
+            let me = self.me.clone();
+            field.connect_changed(move |field| {
+                if let Some(this) = me.upgrade() {
+                    this.state.borrow_mut().maker.name = field.text().to_string();
+                }
+            });
+        }
+        let note = ui::label("", &["form-note", "bad"]);
+        note.set_visible(false);
+        let buttons = ui::hbox(8, &["maker-buttons"]);
+        let card = item.id.clone();
+        buttons.append(&self.button(&t!("Import a theme…"), Look { small: true, icon: Some("terminal"), disabled: busy, ..Default::default() }, move |this| this.import_theme(&card)));
+        let spacer = ui::hbox(0, &[]);
+        spacer.set_hexpand(true);
+        buttons.append(&spacer);
+        buttons.append(&self.button(&t!("Preview"), Look { small: true, disabled: busy, ..Default::default() }, |this| {
+            let maker = this.state.borrow().maker.clone();
+            let choice = amethystora_control_core::Choice {
+                colors: maker.colors.clone(),
+                light: maker.colors.get("background").is_some_and(|bg| amethystora_control_core::contrast::is_light(bg)),
+                ..Default::default()
+            };
+            this.preview_css.load_from_string(&preview_css(&choice));
+        }));
+        let save_words = if name.trim().is_empty() { t!("Save") } else { t!("Save as {name}", name = name.trim()) };
+        let (card, field_weak, note_weak) = (item.id.clone(), field.downgrade(), note.downgrade());
+        let save = self.button(&save_words, Look { primary: true, disabled: busy, ..Default::default() }, move |this| {
+            let (Some(field), Some(note)) = (field_weak.upgrade(), note_weak.upgrade()) else { return };
+            let name = field.text().trim().to_string();
+            if !amethystora_control_core::valid_theme_name(&name) {
+                note.set_text(&t!("A theme's name is 1 to 40 letters, digits, spaces and dashes."));
+                note.set_visible(true);
+                return;
+            }
+            let colors = this.state.borrow().maker.colors.clone();
+            let me = this.clone();
+            this.perform(&card, async move { backend::perform(backend::save_theme(me.known().as_deref(), &name, &colors)).await });
+        });
+        save.add_css_class("pill");
+        buttons.append(&save);
+        // The button says the name as it is typed
+        {
+            let save = save.downgrade();
+            field.connect_changed(move |field| {
+                if let Some(save) = save.upgrade() {
+                    let name = field.text().trim().to_string();
+                    let words = if name.is_empty() { t!("Save") } else { t!("Save as {name}", name = &name) };
+                    save.set_label(&words);
+                }
+            });
+        }
+
+        let body = ui::vbox(12, &["maker"]);
+        body.append(&from);
+        body.append(&big);
+        body.append(&ui::label(&t!("Terminal colours"), &["form-note"]));
+        body.append(&terminal);
+        body.append(&checks);
+        body.append(&field);
+        body.append(&buttons);
+        body.append(&note);
+        self.card_frame(item, None, vec![body.upcast()], false, Vec::new())
+    }
+
+    /// One colour of the maker's palette, picked in GTK's colour dialog; a pick is kept and the card drawn again
+    fn colour_button(&self, key: &str, label: &str, color: Option<&String>, classes: &[&str], busy: bool) -> gtk::Widget {
+        let dialog = gtk::ColorDialog::builder().with_alpha(false).modal(true).title(label).build();
+        let button = gtk::ColorDialogButton::new(Some(dialog));
+        for class in classes {
+            button.add_css_class(class);
+        }
+        if let Some(rgba) = color.and_then(|c| gdk::RGBA::parse(c.as_str()).ok()) {
+            button.set_rgba(&rgba);
+        }
+        button.set_tooltip_text(Some(label));
+        button.update_property(&[gtk::accessible::Property::Label(label)]);
+        button.set_sensitive(!busy);
+        let (me, key) = (self.me.clone(), key.to_string());
+        button.connect_rgba_notify(move |button| {
+            let rgba = button.rgba();
+            let channel = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
+            let hex = format!("#{:02x}{:02x}{:02x}", channel(rgba.red()), channel(rgba.green()), channel(rgba.blue()));
+            let Some(this) = me.upgrade() else { return };
+            let changed = this.state.borrow_mut().maker.colors.insert(key.clone(), hex.clone()).as_deref() != Some(hex.as_str());
+            if changed {
+                // Drawn again once the dialog's signal is over: the button that sent it is replaced
+                let me = this.me.clone();
+                glib::idle_add_local_once(move || {
+                    if let Some(this) = me.upgrade() {
+                        this.render();
+                    }
+                });
+            }
+        });
+        button.upcast()
+    }
+
     fn wallpapers_card(&self, item: &Item) -> gtk::Box {
         let disabled = self.busy(&item.id) || !item.available;
         let below: Vec<gtk::Widget> = if !item.available {
@@ -1709,6 +1928,7 @@ impl Control {
             "link" => self.link_card(item),
             "themes" => self.themes_card(item),
             "wallpapers" => self.wallpapers_card(item),
+            "theme-maker" => self.theme_maker_card(item),
             "widgets" => self.widgets_card(item),
             "webapps" => self.webapps_card(item),
             "shortcuts" => self.shortcuts_card(item),
