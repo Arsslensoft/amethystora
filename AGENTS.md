@@ -1167,6 +1167,9 @@ every module that moves something, the glass after the dock and the panel's modu
 exactly so), each holding only which of a few modules comes first, so a module goes anywhere its own checks allow. Round
 4's sit between `bezel` and `focus` in the order `captions`, `access`, `touch`, `present`, `deskwidgets`, `shelf`,
 `desks`, `agent`, `quit`, `privacy`, and `power` between `today` and `dock`. `firstlook` comes right after `hints`.
+Rounds 5 and 6 add `backupdisk` after `connect`, `bars` after `quick`, `audio` and `brightness` after `power`, `appgrid`
+after `dock`, `typing` and `keys` after `emoji`, `windows` and `motion` after `tiling`, and `tools`, `rest` and `living`
+after `privacy`.
 
 **What keeps the shell up.** A screen lock disables the extension and the unlock enables it again: what must outlive a
 lock (Later's and Mute's notifications, pinned captures, walk-away lock's count) is kept at module scope, outside the
@@ -1186,7 +1189,7 @@ between paints and shows a stale one after a partial redraw (Focus's desaturate 
 context's redraw-clip region from GJS (`get_extents()`, `get_rectangle()`: the shell dies on signal 11); testing it for null
 is safe. `Clutter.Event.add_filter` never sees a press on a Wayland window: Mutter's filter takes it first. A new
 `themed/shell-<module>.css.tpl` reaches an existing account only when its theme is applied again: raise `11-theme.sh`'s
-version (17 for round 4).
+version (17 for round 4, 23 for rounds 5 and 6). GNOME 51 dropped `St.BoxLayout`'s `vertical`: write `orientation`.
 
 The modules, and what each replaced:
 
@@ -1327,6 +1330,50 @@ The modules, and what each replaced:
   module activates it once the person is free: at once, or when GNOME's dialog closes. It never does over a window the
   person chose, an app launched from the overview, or the Tour. It is armed only where the hook opens the page (a home
   under a day old with no `first-look.json`), and it knows the page by the hook's command line, which `20-tests.sh` holds.
+
+**Rounds 5 and 6** (`plans/ui-ideas/`, the boards and a `spec-<group>.md` per group; VM suites 51 to 69, one per group).
+Every rule above holds for each, and each part is off unless its spec says otherwise:
+- **Look** (51): themes made, saved, shared and imported as files (`/usr/libexec/amethystora-theme-file`, `ame desktop
+  theme save|import|share|look`, the `.amethystora-theme` and `.amethystora-look` types), refused by `palette.awk`'s
+  contrast checks (`checks=1`, held by `control-core`'s `contrast.rs`); drawn wallpapers (`pattern.awk`, `ame desktop
+  pattern`), whose Daylight XML is named by the checksum of its list, since GNOME never rereads a slideshow by path; light
+  by day (`theme/daynight.js`, `ame desktop day-night`); Atkinson Hyperlegible Next and Mono (`09-fonts.sh`).
+- **Bar** (56): the top bar's places, size, position (bottom) and hiding (`bars`, `/usr/libexec/amethystora-bar-layout`,
+  `ame desktop top-bar`), a second clock (`ame desktop clock`), `ame desktop animation-speed` (the shell's factor, off as
+  `St.Settings.inhibit_animations`), `text-size`, `window-motion` (`motion`) and the light desktop (`comfort`), offered once
+  by a notification on a software renderer or under 7 GB of memory (`light-desktop.json`; the lab renders in software).
+- **Windows** (57): the drop-down terminal (`Super+Alt+Return`), scratchpad, always on top (`Super+Alt+P`), see-through
+  (`Super+Alt`+wheel), the focus frame, sizes and reopen closed (`Super+Alt+T`), one window-menu hook (`windows/menu.js`),
+  `ame desktop windows` and `window-settings`.
+- **Keys** (58): `/usr/libexec/amethystora-keybindings` (`ame desktop keybindings`, Control's shortcuts page), accents by
+  holding a key (`typing`), plain paste (`Super+Alt+V`, `keys`) and shortcuts kept from an app per window.
+- **Tools** (59): the colour picker (`colour:` in search), `Super+Alt+M` (the microphone), What is using this?
+  (`/usr/libexec/amethystora-what-uses`, Files' menu at version 3, the bus `/org/amethystora/Tools`), conversions in Files
+  (`/usr/libexec/amethystora-convert`, GdkPixbuf's glycin), clipboard text actions and QR codes (`qrencode`), hidden while
+  the screen is shared.
+- **Apps** (61): the app grid's order, hidden apps, names and pictures as `appgrid` keys, never a launcher
+  (`/usr/libexec/amethystora-app-look`, `ame desktop app` and `app-grid`); Starting with you
+  (`/usr/libexec/amethystora-startup`, `ame apps startup`), whose off is the `[Desktop Entry]`+`Hidden=true` shape the watcher
+  records quietly; tidy downloads (`amethystora-tidy-downloads`, its own trash for an exact undo); the backup disk notice
+  (`backupdisk`); `28-templates.sh`.
+- **Sound** (62): clear voice (PipeWire's webrtc echo-cancel, a passive source), presets (filter-chain, smart filter), pause
+  when headphones come off, more sound sets, devices' batteries (`power/devices.js`), all `/usr/libexec/amethystora-sound`.
+  External screens' brightness (`brightness`, `ame desktop screen-brightness`): `08-hardening.sh` takes ddcutil's own udev
+  rule and modules-load file out, since an i2c bus of the display reaches other chips of the graphics card; turning it on
+  copies the image's rule from `/usr/share/amethystora/ddc` into `/etc` after saying so, and the agent may never turn it on.
+- **Phone** (64): see The phone link. **Restart** (65): see The Updates app.
+- **Time** (66): calls in the pill (`pill/meeting.js`, `/usr/libexec/amethystora-meeting-link`, Evolution Data Server's
+  calendars), remind me and times anywhere in search, kitty's notice when a long command ends (`ame desktop command-done`,
+  `28-kitty-options.sh`) and the missing-command offer (`/usr/libexec/amethystora-missing-command`, off, from an index
+  `build-missing-command-index.sh` writes at build).
+- **Finish** (68): the digest's lists, the dock's arrivals count, dock size and glass strength, workspace names in the
+  overview, the widget gallery (`amethystora-widgets add`), the resting screen (`rest`), living wallpapers (`living`) and
+  Trim for screen recordings (`/usr/bin/amethystora-trim`, `apps/trim`; Fedora 45's `ffmpeg-free` has the encoders).
+- **Later** (69): captions in ten languages (each model pinned in `amethystora-captions`' `MODELS`) and dictation
+  (`ame desktop dictation`), bookmarks, notes and files by meaning in search (`amethystora-bookmarks`,
+  `amethystora-file-meaning`, the agent tools' `files-index`), click with the keyboard (`amethystora-letters`, `access`),
+  and guest login, a Security switch (`ame security guest-login`, `amethystora-hardening`'s `guest-login`, authselect's
+  `with-guest-login` through `/usr/libexec/amethystora-guest`), at GDM only.
 
 ### The phone link
 

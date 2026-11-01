@@ -93,6 +93,10 @@ after="$(shown)"
 check "a click on the workspace screen 3 shows swaps it with screen 2's" test \
     "$(cut -d' ' -f3,4 <<<"${after}")" == "${other} 4"
 check "...and the bars follow" test "$(lit)" == "$(expected_lit)"
+# A click on an empty workspace's label opens the overview; GNOME 51 keeps it open for a window started from a unit
+# (no activation token), where the bars and the peek rightly show over it
+ev "Main.overview.hide(); 1" >/dev/null
+sleep 1
 
 # 4. A maximised window on screen 1 starts under its bar
 user_bus systemd-run --user --collect --unit="vmlab-bars-files-$$" nautilus --new-window >/dev/null
@@ -169,7 +173,12 @@ for i in $(seq 10); do
 done
 sleep 3
 check "ten cycles: three bars, no more" ev_is "Main.layoutManager.uiGroup.get_children().filter(a => a.has_style_class_name?.('amethystora-bars-box')).length" 3
-check "...and GNOME's visibility rule is its own again while disabled" ev_is "(() => { Main.extensionManager.disableExtension('${UUID}'); const own = !Object.prototype.hasOwnProperty.call(Main.layoutManager, '_updateActorVisibility'); const none = !Main.layoutManager.uiGroup.get_children().some(a => a.has_style_class_name?.('amethystora-bars-box')); Main.extensionManager.enableExtension('${UUID}'); return own && none; })()" true
+# GNOME 51 turns an extension off once the Eval that asked has returned (its manager awaits a lock): one step each
+ev "Main.extensionManager.disableExtension('${UUID}'); 1" >/dev/null
+sleep 1
+check "...and GNOME's visibility rule is its own again while disabled" ev_is "!Object.prototype.hasOwnProperty.call(Main.layoutManager, '_updateActorVisibility') && !Main.layoutManager.uiGroup.get_children().some(a => a.has_style_class_name?.('amethystora-bars-box'))" true
+ev "Main.extensionManager.enableExtension('${UUID}'); 1" >/dev/null
+sleep 2
 
 log="$(journalctl --since "${since}" "_UID=$(id -u "${TEST_USER}")" _COMM=gnome-shell --no-pager -o cat 2>/dev/null)"
 errors="$(grep -E 'JS ERROR|Amethystora UI: the [a-z]+ module did not' <<<"${log}" | head -n 10)"

@@ -270,7 +270,9 @@ same "9 four templates, none executable" \
 same "9 a script with its first line" "$(head -n1 "$(find "${TEMPLATES}" -maxdepth 1 -name '*.sh' | head -n1)")" '#!/usr/bin/env bash'
 
 # --- 10: Downloads tidied, and put back ----------------------------------------------------------------------------------
-TIDY="${WORK}/downloads"
+# In the home, as Downloads is: the Trash is moved into, never copied across filesystems
+TIDY="${HOME_DIR}/vmlab61-downloads"
+rm -rf "${TIDY}"
 install -d -o "${TEST_USER}" -g "${TEST_USER}" "${TIDY}"
 for name in vmlab61-setup.exe vmlab61-new.msi old-photo.jpg new-note.txt .hidden-old.txt still.part; do
     : >"${TIDY}/${name}"
@@ -284,10 +286,11 @@ in_session "AMETHYSTORA_TIDY_DOWNLOADS=${TIDY} AMETHYSTORA_TIDY_NOTIFY=none /usr
 same "10 the old installer went to the Trash" "$(ls "${TIDY}/vmlab61-setup.exe" 2>/dev/null; ls "${HOME_DIR}/.local/share/Trash/files" | grep -c '^vmlab61-setup')" 1
 same "10 the old photo went into its month" "$(ls "${TIDY}/${MONTH}/")" old-photo.jpg
 same "10 the new ones, the hidden one and the one arriving stayed" "$(ls -A "${TIDY}" | grep -vx "${MONTH}" | sort | paste -sd ' ')" \
-    ".hidden-old.txt new-note.txt vmlab61-new.msi still.part"
+    ".hidden-old.txt new-note.txt still.part vmlab61-new.msi"
 in_session "AMETHYSTORA_TIDY_DOWNLOADS=${TIDY} /usr/libexec/amethystora-tidy-downloads undo" >/dev/null
 same "10 undo put everything back" "$(ls -A "${TIDY}" | sort | paste -sd ' ')" \
-    ".hidden-old.txt new-note.txt vmlab61-new.msi old-photo.jpg vmlab61-setup.exe still.part"
+    ".hidden-old.txt new-note.txt old-photo.jpg still.part vmlab61-new.msi vmlab61-setup.exe"
+rm -rf "${TIDY}"
 same "10 the timer is nobody's until turned on" "$(user_bus systemctl --user is-enabled amethystora-tidy-downloads.timer 2>/dev/null)" disabled
 
 # --- 11: the backup disk ------------------------------------------------------------------------------------------------

@@ -123,10 +123,11 @@ trap cleanup EXIT
 
 # --- 1-2: the module, and idle is GNOME's clock ---------------------------------------------------------------------
 check "1 the pill module runs" test "$(ev "${UI}.has('pill')")" == true
-# Seven of the pill's own, and Later's two and What's new's (the notify group)
-same "1 the schema has its ten keys" \
+# Seven of the pill's own, Later's two and What's new's (the notify group), the digest's lists (finish), the meetings
+# (time), saving data (restart) and the second zone (bar)
+same "1 the schema has its fifteen keys" \
     "$(in_session "gsettings list-keys ${PILL}" | sort | paste -sd ' ')" \
-    "digest digest-times glow later later-times live privacy-dots quiet quiet-night whats-new"
+    "digest digest-through digest-times digest-wait glow later later-times live meetings privacy-dots quiet quiet-night saving-data second-zone whats-new"
 same "2 idle" "$(st .activity)" '"idle"'
 same "2 the date menu's only child is the pill, GNOME's clock box in it and shown" \
     "$(ev "(() => { const d = ${PILL_ACTOR}; const box = d._clockDisplay.get_parent(); return d.get_n_children() + ' ' + d.get_first_child().style_class + ' ' + (box.get_parent() === d.get_first_child()) + ' ' + box.visible; })()")" \
@@ -186,7 +187,10 @@ fi
 if (($(pv morphFrom) >= 0 && $(pv morphTo) - $(pv morphFrom) < 1000)); then ok "4 ...and rests within a second"; else
     not_ok "4 ...and rests within a second" "${probe}"; fi
 rose="$(pv relayouts)"
-if ((rose >= 0 && rose <= 2)); then ok "4 the pill was laid out ${rose} times for the change"; else not_ok "4 the pill was laid out ${rose} times" "at most 2"; fi
+# GNOME 51 lays the bar out once more for the same change (seen on the image before rounds 5 and 6 too)
+most=2
+[[ "$(gnome-shell --version | grep -oE '[0-9]+' | head -n 1)" -ge 51 ]] && most=3
+if ((rose >= 0 && rose <= most)); then ok "4 the pill was laid out ${rose} times for the change"; else not_ok "4 the pill was laid out ${rose} times" "at most ${most}"; fi
 if (($(pv barsFrom) >= 0)); then ok "4 the level bars move when the track starts"; else not_ok "4 the level bars move when the track starts" "${probe}"; fi
 # Four beats of 0.9 s, at GNOME's speed (the image's slow-down factor shortens them), then still
 if (($(pv barsFrom) >= 0 && $(pv barsTo) - $(pv barsFrom) < 6000)); then ok "4 ...and stand still after four beats"; else
@@ -527,18 +531,22 @@ same "18 no timer in the calendar" "$(ev "${PILL_ACTOR}._weatherItem.get_parent(
 in_session "ame desktop pill on" >/dev/null
 check "18 on again: now playing" wait_for 5 playing
 
-CYCLE="(async () => { const uuid = '${UUID}'; const MT = await import('resource:///org/gnome/shell/ui/messageTray.js'); const O = await import('resource:///org/gnome/shell/ui/osdWindow.js');
+# Each step waits for the extension's state: GNOME 51 turns it on and off after the call returns (its manager awaits a
+# lock), and an enable takes seconds in the lab
+CYCLE="(async () => { try { const uuid = '${UUID}'; const E = Main.extensionManager; const MT = await import('resource:///org/gnome/shell/ui/messageTray.js'); const O = await import('resource:///org/gnome/shell/ui/osdWindow.js');
     const count = () => Main.uiGroup.get_n_children();
-    Main.extensionManager.disableExtension(uuid); await new Promise(r => setTimeout(r, 500)); const before = count();
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    const until = async on => { for (let n = 0; n < 300; n++) { const s = E.lookup(uuid).state; if (on ? s === 1 : s === 2 || s === 6) return; await wait(100); } throw new Error('the extension did not turn ' + (on ? 'on' : 'off')); };
+    E.disableExtension(uuid); await until(false); await wait(500); const before = count();
     globalThis.vmlabOriginals = {show: O.OsdWindow.prototype.show, banner: MT.MessageTray.prototype._showNotification};
-    for (let i = 0; i < 10; i++) { Main.extensionManager.enableExtension(uuid); await new Promise(r => setTimeout(r, 500)); Main.extensionManager.disableExtension(uuid); await new Promise(r => setTimeout(r, 500)); }
+    for (let i = 0; i < 10; i++) { E.enableExtension(uuid); await until(true); await wait(300); E.disableExtension(uuid); await until(false); await wait(300); }
     const after = count(); const gesture = Main.panel.statusArea.dateMenu._clickGesture.enabled;
     const methods = MT.MessageTray.prototype._showNotification === globalThis.vmlabOriginals.banner && O.OsdWindow.prototype.show === globalThis.vmlabOriginals.show;
-    Main.extensionManager.enableExtension(uuid);
-    globalThis.vmlabCycle = (after - before) + ' ' + gesture + ' ' + methods; })(); 'started'"
+    E.enableExtension(uuid);
+    globalThis.vmlabCycle = (after - before) + ' ' + gesture + ' ' + methods; } catch (e) { globalThis.vmlabCycle = 'failed: ' + e.message; } })(); 'started'"
 ev "${CYCLE}" >/dev/null
 cycle_done() { [[ -n "$(ev "globalThis.vmlabCycle ?? ''")" ]]; }
-wait_for 60 cycle_done
+wait_for 180 cycle_done
 same "19 ten disables and enables: nothing left in the shell, GNOME's click and methods back" "$(ev "globalThis.vmlabCycle")" "0 true true"
 wait_for 30 pill_ready
 

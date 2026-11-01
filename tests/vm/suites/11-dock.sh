@@ -152,7 +152,7 @@ dock_defaults() {
     [[ "$(in_session "gsettings list-recursively ${DOCK_SCHEMA}" | cut -d' ' -f2- | LC_ALL=C sort | paste -sd ';')" == "$1" ]]
 }
 check "the dock's keys have the spec's defaults" wait_for 10 dock_defaults \
-    "autohide 'off';edge 'bottom';folders @a{sas} {};indicator 'bar';launch 'halo';magnify 'swell';magnify-amount 1.6000000000000001;previews true;recent true;screens 'every';stacks ['xdg:DOWNLOAD'];updating true;workspace-apps false"
+    "autohide 'off';edge 'bottom';folders @a{sas} {};icon-size 48;indicator 'bar';launch 'halo';magnify 'swell';magnify-amount 1.6000000000000001;previews true;recent true;screens 'every';stacks ['xdg:DOWNLOAD'];updating true;workspace-apps false"
 bad=""
 while read -r setting value key want shown; do
     in_session "ame desktop dock ${setting} ${value}" >/dev/null 2>&1 || bad+="ame desktop dock ${setting} ${value} failed; "
@@ -185,7 +185,7 @@ for args in "magnify wobble" "amount 300" "launch fly" "indicator star" "edge to
     [[ ${code} == 64 && ${out} == *"usage: ame desktop dock"* ]] || wrong+="${args}: ${code} ${out}; "
 done
 if [[ -z "${wrong}" ]]; then ok "a wrong value exits 64 with the usage line"; else not_ok "wrong values" "${wrong}"; fi
-check "ame desktop dock alone prints thirteen settings" test "$(in_session "ame desktop dock" | wc -l)" == 13
+check "ame desktop dock alone prints fourteen settings" test "$(in_session "ame desktop dock" | wc -l)" == 14
 
 # --- Swell -----------------------------------------------------------------------------------------------------------
 user_bus gsettings set org.gnome.shell favorite-apps "['org.mozilla.firefox.desktop', 'org.gnome.Nautilus.desktop', \

@@ -42,7 +42,8 @@ except ValueError:
 print(x if isinstance(x, str) else json.dumps(x))'
 }
 gs() { in_session "gsettings $*" 2>/dev/null; }
-same() { if [[ "$2" == "$3" ]]; then ok "$1"; else not_ok "$1" "expected: $3" "found: $2"; fi; }
+# JSON compared without its spaces: the expressions stringify compactly, the expectations are written with ", "
+same() { if [[ "${2//, /,}" == "${3//, /,}" ]]; then ok "$1"; else not_ok "$1" "expected: $3" "found: $2"; fi; }
 is() { [[ "$(ev "$1")" == "$2" ]]; }
 UI="Main.extensionManager.lookup('${UUID}').stateObj.modules"
 B="${UI}.get('bars')"

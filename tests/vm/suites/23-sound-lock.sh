@@ -139,7 +139,12 @@ same "29 the bell, not in the set, plays the freedesktop theme's" "$(streams_dur
     /usr/share/sounds/freedesktop/stereo/bell.oga
 # GNOME plays the shutter only with the flash, the Screenshot method's second argument
 seen="$(streams_during "gdbus call --session --dest org.gnome.Shell.Screenshot --object-path /org/gnome/Shell/Screenshot --method org.gnome.Shell.Screenshot.Screenshot false true /tmp/vmlab-23-shot.png")"
-same "29 a screenshot plays screen-capture from the Soft set" "${seen}" "${SOUNDS}/stereo/screen-capture.wav"
+# GNOME 51 plays its own shutter by its file, /usr/share/gnome-shell/sounds/screen-capture.oga, whatever the sound theme
+if [[ "$(gnome-shell --version | grep -oE '[0-9]+' | head -n 1)" -ge 51 ]]; then
+    same "29 a screenshot plays GNOME 51's own shutter" "${seen}" /usr/share/gnome-shell/sounds/screen-capture.oga
+else
+    same "29 a screenshot plays screen-capture from the Soft set" "${seen}" "${SOUNDS}/stereo/screen-capture.wav"
+fi
 in_session "rm -f /tmp/vmlab-23-shot.png" >/dev/null 2>&1
 seen="$(streams_during "gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell --method org.gnome.Shell.Eval \"global.display.get_sound_player().play_from_theme('audio-volume-change', 'Volume changed', null)\"")"
 same "29 the shell's player plays the volume tick from the Soft set" "${seen}" "${SOUNDS}/stereo/audio-volume-change.wav"

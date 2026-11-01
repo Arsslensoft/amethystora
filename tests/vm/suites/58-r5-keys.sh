@@ -41,8 +41,9 @@ UI="Main.extensionManager.lookup('${UUID}').stateObj.modules"
 KM="${UI}.get('keys')"
 TM="${UI}.get('typing')"
 # One field of the keys module's or the typing module's state, as JSON
-keys_st() { ev "JSON.stringify(JSON.parse(${KM}.snapshot())$1)"; }
-typing_st() { ev "JSON.stringify(JSON.parse(${TM}.snapshot())$1)"; }
+# A filter of the module's snapshot, a path (.wrapped) or a jq pipeline (| [.a, .b] | join(" ")), read by jq
+keys_st() { ev "${KM}.snapshot()" | jq -r "(.)$1"; }
+typing_st() { ev "${TM}.snapshot()" | jq -r "(.)$1"; }
 press() { python3 "${HERE}/keys.py" "$@" >/dev/null 2>&1; }
 list_json() { in_session "/usr/libexec/amethystora-keybindings list --json"; }
 # The row of a shortcut in the helper's list, as a jq filter of it

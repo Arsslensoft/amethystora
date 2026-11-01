@@ -121,7 +121,8 @@ check "2 an urgent one comes through within 3 s" wait_for 3 urgent
 ev "Main.messageTray._notification?.destroy(); 'gone'" >/dev/null
 unfullscreen
 waiting() { [[ "$(st .activity)" == '"waiting"' && "$(st .text)" == '"2 waiting in the list"' ]]; }
-check "2 the pill says 2 waiting in the list" wait_for 3 waiting
+if wait_for 3 waiting; then ok "2 the pill says 2 waiting in the list"; else
+    not_ok "2 the pill says 2 waiting in the list" "it says $(st .activity) $(st .text)"; fi
 check "2 no banner shows for them for 6 s" stays_quiet 6
 [[ "$(listed)" == *"vmlab one"* && "$(listed)" == *"vmlab two"* ]] && ok "2 both are in the list" || not_ok "2 both in the list" "$(listed)"
 clear_list

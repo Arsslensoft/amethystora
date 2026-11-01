@@ -425,7 +425,12 @@ done
 sleep 3
 ours="(box => [box.get_children().filter(c => c.has_style_class_name?.('amethystora-today-tasks')).length, box.get_children().filter(c => c.has_style_class_name?.('amethystora-today-weather-off')).length].join())(Main.panel.statusArea.dateMenu._eventsItem.get_parent())"
 check "ten cycles: one tasks section and one weather card in the menu" ev_is "${ours}" "1,1"
-check "...and nothing of theirs while disabled" ev_is "(() => { Main.extensionManager.disableExtension('${UUID}'); const none = ${ours} === '0,0' && !Object.prototype.hasOwnProperty.call(Main.panel.statusArea.dateMenu._weatherItem._weatherClient, 'update') && !Object.prototype.hasOwnProperty.call(Main.layoutManager, '_updateActorVisibility'); Main.extensionManager.enableExtension('${UUID}'); return none; })()" true
+# GNOME 51 turns an extension off once the Eval that asked has returned (its manager awaits a lock): one step each
+ev "Main.extensionManager.disableExtension('${UUID}'); 1" >/dev/null
+sleep 1
+check "...and nothing of theirs while disabled" ev_is "${ours} === '0,0' && !Object.prototype.hasOwnProperty.call(Main.panel.statusArea.dateMenu._weatherItem._weatherClient, 'update') && !Object.prototype.hasOwnProperty.call(Main.layoutManager, '_updateActorVisibility')" true
+ev "Main.extensionManager.enableExtension('${UUID}'); 1" >/dev/null
+sleep 2
 
 log="$(journalctl --since "${since}" "_UID=$(id -u "${TEST_USER}")" _COMM=gnome-shell --no-pager -o cat 2>/dev/null)"
 errors="$(grep -E 'JS ERROR|Amethystora UI: the [a-z]+ module did not' <<<"${log}" | head -n 10)"

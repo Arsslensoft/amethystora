@@ -169,7 +169,7 @@ same "1-2 both were droplet flights" "$(ev "${V}.runs.map(r => r.kind).join(' ')
 BUDGET="$(ev "global.backend.is_rendering_hardware_accelerated() ? 1000 : 3000")"
 same "14 a step costs under ${BUDGET} us (95th percentile of at least 20 steps: $(ev "${V}.p95()") us)" \
     "$(ev "${V}.steps.length >= 20 && ${V}.p95() < ${BUDGET}")" true
-check "the droplet took 0.6 x 912 ms (+-3 frames)" test "$(ev "Math.abs(${V}.runs[0].ms - 547) < 50")" == true
+check "the droplet took 0.6 x 912 ms (+-3 frames): $(ev "${V}.runs[0].ms") ms" test "$(ev "Math.abs(${V}.runs[0].ms - 547) < 50")" == true
 ev "${V}.stop()" >/dev/null
 
 in_session "ame desktop layout classic" >/dev/null 2>&1
@@ -463,7 +463,10 @@ wait_for 3 settled
 restore 1
 wait_for 3 settled
 same "32 ten cycles mid-flight: the window ends clean" "$(ev "${V}.end(1)")" shown
-ev "Main.extensionManager.disableExtension('${UUID}'); globalThis.vmlabGnome = null;
+# GNOME 51 turns an extension off once the Eval that asked has returned (its manager awaits a lock): one step each
+ev "Main.extensionManager.disableExtension('${UUID}'); 1" >/dev/null
+sleep 1
+ev "globalThis.vmlabGnome = null;
     global.window_manager.connectObject('minimize', (wm, a) => { global.window_manager.disconnectObject(globalThis);
         globalThis.vmlabGnome = Main.wm._minimizing.has(a); }, globalThis); ${V}.win(1).minimize(); 1" >/dev/null
 sleep 1

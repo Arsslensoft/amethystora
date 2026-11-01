@@ -18,7 +18,8 @@ source "$(dirname "$0")/lib.sh"
 UUID=amethystora-ui@iarsslen.github.io
 HOME_DIR="/var/home/${TEST_USER}"
 CONFIG="${HOME_DIR}/.config/amethystora"
-WORK=/run/vmlab-51
+# Not under /run: amethystora-theme-file refuses to read /proc, /sys, /dev and /run, as a person's files are never there
+WORK=/var/tmp/vmlab-51
 THEME_UI=org.gnome.shell.extensions.amethystora-ui.theme
 ev() {
     user_bus gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell --method org.gnome.Shell.Eval "$1" |
@@ -51,8 +52,16 @@ cat >"${HOME_DIR}/.local/share/gnome-shell/extensions/vmlab-eval@lab/extension.j
 export default class { enable() { global.context.unsafe_mode = true; } disable() {} }
 EOF
 chown -R "${TEST_USER}:${TEST_USER}" "${HOME_DIR}/.local/share/gnome-shell/extensions/vmlab-eval@lab"
-in_session "gnome-extensions enable vmlab-eval@lab" >/dev/null 2>&1
-sleep 3
+# GNOME finds an extension installed while it runs only at its next start: listed, and the session started again
+if [[ "$(ev "'up'" 2>/dev/null)" != up ]]; then
+    enabled="$(user_bus gsettings get org.gnome.shell enabled-extensions)"
+    [[ ${enabled} == *vmlab-eval@lab* ]] ||
+        user_bus gsettings set org.gnome.shell enabled-extensions "${enabled%]*}, 'vmlab-eval@lab']"
+    loginctl unlock-sessions
+    systemctl restart gdm
+    wait_for 240 has_session
+    sleep 15
+fi
 install -d -m 0755 -o "${TEST_USER}" -g "${TEST_USER}" "${WORK}"
 cp "$(dirname "$0")/atspi.py" "${WORK}/"
 chmod a+r "${WORK}/atspi.py"

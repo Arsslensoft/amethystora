@@ -36,11 +36,12 @@ print(x if isinstance(x, str) else json.dumps(x))'
 }
 gs() { in_session "gsettings $*" 2>/dev/null; }
 pa() { in_session "pactl $*" 2>/dev/null; }
-same() { if [[ "$2" == "$3" ]]; then ok "$1"; else not_ok "$1" "expected: $3" "found: $2"; fi; }
+# JSON compared without its spaces: the expressions stringify compactly, the expectations are written with ", "
+same() { if [[ "${2//, /,}" == "${3//, /,}" ]]; then ok "$1"; else not_ok "$1" "expected: $3" "found: $2"; fi; }
 UI="Main.extensionManager.lookup('${UUID}').stateObj.modules"
 T="${UI}.get('tools')"
-# One field of the tools module's state, as JSON
-st() { ev "JSON.stringify(${T}.state()$1)"; }
+# One field of the tools module's state: a string as it is, anything else as JSON
+st() { ev "(v => typeof v === 'string' ? v : JSON.stringify(v))(${T}.state()$1)"; }
 # A virtual pointer and keyboard of the shell's own seat
 INPUT="const C = imports.gi.Clutter, GLib = imports.gi.GLib;
 const seat = global.stage.context.get_backend().get_default_seat();
@@ -168,7 +169,7 @@ if wait_for 10 picker_open; then
     ev "(() => { const p = ${UI}.get('search')._providers.get('clipboard'); globalThis.__vmids = null;
         p.getInitialResultSet(['colour:']).then(ids => { globalThis.__vmids = ids; }); return 'asked'; })()" >/dev/null
     sleep 1
-    same "2 the search's colour: lists them" "$(ev "JSON.stringify(globalThis.__vmids.join('|'))")" \
+    same "2 the search's colour: lists them" "$(ev "globalThis.__vmids.join('|')")" \
         "colour:hsl(215, 65%, 53%)|colour:rgb(58, 123, 213)|colour:#3A7BD5"
 else
     not_ok "2 Super+Alt+C did not open the loupe" "$(st)"
@@ -286,6 +287,7 @@ gs set "${TOOLS}" convert-in-files false
 taken() { [[ ! -e "${SCRIPTS}/Convert" ]]; }
 check "7 ...and take it away" wait_for 20 taken
 PICS="${WORK}/pictures"
+rm -rf "${PICS}"
 install -d -m 0755 -o "${TEST_USER}" -g "${TEST_USER}" "${PICS}"
 as_user "cd '${PICS}' && python3 -c '
 import gi; gi.require_version(\"GdkPixbuf\", \"2.0\"); from gi.repository import GdkPixbuf
@@ -302,7 +304,7 @@ same "8 every kind written beside the originals, and only those" "$(ls "${PICS}"
 same "8 a JPEG over white, a WebP with its alpha, half and 1920 px wide" \
     "$(size "${PICS}/wide.jpg") / $(size "${PICS}/wide.webp") / $(size "${PICS}/wide (half size).png") / $(size "${PICS}/wide (1920 px).png")" \
     "2400 1600 False / 2400 1600 True / 1200 800 True / 1920 1280 True"
-same "8 the PDF a page each, the photo as a JPEG" "$(grep -ac '/Type /Page$\|/Type /Page ' "${PICS}/wide.pdf") $(grep -ac DCTDecode "${PICS}/wide.pdf")" "2 1"
+same "8 the PDF a page each, the photo as a JPEG" "$(pdfinfo "${PICS}/wide.pdf" | awk '/^Pages:/ {print $2}') $(grep -ac DCTDecode "${PICS}/wide.pdf")" "2 1"
 as_user "cd '${PICS}' && /usr/libexec/amethystora-convert jpeg -- wide.png" >/dev/null 2>&1
 same "8 a name already taken is never written over" "$(ls "${PICS}" | grep -c '^wide.*jpg$') $(size "${PICS}/wide 2.jpg")" "2 2400 1600 False"
 
@@ -314,12 +316,12 @@ if wait_for 20 recorded; then
     ev "(() => { ${CI}.clipItemsRadioGroup.find(i => i.clipContents === '  hello   lab world  ').actionsBtn.emit('clicked', 1); return 'opened'; })()" >/dev/null
     sleep 1
     same "9 Make a new copy offers the actions that change it, and the QR code" \
-        "$(ev "JSON.stringify(${CI}._textActionsDialog.textActions.map(a => a.id).join(' ') + ' ' + !!${CI}._textActionsDialog.qr)")" \
+        "$(ev "${CI}._textActionsDialog.textActions.map(a => a.id).join(' ') + ' ' + !!${CI}._textActionsDialog.qr")" \
         "upper title trim line true"
     ev "(() => { const d = ${CI}._textActionsDialog; d._copy(d.textActions.find(a => a.id === 'upper').result); return 'copied'; })()" >/dev/null
     sleep 1
     same "9 UPPER CASE is a new item at the top, what the clipboard holds, the original kept" \
-        "$(ev "JSON.stringify(${CI}.clipItemsRadioGroup.at(-1).clipContents + '|' + ${CI}.clipItemsRadioGroup.some(i => i.clipContents === '  hello   lab world  '))")|$(clip)" \
+        "$(ev "${CI}.clipItemsRadioGroup.at(-1).clipContents + '|' + ${CI}.clipItemsRadioGroup.some(i => i.clipContents === '  hello   lab world  ')")|$(clip)" \
         "  HELLO   LAB WORLD  |true|  HELLO   LAB WORLD  "
     ev "${T}.showQrCode('https://amethystora.org/manual'); 'shown'" >/dev/null
     qr_shown() { [[ "$(st ".qr?.shown")" == true ]]; }
@@ -342,7 +344,7 @@ ev "import('file:///usr/share/gnome-shell/extensions/${UUID}/modules/tools/wifi.
     globalThis.__vmwifi = [m.wifiText({ssid: 'Caf;e \"x\"', kind: 'WPA', password: 'pa:ss,'}),
         m.wifiText({ssid: 'Open', kind: 'nopass', hidden: true})]; }); 'asked'" >/dev/null
 sleep 1
-same "10 the WIFI: text, every special character escaped" "$(ev "JSON.stringify(globalThis.__vmwifi.join(' | '))")" \
+same "10 the WIFI: text, every special character escaped" "$(ev "globalThis.__vmwifi.join(' | ')")" \
     'WIFI:T:WPA;S:Caf\;e \"x\";P:pa\:ss\,;; | WIFI:T:nopass;S:Open;H:true;;'
 if nmcli -t -f TYPE,STATE device 2>/dev/null | grep -q '^wifi:connected'; then
     same "10 the Wi-Fi menu offers Share this Wi-Fi" "$(ev "(() => { const w = ${T}.wifi; w._sync(); return String(w.state.offered); })()")" true
@@ -353,7 +355,10 @@ fi
 
 # --- 11: ten disables and enables -------------------------------------------------------------------------------------
 for _ in $(seq 10); do
-    ev "Main.extensionManager.disableExtension('${UUID}'); Main.extensionManager.enableExtension('${UUID}'); 'again'" >/dev/null
+    # GNOME 51 carries a disable out only after the Eval that asked has returned: enable in a second one
+    ev "Main.extensionManager.disableExtension('${UUID}'); 'down'" >/dev/null
+    sleep 1
+    ev "Main.extensionManager.enableExtension('${UUID}'); 'up'" >/dev/null
     sleep 1
 done
 wait_for 60 tools_ready
