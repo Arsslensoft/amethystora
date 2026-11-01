@@ -121,14 +121,20 @@ same "2 Super+Alt+V is bound once" "$(jq '[.bindings[] | .value[] | ascii_downca
 same "2 nothing clashes as the image ships it" "$(jq '[.bindings[] | select(.clash != [])] | length' <<<"${LIST}")" "0"
 same "2 the agent's launcher is listed" "$(jq -r '.bindings[] | select(.schema == "custom" and .key == "custom27") | .owner' <<<"${LIST}")" \
     "desktop"
-gs set org.gnome.shell.extensions.amethystora-ui.tiling enabled true
+# With the tiling on it keeps its combination and takes it out of the account's GNOME key (by design, with a notice): off here
+# so that the key keeps what was written; <Super>Left is GNOME's own tile-left too, so the clash names both
+gs set org.gnome.shell.extensions.amethystora-ui.tiling enabled false
 in_session "ame desktop shortcut set ${MEDIA} previous '<Super>Left'" >/dev/null 2>&1
 same "3 a shortcut changed is the account's" "$(row "${MEDIA}" previous '.changed')" "true"
-same "3 ...and clashes with the tiling's" "$(row "${MEDIA}" previous '[.clash[] | .owner] | unique | join(" ")')" "tiling"
+same "3 ...and clashes with GNOME's own (the tiling is off)" "$(row "${MEDIA}" previous '[.clash[] | .owner] | unique | join(" ")' | tr -d '"')" "gnome"
 same "3 ...written into GNOME's own key" "$(gs get "${MEDIA}" previous)" "['<Super>Left']"
+# The tiling turned on keeps <Super>Left and takes it out of the account's key, which the module's notice says
+gs set org.gnome.shell.extensions.amethystora-ui.tiling enabled true
+if wait_for 30 key_is "${MEDIA}" previous "@as []"; then ok "3 the tiling on keeps its combination"; else not_ok "3 the tiling left the account's key alone"; fi
 in_session "ame desktop shortcut reset ${MEDIA} previous" >/dev/null 2>&1
-same "3 Reset puts it back, with no clash" "$(row "${MEDIA}" previous '[.changed, (.clash | length)] | map(tostring) | join(" ")')" \
+same "3 Reset puts it back, with no clash" "$(row "${MEDIA}" previous '[.changed, (.clash | length)] | map(tostring) | join(" ")' | tr -d '"')" \
     "false 0"
+gs set org.gnome.shell.extensions.amethystora-ui.tiling enabled true
 refused() { ! in_session "/usr/libexec/amethystora-keybindings $*" >/dev/null 2>&1; }
 check "4 a bare letter is no shortcut" refused set "${MEDIA}" previous a
 check "4 Shift and a letter is none either" refused set "${MEDIA}" previous "'<Shift>a'"
@@ -140,7 +146,7 @@ check "4 a function key alone is one" in_session "/usr/libexec/amethystora-keybi
 in_session "ame desktop shortcut reset ${MEDIA} previous" >/dev/null 2>&1
 
 # --- 5: Control's Keyboard page -------------------------------------------------------------------------------------
-in_session "setsid amethystora-control keyboard >/dev/null 2>&1 &" >/dev/null 2>&1
+user_bus systemd-run --user --collect --unit=vmlab-58-control -- amethystora-control keyboard >/dev/null 2>&1
 if user_bus python3 "${HERE}/atspi.py" amethystora-control wait 40 "Every shortcut" >/dev/null 2>&1; then
     ok "5 Control opens on the Keyboard page"
     user_bus python3 "${HERE}/atspi.py" amethystora-control type "Previous track" "Find a shortcut" >/dev/null 2>&1
@@ -148,12 +154,18 @@ if user_bus python3 "${HERE}/atspi.py" amethystora-control wait 40 "Every shortc
     user_bus python3 "${HERE}/atspi.py" amethystora-control click "Change the shortcut Previous track" >/dev/null 2>&1
     sleep 1
     # GNOME asks once whether an app may hold the shortcuts back while it listens
-    user_bus python3 "${HERE}/atspi.py" gnome-shell click Allow >/dev/null 2>&1 && sleep 1
+    # (the dialog is the shell's own, which is not on the accessibility bus under GNOME 51: its button is clicked from inside)
+    ev "(() => { const walk = a => { if (a.constructor.name.includes('Button') && a.label === 'Allow') a.emit('clicked', 1); a.get_children().forEach(walk); }; walk(Main.layoutManager.modalDialogGroup); return 'x'; })()" >/dev/null
+    sleep 1
     if user_bus python3 "${HERE}/atspi.py" amethystora-control has "Press the new keys for" >/dev/null 2>&1; then
         ok "5 Change waits for the new keys"
+        # A window started from a unit has no activation token and may not have the keyboard
+        ev "global.get_window_actors().map(a => a.meta_window).filter(w => (w.title ?? '').includes('Control')).forEach(w => Main.activateWindow(w)); 1" >/dev/null
+        sleep 1
         press super+alt+comma
-        wait_for 15 key_is "${MEDIA}" previous "['<Super><Alt>comma']"
-        same "5 the keys pressed are the shortcut's" "$(gs get "${MEDIA}" previous)" "['<Super><Alt>comma']"
+        wait_for 15 key_is "${MEDIA}" previous "['<Alt><Super>comma']"
+        # GTK writes the modifiers in its own order (Alt, then Super)
+        same "5 the keys pressed are the shortcut's" "$(gs get "${MEDIA}" previous)" "['<Alt><Super>comma']"
         if user_bus python3 "${HERE}/atspi.py" amethystora-control wait 15 "Reset the shortcut Previous track" >/dev/null 2>&1; then
             user_bus python3 "${HERE}/atspi.py" amethystora-control click "Reset the shortcut Previous track" >/dev/null 2>&1
             sleep 3
@@ -232,7 +244,7 @@ sleep 1
 lab_window() { [[ "$(ev "String(global.display.focus_window?.title === 'Keys lab')")" == true ]]; }
 start_lab() {
     rm -f "${WORK}/text.txt"
-    in_session "setsid gjs ${WORK}/text.js ${WORK}/text.txt >/dev/null 2>&1 &" >/dev/null 2>&1
+    user_bus systemd-run --user --collect --unit="vmlab-58-lab-${RANDOM}" -- gjs "${WORK}/text.js" "${WORK}/text.txt" >/dev/null 2>&1
     wait_for 20 lab_window
 }
 if start_lab; then
@@ -254,10 +266,14 @@ if start_lab; then
     same "10 on, the input method is wrapped" "$(typing_st '.accents.wrapped')" "true"
     press space c a f
     # One keyboard for the whole hold: keys.py's goes away, and its keys up, when it ends
-    press down:e sleep:1300 up:e
+    # keys.py presses Shift first on every start, which closes the strip: the 2 goes in the same run, after the checks
+    press down:e sleep:1300 up:e sleep:6000 2 &
+    pick_pid=$!
+    strip_open() { [[ "$(typing_st '.accents.open')" == true ]]; }
+    wait_for 20 strip_open
     same "10 holding e shows the strip, which stays once the e is let go" "$(typing_st '.accents.open')" "true"
     same "10 ...and only one e reached the app" "$(typed)" "Results for the third quarter cafe"
-    press 2
+    wait "${pick_pid}"
     wait_for 5 typed_is "Results for the third quarter cafè"
     same "10 2 types è in place of the e" "$(typed)" "Results for the third quarter cafè"
     press space down:e sleep:1300 up:e esc

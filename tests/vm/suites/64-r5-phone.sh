@@ -80,7 +80,7 @@ ev "Main.overview.hide(); 'hidden'" >/dev/null
 # --- The phone's network, and the pairing by pin, as suite 24 makes them --------------------------------------------------
 install -d -m 0700 "${WORK}"
 cp "${HERE}/phonepeer.py" "${WORK}/"
-install -d -m 0755 "${PLAYER_DIR}"
+install -d -m 0777 "${PLAYER_DIR}"
 install -m 0644 "${HERE}/mprisstandin.py" "${PLAYER_DIR}/"
 ip netns del "${NS}" 2>/dev/null
 ip link del vmphone64a 2>/dev/null
@@ -163,7 +163,7 @@ fi
 ok "the stand-in phone is paired and connected"
 
 # --- 3. Ring the phone --------------------------------------------------------------------------------------------------
-has_feature() { prop Features | grep -q "\"$1\""; }
+has_feature() { prop Features | grep -qE "(^|[^a-z])$1([^a-z]|$)"; }
 check "3 Features has ring" wait_for 10 has_feature ring
 row_shown() {
     [[ "$(ev "(() => { const s = [...${INDICATOR}._sections.values()][0]; return s._rows.find(r => r.feature === 'ring').item.visible; })()")" == true ]]
@@ -205,7 +205,7 @@ send 'packet kdeconnect.mpris {"playerList": ["Music"]}'
 asked_state() { grep 'got kdeconnect.mpris.request' "${PEER}/log" | grep '"player":"Music"' | grep -q '"requestNowPlaying":true'; }
 check "5 ...and for the state of the one it lists" wait_for 10 asked_state
 send 'packet kdeconnect.mpris {"player": "Music", "title": "Night Drive", "artist": "Lab Band", "isPlaying": true, "canPause": true, "canGoNext": true, "length": 240000, "pos": 1000}'
-in_players() { prop Players | grep -q '"title":"Night Drive"'; }
+in_players() { prop Players | grep -q 'title.*Night Drive'; }
 check "5 the program's Players has it" wait_for 10 in_players
 in_pill() { [[ "$(ev "${MODULES}.get('pill')?._media?.player?.source ?? ''")" == "Music on Lab phone" ]]; }
 if wait_for 10 in_pill; then

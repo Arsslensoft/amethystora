@@ -34,7 +34,7 @@ except ValueError:
     x = v[1]
 print(x if isinstance(x, str) else json.dumps(x))'
 }
-gs() { in_session "gsettings $*" 2>/dev/null; }
+gs() { in_session "gsettings $(printf "%q " "$@")" 2>/dev/null; }
 same() { if [[ "$2" == "$3" ]]; then ok "$1"; else not_ok "$1" "expected: $3" "found: $2"; fi; }
 like() { [[ "$1" == $2 ]]; }
 is() { [[ "$(ev "$1")" == "$2" ]]; }
@@ -108,7 +108,7 @@ trap cleanup EXIT
 
 # --- 1: named spaces in the overview (R5-32) ------------------------------------------------------------------------
 gs set org.gnome.desktop.wm.preferences workspace-names "['Mail', 'Code']"
-PICTURE=/usr/share/amethystora/themes/amethystora/backgrounds
+PICTURE=/usr/share/backgrounds/amethystora
 picture="$(find "${PICTURE}" -maxdepth 1 -type f \( -name '*.png' -o -name '*.jpg' -o -name '*.svg' \) | head -n1)"
 gs set "${TILING}" workspace-backgrounds "['', '${picture}']"
 ev "Main.overview.show(); 'x'" >/dev/null
@@ -326,7 +326,8 @@ same "9 the recording itself is as it was" "$(ffprobe -v error -show_entries for
 user_bus python3 "${HERE}/atspi.py" amethystora-trim click "Save as GIF" >/dev/null 2>&1
 check "9 and nothing is written over" wait_for 60 test -s "${VIDEOS}/vmlab (trimmed 2).gif"
 pkill -u "${TEST_USER}" -f /usr/lib/amethystora-trim/amethystora-trim
-check "9 its frames go with the window" wait_for 10 test -z "$(find /run/user/"$(id -u "${TEST_USER}")" -maxdepth 1 -name 'amethystora-trim-*')"
+# The find runs at each round (a substitution here would be read once)
+check "9 its frames go with the window" wait_for 10 bash -c 'test -z "$(find /run/user/'"$(id -u "${TEST_USER}")"' -maxdepth 1 -name "amethystora-trim-*")"'
 in_session "ame desktop screenshot trim off" >/dev/null
 check "9 off, GNOME's own again" wait_for 10 is "${S}.trim.wrapped" false
 rm -rf "${VIDEOS}/vmlab"*

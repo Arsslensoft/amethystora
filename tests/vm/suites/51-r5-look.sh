@@ -226,7 +226,9 @@ atspi type "Lab Made" "The theme's name" >/dev/null 2>&1
 atspi click "Save as Lab Made" >/dev/null 2>&1
 if wait_for 30 test -f "${CONFIG}/themes/lab-made/colors.toml"; then ok "Save makes the theme"; else not_ok "Save made no theme"; fi
 same "and applies it" "$(theme_now)" lab-made
-if atspi has "Drawn wallpapers" >/dev/null 2>&1 && atspi has "Light by day, dark by night" >/dev/null 2>&1; then
+# The page draws its cards again after Save: given time
+both_cards() { atspi has "Drawn wallpapers" && atspi has "Light by day, dark by night"; }
+if wait_for 30 both_cards; then
     ok "Control has the drawn wallpapers and light by day"
 else
     not_ok "Control lacks the drawn wallpapers or light by day"

@@ -85,9 +85,13 @@ install -d "${HOME_NEW}/.config/systemd/user/org.gnome.Shell@user.service.d"
 printf '[Service]\nExecStart=\nExecStart=%s --force-animations\n' "${start}" \
     >"${HOME_NEW}/.config/systemd/user/org.gnome.Shell@user.service.d/vmlab-animations.conf"
 defaults="$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell enabled-extensions)"
-runuser -u "${NEW}" -- dbus-run-session -- bash -c "gsettings set org.gnome.shell enabled-extensions \"${defaults%]*}, 'vmlab-eval@lab']\"
-    gsettings set org.gnome.shell disable-user-extensions false
-    gsettings set org.gnome.shell.extensions.amethystora-ui.hints enabled true"
+# Fedora 45 has no dbus-run-session: the account's dconf database is compiled from a key file instead
+dconf_src="$(mktemp -d)"
+printf '[org/gnome/shell]\nenabled-extensions=%s\ndisable-user-extensions=false\n\n[org/gnome/shell/extensions/amethystora-ui/hints]\nenabled=true\n' \
+    "${defaults%]*}, 'vmlab-eval@lab']" >"${dconf_src}/00-vmlab"
+install -d -o "${NEW}" -g "${NEW}" "${HOME_NEW}/.config/dconf"
+dconf compile "${HOME_NEW}/.config/dconf/user" "${dconf_src}"
+rm -rf "${dconf_src}"
 chown -R "${NEW}:" "${HOME_NEW}/.local" "${HOME_NEW}/.config"
 TEST_USER="${NEW}"
 if ! log_in "${NEW}"; then
@@ -155,7 +159,7 @@ cards_named() { atspi amethystora-manual tree 2>/dev/null | grep -oE "button \['
 if atspi amethystora-manual wait 20 "Four fingers for Today" >/dev/null 2>&1; then
     same "17 eight cards" "$(cards_named 'button.*(Shake to find|Pinch for the apps|Search anything|Hold Super|Switch windows|Snap layouts|Spread for the desktop|Four fingers for Today), (playing|paused)')" 8
     # A clip plays only in the active window: the Manual is given the focus, as a person's click would
-    ev "global.display.list_all_windows().find(w => w.get_wm_class() === 'org.amethystora.Manual')?.activate(global.get_current_time()); true" >/dev/null
+    ev "Main.overview.hide(); global.display.list_all_windows().find(w => w.get_wm_class() === 'org.amethystora.Manual')?.activate(global.get_current_time()); true" >/dev/null
     playing() { atspi amethystora-manual has "Shake to find, playing" >/dev/null 2>&1; }
     if wait_for 10 playing; then
         ok "17 with animations on, the first card plays"

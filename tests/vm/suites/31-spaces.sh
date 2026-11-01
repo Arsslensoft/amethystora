@@ -95,7 +95,7 @@ sys.exit(0 if len(a)==len(b) and all(p[0]==q[0] and all(abs(x-y)<=2 for x,y in z
 }
 open_menu() {
     local where
-    where="$(ev "(() => { const l = ${WS}._labels[0]; const [x, y] = l.get_transformed_position(); const [w, h] = l.get_transformed_size();
+    where="$(ev "(() => { const l = ${WS}._labels[${1:-0}]; const [x, y] = l.get_transformed_position(); const [w, h] = l.get_transformed_size();
         return ((x + w / 2) / global.stage.width).toFixed(4) + ',' + ((y + h / 2) / global.stage.height).toFixed(4); })()")"
     keys "right:${where}" >/dev/null 2>&1
     sleep 1
@@ -242,7 +242,11 @@ ame_ desktop sets off >/dev/null
 same "1 ame desktop sets off turns it off" "$(gs get "${WORKSPACES}" sets)" false
 open_menu
 if atspi has "Save this workspace" >/dev/null 2>&1; then not_ok "1 the menu has no Save this workspace while off"; else ok "1 the menu has no Save this workspace while off"; fi
+# Picking up after a restart (resume, on by default) keeps the sets object alive: with it off too, nothing is held
+gs set "${WORKSPACES}" resume false
+sleep 1
 check "1 nothing of the sets is held while off" is_true "${WS}.sets === null && ${WS}._setsMenu === null"
+gs set "${WORKSPACES}" resume true
 close_menu
 ame_ desktop sets on >/dev/null
 open_menu
@@ -581,7 +585,7 @@ sleep 2
 rise="$(ev "JSON.stringify(globalThis.vmlab31.log)")"
 echo "# the rise sampled: ${rise}"
 check "15 with Reduce motion it only fades in" python3 -c "import json,sys; l=json.loads(sys.argv[1]);
-first=[x for x in l if x[0]==l[0][0]][0]; sys.exit(0 if first[1] == 1 and 0 < first[3] < 255 else 1)" "${rise}"
+s=[x for x in l if x[0]==l[0][0]]; sys.exit(0 if all(x[1] == 1 and x[2] == 0 for x in s) and any(x[3] < 255 for x in s) else 1)" "${rise}"
 ev "global.window_manager.disconnectObject(globalThis); delete globalThis.vmlab31; global.force_animations = true; 1" >/dev/null
 gs reset org.gnome.desktop.a11y.interface reduced-motion
 
@@ -592,7 +596,7 @@ go_to 5
 start many gjs -m "${WORK}/many.js"
 wait_for 40 is_true "global.workspace_manager.get_workspace_by_index(5).list_windows().length === 17"
 gs set org.gnome.desktop.wm.preferences workspace-names "['', '', '', '', '', 'Many']"
-open_menu
+open_menu 5
 atspi click "Save this workspace" >/dev/null 2>&1
 check "16 17 windows: the button says 16 were saved" atspi wait 5 "Saved as Many (16 windows)"
 close_menu

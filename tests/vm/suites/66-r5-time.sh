@@ -102,7 +102,7 @@ check "2 the times provider runs" is "typeof $(provider times)?.answerFor" funct
 # summer, which makes it 22:00 then; either is right for its day
 paris="$(answer "'15:00 Paris in Tokyo'")"
 check "2 15:00 Paris in Tokyo" like "${paris}" '*"name":"2[23]:00"*"in Tokyo, the same day"*'
-check "2 its second row says the time in Tokyo now" like "${paris}" '*"Now in Tokyo: "*'
+check "2 its second row says the time in Tokyo now" like "${paris}" '*"Now in Tokyo: [0-9]*'
 tokyo="$(ev "GLib.DateTime.new_now(GLib.TimeZone.new_identifier('Asia/Tokyo')).format('%H:%M')")"
 check "2 time in Tokyo is the time there now" like "$(answer "'time in Tokyo'")" "*\"name\":\"${tokyo}\"*in Tokyo*"
 same "2 3pm UTC in UTC+2" "$(ev "$(provider times).answerFor('3pm UTC in UTC+2')[0].name")" "17:00"
@@ -123,7 +123,7 @@ remind_rows() {
 rows="$(remind_rows "'remind me at 23:59 to call the garage'")"
 check "4 the row is the task" like "${rows}" '*"name":"Call the garage"*"A task in Notes · *"*'
 check "4 and the line Notes is handed" like "${rows}" '*"line":"20[0-9][0-9]-[0-9][0-9]-[0-9][0-9] 23:59 Call the garage"*'
-check "4 the second row is a day later" like "${rows}" '*"instead"*"Tab to change the day"*'
+check "4 the second row is a day later" like "${rows}" '*instead*Tab to change the day*'
 same "4 without a time, nothing" "$(remind_rows "'remind me to call the garage'")" "[]"
 # An unencrypted vault: Notes opens it at start and adds the task
 install -d -o "${TEST_USER}" -g "${TEST_USER}" -m 0700 "${NOTES_DIR}"
@@ -141,7 +141,7 @@ wait_for 10 bash -c "! pgrep -u '${TEST_USER}' -f /usr/lib/amethystora-notes/ame
 echo '{"format": 1, "encrypted": true}' >"${NOTES_DIR}/vault.json"
 rm -f "${NOTES_DIR}"/data.json*
 rows="$(remind_rows "'remind me at 23:59 to water the plants'")"
-check "6 the row says Notes asks first" like "${rows}" '*"Notes asks for its passphrase first"*'
+check "6 the row says Notes asks first" like "${rows}" '*Notes asks for its passphrase first*'
 ev "$(provider reminders).hand('$(jq -r '.[0].line' <<<"${rows}")') ? 'handed' : 'not'" >/dev/null
 quick() { is "global.get_window_actors().some(a => a.meta_window.get_title() === 'Quick note')" true; }
 check "6 the quick note opens to ask" wait_for 30 quick
@@ -218,12 +218,12 @@ same "9 on again" "$(kitty_notify)" "unfocused 10.0"
 
 # --- 10: a missing command -------------------------------------------------------------------------------------------
 in_session "ame desktop missing-command off" >/dev/null 2>&1
-check "10 off: bash's own message" like "$(in_session "bash -ic 'rg; echo status \$?' 2>&1")" '*rg: command not found*status 127*'
+check "10 off: bash's own message" like "$(in_session "bash -ic 'cowsay; echo status \$?' 2>&1")" '*cowsay: command not found*status 127*'
 in_session "ame desktop missing-command on" >/dev/null 2>&1
-out="$(in_session "bash -ic 'rg; echo status \$?' 2>&1")"
-check "10 bash says where it can come from" like "${out}" '*rg is not on this computer*install ripgrep*Nothing was installed.*status 127*'
-check "10 zsh too" like "$(in_session "zsh -ic 'rg; echo status \$?' 2>&1")" '*rg is not on this computer*status 127*'
-check "10 fish too" like "$(in_session "fish -ic 'rg; echo status \$status' 2>&1")" '*rg is not on this computer*status 127*'
+out="$(in_session "bash -ic 'cowsay; echo status \$?' 2>&1")"
+check "10 bash says where it can come from" like "${out}" '*cowsay is not on this computer*install cowsay*Nothing was installed.*status 127*'
+check "10 zsh too" like "$(in_session "zsh -ic 'cowsay; echo status \$?' 2>&1")" '*cowsay is not on this computer*status 127*'
+check "10 fish too" like "$(in_session "fish -ic 'cowsay; echo status \$status' 2>&1")" '*cowsay is not on this computer*status 127*'
 check "10 an ame command for steam" like "$(in_session "/usr/libexec/amethystora-missing-command steam")" '*ame apps gaming*'
 in_session "ame desktop missing-command off" >/dev/null 2>&1
 

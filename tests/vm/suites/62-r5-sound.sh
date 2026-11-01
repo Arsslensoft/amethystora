@@ -254,7 +254,7 @@ check "6 off, nothing runs ddcutil" test -z "$(pgrep -x ddcutil)"
 GSETTINGS_BACKEND=memory ame desktop screen-brightness on >/dev/null 2>&1
 check "6 on copies the image's rule" cmp /etc/udev/rules.d/60-amethystora-ddc.rules /usr/share/amethystora/ddc/60-amethystora-ddc.rules
 check "6 on loads i2c-dev" test -d /sys/module/i2c_dev
-check "6 the report says the grant" bash -c '/usr/libexec/amethystora-security-status --json | grep -q "\"id\":\"screen-brightness\""'
+check "6 the report says the grant" bash -c '/usr/libexec/amethystora-security-status --json | grep -Eq "\"id\": *\"screen-brightness\""'
 GSETTINGS_BACKEND=memory ame desktop screen-brightness off >/dev/null 2>&1
 check "6 off takes it back" test ! -e /etc/udev/rules.d/60-amethystora-ddc.rules
 # A stand-in ddcutil with one screen, which logs what it is asked to set

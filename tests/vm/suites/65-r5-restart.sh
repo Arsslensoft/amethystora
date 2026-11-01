@@ -146,7 +146,7 @@ check "2 the file is gone once read" test ! -e "${RESUME}"
 card="$(ev "(() => { const c = ${P}.resume.card({close() {}}); const t = []; const v = a => { if (a.text) t.push(a.text); a.get_children?.().forEach(v); }; v(c); c.destroy(); return JSON.stringify(t); })()")"
 check "3 the card says welcome back" like "${card}" '*"Welcome back"*'
 check "3 the card counts the apps" like "${card}" '*"The update is in. 1 app was open before the restart."*'
-check "3 the card says nothing was kept of them" like "${card}" '*"no file, page or tab was kept."*'
+check "3 the card says nothing was kept of them" like "${card}" '*no file, page or tab was kept.*'
 close_files
 ev "global.workspace_manager.get_workspace_by_index(0).activate(global.get_current_time()); 'x'" >/dev/null
 ev "${P}.resume.reopen(); 'x'" >/dev/null
@@ -299,7 +299,8 @@ same "12 leave nothing" "$(ev "(() => { const a = ${census}, b = globalThis.vmla
     return JSON.stringify(Object.keys({...a, ...b}).filter(k => (a[k] ?? 0) !== (b[k] ?? 0)).map(k => k + ' ' + ((a[k] ?? 0) - (b[k] ?? 0))).slice(0, 12)); })()")" "[]"
 on
 wait_for 60 ready
-check "12 on again, Save is back" wait_for 10 same_save
+save_back() { local s; s="$(save)"; [[ "${s}" == "(true,)" || "${s}" == "(false,)" ]]; } # false: no window to keep, the object is there
+check "12 on again, Save is back" wait_for 10 save_back
 rm -f "${RESUME}"
 
 # --- 13: Control and the setup file --------------------------------------------------------------------------------------

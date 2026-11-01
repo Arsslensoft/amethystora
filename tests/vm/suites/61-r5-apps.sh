@@ -232,8 +232,8 @@ if [[ -n "${FLATPAK}" ]]; then
     FID="${FID:-${FLATPAK%.desktop}}"
     user_bus systemd-run --user --collect --unit=vmlab-61-security -- amethystora-security "apps/${FID}" >/dev/null 2>&1
     FNAME="$(ev "imports.gi.Shell.AppSystem.get_default().lookup_app('${FLATPAK}').get_name()")"
-    if user_bus python3 "${WORK}/atspi.py" amethystora-security wait 60 "What apps can reach" >/dev/null 2>&1 &&
-        user_bus python3 "${WORK}/atspi.py" amethystora-security has "${FNAME}" >/dev/null 2>&1; then
+    if user_bus python3 "${WORK}/atspi.py" amethystora-security wait 60 "WHAT APPS CAN REACH" >/dev/null 2>&1 &&
+        user_bus python3 "${WORK}/atspi.py" amethystora-security has "${FNAME^^}" >/dev/null 2>&1; then
         ok "7 Security opens on the Apps page with that app"
     else
         not_ok "7 Security opens on the Apps page with that app" "$(user_bus python3 "${WORK}/atspi.py" amethystora-security text 2>&1 | head -20)"
