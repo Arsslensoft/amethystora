@@ -204,6 +204,7 @@
   "Recommended. Your notes, tasks and attachments are encrypted on disk, and open only with the passphrase.": "Recommended. Your notes, tasks and attachments are encrypted on disk, and open only with the passphrase.",
   "Red": "Red",
   "Reminder": "Reminder",
+  "Reminder set": "Reminder set",
   "Reminders": "Reminders",
   "Remove": "Remove",
   "Remove {name}": "Remove {name}",
@@ -252,6 +253,7 @@
   "The passkey is added.": "The passkey is added.",
   "The passphrase and the key are changed.": "The passphrase and the key are changed.",
   "The passphrase is changed.": "The passphrase is changed.",
+  "The quick note is open: save it first, then ask again.": "The quick note is open: save it first, then ask again.",
   "The same again": "The same again",
   "The security key did not recognise the fingerprint.": "The security key did not recognise the fingerprint.",
   "The security key gave no secret.": "The security key gave no secret.",
@@ -348,5 +350,6 @@
   "{file} was not imported: {reason}": "{file} was not imported: {reason}",
   "{key} starts a note from anywhere in the window.": "{key} starts a note from anywhere in the window.",
   "{name}, {size}. Click to save a copy.": "{name}, {size}. Click to save a copy.",
+  "{task}, {day} at {time}": "{task}, {day} at {time}",
   "{tool} failed": "{tool} failed"
 }
