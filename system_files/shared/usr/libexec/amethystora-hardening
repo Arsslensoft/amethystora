@@ -70,6 +70,8 @@ declare -A EXTRA_ARGS=(
 )
 EXTRA_ORDER=(init_on_free=1 iommu.strict=1 ia32_emulation=0)
 
+# Which Bluetooth adapters were off when No Bluetooth was turned on (a state file: an account may read nothing into it)
+BLUETOOTH_WAS_OFF="${ROOT}/var/lib/amethystora/bluetooth-was-off"
 SYSCTL=sysctl.d/60-amethystora-hardening.conf
 MODPROBE=modprobe.d/60-amethystora-hardening.conf
 FIREWIRE=modprobe.d/61-amethystora-firewire.conf
@@ -266,6 +268,32 @@ cooldown() {
     else
         printf 'export %s\n' "${vars[@]/#UV_EXCLUDE_NEWER=*/UV_EXCLUDE_NEWER=\"${days} days\"}"
     fi
+}
+
+# Each Bluetooth adapter that is off now, by name
+bluetooth_adapters_off() {
+    local adapter
+    for adapter in /sys/class/bluetooth/hci*; do
+        adapter="${adapter##*/}"
+        [[ "${adapter}" =~ ^hci[0-9]+$ ]] || continue
+        [[ "$(busctl get-property org.bluez "/org/bluez/${adapter}" org.bluez.Adapter1 Powered 2>/dev/null)" != "b false" ]] ||
+            echo "${adapter}"
+    done
+}
+
+# Those adapters off again: BlueZ powers every adapter on as it starts (AutoEnable), a moment after it says it is up.
+# One rfkill blocks it leaves alone.
+bluetooth_power_off() {
+    local adapter wait
+    for adapter in "$@"; do
+        [[ "$(cat "/sys/class/bluetooth/${adapter}"/rfkill*/soft 2>/dev/null)" != 1 ]] || continue
+        for ((wait = 0; wait < 30; wait++)); do
+            [[ "$(busctl get-property org.bluez "/org/bluez/${adapter}" org.bluez.Adapter1 Powered 2>/dev/null)" != "b true" ]] || break
+            sleep 0.1
+        done
+        busctl set-property org.bluez "/org/bluez/${adapter}" org.bluez.Adapter1 Powered b false 2>/dev/null
+    done
+    return 0
 }
 
 managed() {
@@ -573,7 +601,10 @@ set_switch() {
             else
                 place "${BLUEZ}" image
             fi
+            local adapters
+            adapters="$(bluetooth_adapters_off)"
             systemctl try-restart bluetooth.service 2>/dev/null
+            bluetooth_power_off ${adapters}
             ;;
         countme | firmware-metadata)
             if [[ "${name}" == countme && "${switched}" == on ]] && sealed; then
@@ -633,6 +664,7 @@ set_switch() {
         block-bluetooth)
             if [[ "${switched}" == on ]]; then
                 place "${NO_BLUETOOTH}" || return 1
+                bluetooth_adapters_off >"${BLUETOOTH_WAS_OFF}" 2>/dev/null
                 systemctl disable --now bluetooth.service 2>/dev/null
                 rfkill block bluetooth 2>/dev/null
             else
@@ -642,6 +674,8 @@ set_switch() {
                 # starts only once there is Bluetooth in the kernel
                 modprobe btusb 2>/dev/null
                 systemctl enable --now bluetooth.service 2>/dev/null
+                bluetooth_power_off $(cat "${BLUETOOTH_WAS_OFF}" 2>/dev/null)
+                rm -f "${BLUETOOTH_WAS_OFF}"
             fi
             ;;
         block-webcam)
