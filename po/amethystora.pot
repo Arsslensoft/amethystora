@@ -10205,6 +10205,14 @@ msgid "Prune all Docker images and volumes?"
 msgstr ""
 
 #: usr/share/amethystora/just/system.just
+msgid "Clear rpm-ostree's caches of downloaded updates and package lists?"
+msgstr ""
+
+#: usr/share/amethystora/just/system.just
+msgid "Remove what Homebrew lists above?"
+msgstr ""
+
+#: usr/share/amethystora/just/system.just
 msgid "Powerstat is not available"
 msgstr ""
 

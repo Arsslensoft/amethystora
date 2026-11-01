@@ -308,12 +308,15 @@ clean:
     PATH="${PATH}:/home/linuxbrew/.linuxbrew/bin"
     # shellcheck source=/dev/null
     source gettext.sh
+    # Each thing is shown where its tool can show it, and asked about first
+    podman system df
     if gum confirm "$(gettext "Prune all Podman images and volumes?")"; then
         podman image prune -af
         podman volume prune -f
     fi
 
     if command -v docker >/dev/null 2>&1; then
+      docker system df
       if gum confirm "$(gettext "Prune all Docker images and volumes?")"; then
         docker image prune -af
         docker volume prune -f
@@ -322,12 +325,16 @@ clean:
 
     flatpak uninstall --unused
     # A sealed image has no rpm-ostree, nor its caches to clean
-    if command -v rpm-ostree >/dev/null; then
+    if command -v rpm-ostree >/dev/null && gum confirm "$(gettext "Clear rpm-ostree's caches of downloaded updates and package lists?")"; then
         rpm-ostree cleanup -bm
     fi
     if [ -x /home/linuxbrew/.linuxbrew/bin/brew ]; then
-        brew autoremove
-        brew cleanup
+        brew autoremove --dry-run
+        brew cleanup --dry-run
+        if gum confirm "$(gettext "Remove what Homebrew lists above?")"; then
+            brew autoremove
+            brew cleanup
+        fi
     fi
 
 # Pools of disks (RAID): how they are, then make one from spare disks, or replace or add a disk
