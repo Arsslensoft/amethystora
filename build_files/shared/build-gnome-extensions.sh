@@ -56,6 +56,13 @@ if compgen -G "${UI_EXTENSION}/schemas/*.gschema.xml" >/dev/null; then
 fi
 enable_extension "amethystora-ui@iarsslen.github.io"
 
+# The image's version is each extension's: Extension Manager's row shows a version only when "version" is there, and
+# then "version-name", and GNOME's Extensions app shows the name too. Nothing updates these from extensions.gnome.org.
+for metadata in /usr/share/gnome-shell/extensions/amethystora-*@iarsslen.github.io/metadata.json; do
+    stamped="$(jq --arg name "${VERSION:-00.00000000}" '. + {version: 1, "version-name": $name}' "${metadata}")"
+    printf '%s\n' "${stamped}" >"${metadata}"
+done
+
 # GNOME Shell's getSettings() reads an extension's own compiled schemas before the system's, and the
 # overrides in /usr/share/glib-2.0/schemas never reach those: without this, every extension above ran
 # on its own defaults. So each one's schemas are compiled again with its sections of zz0- and

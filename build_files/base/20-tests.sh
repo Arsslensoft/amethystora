@@ -378,6 +378,11 @@ for extension in /usr/share/gnome-shell/extensions/*/; do
     [[ -z "$(find "${extension}" -type d ! -perm -o=rx)" ]]
 done
 
+# Extension Manager's row and GNOME's Extensions app show the image's version for each of its own
+for metadata in /usr/share/gnome-shell/extensions/amethystora-*@iarsslen.github.io/metadata.json; do
+    jq -e '(.version | type == "number") and (.["version-name"] | type == "string" and length > 0)' "${metadata}"
+done
+
 # Every extension ships its licence, in its own folder or in /usr/share/licenses/<uuid>: the GPL asks
 # for the text to travel with the program. One installed from a Fedora package carries it in the package's
 # licence folder, or, like those of gnome-shell-extensions, in that of a sibling from the same source
