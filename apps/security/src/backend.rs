@@ -56,6 +56,8 @@ pub const CLAMD_SOCKET: &str = "/run/clamd.scan/clamd.sock";
 /// The weekly scan of the whole machine, and the root-only file it writes its findings to
 pub const MACHINE_SERVICE: &str = "amethystora-clamav-scan.service";
 pub const MACHINE_TIMER: &str = "amethystora-clamav-scan.timer";
+/// The service's object on systemd's bus
+pub const MACHINE_UNIT_PATH: &str = "/org/freedesktop/systemd1/unit/amethystora_2dclamav_2dscan_2eservice";
 pub const MACHINE_FINDINGS: &str = "/var/log/amethystora-clamav-findings.log";
 /// Network protection: its helper, the rules allowed on this machine, and what the watcher keeps of its
 /// alerts (network.json, for wheel) and of its state (status.json, for everyone)

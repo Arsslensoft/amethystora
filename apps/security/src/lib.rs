@@ -134,6 +134,8 @@ pub struct Security {
     live: RefCell<page::Live>,
     reloading: Cell<bool>,
     machine_timer: RefCell<Option<glib::SourceId>>,
+    /// The system bus, kept for as long as the window hears from systemd over it
+    machine_bus: RefCell<Option<gio::DBusConnection>>,
     /// The page has been opened once: a later launch only changes pages
     opened: Cell<bool>,
     /// How many columns the grids have: three, then two and one in a narrow window
@@ -187,6 +189,7 @@ impl Security {
             live: RefCell::new(page::Live::default()),
             reloading: Cell::new(false),
             machine_timer: RefCell::new(None),
+            machine_bus: RefCell::new(None),
             opened: Cell::new(false),
             columns: Cell::new(3),
         });
@@ -202,6 +205,7 @@ impl Security {
             glib::idle_add_local_once(move || gtk::prelude::GtkWindowExt::set_focus(&window, None::<&gtk::Widget>));
         });
 
+        this.hear_machine();
         // The time a scan has run, every second
         let weak = Rc::downgrade(&this);
         glib::timeout_add_local(Duration::from_secs(1), move || {
@@ -641,6 +645,47 @@ impl Security {
         }
     }
 
+    /// A whole-machine scan started anywhere else: systemd says when its unit changes, which costs nothing between
+    /// changes, and the page then asks after it
+    fn hear_machine(&self) {
+        let weak = self.me.clone();
+        glib::spawn_future_local(async move {
+            let Ok(bus) = gio::bus_get_future(gio::BusType::System).await else { return };
+            // systemd says a unit changed only once somebody has asked it to
+            let _ = bus
+                .call_future(
+                    Some("org.freedesktop.systemd1"),
+                    "/org/freedesktop/systemd1",
+                    "org.freedesktop.systemd1.Manager",
+                    "Subscribe",
+                    None,
+                    None,
+                    gio::DBusCallFlags::NONE,
+                    -1,
+                )
+                .await;
+            let heard = weak.clone();
+            #[allow(deprecated)] // the stream form would need the app to poll it for a callback this small
+            bus.signal_subscribe(
+                Some("org.freedesktop.systemd1"),
+                Some("org.freedesktop.DBus.Properties"),
+                Some("PropertiesChanged"),
+                Some(backend::MACHINE_UNIT_PATH),
+                Some("org.freedesktop.systemd1.Unit"),
+                gio::DBusSignalFlags::NONE,
+                move |_, _, _, _, _, _| {
+                    let Some(this) = heard.upgrade() else { return };
+                    if this.machine_timer.borrow().is_none() {
+                        this.watch_machine();
+                    }
+                },
+            );
+            if let Some(this) = weak.upgrade() {
+                this.machine_bus.replace(Some(bus));
+            }
+        });
+    }
+
     /// The whole-machine scan is systemd's, so the page asks after it rather than being told
     pub(crate) fn watch_machine(&self) {
         if let Some(timer) = self.machine_timer.take() {
@@ -656,7 +701,12 @@ impl Security {
                 let running = scanner.machine.running;
                 this.state.borrow_mut().scanner = Some(scanner);
                 if running {
-                    this.render_nav();
+                    // Started elsewhere: the page says so as well as the sidebar
+                    if was_running {
+                        this.render_nav();
+                    } else {
+                        this.render();
+                    }
                     this.watch_machine();
                     return;
                 }
