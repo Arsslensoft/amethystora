@@ -6,6 +6,7 @@
 // pane of glass with its name over its apps.
 
 import Clutter from 'gi://Clutter';
+import GLib from 'gi://GLib';
 import Graphene from 'gi://Graphene';
 import Meta from 'gi://Meta';
 import Pango from 'gi://Pango';
@@ -22,6 +23,11 @@ const MOST = 8;
 // with the row, a page as wide as that may take two rows instead
 const TWO_ROWS = {rows: 2, columns: 8};
 const WAIT_FRAMES = 30;
+// How many times one opening of the overview lets the row follow the grid to another shape: the row's height is part
+// of the room the grid picks it for, so the two could take turns for ever
+const REGROWS = 3;
+// How long the grid's icons have to keep their size before the two are held to one size (ms)
+const SETTLE = 300;
 // The folder tile's square, as a share of its side: the corners, the inset of the four apps and the gap between them
 const TILE_RADIUS = 18 / 64;
 const TILE_INSET = 9 / 64;
@@ -92,6 +98,7 @@ export class AppGrid {
             grid.setGridModes([...this._gridModes, TWO_ROWS]);
         // Filled as the overview opens, and only then
         Main.overview.connectObject('showing', () => {
+            this._regrows = 0;
             this._alignAgain = 0;
             this._alignWaits = 0;
             this._fill();
@@ -107,17 +114,30 @@ export class AppGrid {
         // layout is over (sizes changed while the grid is being laid out leave its icons without an allocation, and the
         // grid then draws over its old frames)
         this._appDisplay._grid.connectObject('notify::allocation', () => this._queueAlign(), this);
-        this._appDisplay._grid.layout_manager.connectObject('notify::icon-size', () => this._queueAlign(), this);
+        // The grid's rows and columns settle only as it is laid out: a shape picked after the overview began to open is
+        // a new number of apps for the row and a new size for its icons, which may be larger
+        this._appDisplay._grid.layout_manager.connectObject('notify::icon-size', () => this._iconSizeChanged(),
+            'notify::columns-per-page', () => this._shapeChanged(),
+            'notify::rows-per-page', () => this._shapeChanged(), this);
+        Main.layoutManager.connectObject('monitors-changed', () => {
+            this._rowSize = 0;
+            this._unpin();
+        }, this);
         if (Main.overview.visible)
             this._fill();
     }
 
     _removeRow() {
+        if (this._settle)
+            GLib.source_remove(this._settle);
+        this._settle = 0;
         if (this._alignLater)
             global.compositor.get_laters().remove(this._alignLater);
         this._alignLater = 0;
         this._first?.disconnectObject(this);
         this._first = null;
+        this._unpin();
+        Main.layoutManager.disconnectObject(this);
         Main.overview.disconnectObject(this);
         this._appDisplay?._grid.disconnectObject(this);
         this._appDisplay?._grid.layout_manager.disconnectObject(this);
@@ -193,12 +213,72 @@ export class AppGrid {
             this._show(apps.length > 0);
     }
 
+    // Whether the row may take a new size from the grid once more in this opening
+    _regrow() {
+        if (!Main.overview.visible || (this._regrows ?? 0) >= REGROWS)
+            return false;
+        this._regrows = (this._regrows ?? 0) + 1;
+        this._rowSize = 0;
+        this._alignAgain = 0;
+        this._unpin();
+        return true;
+    }
+
+    _shapeChanged() {
+        this._refill = this._regrow();
+        this._queueAlign();
+    }
+
+    _iconSizeChanged() {
+        this._queueAlign();
+        if (this._settle)
+            GLib.source_remove(this._settle);
+        this._settle = GLib.timeout_add(GLib.PRIORITY_DEFAULT, SETTLE, () => {
+            this._settle = 0;
+            this._pin();
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    // On a short screen no one size fits by itself: with the row at the grid's size the grid has room only for smaller
+    // icons, and with the row at those it has room for the larger ones again. The grid is then held at the row's
+    // size, which fits, until the screen or the grid's shape changes.
+    _pin() {
+        const layout = this._appDisplay._grid.layout_manager;
+        if (this._rowSize > 0 && layout.fixedIconSize <= 0 && layout.iconSize > this._rowSize) {
+            layout.fixedIconSize = this._rowSize;
+            this._pinned = true;
+            this._pickIconSize(layout);
+        }
+    }
+
+    _unpin() {
+        if (this._pinned && this._appDisplay) {
+            const layout = this._appDisplay._grid.layout_manager;
+            layout.fixedIconSize = -1;
+            this._pickIconSize(layout);
+        }
+        this._pinned = false;
+    }
+
+    // GNOME's grid picks its icons' size only when its page changes size, whatever fixedIconSize says
+    _pickIconSize(layout) {
+        const {_pageWidth: width, _pageHeight: height} = layout;
+        layout.adaptToSize(width, height - 1);
+        layout.adaptToSize(width, height);
+    }
+
     _queueAlign() {
         if ((this._alignAgain ?? 0) >= 5)
             return;
         this._alignLater ||= global.compositor.get_laters().add(Meta.LaterType.BEFORE_REDRAW, () => {
             this._alignLater = 0;
-            this._align();
+            if (this._refill) {
+                this._refill = false;
+                this._fill();
+            } else {
+                this._align();
+            }
             return false;
         });
     }
