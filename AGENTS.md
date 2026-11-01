@@ -748,6 +748,8 @@ the default zone and the list stays. fail2ban bans in all three through the imag
 `action.d/amethystora-zones.conf`, since fail2ban's `firewallcmd-rich-rules` bans in the default zone alone.
 The phone link listens only on interfaces in `amethystora-home`.
 
+Anaconda adds `ssh` to the default zone unless told not to: `firewall --use-system-defaults` in `iso/live/installer.ks`, which `build.sh` holds. `iso/iso.toml`'s installer has Anaconda's Network module off, so has no such step and would not take the command. `system-setup.hooks.d/31-installer-ssh.sh` takes it from machines installed before that, once, unless sshd is enabled.
+
 **What an account plants is only ever read.** Text somebody else wrote (a file name, a program's name
 or command line, a launcher's `Exec=`, a host name, a rule's message) goes through
 `/usr/libexec/amethystora-security-text` before it reaches a notification, a history line or a terminal:

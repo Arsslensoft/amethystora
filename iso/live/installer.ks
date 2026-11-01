@@ -3,6 +3,11 @@
 # build.sh replaces @IMAGE@ with the image the ISO was built from.
 ostreecontainer --url=@IMAGE@ --transport=containers-storage --no-signature-verification
 
+# Left alone, Anaconda runs `firewall-offline-cmd --enabled --service=ssh`, which adds ssh to the image's
+# default zone on every machine. The firewall is the image's: build.sh fails without this line. iso/iso.toml's
+# installer has Anaconda's Network module off, so it has no such step, and no such command to give.
+firewall --use-system-defaults
+
 # Then the installed machine follows that image in the registry rather than the copy, signature-checked
 # from its first update, as one installed from the installer ISO does (iso/iso.toml). build.sh fails on
 # a switch without the flag. The marker tells the first boot that this is a new installation, which gets

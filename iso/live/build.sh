@@ -73,6 +73,9 @@ if grep "bootc switch" /usr/share/anaconda/interactive-defaults.ks | grep -v -- 
     exit 1
 fi
 
+# ...and keeps the image's firewall, without the ssh Anaconda adds by itself
+grep -qx -- "firewall --use-system-defaults" /usr/share/anaconda/interactive-defaults.ks
+
 # The sealed images (:stable-sealed), which Anaconda cannot install yet, have an installer of their own:
 # a whole disk, the image downloaded from the registry, shim placed in front of systemd-boot. Amethystora's
 # own images only: an image of one's own built on one (its template runs this too) has no sealed variant

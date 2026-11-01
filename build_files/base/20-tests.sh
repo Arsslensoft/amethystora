@@ -3411,6 +3411,24 @@ proc_mem_hook sealed ""
 [[ ! -e "${PROC_MEM_TEST}/etc/amethystora/hardening-on" ]]
 rm -rf "${PROC_MEM_TEST}"
 
+# The ssh the live ISO's Anaconda added to the Amethystora zone goes once, unless sshd is on or the zone has more of the owner's
+SSH_TEST="$(mktemp -d)"
+mkdir -p "${SSH_TEST}/etc/firewalld/zones" "${SSH_TEST}/usr/lib/firewalld/zones"
+cp /usr/lib/firewalld/zones/amethystora.xml "${SSH_TEST}/usr/lib/firewalld/zones/"
+installer_ssh_hook() {
+    sed 's#</zone>#'"$2"'</zone>#' /usr/lib/firewalld/zones/amethystora.xml >"${SSH_TEST}/etc/firewalld/zones/amethystora.xml"
+    SETUP_CHECKER_FILE="${SSH_TEST}/$RANDOM.json" AMETHYSTORA_FIREWALL_ROOT="${SSH_TEST}" AMETHYSTORA_SSHD_ENABLED="$1" \
+        bash /usr/share/amethystora/system-setup.hooks.d/31-installer-ssh.sh
+}
+installer_ssh_hook no '<service name="ssh"/>'
+[[ ! -e "${SSH_TEST}/etc/firewalld/zones/amethystora.xml" ]]
+installer_ssh_hook no '<service name="ssh"/><service name="http"/>'
+grep -q 'name="http"' "${SSH_TEST}/etc/firewalld/zones/amethystora.xml"
+! grep -q 'name="ssh"' "${SSH_TEST}/etc/firewalld/zones/amethystora.xml"
+installer_ssh_hook yes '<service name="ssh"/>'
+grep -q 'name="ssh"' "${SSH_TEST}/etc/firewalld/zones/amethystora.xml"
+rm -rf "${SSH_TEST}"
+
 # Kernel lockdown: on everywhere except the NVIDIA images, whose driver is a machine-owner-key module
 # that a machine with Secure Boot turned off would no longer be able to load
 LOCKDOWN_KARGS=/usr/lib/bootc/kargs.d/11-amethystora-lockdown.toml
