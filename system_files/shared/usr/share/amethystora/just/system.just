@@ -266,8 +266,9 @@ powerwash:
     echo "$(gettext "To put only the settings back, and keep the accounts and their files: ame system reset-settings")"
     # The labels are what gum shows and prints back, so they are computed once and compared as they are
     NO_LABEL="$(gettext "No")"
-    YES_LABEL="$(gettext "Yes - wipe this machine")"
-    FIRST_CONFIRMATION=$(gum choose --header="$(gettext "Warning: This is an experimental feature that will reset this device to its factory state.")" "${NO_LABEL}" "${YES_LABEL}")
+    YES_LABEL="$(gettext "Yes - start over")"
+    echo "$(gettext "This makes a new installation of this image beside this one, without your accounts, settings or files. Nothing is erased: the old system stays on the disk, and the boot menu can still start it.")"
+    FIRST_CONFIRMATION=$(gum choose --header="$(gettext "Warning: This is an experimental feature.")" "${NO_LABEL}" "${YES_LABEL}")
     if [[ "$FIRST_CONFIRMATION" != "${YES_LABEL}" ]]; then
         echo "$(gettext "Powerwash cancelled.")"
         exit 0
