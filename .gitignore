@@ -1,5 +1,5 @@
 flatpaks_with_deps
-flatpak.*
+/flatpak.*
 
 *_build
 *_build.*

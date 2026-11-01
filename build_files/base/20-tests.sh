@@ -1103,6 +1103,16 @@ find /usr/share/gnome-shell/extensions/amethystora-*@iarsslen.github.io -name '*
         env LD_LIBRARY_PATH=/apps-stage/usr/lib64 /apps-stage/usr/bin/node --check --input-type=module <"${js}" ||
             { echo "${js} does not parse" >&2; exit 1; }
     done
+# Every relative import in our extensions names a file the image has. One missing file keeps the whole extension from
+# loading, and parsing each file alone does not notice (dock/flatpak.js, once left out by a .gitignore rule)
+find /usr/share/gnome-shell/extensions/amethystora-*@iarsslen.github.io -name '*.js' -print0 |
+    while IFS= read -r -d '' js; do
+        { grep -oE "(from|import\() *['\"]\.\.?/[^'\"]+['\"]" "${js}" || true; } |
+            sed -E "s/.*['\"](\.\.?\/[^'\"]+)['\"]/\1/" |
+            while IFS= read -r rel; do
+                test -f "$(dirname "${js}")/${rel}" || { echo "${js} imports ${rel}, which is missing" >&2; exit 1; }
+            done || exit 1
+    done
 # Every Gio.Settings the shell code of our extensions makes is kept and run_dispose()d on the main thread at disable,
 # never left to the collector: GJS sweeping one while dconf's worker dispatches a change to it deadlocks the shell
 env LD_LIBRARY_PATH=/apps-stage/usr/lib64 NODE_ICU_DATA="$(echo /apps-stage/usr/share/node-*/icudata)" /apps-stage/usr/bin/node /ctx/build_files/shared/test-settings-disposed.mjs \
