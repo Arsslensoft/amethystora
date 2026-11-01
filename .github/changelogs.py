@@ -170,9 +170,13 @@ def get_tags(target: str, manifests: dict[str, Any]):
 
     # By date, then by build number: stable-20260918.10 comes after stable-20260918.2
     tags = sorted(tags, key=lambda tag: [int(n) for n in tag[len(target) + 1:].split(".")])
-    if not len(tags) >= 2:
-        print("No current and previous tags found")
+    if not tags:
+        print("No current tag found")
         exit(1)
+    # A stream's first build (beta's first on 2026-11-01) has nothing before it: its release lists no changes
+    if len(tags) == 1:
+        print(f"Only {tags[0]}: the first release of {target}")
+        return tags[0], tags[0]
     return tags[-2], tags[-1]
 
 
