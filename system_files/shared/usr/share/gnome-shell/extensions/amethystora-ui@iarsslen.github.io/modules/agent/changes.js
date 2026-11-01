@@ -276,6 +276,11 @@ export class AgentChanges {
             .filter(r => r && !r.of && ['change', 'software', 'run'].includes(r.tool) && Number(r.time) >= this._sessionStart);
     }
 
+    // What the session really changed: not what was declined, refused or failed, or what never finished
+    get made() {
+        return this.changes.filter(r => r.result === 'ok');
+    }
+
     // Whether a change was undone: a finished record of its undoing that did its way back (as the tools' act::undoes)
     _undone(record) {
         const undo = record.undo;
@@ -316,7 +321,7 @@ export class AgentChanges {
         if (this.changes.length === 0)
             return null;
         if (this._servers.size === 0)
-            return this._finished ? 'done' : null;
+            return this._finished && this.made.length > 0 ? 'done' : null;
         return this.asking ? 'ask' : 'work';
     }
 
@@ -357,7 +362,7 @@ export class AgentChanges {
     get text() {
         const state = this.state;
         if (state === 'done') {
-            const count = this.changes.length;
+            const count = this.made.length;
             return ngettext('Agent made %d change', 'Agent made %d changes', count).format(count);
         }
         if (state === 'ask')
