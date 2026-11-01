@@ -66,6 +66,16 @@
     margin-bottom: 1px;
 }
 
+/* No theme applied, on the light scheme: GNOME's white dots, and those of the app grid's button, would vanish on the
+   light pill */
+.amethystora-unthemed-light .amethystora-dock-dot {
+    background-color: #222226;
+}
+
+.amethystora-unthemed-light #dash.amethystora-dock-dash .dash-item-container .show-apps .overview-icon {
+    color: #222226;
+}
+
 /* The name at the top of an item's menu */
 .amethystora-dock-menu-heading {
     font-weight: bold;

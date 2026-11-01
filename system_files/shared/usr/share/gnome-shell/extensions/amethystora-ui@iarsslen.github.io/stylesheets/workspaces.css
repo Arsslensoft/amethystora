@@ -24,6 +24,19 @@
   background-color: #000000;
 }
 
+/* The same stand-ins on the light scheme, where the bar is light */
+.amethystora-unthemed-light .amethystora-workspaces-label {
+  color: #222226;
+}
+
+.amethystora-unthemed-light .amethystora-workspaces-active {
+  background-color: rgba(0, 0, 0, 0.14);
+}
+
+.amethystora-unthemed-light .amethystora-workspaces-empty {
+  color: rgba(34, 34, 38, 0.65);
+}
+
 /* In the overview the top bar is see-through over the shell's dark backdrop, whatever the theme: a light theme's
    dark text would vanish there */
 #panel:overview .amethystora-workspaces-label.amethystora-workspaces-busy {

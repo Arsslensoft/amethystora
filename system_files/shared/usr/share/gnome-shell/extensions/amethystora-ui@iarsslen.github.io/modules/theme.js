@@ -34,6 +34,7 @@ const STYLESHEET = /^shell-[a-z]+\.css$/;
 const SETTLE = 300;
 // What a theme switch touches in the current folder: the theme's own folder and the file that names it. A new
 // wallpaper touches others (the `background` link, `backgrounds/`), and none of those changes a stylesheet.
+const UNTHEMED_LIGHT = 'amethystora-unthemed-light';
 const SWITCH = ['theme', 'theme.name'];
 // A workspace's accent is put on once its slide has ended, so that a run of switches restyles the shell once
 const SLIDE = 300;
@@ -62,6 +63,7 @@ export class Theme {
         // The keys first, so that the first load already carries the accents' rules: one rebuild of the shell's theme
         this._settings = this._ext.getSettings(SCHEMA);
         this._load();
+        St.Settings.get().connectObject('notify::color-scheme', () => this._markUnthemed(), this);
         try {
             this._monitor = Gio.File.new_for_path(CURRENT).monitor_directory(Gio.FileMonitorFlags.WATCH_MOVES, null);
             // A move names both of its ends (the folder it was built in, then the one it became)
@@ -107,6 +109,8 @@ export class Theme {
     }
 
     disable() {
+        St.Settings.get().disconnectObject(this);
+        Main.uiGroup.remove_style_class_name(UNTHEMED_LIGHT);
         this._monitor?.cancel();
         this._monitor = null;
         for (const id of this._timeouts?.values() ?? [])
@@ -322,7 +326,17 @@ export class Theme {
     }
 
     // Everything again, after a theme switch, a new set of accents or the feature turned on or off: one restyle
+    // Before a theme is applied, the modules' stand-in colours are for a dark bar: this class has their dark ones
+    // take over on the light scheme. Only then, so that a theme's rules never have to outrank them
+    _markUnthemed() {
+        if (!GLib.file_test(THEME_DIR, GLib.FileTest.IS_DIR) && Main.getStyleVariant() === 'light')
+            Main.uiGroup.add_style_class_name(UNTHEMED_LIGHT);
+        else
+            Main.uiGroup.remove_style_class_name(UNTHEMED_LIGHT);
+    }
+
     _load() {
+        this._markUnthemed();
         const stale = [...this._loaded.values()];
         this._loaded.clear();
         for (const [name, file] of this._replace(stale, [...this._wanted()]))
