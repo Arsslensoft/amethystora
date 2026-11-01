@@ -119,11 +119,13 @@ delta)
     # that the checkout's is untouched, sent as a bundle: the lab checks it out with LF, as a build sees it
     rev="${2:?delta REV: the commit the image of the VM was built from}"
     base="${DELTA_BASE:-localhost/amethystora-live:$(docker exec amevm cat "${LAB}/disk")}"
-    cp "$(git rev-parse --git-dir)/index" "${tmp}/index"
-    GIT_INDEX_FILE="${tmp}/index" git add -A
-    commit="$(git commit-tree "$(GIT_INDEX_FILE="${tmp}/index" git write-tree)" -p HEAD -m "live.sh delta")"
+    # git for Windows takes a Windows path for its index (MSYS_NO_PATHCONV leaves /tmp/... as it is)
+    index="$(cygpath -m "${tmp}/index" 2>/dev/null || echo "${tmp}/index")"
+    cp "$(git rev-parse --git-dir)/index" "${index}"
+    GIT_INDEX_FILE="${index}" git add -A
+    commit="$(git commit-tree "$(GIT_INDEX_FILE="${index}" git write-tree)" -p HEAD -m "live.sh delta")"
     git update-ref refs/live/delta "${commit}"
-    git bundle create "${tmp}/tree.bundle" refs/live/delta 2>/dev/null
+    git bundle create "$(cygpath -m "${tmp}/tree.bundle" 2>/dev/null || echo "${tmp}/tree.bundle")" refs/live/delta 2>/dev/null
     git update-ref -d refs/live/delta
     git -c core.safecrlf=false diff --name-only "${rev}" "${commit}" >"${tmp}/changed"
     docker exec -i amevm sh -c "cat >${LAB}/tree.bundle" <"${tmp}/tree.bundle"
