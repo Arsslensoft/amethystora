@@ -25,6 +25,10 @@ case "${UNIT}" in
                 delete) BODY="$(N_ 'It was deleted. See what it was with: ame security scan')" ;;
                 *) BODY="$(N_ 'Nothing was deleted, quarantined or moved. See it with: ame security scan')" ;;
             esac
+            # The scan's own line when it did not get through everything: there may be more to find
+            if grep -q '^# The scan stopped before it finished' /var/log/amethystora-clamav-findings.log; then
+                SUMMARY="$(N_ 'Virus scan stopped early and found something')"
+            fi
             URGENCY=critical
         elif AGE="$(/usr/libexec/amethystora-clamav-signature-age)"; then
             SUMMARY="$(N_ 'Virus scan could not run')"

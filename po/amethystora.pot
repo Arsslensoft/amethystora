@@ -5969,6 +5969,10 @@ msgid "Nothing was deleted, quarantined or moved. See it with: ame security scan
 msgstr ""
 
 #: usr/libexec/amethystora-scan-alert
+msgid "Virus scan stopped early and found something"
+msgstr ""
+
+#: usr/libexec/amethystora-scan-alert
 msgid "Virus scan could not run"
 msgstr ""
 

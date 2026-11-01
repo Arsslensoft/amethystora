@@ -9,8 +9,9 @@
 # removes a user's file is worse than the malware most of the time.
 #
 # Every way this can end badly fails the unit, which runs amethystora-scan-alert through OnFailure and
-# tells whoever is logged in. Exit 1: infected files. 2: no signatures to scan with. 3: clean, but
-# against signatures too old for that to mean anything.
+# tells whoever is logged in. Exit 1: infected files, also from a scan that stopped early, which it says.
+# 2: no signatures to scan with, or a scan that stopped early with nothing found. 3: clean, but against
+# signatures too old for that to mean anything.
 
 set -uo pipefail
 
@@ -81,11 +82,16 @@ done
 
 OUTPUT="$(clamdscan --fdpass --multiscan --infected "${TARGETS[@]}" 2>&1)"
 STATUS=$?
+# clamd gone in the middle of a scan: clamdscan ends its walk there with these lines, and exits 1 rather than 2 if
+# it found something by then. A file's own error starts with its path, so none of them is about one file.
+STOPPED=0
+grep -E '^(ERROR: |LibClamAV Error: File tree walk aborted)' <<<"${OUTPUT}" | grep -qv '^ERROR: Could not connect' && STOPPED=1
+EARLY="The scan stopped before it finished, so the rest was not scanned. It found only what is listed here."
 # clamd counts a socket or a pipe (an X server's in /tmp/.X11-unix, an agent's) as an error, and clamdscan then
 # exits 2 as if nothing could be scanned: such a file holds nothing to scan, so a scan whose only errors are those
 # ended as it would have without them
 UNSUPPORTED=': Not supported file type$'
-if [[ ${STATUS} -eq 2 ]] &&
+if [[ ${STATUS} -eq 2 && ${STOPPED} -eq 0 ]] &&
     [[ "$(sed -n 's/^Total errors: //p' <<<"${OUTPUT}")" == "$(grep -c "${UNSUPPORTED}" <<<"${OUTPUT}")" ]]; then
     [[ "$(sed -n 's/^Infected files: //p' <<<"${OUTPUT}")" == 0 ]] && STATUS=0 || STATUS=1
 fi
@@ -119,12 +125,14 @@ case "${STATUS}" in
                 awk -F'\t' '{ print "  " $1 ": " $3 }' | /usr/libexec/amethystora-security-text --lines --max 1000)"
         fi
         echo "Infected files found. On detection: ${MODE}."
+        [[ "${STOPPED}" -eq 0 ]] || echo "${EARLY}"
         printf '%s\n' "${SHOWN}"
         [[ -z "${DONE}" ]] || printf 'What was done:\n%s\n' "${DONE}"
         # root's alone from the first byte, not only once the chmod below comes
         install -m 0600 /dev/null "${FINDINGS}"
         {
             echo "# ClamAV findings, $(date -Is). On detection: ${MODE}."
+            [[ "${STOPPED}" -eq 0 ]] || echo "# ${EARLY}"
             printf '%s\n' "${SHOWN}"
             [[ -z "${DONE}" ]] || printf '# What was done:\n%s\n' "${DONE}"
         } >"${FINDINGS}"
@@ -132,7 +140,7 @@ case "${STATUS}" in
         exit 1
         ;;
     *)
-        echo "Scan could not run (clamdscan exit ${STATUS}):"
+        [[ "${STOPPED}" -eq 1 ]] && echo "${EARLY}" || echo "Scan could not run (clamdscan exit ${STATUS}):"
         printf '%s\n' "${SHOWN}"
         exit "${STATUS}"
         ;;
