@@ -2,11 +2,11 @@
 # The dock beyond (plans/beyond/spec-dock.md, section 7.1), one screen, asked of the session through GNOME Shell's Eval,
 # which a lab-only extension of the test account opens (never in the image). The pointer is moved inside the shell by a
 # virtual pointer for the motion's numbers (test code only), and by keys.py where a person's click or drag matters:
-#   - the twelve keys and their defaults; ame desktop dock sets each, the shell follows, a wrong value is refused;
+#   - the thirteen keys and their defaults; ame desktop dock sets each, the shell follows, a wrong value is refused;
 #   - Swell's scales and translations against the spec's numbers, Lift, Still, back to rest, nothing while away, sharp
 #     icons, the frame time;
 #   - Halo, Hop and Breathe while an app starts, ended by its first window, or after six seconds;
-#   - the bar, the dots and the glow; recent apps; progress; previews; the fan; folders; stacks; drops onto a stack
+#   - the bar, the dots and the glow; recent apps; progress; an app greyed while Flatpak updates it; previews; the fan; folders; stacks; drops onto a stack
 #     through Files; the phone (when the phone link's stand-in is up); the dissolve;
 #   - the numbers while Super is held; the edges; hiding when touched; this workspace's apps only;
 #   - disable and enable ten times leaving nothing; every key off leaves the base connections; lock and unlock.
@@ -152,7 +152,7 @@ dock_defaults() {
     [[ "$(in_session "gsettings list-recursively ${DOCK_SCHEMA}" | cut -d' ' -f2- | LC_ALL=C sort | paste -sd ';')" == "$1" ]]
 }
 check "the dock's keys have the spec's defaults" wait_for 10 dock_defaults \
-    "autohide 'off';edge 'bottom';folders @a{sas} {};indicator 'bar';launch 'halo';magnify 'swell';magnify-amount 1.6000000000000001;previews true;recent true;screens 'every';stacks ['xdg:DOWNLOAD'];workspace-apps false"
+    "autohide 'off';edge 'bottom';folders @a{sas} {};indicator 'bar';launch 'halo';magnify 'swell';magnify-amount 1.6000000000000001;previews true;recent true;screens 'every';stacks ['xdg:DOWNLOAD'];updating true;workspace-apps false"
 bad=""
 while read -r setting value key want shown; do
     in_session "ame desktop dock ${setting} ${value}" >/dev/null 2>&1 || bad+="ame desktop dock ${setting} ${value} failed; "
@@ -171,8 +171,9 @@ edge left edge 'left' D.state().docks[0].edge
 screens primary screens 'primary' D.settings.get_string('screens')
 autohide touch autohide 'touch' (D.state().docks[0].touch ? 'touch' : 'off')
 workspace-apps on workspace-apps true String(D.workspaceApps)
+updating off updating false String(D.settings.get_boolean('updating'))
 EOF
-for key in magnify magnify-amount launch indicator recent previews edge screens autohide workspace-apps; do
+for key in magnify magnify-amount launch indicator recent previews edge screens autohide workspace-apps updating; do
     in_session "gsettings reset ${DOCK_SCHEMA} ${key}"
 done
 sleep 2
@@ -184,7 +185,7 @@ for args in "magnify wobble" "amount 300" "launch fly" "indicator star" "edge to
     [[ ${code} == 64 && ${out} == *"usage: ame desktop dock"* ]] || wrong+="${args}: ${code} ${out}; "
 done
 if [[ -z "${wrong}" ]]; then ok "a wrong value exits 64 with the usage line"; else not_ok "wrong values" "${wrong}"; fi
-check "ame desktop dock alone prints twelve settings" test "$(in_session "ame desktop dock" | wc -l)" == 12
+check "ame desktop dock alone prints thirteen settings" test "$(in_session "ame desktop dock" | wc -l)" == 13
 
 # --- Swell -----------------------------------------------------------------------------------------------------------
 user_bus gsettings set org.gnome.shell favorite-apps "['org.mozilla.firefox.desktop', 'org.gnome.Nautilus.desktop', \
@@ -413,6 +414,48 @@ user_bus gjs -m "${HOME_DIR}/.local/share/vmlab-dock/entry.js" org.mozilla.firef
 sleep 1.5
 progress="$(ev "(() => { const d = ${DOCK}.docks[0].dash; const s = [...d._items.values()].find(s => s.key.get_id?.() === 'org.mozilla.firefox.desktop'); const p = s.badge.progress; const f = p.get_first_child(); const icon = s.button.icon.icon; return [p.visible, Math.round(p.height), Math.round(f.width / (p.width - 2 * 0) * 100), Math.round(icon.width - p.width)].join(' '); })()")"
 check "progress: a 5 px bar at half, 4 px in from each side of the icon" test "${progress}" == "true 5 50 8"
+
+# An app Flatpak is updating goes grey, from the two things a real update leaves on disk (dock/flatpak.js; the real ones
+# were watched on 2026-10-31, D-GRID-07 in tests/real/checklist): a download's folder named for the app, with no system
+# helper behind it here, so that the slow check takes it for one that died; and a staging folder whose commit names the
+# app, under a held lock
+FP_TMP="${HOME_DIR}/.local/share/flatpak/repo/tmp"
+GREY="[...${DOCK}.docks[0].dash._items.values()].find(s => s.key.get_id?.() === 'org.mozilla.firefox.desktop').badge._baseIcon._iconBin.opacity"
+cat >"${HOME_DIR}/.local/share/vmlab-dock/commit.js" <<'EOF'
+import GLib from 'gi://GLib';
+const commit = new GLib.Variant('(a{sv}aya(say)sstayay)', [{'ostree.ref-binding': new GLib.Variant('as', ['app/org.mozilla.firefox/x86_64/stable'])}, [], [], '', '', 0, [], []]);
+GLib.file_set_contents(ARGV[0], commit.get_data_as_bytes().get_data());
+EOF
+chown "${TEST_USER}:" "${HOME_DIR}/.local/share/vmlab-dock/commit.js"
+# A repository's folder that was not there at the start counts from the next start of the watcher
+in_session "mkdir -p ${FP_TMP} /var/tmp/flatpak-cache-vmlab; ame desktop dock updating off; ame desktop dock updating on" >/dev/null
+sleep 1
+in_session "mkdir /var/tmp/flatpak-cache-vmlab/org.mozilla.firefox-ABCDEF"
+sleep 1
+check "a download's folder greys the app" test "$(ev "${GREY}")" == 128
+check "...and does not stop it starting" test "$(ev "String(Boolean(${DOCK}.launcher.get('org.mozilla.firefox.desktop').updating))")" == false
+check "...and one with nothing behind it stops counting within seconds" wait_for 10 ev_is "${GREY}" 255
+in_session "rm -rf /var/tmp/flatpak-cache-vmlab"
+start_staging() {
+    in_session "mkdir -p ${FP_TMP}/staging-vmlab$1/ab; touch ${FP_TMP}/staging-vmlab$1-lock"
+    user_bus python3 -c 'import fcntl,os,sys,time; fd=os.open(sys.argv[1],os.O_RDWR); fcntl.flock(fd,fcntl.LOCK_EX); time.sleep(int(sys.argv[2]))' "${FP_TMP}/staging-vmlab$1-lock" "$2" &
+    sleep 0.5
+    in_session "gjs -m ${HOME_DIR}/.local/share/vmlab-dock/commit.js ${FP_TMP}/staging-vmlab$1/ab/cd.commit"
+    sleep 1
+}
+start_staging 1 12
+check "a staging folder whose commit names the app greys it" test "$(ev "${GREY}")" == 128
+sleep 6
+check "...and stays grey past the slow check while its lock is held" test "$(ev "${GREY}")" == 128
+in_session "rm -rf ${FP_TMP}/staging-vmlab1 ${FP_TMP}/staging-vmlab1-lock"
+check "...and the lock's deletion ends it" wait_for 4 ev_is "${GREY}" 255
+start_staging 2 2
+check "an update that died (its lock let go, its folder left behind) stops counting within seconds" wait_for 12 ev_is "${GREY}" 255
+in_session "rm -rf ${FP_TMP}/staging-vmlab2 ${FP_TMP}/staging-vmlab2-lock; ame desktop dock updating off"
+in_session "mkdir -p /var/tmp/flatpak-cache-vmlab/org.mozilla.firefox-ABCDEF"
+sleep 1
+check "with the switch off nothing greys" test "$(ev "${GREY}")" == 255
+in_session "rm -rf /var/tmp/flatpak-cache-vmlab; ame desktop dock updating on" >/dev/null
 
 # Recent: A, B, C, D opened and quit in that order show D, C, B; off, and with GNOME's usage history off, none
 for name in A B C D; do
@@ -654,7 +697,7 @@ after="$(ev "${S}.connections")"
 # Three answers, each a count: an error is no answer and never equal to another
 check "with every key off the dock keeps its base connections (${base}, ${on} with them on), and comes back to them" \
     bash -c "[[ '${base}' =~ ^[0-9]+\$ && '${on}' =~ ^[0-9]+\$ && '${after}' == '${base}' && ${on:-0} -gt ${base:-0} ]]"
-for key in magnify magnify-amount launch indicator recent previews edge screens autohide workspace-apps folders stacks; do
+for key in magnify magnify-amount launch indicator recent previews edge screens autohide workspace-apps updating folders stacks; do
     in_session "gsettings reset ${DOCK_SCHEMA} ${key}"
 done
 user_bus gsettings set org.gnome.shell favorite-apps "${FAVORITES}"

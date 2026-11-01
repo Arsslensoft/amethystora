@@ -85,7 +85,7 @@ export class IconBadge {
         this._showProgress(progress !== null);
         this._value = progress ?? this._value;
         this._syncFill();
-        this.dim(Boolean(entry?.updating));
+        this.dim(Boolean(entry?.updating || entry?.greyed));
         const changed = count !== this.count;
         this.count = count;
         return changed;
@@ -354,7 +354,7 @@ export class Badges extends EventEmitter {
         const count = this.unread(icon.app);
         let badge = icon._amethystoraBadge;
         if (!badge) {
-            if (!count && !entry?.progressVisible && !entry?.updating)
+            if (!count && !entry?.progressVisible && !entry?.updating && !entry?.greyed)
                 return;
             const overlay = new Overlay(icon.icon._iconBin);
             icon._iconContainer.add_child(overlay);

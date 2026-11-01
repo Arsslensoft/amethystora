@@ -1243,6 +1243,11 @@ The modules, and what each replaced:
   theme's palette like every other module's, with neutral stand-ins in the module's own stylesheet for a theme not yet
   applied (`11-theme.sh` applies it again at version 10, keeping the account's wallpaper); `20-tests.sh` renders each for
   every shipped theme.
+  An app's icon is grey while Flatpak updates it (`dock/flatpak.js`, the key `updating`, on), for Bazaar, `flatpak update` and uupd
+  alike, none of which says so: read through folder monitors from what a pull leaves on disk, the app's name in the download's
+  mountpoint `/var/tmp/flatpak-cache-*/<id>-XXXXXX` for the system helper's path, and in the staging folder's commit for a
+  pull straight into a repository, with a check every 5 s only while something is updating, since a dead pull says nothing. It is
+  only grey: never `updating`'s refusal to start the app, which an app says of itself.
 - `connect`, GSConnect's top bar part: one icon, with the battery, while a paired phone is connected, and a menu to send
   files, send a link, ping and open the texts; the clipboard bridge. It only watches for the program's bus name, so it
   costs nothing while the phone link is off (see The phone link). Caffeine, never switched on, was dropped.

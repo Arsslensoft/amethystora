@@ -80,7 +80,11 @@ export class LauncherEntries extends EventEmitter {
 
     // What the app with this launcher ID last said, or null
     get(id) {
-        return this.quiet ? null : this._entries?.get(id) ?? null;
+        if (this.quiet)
+            return null;
+        const entry = this._entries?.get(id) ?? null;
+        // Grey only: unlike an app saying it is updating, this does not stop it starting (dock/flatpak.js)
+        return this.updates?.has(id) ? {...entry, greyed: true} : entry;
     }
 
     // The app's own menu entries as they are now: [{label, enabled, separator, activate()}]

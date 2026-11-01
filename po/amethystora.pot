@@ -2962,6 +2962,14 @@ msgid "Running apps of other workspaces leave the dock; pinned apps stay."
 msgstr ""
 
 #: usr/libexec/amethystora-control-list
+msgid "Grey an app while it updates"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Its icon is at half strength from the start of its download until it is installed. It still starts."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
 msgid "Recently used apps"
 msgstr ""
 
@@ -7876,6 +7884,14 @@ msgstr ""
 
 #: usr/share/amethystora/just/desktop.just
 msgid "The dock shows every running app."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "An app's icon goes grey while Flatpak updates it."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "An app's icon stays as it is while Flatpak updates it."
 msgstr ""
 
 #: usr/share/amethystora/just/desktop.just

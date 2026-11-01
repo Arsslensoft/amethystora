@@ -872,6 +872,12 @@ USAGE="ame desktop dock workspace-apps on|off"
 item desktop dock-workspace-apps switch "${ gettext "This workspace's apps only"; }" \
     "${ gettext "Running apps of other workspaces leave the dock; pinned apps stay."; }" "${ dock_onoff workspace-apps; }" \
     desktop#where-the-dock-lives
+switch_choices false ame desktop dock updating
+dock_reason
+USAGE="ame desktop dock updating on|off"
+item desktop dock-updating switch "${ gettext "Grey an app while it updates"; }" \
+    "${ gettext "Its icon is at half strength from the start of its download until it is installed. It still starts."; }" "${ dock_onoff updating; }" \
+    desktop#what-the-dock-holds
 GROUP=""
 
 # The app grid's row of the apps used most (appgrid module), and the tips (hints module)

@@ -25,6 +25,7 @@ import {Drops, PHONE_ID} from './dock/drops.js';
 import {Fan} from './dock/fan.js';
 import {Folders} from './dock/folders.js';
 import {Launch, ringOpacity} from './dock/launch.js';
+import {FlatpakUpdates} from './dock/flatpak.js';
 import {LauncherEntries} from './dock/launcher.js';
 import {AppMenus} from './dock/menus.js';
 import {Places} from './dock/places.js';
@@ -48,6 +49,15 @@ export class Dock {
         return this._ext;
     }
 
+    _syncUpdates() {
+        if (this.settings.get_boolean('updating')) {
+            this.launcher.updates.start();
+        } else {
+            this.launcher.updates.stop();
+            this.launcher.emit('changed', null);
+        }
+    }
+
     enable() {
         this.stopped = false;
         this.settings = this._ext.getSettings(SCHEMA);
@@ -61,6 +71,8 @@ export class Dock {
         this.places.start();
         this.launcher = new LauncherEntries();
         this.launcher.start();
+        this.launcher.updates = new FlatpakUpdates(id => this.launcher.emit('changed', id));
+        this._syncUpdates();
         this.badges = new Badges(this.launcher);
         this.badges.start();
         // GNOME's app menus pin to the dock, by name, wherever they open
@@ -97,6 +109,7 @@ export class Dock {
             'changed::screens', () => this._rebuild(),
             'changed::autohide', () => this._rebuild(),
             'changed::workspace-apps', () => this._syncFilters(),
+            'changed::updating', () => this._syncUpdates(),
             this);
         Main.layoutManager.connectObject('monitors-changed', () => this._rebuild(), this);
         global.display.connectObject('workareas-changed', () => this._sites.forEach(site => site.place()), this);
@@ -151,6 +164,7 @@ export class Dock {
 
         this.badges?.stop();
         this.badges = null;
+        this.launcher?.updates?.stop();
         this.launcher?.stop();
         this.launcher = null;
         this.places?.stop();

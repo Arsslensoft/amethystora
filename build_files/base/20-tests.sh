@@ -1158,12 +1158,12 @@ done
 # A window's title is never markup in it, and it runs nothing through a shell
 [[ -z "$(grep -rnE 'use_markup = true|spawn_command_line|GLib\.spawn_async' "${UI_EXTENSION}/modules/windows.js" \
     "${UI_EXTENSION}/modules/windows")" ]]
-# The dock (plans/beyond/spec-dock.md): its twelve keys and their defaults; the choices of each that the schema,
+# The dock (plans/beyond/spec-dock.md): its thirteen keys and their defaults; the choices of each that the schema,
 # ame desktop dock and Control give alike; ame desktop dock refusing what it does not know; and what it may never do:
 # take a name for markup, send files to a phone itself (only the Phone app may), or carry another maker's names
 DOCK=org.gnome.shell.extensions.amethystora-ui.dock
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-recursively "${DOCK}" | cut -d' ' -f2- | LC_ALL=C sort | paste -sd ';')" == \
-    "autohide 'off';edge 'bottom';folders @a{sas} {};indicator 'bar';launch 'halo';magnify 'swell';magnify-amount 1.6000000000000001;previews true;recent true;screens 'every';stacks ['xdg:DOWNLOAD'];workspace-apps false" ]] ||
+    "autohide 'off';edge 'bottom';folders @a{sas} {};indicator 'bar';launch 'halo';magnify 'swell';magnify-amount 1.6000000000000001;previews true;recent true;screens 'every';stacks ['xdg:DOWNLOAD'];updating true;workspace-apps false" ]] ||
     { echo "the dock's keys or defaults are not the spec's"; exit 1; }
 for key in magnify launch indicator edge screens autohide; do
     schema="$(GSETTINGS_BACKEND=memory gsettings range "${DOCK}" "${key}" | sed -n '2,$p' | tr -d "'" | LC_ALL=C sort | xargs)"
@@ -1174,7 +1174,7 @@ for key in magnify launch indicator edge screens autohide; do
     [[ -n "${schema}" && "${schema}" == "${recipe}" && "${schema}" == "${control}" ]] ||
         { echo "the dock's ${key}: the schema offers ${schema}, ame desktop dock ${recipe}, Control ${control}"; exit 1; }
 done
-[[ "$(GSETTINGS_BACKEND=memory ame desktop dock | wc -l)" == 12 ]]
+[[ "$(GSETTINGS_BACKEND=memory ame desktop dock | wc -l)" == 13 ]]
 for wrong in "magnify wobble" "amount 300" "edge top" "recent maybe" "stack add /nonexistent" "folder" "sideways"; do
     # shellcheck disable=SC2086
     GSETTINGS_BACKEND=memory ame desktop dock ${wrong} >/dev/null 2>&1 && { echo "ame desktop dock ${wrong} was taken"; exit 1; }

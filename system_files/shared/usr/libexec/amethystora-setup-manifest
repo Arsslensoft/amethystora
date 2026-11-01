@@ -84,7 +84,7 @@ WINDOWS_KEYS=(snap switcher hold-super hold-super-delay corner-top-left corner-t
 # The dock's keys amethystora-setup's DOCK_KEYS takes; a stack outside the home folder names this machine and is
 # left out (test-setup.sh holds the list to the schema)
 DOCK=org.gnome.shell.extensions.amethystora-ui.dock
-DOCK_KEYS=(magnify magnify-amount launch indicator recent previews edge screens autohide workspace-apps folders stacks)
+DOCK_KEYS=(magnify magnify-amount launch indicator recent previews edge screens autohide workspace-apps updating folders stacks)
 # The live pill's keys amethystora-setup's PILL_KEYS takes (test-setup.sh holds the list to the schema)
 PILL=org.gnome.shell.extensions.amethystora-ui.pill
 PILL_KEYS=(live privacy-dots glow quiet quiet-night digest digest-times later later-times whats-new)

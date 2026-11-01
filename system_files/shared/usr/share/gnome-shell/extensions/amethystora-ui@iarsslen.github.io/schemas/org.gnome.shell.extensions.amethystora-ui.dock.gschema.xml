@@ -88,6 +88,11 @@
       <summary>When the dock gets out of the way</summary>
       <description>off: always shown, windows stop at it; touch: it hides while a window touches it, and comes back when the pointer is pushed against the edge.</description>
     </key>
+    <key name="updating" type="b">
+      <default>true</default>
+      <summary>Grey an app while Flatpak updates it</summary>
+      <description>An app's icon, on the dock and in the app grid, is at half strength from the start of its download until it is installed. It still starts.</description>
+    </key>
     <key name="workspace-apps" type="b">
       <default>false</default>
       <summary>This workspace's apps only</summary>

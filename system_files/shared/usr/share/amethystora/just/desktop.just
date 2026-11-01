@@ -2330,6 +2330,12 @@ dock *ARGS:
                 else
                     echo "$(gettext "The dock shows every running app.")"
                 fi ;;
+            updating)
+                if [[ "$(onoff updating)" == on ]]; then
+                    echo "$(gettext "An app's icon goes grey while Flatpak updates it.")"
+                else
+                    echo "$(gettext "An app's icon stays as it is while Flatpak updates it.")"
+                fi ;;
         esac
     }
     setting="${1:-}"
@@ -2346,6 +2352,7 @@ dock *ARGS:
             echo "screens $(get screens)"
             echo "autohide $(get autohide)"
             echo "workspace-apps $(onoff workspace-apps)"
+            echo "updating $(onoff updating)"
             echo "folders $(gsettings get "${SCHEMA}" folders)"
             echo "stacks $(gsettings get "${SCHEMA}" stacks)"
             ;;
@@ -2378,7 +2385,7 @@ dock *ARGS:
             gsettings set "${SCHEMA}" magnify-amount "${amount}"
             say magnify
             ;;
-        recent | previews | workspace-apps)
+        recent | previews | workspace-apps | updating)
             case "$(flip "${value}" "$(onoff "${setting}")")" in
                 on) gsettings set "${SCHEMA}" "${setting}" true ;;
                 off) gsettings set "${SCHEMA}" "${setting}" false ;;
@@ -2455,7 +2462,7 @@ dock *ARGS:
             esac
             ;;
         *)
-            echo "usage: ame desktop dock [magnify|amount|launch|indicator|recent|previews|edge|screens|autohide|workspace-apps|stack|folder] [VALUE]" >&2
+            echo "usage: ame desktop dock [magnify|amount|launch|indicator|recent|previews|edge|screens|autohide|workspace-apps|updating|stack|folder] [VALUE]" >&2
             exit 64
             ;;
     esac

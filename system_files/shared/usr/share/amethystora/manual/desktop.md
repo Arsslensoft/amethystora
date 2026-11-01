@@ -799,6 +799,10 @@ shows how far it got and can undo it. Files dropped on **Phone** go to your pair
     ame desktop dock stack add ~/Documents
     ame desktop dock stack remove ~/Documents
 
+While a Flatpak app is being updated, by Bazaar, `flatpak update` or the automatic updates, its icon on the dock and in
+the app grid is at half strength. You can still start it: it runs the version it has, and the new one the next time it
+opens. `ame desktop dock updating off` leaves the icons as they are.
+
 ### Where the dock lives
 
 The dock is at the bottom of every screen, and each screen's dock shows the apps whose windows are on that screen

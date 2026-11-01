@@ -151,7 +151,7 @@ DOCK_KEYS='{
     "magnify": ["s", ["off", "swell", "lift"]], "magnify-amount": ["d", 1.2, 2.2],
     "launch": ["s", ["halo", "hop", "breathe", "off"]], "indicator": ["s", ["bar", "dot", "glow"]],
     "recent": ["b"], "previews": ["b"], "edge": ["s", ["bottom", "left", "right"]],
-    "screens": ["s", ["every", "primary"]], "autohide": ["s", ["off", "touch"]], "workspace-apps": ["b"],
+    "screens": ["s", ["every", "primary"]], "autohide": ["s", ["off", "touch"]], "workspace-apps": ["b"], "updating": ["b"],
     "folders": ["folders"], "stacks": ["as", "stacks"]
 }'
 # The live pill's keys: the pill, the privacy dots, the glow, quiet, quiet at night, the digest and its times
