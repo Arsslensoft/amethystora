@@ -155,6 +155,8 @@ android ACTION="":
     close_devices() {
         sudo chmod 0666 /dev/dri/renderD* 2>/dev/null || true
         sudo chmod 0660 /dev/dma_heap/system 2>/dev/null || true
+        # ...and adds its bridge to the firewall's trusted zone, which it never takes back
+        sudo firewall-cmd --zone=trusted --remove-interface=waydroid0 >/dev/null 2>&1 || true
     }
     # Written by `waydroid init`, so there whenever Android has been set up
     if sudo test -e /var/lib/waydroid/waydroid.cfg; then
