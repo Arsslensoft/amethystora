@@ -119,7 +119,7 @@ delta)
     # that the checkout's is untouched, sent as a bundle: the lab checks it out with LF, as a build sees it
     rev="${2:?delta REV: the commit the image of the VM was built from}"
     base="${DELTA_BASE:-localhost/amethystora-live:$(docker exec amevm cat "${LAB}/disk")}"
-    cp .git/index "${tmp}/index"
+    cp "$(git rev-parse --git-dir)/index" "${tmp}/index"
     GIT_INDEX_FILE="${tmp}/index" git add -A
     commit="$(git commit-tree "$(GIT_INDEX_FILE="${tmp}/index" git write-tree)" -p HEAD -m "live.sh delta")"
     git update-ref refs/live/delta "${commit}"
