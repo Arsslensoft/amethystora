@@ -11,6 +11,6 @@ version-script kitty-options user 1 || exit 0
 FILE="${XDG_CONFIG_HOME:-${HOME}/.config}/amethystora/kitty.conf"
 [[ -e "${FILE}" || -L "${FILE}" ]] && exit 0
 mkdir -p "$(dirname "${FILE}")"
-printf '%s\n' "# Written by ame desktop commands (ame desktop command-done). Your own settings go in ~/.config/kitty/kitty.conf." >"${FILE}"
+printf '%s\n' "# Written by `ame desktop command-done`. Your own settings go in ~/.config/kitty/kitty.conf." >"${FILE}"
 
 exit 0

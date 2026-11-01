@@ -200,6 +200,7 @@ assert (n.when, n.duration, n.action) == ("unfocused", 10.0, "notify"), n'
 test -x /usr/share/amethystora/user-setup.hooks.d/28-kitty-options.sh
 # ...the search's time and reminder answers and the pill's meetings, whose link the helper reads from Evolution Data
 # Server with the typelibs it needs, by rules that count a call's link and nothing else
+UI_EXTENSION=/usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io
 for file in modules/search/times.js modules/search/timesProvider.js modules/search/remind.js \
     modules/search/remindProvider.js modules/pill/meeting.js; do
     test -s "${UI_EXTENSION}/${file}"
@@ -367,7 +368,7 @@ grep -qE '^(MemoryMax|TasksMax|LimitNOFILE)=' /usr/lib/systemd/user/amethystora-
     "clicker clipboard-receive clipboard-send computers device-name music photo-folder" ]]
 for key in music clicker; do
     [[ "$(GSETTINGS_BACKEND=memory gsettings get org.amethystora.Connect "${key}")" == false ]]
-    grep -q "desktop phone ${key}" /usr/libexec/amethystora-control-list
+    grep -q "item desktop phone-${key} switch" /usr/libexec/amethystora-control-list
 done
 grep -q 'exec /usr/bin/amethystora-phone ring' /usr/share/amethystora/just/desktop.just
 # Ringing, the phone's players and the clicker reach the module only through the program; Present presses the clicker's
@@ -988,15 +989,18 @@ grep -q "^resting-screen \*ARGS:" /usr/share/amethystora/just/desktop.just
 grep -q '^living-wallpaper KIND="":' /usr/share/amethystora/just/desktop.just
 # The living wallpapers' shader is in what a Cogl snippet takes on every GPU (GLSL ES 1.0 too): no version or precision
 # line, no loops, and no pow() of what can be negative; they draw at most FPS frames a second, only while seen
-[[ -z "$(grep -nE '^#version|precision |\b(for|while) *\(|\bpow\(' "${UI_EXTENSION}/modules/living/living.glsl")" ]]
+[[ -z "$(sed 's|//.*||' "${UI_EXTENSION}/modules/living/living.glsl" | grep -nE '^#version|precision |\b(for|while) *\(|\bpow\(')" ]]
 grep -q "^const FPS = 15;$" "${UI_EXTENSION}/modules/living.js"
 # Trim a recording (R6-19): offered and off, ffmpeg-free's encoders the window asks for, and the window itself
 [[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.screenshot recording-trim)" == false ]]
+# Read whole first: grep -q stopping early would end ffmpeg with SIGPIPE, which pipefail counts as a failure
+ENCODERS="$(ffmpeg -hide_banner -encoders 2>/dev/null)"
+FILTERS="$(ffmpeg -hide_banner -filters 2>/dev/null)"
 for encoder in gif libvpx-vp9; do
-    ffmpeg -hide_banner -encoders 2>/dev/null | grep -qE "^ V[.A-Z]{5} ${encoder} " || { echo "ffmpeg has no ${encoder}"; exit 1; }
+    grep -qE "^ V[.A-Z]{5} ${encoder} " <<<"${ENCODERS}" || { echo "ffmpeg has no ${encoder}"; exit 1; }
 done
 for filter in palettegen paletteuse tile; do
-    ffmpeg -hide_banner -filters 2>/dev/null | grep -qE " ${filter} " || { echo "ffmpeg has no ${filter}"; exit 1; }
+    grep -qE " ${filter} " <<<"${FILTERS}" || { echo "ffmpeg has no ${filter}"; exit 1; }
 done
 test -x /usr/bin/ffprobe
 grep -q "^const TRIM = '/usr/bin/amethystora-trim';$" "${UI_EXTENSION}/modules/screenshot/trim.js"
@@ -1145,7 +1149,7 @@ grep -q '^walk-away ACTION="":' /usr/share/amethystora/just/security.just
 [[ -z "$(grep -rnE 'use_markup = true|use_markup: true|set_markup\(' "${UI_EXTENSION}/modules/privacy.js" \
     "${UI_EXTENSION}/modules/privacy")" ]]
 [[ "$(grep -rhoE "Util\.spawn\([^)]*\)|Subprocess\.new\(\[[A-Z_]+" "${UI_EXTENSION}/modules/privacy" | LC_ALL=C sort -u | paste -sd ' ')" == \
-    "Subprocess.new([CONFIG Util.spawn([SECURITY, 'apps']) Util.spawn(page ? [SECURITY, page] : [SECURITY])" ]]
+    "Subprocess.new([CONFIG Util.spawn([SECURITY, 'apps']) Util.spawn([SECURITY, 'settings/network']) Util.spawn(page ? [SECURITY, page] : [SECURITY])" ]]
 grep -q "^const SECURITY = '/usr/bin/amethystora-security';" "${UI_EXTENSION}/modules/privacy/shield.js"
 grep -q "^const CONFIG = '/usr/libexec/amethystora-security-config';" "${UI_EXTENSION}/modules/privacy/away.js"
 [[ "$(/usr/libexec/amethystora-security-config WALK_AWAY)" == off ]]

@@ -1575,7 +1575,7 @@ command-done ACTION="":
     mkdir -p "$(dirname "${FILE}")"
     kept=""
     [[ -f "${FILE}" ]] && kept="$(grep -vx "${LINE}" "${FILE}" || true)"
-    [[ -n "${kept}" ]] || kept="# Written by ame desktop commands (ame desktop command-done). Your own settings go in ~/.config/kitty/kitty.conf."
+    [[ -n "${kept}" ]] || kept="# Written by `ame desktop command-done`. Your own settings go in ~/.config/kitty/kitty.conf."
     if [[ "$1" == off ]]; then
         printf '%s\n%s\n' "${kept}" "${LINE}" >"${FILE}.new"
     else
@@ -1591,7 +1591,7 @@ command-done ACTION="":
     fi
 
 # Where a missing command can come from: type a command this computer lacks, in bash, zsh or fish, and the terminal
-# says where it can come from on this system (Homebrew, a container, Flathub, an ame command) instead of a bare
+# says where it can come from on this system (Homebrew, a container, Flathub, an `ame` command) instead of a bare
 # "command not found"; it never installs anything. Off as the image ships (ACTION: on or off; without it, it says
 # which). New terminals follow it
 [positional-arguments]
