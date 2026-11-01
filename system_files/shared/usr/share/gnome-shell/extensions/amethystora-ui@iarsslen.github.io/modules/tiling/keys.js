@@ -7,9 +7,11 @@
 //
 // Most of it never touches the person's settings. The tiling's own shortcuts are registered from a copy of its
 // keys kept in memory, and a GNOME shortcut that is Mutter's own hands the shared combination over from its
-// handler. Only the shortcuts that belong to GNOME Shell itself or to the settings daemon's media keys cannot be
-// handed over like that; for those the combination is taken out of the GNOME key, and exactly what was taken out
-// is written down first (state.js), so that it is put back even after a crash.
+// handler. The shortcuts that belong to GNOME Shell itself or to the settings daemon's media keys cannot be handed
+// over like that. Of those, only the four whose GNOME defaults the tiling's defaults share (TAKE_OUT) have the
+// combination taken out of the GNOME key, and exactly what was taken out is written down first (state.js), so that
+// it is put back even after a crash. Any other such key keeps what it holds, which is often the person's own
+// choice: there the tiling gives the combination up, from its copy in memory, for as long as the key has it.
 
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
@@ -31,6 +33,11 @@ const GNOME_SCHEMAS = [
 
 // Mutter's own shortcuts, whose handler can be replaced and put back in memory
 const MUTTER_SCHEMAS = new Set(GNOME_SCHEMAS.slice(0, 3));
+
+// The only GNOME keys a combination is taken out of in dconf: the shell's and the media keys' shortcuts whose GNOME
+// default collides with a tiling default (AGENTS.md, the tiling)
+const TAKE_OUT = new Set(['focus-active-notification', 'shift-overview-up', 'shift-overview-down',
+    'rotate-video-lock-static']);
 
 // The Mutter shortcuts GNOME Shell gives a handler of its own, by the method that handles them: the ones a
 // shared combination can be taken from while their other combinations keep doing what GNOME does
@@ -254,8 +261,10 @@ export class Keys {
     _sayTaken(id, key) {
         const settings = this._gnome.get(id);
         const schemaKey = settings.settings_schema.get_key(key);
-        // GNOME's own value, which a reset brings back to every key at once, collides by design and is taken quietly
-        if (schemaKey.get_value_type().dup_string() !== 'as' || settings.get_user_value(key) === null)
+        // GNOME's own value, which a reset brings back to every key at once, collides by design and is taken quietly;
+        // outside TAKE_OUT the key keeps what the person set and the tiling gives the combination up: nothing to say
+        if (schemaKey.get_value_type().dup_string() !== 'as' || settings.get_user_value(key) === null ||
+            !(TAKE_OUT.has(key) || MUTTER_SCHEMAS.has(id)))
             return;
         const mine = this._mine();
         const taken = settings.get_strv(key).find(a => mine.some(m => same(m.combo, parse(a))));
@@ -308,6 +317,8 @@ export class Keys {
     _update() {
         const mine = this._mine();
         const handedOver = new Set();
+        // The tiling's combinations a GNOME key keeps (not one of TAKE_OUT): the tiling gives them up
+        const yielded = new Set();
         const wanted = new Map();
         for (const [id, settings] of this._gnome) {
             const schema = settings.settings_schema;
@@ -329,8 +340,13 @@ export class Keys {
                     wanted.set(key, shared.map(s => [s.combo, s.owner.name]));
                     for (const s of shared)
                         handedOver.add(`${s.owner.name}\n${s.owner.accelerator}`);
-                } else {
+                } else if (TAKE_OUT.has(key)) {
                     this._takeOut(id, key, real, shared);
+                } else {
+                    // A combination an older image took out comes back; the GNOME key keeps it, the tiling does not
+                    this._giveBack(id, key);
+                    for (const s of shared)
+                        yielded.add(`${s.owner.name}\n${s.owner.accelerator}`);
                 }
             }
         }
@@ -341,9 +357,10 @@ export class Keys {
         for (const [name, entries] of wanted)
             this._wrap(name, entries);
 
-        // The tiling's own copy, without the combinations GNOME's handlers hand over
+        // The tiling's own copy, without the combinations GNOME's handlers hand over or a GNOME key keeps
         for (const name of this._actions.keys()) {
-            const value = this._settings.get_strv(name).filter(a => !handedOver.has(`${name}\n${a}`));
+            const value = this._settings.get_strv(name).filter(a =>
+                !handedOver.has(`${name}\n${a}`) && !yielded.has(`${name}\n${a}`));
             if (JSON.stringify(this._memory.get_strv(name)) !== JSON.stringify(value))
                 this._memory.set_strv(name, value);
         }

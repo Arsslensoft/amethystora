@@ -128,9 +128,13 @@ in_session "ame desktop shortcut set ${MEDIA} previous '<Super>Left'" >/dev/null
 same "3 a shortcut changed is the account's" "$(row "${MEDIA}" previous '.changed')" "true"
 same "3 ...and clashes with GNOME's own (the tiling is off)" "$(row "${MEDIA}" previous '[.clash[] | .owner] | unique | join(" ")' | tr -d '"')" "gnome"
 same "3 ...written into GNOME's own key" "$(gs get "${MEDIA}" previous)" "['<Super>Left']"
-# The tiling turned on keeps <Super>Left and takes it out of the account's key, which the module's notice says
+# The tiling turned on leaves the account's own shortcut as it is: a media key is not one of the four it takes a
+# combination out of (tiling/keys.js TAKE_OUT); the tiling gives <Super>Left up instead
 gs set org.gnome.shell.extensions.amethystora-ui.tiling enabled true
-if wait_for 30 key_is "${MEDIA}" previous "@as []"; then ok "3 the tiling on keeps its combination"; else not_ok "3 the tiling left the account's key alone"; fi
+sleep 5
+same "3 the tiling on leaves the account's shortcut alone" "$(gs get "${MEDIA}" previous)" "['<Super>Left']"
+same "3 ...and gives the combination up" \
+    "$(ev "Main.extensionManager.lookup('${UUID}').stateObj.modules.get('tiling').keys._memory.get_strv('switch-left').includes('<Super>Left')")" false
 in_session "ame desktop shortcut reset ${MEDIA} previous" >/dev/null 2>&1
 same "3 Reset puts it back, with no clash" "$(row "${MEDIA}" previous '[.changed, (.clash | length)] | map(tostring) | join(" ")' | tr -d '"')" \
     "false 0"

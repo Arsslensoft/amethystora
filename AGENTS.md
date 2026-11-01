@@ -1248,7 +1248,9 @@ The modules, and what each replaced:
   timed from the frame last drawn), so that keys pressed in a row and fingers let go never stop and start the strip;
   keep that when touching `engine.js`'s `layout()`. It takes a GNOME shortcut's combination only where one of its own collides with it:
   in memory for the keys it can wrap, and, for the four it cannot (`focus-active-notification`, `shift-overview-up/down`,
-  `rotate-video-lock-static`), by removing the combination in dconf and writing down what it took in
+  `rotate-video-lock-static`, `TAKE_OUT` in `tiling/keys.js`), by removing the combination in dconf; any other shell or
+  media key keeps what it holds (often the person's own choice) and the tiling gives the combination up in memory. It
+  writes down what it took in
   `~/.local/state/amethystora/tiling.json` (`taken`), which `amethystora-setup-manifest` reads to keep the account's own value
   and the module gives back when it is off. The file is written with a copy beside it (`tiling.json.bak`) that stands in
   when it is missing or unreadable, and records that do not fit are dropped on load, so a bad file never keeps the
