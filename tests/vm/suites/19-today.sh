@@ -180,8 +180,8 @@ wait_for 60 notes_running
 wait_for 20 has_today
 ev "Main.panel.statusArea.dateMenu.menu.open(); 1" >/dev/null
 # An empty day reads like the card around it: GNOME's italic would be a sheared Quicksand, at the largest size in it
-placeholder_font() { ev "const find = a => a.style_class?.includes?.('event-placeholder') ? a : a.get_children().map(find).find(c => c) ?? null; find(Main.panel.statusArea.dateMenu.menu.actor)?.get_theme_node().get_font().get_style() + ' ' + find(Main.panel.statusArea.dateMenu.menu.actor)?.get_theme_node().get_font().get_size() / 1024"; }
-same "No Events is upright and as large as an event's title" "$(placeholder_font)" "0 13.5"
+PLACEHOLDER="const find = a => a.style_class?.includes?.('event-placeholder') ? a : a.get_children().map(find).find(c => c) ?? null; const font = find(Main.panel.statusArea.dateMenu.menu.actor)?.get_theme_node().get_font(); font.get_style() + ' ' + font.get_size() / 1024"
+check "No Events is upright and as large as an event's title" ev_is "${PLACEHOLDER}" "0 13.5"
 titles() { ev "${T}.taskTitles().join('|')"; }
 has_titles() { [[ -n "$(titles)" ]]; }
 no_titles() { [[ -z "$(titles)" ]]; }
