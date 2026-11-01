@@ -1,0 +1,8 @@
+[Sound Theme]
+Name=Amethystora Glass
+Comment=Amethystora's Glass sounds (bright, short chimes), synthesised by branding/sounds.mjs
+Inherits=freedesktop
+Directories=stereo
+
+[stereo]
+OutputProfile=stereo

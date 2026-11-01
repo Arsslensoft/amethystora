@@ -1,0 +1,8 @@
+[Sound Theme]
+Name=Amethystora Retro
+Comment=Amethystora's Retro sounds (eight-bit blips), synthesised by branding/sounds.mjs
+Inherits=freedesktop
+Directories=stereo
+
+[stereo]
+OutputProfile=stereo

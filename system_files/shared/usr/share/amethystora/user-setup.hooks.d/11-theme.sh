@@ -49,8 +49,8 @@
 #  20  The dark Amethystora theme's Daylight day, a dark amethyst in place of the light theme's near-white facets: an
 #      account's daylight.list is a copy made when the theme is applied, and its slideshow is written from that copy.
 #  22  Amethystora Light's own dawn, dusk and night (amethystora-facets-l-*.png), which were the dark theme's: the same copy.
-#  23  Round 5 and 6's shell colours (themed/shell-tools.css.tpl, and the other groups' of those rounds), written only
-#      when the theme is applied again.
+#  23  Round 5 and 6's shell colours (themed/shell-tools.css.tpl, shell-audio.css.tpl, and the other groups' of those
+#      rounds), written only when the theme is applied again.
 
 source /usr/lib/amethystora/setup-services/libsetup.sh
 

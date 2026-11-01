@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The audio module (modules/audio.js): the players paused when the headphones come off, Clear voice and the sound
+     presets. Written by ame desktop pause-on-unplug, clear-voice, sound-presets and sound-preset (the last three through
+     /usr/libexec/amethystora-sound, which also starts and stops their PipeWire units) and Control; read live. -->
+<schemalist>
+  <schema id="org.gnome.shell.extensions.amethystora-ui.audio" path="/org/gnome/shell/extensions/amethystora-ui/audio/">
+    <key name="pause-on-unplug" type="b">
+      <default>true</default>
+      <summary>Pause when the headphones come off</summary>
+      <description>When the headphones or a headset in use are unplugged or go away, every player that is playing pauses, so that nothing plays out loud from the speakers. A notice offers to play on.</description>
+    </key>
+    <key name="clear-voice" type="b">
+      <default>false</default>
+      <summary>Clear voice</summary>
+      <description>The microphone through PipeWire's own echo cancel and noise suppression, as an input of its own made the one in use. It works only while an app records. Change it with ame desktop clear-voice, which starts and stops it.</description>
+    </key>
+    <key name="sound-presets" type="b">
+      <default>false</default>
+      <summary>Sound presets</summary>
+      <description>The output menu offers a preset per output: Flat, Laptop, Speech or Bass, as PipeWire's own equaliser before that output.</description>
+    </key>
+    <key name="presets" type="a{ss}">
+      <default>{}</default>
+      <summary>The preset of each output</summary>
+      <description>By the output's node name: laptop, speech or bass. An output that is not named is Flat. Written by ame desktop sound-preset.</description>
+    </key>
+  </schema>
+</schemalist>

@@ -1,0 +1,47 @@
+/* The audio module (modules/audio.js): Clear voice's switch in the microphone menu and the presets' row in the output
+   menu. Sizes and spacing; the preset buttons are the quick settings' output buttons, whose colours the theme gives
+   (shell-quick.css), and the curve is drawn in the menu's own text colour. */
+
+.amethystora-audio-switch {
+  padding: 10px 12px;
+  spacing: 12px;
+  border-radius: 14px;
+}
+.amethystora-audio-switch-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+.amethystora-audio-switch-text { font-size: 12px; }
+
+.amethystora-audio-presets-item { padding: 6px 8px 8px; }
+.amethystora-audio-presets { spacing: 8px; }
+.amethystora-audio-presets-row {
+  padding: 4px;
+  spacing: 4px;
+  border-radius: 999px;
+  border-width: 1px;
+  border-style: solid;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+.amethystora-audio-preset:checked {
+  background-color: rgba(255, 255, 255, 0.9);
+  color: #1e1e2e;
+}
+.amethystora-audio-preset {
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.amethystora-audio-curve {
+  height: 56px;
+  -amethystora-audio-grid: rgba(255, 255, 255, 0.12);
+}
+.amethystora-audio-ticks { spacing: 2px; }
+.amethystora-audio-tick {
+  font-size: 10px;
+  font-feature-settings: "tnum";
+  text-align: center;
+}
+.amethystora-audio-presets-note { font-size: 11.5px; }

@@ -299,7 +299,8 @@ export class VolumeBlock {
         const outputs = [];
         for (const id of items.keys()) {
             const device = this._mixer.lookup_output_id(id);
-            if (device)
+            const stream = device ? this._mixer.get_stream_from_device(device) : null;
+            if (device && !stream?.get_name()?.startsWith('amethystora-preset-'))
                 outputs.push(device);
         }
         return outputs;

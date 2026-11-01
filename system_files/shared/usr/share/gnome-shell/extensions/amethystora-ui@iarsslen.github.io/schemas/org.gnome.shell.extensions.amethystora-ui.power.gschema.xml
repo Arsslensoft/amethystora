@@ -13,5 +13,10 @@
       <summary>Say when an app is busy</summary>
       <description>When the processor has been at 70% or more for two minutes, a chip beside the meters names the app that used the most, once an hour at most, never for a fullscreen window in front. It needs the meters.</description>
     </key>
+    <key name="device-batteries" type="b">
+      <default>true</default>
+      <summary>Your devices' batteries</summary>
+      <description>The battery's menu in quick settings lists the battery of every device that reports one (a mouse, a keyboard, headphones, a controller, the paired phone), and a notice says once when one is at 15% or less.</description>
+    </key>
   </schema>
 </schemalist>

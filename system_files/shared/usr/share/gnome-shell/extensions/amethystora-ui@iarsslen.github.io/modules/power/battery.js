@@ -339,7 +339,7 @@ export class BatteryDetails {
 // A share as a round bar: the track and, from the start, the fill from the accent to the accent's text colour, drawn
 // at the size the bar is given (no relayout for it). The colours are the style's: `color` the fill's end,
 // -amethystora-power-from its start, -amethystora-power-track the track.
-function shareBar(share) {
+export function shareBar(share) {
     const bar = new St.DrawingArea({style_class: 'amethystora-power-bar', x_expand: true});
     bar.connect('repaint', area => {
         const cr = area.get_context();

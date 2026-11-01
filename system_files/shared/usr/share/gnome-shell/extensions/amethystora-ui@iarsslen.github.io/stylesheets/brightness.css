@@ -1,0 +1,15 @@
+/* The brightness module (modules/brightness.js): a slider for each external screen, after GNOME's brightness slider in
+   quick settings. The sliders are GNOME's own, coloured by the theme as GNOME's are. */
+
+.amethystora-brightness { spacing: 6px; padding: 0 4px; }
+.amethystora-brightness-row { spacing: 12px; }
+.amethystora-brightness-icon { icon-size: 16px; }
+.amethystora-brightness-name {
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.amethystora-brightness-percent {
+  font-size: 12px;
+  font-weight: 700;
+  font-feature-settings: "tnum";
+}

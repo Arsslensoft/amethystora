@@ -1,0 +1,312 @@
+#!/usr/bin/bash
+# What the desktop does to sound on its way in and out, as the account, with PipeWire's own modules and nothing else:
+#
+#   clear voice    the microphone through PipeWire's echo cancel and noise suppression (its webrtc processor), as an
+#                  input of its own made the default while on (ame desktop clear-voice)
+#   presets        an equaliser before an output, one of the presets in /usr/share/amethystora/sound/presets.json,
+#                  kept per output (ame desktop sound-presets, ame desktop sound-preset)
+#
+# Each runs as a PipeWire client of its own (pipewire -c, as Fedora's own filter-chain.service does), from a user unit
+# that starts with PipeWire only while its key in org.gnome.shell.extensions.amethystora-ui.audio says so (wanted):
+# while off nothing runs. The configuration is written at each start into the runtime folder, from the key and the
+# presets file, so that a node's name is in the account's language and nothing is kept on disk but the key.
+#
+#   amethystora-sound clear-voice on|off|status
+#   amethystora-sound presets on|off|status
+#   amethystora-sound preset flat|laptop|speech|bass [OUTPUT]    OUTPUT: an output's node name, else the one in use
+#   amethystora-sound wanted clear-voice|presets                 for the units' ExecCondition
+#   amethystora-sound run clear-voice|presets                    the units' ExecStart
+#   amethystora-sound conf clear-voice|presets                   the configuration run writes, on stdout
+
+set -euo pipefail
+
+export TEXTDOMAIN=amethystora
+# shellcheck source=/dev/null
+source gettext.sh
+
+SCHEMA=org.gnome.shell.extensions.amethystora-ui.audio
+PRESETS="${AMETHYSTORA_SOUND_PRESETS:-/usr/share/amethystora/sound/presets.json}"
+STATE="${XDG_STATE_HOME:-${HOME}/.local/state}/amethystora"
+VOICE_UNIT=amethystora-clear-voice.service
+PRESET_UNIT=amethystora-sound-presets.service
+# The node Clear voice is, as PipeWire and the sound settings name it; the presets' are amethystora-preset-N
+VOICE_NODE=amethystora-clear-voice
+# An output's node name as PipeWire writes them (alsa_output.pci-0000_00_1f.3.analog-stereo, bluez_output.AA_BB...):
+# nothing that could close a quoted string in the configuration or a GVariant
+NODE_RE='^[A-Za-z0-9_][A-Za-z0-9_.:+-]{0,199}$'
+
+usage() {
+    echo "usage: amethystora-sound clear-voice on|off|status | presets on|off|status | preset flat|laptop|speech|bass [OUTPUT] | wanted|run|conf clear-voice|presets" >&2
+    exit 64
+}
+
+die() {
+    echo "amethystora-sound: $*" >&2
+    exit 1
+}
+
+key_on() {
+    [[ "$(gsettings get "${SCHEMA}" "$1" 2>/dev/null)" == true ]]
+}
+
+# Every preset there is, Flat (no filter at all) first
+preset_names() {
+    echo flat
+    jq -r 'keys_unsorted[]' "${PRESETS}"
+}
+
+is_preset() {
+    local names
+    names="$(preset_names)"
+    [[ -n "$1" ]] && grep -qxF -- "$1" <<<"${names}"
+}
+
+# The outputs that have a preset, "NODE<TAB>PRESET" a line, from the key; an entry that is not a node name or a preset
+# is left out (and dropped at the next write)
+preset_lines() {
+    local node preset
+    { gsettings get "${SCHEMA}" presets 2>/dev/null || true; } | { grep -oE "'[^']*': '[^']*'" || true; } |
+        sed -E "s/^'([^']*)': '([^']*)'$/\1\t\2/" |
+        while IFS=$'\t' read -r node preset; do
+            [[ "${node}" =~ ${NODE_RE} && "${preset}" != flat ]] && is_preset "${preset}" &&
+                printf '%s\t%s\n' "${node}" "${preset}"
+        done
+    return 0
+}
+
+write_presets() {
+    local value="" node preset
+    while IFS=$'\t' read -r node preset; do
+        [[ -n "${node}" ]] || continue
+        value+="${value:+, }'${node}': '${preset}'"
+    done
+    gsettings set "${SCHEMA}" presets "{${value}}"
+}
+
+# Whether PipeWire has an input of this name now
+has_source() {
+    local list
+    list="$(pactl list short sources 2>/dev/null | awk '{print $2}' || true)"
+    grep -qxF -- "$1" <<<"${list}"
+}
+
+# --- Clear voice ---------------------------------------------------------------------------------------------------
+
+voice_on() {
+    local previous i
+    gsettings set "${SCHEMA}" clear-voice true
+    # The input in use before, given back by off: a name PipeWire gave, never Clear voice itself
+    previous="$(pactl get-default-source 2>/dev/null || true)"
+    if [[ "${previous}" != "${VOICE_NODE}" && "${previous}" =~ ${NODE_RE} ]]; then
+        mkdir -p "${STATE}"
+        printf '%s\n' "${previous}" >"${STATE}/clear-voice-previous.tmp"
+        mv -f "${STATE}/clear-voice-previous.tmp" "${STATE}/clear-voice-previous"
+    fi
+    systemctl --user start "${VOICE_UNIT}"
+    # Its input comes a moment after the unit starts: waited for once, five seconds at most
+    for ((i = 0; i < 50; i++)); do
+        has_source "${VOICE_NODE}" && break
+        sleep 0.1
+    done
+    has_source "${VOICE_NODE}" || die "Clear voice's input did not appear."
+    pactl set-default-source "${VOICE_NODE}"
+}
+
+voice_off() {
+    local previous=""
+    gsettings set "${SCHEMA}" clear-voice false
+    systemctl --user stop "${VOICE_UNIT}" 2>/dev/null || true
+    [[ -f "${STATE}/clear-voice-previous" ]] && previous="$(head -n1 "${STATE}/clear-voice-previous")"
+    rm -f "${STATE}/clear-voice-previous"
+    # Back to the input in use before, while it is still there; else PipeWire's own choice stands
+    if [[ "${previous}" =~ ${NODE_RE} ]] && has_source "${previous}"; then
+        pactl set-default-source "${previous}" || true
+    fi
+}
+
+voice_conf() {
+    local name
+    # The input's name as the sound settings show it, in the account's language; a quote cannot end the string
+    name="$(gettext "Clear voice")"
+    name="${name//\"/\'}"
+    name="${name//\\/}"
+    cat <<EOF
+# Written by amethystora-sound at each start of ${VOICE_UNIT}: the microphone through PipeWire's echo cancel
+context.properties = {
+    log.level = 0
+}
+context.spa-libs = {
+    audio.convert.* = audioconvert/libspa-audioconvert
+    support.*       = support/libspa-support
+}
+context.modules = [
+    { name = libpipewire-module-rt args = { } flags = [ ifexists nofail ] }
+    { name = libpipewire-module-protocol-native }
+    { name = libpipewire-module-client-node }
+    { name = libpipewire-module-adapter }
+    { name = libpipewire-module-echo-cancel
+        args = {
+            library.name = aec/libspa-aec-webrtc
+            # The echo's reference is what the output in use plays: nothing that plays is moved
+            monitor.mode = true
+            audio.channels = 1
+            audio.position = [ MONO ]
+            aec.args = {
+                webrtc.noise_suppression = true
+                webrtc.gain_control = true
+                webrtc.high_pass_filter = true
+            }
+            # The microphone is opened only while something records from Clear voice
+            capture.props = {
+                node.name = "${VOICE_NODE}.capture"
+                node.passive = true
+            }
+            source.props = {
+                node.name = "${VOICE_NODE}"
+                node.description = "${name}"
+            }
+        }
+    }
+]
+EOF
+}
+
+# --- Presets -------------------------------------------------------------------------------------------------------
+
+presets_conf() {
+    local n=0 node preset name label
+    cat <<EOF
+# Written by amethystora-sound at each start of ${PRESET_UNIT}: an equaliser before each output with a preset
+context.properties = {
+    log.level = 0
+}
+context.spa-libs = {
+    audio.convert.* = audioconvert/libspa-audioconvert
+    support.*       = support/libspa-support
+}
+context.modules = [
+    { name = libpipewire-module-rt args = { } flags = [ ifexists nofail ] }
+    { name = libpipewire-module-protocol-native }
+    { name = libpipewire-module-client-node }
+    { name = libpipewire-module-adapter }
+EOF
+    while IFS=$'\t' read -r node preset; do
+        [[ -n "${node}" ]] || continue
+        n=$((n + 1))
+        case "${preset}" in
+            laptop) label="$(gettext "Laptop")" ;;
+            speech) label="$(gettext "Speech")" ;;
+            bass) label="$(gettext "Bass")" ;;
+            *) label="${preset}" ;;
+        esac
+        name="$(eval_gettext "Sound preset: \${label}")"
+        name="${name//\"/\'}"
+        name="${name//\\/}"
+        # The preset's filters, after a gain that keeps its loudest band from clipping
+        jq -r --arg p "${preset}" --arg n "${n}" --arg node "${node}" --arg name "${name}" '
+            .[$p] as $preset
+            | ($preset.filters | length) as $count
+            | "    { name = libpipewire-module-filter-chain",
+              "        args = {",
+              "            node.description = \"\($name)\"",
+              "            media.name = \"\($name)\"",
+              "            filter.graph = {",
+              "                nodes = [",
+              "                    { type = builtin name = gain label = mixer control = { \"Gain 1\" = \(pow(10; $preset.gain / 20) * 1000 | round / 1000) } }",
+              ($preset.filters | to_entries[] |
+              "                    { type = builtin name = f\(.key + 1) label = bq_\(.value.type) control = { \"Freq\" = \(.value.freq) \"Q\" = \(.value.q) \"Gain\" = \(.value.gain // 0) } }"),
+              "                ]",
+              "                links = [",
+              "                    { output = \"gain:Out\" input = \"f1:In\" }",
+              (range(1; $count) |
+              "                    { output = \"f\(.):Out\" input = \"f\(. + 1):In\" }"),
+              "                ]",
+              "                inputs = [ \"gain:In 1\" ]",
+              "                outputs = [ \"f\($count):Out\" ]",
+              "            }",
+              "            audio.channels = 2",
+              "            audio.position = [ FL FR ]",
+              "            capture.props = {",
+              "                node.name = \"amethystora-preset-\($n)\"",
+              "                media.class = Audio/Sink",
+              "                filter.smart = true",
+              "                filter.smart.name = \"amethystora-preset-\($n)\"",
+              "                filter.smart.target = { node.name = \"\($node)\" }",
+              "            }",
+              "            playback.props = {",
+              "                node.name = \"amethystora-preset-\($n).output\"",
+              "                node.passive = true",
+              "            }",
+              "        }",
+              "    }"' "${PRESETS}"
+    done < <(preset_lines)
+    echo "]"
+}
+
+# Starts, restarts or stops the presets' unit as the keys now say
+presets_apply() {
+    if key_on sound-presets && [[ -n "$(preset_lines)" ]]; then
+        systemctl --user restart "${PRESET_UNIT}"
+    else
+        systemctl --user stop "${PRESET_UNIT}" 2>/dev/null || true
+    fi
+}
+
+preset() {
+    local preset="$1" node="${2:-}" lines
+    is_preset "${preset}" || usage
+    [[ -n "${node}" ]] || node="$(pactl get-default-sink 2>/dev/null || true)"
+    [[ "${node}" =~ ${NODE_RE} ]] || die "There is no output to give a preset to."
+    # A preset is put before a real output, never before another filter
+    [[ "${node}" != amethystora-* ]] || die "${node} is one of Amethystora's own filters."
+    lines="$(preset_lines | awk -F '\t' -v node="${node}" '$1 != node')"
+    [[ "${preset}" == flat ]] || lines+="${lines:+$'\n'}${node}"$'\t'"${preset}"
+    write_presets <<<"${lines}"
+    presets_apply
+}
+
+# --- The units' side ---------------------------------------------------------------------------------------------
+
+run() {
+    local dir="${XDG_RUNTIME_DIR:?}/amethystora/sound" file
+    mkdir -p -m 0700 "${dir}"
+    file="${dir}/$1.conf"
+    case "$1" in
+        clear-voice) voice_conf ;;
+        presets) presets_conf ;;
+    esac >"${file}.tmp"
+    mv -f "${file}.tmp" "${file}"
+    exec /usr/bin/pipewire -c "${file}"
+}
+
+status_word() {
+    if key_on "$1"; then echo on; else echo off; fi
+}
+
+case "${1:-}:${2:-}" in
+    clear-voice:on) voice_on ;;
+    clear-voice:off) voice_off ;;
+    clear-voice:status) status_word clear-voice ;;
+    presets:on)
+        gsettings set "${SCHEMA}" sound-presets true
+        presets_apply
+        ;;
+    presets:off)
+        gsettings set "${SCHEMA}" sound-presets false
+        presets_apply
+        ;;
+    presets:status)
+        status_word sound-presets
+        preset_lines
+        ;;
+    preset:*)
+        [[ $# -ge 2 && $# -le 3 ]] || usage
+        preset "$2" "${3:-}"
+        ;;
+    wanted:clear-voice) key_on clear-voice ;;
+    wanted:presets) key_on sound-presets && [[ -n "$(preset_lines)" ]] ;;
+    run:clear-voice | run:presets) run "$2" ;;
+    conf:clear-voice) voice_conf ;;
+    conf:presets) presets_conf ;;
+    *) usage ;;
+esac

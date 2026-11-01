@@ -1,0 +1,27 @@
+{
+    "laptop": {
+        "gain": -3.5,
+        "filters": [
+            {"type": "highpass", "freq": 90, "q": 0.7},
+            {"type": "lowshelf", "freq": 220, "q": 0.7, "gain": 5},
+            {"type": "peaking", "freq": 1000, "q": 1.0, "gain": -3},
+            {"type": "highshelf", "freq": 6000, "q": 0.7, "gain": 2}
+        ]
+    },
+    "speech": {
+        "gain": -4,
+        "filters": [
+            {"type": "highpass", "freq": 100, "q": 0.7},
+            {"type": "peaking", "freq": 300, "q": 1.0, "gain": -2},
+            {"type": "peaking", "freq": 2400, "q": 0.9, "gain": 4},
+            {"type": "highshelf", "freq": 8000, "q": 0.7, "gain": 1}
+        ]
+    },
+    "bass": {
+        "gain": -6,
+        "filters": [
+            {"type": "lowshelf", "freq": 120, "q": 0.7, "gain": 6},
+            {"type": "peaking", "freq": 500, "q": 0.8, "gain": -1}
+        ]
+    }
+}

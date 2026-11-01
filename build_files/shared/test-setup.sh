@@ -206,10 +206,12 @@ done
 [[ "$(GSETTINGS_BACKEND=memory /usr/bin/gsettings range org.gnome.desktop.sound event-sounds | xargs)" == "type b" ]]
 [[ "$(sed -n 's/^SOUND_KEYS=(\(.*\))$/\1/p' "$(dirname "${SETUP}")/amethystora-setup-manifest")" == "event-sounds" ]]
 # The search's switches, the emoji picker's skin tone and the not-responding question likewise, each schema less its
-# keybinding (open, emoji-picker, force-quit), which the keybindings part keeps; and the manifest saves the same keys
+# keybinding (open, emoji-picker, force-quit), which the keybindings part keeps, and the audio module's switches less
+# presets, which name this machine's outputs; and the manifest saves the same keys
 for part in "SEARCH org.gnome.shell.extensions.amethystora-ui.search open" \
     "EMOJI org.gnome.shell.extensions.amethystora-ui.emoji emoji-picker" \
-    "QUIT org.gnome.shell.extensions.amethystora-ui.quit force-quit"; do
+    "QUIT org.gnome.shell.extensions.amethystora-ui.quit force-quit" \
+    "AUDIO org.gnome.shell.extensions.amethystora-ui.audio presets"; do
     read -r name schema_id binding <<<"${part}"
     table="$(sed -n "/^${name}_KEYS='{\$/,/^}'\$/{s/^${name}_KEYS='//; s/^}'\$/}/; p}" "${SETUP}")"
     [[ -n "${table}" ]] || table="$(sed -n "s/^${name}_KEYS='\(.*\)'\$/\1/p" "${SETUP}")"
@@ -381,6 +383,7 @@ org.gnome.shell.extensions.amethystora-ui.dock magnify 'swell'
 org.gnome.shell.extensions.amethystora-ui.dock folders @a{sas} {}
 org.gnome.shell.extensions.amethystora-ui.dock stacks ['xdg:DOWNLOAD']
 org.gnome.shell.extensions.amethystora-ui.bezel round-corners false
+org.gnome.shell.extensions.amethystora-ui.audio pause-on-unplug true
 org.gnome.shell.extensions.amethystora-ui.access filter 'none'
 org.gnome.shell.extensions.amethystora-ui.access filter-strength 100
 org.gnome.shell.extensions.amethystora-ui.access read-aloud false
@@ -526,6 +529,7 @@ jq '.flatpaks.system += [{"app": "org.gnome.Maps", "origin": "flathub"}] | .brew
     | .settings.windows = {"dim": false, "corner-top-right": "overview", "hold-super-delay": 1500}
     | .settings.dock += {"magnify": "off", "folders": {"Writing": ["org.gnome.Nautilus.desktop", "firefox.desktop"]}}
     | .settings.bezel = {"round-corners": true} | .settings.sound = {"event-sounds": false}
+    | .settings.audio = {"pause-on-unplug": false}
     | .settings.transitions = {"reveal": false} | .settings.hints = {"enabled": false} | .settings.appgrid = {"recent": false}
     | .settings.power = {"busy-app": false}
     | .settings.focus = {"games-power": "as-set", "trigger-sleep": true, "work-apps": ["org.gnome.Nautilus.desktop"]}
@@ -551,6 +555,7 @@ grep -qxF "  ~ the tiling's window-gap: 20, in place of 12" <<<"${out}"
 grep -qxF "  ~ the tiling's animation-time: 0.5, in place of 0.25" <<<"${out}"
 grep -qxF "  ! the tiling's workspace-colors: [\"\",\"#314e6c\"]: this machine's tiling has no such setting" <<<"${out}"
 grep -qxF "  ~ the screen's round-corners: true, in place of false" <<<"${out}"
+grep -qxF "  ~ the audio module's pause-on-unplug: false, in place of true" <<<"${out}"
 grep -qxF "  ~ the desktop's event-sounds: false, in place of true" <<<"${out}"
 grep -qxF "  ~ the transitions' reveal: false, in place of true" <<<"${out}"
 grep -qxF "  ~ the tips' enabled: false, in place of true" <<<"${out}"
@@ -575,6 +580,7 @@ grep -qxF 'gsettings set org.gnome.shell.extensions.amethystora-ui.focus games-p
 grep -qx "gsettings set org.gnome.shell.extensions.amethystora-ui.focus trigger-sleep true" "${LOG}"
 grep -qxF 'gsettings set org.gnome.shell.extensions.amethystora-ui.focus work-apps ["org.gnome.Nautilus.desktop"]' "${LOG}"
 grep -qx "gsettings set org.gnome.shell.extensions.amethystora-ui.bezel round-corners true" "${LOG}"
+grep -qx "gsettings set org.gnome.shell.extensions.amethystora-ui.audio pause-on-unplug false" "${LOG}"
 grep -qxF 'gsettings set org.gnome.shell.extensions.amethystora-ui.shelf shelf "edge"' "${LOG}"
 grep -qx "gsettings set org.gnome.shell.extensions.amethystora-ui.desks desks true" "${LOG}"
 grep -qx "gsettings set org.gnome.desktop.sound event-sounds false" "${LOG}"

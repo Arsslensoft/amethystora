@@ -40,6 +40,12 @@ if grep -q '^KERNEL=="uinput"' "${SOLAAR_RULES}" 2>/dev/null; then
     sed -i '1i # Changed by Amethystora (build_files/base/08-hardening.sh): the line giving /dev/uinput to whoever\n# sits at the machine is taken out. `ame security virtual-input off` gives it back.' "${SOLAAR_RULES}"
 fi
 
+# ddcutil's own rule gives whoever sits at the machine every i2c bus of the display controllers, which can reach other
+# chips of the card than the screens', and its modules-load file loads i2c-dev at every boot. Neither is active as the
+# image ships: `ame desktop screen-brightness on` copies the image's one-line rule (/usr/share/amethystora/ddc) into
+# /etc/udev/rules.d and loads i2c-dev, for the external screens' brightness in quick settings, and off takes it back.
+rm -f /usr/lib/udev/rules.d/60-ddcutil-i2c.rules /usr/lib/modules-load.d/ddcutil.conf
+
 # Firewall: Fedora Workstation's default zone accepts incoming connections on every port from 1025 up.
 # The Amethystora zone (/usr/lib/firewalld/zones/amethystora.xml) only lets in what a desktop needs.
 # Tailscale traffic is trusted: who may reach this machine over the tailnet is set by the tailnet's ACLs,

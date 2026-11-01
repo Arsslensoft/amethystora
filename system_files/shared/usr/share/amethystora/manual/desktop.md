@@ -75,7 +75,15 @@ the top bar names the app that kept it busy, such as **Firefox is busy**. Click 
 app per hour, never while a window is fullscreen in front (a game), and the chip goes when the
 processor calms down. It rides the meters' own reading, so without the meters there is no chip.
 
-`ame desktop power battery on|off` and `ame desktop power busy on|off`, also in [Control](control.md).
+**Your devices' batteries.** The same menu lists the battery of every device that says how full it is: a wireless
+mouse or keyboard, headphones and headsets, a game controller, a pen, and your paired [phone](hardware.md#phones),
+under **This computer**. A row says **charge it soon** under 20%, and a notice says once when a device is at 15% or less
+(again only after it has been charged). On a computer without a battery of its own, the tile shows as **Batteries**
+while such a device is there, naming the emptiest. It is what UPower already knows, followed as UPower says it changes:
+nothing is asked on a timer.
+
+`ame desktop power battery on|off`, `ame desktop power busy on|off` and `ame desktop power devices on|off`, also in
+[Control](control.md).
 
 ## Today
 
@@ -386,16 +394,45 @@ stay there: they are never in [your setup file](setup.md), which carries only wh
 
 ## Sounds
 
-The desktop's own sounds are Amethystora's **Soft** set: lower and rounder, for a quiet room. You hear them for a
+The desktop's own sounds are Amethystora's **Soft** set: lower and rounder, for a quiet room. Three more sets play the
+same events in other voices: **Glass**, bright, short chimes; **Wood**, warm knocks and taps; **Retro**, eight-bit
+blips. Each is made from arithmetic by the image's own script, nothing recorded. You hear them for a
 message from a chat app that asks for one (GNOME plays no sound for an ordinary notification), a text message from
 your [phone](hardware.md#phones), plugging in the power, a screenshot, each step of the volume, an error and the
 bell, and a slow chord once the desktop has started. Any other event an app asks for comes from the standard sound
 theme.
 
-`ame desktop sounds off` makes the desktop silent: it makes no sound of its own, and apps can still make theirs (a
-call, music, a game). `ame desktop sounds soft` brings them back. Control has the same choice under Appearance, in
-the **Sound** group. Choosing an alert sound in **Settings**, **Sound**, gives the bell that sound; Control then
-shows neither choice as chosen, and `ame desktop sounds soft` goes back to the whole Soft set.
+`ame desktop sounds soft|glass|wood|retro` picks a set, and `ame desktop sounds off` makes the desktop silent: it
+makes no sound of its own, and apps can still make theirs (a call, music, a game). Control has the same choice under
+Appearance, in the **Sound** group. Choosing an alert sound in **Settings**, **Sound**, gives the bell that sound;
+Control then shows none of the sets as chosen, and `ame desktop sounds soft` goes back to the whole Soft set.
+
+### Pause when the headphones come off
+
+When the headphones or the headset you are listening on are unplugged or go away (a Bluetooth headset out of range or
+switched off), every player that is playing pauses, so that a podcast never bursts out of the laptop in a quiet room. A
+notice says **Your headphones went away**, with **Play on speakers** to play on; when the headphones come back while it
+shows, it offers **Play**. Picking the speakers yourself while the headphones stay plugged in pauses nothing. Players
+are paused through their own media controls, the same ones the top bar's media card uses. It is on;
+`ame desktop pause-on-unplug on|off`, also in Control.
+
+### Clear voice
+
+**Clear voice** takes background noise and echo out of your microphone: the fan, the keyboard, the street and the
+room's echo. Calls hear your voice and little else, in every app, because the apps simply get a cleaner microphone:
+PipeWire's own echo cancel and noise suppression (its webrtc processor), as an input of its own named **Clear voice**,
+made the one in use while it is on. It works only while an app records, and costs some processor time then; nothing is
+sent or saved. It is off; turn it on with the switch at the end of the microphone's menu in quick settings (shown
+while an app records), with `ame desktop clear-voice on|off`, or in Control. Off puts back the microphone you had.
+
+### Sound presets
+
+**Sound presets** shape what an output plays, kept for each output: **Laptop** fills out thin laptop speakers,
+**Speech** makes voices and podcasts clearer, **Bass** is for music, **Flat** is as it comes. Each is PipeWire's own
+equaliser placed before that output, and only that output: headphones keep Flat until you pick otherwise. They are
+off, since a preset changes every app's sound; `ame desktop sound-presets on` turns them on, and the output's menu in
+quick settings (the arrow beside the volume) then shows the four with the curve of the one chosen. `ame desktop
+sound-preset flat|laptop|speech|bass` sets the output in use, also in Control.
 
 ## The lock screen
 

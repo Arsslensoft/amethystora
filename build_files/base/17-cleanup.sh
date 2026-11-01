@@ -33,6 +33,9 @@ systemctl --global enable amethystora-update-alert.service
 # With encrypted DNS on (ame security dns), offers to pause it on a network that wants a login first.
 # It does not start while encrypted DNS is off.
 systemctl --global enable amethystora-dns-portal.service
+# Clear voice and the sound presets (ame desktop clear-voice, sound-preset) start with PipeWire, and only for an
+# account that turned them on: their ExecCondition reads its key, so for everybody else nothing runs
+systemctl --global enable amethystora-clear-voice.service amethystora-sound-presets.service
 # Offers the image whose NVIDIA driver drives the machine's card, or the one without it on a machine whose
 # card none drives, once, to whoever logs in first
 systemctl enable amethystora-gpu-check.timer

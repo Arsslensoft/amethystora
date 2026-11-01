@@ -1539,7 +1539,8 @@ getting-set *ARGS:
 
 # Power you can see: the battery's menu says when it runs out, the watts, what used the most and its health (ame desktop
 # power battery [on|off]); a chip names an app that keeps the processor busy for two minutes (ame desktop power busy
-# [on|off]). Without on or off, it asks
+# [on|off]); the same menu lists every device's battery, with a notice once at 15% (ame desktop power devices [on|off]).
+# Without on or off, it asks
 [positional-arguments]
 power *ARGS:
     #!/usr/bin/bash
@@ -1548,13 +1549,14 @@ power *ARGS:
     source gettext.sh
     schema=org.gnome.shell.extensions.amethystora-ui.power
     usage() {
-        echo "usage: ame desktop power battery|busy [on|off]"
+        echo "usage: ame desktop power battery|busy|devices [on|off]"
         exit 64
     }
     [[ $# -ge 1 && $# -le 2 ]] || usage
     case "$1" in
         battery) key=battery-details ;;
         busy) key=busy-app ;;
+        devices) key=device-batteries ;;
         *) usage ;;
     esac
     state="${2:-}"
@@ -1562,6 +1564,8 @@ power *ARGS:
         if [[ "$(gsettings get "${schema}" "${key}")" == true ]]; then current=on; else current=off; fi
         if [[ "${key}" == battery-details ]]; then
             header="$(eval_gettext "Battery details (current: \${current})")"
+        elif [[ "${key}" == device-batteries ]]; then
+            header="$(eval_gettext "Your devices' batteries (current: \${current})")"
         else
             header="$(eval_gettext "Say when an app is busy (current: \${current})")"
         fi
@@ -1577,6 +1581,8 @@ power *ARGS:
         battery-details:off) echo "$(gettext "The battery's menu no longer explains the battery.")" ;;
         busy-app:on) echo "$(gettext "When the processor has been busy for two minutes, a chip beside the meters names the app, once an hour at most.")" ;;
         busy-app:off) echo "$(gettext "No chip names a busy app.")" ;;
+        device-batteries:on) echo "$(gettext "The battery's menu lists the battery of the mouse, the keyboard, the headphones and the rest, and says once when one is at 15%.")" ;;
+        device-batteries:off) echo "$(gettext "The battery's menu no longer lists other devices' batteries.")" ;;
     esac
 
 # The shelf: put files, text or a picture down while moving between apps, then drag them out (STATE: off, edge for the
@@ -2715,8 +2721,9 @@ text-shortcut *ARGS:
 bling ACTION="":
     @amethystora-bling ${1:+"$1"}
 
-# The desktop's own sounds: soft, Amethystora's lower and rounder set, or off (apps still make their own; SET: soft or
-# off; without it, it asks)
+# The desktop's own sounds: soft, Amethystora's lower and rounder set; glass, bright short chimes; wood, warm knocks and
+# taps; retro, eight-bit blips; or off (apps still make their own; SET: soft, glass, wood, retro or off; without it, it
+# asks)
 [positional-arguments]
 sounds SET="":
     #!/usr/bin/bash
@@ -2727,22 +2734,37 @@ sounds SET="":
     current=""
     if [[ "$(gsettings get "${schema}" event-sounds)" == false ]]; then
         current=off
-    elif [[ "$(gsettings get "${schema}" theme-name)" == "'amethystora'" ]]; then
-        current=soft
+    else
+        case "$(gsettings get "${schema}" theme-name)" in
+            "'amethystora'") current=soft ;;
+            "'amethystora-glass'") current=glass ;;
+            "'amethystora-wood'") current=wood ;;
+            "'amethystora-retro'") current=retro ;;
+        esac
     fi
     choice="${1:-}"
     if [[ -z "${choice}" ]]; then
-        echo "soft  $(gettext "Lower and rounder, for a quiet room")"
-        echo "off   $(gettext "The desktop makes no sound of its own; apps still can")"
+        echo "soft   $(gettext "Lower and rounder, for a quiet room")"
+        echo "glass  $(gettext "Bright, short chimes")"
+        echo "wood   $(gettext "Warm knocks and taps")"
+        echo "retro  $(gettext "Eight-bit blips")"
+        echo "off    $(gettext "The desktop makes no sound of its own; apps still can")"
         selected=()
         [[ -n "${current}" ]] && selected=(--selected "${current}")
-        choice="$(gum choose --header "$(gettext "Sounds")" "${selected[@]}" soft off)" || exit 0
+        choice="$(gum choose --header "$(gettext "Sounds")" "${selected[@]}" soft glass wood retro off)" || exit 0
     fi
     case "${choice}" in
-        soft)
-            gsettings set "${schema}" theme-name amethystora
+        soft | glass | wood | retro)
+            theme=amethystora
+            [[ "${choice}" == soft ]] || theme="amethystora-${choice}"
+            gsettings set "${schema}" theme-name "${theme}"
             gsettings set "${schema}" event-sounds true
-            echo "$(gettext "Sounds: soft.")"
+            case "${choice}" in
+                soft) echo "$(gettext "Sounds: soft.")" ;;
+                glass) echo "$(gettext "Sounds: glass.")" ;;
+                wood) echo "$(gettext "Sounds: wood.")" ;;
+                retro) echo "$(gettext "Sounds: retro.")" ;;
+            esac
             ;;
         off)
             # GNOME's volume keys play their step whatever event-sounds says: only this theme's silent step stops it
@@ -2751,7 +2773,162 @@ sounds SET="":
             echo "$(gettext "Sounds: off. Apps can still make sounds of their own.")"
             ;;
         *)
-            echo "usage: ame desktop sounds soft|off"
+            echo "usage: ame desktop sounds soft|glass|wood|retro|off"
+            exit 64
+            ;;
+    esac
+
+# Pause when the headphones come off (the audio module): the players pause when the headphones or a headset in use go
+# away, so that nothing plays out loud from the speakers (STATE: on or off; without it, it flips)
+[positional-arguments]
+pause-on-unplug STATE="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.audio
+    state="${1:-}"
+    if [[ -z "${state}" ]]; then
+        if [[ "$(gsettings get "${schema}" pause-on-unplug)" == true ]]; then state=off; else state=on; fi
+    fi
+    case "${state}" in
+        on)
+            gsettings set "${schema}" pause-on-unplug true
+            echo "$(gettext "Pause when the headphones come off: on. The players pause when the headphones in use go away.")"
+            ;;
+        off)
+            gsettings set "${schema}" pause-on-unplug false
+            echo "$(gettext "Pause when the headphones come off: off.")"
+            ;;
+        *)
+            echo "usage: ame desktop pause-on-unplug on|off"
+            exit 64
+            ;;
+    esac
+
+# Clear voice: the microphone through PipeWire's own echo cancel and noise suppression, as an input of its own made the
+# one in use; it works only while an app records, and nothing is sent or saved (STATE: on or off; without it, it flips)
+[positional-arguments]
+clear-voice STATE="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    state="${1:-}"
+    if [[ -z "${state}" ]]; then
+        if [[ "$(/usr/libexec/amethystora-sound clear-voice status)" == on ]]; then state=off; else state=on; fi
+    fi
+    case "${state}" in
+        on)
+            /usr/libexec/amethystora-sound clear-voice on
+            echo "$(gettext "Clear voice: on. Calls hear your voice without the background noise and the echo.")"
+            ;;
+        off)
+            /usr/libexec/amethystora-sound clear-voice off
+            echo "$(gettext "Clear voice: off. The microphone is as it comes.")"
+            ;;
+        *)
+            echo "usage: ame desktop clear-voice on|off"
+            exit 64
+            ;;
+    esac
+
+# Sound presets: the output menu offers Flat, Laptop, Speech and Bass per output, as PipeWire's own equaliser before
+# that output (STATE: on or off; without it, it flips). Off, every output plays as it comes; the choices are kept.
+[positional-arguments]
+sound-presets STATE="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    state="${1:-}"
+    if [[ -z "${state}" ]]; then
+        if [[ "$(/usr/libexec/amethystora-sound presets status | head -n1)" == on ]]; then state=off; else state=on; fi
+    fi
+    case "${state}" in
+        on)
+            /usr/libexec/amethystora-sound presets on
+            echo "$(gettext "Sound presets: on. Pick one for each output in the output menu of quick settings, or with ame desktop sound-preset.")"
+            ;;
+        off)
+            /usr/libexec/amethystora-sound presets off
+            echo "$(gettext "Sound presets: off. Every output plays as it comes.")"
+            ;;
+        *)
+            echo "usage: ame desktop sound-presets on|off"
+            exit 64
+            ;;
+    esac
+
+# The preset of the output in use: flat, laptop (fills out thin speakers), speech (voices and podcasts clearer) or bass
+# (PRESET; without it, it asks). Kept for that output only; it plays while sound presets are on.
+[positional-arguments]
+sound-preset PRESET="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    preset="${1:-}"
+    if [[ -z "${preset}" ]]; then
+        echo "flat    $(gettext "As it comes")"
+        echo "laptop  $(gettext "Fills out thin speakers")"
+        echo "speech  $(gettext "Voices and podcasts clearer")"
+        echo "bass    $(gettext "More bass, for music")"
+        preset="$(gum choose --header "$(gettext "Preset for the output in use")" flat laptop speech bass)" || exit 0
+    fi
+    case "${preset}" in
+        flat | laptop | speech | bass) ;;
+        *)
+            echo "usage: ame desktop sound-preset flat|laptop|speech|bass"
+            exit 64
+            ;;
+    esac
+    /usr/libexec/amethystora-sound preset "${preset}"
+    if [[ "$(/usr/libexec/amethystora-sound presets status | head -n1)" == on ]]; then
+        echo "$(eval_gettext "Preset for the output in use: \${preset}.")"
+    else
+        echo "$(eval_gettext "Preset for the output in use: \${preset}. It plays once sound presets are on: ame desktop sound-presets on")"
+    fi
+
+# The brightness of external screens in quick settings, over DDC/CI with ddcutil (STATE: on or off; without it, it
+# flips). On gives the person at the machine the displays' i2c buses (a udev rule, asking for an administrator's
+# password); off takes them back.
+[positional-arguments]
+screen-brightness STATE="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.brightness
+    rule=/etc/udev/rules.d/60-amethystora-ddc.rules
+    modules=/etc/modules-load.d/amethystora-ddc.conf
+    state="${1:-}"
+    if [[ -z "${state}" ]]; then
+        if [[ -e "${rule}" ]]; then state=off; else state=on; fi
+    fi
+    case "${state}" in
+        on)
+            echo "$(gettext "External screens' brightness: each screen that speaks DDC/CI gets a slider in quick settings.")"
+            echo "$(gettext "It gives the person at the machine the i2c buses of the displays, which ddcutil talks to the screens on. Such a bus can also reach other chips of the graphics card, so it is offered rather than on. Your administrator's password is asked.")"
+            sudo install -Dm0644 /usr/share/amethystora/ddc/60-amethystora-ddc.rules "${rule}"
+            sudo install -Dm0644 /usr/share/amethystora/ddc/amethystora-ddc.conf "${modules}"
+            sudo modprobe i2c-dev
+            sudo udevadm control --reload
+            sudo udevadm trigger --subsystem-match=i2c-dev --action=change
+            gsettings set "${schema}" external-screens true
+            echo "$(gettext "External screens' brightness: on. Open quick settings to see a slider for each screen.")"
+            ;;
+        off)
+            gsettings set "${schema}" external-screens false
+            if [[ -e "${rule}" || -e "${modules}" ]]; then
+                sudo rm -f "${rule}" "${modules}"
+                sudo udevadm control --reload
+                sudo udevadm trigger --subsystem-match=i2c-dev --action=change
+            fi
+            echo "$(gettext "External screens' brightness: off. The displays' i2c buses are root's again.")"
+            ;;
+        *)
+            echo "usage: ame desktop screen-brightness on|off"
             exit 64
             ;;
     esac

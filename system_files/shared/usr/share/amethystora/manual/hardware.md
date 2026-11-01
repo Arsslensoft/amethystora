@@ -64,12 +64,27 @@ does the same, since NVIDIA's driver does not load without the key.
   help: kernel lockdown refuses the driver, so it offers `ame security lockdown off`, and turning Secure Boot
   on and enrolling is the choice that keeps lockdown. A dock whose video comes over USB-C's DisplayPort has
   no DisplayLink device in `lsusb` (vendor `17e9`), and needs none of this.
-- **External monitor brightness** can be set from the command line with `ddcutil`, for monitors
+- **External monitor brightness**: see [External screens' brightness](#external-screens-brightness). With it on,
+  it can also be set from the command line with `ddcutil`, for monitors
   that support it.
 - **Thunderbolt docks and devices** read and write memory by themselves unless the IOMMU keeps each to
   what it was given. The [security report](security.md#see-where-you-stand)'s **DMA protection** check
   says whether this machine's does, and `ame security kernel-args iommu.strict=1 on` turns it on where
   the firmware has VT-d or AMD-Vi.
+
+### External screens' brightness
+
+An external screen's brightness is usually the buttons under its edge. With **Brightness of external screens** on,
+each screen that speaks DDC/CI (most made in the last ten years, when it is not turned off in the screen's own menu)
+gets a slider of its own in quick settings, after the brightness slider, named as the Displays settings name it. On a
+laptop the brightness keys move them with the built-in screen.
+
+It is off, and turning it on asks for an administrator's password: `ame desktop screen-brightness on` (also in
+Control, under System) gives the person at the machine the i2c buses of the graphics card's display connectors, which
+`ddcutil` talks to the screens on. Such a bus can also reach other chips of the card, so it is a grant the machine's
+owner makes, and the [security report](security.md#see-where-you-stand) lists it while it is on.
+`ame desktop screen-brightness off` takes it back. A screen's brightness is read when quick settings opens and set when
+a slider moves; nothing runs otherwise.
 
 ## Memory
 

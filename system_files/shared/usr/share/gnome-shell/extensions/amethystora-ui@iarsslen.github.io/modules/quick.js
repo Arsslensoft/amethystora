@@ -160,6 +160,9 @@ export class Quick {
         if (this._focusBlock?.get_parent() === this.grid)
             this.grid.remove_child(this._focusBlock);
         this._focusBlock = null;
+        if (this._screensBlock?.get_parent() === this.grid)
+            this.grid.remove_child(this._screensBlock);
+        this._screensBlock = null;
         this._releaseSystem();
         this._restoreOrder();
         this.menu?.box.remove_style_class_name('amethystora-quick');
@@ -371,7 +374,7 @@ export class Quick {
             const fixed = [BRIGHTNESS, OUTPUT, INPUT, SYSTEM, BACKGROUND].map(name => this._byClass(name));
             const [brightness, output, input, system, background] = fixed;
             const placed = new Set([...tiles, ...fixed, this._placeholder, this._hiddenRow, this._theme.block,
-                this._volume.block, this._hint, this._focusBlock]);
+                this._volume.block, this._hint, this._focusBlock, this._screensBlock]);
             const others = grid.get_children().filter(actor => !placed.has(actor));
             const sequence = [
                 ...tiles,
@@ -379,6 +382,7 @@ export class Quick {
                 this._focusBlock,
                 ...others,
                 brightness,
+                this._screensBlock,
                 output,
                 this._volume.block,
                 input,
@@ -406,6 +410,20 @@ export class Quick {
         if (this.grid && this._focusBlock?.get_parent() === this.grid)
             this.grid.remove_child(this._focusBlock);
         this._focusBlock = actor;
+        if (actor && this.grid) {
+            this._insert(actor, 2);
+            this._layout();
+        }
+    }
+
+    // The external screens' brightness (modules/brightness.js), or null: a block across both columns after GNOME's
+    // brightness slider, while the brightness module's screens are on
+    setScreensBlock(actor) {
+        if (this._screensBlock === actor)
+            return;
+        if (this.grid && this._screensBlock?.get_parent() === this.grid)
+            this.grid.remove_child(this._screensBlock);
+        this._screensBlock = actor;
         if (actor && this.grid) {
             this._insert(actor, 2);
             this._layout();
@@ -685,6 +703,12 @@ export class Quick {
     // The battery tile's menu, which the power module adds its explanation to (modules/power/battery.js)
     batteryMenu() {
         return this._battery?.tile.menu ?? null;
+    }
+
+    // What the power module's device batteries say for the tile on a computer without a battery of its own: the lowest
+    // device, {label, percent}, or null (modules/power/devices.js)
+    setOtherBatteries(lowest) {
+        this._battery?.setOthers(lowest);
     }
 
     batterySubtitle() {

@@ -1,0 +1,21 @@
+[Unit]
+Description=Clear voice: the microphone through PipeWire's echo cancel and noise suppression
+Documentation=file:///usr/share/amethystora/manual/desktop.md
+# Started with PipeWire, and by ame desktop clear-voice on; only while the account turned it on
+After=pipewire.service pipewire-session-manager.service
+BindsTo=pipewire.service
+
+[Service]
+Type=simple
+ExecCondition=/usr/libexec/amethystora-sound wanted clear-voice
+ExecStart=/usr/libexec/amethystora-sound run clear-voice
+Restart=on-failure
+RestartSec=5
+Slice=session.slice
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+NoNewPrivileges=yes
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=pipewire.service

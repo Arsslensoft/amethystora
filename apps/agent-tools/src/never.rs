@@ -180,6 +180,11 @@ fn ame_refusal(args: &[String]) -> Option<String> {
             Some("the live pill's list of what the agent changes is the user's to turn off".into())
         }
         ["apps", "aur", ..] => Some("turning the AUR on is the user's choice alone".into()),
+        // External screens' brightness gives the person at the machine the displays' i2c buses, which reach other chips
+        // of the graphics card too: an access grant only the machine's owner makes (taking it back is fine)
+        ["desktop", "screen-brightness"] | ["desktop", "screen-brightness", "on", ..] => {
+            Some("giving the displays' i2c buses to the person at the machine is the owner's choice: the user turns it on".into())
+        }
         // Text shortcuts look at what the person types: turning them on (or flipping them, which may turn them on) is
         // theirs alone, and the shortcuts are their own writing, which the agent neither reads nor changes
         ["desktop", "text-shortcuts"] | ["desktop", "text-shortcuts", "on", ..] => {
@@ -237,6 +242,9 @@ mod tests {
             "ame agent root each",
             "ame agent tools on",
             "ame apps aur on",
+            "ame desktop screen-brightness on",
+            "ame desktop screen-brightness",
+            "ame -q desktop::screen-brightness on",
             "ame desktop text-shortcuts on",
             "ame desktop text-shortcuts",
             "ame desktop text-shortcut add ;x",
@@ -356,6 +364,9 @@ mod tests {
             "ame security dns quad9",
             "ame system raid status",
             "ame desktop text-shortcuts off",
+            "ame desktop screen-brightness off",
+            "ame desktop clear-voice on",
+            "ame desktop sound-preset bass",
             "ame desktop text-shortcut list",
             "ame -q desktop::text-shortcuts off",
             "ame -- security status",

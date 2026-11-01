@@ -183,6 +183,8 @@ read_in_background touch gsettings list-recursively org.gnome.shell.extensions.a
 read_in_background hints gsettings get org.gnome.shell.extensions.amethystora-ui.hints enabled
 read_in_background app-grid gsettings get org.gnome.shell.extensions.amethystora-ui.appgrid recent
 read_in_background sound gsettings list-recursively org.gnome.desktop.sound
+read_in_background audio gsettings list-recursively org.gnome.shell.extensions.amethystora-ui.audio
+read_in_background sink pactl get-default-sink
 read_in_background space-names gsettings get org.gnome.shell.extensions.amethystora-ui.workspaces auto-names
 read_in_background sets gsettings get org.gnome.shell.extensions.amethystora-ui.workspaces sets
 read_in_background pill gsettings list-recursively org.gnome.shell.extensions.amethystora-ui.pill
@@ -633,16 +635,72 @@ GROUP=""
 SOUNDS=""
 if [[ "$(said sound | awk '$2 == "event-sounds" { print $3 }')" == false ]]; then
     SOUNDS=off
-elif [[ "$(said sound | awk '$2 == "theme-name" { print $3 }')" == "'amethystora'" ]]; then
-    SOUNDS=soft
+else
+    case "$(said sound | awk '$2 == "theme-name" { print $3 }')" in
+        "'amethystora'") SOUNDS=soft ;;
+        "'amethystora-glass'") SOUNDS=glass ;;
+        "'amethystora-wood'") SOUNDS=wood ;;
+        "'amethystora-retro'") SOUNDS=retro ;;
+    esac
 fi
 [[ "${ ended sound; }" == 0 ]] || REASON="${ gettext "GNOME's sound settings are not installed."; }"
 choice soft "${ gettext "Soft"; }" "${ gettext "Lower and rounder, for a quiet room"; }" false ame desktop sounds soft
+choice glass "${ gettext "Glass"; }" "${ gettext "Bright, short chimes"; }" false ame desktop sounds glass
+choice wood "${ gettext "Wood"; }" "${ gettext "Warm knocks and taps"; }" false ame desktop sounds wood
+choice retro "${ gettext "Retro"; }" "${ gettext "Eight-bit blips"; }" false ame desktop sounds retro
 choice off "${ gettext "Off"; }" "${ gettext "The desktop makes no sound of its own; apps still can"; }" false ame desktop sounds off
 GROUP="${ gettext "Sound"; }"
 USAGE="ame desktop sounds SET"
 item appearance sounds choice "${ gettext "Sounds"; }" \
     "${ gettext "The desktop's own sounds: notifications, screenshots, volume and the rest."; }" "${SOUNDS}" desktop#sounds
+
+# The audio module (org.gnome.shell.extensions.amethystora-ui.audio): the players paused when the headphones come off,
+# Clear voice and the sound presets; the last two through amethystora-sound, which starts their PipeWire units
+AUDIO="${ said audio; }"
+audio_onoff() { [[ "${ value_of "${AUDIO}" "$1" "(.*)\$"; }" == true ]] && echo on || echo off; }
+audio_reason() { [[ "${ ended audio; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"; }
+audio_reason
+switch_choices false ame desktop pause-on-unplug
+USAGE="ame desktop pause-on-unplug on|off"
+item appearance pause-on-unplug switch "${ gettext "Pause when the headphones come off"; }" \
+    "${ gettext "Every player pauses when the headphones or a headset in use go away, so nothing plays out loud."; }" \
+    "${ audio_onoff pause-on-unplug; }" desktop#pause-when-the-headphones-come-off
+audio_reason
+switch_choices false ame desktop clear-voice
+USAGE="ame desktop clear-voice on|off"
+item appearance clear-voice switch "${ gettext "Clear voice"; }" \
+    "${ gettext "The microphone without background noise and echo, in every app, through PipeWire's own processing. Only while an app records."; }" \
+    "${ audio_onoff clear-voice; }" desktop#clear-voice
+audio_reason
+switch_choices false ame desktop sound-presets
+USAGE="ame desktop sound-presets on|off"
+item appearance sound-presets switch "${ gettext "Sound presets"; }" \
+    "${ gettext "The output menu offers Flat, Laptop, Speech and Bass for each output. A preset changes every app's sound."; }" \
+    "${ audio_onoff sound-presets; }" desktop#sound-presets
+# The preset of the output in use, as the key has it for that output's node name
+SINK="${ said sink; }"
+SINK="${SINK%%$'\n'*}"
+PRESET=flat
+if [[ "${SINK}" =~ ^[A-Za-z0-9_][A-Za-z0-9_.:+-]*$ ]]; then
+    presets="${ value_of "${AUDIO}" presets "(.*)\$"; }"
+    # What follows this output's quoted name, when the key names it (matched as it is: a node name has dots)
+    rest="${presets#*"'${SINK}': '"}"
+    if [[ "${rest}" != "${presets}" ]]; then
+        found="${rest%%"'"*}"
+        [[ "${found}" =~ ^(laptop|speech|bass)$ ]] && PRESET="${found}"
+    fi
+else
+    REASON="${ gettext "No sound output is in use."; }"
+fi
+audio_reason
+[[ "${ audio_onoff sound-presets; }" == on ]] || REASON="${ gettext "Sound presets are off."; }"
+choice flat "${ gettext "Flat"; }" "${ gettext "As it comes"; }" false ame desktop sound-preset flat
+choice laptop "${ gettext "Laptop"; }" "${ gettext "Fills out thin speakers"; }" false ame desktop sound-preset laptop
+choice speech "${ gettext "Speech"; }" "${ gettext "Voices and podcasts clearer"; }" false ame desktop sound-preset speech
+choice bass "${ gettext "Bass"; }" "${ gettext "More bass, for music"; }" false ame desktop sound-preset bass
+USAGE="ame desktop sound-preset PRESET"
+item appearance sound-preset choice "${ gettext "Preset of the output in use"; }" \
+    "${ gettext "Kept for this output only."; }" "${PRESET}" desktop#sound-presets
 GROUP=""
 
 # --- Desktop ---------------------------------------------------------------------------------------
@@ -1254,6 +1312,9 @@ power_item battery-details battery-details "${ gettext "Battery details"; }" \
 power_item busy-app busy-app "${ gettext "Say when an app is busy"; }" \
     "${ gettext "A chip beside the meters names an app that has kept the processor busy for two minutes."; }" \
     ame desktop power busy
+power_item device-batteries device-batteries "${ gettext "Your devices' batteries"; }" \
+    "${ gettext "The battery's menu lists the mouse, the keyboard, headphones and the phone, and says once when one is at 15%."; }" \
+    ame desktop power devices
 GROUP=""
 
 # Focus profiles (org.gnome.shell.extensions.amethystora-ui.focus): the profile picked by hand, the two triggers, and
@@ -2027,6 +2088,18 @@ USAGE="ame system bios"
 item system bios action "${ gettext "Restart into the firmware settings"; }" \
     "${ gettext "Restarts the machine into its UEFI setup, where Secure Boot and the order of the disks are set. It asks first."; }" \
     "" hardware#secure-boot
+
+# External screens' brightness over DDC/CI: on while the image's rule is in /etc/udev/rules.d, which the switch copies
+# there with an administrator's password, so it opens in a terminal
+SCREENS=off
+[[ -e /etc/udev/rules.d/60-amethystora-ddc.rules ]] && SCREENS=on
+command -v ddcutil >/dev/null || REASON="${ gettext "ddcutil is not installed."; }"
+switch_choices true ame desktop screen-brightness
+GROUP="${ gettext "Hardware"; }"
+USAGE="ame desktop screen-brightness on|off"
+item system screen-brightness switch "${ gettext "Brightness of external screens"; }" \
+    "${ gettext "A slider in quick settings for each screen that speaks DDC/CI. It gives the person at the machine the displays' i2c buses, and asks for an administrator's password."; }" \
+    "${SCREENS}" hardware#external-screens-brightness
 
 COMMAND=(ame system clean)
 BUTTON="${ gettext "Free space…"; }"

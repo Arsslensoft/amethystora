@@ -115,6 +115,9 @@ QUIT_KEYS=(frozen-dialog)
 # points at a folder of the account's), which amethystora-setup's BEZEL_KEYS and SOUND_KEYS take
 BEZEL=org.gnome.shell.extensions.amethystora-ui.bezel
 BEZEL_KEYS=(round-corners)
+# The audio module's switches, which amethystora-setup's AUDIO_KEYS takes (never presets, by this machine's outputs)
+AUDIO=org.gnome.shell.extensions.amethystora-ui.audio
+AUDIO_KEYS=(pause-on-unplug clear-voice sound-presets)
 SOUND=org.gnome.desktop.sound
 SOUND_KEYS=(event-sounds)
 # The theme module's keys amethystora-setup's LOOK_KEYS takes beside the account's look files: an accent per workspace
@@ -130,7 +133,7 @@ APPGRID=org.gnome.shell.extensions.amethystora-ui.appgrid
 APPGRID_KEYS=(recent)
 # The battery explained and the busy app's chip, which amethystora-setup's POWER_KEYS takes
 POWER=org.gnome.shell.extensions.amethystora-ui.power
-POWER_KEYS=(battery-details busy-app)
+POWER_KEYS=(battery-details busy-app device-batteries)
 # Focus profiles: the triggers and what each profile does, which amethystora-setup's FOCUS_KEYS takes; never the profile on
 # now, when it ends, or a saved set a profile names
 FOCUS=org.gnome.shell.extensions.amethystora-ui.focus
@@ -246,6 +249,7 @@ settings() {
         changed "${SEARCH}" | awk 'NR == FNR { kept[$1]; next } $2 in kept' <(printf '%s\n' "${SEARCH_KEYS[@]}") -
         changed "${EMOJI}" | awk 'NR == FNR { kept[$1]; next } $2 in kept' <(printf '%s\n' "${EMOJI_KEYS[@]}") -
         changed "${BEZEL}" | awk 'NR == FNR { kept[$1]; next } $2 in kept' <(printf '%s\n' "${BEZEL_KEYS[@]}") -
+        changed "${AUDIO}" | awk 'NR == FNR { kept[$1]; next } $2 in kept' <(printf '%s\n' "${AUDIO_KEYS[@]}") -
         changed "${SOUND}" | awk 'NR == FNR { kept[$1]; next } $2 in kept' <(printf '%s\n' "${SOUND_KEYS[@]}") -
         changed "${TRANSITIONS}" | awk 'NR == FNR { kept[$1]; next } $2 in kept' <(printf '%s\n' "${TRANSITIONS_KEYS[@]}") -
         changed "${HINTS}" | awk 'NR == FNR { kept[$1]; next } $2 in kept' <(printf '%s\n' "${HINTS_KEYS[@]}") -
@@ -282,7 +286,7 @@ LAYOUT=tiling
 SETTINGS="$(settings | jq -sc --arg layout "${LAYOUT}" --arg tiling "${TILING}" --arg pointer "${POINTER}" --arg glass "${GLASS}" \
     --arg windows "${WINDOWS}" --arg dock "${DOCK}" --arg motion "${MOTION}" --arg workspaces "${WORKSPACES}" \
     --arg pill "${PILL}" --arg quick "${QUICK}" --arg bars "${BARS}" --arg today "${TODAY}" --arg breaks "${BREAKS}" \
-    --arg search "${SEARCH}" --arg emoji "${EMOJI}" --arg bezel "${BEZEL}" --arg sound "${SOUND}" \
+    --arg search "${SEARCH}" --arg emoji "${EMOJI}" --arg bezel "${BEZEL}" --arg audio "${AUDIO}" --arg sound "${SOUND}" \
     --arg transitions "${TRANSITIONS}" --arg hints "${HINTS}" --arg appgrid "${APPGRID}" \
     --arg focus "${FOCUS}" --arg power "${POWER}" --arg access "${ACCESS}" --arg touch "${TOUCH}" \
     --arg present "${PRESENT}" --arg screenshot "${SCREENSHOT}" --arg deskwidgets "${DESKWIDGETS}" \
@@ -295,7 +299,7 @@ SETTINGS="$(settings | jq -sc --arg layout "${LAYOUT}" --arg tiling "${TILING}" 
             elif .schema == $quit then .key == "force-quit"
             elif .schema == $tools then .key != "convert-in-files"
             else .schema | IN("org.gnome.shell", $tiling, $pointer, $glass, $motion, $workspaces, $dock, $pill, $quick, $bars,
-                $today, $breaks, $bezel, $sound, $transitions, $hints, $appgrid, $focus, $power,
+                $today, $breaks, $bezel, $audio, $sound, $transitions, $hints, $appgrid, $focus, $power,
                 $access, $touch, $present, $screenshot,
                 $deskwidgets, $shelf, $desks, $privacy) | not end))
         as $e ({}; .[$e.schema][$e.key] = $e.value))}
@@ -319,6 +323,7 @@ SETTINGS="$(settings | jq -sc --arg layout "${LAYOUT}" --arg tiling "${TILING}" 
     + ([$all[] | select(.schema == $emoji and .key != "emoji-picker")]
         | if length > 0 then {emoji: (map({(.key): .value}) | add)} else {} end)
     + ([$all[] | select(.schema == $bezel)] | if length > 0 then {bezel: (map({(.key): .value}) | add)} else {} end)
+    + ([$all[] | select(.schema == $audio)] | if length > 0 then {audio: (map({(.key): .value}) | add)} else {} end)
     + ([$all[] | select(.schema == $sound)] | if length > 0 then {sound: (map({(.key): .value}) | add)} else {} end)
     + ([$all[] | select(.schema == $transitions)] | if length > 0 then {transitions: (map({(.key): .value}) | add)} else {} end)
     + ([$all[] | select(.schema == $hints)] | if length > 0 then {hints: (map({(.key): .value}) | add)} else {} end)

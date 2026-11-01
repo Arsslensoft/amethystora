@@ -1352,6 +1352,11 @@ drift() {
             cmp -s "${etc}" <(/usr/libexec/amethystora-hardening expected "${rel}") && continue
         # The Xbox wireless adapter's blacklist of mt76x2u, exactly as ame apps xbox-adapter copies it
         [[ "${rel}" == modprobe.d/xone.conf ]] && cmp -s "${etc}" /usr/share/amethystora/xone/xone.conf && continue
+        # External screens' brightness, exactly as ame desktop screen-brightness on copies it (the report says it is on)
+        [[ "${rel}" == udev/rules.d/60-amethystora-ddc.rules ]] &&
+            cmp -s "${etc}" /usr/share/amethystora/ddc/60-amethystora-ddc.rules && continue
+        [[ "${rel}" == modules-load.d/amethystora-ddc.conf ]] &&
+            cmp -s "${etc}" /usr/share/amethystora/ddc/amethystora-ddc.conf && continue
         if [[ ! -e "${usr}" && ! -L "${usr}" ]]; then
             printf 'added\t%s\t\n' "${etc}"
         elif [[ ! -e "${etc}" && ! -L "${etc}" ]]; then

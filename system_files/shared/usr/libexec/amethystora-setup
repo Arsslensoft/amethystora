@@ -22,7 +22,7 @@
 #   extensions   the GNOME extensions turned on, of those installed here
 #   theme        the desktop theme
 #   settings     {layout, favorites, keybindings, tiling, pointer, glass, motion, workspaces, windows, dock, pill, quick,
-#                bars, today, breaks, search, emoji, bezel, sound, look, transitions, hints, appgrid, focus, power,
+#                bars, today, breaks, search, emoji, bezel, audio, sound, look, transitions, hints, appgrid, focus, power,
 #                access, touch, present, screenshot, deskwidgets, shelf, desks,
 #                quit, privacy, tools}: the window
 #                layout, the dock's apps, the keys of
@@ -38,7 +38,8 @@
 #                on every screen and over fullscreen (BARS_KEYS), today's tasks in the calendar (TODAY_KEYS; never
 #                the weather, which sends the place chosen in Weather), GNOME's rest reminders (BREAKS_KEYS), what
 #                the search finds besides GNOME's own (SEARCH_KEYS), the emoji picker's skin tone (EMOJI_KEYS), rounded
-#                corners on a laptop's own screen (BEZEL_KEYS), whether the desktop makes its own sounds (SOUND_KEYS;
+#                corners on a laptop's own screen (BEZEL_KEYS), the audio module's switches (AUDIO_KEYS; never
+#                the presets, which name this machine's outputs), whether the desktop makes its own sounds (SOUND_KEYS;
 #                never the sound theme's name, which Settings sets to a folder of the account's), the look: the
 #                accent, Daylight, colours from the wallpaper and an accent per workspace (LOOK_KEYS), the reveal at
 #                login, the tips and the app grid's row of recent apps (TRANSITIONS_KEYS, HINTS_KEYS, APPGRID_KEYS), what
@@ -191,6 +192,10 @@ QUIT_KEYS='{"frozen-dialog": ["b"]}'
 # Rounded corners on a laptop's own screen
 BEZEL=org.gnome.shell.extensions.amethystora-ui.bezel
 BEZEL_KEYS='{"round-corners": ["b"]}'
+# The players paused when the headphones come off, Clear voice and the sound presets' switch (ame desktop
+# pause-on-unplug, clear-voice, sound-presets). Never presets, whose keys are this machine's outputs' names.
+AUDIO=org.gnome.shell.extensions.amethystora-ui.audio
+AUDIO_KEYS='{"pause-on-unplug": ["b"], "clear-voice": ["b"], "sound-presets": ["b"]}'
 # Whether the desktop makes its own sounds (ame desktop sounds soft|off). Never theme-name: Settings points it at a
 # theme it writes into the account's own folder for the alert sound, which another machine does not have.
 SOUND=org.gnome.desktop.sound
@@ -214,7 +219,7 @@ APPGRID=org.gnome.shell.extensions.amethystora-ui.appgrid
 APPGRID_KEYS='{"recent": ["b"]}'
 # The battery explained and the busy app's chip (Power you can see)
 POWER=org.gnome.shell.extensions.amethystora-ui.power
-POWER_KEYS='{"battery-details": ["b"], "busy-app": ["b"]}'
+POWER_KEYS='{"battery-details": ["b"], "busy-app": ["b"], "device-batteries": ["b"]}'
 # The shelf, by how it opens; never what it holds, which is never written anywhere
 SHELF=org.gnome.shell.extensions.amethystora-ui.shelf
 SHELF_KEYS='{"shelf": ["s", ["off", "edge", "shake"]]}'
@@ -399,7 +404,7 @@ if type != "object" then "it is not a JSON object" else
     at("extensions"; each("extensions"; name; "an extension's id")),
     at("theme"; if type == "string" and test("^[A-Za-z0-9][A-Za-z0-9._-]*$") then empty else "theme is not a theme's name" end),
     at("settings"; only(["layout", "favorites", "keybindings", "tiling", "paperwm", "pointer", "glass", "motion", "workspaces",
-            "windows", "dock", "pill", "quick", "bars", "today", "breaks", "search", "emoji", "bezel", "sound", "look", "transitions",
+            "windows", "dock", "pill", "quick", "bars", "today", "breaks", "search", "emoji", "bezel", "audio", "sound", "look", "transitions",
             "hints", "appgrid", "focus", "power", "access", "touch", "present",
             "screenshot", "deskwidgets", "shelf", "desks", "quit", "privacy", "tools"]; "settings."),
         (if type == "object" then
@@ -487,6 +492,10 @@ if type != "object" then "it is not a JSON object" else
                 (if type == "object" then to_entries[] | select(.key | IN($bezel | keys[])) | $bezel[.key] as $spec
                     | if .value | valid($spec) then empty else "settings.bezel.\(.key) is \(wanted($spec))" end
                  else empty end)),
+            at("audio"; only($audio | keys; "settings.audio."),
+                (if type == "object" then to_entries[] | select(.key | IN($audio | keys[])) | $audio[.key] as $spec
+                    | if .value | valid($spec) then empty else "settings.audio.\(.key) is \(wanted($spec))" end
+                 else empty end)),
             at("sound"; only($sound | keys; "settings.sound."),
                 (if type == "object" then to_entries[] | select(.key | IN($sound | keys[])) | $sound[.key] as $spec
                     | if .value | valid($spec) then empty else "settings.sound.\(.key) is \(wanted($spec))" end
@@ -569,7 +578,7 @@ check() {
         --argjson quick "${QUICK_KEYS}" \
         --argjson bars "${BARS_KEYS}" --argjson today "${TODAY_KEYS}" --argjson breaks "${BREAKS_KEYS}" \
         --argjson search "${SEARCH_KEYS}" --argjson emoji "${EMOJI_KEYS}" \
-        --argjson bezel "${BEZEL_KEYS}" --argjson sound "${SOUND_KEYS}" \
+        --argjson bezel "${BEZEL_KEYS}" --argjson audio "${AUDIO_KEYS}" --argjson sound "${SOUND_KEYS}" \
         --argjson look "${LOOK_KEYS}" \
         --argjson transitions "${TRANSITIONS_KEYS}" --argjson hints "${HINTS_KEYS}" --argjson appgrid "${APPGRID_KEYS}" \
         --argjson focus "${FOCUS_KEYS}" --argjson power "${POWER_KEYS}" \
@@ -720,7 +729,7 @@ current() {
             value="$(gsettings get "${PILL}" "${key}" 2>/dev/null | as_json)"
             jq -nc --arg k "${key}" --argjson v "${value:-null}" '{pill: {($k): $v}}'
         done < <(jq -r '.settings.pill // {} | keys[]' <<<"$1")
-        for area in quick bars today breaks search emoji bezel sound transitions hints appgrid focus power access touch \
+        for area in quick bars today breaks search emoji bezel audio sound transitions hints appgrid focus power access touch \
             present screenshot deskwidgets shelf desks quit privacy tools; do
             case "${area}" in
                 quick) schema="${QUICK}" ;;
@@ -730,6 +739,7 @@ current() {
                 search) schema="${SEARCH}" ;;
                 emoji) schema="${EMOJI}" ;;
                 bezel) schema="${BEZEL}" ;;
+                audio) schema="${AUDIO}" ;;
                 sound) schema="${SOUND}" ;;
                 transitions) schema="${TRANSITIONS}" ;;
                 hints) schema="${HINTS}" ;;
@@ -759,7 +769,7 @@ current() {
         done < <(jq -r '.settings.look // {} | keys[]' <<<"$1")
     } | jq -sc 'reduce .[] as $x ({favorites: null, keybindings: {}, tiling: {}, pointer: {}, glass: {}, motion: {},
         workspaces: {}, windows: {}, dock: {}, pill: {}, quick: {}, bars: {}, today: {}, breaks: {}, search: {}, emoji: {},
-        bezel: {}, sound: {}, look: {}, transitions: {}, hints: {}, appgrid: {}, focus: {}, power: {}, access: {},
+        bezel: {}, audio: {}, sound: {}, look: {}, transitions: {}, hints: {}, appgrid: {}, focus: {}, power: {}, access: {},
         touch: {}, present: {},
         screenshot: {}, deskwidgets: {}, shelf: {}, desks: {},
         quit: {}, privacy: {}, tools: {}};
@@ -896,7 +906,7 @@ def brew($x; $k): $x.brew[$k] // [];
         + if $v == null then {ok: false, why: "this machine has no such pill setting"} else {} end),
     ($hs.pill // {} | to_entries[] | .key as $k | select($fs.pill // {} | has($k) | not)
         | {area: "pill", action: "remove", key: $k, from: .value}),
-    (("quick", "bars", "today", "breaks", "search", "emoji", "bezel", "sound", "transitions", "hints", "appgrid", "focus", "power",
+    (("quick", "bars", "today", "breaks", "search", "emoji", "bezel", "audio", "sound", "transitions", "hints", "appgrid", "focus", "power",
         "access", "touch", "present",
         "screenshot", "deskwidgets", "shelf", "desks", "quit", "privacy", "tools") as $a
     | ($fs[$a] // {} | to_entries[] | .key as $k | $now[$a][$k] as $v
@@ -972,13 +982,13 @@ def text:
         + if .action == "set" then ": \(.to | tojson)" + if .from == null then "" else ", in place of \(.from | tojson)" end
           else ", \(.from | tojson) here, back to the image's" end
     elif .area == "quick" or .area == "bars" or .area == "today" or .area == "breaks"
-        or .area == "search" or .area == "emoji" or .area == "bezel" or .area == "sound"
+        or .area == "search" or .area == "emoji" or .area == "bezel" or .area == "audio" or .area == "sound"
         or .area == "transitions" or .area == "hints" or .area == "appgrid" or .area == "focus" or .area == "power"
         or .area == "access" or .area == "touch"
         or .area == "present" or .area == "screenshot" or .area == "deskwidgets"
         or .area == "shelf" or .area == "desks" or .area == "quit" or .area == "privacy" or .area == "tools" then
         {quick: "quick settings'", bars: "the top bar's", today: "the calendar's", breaks: "the rest reminders'",
-            search: "the search's", emoji: "the emoji picker's", bezel: "the screen's", sound: "the desktop's",
+            search: "the search's", emoji: "the emoji picker's", bezel: "the screen's", audio: "the audio module's", sound: "the desktop's",
             transitions: "the transitions'", hints: "the tips'", appgrid: "the app grid's",
             focus: "focus profiles'", power: "the power module's",
             access: "seeing and reading's", touch: "touch and pen's",
@@ -1227,7 +1237,7 @@ add_all() {
         name="$(jq -r .key <<<"${change}")"
         gsettings set "${PILL}" "${name}" "$(jq -c .to <<<"${change}")" || FAILED+=("the live pill's ${name}")
     done
-    for area in quick bars today breaks search emoji bezel sound transitions hints appgrid focus power access touch \
+    for area in quick bars today breaks search emoji bezel audio sound transitions hints appgrid focus power access touch \
         present screenshot deskwidgets shelf desks quit privacy tools; do
         case "${area}" in
             quick) schema="${QUICK}" label="quick settings'" ;;
@@ -1237,6 +1247,7 @@ add_all() {
             search) schema="${SEARCH}" label="the search's" ;;
             emoji) schema="${EMOJI}" label="the emoji picker's" ;;
             bezel) schema="${BEZEL}" label="the screen's" ;;
+            audio) schema="${AUDIO}" label="the audio module's" ;;
             sound) schema="${SOUND}" label="the desktop's" ;;
             transitions) schema="${TRANSITIONS}" label="the transitions'" ;;
             hints) schema="${HINTS}" label="the tips'" ;;
@@ -1353,7 +1364,7 @@ remove_all() {
     for name in "${names[@]}"; do
         gsettings reset "${PILL}" "${name}" || FAILED+=("the live pill's ${name}")
     done
-    for area in quick bars today breaks search emoji bezel sound transitions hints appgrid focus power access touch \
+    for area in quick bars today breaks search emoji bezel audio sound transitions hints appgrid focus power access touch \
         present screenshot deskwidgets shelf desks quit privacy tools; do
         case "${area}" in
             quick) schema="${QUICK}" label="quick settings'" ;;
@@ -1363,6 +1374,7 @@ remove_all() {
             search) schema="${SEARCH}" label="the search's" ;;
             emoji) schema="${EMOJI}" label="the emoji picker's" ;;
             bezel) schema="${BEZEL}" label="the screen's" ;;
+            audio) schema="${AUDIO}" label="the audio module's" ;;
             sound) schema="${SOUND}" label="the desktop's" ;;
             transitions) schema="${TRANSITIONS}" label="the transitions'" ;;
             hints) schema="${HINTS}" label="the tips'" ;;
@@ -1487,6 +1499,7 @@ bake() {
           section("org.gnome.shell.extensions.amethystora-ui.search"; ($s.search // {})),
           section("org.gnome.shell.extensions.amethystora-ui.emoji"; ($s.emoji // {})),
           section("org.gnome.shell.extensions.amethystora-ui.bezel"; ($s.bezel // {})),
+          section("org.gnome.shell.extensions.amethystora-ui.audio"; ($s.audio // {})),
           section("org.gnome.desktop.sound"; ($s.sound // {})),
           section("org.gnome.shell.extensions.amethystora-ui.focus"; ($s.focus // {})),
           section("org.gnome.shell.extensions.amethystora-ui.present"; ($s.present // {})),

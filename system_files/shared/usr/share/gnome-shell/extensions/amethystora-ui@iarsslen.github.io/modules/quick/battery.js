@@ -71,6 +71,8 @@ class AmethystoraQuickLimitRow extends PopupMenu.PopupBaseMenuItem {
 export class BatteryTile {
     constructor() {
         this._batteries = new Map();
+        // The lowest of the other devices' batteries ({label, percent}), which shows the tile on a computer without one
+        this._others = null;
         this._cancellable = new Gio.Cancellable();
 
         this.tile = new QuickMenuToggle({
@@ -242,12 +244,15 @@ export class BatteryTile {
         if (!this._display)
             return;
         const wasPresent = this.tile.visible;
-        this.tile.visible = this.present;
+        this.tile.visible = this.present || this._others !== null;
         if (!this.present) {
-            if (wasPresent)
+            if (wasPresent && !this.tile.visible)
                 this.tile.menu.close();
+            if (this._others)
+                this._syncOthers();
             return;
         }
+        this.tile.title = _('Battery');
         const subtitle = this.subtitle();
         const names = [this._iconName(), this._display.IconName].filter(name => typeof name === 'string' && name);
         const gicon = new Gio.ThemedIcon({names, use_default_fallbacks: false});
@@ -270,6 +275,21 @@ export class BatteryTile {
         if (!this._pending)
             this._switch.state = this._display.ChargeThresholdEnabled === true;
         this._row.accessible_name = this._limitTitle.text;
+    }
+
+    setOthers(lowest) {
+        this._others = lowest && typeof lowest.label === 'string' && typeof lowest.percent === 'number' ? lowest : null;
+        this.sync();
+    }
+
+    // A computer without a battery of its own: the tile is the devices' batteries, saying the lowest
+    _syncOthers() {
+        const {label, percent} = this._others;
+        const subtitle = `${label} · ${formatPercent(percent)}`;
+        const gicon = new Gio.ThemedIcon({name: `battery-level-${10 * Math.floor(percent / 10)}-symbolic`});
+        this.tile.set({title: _('Batteries'), subtitle, gicon});
+        this.tile.menu.setHeader(gicon, _('Batteries'), subtitle);
+        this._row.visible = false;
     }
 
     // The 80% row, as the person's switch: UPower's own method on every battery that has a limit

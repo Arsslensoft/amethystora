@@ -4,12 +4,18 @@
 // filtered noise. Nothing is recorded and nothing is random: the noise comes from a seeded generator, so two runs
 // write byte-identical files.
 //
+// Three more sets play the same events from the same notes in other voices (round 6's R6-04, plans/ui-ideas/R6Sound):
+// Glass, bright short chimes (sine partials at a bell's inharmonic ratios, each fading fast); Wood, warm knocks and taps
+// (a struck bar: a low sine and its fourth partial, a quick drop of pitch at the strike and a click of filtered noise);
+// Retro, eight-bit blips (square and narrow pulse waves, held flat and cut off, the notes stepped). Each is a theme of
+// its own beside Soft's, amethystora-glass, -wood and -retro, falling through to the freedesktop theme the same way.
+//
 // The files are 48 kHz, 16-bit, mono WAV, which every sound server plays without a decoder. No file is normalised on
 // its own, so that the quiet ones stay quiet beside the loud ones; the script fails if any peak goes above -1 dBFS.
 // Every other event name falls through Inherits=freedesktop to the freedesktop theme.
 //
-//   node branding/sounds.mjs    writes system_files/shared/usr/share/sounds/amethystora (index.theme and stereo/)
-//                               and prints each file's length, peak and RMS
+//   node branding/sounds.mjs    writes system_files/shared/usr/share/sounds/amethystora (index.theme and stereo/),
+//                               amethystora-glass, -wood and -retro, and prints each file's length, peak and RMS
 import {mkdirSync, rmSync, writeFileSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -120,14 +126,118 @@ function noise(part, length, seed) {
     return bandpass(signal, part.freq, 0.9).map(x => x * 0.35);
 }
 
-function render(index, parts) {
+// --- The other sets' voices ----------------------------------------------------------------------------------------
+
+// A plain exponential fade from a short rise: the strike of a bell or a bar
+function struck(t, dur, rise, top) {
+    return t < rise ? top * t / rise : top * Math.pow(0.0001 / top, (t - rise) / (dur - rise));
+}
+
+// Glass: the note an octave above Soft's, sine partials at 1, 2.76 and 5.40 times it, the higher ones fading faster
+function glassTone(part, length) {
+    const signal = new Float64Array(length);
+    const start = Math.round(part.at * RATE);
+    const partials = [[1, 1, 1], [2.76, 0.32, 0.55], [5.4, 0.12, 0.3]];
+    const dur = Math.min(part.dur, 0.6);
+    for (let i = start; i < length; i++) {
+        const t = (i - start) / RATE;
+        if (t >= dur)
+            break;
+        const f = part.glide ? part.f * Math.pow(part.glide / part.f, Math.min(t / (0.8 * dur), 1)) : part.f;
+        let x = 0;
+        for (const [ratio, gain, life] of partials)
+            x += gain * Math.sin(2 * Math.PI * f * ratio * t) * struck(t, dur * life, 0.002, 1);
+        signal[i] = 0.26 * x;
+    }
+    return signal;
+}
+
+function glassNoise(part, length, seed) {
+    // A glassy tick: noise high up, very short
+    return noise({...part, dur: Math.min(part.dur, 0.05), freq: part.freq * 2}, length, seed).map(x => x * 0.8);
+}
+
+// Wood: a struck bar at Soft's notes, a low sine with a fourth partial, the pitch dropping a little as it is struck
+function woodTone(part, length) {
+    const signal = new Float64Array(length);
+    const start = Math.round(part.at * RATE);
+    const dur = Math.min(part.dur, 0.32);
+    let phase = 0, phase4 = 0;
+    for (let i = start; i < length; i++) {
+        const t = (i - start) / RATE;
+        if (t >= dur)
+            break;
+        const glide = part.glide ? Math.pow(part.glide / part.f, Math.min(t / dur, 1)) : 1;
+        const f = part.f * LOW * glide * (1 + 0.06 * Math.exp(-t / 0.004));
+        phase = (phase + f / RATE) % 1;
+        phase4 = (phase4 + 3.93 * f / RATE) % 1;
+        signal[i] = 0.5 * Math.sin(2 * Math.PI * phase) * struck(t, dur, 0.001, 1) +
+            0.16 * Math.sin(2 * Math.PI * phase4) * struck(t, dur * 0.35, 0.001, 1);
+    }
+    // The strike itself: a click of noise round the bar's note
+    const click = noise({at: part.at, dur: 0.012, freq: Math.min(part.f * 2, 4000)}, length,
+        Math.round(part.f * 10)).map(x => x * 1.4);
+    return lowpass(signal.map((x, i) => x + click[i]), 3200, 0.2);
+}
+
+function woodNoise(part, length, seed) {
+    // A knock: lower and shorter than Soft's swish
+    return noise({...part, dur: Math.min(part.dur, 0.08), freq: part.freq / 3}, length, seed).map(x => x * 1.6);
+}
+
+// Retro: square waves at Soft's notes, an octave up, notes stepped in sixteenths, a narrow pulse for glides
+function retroTone(part, length) {
+    const signal = new Float64Array(length);
+    const start = Math.round(part.at * RATE);
+    const dur = Math.min(part.dur, 0.3);
+    const step = 0.04;
+    let phase = 0;
+    for (let i = start; i < length; i++) {
+        const t = (i - start) / RATE;
+        if (t >= dur)
+            break;
+        // A glide goes in steps, as an old sound chip's did
+        const n = Math.floor(t / step);
+        const f = part.glide ? part.f * Math.pow(part.glide / part.f, Math.min(n * step / dur, 1)) : part.f;
+        phase = (phase + f / RATE) % 1;
+        const duty = part.glide ? 0.25 : 0.5;
+        const level = t < 0.003 ? t / 0.003 : t > dur - 0.01 ? Math.max(0, (dur - t) / 0.01) : 1 - 0.5 * t / dur;
+        signal[i] = (phase < duty ? 1 : -1) * 0.14 * level;
+    }
+    return lowpass(signal, 6000, 0);
+}
+
+// Noise as an old chip made it: a seeded value held for a few samples, a short burst
+function retroNoise(part, length, seed) {
+    const signal = new Float64Array(length);
+    const start = Math.round(part.at * RATE);
+    const n = Math.floor(RATE * Math.min(part.dur, 0.08));
+    const random = mulberry32(seed);
+    let held = 0;
+    for (let i = 0; i < n && start + i < length; i++) {
+        if (i % 12 === 0)
+            held = random() < 0.5 ? -1 : 1;
+        signal[start + i] = held * 0.12 * (1 - i / n);
+    }
+    return signal;
+}
+
+const SOFT = {tone, noise};
+const SETS = [
+    {dir: 'amethystora-glass', name: 'Amethystora Glass', comment: 'Bright, short chimes', voice: {tone: glassTone, noise: glassNoise}},
+    {dir: 'amethystora-wood', name: 'Amethystora Wood', comment: 'Warm knocks and taps', voice: {tone: woodTone, noise: woodNoise}},
+    {dir: 'amethystora-retro', name: 'Amethystora Retro', comment: 'Eight-bit blips', voice: {tone: retroTone, noise: retroNoise}},
+];
+
+function render(index, parts, voice = SOFT) {
     const end = Math.max(...parts.map(p => p.at + p.dur)) + 0.05;
     // A whole sample, past what floating point adds to an exact number of them
     const length = Math.ceil(end * RATE - 1e-6);
     const mix = new Float64Array(length);
     let noises = 0;
     for (const part of parts) {
-        const signal = part.kind === 'tone' ? tone(part, length) : noise(part, length, 1000 * index + noises++ + 1);
+        const signal = part.kind === 'tone' ? voice.tone(part, length)
+            : voice.noise(part, length, 1000 * index + noises++ + 1);
         for (let i = 0; i < length; i++)
             mix[i] += signal[i];
     }
@@ -174,28 +284,39 @@ Directories=stereo
 OutputProfile=stereo
 `;
 
-rmSync(OUT, {recursive: true, force: true});
-mkdirSync(join(OUT, 'stereo'), {recursive: true});
-writeFileSync(join(OUT, 'index.theme'), INDEX);
-
-const written = new Map();
 let failed = false;
 const dB = x => (20 * Math.log10(x)).toFixed(1);
-for (const [index, [name, parts]] of EVENTS.entries()) {
-    const {samples, peak, rms} = render(index, parts);
-    const file = wav(samples);
-    writeFileSync(join(OUT, 'stereo', `${name}.wav`), file);
-    written.set(name, file);
-    console.log(`${name.padEnd(26)} ${(samples.length / RATE).toFixed(3)} s  peak ${peak.toFixed(3)} (${dB(peak)} dBFS)` +
-        `  RMS ${rms.toFixed(4)} (${dB(rms)} dBFS)  ${file.length} bytes`);
-    if (peak > MOST) {
-        console.error(`${name}: its peak is above -1 dBFS`);
-        failed = true;
+
+// One set: its folder, its index.theme, the eight events and the copies
+function writeSet(out, index, voice) {
+    rmSync(out, {recursive: true, force: true});
+    mkdirSync(join(out, 'stereo'), {recursive: true});
+    writeFileSync(join(out, 'index.theme'), index);
+    const written = new Map();
+    for (const [i, [name, parts]] of EVENTS.entries()) {
+        const {samples, peak, rms} = render(i, parts, voice);
+        const file = wav(samples);
+        writeFileSync(join(out, 'stereo', `${name}.wav`), file);
+        written.set(name, file);
+        console.log(`${name.padEnd(26)} ${(samples.length / RATE).toFixed(3)} s  peak ${peak.toFixed(3)} (${dB(peak)} dBFS)` +
+            `  RMS ${rms.toFixed(4)} (${dB(rms)} dBFS)  ${file.length} bytes`);
+        if (peak > MOST) {
+            console.error(`${name}: its peak is above -1 dBFS`);
+            failed = true;
+        }
+    }
+    for (const [name, of] of COPIES) {
+        writeFileSync(join(out, 'stereo', `${name}.wav`), written.get(of));
+        console.log(`${name.padEnd(26)} the same as ${of}`);
     }
 }
-for (const [name, of] of COPIES) {
-    writeFileSync(join(OUT, 'stereo', `${name}.wav`), written.get(of));
-    console.log(`${name.padEnd(26)} the same as ${of}`);
+
+writeSet(OUT, INDEX, SOFT);
+for (const set of SETS) {
+    console.log(`-- ${set.dir}`);
+    writeSet(join(OUT, '..', set.dir), INDEX.replace('Name=Amethystora', `Name=${set.name}`)
+        .replace(/^Comment=.*\n/m, `Comment=Amethystora's ${set.name.split(' ')[1]} sounds (${set.comment.toLowerCase()}), synthesised by branding/sounds.mjs\n`),
+    set.voice);
 }
 // What `ame desktop sounds off` points the theme at: GNOME's volume keys play their step whatever event-sounds says,
 // so only a theme whose step is silent stops it

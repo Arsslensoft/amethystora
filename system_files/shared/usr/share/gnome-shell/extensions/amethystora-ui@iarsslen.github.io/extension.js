@@ -29,6 +29,8 @@ import {Quick} from './modules/quick.js';
 import {Bars} from './modules/bars.js';
 import {Today} from './modules/today.js';
 import {Power} from './modules/power.js';
+import {Audio} from './modules/audio.js';
+import {Brightness} from './modules/brightness.js';
 import {Dock} from './modules/dock.js';
 import {Glass} from './modules/glass.js';
 import {Hints} from './modules/hints.js';
@@ -76,6 +78,8 @@ const MODULES = [
     ['bars', Bars],
     ['today', Today],
     ['power', Power],
+    ['audio', Audio],
+    ['brightness', Brightness],
     ['dock', Dock],
     ['appgrid', AppGrid],
     ['emoji', Emoji],

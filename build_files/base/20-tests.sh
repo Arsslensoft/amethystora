@@ -713,14 +713,14 @@ if compgen -G "/usr/share/amethystora/manual/*/whats-new.md" >/dev/null; then
     echo "whats-new.md is made by the build and must not be translated"
     exit 1
 fi
-# Power you can see: two switches, both on, the module between today's and the dock, its recipe; it quits an app only
-# by asking it (request_quit), and runs nothing
+# Power you can see: three switches, all on (the devices' batteries, round 6's R6-26, among them), the module between
+# today's and the dock, its recipe; it quits an app only by asking it (request_quit), and runs nothing
 POWER=org.gnome.shell.extensions.amethystora-ui.power
-[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${POWER}" | sort | paste -sd ' ')" == "battery-details busy-app" ]]
-for key in battery-details busy-app; do
+[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${POWER}" | sort | paste -sd ' ')" == "battery-details busy-app device-batteries" ]]
+for key in battery-details busy-app device-batteries; do
     [[ "$(GSETTINGS_BACKEND=memory gsettings get "${POWER}" "${key}")" == true ]]
 done
-for file in modules/power.js modules/power/apps.js modules/power/battery.js modules/power/busy.js stylesheets/power.css; do
+for file in modules/power.js modules/power/apps.js modules/power/battery.js modules/power/busy.js modules/power/devices.js     stylesheets/power.css; do
     test -s "${UI_EXTENSION}/${file}"
 done
 test -s /usr/share/amethystora/themed/shell-power.css.tpl
@@ -2341,11 +2341,19 @@ test -d /usr/share/sounds/freedesktop/stereo
 [[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.desktop.sound event-sounds)" == true ]]
 [[ "$(find "${SOUNDS}/stereo" -type f -name '*.wav' | wc -l)" == 9 ]]
 cmp "${SOUNDS}/stereo/bell-window-system.wav" "${SOUNDS}/stereo/dialog-error.wav"
-python3 -I - "${SOUNDS}/stereo" <<'EOF'
+# ...and Glass, Wood and Retro beside it, the same nine events in other voices (round 6's R6-04)
+for set in glass wood retro; do
+    grep -qx "Inherits=freedesktop" "${SOUNDS}-${set}/index.theme"
+    grep -qx "Directories=stereo" "${SOUNDS}-${set}/index.theme"
+    [[ "$(find "${SOUNDS}-${set}/stereo" -type f -name '*.wav' | wc -l)" == 9 ]]
+    cmp "${SOUNDS}-${set}/stereo/bell-window-system.wav" "${SOUNDS}-${set}/stereo/dialog-error.wav"
+done
+python3 -I - "${SOUNDS}/stereo" "${SOUNDS}-glass/stereo" "${SOUNDS}-wood/stereo" "${SOUNDS}-retro/stereo" <<'EOF'
 import array, os, sys, wave
-for name in ("message-new-instant", "message-new-instant-phone", "power-plug", "screen-capture", "trash-empty",
-             "audio-volume-change", "dialog-error", "bell-window-system", "desktop-login"):
-    with wave.open(os.path.join(sys.argv[1], f"{name}.wav")) as w:
+for folder, name in ((folder, name) for folder in sys.argv[1:] for name in (
+        "message-new-instant", "message-new-instant-phone", "power-plug", "screen-capture", "trash-empty",
+        "audio-volume-change", "dialog-error", "bell-window-system", "desktop-login")):
+    with wave.open(os.path.join(folder, f"{name}.wav")) as w:
         shape = (w.getnchannels(), w.getsampwidth(), w.getframerate(), w.getcomptype())
         assert shape == (1, 2, 48000, "NONE"), f"{name}: {shape}"
         frames = w.getnframes()
@@ -2384,6 +2392,90 @@ GSETTINGS_BACKEND=memory ame desktop sounds off >/dev/null
 test -s /usr/share/sounds/amethystora-silent/stereo/audio-volume-change.wav
 grep -q 'theme-name amethystora-silent' /usr/share/amethystora/just/desktop.just
 GSETTINGS_BACKEND=memory ame desktop screen-corners on >/dev/null
+GSETTINGS_BACKEND=memory ame desktop sounds glass >/dev/null
+grep -q 'theme="amethystora-${choice}"' /usr/share/amethystora/just/desktop.just
+# Sound, screens and devices (round 6's sound group, plans/ui-ideas/spec-sound.md; manual: desktop.md#clear-voice,
+# #sound-presets, #pause-when-the-headphones-come-off, hardware.md#external-screens-brightness). The audio module's keys:
+# pausing on (R6-03), Clear voice and the presets off (R6-01, R6-02), the presets by output empty; the brightness
+# module's one key off (R6-05). Both after quick settings, whose menus and grid they add to.
+AUDIO=org.gnome.shell.extensions.amethystora-ui.audio
+[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${AUDIO}" | sort | paste -sd ' ')" == \
+    "clear-voice pause-on-unplug presets sound-presets" ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings get "${AUDIO}" pause-on-unplug)" == true ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings get "${AUDIO}" clear-voice)" == false ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings get "${AUDIO}" sound-presets)" == false ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings get "${AUDIO}" presets)" == "@a{ss} {}" ]]
+BRIGHT=org.gnome.shell.extensions.amethystora-ui.brightness
+[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${BRIGHT}" | paste -sd ' ')" == external-screens ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings get "${BRIGHT}" external-screens)" == false ]]
+grep -q "\['audio', Audio\]" "${UI_EXTENSION}/extension.js"
+grep -q "\['brightness', Brightness\]" "${UI_EXTENSION}/extension.js"
+SOUND_ORDER=" $(sed -n "s/^    \['\([a-z]*\)', [A-Za-z]*\],$/\1/p" "${UI_EXTENSION}/extension.js" | paste -sd ' ') "
+[[ "${SOUND_ORDER}" == *" quick "*" audio "* && "${SOUND_ORDER}" == *" quick "*" brightness "* ]]
+for file in modules/audio.js modules/audio/menu.js modules/audio/voice.js modules/audio/presets.js \
+    modules/audio/unplug.js modules/brightness.js modules/power/devices.js stylesheets/audio.css stylesheets/brightness.css; do
+    test -s "${UI_EXTENSION}/${file}"
+done
+# Nothing they show is markup, nothing runs through a shell: the audio module runs only its helper, the brightness
+# module only ddcutil (under timeout), each as an argument vector
+[[ -z "$(grep -rnE 'use_markup = true|use_markup: true|set_markup\(|Util\.spawn|spawn_command_line|GLib\.spawn' \
+    "${UI_EXTENSION}/modules/audio.js" "${UI_EXTENSION}/modules/audio" "${UI_EXTENSION}/modules/brightness.js")" ]]
+grep -q "^export const HELPER = '/usr/libexec/amethystora-sound';" "${UI_EXTENSION}/modules/audio/menu.js"
+[[ "$(grep -c 'Gio.Subprocess.new' "${UI_EXTENSION}/modules/audio/menu.js" "${UI_EXTENSION}/modules/brightness.js" |
+    paste -sd ' ')" == *":1 "*":1" ]]
+# Clear voice and the presets: PipeWire's own echo cancel (its webrtc processor) and filter chain's builtin biquads, no
+# plugin package; the helper's units start with PipeWire for every account and run only for one whose key is on
+SOUND_HELPER=/usr/libexec/amethystora-sound
+test -x "${SOUND_HELPER}"
+test -e /usr/lib64/spa-0.2/aec/libspa-aec-webrtc.so
+test -e /usr/lib64/spa-0.2/filter-graph/libspa-filter-graph-plugin-builtin.so
+test -e /usr/lib64/pipewire-0.3/libpipewire-module-echo-cancel.so
+test -e /usr/lib64/pipewire-0.3/libpipewire-module-filter-chain.so
+command -v pactl >/dev/null
+for pair in clear-voice:clear-voice sound-presets:presets; do
+    unit="amethystora-${pair%%:*}.service"
+    [[ "$(systemctl --global is-enabled "${unit}")" == enabled ]]
+    grep -qx "ExecCondition=${SOUND_HELPER} wanted ${pair#*:}" "/usr/lib/systemd/user/${unit}"
+    grep -qx "ExecStart=${SOUND_HELPER} run ${pair#*:}" "/usr/lib/systemd/user/${unit}"
+done
+GSETTINGS_BACKEND=memory "${SOUND_HELPER}" wanted clear-voice && false
+GSETTINGS_BACKEND=memory "${SOUND_HELPER}" wanted presets && false
+GSETTINGS_BACKEND=memory "${SOUND_HELPER}" preset loud >/dev/null 2>&1 && false
+GSETTINGS_BACKEND=memory "${SOUND_HELPER}" conf clear-voice | grep -q "library.name = aec/libspa-aec-webrtc"
+GSETTINGS_BACKEND=memory "${SOUND_HELPER}" conf clear-voice | grep -q "monitor.mode = true"
+[[ "$(jq -c 'keys' /usr/share/amethystora/sound/presets.json)" == '["bass","laptop","speech"]' ]]
+SOUND_HOME="$(mktemp -d)"
+(
+    export GSETTINGS_BACKEND=keyfile XDG_CONFIG_HOME="${SOUND_HOME}"
+    gsettings set "${AUDIO}" presets "{'alsa_output.pci-0000_00_1f.3.analog-stereo': 'laptop', 'bad name': 'bass'}"
+    conf="$("${SOUND_HELPER}" conf presets)"
+    [[ "$(grep -c 'libpipewire-module-filter-chain' <<<"${conf}")" == 1 ]]
+    grep -qF 'filter.smart.target = { node.name = "alsa_output.pci-0000_00_1f.3.analog-stereo" }' <<<"${conf}"
+    grep -q 'label = bq_lowshelf' <<<"${conf}"
+)
+rm -rf "${SOUND_HOME}"
+for recipe in pause-on-unplug clear-voice sound-presets sound-preset screen-brightness; do
+    grep -q "^${recipe} [A-Z]*=\"\":" /usr/share/amethystora/just/desktop.just
+    grep -qx "desktop::${recipe}" <<<"$(ame --summary | tr ' ' '\n')"
+done
+GSETTINGS_BACKEND=memory ame desktop sound-preset loud >/dev/null 2>&1 && false
+GSETTINGS_BACKEND=memory ame desktop pause-on-unplug maybe >/dev/null 2>&1 && false
+# External screens' brightness (decision 6): ddcutil installed, its own rule and modules-load file out of the image,
+# and the image's one-line rule only in /usr/share until ame desktop screen-brightness on copies it; the watcher takes
+# exactly that copy, and the report says the grant as information
+command -v ddcutil >/dev/null
+test ! -e /usr/lib/udev/rules.d/60-ddcutil-i2c.rules
+test ! -e /usr/lib/modules-load.d/ddcutil.conf
+test ! -e /etc/udev/rules.d/60-amethystora-ddc.rules
+test ! -e /etc/modules-load.d/amethystora-ddc.conf
+[[ "$(grep -v '^#' /usr/share/amethystora/ddc/60-amethystora-ddc.rules)" == \
+    'SUBSYSTEM=="i2c-dev", KERNEL=="i2c-[0-9]*", ATTRS{class}=="0x03*", TAG+="uaccess"' ]]
+[[ "$(grep -v '^#' /usr/share/amethystora/ddc/amethystora-ddc.conf)" == i2c-dev ]]
+grep -q 'cmp -s "${etc}" /usr/share/amethystora/ddc/60-amethystora-ddc.rules' /usr/libexec/amethystora-security-watch
+grep -q "report apps screen-brightness info" /usr/libexec/amethystora-security-status
+# Every device's battery (R6-26): the power module's third switch, UPower's signals, a notice once at 15%
+grep -q "connectSignal('DeviceAdded'" "${UI_EXTENSION}/modules/power/devices.js"
+[[ -z "$(grep -E 'timeout_add|setInterval|setTimeout' "${UI_EXTENSION}/modules/power/devices.js")" ]]
 # Seeing and reading, touch and pen (plans/beyond/spec-r4-access.md; manual: themes.md#seeing-and-reading,
 # desktop.md#touch-and-pen): the access and touch modules' keys, everything off for a new account, their three shortcuts
 # Super+Ctrl+R, S and P (the board's Super+Alt+R is the tiling's and Super+Alt+S GNOME's screen reader), both modules

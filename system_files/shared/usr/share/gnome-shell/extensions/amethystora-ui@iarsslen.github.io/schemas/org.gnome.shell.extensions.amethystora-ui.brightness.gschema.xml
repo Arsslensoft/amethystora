@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The brightness module (modules/brightness.js): external screens' brightness over DDC/CI in quick settings. Written by
+     ame desktop screen-brightness, which also gives the person at the machine the displays' i2c buses (a udev rule);
+     read live. -->
+<schemalist>
+  <schema id="org.gnome.shell.extensions.amethystora-ui.brightness" path="/org/gnome/shell/extensions/amethystora-ui/brightness/">
+    <key name="external-screens" type="b">
+      <default>false</default>
+      <summary>Brightness of every screen</summary>
+      <description>Each external screen that speaks DDC/CI gets its own brightness slider in quick settings, and the brightness keys move them with the built-in screen. It needs the displays' i2c buses, which ame desktop screen-brightness on gives the person at the machine.</description>
+    </key>
+  </schema>
+</schemalist>

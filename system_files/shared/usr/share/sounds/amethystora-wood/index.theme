@@ -1,0 +1,8 @@
+[Sound Theme]
+Name=Amethystora Wood
+Comment=Amethystora's Wood sounds (warm knocks and taps), synthesised by branding/sounds.mjs
+Inherits=freedesktop
+Directories=stereo
+
+[stereo]
+OutputProfile=stereo

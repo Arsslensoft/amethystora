@@ -1,0 +1,21 @@
+[Unit]
+Description=Sound presets: PipeWire's own equaliser before the outputs given a preset
+Documentation=file:///usr/share/amethystora/manual/desktop.md
+# Started with PipeWire, and by ame desktop sound-preset; only while presets are on and an output has one
+After=pipewire.service pipewire-session-manager.service
+BindsTo=pipewire.service
+
+[Service]
+Type=simple
+ExecCondition=/usr/libexec/amethystora-sound wanted presets
+ExecStart=/usr/libexec/amethystora-sound run presets
+Restart=on-failure
+RestartSec=5
+Slice=session.slice
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+NoNewPrivileges=yes
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=pipewire.service
