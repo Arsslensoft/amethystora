@@ -113,7 +113,8 @@ The screens on a DisplayLink dock or adapter need its driver, evdi, which the im
 `displaylink.service`, which starts when the dock is plugged in. With Secure Boot on, the driver loads only
 once Amethystora's key is enrolled: `ame security secure-boot`, then restart
 ([Hardware](hardware.md#secure-boot)). Until then the dock's screens stay dark, and
-`systemctl status displaylink.service` says the service was skipped because its condition failed.
+`systemctl status displaylink.service` says the service was skipped because its condition failed. With Secure
+Boot off, the key cannot help: `ame system drivers` says what stands in the way on this machine, and what to run.
 
 ### Switching keyboard layouts
 

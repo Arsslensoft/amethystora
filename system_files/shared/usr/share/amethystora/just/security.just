@@ -469,6 +469,12 @@ secure-boot:
         grep -qv "^enrolled " <<<"${MOK}" || echo "$(gettext "The Secure Boot keys are already enrolled.")"
         exit 0
     fi
+    echo "$(gettext "The kernel modules built into the image, such as evdi for DisplayLink docks, are signed with keys of the image's own. With Secure Boot on, the kernel refuses them until those keys are enrolled.")"
+    echo "$(gettext "Enrolling asks for your password here and queues the keys. At the next restart a blue screen, the MOK manager, asks you to accept them, and nothing is trusted unless you do.")"
+    if ! mokutil --sb-state 2>/dev/null | grep -qi enabled; then
+        echo "$(gettext "Secure Boot is off, so enrolling alone changes nothing: the kernel trusts these keys only with Secure Boot on. Turn it on in the firmware as well (ame system bios).")"
+    fi
+    gum confirm "$(gettext "Queue the keys for the next restart?")" || exit 0
     sudo mokutil --timeout -1
     printf '%s\n%s\n' "${ENROLLMENT_PASSWORD}" "${ENROLLMENT_PASSWORD}" | sudo mokutil --import "${certs[@]}"
     echo "$(gettext "At next reboot, the blue MOK manager screen appears (QWERTY keyboard layout).")"
@@ -537,6 +543,11 @@ lockdown ACTION="":
         "${turn_off}" | off)
             if [[ "${secure_boot}" == true ]]; then
                 echo "$(gettext "Secure Boot is on, so the kernel stays locked down. This only matters if it is turned off.")"
+            fi
+            echo
+            echo "$(gettext "Lockdown refuses what lets root rewrite the running kernel: a module without a signature it trusts, writing to /dev/mem, and BPF that writes into another program's memory. A compromise of root then ends at the next restart.")"
+            if [[ "${secure_boot}" != true && "${nvidia}" != true ]]; then
+                echo "$(gettext "To keep it and still load the modules built into the image, such as evdi for DisplayLink docks, turn Secure Boot on in the firmware and enroll their keys: ame security secure-boot.")"
             fi
             gum confirm "$(gettext "Leave lockdown out of the kernel arguments, from the next restart?")" || exit 0
             sudo rpm-ostree kargs --delete-if-present=lockdown=integrity --delete-if-present=lockdown=confidentiality

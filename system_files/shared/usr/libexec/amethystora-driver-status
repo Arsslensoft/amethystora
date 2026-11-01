@@ -1,7 +1,8 @@
 #!/usr/bin/bash
 # What keeps a device from working that this machine can tell by itself: a device no driver took, firmware the
 # kernel asked for and did not get, a kernel module it refused, and the cases Amethystora knows (NVIDIA's driver
-# not loaded, a Broadcom Wi-Fi card no driver drives, the Xbox wireless adapter without its firmware). Each with
+# not loaded, a Broadcom Wi-Fi card no driver drives, the Xbox wireless adapter without its firmware, a DisplayLink
+# dock whose driver the kernel refused). Each with
 # the command that fixes it where there is one, or the manual's section. It reads and changes nothing.
 #
 #   amethystora-driver-status [--json]   the findings: asked of the machine now when run as root, who can read
@@ -11,7 +12,7 @@
 #                                        opens its fix in a terminal (amethystora-driver-check.timer)
 #
 # The JSON is {checked, findings: [{id, kind, device, text, fix, manual}]}, kind one of no-driver, firmware,
-# refused, nvidia, broadcom-wifi and xbox-adapter. AMETHYSTORA_DRIVERS_ROOT (a stand-in /sys, /proc/cmdline,
+# refused, nvidia, broadcom-wifi, xbox-adapter and displaylink. AMETHYSTORA_DRIVERS_ROOT (a stand-in /sys, /proc/cmdline,
 # image-info.json and firmware folder), AMETHYSTORA_DRIVERS_LOG (the kernel's log) and AMETHYSTORA_DRIVERS_MOK
 # (what amethystora-mok-status says) are for the tests in 20-tests.sh, AMETHYSTORA_DRIVERS_STATE (the folder of what
 # it saved and said) and AMETHYSTORA_DRIVERS_NOTIFY (amethystora-notify-users) for test-driver-status.sh.
@@ -100,10 +101,63 @@ grep -q "^not-enrolled " <<<"${MOK}" && UNTRUSTED=true
 refusal_fix() {
     if [[ "${SECURE_BOOT}" == true && "${UNTRUSTED}" == true ]]; then
         echo "ame security secure-boot"
-    elif [[ "${SECURE_BOOT}" != true && "${CMDLINE}" == *" lockdown="* ]]; then
+    elif [[ "${SECURE_BOOT}" != true && "${CMDLINE}" == *" lockdown="* && ! -e "${ROOT}/usr/share/amethystora/sealed" ]]; then
+        # A sealed image's kernel arguments are inside its signed kernel, and cannot change
         echo "ame security lockdown off"
     fi
 }
+
+# --- A DisplayLink dock --------------------------------------------------------------------------------------
+# DisplayLink's own USB vendor id, which rebranded docks keep; a dock that takes its video over DisplayPort has
+# none and needs nothing of this. The package's udev rule starts displaylink.service when such a device arrives,
+# whose condition loads evdi. The check runs after it, so evdi not loaded means the kernel refused it. The key is the one
+# evdi is signed with (03-install-kernel-akmods.sh), and enrolling is offered only where it can help: without
+# Secure Boot the kernel trusts no enrolled key, so there only lockdown stands in the way. The texts are messages
+# of their own, translated for each account. DOCK_ID is the machine's state, said once per state (below).
+DOCK=false
+DOCK_ID=""
+for device in "${USB}"/*; do
+    [[ "$(cat "${device}/idVendor" 2>/dev/null)" == 17e9 ]] || continue
+    DOCK=true
+    fix=""
+    manual=hardware#secure-boot
+    if [[ -e "${ROOT}/sys/module/evdi" ]]; then
+        systemctl is-active -q displaylink.service && break
+        DOCK_ID=displaylink:service
+        manual=hardware#docks-and-displays
+        text="$(N_ "Its driver has loaded, but its screens also need displaylink.service, which is not running. It starts when the dock is plugged in, unless something stopped it.")"
+    elif [[ "${SECURE_BOOT}" == true ]]; then
+        case "$(sed -n 's|^\([a-z-]*\) .*/amethystora-modules\.der.*|\1|p' <<<"${MOK}")" in
+            not-enrolled)
+                DOCK_ID=displaylink:needs-enrollment
+                fix="ame security secure-boot"
+                text="$(N_ "Its screens need a driver, evdi, and stay dark until Secure Boot trusts the driver's key. Enrolling it asks for your password, then at the next restart a blue screen asks you to accept the key. Nothing changes unless you go on.")"
+                ;;
+            pending)
+                DOCK_ID=displaylink:enrollment-pending
+                text="$(N_ "Its screens stay dark until you restart and accept the driver's key: on the blue screen, choose Enroll MOK, Continue and Yes, then type the password amethystora.")"
+                ;;
+            *)
+                DOCK_ID=displaylink:refused
+                manual=troubleshooting#a-displaylink-dock-shows-nothing
+                text="$(N_ "Its screens stay dark: their driver, evdi, did not load, and its key is not what stands in the way.")"
+                ;;
+        esac
+    elif [[ -e "${ROOT}/usr/share/amethystora/sealed" ]]; then
+        DOCK_ID=displaylink:sealed-no-secure-boot
+        text="$(N_ "Its screens stay dark: on a sealed image without Secure Boot, the kernel refuses their driver, evdi, and its arguments cannot change. Turn Secure Boot on in the machine's firmware.")"
+    elif [[ -n "$(refusal_fix)" ]]; then
+        DOCK_ID=displaylink:lockdown
+        fix="$(refusal_fix)"
+        text="$(N_ "Its screens stay dark: with Secure Boot off, kernel lockdown refuses their driver, evdi, and enrolling a key cannot help. Turn Secure Boot on in the firmware and enroll the key, which keeps lockdown, or turn lockdown off, which costs some protection. Nothing changes unless you choose.")"
+    else
+        DOCK_ID=displaylink:refused
+        manual=troubleshooting#a-displaylink-dock-shows-nothing
+        text="$(N_ "Its screens stay dark: their driver, evdi, did not load.")"
+    fi
+    found "${DOCK_ID}" displaylink "$(cat "${device}/product" 2>/dev/null || echo "DisplayLink dock")" "${text}" "${fix}" "${manual}"
+    break
+done
 
 # --- Firmware the kernel asked for and did not get ---------------------------------------------------------
 # Drivers ask for optional files too, newest first, so a file counts only when its device was left without a
@@ -134,7 +188,9 @@ if grep -qE 'Loading of (module with unavailable key|unsigned module) is rejecte
     else
         why="The kernel takes signed modules only, and does not trust the key it is signed with."
     fi
-    found "refused:${modules:-module}" refused "${modules:-A kernel module}" "The kernel refused to load it. ${why}" "${fix}" hardware#secure-boot
+    # A refusal with no module named, when the dock above already says that it was evdi, is the same thing
+    [[ -n "${modules}" || -z "${DOCK_ID}" ]] &&
+        found "refused:${modules:-module}" refused "${modules:-A kernel module}" "The kernel refused to load it. ${why}" "${fix}" hardware#secure-boot
 fi
 
 # --- NVIDIA ------------------------------------------------------------------------------------------------
@@ -219,23 +275,38 @@ printf '%s\n' "${STATUS}" >"${SAVED}.new" && chmod 0644 "${SAVED}.new" && mv "${
 # Each new finding is said once per machine, to somebody logged in to hear it: the login screen has a session bus
 # too, and a finding that reached nobody is said at a later check
 SAID="${STATE}/said"
-while IFS=$'\t' read -r -u 3 id device text manual fix; do
+# A dock's state again when it changes, so with a dock here only its present state stays said; without one
+# nothing has changed, and plugging it in again says nothing new
+if [[ "${DOCK}" == true && -s "${SAID}" ]]; then
+    { grep -v '^displaylink:' "${SAID}"; ! grep -qxF "${DOCK_ID:-none}" "${SAID}" || echo "${DOCK_ID}"; } >"${SAID}.new"
+    mv "${SAID}.new" "${SAID}"
+fi
+while IFS=$'\t' read -r -u 3 id kind device text manual fix; do
     grep -qxF -- "${id}" "${SAID}" 2>/dev/null && continue
     echo "${id}" >>"${SAID}"
+    read_more=(--action "manual=$(N_ 'Read more')")
+    message=--msgid-summary
     if [[ -n "${fix}" ]]; then
         actions=(--action "fix=$(N_ 'Fix it…')")
         # One of the commands above, a word at a time
         # shellcheck disable=SC2206
         run=(/usr/libexec/amethystora-in-terminal ${fix})
     else
-        actions=(--action "manual=$(N_ 'Read more')")
-        run=(/usr/bin/amethystora-manual "${manual}")
+        actions=("${read_more[@]}")
     fi
-    # The finding's text is what the check found, English; the sentence around the device and the buttons
+    # A dock's texts are messages, and its buttons say what they start; the person's yes is asked in the terminal
+    if [[ "${kind}" == displaylink ]]; then
+        message=--msgid
+        case "${id}" in
+            displaylink:needs-enrollment) actions=(--action "fix=$(N_ 'Enroll the key…')" "${read_more[@]}") ;;
+            displaylink:lockdown) actions=(--action "fix=$(N_ 'Turn lockdown off…')" "${read_more[@]}") ;;
+        esac
+    fi
+    # Any other finding's text is what the check found, English; the sentence around the device and the buttons
     # are translated for each account (amethystora-notify-users)
     export device
     # Ask the agent, for an account whose agentic features are on: the finding's id, never its words
-    ANSWERS="$("${NOTIFY}" "${actions[@]}" --agent "agent=$(N_ 'Ask the agent')" --msgid-summary \
+    ANSWERS="$("${NOTIFY}" "${actions[@]}" --agent "agent=$(N_ 'Ask the agent')" "${message}" \
         "$(N_ 'A device does not work: ${device}')" "${text}")" || {
         grep -vxF -- "${id}" "${SAID}" >"${SAID}.new"
         mv "${SAID}.new" "${SAID}"
@@ -244,11 +315,14 @@ while IFS=$'\t' read -r -u 3 id device text manual fix; do
     while read -r user answer; do
         [[ -n "${answer}" ]] || continue
         uid="$(id -u "${user}")" || continue
-        command=("${run[@]}")
-        [[ "${answer}" != agent ]] || command=(/usr/bin/amethystora-agent diagnose --driver "${id}")
+        case "${answer}" in
+            agent) command=(/usr/bin/amethystora-agent diagnose --driver "${id}") ;;
+            manual) command=(/usr/bin/amethystora-manual "${manual}") ;;
+            *) command=("${run[@]}") ;;
+        esac
         runuser -u "${user}" -- env "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/${uid}/bus" \
             "XDG_RUNTIME_DIR=/run/user/${uid}" systemd-run --user --collect --quiet "${command[@]}" || true
     done <<<"${ANSWERS}"
 # The fix last: a tab is whitespace to read, which would close up an empty field in the middle
-done 3< <(jq -r '.findings[] | [.id, .device, .text, .manual, (.fix // "")] | @tsv' <<<"${STATUS}")
+done 3< <(jq -r '.findings[] | [.id, .kind, .device, .text, .manual, (.fix // "")] | @tsv' <<<"${STATUS}")
 exit 0

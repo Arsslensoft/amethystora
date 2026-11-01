@@ -86,6 +86,29 @@ if [[ "${SUITE_PHASE}" == 1 ]]; then
         fi
     fi
 
+    # A DisplayLink dock, on a stand-in machine (the lab has no such device): what each state offers, and that the
+    # machine itself, with none plugged in, has nothing to say about one
+    same "a dock's arrival starts the check" "$(udevadm verify /usr/lib/udev/rules.d/99-amethystora-displaylink.rules >/dev/null 2>&1; echo $?)" 0
+    same "the check runs after the service that tries to load its driver" \
+        "$(systemctl show -P After amethystora-driver-check.service | grep -c displaylink.service)" 1
+    same "no dock, nothing about one" "$(jq -c '[.findings[] | select(.kind == "displaylink")]' /var/lib/amethystora/drivers/status.json)" "[]"
+    dock="$(mktemp -d)"
+    mkdir -p "${dock}/sys/bus/usb/devices/1-1" "${dock}/proc" "${dock}/sys/firmware/efi/efivars"
+    printf '17e9\n' >"${dock}/sys/bus/usb/devices/1-1/idVendor"
+    dock_fix() { # SECURE_BOOT MOK_STATE CMDLINE
+        printf "\\x06\\x00\\x00\\x00\\x0$1" >"${dock}/sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c"
+        echo "$3" >"${dock}/proc/cmdline"
+        echo "$2 /usr/share/amethystora/secure-boot/amethystora-modules.der" >"${dock}/mok"
+        : >"${dock}/log"
+        AMETHYSTORA_DRIVERS_ROOT="${dock}" AMETHYSTORA_DRIVERS_LOG="${dock}/log" AMETHYSTORA_DRIVERS_MOK="${dock}/mok" \
+            /usr/libexec/amethystora-driver-status --json | jq -r '.findings[] | select(.kind == "displaylink") | "\(.id) \(.fix // "")"'
+    }
+    same "Secure Boot on, the key not enrolled: enrolling is offered" "$(dock_fix 1 not-enrolled "")" \
+        "displaylink:needs-enrollment ame security secure-boot"
+    same "Secure Boot off under lockdown: only lockdown is offered" "$(dock_fix 0 not-enrolled "lockdown=integrity")" \
+        "displaylink:lockdown ame security lockdown off"
+    rm -rf "${dock}"
+
     # FireWire, a switch of its own: off, its modules load, and the other blocked modules stay blocked
     /usr/libexec/amethystora-hardening set firewire off
     same "off masks its file" "$(readlink /etc/modprobe.d/61-amethystora-firewire.conf)" /dev/null

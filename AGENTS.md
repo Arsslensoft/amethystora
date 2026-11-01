@@ -278,7 +278,11 @@ with Universal Blue's key, which `ame security secure-boot` enrolls; `20-tests.s
   `/var/lib/amethystora/drivers/status.json` for `ame system drivers`, `ame report` and the doctor, and says each
   finding once (`said` beside it): a PCI device of a kind a person notices with no driver, firmware asked for
   by a device left without one, a refused module, NVIDIA's driver not loaded, a Broadcom Wi-Fi card, the
-  adapter without its firmware.
+  adapter without its firmware, a DisplayLink dock (USB vendor `17e9`) whose evdi did not load. That one is also
+  started when the dock arrives (`99-amethystora-displaylink.rules`, after the service that tries to load it), its
+  state is the finding's id (`displaylink:needs-enrollment`, `enrollment-pending`, `lockdown`,
+  `sealed-no-secure-boot`, `service`, `refused`), said again only when the state changes, and it offers enrolling
+  only with Secure Boot on, since without it lockdown refuses every key but the kernel's (`test-driver-status.sh`).
 - **FireWire** is a switch of its own (`ame security firewire`), its modules in
   `usr/lib/modprobe.d/61-amethystora-firewire.conf`, apart from the blocked modules.
 - **Lockdown** stays as the gaps plan left it (the maintainer's choice of 2026-10-07, over this plan's of

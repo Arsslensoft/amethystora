@@ -51,8 +51,9 @@ itself. Confirm: `modprobe -n -v firewire_ohci` prints `install /usr/bin/false`;
 
 Symptom: a module built outside the image (an out-of-tree driver, VirtualBox) will not load, or DisplayLink's
 `evdi`, `xone` or `hid-xpadneo` fails with Secure Boot off. Confirm: `cat /sys/kernel/security/lockdown`; `mokutil --sb-state`.
-Change: `ame security secure-boot` enrolls the image's key for its own modules; `ame security lockdown off`
-(the user's) for the rest.
+Change: with Secure Boot on, `ame security secure-boot` enrolls the image's key for its own modules. With it off,
+enrolling alone does nothing: Secure Boot on in the firmware and then enrolling, or `ame security lockdown off` (the
+user's), as for the rest.
 
 ### Some programs lost their setuid bit
 

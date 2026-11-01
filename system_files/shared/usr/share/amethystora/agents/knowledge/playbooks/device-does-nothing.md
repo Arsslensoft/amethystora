@@ -8,7 +8,8 @@ program cannot reach it: a keyboard configurator, Steam Input, a tablet driver, 
 ## Look
 
 - `ame system drivers`: what the driver check found at its last run (a missing driver, missing firmware,
-  a module the kernel refused, the Xbox wireless adapter without its firmware), each with its fix.
+  a module the kernel refused, the Xbox wireless adapter without its firmware, a DisplayLink dock whose
+  driver did not load), each with its fix.
 - `state security-settings`, with a switch's name as filter (`virtual-input`, `blocked-modules`,
   `block-webcam`, `block-automount`, `block-bluetooth`).
 - `logs` identifier `kernel`, grep `not authorized for usage` (USB protection refused it), then grep `usb`.
@@ -44,6 +45,9 @@ program cannot reach it: a keyboard configurator, Steam Input, a tablet driver, 
    `input-remapper.service` disabled.
 8. **The Xbox wireless adapter without its firmware.** Its driver is in the image, Microsoft's firmware
    is not. Tell: `ame system drivers` names it; `/var/lib/amethystora/firmware` has no `xone_dongle_*.bin`.
+9. **A DisplayLink dock's driver did not load.** Only a dock with a device of vendor `17e9` in `lsusb`: one
+   whose video comes over USB-C's DisplayPort needs no driver. Tell: `ame system drivers` says `displaylink:`
+   and what stands in the way, `mokutil --sb-state`, `cat /sys/kernel/security/lockdown`.
 
 ## Fix
 
@@ -92,6 +96,12 @@ The user runs `ame security input-remapper on` (root): a root service that reads
 
 The user runs `ame apps xbox-adapter on` (root) (restart): it downloads Microsoft's firmware, and keeps
 Linux's driver for MT7612U Wi-Fi sticks from loading.
+
+### 9. DisplayLink dock
+
+Secure Boot on: the user runs `ame security secure-boot` (root) (restart), and accepts the key on the blue
+screen. Secure Boot off: enrolling alone does nothing. The user turns Secure Boot on in the firmware and enrolls,
+or runs `ame security lockdown off` (root) (restart), which costs protection; never run either yourself.
 
 ## Verify
 

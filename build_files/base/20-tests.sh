@@ -4064,6 +4064,11 @@ mapfile -t DRIVERS_MANUAL < <(jq -r '.findings[].manual' <<<"${DRIVERS_FOUND}" |
 "${NODE[@]}" /ctx/build_files/shared/check-manual.js /usr/share/amethystora/manual --links "${DRIVERS_MANUAL[@]}"
 rm -rf "${DRIVERS_TEST}"
 bash /ctx/build_files/shared/test-driver-status.sh
+# A DisplayLink dock's arrival starts the driver check, after the service that tries to load the dock's driver
+grep -qE 'ATTR\{idVendor\}=="17e9".*ENV\{SYSTEMD_WANTS\}\+="amethystora-driver-check\.service"' /usr/lib/udev/rules.d/99-amethystora-displaylink.rules
+grep -qx 'After=displaylink.service' /usr/lib/systemd/system/amethystora-driver-check.service
+"${NODE[@]}" /ctx/build_files/shared/check-manual.js /usr/share/amethystora/manual --links hardware#docks-and-displays \
+    hardware#secure-boot troubleshooting#a-displaylink-dock-shows-nothing
 
 # Make sure this garbage never makes it to an image
 test -f /usr/lib/systemd/system/flatpak-add-fedora-repos.service && false

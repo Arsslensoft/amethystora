@@ -1,6 +1,8 @@
 [Unit]
 Description=Find devices whose driver is missing, refused or without its firmware
 Documentation=file:///usr/share/amethystora/manual/hardware.md
+# 99-amethystora-displaylink.rules starts it with the service that tries to load the dock's driver
+After=displaylink.service
 
 [Service]
 Type=oneshot
