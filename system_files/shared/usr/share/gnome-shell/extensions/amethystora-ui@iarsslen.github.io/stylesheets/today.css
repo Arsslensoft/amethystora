@@ -56,6 +56,11 @@
   font-size: 12px;
 }
 
+.amethystora-today .event-placeholder {
+  font-size: 13.5px;
+  font-style: normal;
+}
+
 .amethystora-today .world-clocks-city {
   font-size: 12.5px;
 }
