@@ -849,7 +849,7 @@ fi
     "${UI_EXTENSION}/modules/focus")" ]]
 [[ "$(grep -rnE "Subprocess|Util\.spawn|spawn_command_line|GLib\.spawn" "${UI_EXTENSION}/modules/focus.js" \
     "${UI_EXTENSION}/modules/focus" | grep -c .)" == 2 ]]
-[[ "$(grep -rcE "Util\.spawn\(\[CONTROL, 'desktop'\]\)|Util\.spawn\(\['amethystora-control', 'desktop'\]\)" \
+[[ "$(grep -rcE "Util\.spawn\(\[CONTROL, 'desktop', 'focus'\]\)|Util\.spawn\(\['amethystora-control', 'desktop', 'focus'\]\)" \
     "${UI_EXTENSION}/modules/focus" | awk -F: '{ n += $2 } END { print n }')" == 2 ]]
 grep -q "^export const WARMEST = 1700;" "${UI_EXTENSION}/modules/focus/night.js"
 GSETTINGS_BACKEND=memory gsettings range org.gnome.settings-daemon.plugins.color night-light-temperature | grep -qx 'type u'
