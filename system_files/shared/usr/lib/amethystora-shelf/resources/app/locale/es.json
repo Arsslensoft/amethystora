@@ -1,0 +1,16 @@
+{
+  "Clear": "Vaciar",
+  "Clear the shelf": "Vaciar el estante",
+  "Drag and Drop Shelf": "Estante de arrastrar y soltar",
+  "Drop files, text or pictures here": "Suelte aquí archivos, texto o imágenes",
+  "Hold files, text and pictures at the edge of the screen while you move between apps": "Guarde archivos, texto e imágenes en el borde de la pantalla mientras cambia de aplicación",
+  "Moved or deleted": "Movido o eliminado",
+  "Picture": "Imagen",
+  "Remove": "Quitar",
+  "Shelf": "Estante",
+  "Show in Files": "Mostrar en Archivos",
+  "The shelf could not take that": "El estante no ha podido aceptarlo",
+  "The shelf is full": "El estante está lleno",
+  "shelf;drag;drop;hold;files;": "estante;arrastrar;soltar;guardar;archivos;",
+  "{name}, moved or deleted": "{name}, movido o eliminado"
+}

@@ -100,6 +100,7 @@
   "Show new entries as they are written": "Neue Einträge anzeigen, sobald sie geschrieben werden",
   "Show older": "Ältere anzeigen",
   "Sign-ins, sudo and polkit, and what the audit rules caught.": "Anmeldungen, sudo und polkit, und was die Audit-Regeln erfasst haben.",
+  "Sign-ins, sudo and polkit, and what the audit rules or the file-watch sensor caught.": "Anmeldungen, sudo und polkit sowie das, was die Audit-Regeln oder der Dateiwächter erfasst haben.",
   "Signal": "Signal",
   "System": "System",
   "System services": "Systemdienste",
@@ -144,9 +145,11 @@
   "{count, plural, one {# new entry} other {# new entries}}": "{count, plural, one {# neuer Eintrag} other {# neue Einträge}}",
   "{count, plural, one {The newest # entry} other {The newest # entries}}": "{count, plural, one {Der neueste Eintrag} other {Die neuesten # Einträge}}",
   "{count}+": "{count}+",
+  "{day}, {start} – {endDay}, {end}": "{day}, {start} – {endDay}, {end}",
   "{day}, {start}–{end}": "{day}, {start}–{end}",
   "{day}, {time}": "{day}, {time}",
   "{name}, process {pid}": "{name}, Prozess {pid}",
   "{program} crashed": "{program} ist abgestürzt",
+  "{program} crashed with {signal}": "{program} ist mit {signal} abgestürzt",
   "{start} to {end}, {day}": "{start} bis {end}, {day}"
 }

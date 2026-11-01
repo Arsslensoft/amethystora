@@ -100,6 +100,7 @@
   "Show new entries as they are written": "اعرض المُدخلات الجديدة فور كتابتها",
   "Show older": "اعرض الأقدم",
   "Sign-ins, sudo and polkit, and what the audit rules caught.": "عمليات الولوج، وsudo وpolkit، وما التقطته قواعد التدقيق.",
+  "Sign-ins, sudo and polkit, and what the audit rules or the file-watch sensor caught.": "عمليات تسجيل الدخول وsudo وpolkit، وما رصدته قواعد التدقيق أو مستشعر مراقبة الملفات.",
   "Signal": "الإشارة",
   "System": "النظام",
   "System services": "خدمات النظام",
@@ -144,9 +145,11 @@
   "{count, plural, one {# new entry} other {# new entries}}": "{count, plural, zero {لا مُدخلات جديدة} one {مُدخل جديد} two {مُدخلان جديدان} few {# مُدخلات جديدة} many {# مُدخلًا جديدًا} other {# مُدخل جديد}}",
   "{count, plural, one {The newest # entry} other {The newest # entries}}": "{count, plural, zero {لا مُدخلات} one {أحدث مُدخل} two {أحدث مُدخلَين} few {أحدث # مُدخلات} many {أحدث # مُدخلًا} other {أحدث # مُدخل}}",
   "{count}+": "{count}+",
+  "{day}, {start} – {endDay}, {end}": "{day}، {start} – {endDay}، {end}",
   "{day}, {start}–{end}": "{day}، {start}–{end}",
   "{day}, {time}": "{day}، {time}",
   "{name}, process {pid}": "{name}، العملية {pid}",
   "{program} crashed": "انهار {program}",
+  "{program} crashed with {signal}": "انهار {program} بالإشارة {signal}",
   "{start} to {end}, {day}": "من {start} إلى {end}، {day}"
 }

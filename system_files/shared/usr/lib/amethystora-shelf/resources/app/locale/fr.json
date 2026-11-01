@@ -1,0 +1,16 @@
+{
+  "Clear": "Vider",
+  "Clear the shelf": "Vider l’étagère",
+  "Drag and Drop Shelf": "Étagère de glisser-déposer",
+  "Drop files, text or pictures here": "Déposez ici des fichiers, du texte ou des images",
+  "Hold files, text and pictures at the edge of the screen while you move between apps": "Gardez fichiers, texte et images au bord de l’écran pendant que vous passez d’une application à l’autre",
+  "Moved or deleted": "Déplacé ou supprimé",
+  "Picture": "Image",
+  "Remove": "Retirer",
+  "Shelf": "Étagère",
+  "Show in Files": "Afficher dans Fichiers",
+  "The shelf could not take that": "L’étagère n’a pas pu prendre cet élément",
+  "The shelf is full": "L’étagère est pleine",
+  "shelf;drag;drop;hold;files;": "étagère;glisser;déposer;garder;fichiers;",
+  "{name}, moved or deleted": "{name}, déplacé ou supprimé"
+}

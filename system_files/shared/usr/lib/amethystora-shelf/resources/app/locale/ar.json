@@ -1,0 +1,16 @@
+{
+  "Clear": "أفرغ",
+  "Clear the shelf": "أفرغ الرف",
+  "Drag and Drop Shelf": "رف السحب والإفلات",
+  "Drop files, text or pictures here": "أفلت هنا الملفات أو النصوص أو الصور",
+  "Hold files, text and pictures at the edge of the screen while you move between apps": "احتفظ بالملفات والنصوص والصور عند حافة الشاشة أثناء تنقلك بين التطبيقات",
+  "Moved or deleted": "نُقل أو حُذف",
+  "Picture": "صورة",
+  "Remove": "أزل",
+  "Shelf": "الرف",
+  "Show in Files": "اعرض في الملفات",
+  "The shelf could not take that": "تعذّر على الرف أخذ ذلك",
+  "The shelf is full": "الرف ممتلئ",
+  "shelf;drag;drop;hold;files;": "رف;سحب;إفلات;احتفاظ;ملفات;",
+  "{name}, moved or deleted": "{name}، نُقل أو حُذف"
+}

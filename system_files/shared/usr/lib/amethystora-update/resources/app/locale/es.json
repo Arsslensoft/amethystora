@@ -100,6 +100,7 @@
   "The update did not finish": "La actualización no terminó",
   "The updater stopped before it got to the end.": "El actualizador se detuvo antes de llegar al final.",
   "This machine": "Este equipo",
+  "This machine did not say which system it runs.": "Este equipo no ha indicado qué sistema ejecuta.",
   "This machine is held on one build": "Este equipo está fijado en una compilación",
   "This machine started Amethystora {version} from the boot menu.": "Este equipo arrancó Amethystora {version} desde el menú de arranque.",
   "This machine started Amethystora {version}, built {date}, from the boot menu.": "Este equipo arrancó Amethystora {version}, compilada el {date}, desde el menú de arranque.",

@@ -100,6 +100,7 @@
   "The update did not finish": "لم يكتمل التحديث",
   "The updater stopped before it got to the end.": "توقّف المحدِّث قبل أن يبلغ النهاية.",
   "This machine": "هذا الجهاز",
+  "This machine did not say which system it runs.": "لم يذكر هذا الجهاز النظام الذي يشغّله.",
   "This machine is held on one build": "هذا الجهاز مثبَّت على بنية واحدة",
   "This machine started Amethystora {version} from the boot menu.": "أقلع هذا الجهاز بالإصدار {version} من Amethystora من قائمة الإقلاع.",
   "This machine started Amethystora {version}, built {date}, from the boot menu.": "أقلع هذا الجهاز بالإصدار {version} من Amethystora، المبني في {date}، من قائمة الإقلاع.",
