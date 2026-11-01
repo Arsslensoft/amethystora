@@ -58,19 +58,12 @@ Read the whole line in the checklist before starting one. What is known of the c
   - A login shell's PATH had `~/.local/bin` five times over, after the agents' installers added it.
 
 **Security**
-- **S-LOCK-05:** a Files window open on `~/Private` keeps its file names on screen after the folder closes. FUSE's
-  unmount ends Files' directory monitor, and Files never reloads. Files exports no reload over D-Bus: only `go-home`
-  and `close-current-view` per window, which cannot tell which window shows `~/Private`. Not tried yet:
-  - whether GIO counts the gocryptfs mount as a `GMount`, which Files leaves when it is unmounted;
-  - something in GNOME Shell that closes or moves the Files windows titled Private when the folder closes.
 - **S-DESK-03:** the top bar is drawn black after `ame desktop shield mark` until the overview opens. Seen three times,
   then not reproduced in five tries.
 - **S-NET-01:** the zone's service list differs from the Expect. **A-SECURITY-28:** two drops 0.8 s apart from the
   result page.
 
 **Desktop**
-- **D-GRID-07:** nothing greys an app while it updates. Neither Bazaar nor `flatpak update` sends
-  `com.canonical.Unity.LauncherEntry`. The shell's side works when the signal is sent by hand.
 - **A-CONTROL-82 (a note on a PASS):** while quick settings are arranged with a tile hidden, the menu runs past an
   800 px screen and Done is cut off (`modules/quick.js`, `_buildHint`, `_buildHiddenRow`).
 - D-QUICK-05, 11, 12 (a theme switch takes 10 to 12 s), D-TODAY-02, D-NOTIFY-06, D-FOCUS-11, 18, D-LOCK-03,
