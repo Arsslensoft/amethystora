@@ -1246,7 +1246,7 @@ impl Backups {
         Self::page_column(&view)
     }
 
-    /// Neither is set up: both are offered, and nothing else is shown
+    /// Neither is set up: the Status page offers both
     pub(crate) fn nothing_set_up(&self) -> bool {
         let state = self.state.borrow();
         let Some(status) = &state.status else { return false };
@@ -1443,10 +1443,8 @@ impl Backups {
         }
         let content = if !loaded {
             if error { self.error_view() } else { self.loading_view() }
-        } else if self.nothing_set_up() {
-            self.empty_view()
         } else if page == "status" {
-            self.status_view()
+            if self.nothing_set_up() { self.empty_view() } else { self.status_view() }
         } else {
             self.nothing_to_browse()
         };
