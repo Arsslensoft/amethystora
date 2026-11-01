@@ -1991,7 +1991,7 @@ jq -e '[.items[] | select(.id == "quick-theme" or .id == "quick-tiles")] | lengt
     (.choices // [] | .[].command) | select(.[0:3] != ["ame", "desktop", "quick-settings"])' <<<"${CONTROL_LIST}")" ]]
 [[ -z "$(jq -r '.items[].id' <<<"${CONTROL_LIST}" | sort | uniq -d)" ]]
 [[ -z "$(jq -r '.items[].kind' <<<"${CONTROL_LIST}" |
-    grep -vxE 'switch|choice|range|action|link|themes|theme-maker|wallpapers|widgets|webapps|shortcuts|trust-image|setup|disks|rows')" ]]
+    grep -vxE 'switch|choice|range|action|link|themes|theme-maker|wallpapers|widgets|webapps|shortcuts|keybindings|trust-image|setup|disks|rows')" ]]
 [[ -z "$(jq -c '.items[] | (.command // empty), (.choices // [] | .[].command), (.commands // {} | .[].command),
     (.disks // [] | .[].actions[].command), (.rows // [] | .[].actions[].command)
     | select(.[0] != "ame" or .[1] == "security")' <<<"${CONTROL_LIST}")" ]]
