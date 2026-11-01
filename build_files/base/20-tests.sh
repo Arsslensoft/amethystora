@@ -3416,15 +3416,15 @@ SSH_TEST="$(mktemp -d)"
 mkdir -p "${SSH_TEST}/etc/firewalld/zones" "${SSH_TEST}/usr/lib/firewalld/zones"
 cp /usr/lib/firewalld/zones/amethystora.xml "${SSH_TEST}/usr/lib/firewalld/zones/"
 installer_ssh_hook() {
-    sed 's#</zone>#'"$2"'</zone>#' /usr/lib/firewalld/zones/amethystora.xml >"${SSH_TEST}/etc/firewalld/zones/amethystora.xml"
+    sed 's#</zone>#'"$2"'\n</zone>#' /usr/lib/firewalld/zones/amethystora.xml >"${SSH_TEST}/etc/firewalld/zones/amethystora.xml"
     SETUP_CHECKER_FILE="${SSH_TEST}/$RANDOM.json" AMETHYSTORA_FIREWALL_ROOT="${SSH_TEST}" AMETHYSTORA_SSHD_ENABLED="$1" \
         bash /usr/share/amethystora/system-setup.hooks.d/31-installer-ssh.sh
 }
 installer_ssh_hook no '<service name="ssh"/>'
 [[ ! -e "${SSH_TEST}/etc/firewalld/zones/amethystora.xml" ]]
-installer_ssh_hook no '<service name="ssh"/><service name="http"/>'
+installer_ssh_hook no '<service name="ssh"/>\n<service name="http"/>'
 grep -q 'name="http"' "${SSH_TEST}/etc/firewalld/zones/amethystora.xml"
-! grep -q 'name="ssh"' "${SSH_TEST}/etc/firewalld/zones/amethystora.xml"
+[[ "$(grep -c 'name="ssh"' "${SSH_TEST}/etc/firewalld/zones/amethystora.xml")" == 0 ]]
 installer_ssh_hook yes '<service name="ssh"/>'
 grep -q 'name="ssh"' "${SSH_TEST}/etc/firewalld/zones/amethystora.xml"
 rm -rf "${SSH_TEST}"
