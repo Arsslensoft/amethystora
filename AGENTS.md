@@ -604,8 +604,10 @@ handled, always as the account. It is never open without `amethystora-private-fo
 open starts before mounting and which closes the folder on `ActiveChanged(true)`, on `PrepareForSleep(true)`
 under a delay inhibitor, and however it ends (`ExecStopPost`): it fails closed. The password goes from
 gocryptfs's prompt or zenity straight into gocryptfs, never into a variable, argument or file. Closing
-stops gocryptfs's scope without waiting for programs and takes away the folder's thumbnails and recent
-files; closed, `~/Private` is 0500 (fusermount3 mounts only where its owner can write, so it is 0700 for the
+stops gocryptfs's scope without waiting for programs, takes away the folder's thumbnails and recent
+files and closes, over the session bus so that it needs no shell, each Files tab in the folder or on a search (Files
+never reloads a folder that was unmounted, even as a `GMount`, and a tab's number is its place in the row, which the
+order Files publishes follows only until a tab is moved); closed, `~/Private` is 0500 (fusermount3 mounts only where its owner can write, so it is 0700 for the
 moment of mounting). `test-private-folder.sh` checks it against stand-ins, `tests/vm/suites/86-locked-session.sh`
 on a machine.
 

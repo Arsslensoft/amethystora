@@ -3,9 +3,10 @@
 # gocryptfs, systemd-run, systemctl, zenity and findmnt, for 20-tests.sh, since a build has no FUSE: opening
 # refuses a mount point with plain files in it, starts the watcher before it mounts and stops it when the
 # mount fails, and the password reaches no argument and no file; closing takes away the thumbnails and the
-# recent files of what was in the folder and nothing else, writes the rest of the list back as it was, and
-# names the programs that had a file open in it; removing refuses a folder with something in it. It runs as
-# nobody, since the helper refuses root.
+# recent files of what was in the folder and nothing else, writes the rest of the list back as it was, names the
+# programs that had a file open in it, and closes the Files tabs that show it (a stand-in for Files over busctl,
+# whose tab row need not be the order it publishes) and no other; removing refuses a folder with something in it. It
+# runs as nobody, since the helper refuses root.
 
 set -euo pipefail
 
@@ -53,11 +54,30 @@ case "${0##*/}" in
         ;;
     findmnt) [[ -e "${STATE}/mounted" ]]; exit ;;
     fusermount3) rm -f "${STATE}/mounted" ;;
+    busctl)
+        # Files: a window's tabs in the order they were made, its row of tabs, the tab in front and the one last closed
+        [[ "$*" == *--auto-start=no* ]] || { echo "busctl may start Files: $*" >>"${STATE}/started"; exit 1; }
+        [[ -e "${STATE}/files.json" ]] || exit 1
+        while [[ "$1" == --* ]]; do shift; done
+        case "$3" in
+            /org/freedesktop/FileManager1)
+                jq -c '{type: "v", data: [{type: "a{sas}", data: map_values(.tabs)}]}' "${STATE}/files.json" ;;
+            *)
+                case "$7" in
+                    go-to-tab) change='.[$w].front = .[$w].row[$n]' ;;
+                    close-current-view) change='.[$w].closed = .[$w].front | .[$w].tabs -= [.[$w].front] | .[$w].row -= [.[$w].front] |
+                        if .[$w].tabs == [] then del(.[$w]) else .[$w].front = .[$w].row[0] end' ;;
+                    restore-tab) change='.[$w].tabs += [.[$w].closed] | .[$w].row += [.[$w].closed]' ;;
+                esac
+                jq -c --arg w "$3" --argjson n "${10:-0}" "${change}" "${STATE}/files.json" >"${STATE}/files.new"
+                mv "${STATE}/files.new" "${STATE}/files.json" ;;
+        esac
+        ;;
 esac
 exit 0
 EOF
 chmod +x "${T}/bin/stub"
-for name in systemctl systemd-run gocryptfs zenity findmnt fusermount3 notify-send gio; do
+for name in systemctl systemd-run gocryptfs zenity findmnt fusermount3 notify-send gio busctl; do
     ln -s stub "${T}/bin/${name}"
 done
 chown -R 65534:65534 "${T}/home" "${T}/state"
@@ -140,6 +160,17 @@ as_nobody "mkdir -p '${HOME_DIR}/.local/share' && cat >'${HOME_DIR}/.local/share
 </xbel>
 EOF
 
+# Files: a window on the folder, one on a folder in it, a tab in it beside another tab, the same with the tab moved by
+# hand, a search, and a window elsewhere
+files_window() { jq -c --arg w "/org/gnome/Nautilus/window/$1" --argjson tabs "$2" --argjson row "$3" '.[$w] = {tabs: $tabs, row: $row, front: $row[0]}'; }
+docs="file://${HOME_DIR}/Documents"
+echo '{}' | files_window 1 "[\"${uri}\"]" "[\"${uri}\"]" | files_window 2 "[\"${uri}/sub\"]" "[\"${uri}/sub\"]" |
+    files_window 3 "[\"${uri}\",\"${docs}\"]" "[\"${uri}\",\"${docs}\"]" |
+    files_window 4 "[\"${uri}/a\",\"${docs}/b\",\"${uri}/c\"]" "[\"${docs}/b\",\"${uri}/a\",\"${uri}/c\"]" |
+    files_window 5 '["x-nautilus-search://0/"]' '["x-nautilus-search://0/"]' |
+    files_window 6 "[\"${docs}\",\"file://${HOME_DIR}/Private-notes\"]" "[\"${docs}\",\"file://${HOME_DIR}/Private-notes\"]" >"${T}/state/files.json"
+chown 65534:65534 "${T}/state/files.json"
+
 # A program with its working folder in it, which closing names
 run bash -c "cd '${PLAIN}' && exec sleep 60" &
 holder=$!
@@ -155,6 +186,16 @@ grep -q "^systemctl --user stop amethystora-private-folder.scope$" "${LOG}" || f
 [[ "$(run "${HELPER}" status --json | jq -r .state)" == closed ]] || fail "a closed folder is not closed"
 [[ "$(stat -c %a "${PLAIN}")" == 500 ]] || fail "the closed mount point takes files"
 grep -q "^notify-send .*sleep" "${LOG}" || fail "the program that had its working folder in it was not named"
+left="$(jq -cS 'map_values(.tabs)' "${T}/state/files.json")"
+[[ "${left}" == "$(jq -ncS --arg docs "${docs}" --arg notes "file://${HOME_DIR}/Private-notes" '{"/org/gnome/Nautilus/window/3": [$docs], "/org/gnome/Nautilus/window/4": [$docs + "/b"], "/org/gnome/Nautilus/window/6": [$docs, $notes]}')" ]] ||
+    fail "the Files tabs left are not what they should be: ${left}"
+[[ ! -e "${T}/state/started" ]] || fail "$(cat "${T}/state/started")"
+# A closing with nothing opened leaves a search alone
+echo '{"/org/gnome/Nautilus/window/5":{"tabs":["x-nautilus-search://0/"],"row":["x-nautilus-search://0/"],"front":"x-nautilus-search://0/"}}' >"${T}/state/files.json"
+chown 65534:65534 "${T}/state/files.json"
+run "${HELPER}" close </dev/null || fail "did not close again"
+[[ "$(jq -r 'keys | length' "${T}/state/files.json")" == 1 ]] || fail "a closing with nothing opened took a search away"
+rm "${T}/state/files.json"
 for gone in .cache/thumbnails/large/private.png .cache/thumbnails/fail/gnome-thumbnail-factory/failed.png \
     .var/app/org.gnome.Loupe/cache/thumbnails/normal/app.png; do
     [[ ! -e "${HOME_DIR}/${gone}" ]] || fail "a thumbnail of the folder stayed: ${gone}"

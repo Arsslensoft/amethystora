@@ -861,6 +861,10 @@ folder, while it is closed, does not.
   it is empty, and nothing can be saved in it.
 - **Closing it yourself:** **Close Now**, from the right-click menu of **Private Folder** in the
   app grid, or `ame security private-folder close`.
+- **Files, when it closes:** however it closes, a Files tab showing the folder or a search closes
+  with it, and a window with no other tab, so that no file's name stays on the screen. Other
+  windows and tabs stay. A folder you went back out of can still be in that window's back button,
+  by name.
 - **A new password:** `ame security private-folder password`, with the old password or with the
   recovery key. Nothing is copied: only the password that opens the files changes.
 - **Taking it away:** `ame security private-folder remove` takes away an empty folder, once you

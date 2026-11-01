@@ -7,8 +7,9 @@
 #        account counting as unlocked; then `on`, which leaves no rule of GNOME's and blocks a new stick while
 #        unlocked; then off.
 #   5.   ame security private-folder create in a terminal, files in it, a thumbnail of a picture, a recent file,
-#        programs holding a file and a folder in it; the screen locked: closed at once, gocryptfs gone, the
-#        programs named, the thumbnail and the recent file gone, nothing writable left in ~/Private.
+#        programs holding a file and a folder in it, Files on it and on another folder; the screen locked: closed at
+#        once, gocryptfs gone, the programs named, the thumbnail and the recent file gone, nothing writable left in
+#        ~/Private, Files' window on it closed and the other kept.
 #   6.   Opened from the app grid's launcher, the wrong password then the right one in its dialog, shown in
 #        Files; Close Now; a watcher stopped or killed closes it; a suspend without the screen locking closes
 #        it before the machine sleeps.
@@ -87,6 +88,13 @@ gocryptfs_running() { pgrep -u "${TEST_USER}" -x gocryptfs >/dev/null; }
 closed() { ! mounted && ! gocryptfs_running; }
 watcher() { user_systemctl is-active amethystora-private-folder-watch.service 2>/dev/null; }
 watcher_gone() { [[ "$(watcher)" != active ]]; }
+# Every tab Files has open, one a line (nothing while it does not run)
+files_tabs() {
+    user_bus timeout 5 busctl --user --auto-start=no --json=short call org.freedesktop.FileManager1 /org/freedesktop/FileManager1 \
+        org.freedesktop.DBus.Properties Get ss org.freedesktop.FileManager1 OpenWindowsWithLocations 2>/dev/null | jq -r '.data[0].data[][]'
+}
+files_shows() { files_tabs | grep -qF "$1"; }
+files_left() { ! files_shows "file://${PRIVATE}"; }
 
 # --- 1. Lock-screen USB protection, turned on in the running session -------------------------------------------
 if [[ "${SUITE_PHASE}" == 1 ]]; then
@@ -243,6 +251,12 @@ EOF" >/dev/null 2>&1
     in_session "exec tail -f '${PRIVATE}/letter.txt'" >/dev/null 2>&1 &
     wait_for 30 sh -c "pgrep -u ${TEST_USER} -x tail >/dev/null && pgrep -u ${TEST_USER} -f 'sleep 900' >/dev/null"
     TAIL="$(pgrep -u "${TEST_USER}" -x tail | head -n1)"
+    # Files on the folder and on another one: what it listed must not stay on the screen
+    in_session "gio open '${PRIVATE}'" >/dev/null 2>&1
+    check "Files shows the folder" wait_for 30 files_shows "file://${PRIVATE}"
+    as_user "mkdir -p '${HOME_TEST}/Documents'"
+    in_session "gio open '${HOME_TEST}/Documents'" >/dev/null 2>&1
+    check "Files shows another folder" wait_for 30 files_shows "file://${HOME_TEST}/Documents"
     notify_watch
     began="$(date +%s%N)"
     loginctl lock-session "${SESSION}"
@@ -253,6 +267,8 @@ EOF" >/dev/null 2>&1
         not_ok "it stayed open with the screen locked" "$(findmnt "${PRIVATE}" 2>&1)" "$(journalctl -b --since -2min _SYSTEMD_USER_UNIT=amethystora-private-folder-watch.service --no-pager -o cat | tail -n 8)"
     fi
     check "its watcher has ended" wait_for 30 watcher_gone
+    check "the screen locked closes Files' window on the folder" wait_for 30 files_left
+    check "and keeps its other window" files_shows "file://${HOME_TEST}/Documents"
     check "a program with a file open in it can no longer read it" sh -c "! cat /proc/${TAIL:-1}/fd/3 >/dev/null 2>&1 && ! head -c1 '${PRIVATE}/letter.txt' >/dev/null 2>&1"
     if wait_for 30 notified "These programs had files open in it"; then
         out="$(grep -A2 -F "These programs had files open in it" /var/tmp/vmlab-86-notifications)"
@@ -304,6 +320,7 @@ if [[ "${SUITE_PHASE}" == 6 ]]; then
     in_session "$(sed -n '/^\[Desktop Action close\]/,$ s/^Exec=//p' /usr/share/applications/amethystora-private-folder.desktop)" >/dev/null 2>&1
     check "Close Now closes it" wait_for 30 closed
     check "and stops its watcher" wait_for 30 watcher_gone
+    check "and Files no longer shows it" wait_for 30 files_left
     if wait_for 30 notified "These programs had files open in it"; then
         out="$(grep -A2 -F "These programs had files open in it" /var/tmp/vmlab-86-notifications)"
         if [[ "${out}" == *tail* ]]; then ok "Close Now names the program"; else not_ok "Close Now's notification does not name tail" "${out}"; fi
@@ -317,8 +334,11 @@ if [[ "${SUITE_PHASE}" == 6 ]]; then
     for how in TERM KILL; do
         open_in_terminal
         if mounted && [[ "$(watcher)" == active ]]; then
+            in_session "gio open '${PRIVATE}'" >/dev/null 2>&1
+            wait_for 30 files_shows "file://${PRIVATE}"
             user_systemctl kill -s "${how}" amethystora-private-folder-watch.service
             check "the watcher killed with SIG${how} closes it" wait_for 30 closed
+            check "and Files no longer shows it" wait_for 30 files_left
         else
             not_ok "it did not open in a terminal" "$(findmnt "${PRIVATE}" 2>&1)"
         fi
@@ -329,11 +349,14 @@ if [[ "${SUITE_PHASE}" == 6 ]]; then
         user_bus gsettings set org.gnome.desktop.screensaver lock-enabled false
         open_in_terminal
         if mounted; then
+            in_session "gio open '${PRIVATE}'" >/dev/null 2>&1
+            wait_for 30 files_shows "file://${PRIVATE}"
             before="$(date +%s)"
             echo devices >/sys/power/pm_test
             systemctl suspend
             wait_for 180 sh -c "journalctl -b --since @${before} --no-pager -o cat | grep -q 'PM: suspend exit'"
             echo none >/sys/power/pm_test
+            check "the suspend closes Files' window on the folder" wait_for 30 files_left
             # When the account's manager stopped gocryptfs's scope, against the kernel's suspend
             closed_at="$(journalctl -b --since "@${before}" -o short-unix --no-pager USER_UNIT=amethystora-private-folder.scope |
                 grep -iE 'stopped|deactivated' | head -n1 | cut -d' ' -f1)"

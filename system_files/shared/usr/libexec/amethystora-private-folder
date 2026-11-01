@@ -8,7 +8,8 @@
 #   amethystora-private-folder create            make it, in a terminal: its password, and its recovery key shown once
 #   amethystora-private-folder open [--show]     open it, asking for its own password (in a terminal, or in a
 #                                                dialog), and with --show show it in Files
-#   amethystora-private-folder close             close it, and take away the thumbnails and recent files of what is in it
+#   amethystora-private-folder close             close it, take away the thumbnails and recent files of what is in it,
+#                                                and close the Files tabs that show it
 #   amethystora-private-folder password          its password changed, with the old one or the recovery key, in a terminal
 #   amethystora-private-folder remove            an empty folder taken away, in a terminal
 #   amethystora-private-folder watch             amethystora-private-folder-watch.service: closes it when the screen
@@ -31,6 +32,8 @@ CIPHER="${HOME}/.local/share/amethystora/private"
 SCOPE=amethystora-private-folder.scope
 WATCH=amethystora-private-folder-watch.service
 BOOKMARKS="${HOME}/.config/gtk-3.0/bookmarks"
+# There from the folder's opening to its closing, so that a closing with nothing opened leaves searches alone
+OPENED="${CIPHER}.opened"
 
 # A paragraph on the terminal, folded to its width
 say() { fold -s -w 88 <<<"$1" | sed 's/ *$//'; }
@@ -135,6 +138,66 @@ PY
     done
 }
 
+# What Files publishes of its windows: their object paths, each with the place of each tab, as JSON. Nothing if it
+# does not run, and asking does not start it.
+files_windows() {
+    timeout 1 busctl --user --auto-start=no --json=short call org.freedesktop.FileManager1 /org/freedesktop/FileManager1 \
+        org.freedesktop.DBus.Properties Get ss org.freedesktop.FileManager1 OpenWindowsWithLocations 2>/dev/null | jq -c '.data[0].data'
+}
+files_action() { timeout 1 busctl --user --auto-start=no call org.gnome.Nautilus "$1" org.gtk.Actions Activate 'sava{sv}' "${@:2}" 0 >/dev/null 2>&1; }
+
+# Files goes on listing a folder that was unmounted: the unmount ends its monitor, it never reloads, and it has no
+# way to be told to, a GMount (x-gvfs-show) included. So each of its tabs in the folder is closed, and a window with
+# no other tab goes with it; going home instead would keep the folders' names in the back button. Asked of Files
+# itself on the session bus, so that it needs no GNOME Shell. The folder is closed by now, and a Files that does not
+# answer is given five seconds.
+close_files_tabs() {
+    local roots window count here numbers tab left end=$((SECONDS + 5))
+    roots="$(jq -nc --arg uri "$1" '[$uri, ($uri | sub("^file:///var/home/"; "file:///home/"))]')"
+    # A search has no place of its own, and what it found stays listed: while the folder was open, it may be a search
+    # that reached into it
+    local search=false
+    [[ -e "${OPENED}" ]] && search=true
+    local in_folder='def in_folder: . as $tab | ($tab | startswith("x-nautilus-search:") and '"${search}"') or
+        any($roots[]; . as $root | $tab == $root or ($tab | startswith($root + "/")));'
+    # The tabs of one window: how many, how many in the folder, and the numbers of those, last first
+    tabs_of() {
+        files_windows | jq -r --arg window "$1" --argjson roots "${roots}" "${in_folder}"'
+            (.[$window] // []) as $tabs | [$tabs | to_entries[] | select(.value | in_folder) | .key] as $here |
+            "\($tabs | length) \($here | length) \($here | reverse | join(" "))"'
+    }
+    # Files publishes a change a moment after it is made
+    settled() {
+        local before="${count}" _
+        while ((SECONDS < end)); do
+            read -r count left _ < <(tabs_of "${window}")
+            ((count != before)) && return
+            sleep 0.05
+        done
+    }
+    for window in $(files_windows | jq -r --argjson roots "${roots}" "${in_folder}"'
+        to_entries[] | select(any(.value[]; in_folder)) | .key' | grep -E '^/org/gnome/Nautilus/window/[0-9]+$'); do
+        read -r count here numbers < <(tabs_of "${window}")
+        left="${here}"
+        # A tab's number is its place in the row, and Files publishes them in the order they were made: the same
+        # unless one was moved by hand. A wrong guess closes another tab, which is opened again, and then every
+        # tab is tried.
+        for tab in ${numbers} $(seq $((count - 1)) -1 0); do
+            ((here > 0 && SECONDS < end)) || break
+            ((tab < count)) || continue
+            files_action "${window}" go-to-tab 1 i "${tab}" || break
+            files_action "${window}" close-current-view 0 || break
+            settled
+            if ((left == here)); then
+                files_action "${window}" restore-tab 0
+                settled
+            fi
+            here="${left}"
+        done
+    done
+    return 0
+}
+
 # The folder closed, whatever closes it. shut [PROGRAMS]: the programs that had files in it, one a line, when they
 # were read before something else closed it
 shut() {
@@ -152,6 +215,8 @@ shut() {
     folder_uri="$(uri "${PLAIN}")"
     forget_thumbnails "${folder_uri}"
     forget_recent "${folder_uri}"
+    close_files_tabs "${folder_uri}"
+    rm -f -- "${OPENED}"
     if mounted; then
         notify-send --app-name=Amethystora --icon=folder-locked --urgency=critical \
             "$(gettext "The private folder could not be closed")" \
@@ -278,6 +343,7 @@ $(gettext "Move them somewhere else, open the folder, and move them into it then
         [[ "${rc}" -eq 12 || "${rc}" -eq 9 ]] && fail "$(gettext "Wrong password.")"
         fail "$(gettext "The private folder could not be opened.")"
     done
+    : >"${OPENED}"
     # The screen locked while it was opening, and the watcher is gone: closed again
     if ! systemctl --user is-active --quiet "${WATCH}"; then
         shut
