@@ -2490,7 +2490,11 @@ for owner in pointer.js:shake windows/hold.js:hold-super hints.js:search windows
 done
 test -s "${UI_EXTENSION}/icons/hints/amethystora-hint-symbolic.svg"
 grep -q "Shell.AppUsage.get_default().get_most_used()" "${UI_EXTENSION}/modules/appgrid.js"
-[[ -z "$(grep -E 'timeout_add|setInterval|setTimeout' "${UI_EXTENSION}/modules/appgrid.js")" ]]
+# No timer in the app grid but one: a single 300 ms settle after the icon size changes, which pins the grid at the
+# recent row's size (1a46b20c), removed before it is set again and never repeating
+[[ "$(grep -E 'timeout_add|setInterval|setTimeout' "${UI_EXTENSION}/modules/appgrid.js" | sed 's/^ *//')" == \
+    'this._settle = GLib.timeout_add(GLib.PRIORITY_DEFAULT, SETTLE, () => {' ]]
+grep -q '^const SETTLE = 300;$' "${UI_EXTENSION}/modules/appgrid.js"
 for recipe in hints app-grid; do
     grep -q "^${recipe} [A-Z]*=\"\"\( [A-Z]*=\"\"\)\{0,1\}:" /usr/share/amethystora/just/desktop.just
     grep -qx "desktop::${recipe}" <<<"$(ame --summary | tr ' ' '\n')"
