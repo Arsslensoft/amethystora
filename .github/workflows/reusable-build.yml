@@ -39,11 +39,16 @@ jobs:
       attestations: write
       artifact-metadata: write
     continue-on-error: false
+    # The keys are the release environment's, which admits only main, beta and the merge queue's branches,
+    # so a branch that changes PUBLISH in its own copy still gets none. The condition is PUBLISH's
+    environment: >-
+      ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' ||
+      github.event.merge_group.base_ref == 'refs/heads/main' ||
+      (inputs.stream_name == 'beta' && github.ref == 'refs/heads/beta')) && 'release' || '' }}
     env:
       # Only main publishes and signs: its schedule, its dispatches and the merge queue in front of it, and
       # the beta branch its own stream. Pull requests, and dispatches from any other branch, build and test
-      # and publish nothing. The guard is in this file, so a branch can change it in its own copy: only
-      # secrets kept in an environment that admits main alone are out of such a branch's reach.
+      # and publish nothing.
       PUBLISH: >-
         ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' ||
         github.event.merge_group.base_ref == 'refs/heads/main' ||
