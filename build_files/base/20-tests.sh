@@ -856,7 +856,8 @@ GSETTINGS_BACKEND=memory gsettings range org.gnome.settings-daemon.plugins.color
 grep -q "def HoldProfile" "$(rpm -ql tuned | grep '/tuned/ppd/controller\.py$')"
 # Live captions (plans/beyond/spec-r4-later.md, part B): off, one key; the recognizer is in the image (GStreamer's
 # vosk element) and its helper downloads only the pinned model, never writes or sends the sound, and is the only
-# program the module starts; nothing it hears is markup. The helper's own test runs without the network
+# program the module starts but pactl, which it asks whether the players are paused; nothing it hears is markup. The
+# helper's own test runs without the network
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys org.gnome.shell.extensions.amethystora-ui.captions)" == enabled ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.captions enabled)" == false ]]
 rpm -q gst-vosk >/dev/null
@@ -870,8 +871,9 @@ grep -q "'--proto-redir', protocols" /usr/libexec/amethystora-captions
 [[ -z "$(grep -nE "filesink|wavenc|tcpclientsink|udpsink|souphttp" /usr/libexec/amethystora-captions)" ]]
 test -s "${UI_EXTENSION}/modules/captions.js"
 test -s "${UI_EXTENSION}/stylesheets/captions.css"
-[[ "$(grep -cE "Subprocess\.new|Util\.spawn|spawn_command_line|GLib\.spawn|Shell\.App" "${UI_EXTENSION}/modules/captions.js")" == 1 ]]
+[[ "$(grep -cE "Subprocess\.new|Util\.spawn|spawn_command_line|GLib\.spawn|Shell\.App" "${UI_EXTENSION}/modules/captions.js")" == 2 ]]
 grep -q "Gio.Subprocess.new(\[HELPER, 'listen'\]," "${UI_EXTENSION}/modules/captions.js"
+grep -q "Gio.Subprocess.new(\['pactl', '--format=json', 'list', 'sink-inputs'\]," "${UI_EXTENSION}/modules/captions.js"
 [[ -z "$(grep -nE 'use_markup = true|use_markup: true|set_markup\(' "${UI_EXTENSION}/modules/captions.js")" ]]
 grep -q '^captions \*ARGS:' /usr/share/amethystora/just/desktop.just
 bash /ctx/build_files/shared/test-captions.sh
