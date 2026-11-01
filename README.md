@@ -6,7 +6,7 @@
 
 For end users, it aims to be as reliable as a Chromebook with near-zero maintenance. For developers, it offers a cloud-native workflow with integrated container tools, declarative system management and CI/CD-built images.
 
-Amethystora is created and maintained by **Arsslen Idadi** ([@arsslensoft](https://github.com/arsslensoft)).
+Amethystora is created and maintained by **Arsslen Idadi** ([@iarsslen](https://github.com/iarsslen)).
 
 ## Mission
 

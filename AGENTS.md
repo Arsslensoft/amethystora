@@ -4,7 +4,7 @@ This document provides essential information for coding agents working with the 
 
 ## Repository Overview
 
-**Amethystora** is a cloud-native desktop operating system, based on Universal Blue and maintained by Arsslen Idadi (@arsslensoft). It is an OS built on Fedora Linux using container technologies with atomic updates.
+**Amethystora** is a cloud-native desktop operating system, based on Universal Blue and maintained by Arsslen Idadi (@iarsslen). It is an OS built on Fedora Linux using container technologies with atomic updates.
 
 - **Type**: Container-based Linux distribution build system
 - **Base**: `ghcr.io/ublue-os/silverblue-main` (Fedora with the GNOME desktop and GDM) + Universal Blue infrastructure; GNOME Shell extensions are kept in `system_files/shared/usr/share/gnome-shell/extensions` and set up by `build_files/shared/build-gnome-extensions.sh`: `amethystora-transitions@arsslensoft.github.io` (see The transitions), `amethystora-widgets@arsslensoft.github.io` (see Widgets), `amethystora-logo-menu@arsslensoft.github.io` (see The logo menu), `amethystora-clipboard@arsslensoft.github.io` (a modified copy of Clipboard Indicator, see `NOTICE`) and `amethystora-ui@arsslensoft.github.io` (see Amethystora UI); none is a git submodule any more

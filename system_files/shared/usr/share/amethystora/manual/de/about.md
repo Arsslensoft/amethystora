@@ -1,6 +1,6 @@
 # Über Amethystora
 
-Amethystora wird von Arsslen Idadi ([@arsslensoft](https://github.com/arsslensoft)) erstellt und gepflegt. Es
+Amethystora wird von Arsslen Idadi ([@iarsslen](https://github.com/iarsslen)) erstellt und gepflegt. Es
 ist freie Software unter der Apache License 2.0 und wird offen entwickelt auf
 [github.com/arsslensoft/amethystora](https://github.com/arsslensoft/amethystora). Fehlermeldungen, Ideen und
 Pull-Requests sind dort willkommen.

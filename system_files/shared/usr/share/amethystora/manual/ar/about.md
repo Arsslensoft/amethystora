@@ -1,6 +1,6 @@
 # حول
 
-أنشأ Amethystora ويصونه Arsslen Idadi ([@arsslensoft](https://github.com/arsslensoft)). وهو برمجية حرة بموجب
+أنشأ Amethystora ويصونه Arsslen Idadi ([@iarsslen](https://github.com/iarsslen)). وهو برمجية حرة بموجب
 Apache License 2.0، تُبنى علنًا على [github.com/arsslensoft/amethystora](https://github.com/arsslensoft/amethystora).
 والبلاغات والأفكار وطلبات الدمج مرحَّب بها هناك.
 

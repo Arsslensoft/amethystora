@@ -1,6 +1,6 @@
 # About
 
-Amethystora is created and maintained by Arsslen Idadi ([@arsslensoft](https://github.com/arsslensoft)).
+Amethystora is created and maintained by Arsslen Idadi ([@iarsslen](https://github.com/iarsslen)).
 It is free software under the Apache License 2.0, built in the open at
 [github.com/arsslensoft/amethystora](https://github.com/arsslensoft/amethystora). Issues, ideas and pull
 requests are welcome there.

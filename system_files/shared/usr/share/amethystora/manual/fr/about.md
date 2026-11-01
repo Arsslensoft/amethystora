@@ -1,6 +1,6 @@
 # À propos
 
-Amethystora est créé et maintenu par Arsslen Idadi ([@arsslensoft](https://github.com/arsslensoft)). C’est un
+Amethystora est créé et maintenu par Arsslen Idadi ([@iarsslen](https://github.com/iarsslen)). C’est un
 logiciel libre sous licence Apache 2.0, développé ouvertement sur
 [github.com/arsslensoft/amethystora](https://github.com/arsslensoft/amethystora). Les tickets, les idées et
 les pull requests y sont les bienvenus.
