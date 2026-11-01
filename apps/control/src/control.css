@@ -1245,3 +1245,37 @@ window.narrow .banner-wrap {
 .maker-check .bad {
     color: var(--warn);
 }
+
+/* The top bar's places (the bar entry): a row for each, its items as chips that are dragged or opened for a menu */
+.bar-place {
+    min-height: 40px;
+    padding: 8px 10px;
+    border-radius: 12px;
+    border: 1.5px dashed color-mix(in oklab, var(--accent) 35%, transparent);
+}
+
+.bar-place-name {
+    color: var(--soft);
+    font-weight: 700;
+}
+
+.bar-chip > button {
+    min-height: 28px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--fg) 9%, transparent);
+    box-shadow: none;
+    font-size: 12.5px;
+    font-weight: 700;
+}
+
+.bar-chip > button:hover,
+.bar-chip > button:checked {
+    background: color-mix(in oklab, var(--fg) 14%, transparent);
+}
+
+.bar-chip-move {
+    min-height: 30px;
+    padding: 0 10px;
+    border-radius: 8px;
+}

@@ -194,6 +194,11 @@ read_in_background resume gsettings get org.gnome.shell.extensions.amethystora-u
 read_in_background pill gsettings list-recursively org.gnome.shell.extensions.amethystora-ui.pill
 read_in_background quick gsettings get org.gnome.shell.extensions.amethystora-ui.quick tile-hidden
 read_in_background bars gsettings list-recursively org.gnome.shell.extensions.amethystora-ui.bars
+# The bar's items and where they are, the clock's keys, the calendar's week numbers and the light desktop (the bar group)
+read_in_background bar-layout /usr/libexec/amethystora-bar-layout show --json
+read_in_background clock gsettings list-recursively org.gnome.desktop.interface
+read_in_background weekdate gsettings get org.gnome.desktop.calendar show-weekdate
+read_in_background light gsettings get org.gnome.shell.extensions.amethystora-ui.comfort light
 read_in_background today gsettings list-recursively org.gnome.shell.extensions.amethystora-ui.today
 read_in_background power gsettings list-recursively org.gnome.shell.extensions.amethystora-ui.power
 read_in_background focus gsettings list-recursively org.gnome.shell.extensions.amethystora-ui.focus
@@ -463,6 +468,29 @@ USAGE="ame desktop comfort increase-contrast on|off"
 item appearance increase-contrast switch "${ gettext "Increase contrast"; }" \
     "${ gettext "GNOME's High Contrast: stronger outlines, plain text and outlined controls, in the apps as well."; }" \
     "$([[ "${CONTRAST}" == true ]] && echo on || echo off)" themes#comfort
+# How fast animations play (the motion's speed key), the size of text (GNOME's text scaling) and the light desktop
+SPEED="${ value_of "${ said motion; }" speed "'(.*)'\$"; }"
+[[ "${ ended motion; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
+[[ "${MOTION}" == reduce ]] && DETAIL="${ gettext "Reduce motion is on: whatever the speed, things fade in place."; }"
+choice snappy "${ gettext "Snappy"; }" "" false ame desktop animation-speed snappy
+choice normal "${ gettext "Normal"; }" "" false ame desktop animation-speed normal
+choice relaxed "${ gettext "Relaxed"; }" "" false ame desktop animation-speed relaxed
+choice off "${ gettext "Off"; }" "" false ame desktop animation-speed off
+USAGE="ame desktop animation-speed snappy|normal|relaxed|off"
+item appearance animation-speed choice "${ gettext "Animation speed"; }" \
+    "${ gettext "How long the desktop's animations take. Off changes everything at once."; }" "${SPEED:-normal}" themes#comfort
+TEXT_SIZE="$(value_of "${ said clock; }" text-scaling-factor "(.*)\$" | awk '{ printf "%d", $1 * 100 + 0.5 }')"
+EXTRA='{"min": 90, "max": 150, "step": 5, "unit": "%", "terminal": false, "command": ["ame", "desktop", "text-size", "{value}"]}'
+USAGE="ame desktop text-size 90..150"
+item appearance text-size range "${ gettext "Text size"; }" \
+    "${ gettext "The size of text everywhere, apart from the screen's scale. The Amethystora apps follow it at once, other apps at their next start."; }" \
+    "${TEXT_SIZE:-100}" themes#comfort
+[[ "${ ended light; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
+switch_choices false ame desktop light-desktop
+USAGE="ame desktop light-desktop on|off"
+item appearance light-desktop switch "${ gettext "Light desktop"; }" \
+    "${ gettext "Solid glass, short and simple motion and no live window previews, for a computer without a graphics driver or with little memory."; }" \
+    "$([[ "${ said light; }" == true ]] && echo on || echo off)" themes#the-light-desktop
 # Live captions: on opens a terminal, since the first time it says what it downloads and asks; off never asks
 if [[ "${ ended captions; }" == 0 && "${ said captions; }" == true ]]; then CAPTIONS=on; else CAPTIONS=off; fi
 # The recognizer is GStreamer's vosk element: its file says it is there, with no Python and no GStreamer started
@@ -1285,6 +1313,16 @@ motion_note
 USAGE="ame desktop workspace-switch depth|slide"
 item desktop workspace-switch choice "${ gettext "Changing workspace"; }" \
     "${ gettext "How one workspace gives way to the next."; }" "${ motion_key workspace-switch; }" desktop#motion
+choice gnome "${ gettext "GNOME's own"; }" "${ gettext "A window grows out of its place, as GNOME draws it"; }" false \
+    ame desktop window-motion gnome
+choice pop "${ gettext "Pop"; }" "${ gettext "It grows into place from a little smaller"; }" false ame desktop window-motion pop
+choice slide "${ gettext "Slide"; }" "${ gettext "It rises a little into place"; }" false ame desktop window-motion slide
+choice fade "${ gettext "Fade"; }" "${ gettext "It only fades in"; }" false ame desktop window-motion fade
+motion_note
+USAGE="ame desktop window-motion pop|slide|fade|gnome"
+item desktop window-motion choice "${ gettext "Opening and closing"; }" \
+    "${ gettext "How a window arrives and leaves; closing plays it backwards. Dialogs keep GNOME's."; }" \
+    "${ motion_key open-close; }" desktop#motion
 GROUP="${ gettext "Workspaces"; }"
 switch_choices false ame desktop space-names
 [[ "${ ended space-names; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
@@ -1563,6 +1601,82 @@ ui_switch today weather weather "${ gettext "Weather beside the clock"; }" \
 ui_switch today getting-set getting-set "${ gettext "Getting set"; }" \
     "${ gettext "For your first four weeks, the calendar menu lists the steps that protect the machine and make it yours."; }" \
     desktop#getting-set false ame desktop getting-set
+
+# The bar your way: what it holds and where (one entry the window draws as the bar), its size and its edge
+bars_value() { value_of "${BARS}" "$1" "'(.*)'\$"; }
+[[ "${ ended bar-layout; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
+EXTRA="$(jq -c '{bar_items: [.zones as $zs | .items as $it | ("left", "center", "right", "hidden") as $z
+        | $zs[$z][] as $id | $it[] | select(.id == $id) | {id, name, zone: $z, fixed}], commands: {
+        place: {terminal: false, command: ["ame", "desktop", "top-bar", "item", "{item}", "{zone}", "{position}"]},
+        reset: {terminal: false, command: ["ame", "desktop", "top-bar", "layout", "reset"]}}}' \
+    <<<"${ said bar-layout; }" 2>/dev/null || echo '{"bar_items": [], "commands": {}}')"
+USAGE="ame desktop top-bar item ITEM left|center|right|hidden [POSITION]"
+item desktop top-bar-layout bar "${ gettext "What the top bar holds"; }" \
+    "${ gettext "Drag an item to the left, the centre or the right of the bar, or onto Hidden. The clock and the system menu stay."; }" \
+    "" desktop#arranging-the-bar
+[[ "${ ended bars; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
+choice compact "${ gettext "Compact"; }" "${ gettext "28 pixels, for a small screen"; }" false ame desktop top-bar size compact
+choice regular "${ gettext "Regular"; }" "${ gettext "32 pixels, the image's"; }" false ame desktop top-bar size regular
+choice roomy "${ gettext "Roomy"; }" "${ gettext "40 pixels, larger targets"; }" false ame desktop top-bar size roomy
+USAGE="ame desktop top-bar size compact|regular|roomy"
+item desktop top-bar-size choice "${ gettext "Bar size"; }" \
+    "${ gettext "The bar and everything on it, together. Touch mode's taller bar still wins."; }" \
+    "${ bars_value size; }" desktop#the-bars-size
+[[ "${ ended bars; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
+choice top "${ gettext "Top"; }" "" false ame desktop top-bar position top
+choice bottom "${ gettext "Bottom"; }" "${ gettext "Its menus open upwards; a dock at the bottom sits above it"; }" false \
+    ame desktop top-bar position bottom
+USAGE="ame desktop top-bar position top|bottom"
+item desktop top-bar-position choice "${ gettext "The bar's edge"; }" \
+    "${ gettext "Where the bar sits on the screen."; }" "${ bars_value position; }" desktop#at-the-bottom-or-hidden
+ui_switch bars autohide top-bar-autohide "${ gettext "Hide the bar until touched"; }" \
+    "${ gettext "The bar gives its room to the windows; push the pointer against its edge to bring it in."; }" \
+    desktop#at-the-bottom-or-hidden false ame desktop top-bar autohide
+
+# The clock: GNOME's own keys, and a second time zone of the pill's
+GROUP="${ gettext "Clock"; }"
+CLOCK="${ said clock; }"
+clock_onoff() { [[ "$(value_of "${CLOCK}" "$1" "(.*)\$")" == true ]] && echo on || echo off; }
+[[ "${ ended clock; }" == 0 ]] || REASON="${ gettext "This GNOME has no clock settings."; }"
+choice 24h "${ gettext "24-hour"; }" "" false ame desktop clock format 24h
+choice 12h "${ gettext "12-hour"; }" "" false ame desktop clock format 12h
+USAGE="ame desktop clock format 24h|12h"
+item desktop clock-format choice "${ gettext "Time format"; }" "" "$(value_of "${CLOCK}" clock-format "'(.*)'\$")" \
+    desktop#the-clock
+for what in seconds weekday date; do
+    case "${what}" in
+        seconds) key=clock-show-seconds title="${ gettext "Seconds"; }" text="${ gettext "The clock then changes every second."; }" ;;
+        weekday) key=clock-show-weekday title="${ gettext "Weekday"; }" text="" ;;
+        date) key=clock-show-date title="${ gettext "Date"; }" text="" ;;
+    esac
+    [[ "${ ended clock; }" == 0 ]] || REASON="${ gettext "This GNOME has no clock settings."; }"
+    switch_choices false ame desktop clock "${what}"
+    USAGE="ame desktop clock ${what} on|off"
+    item desktop "clock-${what}" switch "${title}" "${text}" "${ clock_onoff "${key}"; }" desktop#the-clock
+done
+[[ "${ ended weekdate; }" == 0 ]] || REASON="${ gettext "This GNOME has no calendar settings."; }"
+switch_choices false ame desktop clock week-numbers
+USAGE="ame desktop clock week-numbers on|off"
+item desktop clock-week-numbers switch "${ gettext "Week numbers in the calendar"; }" "" \
+    "$([[ "${ said weekdate; }" == true ]] && echo on || echo off)" desktop#the-clock
+ZONE="${ pill_key second-zone; }"
+ZONE="${ZONE//\'/}"
+[[ "${ ended pill; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
+choice off "${ gettext "None"; }" "" false ame desktop clock zone off
+# A city for each part of the world; one chosen in a terminal that is not among them is offered too
+ZONES=(Pacific/Honolulu America/Anchorage America/Los_Angeles America/Denver America/Chicago America/New_York
+    America/Sao_Paulo Atlantic/Azores Europe/London Europe/Paris Africa/Tunis Africa/Cairo Europe/Istanbul
+    Europe/Moscow Asia/Dubai Asia/Karachi Asia/Kolkata Asia/Dhaka Asia/Bangkok Asia/Shanghai Asia/Singapore
+    Asia/Tokyo Australia/Sydney Pacific/Auckland)
+[[ -n "${ZONE}" && " ${ZONES[*]} " != *" ${ZONE} "* ]] && ZONES+=("${ZONE}")
+for zone in "${ZONES[@]}"; do
+    city="${zone##*/}"
+    choice "${zone}" "${city//_/ }" "${zone}" false ame desktop clock zone "${zone}"
+done
+USAGE="ame desktop clock zone AREA/CITY|off"
+item desktop clock-zone choice "${ gettext "A second time zone"; }" \
+    "${ gettext "Its time after the clock, for family or colleagues abroad."; }" "${ZONE:-off}" desktop#the-clock
+GROUP=""
 
 # GNOME's own rest reminders (org.gnome.desktop.break-reminders)
 case "${ said breaks; }" in

@@ -289,6 +289,8 @@ export class Dock {
 
     // A dock was placed: the overview leaves room for the main screen's bottom dock
     placed(site) {
+        // A bar at the bottom keeps the room of the dock above it too
+        this._ext.modules?.get('bars')?.dockPlaced?.();
         if (!this._overviewDash || site.monitorIndex !== Main.layoutManager.primaryIndex)
             return;
         this._overviewDash.height = site.edgeName === 'bottom' && !site.touch ? site.thickness : 0;

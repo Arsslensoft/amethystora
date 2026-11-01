@@ -170,6 +170,15 @@ pub fn webapp(list: Option<&List>, action: &str, name: &str) -> Result<Run, Stri
     core::webapp(list, action, name).map_err(words)
 }
 
+/// A top bar item the list named, moved to one of its places at a position there, or the bar put back as the image has it
+pub fn bar_place(list: Option<&List>, id: &str, zone: &str, position: usize) -> Result<Run, String> {
+    core::bar_place(list, id, zone, position).map_err(words)
+}
+
+pub fn bar_reset(list: Option<&List>) -> Result<Run, String> {
+    core::bar_reset(list).map_err(words)
+}
+
 /// One of the actions the list gave a pool of disks
 pub fn pool(list: Option<&List>, action: &str, id: &str) -> Result<Run, String> {
     core::pool(list, action, id).map_err(words)

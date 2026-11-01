@@ -7,7 +7,7 @@ import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 
 const dir = process.argv[2] ?? '/usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io';
-const {freeTopEdge} = await import(pathToFileURL(path.join(dir, 'modules/bars/edge.js')).href);
+const {freeTopEdge, freeBottomEdge} = await import(pathToFileURL(path.join(dir, 'modules/bars/edge.js')).href);
 const m = (x, y, width, height) => ({x, y, width, height});
 
 // Side by side: nothing above, the whole edge
@@ -37,4 +37,10 @@ const mirrored = m(0, 0, 1920, 1080);
 assert.deepEqual(freeTopEdge(mirrored, [mirrored]), [[0, 1920]]);
 // A screen beside, its bottom level with this one's top, touches no part of it
 assert.deepEqual(freeTopEdge(plain, [m(1920, 0, 1920, 1080), plain]), [[0, 1920]]);
+// The bar at the bottom (R5-06): the same, mirrored. A screen below this one leaves the way down open
+assert.deepEqual(freeBottomEdge(above, [above, laptop]), []);
+assert.deepEqual(freeBottomEdge(laptop, [above, laptop]), [[0, 1920]]);
+assert.deepEqual(freeBottomEdge(m(320, 0, 1920, 1080), [m(320, 0, 1920, 1080), wide]), []);
+assert.deepEqual(freeBottomEdge(m(0, 0, 2560, 1080), [m(0, 0, 2560, 1080), m(320, 1080, 1920, 1080)]), [[0, 320], [2240, 2560]]);
+assert.deepEqual(freeBottomEdge(left, [left, right]), [[0, 1920]]);
 console.log('bars edge: ok');

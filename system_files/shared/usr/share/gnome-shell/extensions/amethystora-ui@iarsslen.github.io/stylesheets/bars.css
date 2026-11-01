@@ -5,3 +5,79 @@
 .amethystora-bars-box {
   background-color: transparent;
 }
+
+/* ---- The bar's size (bars' size key). GNOME draws the bar 2.2em high with its icons and the workspaces' dots in em,
+   so its font size sizes all of it: 28 px compact, 32 regular (no class), 40 roomy. One id and one class, below touch
+   mode's rules (two ids), which still win. The pill's plate follows. ---- */
+
+.amethystora-bar-compact #panel {
+  font-size: 0.875em;
+}
+
+.amethystora-bar-roomy #panel {
+  font-size: 1.25em;
+}
+
+.amethystora-pill {
+  -amethystora-plate-height: 28px;
+}
+
+.amethystora-bar-compact .amethystora-pill {
+  -amethystora-plate-height: 24px;
+}
+
+.amethystora-bar-roomy .amethystora-pill {
+  -amethystora-plate-height: 34px;
+}
+
+.amethystora-bar-compact .amethystora-pill-piece-start { border-radius: 12px 0 0 12px; }
+.amethystora-bar-compact .amethystora-pill-piece-end { border-radius: 0 12px 12px 0; }
+.amethystora-bar-roomy .amethystora-pill-piece-start { border-radius: 17px 0 0 17px; }
+.amethystora-bar-roomy .amethystora-pill-piece-end { border-radius: 0 17px 17px 0; }
+.amethystora-bar-compact .amethystora-pill-content { font-size: 12px; }
+.amethystora-bar-roomy .amethystora-pill-content { font-size: 15px; }
+
+/* ---- The bar at the bottom (bars' position key): the styles that hold it off the edge hold it off the bottom ---- */
+
+#uiGroup.amethystora-bar-bottom.amethystora-style-floating #panel,
+#uiGroup.amethystora-bar-bottom.amethystora-style-floating #panel.amethystora-glass-clear {
+  margin: 0 10px 8px 10px;
+}
+
+#uiGroup.amethystora-bar-bottom.amethystora-style-islands #panel,
+#uiGroup.amethystora-bar-bottom.amethystora-style-islands #panel.amethystora-glass-clear {
+  margin: 0 8px 6px 8px;
+}
+
+#uiGroup.amethystora-bar-bottom.amethystora-style-capsule #panel,
+#uiGroup.amethystora-bar-bottom.amethystora-style-capsule #panel.amethystora-glass-clear {
+  margin: 0 14px 6px 14px;
+}
+
+#uiGroup.amethystora-bar-bottom.amethystora-style-segments #panel,
+#uiGroup.amethystora-bar-bottom.amethystora-style-segments #panel.amethystora-glass-clear {
+  margin: 0 10px 6px 10px;
+}
+
+#uiGroup.amethystora-bar-bottom.amethystora-style-neon #panel,
+#uiGroup.amethystora-bar-bottom.amethystora-style-neon #panel.amethystora-glass-clear {
+  margin: 0 12px 8px 12px;
+}
+
+/* ---- A second time zone after the clock (the pill's second-zone key) ---- */
+
+.amethystora-pill-zone {
+  spacing: 8px;
+  padding-left: 8px;
+}
+
+.amethystora-pill-zone-line {
+  width: 1px;
+  height: 14px;
+  background-color: rgba(255, 255, 255, 0.28);
+}
+
+.amethystora-pill-zone-time {
+  font-feature-settings: "tnum";
+  font-weight: 600;
+}

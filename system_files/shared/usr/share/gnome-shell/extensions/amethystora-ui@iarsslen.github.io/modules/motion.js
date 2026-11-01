@@ -6,8 +6,11 @@
 // a little as they go. With Reduce motion on, windows fade in place and workspaces crossfade; with GNOME's animations
 // off, nothing moves at all, as GNOME makes it.
 //
-// GNOME's window manager keeps its own handlers for minimize, unminimize and map; while this module draws those, it
-// blocks them (and only them) and calls GNOME's own methods for everything it leaves to GNOME, and GNOME's own
+// A window can also arrive and leave its own way (the `open-close` key: pop, slide or fade, motion/arrive.js), in place of
+// GNOME's own effect for a plain window.
+//
+// GNOME's window manager keeps its own handlers for minimize, unminimize, map and destroy; while this module draws
+// those, it blocks them (and only them) and calls GNOME's own methods for everything it leaves to GNOME, and GNOME's own
 // endings when its flights are over, so that the window always ends exactly as GNOME leaves it. Nothing is replaced
 // on GNOME's objects. Nothing runs while nothing moves.
 //
@@ -24,6 +27,7 @@ import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as WorkspaceAnimation from 'resource:///org/gnome/shell/ui/workspaceAnimation.js';
 
+import {Arrivals, STYLES as ARRIVALS} from './motion/arrive.js';
 import {Depth} from './motion/depth.js';
 import {dropletShader} from './motion/droplet.js';
 import {Flight, frameCentre, scaleFactor} from './motion/flight.js';
@@ -31,8 +35,8 @@ import {OUT, RIPPLE_IN_MS, RIPPLE_OUT_MS, turnRound} from './motion/path.js';
 import {Rise} from './motion/rise.js';
 
 const SCHEMA = 'org.gnome.shell.extensions.amethystora-ui.motion';
-// GNOME's handlers this module stands in for
-const SIGNALS = ['minimize', 'unminimize', 'map'];
+// GNOME's handlers this module stands in for: the droplet's, and the opening's and closing's
+const DROPLET = ['minimize', 'unminimize'];
 // The kinds of window GNOME animates when they are minimized or come back
 const TYPES = [Meta.WindowType.NORMAL, Meta.WindowType.MODAL_DIALOG, Meta.WindowType.DIALOG];
 // How long after a click in the dock the app's first window still grows out of its icon, in microseconds
@@ -62,15 +66,18 @@ export class Motion {
         this._hookId = 0;
         this._launch = null;
         this._shader = dropletShader();
+        this._arrivals = new Arrivals((actor, t0) => this._tilingRest(actor, actor.meta_window?.get_frame_rect(), t0));
         this._settings = this._ext.getSettings(SCHEMA);
         this._settings.connectObject(
             'changed::minimize', () => this._sync(),
             'changed::workspace-switch', () => this._sync(),
+            'changed::open-close', () => this._sync(),
             this);
         global.window_manager.connectObject(
             'minimize', (wm, actor) => this._minimize(wm, actor),
             'unminimize', (wm, actor) => this._unminimize(wm, actor),
             'map', (wm, actor) => this._map(wm, actor),
+            'destroy', (wm, actor) => this._destroy(wm, actor),
             'kill-window-effects', (wm, actor) => this._kill(wm, actor),
             this);
         this._unlisten = this._comfort?.listen?.(() => this._sync()) ?? null;
@@ -94,6 +101,8 @@ export class Motion {
             }
         }
         this._flights = null;
+        this._arrivals?.stop();
+        this._arrivals = null;
         for (const rise of [...this._risings?.values() ?? []]) {
             try {
                 this._endRise(rise);
@@ -148,24 +157,56 @@ export class Motion {
         this._launch = {app, at: GLib.get_monotonic_time()};
     }
 
+    // The window and the motion it is arriving or leaving with (open-close), for the tests
+    arriving(actor) {
+        return this._arrivals?.moving(actor) ?? false;
+    }
+
     // ---- Which of GNOME's handlers are standing aside ----
+
+    // pop, slide or fade while the key says one of them, else null (GNOME's own)
+    get _arrival() {
+        const style = this._settings?.get_string('open-close');
+        return ARRIVALS.includes(style) ? style : null;
+    }
 
     _sync() {
         if (!this._settings)
             return;
         const reduced = this._reduced;
-        if (this._settings.get_string('minimize') === 'droplet' || reduced)
-            this._block();
-        else
-            this._unblock();
+        const droplet = this._settings.get_string('minimize') === 'droplet' || reduced;
+        const arrival = this._arrival !== null;
+        // The droplet's own paths of a window mapping (a set rising, an app the dock opened) only while it is chosen
+        this._droplet = droplet;
+        this._blockOnly({
+            minimize: droplet, unminimize: droplet, map: droplet || arrival, destroy: arrival,
+        });
         if (this._settings.get_string('workspace-switch') === 'depth' || reduced)
             this._hook();
         else
             this._unhook();
     }
 
-    _block() {
-        for (const name of SIGNALS) {
+    // Each of GNOME's handlers blocked or not, as wanted
+    _blockOnly(wanted) {
+        for (const [name, on] of Object.entries(wanted)) {
+            if (on)
+                this._block([name]);
+            else
+                this._unblockOne(name);
+        }
+    }
+
+    _unblockOne(name) {
+        const id = this._blocked?.get(name);
+        if (!id)
+            return;
+        GObject.signal_handler_unblock(global.window_manager, id);
+        this._blocked.delete(name);
+    }
+
+    _block(names = [...DROPLET, 'map']) {
+        for (const name of names) {
             if (this._blocked.has(name))
                 continue;
             // The first handler on the signal is GNOME's: the window manager connects it before any extension loads
@@ -186,6 +227,16 @@ export class Motion {
     }
 
     // ---- The window manager's events ----
+
+    // A window closed: it leaves as the open-close key says, or as GNOME has it
+    _destroy(shellwm, actor) {
+        if (!this._blocked?.has('destroy'))
+            return;
+        const style = this._arrival;
+        if (style && this._animated(actor) && this._arrivals.close(shellwm, actor, style, this._reduced))
+            return;
+        Main.wm._destroyWindow(shellwm, actor);
+    }
 
     _minimize(shellwm, actor) {
         if (!this._blocked?.has('minimize'))
@@ -224,14 +275,18 @@ export class Motion {
             return;
         const window = actor.meta_window;
         // A window a saved set opened rises into its place instead (asked once per window)
-        if (this._ext.modules?.get('workspaces')?.arriving?.(window) && St.Settings.get().enable_animations &&
+        if (this._droplet && this._ext.modules?.get('workspaces')?.arriving?.(window) && St.Settings.get().enable_animations &&
             Main.wm._getAnimationWindowType(actor) === Meta.WindowType.NORMAL) {
             this._rise(shellwm, actor);
             return;
         }
-        const app = St.Settings.get().enable_animations &&
+        const app = this._droplet && St.Settings.get().enable_animations &&
             Main.wm._getAnimationWindowType(actor) === Meta.WindowType.NORMAL ? this._takeLaunch(window) : null;
         if (!app) {
+            // As the open-close key says, or as GNOME has it
+            const style = this._arrival;
+            if (style && this._animated(actor) && this._arrivals.open(shellwm, actor, style, this._reduced))
+                return;
             Main.wm._mapWindow(shellwm, actor);
             return;
         }

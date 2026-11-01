@@ -2699,7 +2699,9 @@ focus *ARGS:
     esac
 
 # The top bar on every screen (ame desktop top-bar screens [on|off]), and over a fullscreen window when you push the
-# pointer against the top edge (ame desktop top-bar peek [on|off]). Without on or off, it asks
+# pointer against the top edge (ame desktop top-bar peek [on|off]); its size (size compact|regular|roomy), its edge
+# (position top|bottom), hidden until touched (autohide on|off), and what it holds where (item ITEM ZONE [POSITION],
+# layout show|reset). Without on or off, it asks
 [positional-arguments]
 top-bar *ARGS:
     #!/usr/bin/bash
@@ -2708,15 +2710,59 @@ top-bar *ARGS:
     source gettext.sh
     schema=org.gnome.shell.extensions.amethystora-ui.bars
     usage() {
-        echo "usage: ame desktop top-bar screens|peek [on|off]"
+        echo "usage: ame desktop top-bar screens|peek|autohide [on|off]"
+        echo "       ame desktop top-bar size compact|regular|roomy"
+        echo "       ame desktop top-bar position top|bottom"
+        echo "       ame desktop top-bar item ITEM left|center|right|hidden [POSITION]"
+        echo "       ame desktop top-bar layout show|reset"
         exit 64
     }
-    [[ $# -ge 1 && $# -le 2 ]] || usage
+    [[ $# -ge 1 ]] || usage
     case "$1" in
+        size)
+            [[ $# -eq 2 ]] || usage
+            case "$2" in
+                compact) echo "$(gettext "The top bar is compact: 28 pixels high, with everything on it smaller.")" ;;
+                regular) echo "$(gettext "The top bar is its regular size, 32 pixels high.")" ;;
+                roomy) echo "$(gettext "The top bar is roomy: 40 pixels high, with larger targets.")" ;;
+                *) usage ;;
+            esac
+            gsettings set "${schema}" size "$2"
+            exit 0
+            ;;
+        position)
+            [[ $# -eq 2 ]] || usage
+            case "$2" in
+                top) echo "$(gettext "The top bar is at the top of the screen.")" ;;
+                bottom) echo "$(gettext "The bar is at the bottom of the screen; its menus open upwards and a dock at the bottom sits above it.")" ;;
+                *) usage ;;
+            esac
+            gsettings set "${schema}" position "$2"
+            exit 0
+            ;;
+        item)
+            [[ $# -ge 3 && $# -le 4 ]] || usage
+            /usr/libexec/amethystora-bar-layout place "$2" "$3" "${4:-}"
+            exit 0
+            ;;
+        layout)
+            [[ $# -eq 2 ]] || usage
+            case "$2" in
+                show) /usr/libexec/amethystora-bar-layout show ;;
+                reset)
+                    /usr/libexec/amethystora-bar-layout reset
+                    echo "$(gettext "The top bar holds what the image puts on it, where it puts it.")"
+                    ;;
+                *) usage ;;
+            esac
+            exit 0
+            ;;
         screens) key=every-screen ;;
         peek) key=peek ;;
+        autohide) key=autohide ;;
         *) usage ;;
     esac
+    [[ $# -le 2 ]] || usage
     state="${2:-}"
     if [[ -z "${state}" ]]; then
         if [[ "$(gsettings get "${schema}" "${key}")" == true ]]; then current=on; else current=off; fi
@@ -2728,6 +2774,8 @@ top-bar *ARGS:
         screens:off) echo "$(gettext "Only the main screen has a top bar.")" ;;
         peek:on) echo "$(gettext "Push the pointer against the top edge to see the top bar over a fullscreen window.")" ;;
         peek:off) echo "$(gettext "A fullscreen window keeps the whole screen.")" ;;
+        autohide:on) echo "$(gettext "The bar hides until you push the pointer against its edge, and gives its room to the windows.")" ;;
+        autohide:off) echo "$(gettext "The bar stays in view.")" ;;
         *) usage ;;
     esac
     if [[ "${state}" == on ]]; then gsettings set "${schema}" "${key}" true; else gsettings set "${schema}" "${key}" false; fi
@@ -4668,3 +4716,174 @@ files-convert STATE="":
             exit 64
             ;;
     esac
+
+# What the clock shows (GNOME's own clock keys): 24 or 12 hours (format 24h|12h), seconds, the weekday, the date and
+# week numbers in the calendar (seconds|weekday|date|week-numbers on|off), and a second time zone after it (zone
+# AREA/CITY|off, a name of the system's time-zone data such as Asia/Tokyo). Without on or off, it flips
+[positional-arguments]
+clock *ARGS:
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    IFACE=org.gnome.desktop.interface
+    usage() {
+        echo "usage: ame desktop clock format 24h|12h"
+        echo "       ame desktop clock seconds|weekday|date|week-numbers [on|off]"
+        echo "       ame desktop clock zone AREA/CITY|off"
+        exit 64
+    }
+    [[ $# -ge 1 && $# -le 2 ]] || usage
+    case "$1" in
+        format)
+            [[ $# -eq 2 ]] || usage
+            case "$2" in
+                24h) echo "$(gettext "The clock shows the 24-hour time.")" ;;
+                12h) echo "$(gettext "The clock shows the 12-hour time, with AM and PM.")" ;;
+                *) usage ;;
+            esac
+            gsettings set "${IFACE}" clock-format "$2"
+            exit 0
+            ;;
+        zone)
+            [[ $# -eq 2 ]] || usage
+            if [[ "$2" == off ]]; then
+                gsettings set org.gnome.shell.extensions.amethystora-ui.pill second-zone ''
+                echo "$(gettext "The clock shows your own time only.")"
+                exit 0
+            fi
+            # A zone of the system's own data, by its name: an area and a place, perhaps one part more
+            if [[ ! "$2" =~ ^[A-Za-z]+(/[A-Za-z0-9_+-]{1,40}){1,2}$ || ! -f "/usr/share/zoneinfo/$2" ]]; then
+                zone="$2"
+                echo "$(eval_gettext "\${zone} is not a time zone this computer knows. Try one such as Europe/Paris or Asia/Tokyo.")" >&2
+                exit 1
+            fi
+            gsettings set org.gnome.shell.extensions.amethystora-ui.pill second-zone "$2"
+            city="${2##*/}"
+            city="${city//_/ }"
+            echo "$(eval_gettext "The time in \${city} shows after the clock.")"
+            exit 0
+            ;;
+        seconds) schema="${IFACE}" key=clock-show-seconds ;;
+        weekday) schema="${IFACE}" key=clock-show-weekday ;;
+        date) schema="${IFACE}" key=clock-show-date ;;
+        week-numbers) schema=org.gnome.desktop.calendar key=show-weekdate ;;
+        *) usage ;;
+    esac
+    state="${2:-}"
+    if [[ -z "${state}" ]]; then
+        if [[ "$(gsettings get "${schema}" "${key}")" == true ]]; then state=off; else state=on; fi
+    fi
+    case "$1:${state}" in
+        seconds:on) echo "$(gettext "The clock shows seconds.")" ;;
+        seconds:off) echo "$(gettext "The clock shows hours and minutes.")" ;;
+        weekday:on) echo "$(gettext "The clock shows the day of the week.")" ;;
+        weekday:off) echo "$(gettext "The clock leaves out the day of the week.")" ;;
+        date:on) echo "$(gettext "The clock shows the date.")" ;;
+        date:off) echo "$(gettext "The clock leaves out the date.")" ;;
+        week-numbers:on) echo "$(gettext "The calendar shows week numbers.")" ;;
+        week-numbers:off) echo "$(gettext "The calendar shows no week numbers.")" ;;
+        *) usage ;;
+    esac
+    if [[ "${state}" == on ]]; then gsettings set "${schema}" "${key}" true; else gsettings set "${schema}" "${key}" false; fi
+
+# How fast animations play: snappy, normal (the image's), relaxed, or off, which stills them without touching GNOME's
+# own Animations switch. Reduce motion still turns movement into fades. Without a speed, it asks
+[positional-arguments]
+animation-speed SPEED="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.motion
+    speed="${1:-}"
+    if [[ -z "${speed}" ]]; then
+        current="$(gsettings get "${schema}" speed | tr -d "'")"
+        speed="$(gum choose --header "$(eval_gettext "Animation speed (current: \${current})")" --selected "${current}" snappy normal relaxed off)" || exit 0
+    fi
+    case "${speed}" in
+        snappy) echo "$(gettext "Animations are snappy: shorter than the image's.")" ;;
+        normal) echo "$(gettext "Animations play at the image's speed.")" ;;
+        relaxed) echo "$(gettext "Animations are relaxed: slower and easier to follow.")" ;;
+        off) echo "$(gettext "Animations are off: everything changes at once.")" ;;
+        *)
+            echo "usage: ame desktop animation-speed snappy|normal|relaxed|off"
+            exit 64
+            ;;
+    esac
+    gsettings set "${schema}" speed "${speed}"
+
+# The size of text everywhere, from 90 to 150 percent, apart from the screen's scale (GNOME's text scaling; the
+# Amethystora apps follow it). Without a size, it says the current one
+[positional-arguments]
+text-size PERCENT="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    percent="${1:-}"
+    if [[ -z "${percent}" ]]; then
+        percent="$(gsettings get org.gnome.desktop.interface text-scaling-factor | awk '{ printf "%d", $1 * 100 + 0.5 }')"
+        echo "$(eval_gettext "Text size: \${percent} %")"
+        exit 0
+    fi
+    if [[ ! "${percent}" =~ ^[0-9]{2,3}$ ]] || (( percent < 90 || percent > 150 )); then
+        echo "usage: ame desktop text-size 90..150"
+        exit 64
+    fi
+    gsettings set org.gnome.desktop.interface text-scaling-factor "$(awk -v p="${percent}" 'BEGIN { printf "%.2f", p / 100 }')"
+    echo "$(eval_gettext "Text size: \${percent} %. Open apps that are not Amethystora's take it at their next start.")"
+
+# The light desktop: solid glass, short and simple motion and no live window previews, for a computer that draws the
+# screen without a graphics driver or has little memory (STATE: on or off; without it, it flips)
+[positional-arguments]
+light-desktop STATE="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.comfort
+    state="${1:-}"
+    if [[ -z "${state}" ]]; then
+        if [[ "$(gsettings get "${schema}" light)" == true ]]; then state=off; else state=on; fi
+    fi
+    case "${state}" in
+        on)
+            gsettings set "${schema}" light true
+            echo "$(gettext "The light desktop is on: solid glass, short motion and no live window previews.")"
+            ;;
+        off)
+            gsettings set "${schema}" light false
+            echo "$(gettext "The light desktop is off: the glass and the motion are as the image has them.")"
+            ;;
+        *)
+            echo "usage: ame desktop light-desktop on|off"
+            exit 64
+            ;;
+    esac
+
+# How a window opens and closes: pop, slide, fade, or gnome (GNOME's own, the image's). Closing plays it backwards.
+# Without a style, it asks
+[positional-arguments]
+window-motion STYLE="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.motion
+    style="${1:-}"
+    if [[ -z "${style}" ]]; then
+        current="$(gsettings get "${schema}" open-close | tr -d "'")"
+        style="$(gum choose --header "$(eval_gettext "Opening and closing (current: \${current})")" --selected "${current}" pop slide fade gnome)" || exit 0
+    fi
+    case "${style}" in
+        pop) echo "$(gettext "Pop: a window grows into place from a little smaller, and shrinks away as it closes.")" ;;
+        slide) echo "$(gettext "Slide: a window rises a little into place, and sinks away as it closes.")" ;;
+        fade) echo "$(gettext "Fade: a window fades in, and out as it closes.")" ;;
+        gnome) echo "$(gettext "Windows open and close as GNOME draws it.")" ;;
+        *)
+            echo "usage: ame desktop window-motion pop|slide|fade|gnome"
+            exit 64
+            ;;
+    esac
+    gsettings set "${schema}" open-close "${style}"

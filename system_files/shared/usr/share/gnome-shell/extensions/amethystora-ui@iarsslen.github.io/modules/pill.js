@@ -21,6 +21,7 @@ import {Activities} from './pill/activities.js';
 import {Battery, batteryView} from './pill/battery.js';
 import {Capture, Recording} from './pill/capture.js';
 import {Clock, chip, retire} from './pill/clock.js';
+import {Zone} from './pill/zone.js';
 import {Glow} from './pill/glow.js';
 import {Hold} from './pill/hold.js';
 import {Media} from './pill/media.js';
@@ -90,6 +91,9 @@ export class Pill {
         this._osd.enable();
         this._stacks = new Stacks();
         this._stacks.enable();
+        // A second time zone beside the clock (R6-08)
+        this._zone = new Zone(this._settings);
+        this._zone.enable();
         this._settings.connectObject(
             'changed::live', () => this._sync(),
             'changed::privacy-dots', () => this._sync(),
@@ -115,6 +119,8 @@ export class Pill {
         this._stopPart('_glow');
         this._stopPart('_hold');
         this._showGnomeCapture();
+        this._zone?.disable();
+        this._zone = null;
         this._stacks?.disable();
         this._stacks = null;
         this._osd?.disable();
@@ -415,6 +421,11 @@ export class Pill {
 
     get clock() {
         return this._clock;
+    }
+
+    // The second time zone beside the clock (pill/zone.js), for the tests
+    get zone() {
+        return this._zone ?? null;
     }
 
     get news() {

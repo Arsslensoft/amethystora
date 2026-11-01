@@ -84,6 +84,8 @@ export class DockSite {
         this._placing = true;
         try {
             const area = Main.layoutManager.getWorkAreaForMonitor(this.monitorIndex);
+            // A top bar moved to the bottom of this screen (modules/bars.js): the dock sits above it
+            const inset = this._dock.ext.modules?.get('bars')?.bottomInset?.(this.monitorIndex) ?? 0;
             if (this.edgeName === 'bottom') {
                 const room = Math.floor(area.width * LENGTH);
                 const left = area.x - monitor.x + Math.floor((area.width - room) / 2);
@@ -96,11 +98,11 @@ export class DockSite {
                 const [, height] = this.strip.get_preferred_height(monitor.width);
                 // Its height is its own, so that it follows the icons' size
                 this.strip.height = -1;
-                this.strip.set_position(monitor.x, monitor.y + monitor.height - height);
+                this.strip.set_position(monitor.x, monitor.y + monitor.height - inset - height);
             } else {
                 // From below the top bar to the screen's bottom, centred on the free height
                 const top = area.y;
-                const free = monitor.y + monitor.height - top;
+                const free = monitor.y + monitor.height - inset - top;
                 const room = Math.floor(area.height * LENGTH);
                 const before = Math.floor((area.height - room) / 2);
                 this.dash.set({

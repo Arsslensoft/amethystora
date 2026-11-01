@@ -132,6 +132,18 @@ pub struct Keybinding {
     pub clash: Vec<Clash>,
 }
 
+/// An item of the top bar as the list names it (the bar entry): its id, its name, where it is and whether it can be hidden
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct BarItem {
+    pub id: String,
+    pub name: String,
+    pub zone: String,
+    pub fixed: bool,
+}
+
+/// Where a top bar item can go: the bar's three boxes, or hidden
+pub const BAR_ZONES: [&str; 4] = ["left", "center", "right", "hidden"];
+
 /// One of the actions the list gives a pool of disks
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct PoolAction {
@@ -199,6 +211,8 @@ pub struct Item {
     // Every keyboard shortcut, and whether the tiling is on (its shortcuts work only then)
     pub keybindings: Vec<Keybinding>,
     pub tiling: bool,
+    // The top bar's items (the bar entry)
+    pub bar_items: Vec<BarItem>,
 }
 
 /// The list as the script gave it: {version, sealed, elsewhere, items}, of which the page uses the last two
@@ -389,6 +403,16 @@ fn item(value: &Value) -> Item {
             .filter(|binding| !binding.schema.is_empty() && !binding.key.is_empty())
             .collect(),
         tiling: truthy(field("tiling")),
+        bar_items: array(field("bar_items"))
+            .iter()
+            .map(|entry| BarItem {
+                id: string(entry.get("id")),
+                name: string(entry.get("name")),
+                zone: string(entry.get("zone")),
+                fixed: truthy(entry.get("fixed")),
+            })
+            .filter(|entry| !entry.id.is_empty() && BAR_ZONES.contains(&entry.zone.as_str()))
+            .collect(),
     }
 }
 
@@ -581,6 +605,42 @@ pub fn webapp(list: Option<&List>, action: &str, name: &str) -> Result<Run, Refu
         return Err(Refusal::Refused);
     }
     filled(command.command.as_ref(), command.terminal, &[("{name}", name)])
+}
+
+/// A top bar item the list named, put in one of the four places at a position in it (0 is first), or the bar put back as
+/// the image has it ("reset", which names none). A fixed item is never hidden, and the position is at most the number of
+/// items already there.
+pub fn bar_place(list: Option<&List>, id: &str, zone: &str, position: usize) -> Result<Run, Refusal> {
+    let item = list.and_then(|list| list.first_of_kind("bar")).filter(|item| item.available).ok_or(Refusal::Refused)?;
+    let command = item.commands.get("place").ok_or(Refusal::Refused)?;
+    let known = item.bar_items.iter().find(|entry| entry.id == id).ok_or(Refusal::Refused)?;
+    if !BAR_ZONES.contains(&zone) || (zone == "hidden" && known.fixed) {
+        return Err(Refusal::Refused);
+    }
+    let there = item.bar_items.iter().filter(|entry| entry.zone == zone && entry.id != id).count();
+    if position > there {
+        return Err(Refusal::Refused);
+    }
+    // A list that would put anything else in the arguments is not followed
+    let placeholders = ["{item}", "{zone}", "{position}"];
+    if command.command.as_ref().is_some_and(|words| words.iter().any(|word| word.contains('{') && !placeholders.contains(&word.as_str()))) {
+        return Err(Refusal::Refused);
+    }
+    let position = position.to_string();
+    let run = filled(command.command.as_ref(), command.terminal, &[("{item}", id), ("{zone}", zone), ("{position}", &position)])?;
+    if run.terminal {
+        return Err(Refusal::Refused);
+    }
+    Ok(run)
+}
+
+pub fn bar_reset(list: Option<&List>) -> Result<Run, Refusal> {
+    let item = list.and_then(|list| list.first_of_kind("bar")).filter(|item| item.available).ok_or(Refusal::Refused)?;
+    let command = item.commands.get("reset").ok_or(Refusal::Refused)?;
+    if command.command.as_ref().is_some_and(|words| words.iter().any(|word| word.contains('{'))) {
+        return Err(Refusal::Refused);
+    }
+    runnable(command.command.as_ref(), command.terminal)
 }
 
 /// One of the actions the list gave a pool of disks
@@ -987,6 +1047,33 @@ mod tests {
         assert_eq!(gallery_widget(Some(&list), "clock", "elsewhere"), Err(Refusal::Refused));
         // Only through gallery_widget, with its two values checked
         assert!(widget(Some(&list), "add", "clock").is_err());
+    }
+
+    #[test]
+    fn the_bar_by_the_lists_items() {
+        let list = parse_list(r#"{"items": [
+            {"page": "desktop", "id": "top-bar-layout", "kind": "bar", "title": "Bar", "available": true,
+             "bar_items": [{"id": "logo", "name": "Menu", "zone": "left", "fixed": false},
+                           {"id": "clock", "name": "Clock", "zone": "center", "fixed": true},
+                           {"id": "tray", "name": "Icons", "zone": "right", "fixed": false},
+                           {"id": "odd", "name": "Odd", "zone": "middle", "fixed": false}],
+             "commands": {"place": {"terminal": false, "command": ["ame", "desktop", "top-bar", "item", "{item}", "{zone}", "{position}"]},
+                          "reset": {"terminal": false, "command": ["ame", "desktop", "top-bar", "layout", "reset"]}}}]}"#)
+        .unwrap();
+        let bar = list.find("top-bar-layout").unwrap();
+        assert_eq!(bar.bar_items.len(), 3, "an item in no known place is left out");
+        assert_eq!(argv(bar_place(Some(&list), "clock", "left", 0)), ["ame", "desktop", "top-bar", "item", "clock", "left", "0"]);
+        assert_eq!(argv(bar_place(Some(&list), "logo", "left", 0)), ["ame", "desktop", "top-bar", "item", "logo", "left", "0"]);
+        assert_eq!(argv(bar_place(Some(&list), "tray", "hidden", 0)), ["ame", "desktop", "top-bar", "item", "tray", "hidden", "0"]);
+        // A fixed item is never hidden; an item or a place the list did not give, or a position past the end, is refused
+        assert!(bar_place(Some(&list), "clock", "hidden", 0).is_err());
+        assert!(bar_place(Some(&list), "weather", "left", 0).is_err());
+        assert!(bar_place(Some(&list), "logo", "middle", 0).is_err());
+        assert!(bar_place(Some(&list), "logo", "left", 1).is_err());
+        assert!(bar_place(Some(&list), "tray", "left", 2).is_err());
+        assert_eq!(argv(bar_place(Some(&list), "tray", "left", 1)), ["ame", "desktop", "top-bar", "item", "tray", "left", "1"]);
+        assert_eq!(argv(bar_reset(Some(&list))), ["ame", "desktop", "top-bar", "layout", "reset"]);
+        assert!(bar_place(None, "logo", "left", 0).is_err());
     }
 
     #[test]

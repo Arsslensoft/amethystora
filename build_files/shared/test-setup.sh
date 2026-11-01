@@ -74,7 +74,7 @@ MOTION=org.gnome.shell.extensions.amethystora-ui.motion
 MOTION_TABLE="$(sed -n "s/^MOTION_KEYS='\(.*\)'\$/\1/p" "${SETUP}")"
 [[ "$(jq -r 'keys | join(" ")' <<<"${MOTION_TABLE}")" == "$(GSETTINGS_BACKEND=memory /usr/bin/gsettings list-keys "${MOTION}" | sort | xargs)" ]] ||
     { echo "MOTION_KEYS and the motion's schema differ"; false; }
-for key in minimize workspace-switch; do
+for key in minimize workspace-switch speed open-close; do
     [[ "$(jq -c --arg k "${key}" '.[$k]' <<<"${MOTION_TABLE}")" == "[\"s\",$(GSETTINGS_BACKEND=memory /usr/bin/gsettings range "${MOTION}" "${key}" |
         sed -n "2,\$p" | tr "'" '"' | jq -sc .)]" ]] || { echo "MOTION_KEYS' ${key} has other choices than the schema"; false; }
 done
@@ -158,6 +158,7 @@ while read -r key; do
         *":type b") want='["b"]' ;;
         "digest-times:type as" | "later-times:type as") want='["as","times"]' ;;
         "digest-through:type as" | "digest-wait:type as") want='["as","launchers"]' ;;
+        "second-zone:type s") want='["s-zone"]' ;;
         *) want="? ${range}" ;;
     esac
     [[ "$(jq -c --arg k "${key}" '.[$k]' <<<"${PILL_TABLE}")" == "${want}" ]] ||
@@ -204,6 +205,7 @@ for table in BARS:org.gnome.shell.extensions.amethystora-ui.bars TODAY:org.gnome
             *":type b") want='["b"]' ;;
             "selected-breaks:type as") want='["as","breaks"]' ;;
             "hidden:type as") want='["as","launchers"]' ;;
+            "layout:type a{sas}") want='["bar-layout"]' ;;
             *":enum "*) want="$(jq -cn --arg r "${range#enum }" '["s", ($r | split(" "))]')" ;;
             *) want="? ${range}" ;;
         esac
@@ -263,6 +265,26 @@ for part in "INPUT org.gnome.desktop.input-sources per-window:b xkb-options:as" 
     done
     saved="$(sed -n "s/^${name}_KEYS=(\(.*\))\$/\1/p" "$(dirname "${SETUP}")/amethystora-setup-manifest" | tr ' ' '\n' | sort | paste -sd ' ')"
     [[ "${saved}" == "${listed}" ]] || { echo "the manifest saves ${saved} of ${schema_id}, not ${listed}"; false; }
+done
+# GNOME's clock, text size and calendar week numbers: a few keys of GNOME's own schemas, each of the type and within the
+# range GNOME gives it, and the manifest saves the same keys
+for part in "INTERFACE org.gnome.desktop.interface" "CALENDAR org.gnome.desktop.calendar"; do
+    read -r name schema_id <<<"${part}"
+    table="$(sed -n "s/^${name}_KEYS='\(.*\)'\$/\1/p" "${SETUP}")"
+    [[ -n "${table}" ]] || { echo "no ${name}_KEYS"; false; }
+    while read -r key; do
+        range="$(GSETTINGS_BACKEND=memory /usr/bin/gsettings range "${schema_id}" "${key}" | xargs)"
+        spec="$(jq -c --arg k "${key}" '.[$k]' <<<"${table}")"
+        case "${range}" in
+            "type b") [[ "${spec}" == '["b"]' ]] ;;
+            "enum "*) [[ "$(jq -c '.[1] | sort' <<<"${spec}")" == "$(jq -cn --arg r "${range#enum }" '$r | split(" ") | sort')" ]] ;;
+            "range d "*) read -r _ _ low high <<<"${range}"
+                jq -e --argjson low "${low}" --argjson high "${high}" '.[0] == "d" and .[1] >= $low and .[2] <= $high' <<<"${spec}" >/dev/null ;;
+            *) false ;;
+        esac || { echo "${name}_KEYS has ${key} as ${spec}, GNOME as ${range}"; false; }
+    done < <(jq -r 'keys[]' <<<"${table}")
+    saved="$(sed -n "s/^${name}_KEYS=(\(.*\))\$/\1/p" "$(dirname "${SETUP}")/amethystora-setup-manifest" | tr ' ' '\n' | sort)"
+    [[ "${saved}" == "$(jq -r 'keys[]' <<<"${table}" | sort)" ]] || { echo "the manifest saves other ${name} keys"; false; }
 done
 # The search's switches, the emoji picker's skin tone and the not-responding question likewise, each schema less its
 # keybinding (open, emoji-picker, force-quit), which the keybindings part keeps, and the audio module's switches less
@@ -867,7 +889,17 @@ for bad in '{"version": 1, "token": "x"}' '{"version": 2}' \
     '{"version": 1, "settings": {"privacy": {"shield": "loud"}}}' \
     '{"version": 1, "settings": {"privacy": {"share-guard-apps": ["rm -rf ~"]}}}' \
     '{"version": 1, "settings": {"privacy": {"walk-away": "on"}}}' \
-    '{"version": 1, "settings": {"privacy": {"network-apps": "on"}}}'; do
+    '{"version": 1, "settings": {"privacy": {"network-apps": "on"}}}' \
+    '{"version": 1, "settings": {"bars": {"layout": {"left": ["clock"], "hidden": ["system"]}}}}' \
+    '{"version": 1, "settings": {"bars": {"layout": {"left": ["clock"], "right": ["clock"]}}}}' \
+    '{"version": 1, "settings": {"bars": {"layout": {"top": ["clock"]}}}}' \
+    '{"version": 1, "settings": {"bars": {"layout": {"left": ["rm -rf ~"]}}}}' \
+    '{"version": 1, "settings": {"bars": {"size": "huge"}}}' \
+    '{"version": 1, "settings": {"pill": {"second-zone": "../../etc/passwd"}}}' \
+    '{"version": 1, "settings": {"motion": {"speed": "warp"}}}' \
+    '{"version": 1, "settings": {"interface": {"text-scaling-factor": 3}}}' \
+    '{"version": 1, "settings": {"interface": {"font-name": "Comic Sans 11"}}}' \
+    '{"version": 1, "settings": {"calendar": {"show-weekdate": "yes"}}}'; do
     printf '%s\n' "${bad}" >"${T}/bad.json"
     "${SETUP}" diff "${T}/bad.json" >/dev/null 2>&1 && { echo "accepted: ${bad}"; false; }
     "${SETUP}" apply --yes "${T}/bad.json" >/dev/null 2>&1 && { echo "applied: ${bad}"; false; }

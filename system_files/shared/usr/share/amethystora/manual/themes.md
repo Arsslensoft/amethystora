@@ -286,6 +286,24 @@ For a desktop that is calmer or clearer, Control's **Appearance** page has a **C
   `ame desktop comfort increase-contrast on`.
 - **The power saver**, the profile you pick in the quick settings' power menu, makes the glass solid and every
   animation take half its time for as long as it is on. Nothing here turns the power saver on by itself.
+- **Animation speed**: snappy, normal (the image's), relaxed, or off, which changes everything at once without
+  touching GNOME's own Animations switch: `ame desktop animation-speed relaxed`. Reduce motion still turns travel
+  into fades, whatever the speed.
+- **Text size**, from 90 to 150 percent, apart from the screen's scale, which stays whole: `ame desktop text-size
+  115`. It is GNOME's own text scaling: the shell and the Amethystora apps follow it at once, other apps at their next
+  start.
+
+### The light desktop
+
+The glass and the motion suit a computer with a graphics card. The light desktop keeps the look and drops the costly
+parts: the glass is drawn solid, motion is short and simple, and the dock shows no live window previews. A computer
+that draws the screen without a graphics driver, or has less than 8 GB of memory, is offered it once, in a
+notification shortly after the first login (and again if its graphics change); either answer is remembered.
+Control's **Light desktop** switch, or:
+
+```bash
+ame desktop light-desktop on    # off to go back
+```
 
 ## Seeing and reading
 

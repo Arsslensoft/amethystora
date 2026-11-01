@@ -88,7 +88,8 @@ export class Previews {
 
     // An item's button was pointed at, or no longer
     hovered(state) {
-        if (!this._dock.settings.get_boolean('previews'))
+        // The light desktop (modules/comfort.js) has no live previews
+        if (!this._dock.settings.get_boolean('previews') || this._dock.ext.modules?.get('comfort')?.light)
             return;
         if (state.button.hover) {
             if (this._state === state && this._card) {

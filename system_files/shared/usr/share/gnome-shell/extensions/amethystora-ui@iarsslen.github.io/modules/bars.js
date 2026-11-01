@@ -9,9 +9,14 @@
 // While a window is fullscreen, pushing the pointer against the top edge of its screen (as hard as GNOME's hot corner
 // asks) brings that screen's bar down over it; it goes again once the pointer has been away from it for a moment.
 //
-// Both are keys of org.gnome.shell.extensions.amethystora-ui.bars (ame desktop top-bar, Control), read live. Nothing
+// The bar your way: what it holds and where (bars/arrange.js, the layout key), its size (compact, regular or roomy: a
+// class on the shell's top group that bars.css sizes the bar by), and its edge: at the bottom, its menus opening upwards
+// and a dock at the bottom lifted above it, or hidden until the pointer pushes against its edge, the peek below brought
+// in for it on every screen and not only over fullscreen.
+//
+// All are keys of org.gnome.shell.extensions.amethystora-ui.bars (ame desktop top-bar, Control), read live. Nothing
 // here polls: the bars follow GNOME's signals and the tiling's screens, and a barrier exists only while a window is
-// fullscreen and the peek is on.
+// fullscreen and the peek is on, or while the bar hides until touched.
 //
 // For the tests only (tests/vm/suites/19-top-bars.sh), entry points that read what a person sees: bars() lists the
 // secondary bars ({monitor, actor, activeIndex(), clock(), parts(), labels()}), peeking(monitor) says whether that
@@ -31,7 +36,8 @@ import * as Layout from 'resource:///org/gnome/shell/ui/layout.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 
-import {freeTopEdge} from './bars/edge.js';
+import {Arrange} from './bars/arrange.js';
+import {freeBottomEdge, freeTopEdge} from './bars/edge.js';
 
 const SCHEMA = 'org.gnome.shell.extensions.amethystora-ui.bars';
 const TILING = 'org.gnome.shell.extensions.amethystora-ui.tiling';
@@ -50,6 +56,9 @@ const CURVE = [new Graphene.Point({x: 0.2, y: 0.8}), new Graphene.Point({x: 0.2,
 const AWAY_MS = 700;
 // How many more times the pointer is looked for on a peeking bar once Clutter has said it was there
 const RECHECKS = 3;
+// The classes on the shell's top group: the bar's size (regular has none) and the bar at the bottom
+const SIZES = {compact: 'amethystora-bar-compact', roomy: 'amethystora-bar-roomy'};
+const BOTTOM = 'amethystora-bar-bottom';
 
 // The connector of each screen, by GNOME's monitor number, for a screen plugged back to find its bar again
 function connectors() {
@@ -121,6 +130,11 @@ class Bar {
 
         if (Main.overview.visible)
             this.panel.add_style_pseudo_class('overview');
+        // At the bottom, its place depends on its height
+        this.box.connect('notify::height', () => {
+            if (this._module.bottom)
+                this.place(this.monitor);
+        });
         this.place(index);
     }
 
@@ -129,7 +143,8 @@ class Bar {
         const monitor = Main.layoutManager.monitors[index];
         if (!monitor)
             return;
-        this.box.set_position(monitor.x, monitor.y);
+        const y = this._module.bottom ? monitor.y + monitor.height - this.box.height : monitor.y;
+        this.box.set_position(monitor.x, y);
         this.box.set_size(monitor.width, -1);
     }
 
@@ -178,10 +193,19 @@ export class Bars {
         // monitor index -> what the peek of that screen's bar holds
         this._peeks = new Map();
         this._settings = this._ext.getSettings(SCHEMA);
+        // monitor index -> the transparent strip that keeps the room of a bottom bar and a dock above it
+        this._spacers = new Map();
+        // The menus this module turned upwards, and the struts it took away while the bar hides
+        this._turned = new Set();
+        this._strutless = new Set();
         this._settings.connectObject(
             'changed::every-screen', () => this._queueSync(),
             'changed::peek', () => this._syncPeek(),
+            'changed::size', () => this._syncSize(),
+            'changed::position', () => this._syncPosition(),
+            'changed::autohide', () => this._syncPosition(),
             this);
+        this._syncSize();
         this._mutter = new Gio.Settings({schema_id: MUTTER});
         this._mutter.connectObject(`changed::${ONLY_PRIMARY}`, () => this._queueSync(), this);
         // The tiling starts after this module and stops and starts with its own switch: its screens are looked for
@@ -198,12 +222,21 @@ export class Bars {
             'hiding', () => this._eachBar(bar => bar.panel.remove_style_pseudo_class('overview')),
             this);
         this._wrapVisibility();
+        this._wrapBoxes();
         this._sync();
         this._queueSync();
-        this._syncPeek();
+        this._syncPosition();
+        this._arrange = new Arrange(this._settings, moved => {
+            if (moved)
+                this._told();
+            this._syncMenus();
+        });
+        this._arrange.enable();
     }
 
     disable() {
+        this._arrange?.disable();
+        this._arrange = null;
         this._settings?.disconnectObject(this);
         // Disposed now rather than by the collector (dock.js says why)
         this._settings?.run_dispose();
@@ -229,6 +262,23 @@ export class Bars {
             this._dropBarrier(index);
         this._barriers = null;
         this._unwrapVisibility();
+        // Back at the top, the size as GNOME has it, every strut given back, every menu opening downwards
+        this._bottom = false;
+        this._autohide = false;
+        this._unwrapBoxes();
+        Main.layoutManager.panelBox.disconnectObject(this);
+        Main.layoutManager._updateBoxes?.();
+        for (const actorData of this._strutless ?? [])
+            actorData.affectsStruts = true;
+        this._strutless = null;
+        for (const spacer of this._spacers?.values() ?? [])
+            spacer.destroy();
+        this._spacers = null;
+        this._syncMenus();
+        this._turned = null;
+        const group = Main.layoutManager.uiGroup;
+        for (const name of [...Object.values(SIZES), BOTTOM])
+            group.remove_style_class_name(name);
 
         // The others let go of the bars before they go
         const gone = [...this._bars?.values() ?? []];
@@ -238,7 +288,9 @@ export class Bars {
         for (const bar of gone)
             bar.destroy();
         this._setClock(false);
+        Main.layoutManager._updateVisibility?.();
         Main.layoutManager._queueUpdateRegions?.();
+        this._ext.modules?.get('dock')?.docks?.forEach?.(site => site.place());
     }
 
     // ---- For the other modules ----
@@ -262,7 +314,34 @@ export class Bars {
         return null;
     }
 
+    // Whether the bars sit at the bottom of their screens
+    get bottom() {
+        return !!this._bottom;
+    }
+
+    // How much a dock at the bottom of a screen is lifted: the height of a bar at the bottom there that keeps its room
+    bottomInset(monitor) {
+        if (!this._bottom || this._autohide || !this._bars)
+            return 0;
+        const bar = this._barOf(monitor);
+        return bar && (bar.main || bar.box.visible) ? Math.round(bar.box.height) : 0;
+    }
+
+    // A dock was placed (modules/dock.js): the room kept for it under a bottom bar follows
+    dockPlaced() {
+        this._syncSpacers();
+    }
+
     // ---- For the tests ----
+
+    // The main bar's items in each box and hidden, as arranged (bars/arrange.js)
+    get placed() {
+        return this._arrange?.placed ?? null;
+    }
+
+    spacer(monitor) {
+        return this._spacers?.get(monitor) ?? null;
+    }
 
     bars() {
         return [...this._bars?.values() ?? []].sort((a, b) => a.monitor - b.monitor).map(bar => ({
@@ -436,9 +515,14 @@ export class Bars {
             return;
         const actor = actorData.actor;
         const layout = Main.layoutManager;
+        // Hidden until touched: never a strut, and hidden while the windows show (the overview still has it)
+        const tucked = this._autohide && global.window_group.visible;
         if (actor === layout.panelBox) {
+            this._struts(actorData, !this._autohide);
             if (this._peeks.has(layout.primaryIndex))
                 actor.visible = true;
+            else if (tucked)
+                actor.visible = false;
             return;
         }
         const bar = [...this._bars.values()].find(b => b.box === actor);
@@ -446,14 +530,166 @@ export class Bars {
             return;
         const topBar = this._ext.modules?.get('tiling')?.topBar;
         const hidden = !!topBar && !!this._screens && topBar.hiddenOn(this._screens.shownOn(bar.monitor));
-        if (actorData.affectsStruts === hidden) {
-            actorData.affectsStruts = !hidden;
+        const room = !(hidden || this._autohide);
+        if (actorData.affectsStruts !== room) {
+            actorData.affectsStruts = room;
             layout._queueUpdateRegions();
         }
         if (this._peeks.has(bar.monitor))
             actor.visible = true;
-        else if (hidden)
+        else if (hidden || tucked)
             actor.visible = false;
+    }
+
+    // The main bar's strut, taken away while it hides and given back after
+    _struts(actorData, keep) {
+        if (!keep && actorData.affectsStruts) {
+            actorData.affectsStruts = false;
+            this._strutless.add(actorData);
+            Main.layoutManager._queueUpdateRegions();
+        } else if (keep && this._strutless.has(actorData)) {
+            this._strutless.delete(actorData);
+            actorData.affectsStruts = true;
+            Main.layoutManager._queueUpdateRegions();
+        }
+    }
+
+    // ---- Size, edge, hidden until touched ----
+
+    _syncSize() {
+        const size = this._settings?.get_string('size');
+        const group = Main.layoutManager.uiGroup;
+        for (const [name, cls] of Object.entries(SIZES)) {
+            if (name === size)
+                group.add_style_class_name(cls);
+            else
+                group.remove_style_class_name(cls);
+        }
+    }
+
+    // GNOME places the main bar's box at the top of the main screen whenever the screens change: at the bottom, it is
+    // moved down after
+    _wrapBoxes() {
+        const layout = Main.layoutManager;
+        const original = layout._updateBoxes;
+        if (typeof original !== 'function')
+            return;
+        this._ownBoxes = Object.prototype.hasOwnProperty.call(layout, '_updateBoxes') ? original : null;
+        const self = this;
+        layout._updateBoxes = function () {
+            original.call(this);
+            self._placeMain();
+        };
+        this._boxesWrapped = true;
+    }
+
+    _unwrapBoxes() {
+        if (!this._boxesWrapped)
+            return;
+        if (this._ownBoxes)
+            Main.layoutManager._updateBoxes = this._ownBoxes;
+        else
+            delete Main.layoutManager._updateBoxes;
+        this._boxesWrapped = false;
+        this._ownBoxes = null;
+    }
+
+    _placeMain() {
+        const layout = Main.layoutManager;
+        const monitor = layout.primaryMonitor;
+        if (!this._bottom || !monitor)
+            return;
+        layout.panelBox.set_position(monitor.x, monitor.y + monitor.height - layout.panelBox.height);
+    }
+
+    _syncPosition() {
+        if (!this._settings)
+            return;
+        const bottom = this._settings.get_string('position') === 'bottom';
+        const layout = Main.layoutManager;
+        this._autohide = this._settings.get_boolean('autohide');
+        if (bottom !== !!this._bottom) {
+            this._bottom = bottom;
+            if (bottom) {
+                layout.uiGroup.add_style_class_name(BOTTOM);
+                layout.panelBox.connectObject('notify::height', () => {
+                    this._placeMain();
+                    this._syncSpacers();
+                }, this);
+            } else {
+                layout.uiGroup.remove_style_class_name(BOTTOM);
+                layout.panelBox.disconnectObject(this);
+            }
+        }
+        layout._updateBoxes();
+        this._eachBar(bar => bar.place(bar.monitor));
+        this._syncMenus();
+        this._rebuildBarriers();
+        layout._updateVisibility();
+        layout._queueUpdateRegions();
+        this._ext.modules?.get('dock')?.docks?.forEach?.(site => site.place());
+        this._syncSpacers();
+        this._ext.modules?.get('tiling')?.topBar?.positionsChanged?.();
+    }
+
+    // The menus of the bar's buttons open away from the edge it sits on
+    _syncMenus() {
+        if (!this._turned)
+            return;
+        for (const button of Object.values(Main.panel.statusArea)) {
+            const pointer = button?.menu?._boxPointer;
+            if (!pointer?.updateArrowSide)
+                continue;
+            const now = pointer._userArrowSide;
+            if (this._bottom && now === St.Side.TOP) {
+                pointer.updateArrowSide(St.Side.BOTTOM);
+                this._turned.add(pointer);
+            } else if (!this._bottom && this._turned.has(pointer) && now === St.Side.BOTTOM) {
+                pointer.updateArrowSide(St.Side.TOP);
+            }
+        }
+        if (!this._bottom)
+            this._turned.clear();
+    }
+
+    // A dock at the bottom of a screen whose bar is at the bottom too sits above the bar; GNOME keeps no room for an
+    // actor that touches neither edge, so a transparent strip at the edge keeps the room of both
+    _syncSpacers() {
+        if (!this._spacers)
+            return;
+        const layout = Main.layoutManager;
+        const wanted = new Map();
+        if (this._bottom && !this._autohide) {
+            for (const site of this._ext.modules?.get('dock')?.docks ?? []) {
+                if (site.edgeName !== 'bottom' || !site.reserves || !site.thickness)
+                    continue;
+                const monitor = layout.monitors[site.monitorIndex];
+                const inset = this.bottomInset(site.monitorIndex);
+                if (!monitor || !inset)
+                    continue;
+                const height = Math.round(inset + site.thickness);
+                wanted.set(site.monitorIndex, {x: monitor.x, y: monitor.y + monitor.height - height, width: monitor.width, height});
+            }
+        }
+        for (const [index, spacer] of [...this._spacers]) {
+            if (!wanted.has(index)) {
+                this._spacers.delete(index);
+                spacer.destroy();
+            }
+        }
+        for (const [index, rect] of wanted) {
+            let spacer = this._spacers.get(index);
+            if (!spacer) {
+                spacer = new St.Widget({name: 'amethystora-bars-room', reactive: false, opacity: 0});
+                Main.layoutManager.addChrome(spacer, {affectsStruts: true});
+                this._spacers.set(index, spacer);
+            }
+            if (spacer.x !== rect.x || spacer.y !== rect.y || spacer.width !== rect.width || spacer.height !== rect.height) {
+                spacer.set_position(rect.x, rect.y);
+                spacer.set_size(rect.width, rect.height);
+                layout._queueUpdateRegions();
+            }
+        }
     }
 
     // The bar of a screen and the panel in it that slides
@@ -475,6 +711,12 @@ export class Bars {
         const on = this._settings.get_boolean('peek');
         const layout = Main.layoutManager;
         const wanted = new Set(on ? layout.monitors.filter(m => m.inFullscreen).map(m => m.index) : []);
+        // Hidden until touched: the edge of every screen with a bar
+        if (this._autohide) {
+            if (layout.primaryMonitor)
+                wanted.add(layout.primaryIndex);
+            this._eachBar(bar => wanted.add(bar.monitor));
+        }
         for (const index of [...this._barriers.keys()]) {
             if (!wanted.has(index))
                 this._dropBarrier(index);
@@ -505,15 +747,17 @@ export class Bars {
         const monitor = layout.monitors[index];
         if (!monitor)
             return;
-        const spans = freeTopEdge(monitor, layout.monitors);
+        const bottom = !!this._bottom;
+        const spans = bottom ? freeBottomEdge(monitor, layout.monitors) : freeTopEdge(monitor, layout.monitors);
         if (!spans.length)
             return;
         const pressure = new Layout.PressureBarrier(PRESSURE, PRESSURE_MS, Shell.ActionMode.NORMAL);
+        const y = bottom ? monitor.y + monitor.height : monitor.y;
         // A barrier's ends are pixels it covers: each stops at the last pixel of its span
         const barriers = spans.map(([x1, x2]) => new Meta.Barrier({
             backend: global.backend,
-            x1, x2: x2 - 1, y1: monitor.y, y2: monitor.y,
-            directions: Meta.BarrierDirection.POSITIVE_Y,
+            x1, x2: x2 - 1, y1: y, y2: y,
+            directions: bottom ? Meta.BarrierDirection.NEGATIVE_Y : Meta.BarrierDirection.POSITIVE_Y,
         }));
         barriers.forEach(barrier => pressure.addBarrier(barrier));
         pressure.connect('trigger', () => this._peek(index));
@@ -560,7 +804,7 @@ export class Bars {
             bar.box.connectObject('notify::hover', () => this._hoverChanged(index), peek);
             // GNOME shows it again now that it is peeking (_visibility)
             Main.layoutManager._updateVisibility();
-            bar.panel.translation_y = -bar.box.height;
+            bar.panel.translation_y = this._away(bar.box);
         }
         peek.going = false;
         this._stopTimer(peek);
@@ -575,6 +819,11 @@ export class Bars {
             if (!peek.box.hover)
                 this._armAway(index);
         });
+    }
+
+    // Where a peeking bar slides in from: above its screen, or below it at the bottom
+    _away(box) {
+        return this._bottom ? box.height : -box.height;
     }
 
     _inside(peek, x, y) {
@@ -652,7 +901,7 @@ export class Bars {
         peek.going = true;
         this._stopTimer(peek);
         peek.box.clip_to_allocation = true;
-        easeCurved(peek.panel, {translation_y: -peek.box.height}, SLIDE_MS, () => {
+        easeCurved(peek.panel, {translation_y: this._away(peek.box)}, SLIDE_MS, () => {
             if (this._peeks?.get(index) === peek && peek.going)
                 this._endPeek(index);
         });

@@ -5,6 +5,7 @@
 //! are shown as they come; only the page's own words are looked up in its catalog. Everything is built as
 //! widgets with text in them, never as markup.
 
+use std::cell::RefCell;
 use std::rc::Rc;
 
 use amethystora_ui::gem::Gem;
@@ -549,6 +550,19 @@ impl Control {
         self.perform(card, async move { backend::perform(backend::widget(this.known().as_deref(), &action, &widget)).await });
     }
 
+    /// A top bar item moved (the bar entry), or the bar put back as the image has it (id None)
+    fn bar_place(self: &Rc<Self>, card: &str, place: Option<(String, &'static str, usize)>) {
+        let this = self.clone();
+        self.perform(card, async move {
+            let list = this.known();
+            let plan = match &place {
+                Some((id, zone, position)) => backend::bar_place(list.as_deref(), id, zone, *position),
+                None => backend::bar_reset(list.as_deref()),
+            };
+            backend::perform(plan).await
+        });
+    }
+
     fn webapp(self: &Rc<Self>, card: &str, action: &str, name: &str) {
         let this = self.clone();
         let (action, name) = (action.to_string(), name.to_string());
@@ -809,6 +823,103 @@ impl Control {
             options.append(&option);
         }
         self.card_frame(item, None, vec![options.upcast()], false, Vec::new())
+    }
+
+    /// The top bar drawn as four places, Left, Centre, Right and Hidden, each holding its items in order. An item is
+    /// dragged to another place or along its own, and each has a menu that does the same from the keyboard. What goes
+    /// back to the list is the item's id, one of the four places and a position in it, which control-core checks.
+    fn bar_card(&self, item: &Item) -> gtk::Box {
+        const ZONES: [&str; 4] = ["left", "center", "right", "hidden"];
+        let busy = self.busy(&item.id) || !item.available;
+        let names = [t!("Left"), t!("Centre"), t!("Right"), t!("Hidden")];
+        let places = ui::vbox(8, &["bar-places"]);
+        for (index, zone) in ZONES.iter().enumerate() {
+            let entries: Vec<_> = item.bar_items.iter().filter(|entry| entry.zone == *zone).cloned().collect();
+            // The name above its items, so that a long row wraps in the card's whole width
+            let row = ui::vbox(6, &["bar-place"]);
+            let name = ui::label(&names[index], &["bar-place-name", "small"]);
+            name.set_xalign(0.0);
+            row.append(&name);
+            let chips = Flex::new(6, 6, &["bar-chips"]);
+            chips.set_hexpand(true);
+            chips.update_property(&[gtk::accessible::Property::Label(&names[index])]);
+            let shown: Rc<RefCell<Vec<(String, gtk::Widget)>>> = Rc::new(RefCell::new(Vec::new()));
+            if entries.is_empty() {
+                chips.append(&ui::label(&t!("Nothing here"), &["faint", "small"]));
+            }
+            for (at, entry) in entries.iter().enumerate() {
+                let chip = gtk::MenuButton::builder().label(&entry.name).css_classes(["bar-chip"]).sensitive(!busy).build();
+                chip.update_property(&[gtk::accessible::Property::Description(&t!("In {place}, number {n}", place = &names[index], n = &(at + 1).to_string()))]);
+                // The menu: to another place (the end of it), or one step along this one
+                let menu = ui::vbox(2, &["bar-chip-menu"]);
+                let popover = gtk::Popover::builder().child(&menu).build();
+                let mut moves: Vec<(String, &'static str, usize)> = Vec::new();
+                for (other, label) in [("left", t!("To the left")), ("center", t!("To the centre")), ("right", t!("To the right")), ("hidden", t!("Hide"))] {
+                    if other == *zone || (other == "hidden" && entry.fixed) {
+                        continue;
+                    }
+                    let end = item.bar_items.iter().filter(|e| e.zone == other).count();
+                    moves.push((label, other, end));
+                }
+                if at > 0 {
+                    moves.push((t!("Earlier"), *zone, at - 1));
+                }
+                if at + 1 < entries.len() {
+                    moves.push((t!("Later"), *zone, at + 1));
+                }
+                for (label, other, position) in moves {
+                    let (me, card, id, pop) = (self.me.clone(), item.id.clone(), entry.id.clone(), popover.downgrade());
+                    menu.append(&ui::button(&label, None, &["plain", "bar-chip-move"], move || {
+                        if let Some(pop) = pop.upgrade() {
+                            pop.popdown();
+                        }
+                        if let Some(this) = me.upgrade() {
+                            this.bar_place(&card, Some((id.clone(), other, position)));
+                        }
+                    }));
+                }
+                chip.set_popover(Some(&popover));
+                // Dragged by its id, which is all a drop takes
+                let source = gtk::DragSource::new();
+                source.set_actions(gdk::DragAction::MOVE);
+                let id = entry.id.clone();
+                source.connect_prepare(move |_, _, _| Some(gdk::ContentProvider::for_value(&id.to_value())));
+                chip.add_controller(source);
+                shown.borrow_mut().push((entry.id.clone(), chip.clone().upcast()));
+                chips.append(&chip);
+            }
+            // A drop: where among this place's items, by where it landed
+            let target = gtk::DropTarget::new(glib::Type::STRING, gdk::DragAction::MOVE);
+            let (me, card, zone, fixed, area) = (self.me.clone(), item.id.clone(), *zone, item.bar_items.iter().filter(|e| e.fixed).map(|e| e.id.clone()).collect::<Vec<_>>(), chips.downgrade());
+            target.connect_drop(move |_, value, x, y| {
+                let (Some(this), Some(area), Ok(id)) = (me.upgrade(), area.upgrade(), value.get::<String>()) else { return false };
+                if busy || (zone == "hidden" && fixed.contains(&id)) {
+                    return false;
+                }
+                let before = shown
+                    .borrow()
+                    .iter()
+                    .filter(|(other, _)| *other != id)
+                    .filter(|(_, chip)| {
+                        chip.compute_bounds(&area).is_some_and(|b| {
+                            let (bx, by, bw, bh) = (f64::from(b.x()), f64::from(b.y()), f64::from(b.width()), f64::from(b.height()));
+                            by + bh <= y || (by <= y && bx + bw / 2.0 < x)
+                        })
+                    })
+                    .count();
+                this.bar_place(&card, Some((id, zone, before)));
+                true
+            });
+            chips.add_controller(target);
+            row.append(&chips);
+            places.append(&row);
+        }
+        let card = item.id.clone();
+        let reset = self.button(&t!("As the image has it"), Look { small: true, disabled: busy, ..Default::default() }, move |this| {
+            this.bar_place(&card, None);
+        });
+        reset.set_halign(gtk::Align::Start);
+        self.card_frame(item, None, vec![places.upcast(), reset.upcast()], false, Vec::new())
     }
 
     /// Choices that are colours: two columns of rows, each a dot of its colour and its name, the chosen one shaded
@@ -2278,6 +2389,7 @@ impl Control {
             "setup" => self.setup_card(item),
             "disks" => self.disks_card(item),
             "rows" => self.rows_card(item),
+            "bar" => self.bar_card(item),
             _ => self.action_card(item),
         }
     }

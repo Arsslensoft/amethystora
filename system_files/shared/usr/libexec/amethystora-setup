@@ -25,7 +25,7 @@
 #                bars, today, breaks, search, emoji, bezel, audio, sound, wm, mutter, look, transitions, hints, appgrid,
 #                focus, power,
 #                access, touch, present, screenshot, deskwidgets, shelf, desks,
-#                quit, privacy, tools, input, keyboard, paste, keys, rest, living, backupdisk}: the window
+#                quit, privacy, tools, input, keyboard, paste, keys, rest, living, backupdisk, interface, calendar}: the window
 #                layout, the dock's apps, the keys of
 #                keybindings (the image's custom keybindings by their id, never a command), the tiling's
 #                settings by their key in its schema (TILING_KEYS: numbers, switches and lists, never its
@@ -36,7 +36,9 @@
 #                module's switches, corners and gestures (WINDOWS_KEYS), the dock's settings, folders and stacks
 #                under the home folder (DOCK_KEYS), the live pill, the privacy dots, the glow, quiet and the
 #                digest (PILL_KEYS), the order of quick settings' tiles and the ones put away (QUICK_KEYS), a top bar
-#                on every screen and over fullscreen (BARS_KEYS), today's tasks in the calendar (TODAY_KEYS; never
+#                on every screen and over fullscreen, what it holds where, its size, its edge and hiding until
+#                touched (BARS_KEYS), the clock's format, seconds, weekday and date and the text size (GNOME's own,
+#                INTERFACE_KEYS), week numbers in the calendar (CALENDAR_KEYS), today's tasks in the calendar (TODAY_KEYS; never
 #                the weather, which sends the place chosen in Weather), GNOME's rest reminders (BREAKS_KEYS), what
 #                the search finds besides GNOME's own (SEARCH_KEYS), the emoji picker's skin tone (EMOJI_KEYS), rounded
 #                corners on a laptop's own screen (BEZEL_KEYS), the audio module's switches (AUDIO_KEYS; never
@@ -136,7 +138,7 @@ GLASS=org.gnome.shell.extensions.amethystora-ui.glass
 GLASS_KEYS='{"material": ["s", ["frost", "prism", "clear"]], "solid": ["b"], "blur-frost": ["d", 0.5, 1.5], "blur-prism": ["d", 0.5, 1.5], "blur-clear": ["d", 0.5, 1.5], "tint-frost": ["d", 0.5, 1.5], "tint-prism": ["d", 0.5, 1.5], "tint-clear": ["d", 0.5, 1.5]}'
 # The motion's keys: how a window goes into the dock, and how workspaces change
 MOTION=org.gnome.shell.extensions.amethystora-ui.motion
-MOTION_KEYS='{"minimize": ["s", ["droplet", "shrink"]], "workspace-switch": ["s", ["depth", "slide"]]}'
+MOTION_KEYS='{"minimize": ["s", ["droplet", "shrink"]], "workspace-switch": ["s", ["depth", "slide"]], "speed": ["s", ["snappy", "normal", "relaxed", "off"]], "open-close": ["s", ["pop", "slide", "fade", "gnome"]]}'
 # The top bar's workspaces: their names from their main app, the saved sets in their menu, and picking up after an
 # update's restart (never resume.json, which is this machine's state). Never its two
 # keybindings, which the keybindings part keeps, nor sets.json, which names this machine's screens.
@@ -176,14 +178,22 @@ PILL_KEYS='{
     "digest": ["b"], "digest-times": ["as", "times"], "later": ["b"], "later-times": ["as", "times"], "whats-new": ["b"],
     "meetings": ["b"],
     "digest-through": ["as", "launchers"], "digest-wait": ["as", "launchers"],
-    "saving-data": ["b"]
+    "saving-data": ["b"],
+    "second-zone": ["s-zone"]
 }'
 # Quick settings' tiles: the order they come first in and the ones put away, each a tile's short name
 QUICK=org.gnome.shell.extensions.amethystora-ui.quick
 QUICK_KEYS='{"tile-order": ["as", "ids"], "tile-hidden": ["as", "ids"]}'
-# A top bar on every screen, and over a fullscreen window
+# A top bar on every screen, and over a fullscreen window; what the main bar holds where (its items by id, never a
+# command), its size, its edge and hiding until touched
 BARS=org.gnome.shell.extensions.amethystora-ui.bars
-BARS_KEYS='{"every-screen": ["b"], "peek": ["b"]}'
+BARS_KEYS='{"every-screen": ["b"], "peek": ["b"], "layout": ["bar-layout"], "position": ["s", ["top", "bottom"]], "autohide": ["b"], "size": ["s", ["compact", "regular", "roomy"]]}'
+# GNOME's own clock (24 or 12 hours, seconds, weekday, date) and its text size, from 90 to 150 percent; and week numbers
+# in its calendar. Never any other key of those schemas (the fonts are the theme's, the rest the machine's)
+INTERFACE=org.gnome.desktop.interface
+INTERFACE_KEYS='{"clock-format": ["s", ["24h", "12h"]], "clock-show-seconds": ["b"], "clock-show-weekday": ["b"], "clock-show-date": ["b"], "text-scaling-factor": ["d", 0.9, 1.5]}'
+CALENDAR=org.gnome.desktop.calendar
+CALENDAR_KEYS='{"show-weekdate": ["b"]}'
 # Today's tasks in the calendar menu. Never the weather, which sends the place chosen in Weather: a file someone
 # shares must not turn that on.
 TODAY=org.gnome.shell.extensions.amethystora-ui.today
@@ -358,10 +368,16 @@ def valid($spec): $spec as [$t, $a, $b] |
     elif $t == "s" then type == "string" and IN($a[])
     elif $t == "opacity" then type == "object" and length <= 32 and all(to_entries[];
         (.key | test("^[A-Za-z0-9._+-]+[.]desktop$")) and (.value | type == "number" and . == floor and . >= 40 and . <= 100))
+    elif $t == "s-zone" then type == "string" and test("^([A-Za-z]+(/[A-Za-z0-9_+-]{1,40}){1,2})?$")
+    elif $t == "bar-layout" then type == "object" and (keys - ["left", "center", "right", "hidden"] | length) == 0
+        and all(.[]; type == "array" and length <= 64 and all(.[]; type == "string" and test("^[a-z0-9][a-z0-9-]{0,47}$")))
+        and ([.[][]] | (unique | length) == length) and ((.hidden // []) | index("clock") == null and index("system") == null)
     else false end;
 def wanted($spec): $spec as [$t, $a, $b] |
     if $t == "b" then "true or false"
     elif $t == "s" then "one of \($a | join(", "))"
+    elif $t == "s-zone" then "a time zone such as Asia/Tokyo, or \"\""
+    elif $t == "bar-layout" then "lists left, center, right and hidden of the bar's items, each once, the clock and the system menu never hidden"
     elif $t == "i" then "a whole number from \($a) to \($b)"
     elif $t == "d" then "a number from \($a) to \($b)"
     elif $a == "steps" then "a list of numbers above 0"
@@ -464,7 +480,7 @@ if type != "object" then "it is not a JSON object" else
             "windows", "dock", "pill", "quick", "bars", "today", "breaks", "search", "emoji", "bezel", "audio", "sound",
             "wm", "mutter", "look", "transitions",
             "hints", "appgrid", "focus", "power", "access", "touch", "present",
-            "screenshot", "deskwidgets", "shelf", "desks", "quit", "privacy", "tools", "input", "keyboard", "paste", "keys", "rest", "living", "backupdisk"]; "settings."),
+            "screenshot", "deskwidgets", "shelf", "desks", "quit", "privacy", "tools", "input", "keyboard", "paste", "keys", "rest", "living", "backupdisk", "interface", "calendar"]; "settings."),
         (if type == "object" then
             at("layout"; if IN("tiling", "classic") then empty else "settings.layout is tiling or classic" end),
             at("favorites"; each("settings.favorites";
@@ -648,6 +664,14 @@ if type != "object" then "it is not a JSON object" else
             at("backupdisk"; only($backupdisk | keys; "settings.backupdisk."),
                 (if type == "object" then to_entries[] | select(.key | IN($backupdisk | keys[])) | $backupdisk[.key] as $spec
                     | if .value | valid($spec) then empty else "settings.backupdisk.\(.key) is \(wanted($spec))" end
+                 else empty end)),
+            at("interface"; only($interface | keys; "settings.interface."),
+                (if type == "object" then to_entries[] | select(.key | IN($interface | keys[])) | $interface[.key] as $spec
+                    | if .value | valid($spec) then empty else "settings.interface.\(.key) is \(wanted($spec))" end
+                 else empty end)),
+            at("calendar"; only($calendar | keys; "settings.calendar."),
+                (if type == "object" then to_entries[] | select(.key | IN($calendar | keys[])) | $calendar[.key] as $spec
+                    | if .value | valid($spec) then empty else "settings.calendar.\(.key) is \(wanted($spec))" end
                  else empty end))
         else empty end))
 end
@@ -678,6 +702,7 @@ check() {
         --argjson superkeys "${KEYS_KEYS}" \
         --argjson rest "${REST_KEYS}" --argjson living "${LIVING_KEYS}" \
         --argjson backupdisk "${BACKUPDISK_KEYS}" \
+        --argjson interface "${INTERFACE_KEYS}" --argjson calendar "${CALENDAR_KEYS}" \
         "${TILING_JQ} ${CHECK}" 2>&1)" ||
         die "$1 is not JSON."
     [[ -z "${problems}" ]] ||
@@ -820,7 +845,8 @@ current() {
             jq -nc --arg k "${key}" --argjson v "${value:-null}" '{pill: {($k): $v}}'
         done < <(jq -r '.settings.pill // {} | keys[]' <<<"$1")
         for area in quick bars today breaks search emoji bezel audio sound wm mutter transitions hints appgrid focus power \
-            access touch present screenshot deskwidgets shelf desks quit privacy tools input keyboard paste keys rest living backupdisk; do
+            access touch present screenshot deskwidgets shelf desks quit privacy tools input keyboard paste keys rest living \
+            backupdisk interface calendar; do
             case "${area}" in
                 input) schema="${INPUT}" ;;
                 keyboard) schema="${KEYBOARD}" ;;
@@ -855,6 +881,8 @@ current() {
                 rest) schema="${REST}" ;;
                 living) schema="${LIVING}" ;;
                 backupdisk) schema="${BACKUPDISK}" ;;
+                interface) schema="${INTERFACE}" ;;
+                calendar) schema="${CALENDAR}" ;;
             esac
             while read -r key; do
                 value="$(gsettings get "${schema}" "${key}" 2>/dev/null | as_json)"
@@ -873,7 +901,7 @@ current() {
         touch: {}, present: {},
         screenshot: {}, deskwidgets: {}, shelf: {}, desks: {},
         quit: {}, privacy: {}, tools: {}, input: {}, keyboard: {}, paste: {}, keys: {}, rest: {}, living: {},
-        backupdisk: {}};
+        backupdisk: {}, interface: {}, calendar: {}};
         . * $x)'
 }
 
@@ -1017,7 +1045,7 @@ def brew($x; $k): $x.brew[$k] // [];
     (("quick", "bars", "today", "breaks", "search", "emoji", "bezel", "audio", "sound", "wm", "mutter", "transitions",
         "hints", "appgrid", "focus", "power",
         "access", "touch", "present",
-        "screenshot", "deskwidgets", "shelf", "desks", "quit", "privacy", "tools", "input", "keyboard", "paste", "keys", "rest", "living", "backupdisk") as $a
+        "screenshot", "deskwidgets", "shelf", "desks", "quit", "privacy", "tools", "input", "keyboard", "paste", "keys", "rest", "living", "backupdisk", "interface", "calendar") as $a
     | ($fs[$a] // {} | to_entries[] | .key as $k | $now[$a][$k] as $v
         | select(.value != $v) | {area: $a, action: "set", key: $k, to: .value, from: $v}
         + if $v == null then {ok: false, why: "this machine has no such \({quick: "quick settings", bezel: "screen corners",
@@ -1100,7 +1128,8 @@ def text:
         or .area == "shelf" or .area == "desks" or .area == "quit" or .area == "privacy" or .area == "tools"
         or .area == "input" or .area == "keyboard" or .area == "paste" or .area == "keys"
         or .area == "rest" or .area == "living"
-        or .area == "backupdisk" then
+        or .area == "backupdisk"
+        or .area == "interface" or .area == "calendar" then
         {quick: "quick settings'", bars: "the top bar's", today: "the calendar's", breaks: "the rest reminders'",
             search: "the search's", emoji: "the emoji picker's", bezel: "the screen's", audio: "the audio module's", sound: "the desktop's",
             wm: "the windows'", mutter: "the windows'",
@@ -1113,7 +1142,8 @@ def text:
             input: "the input sources'", keyboard: "the keyboard's",
             paste: "middle-click paste's", keys: "the Super key's",
             rest: "the resting screen's", living: "the living wallpaper's",
-            backupdisk: "the backup disk's"}[.area]
+            backupdisk: "the backup disk's",
+            interface: "the clock's and the text's", calendar: "the calendar's"}[.area]
         + " \(.key)"
         + if .action == "set" then ": \(.to | tojson)" + if .from == null then "" else ", in place of \(.from | tojson)" end
           else ", \(.from | tojson) here, back to the image's" end
@@ -1357,7 +1387,8 @@ add_all() {
         gsettings set "${PILL}" "${name}" "$(jq -c .to <<<"${change}")" || FAILED+=("the live pill's ${name}")
     done
     for area in quick bars today breaks search emoji bezel audio sound wm mutter transitions hints appgrid focus power \
-        access touch present screenshot deskwidgets shelf desks quit privacy tools input keyboard paste keys rest living backupdisk; do
+        access touch present screenshot deskwidgets shelf desks quit privacy tools input keyboard paste keys rest living \
+        backupdisk interface calendar; do
         case "${area}" in
             input) schema="${INPUT}" label="the input sources'" ;;
             keyboard) schema="${KEYBOARD}" label="the keyboard's" ;;
@@ -1392,6 +1423,8 @@ add_all() {
             rest) schema="${REST}" label="the resting screen's" ;;
             living) schema="${LIVING}" label="the living wallpaper's" ;;
             backupdisk) schema="${BACKUPDISK}" label="the backup disk's" ;;
+            interface) schema="${INTERFACE}" label="the clock's and the text's" ;;
+            calendar) schema="${CALENDAR}" label="the calendar's" ;;
         esac
         mapfile -t changes < <(of "${todo}" "${area}")
         for change in "${changes[@]}"; do
@@ -1495,7 +1528,8 @@ remove_all() {
         gsettings reset "${PILL}" "${name}" || FAILED+=("the live pill's ${name}")
     done
     for area in quick bars today breaks search emoji bezel audio sound wm mutter transitions hints appgrid focus power \
-        access touch present screenshot deskwidgets shelf desks quit privacy tools input keyboard paste keys rest living backupdisk; do
+        access touch present screenshot deskwidgets shelf desks quit privacy tools input keyboard paste keys rest living \
+        backupdisk interface calendar; do
         case "${area}" in
             input) schema="${INPUT}" label="the input sources'" ;;
             keyboard) schema="${KEYBOARD}" label="the keyboard's" ;;
@@ -1530,6 +1564,8 @@ remove_all() {
             rest) schema="${REST}" label="the resting screen's" ;;
             living) schema="${LIVING}" label="the living wallpaper's" ;;
             backupdisk) schema="${BACKUPDISK}" label="the backup disk's" ;;
+            interface) schema="${INTERFACE}" label="the clock's and the text's" ;;
+            calendar) schema="${CALENDAR}" label="the calendar's" ;;
         esac
         mapfile -t names < <(of "${gone}" "${area}" | jq -r .key)
         for name in "${names[@]}"; do
@@ -1654,11 +1690,12 @@ bake() {
           section("org.gnome.shell.extensions.amethystora-ui.tools"; ($s.tools // {})),
           section("org.gnome.desktop.input-sources"; ($s.input // {})),
           section("org.gnome.desktop.peripherals.keyboard"; ($s.keyboard // {})),
-          section("org.gnome.desktop.interface"; ($s.paste // {})),
+          section("org.gnome.desktop.interface"; ($s.paste // {}) + ($s.interface // {})),
           section("org.gnome.shell.extensions.amethystora-ui.keys"; ($s.keys // {})),
           section("org.gnome.shell.extensions.amethystora-ui.rest"; ($s.rest // {})),
           section("org.gnome.shell.extensions.amethystora-ui.living"; ($s.living // {})),
           section("org.gnome.shell.extensions.amethystora-ui.backupdisk"; ($s.backupdisk // {})),
+          section("org.gnome.desktop.calendar"; ($s.calendar // {})),
           section("org.gnome.shell.extensions.amethystora-ui.theme";
             ($s.look // {} | with_entries(select(.key | IN("accent-per-workspace", "workspace-accents"))))),
           section("org.gnome.shell.extensions.amethystora-transitions"; ($s.transitions // {})),

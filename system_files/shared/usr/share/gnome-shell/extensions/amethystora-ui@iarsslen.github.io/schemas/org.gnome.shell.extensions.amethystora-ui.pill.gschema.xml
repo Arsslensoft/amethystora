@@ -74,5 +74,10 @@
       <summary>Saving data on a connection that counts it</summary>
       <description>On a connection NetworkManager calls metered (a phone's hotspot, mobile broadband, or one marked so), the pill says "Saving data", lists what waits for another network and offers Update anyway. It only shows: the waiting is the updaters' own, by the connection's metered flag. ame desktop saving-data and Control write it.</description>
     </key>
+    <key name="second-zone" type="s">
+      <default>''</default>
+      <summary>A second time zone beside the clock</summary>
+      <description>A time zone by its name in the system's time-zone data (Asia/Tokyo), whose time is shown after the clock with its city; empty for none.</description>
+    </key>
   </schema>
 </schemalist>

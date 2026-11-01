@@ -112,8 +112,9 @@ impl Shell {
         let factor = 1.2f64.powf(self.zoom_level.get());
         crate::icon::set_zoom(factor);
         let shape = self.palette.borrow().as_ref().and_then(|palette| palette.shape);
-        self.base.load_from_string(&scale_css(&shape_css(BASE_CSS, shape), factor));
-        self.own.load_from_string(&scale_css(&shape_css(self.spec.css, shape), factor));
+        let text = text_factor();
+        self.base.load_from_string(&scale_fonts(&scale_css(&shape_css(BASE_CSS, shape), factor), text));
+        self.own.load_from_string(&scale_fonts(&scale_css(&shape_css(self.spec.css, shape), factor), text));
         self.window.queue_resize();
     }
 
@@ -137,6 +138,44 @@ impl Shell {
 }
 
 const BASE_CSS: &str = include_str!("style.css");
+
+/// GNOME's text size (ame desktop text-size, Settings' Large Text), as GTK has it: the fonts' resolution over 96 dpi.
+/// GTK grows text given in points by it, but not text given in px, which is what the apps' stylesheets use.
+fn text_factor() -> f64 {
+    gtk::Settings::default()
+        .map(|settings| settings.gtk_xft_dpi())
+        .filter(|dpi| *dpi > 0)
+        .map_or(1.0, |dpi| (f64::from(dpi) / 1024.0 / 96.0).clamp(0.5, 3.0))
+}
+
+/// The stylesheet with every px of a font-size multiplied by the text size, and nothing else
+fn scale_fonts(css: &str, factor: f64) -> String {
+    if (factor - 1.0).abs() < 1e-9 {
+        return css.to_string();
+    }
+    const NAME: &str = "font-size";
+    let mut out = String::with_capacity(css.len());
+    let mut at = 0;
+    while let Some(found) = css[at..].find(NAME) {
+        let start = at + found;
+        let after = start + NAME.len();
+        // The property itself, not a longer name that ends so (a custom property's name keeps its own value)
+        let before = css[..start].chars().next_back();
+        let rest = css[after..].trim_start_matches([' ', '\t']);
+        if before.is_some_and(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_') || !rest.starts_with(':') {
+            out.push_str(&css[at..after]);
+            at = after;
+            continue;
+        }
+        let value_start = css.len() - rest.len() + 1;
+        let value_end = css[value_start..].find([';', '}', '\n']).map_or(css.len(), |i| value_start + i);
+        out.push_str(&css[at..value_start]);
+        out.push_str(&scale_css(&css[value_start..value_end], factor));
+        at = value_end;
+    }
+    out.push_str(&css[at..]);
+    out
+}
 
 /// The stylesheet with every length in px multiplied by the zoom
 fn scale_css(css: &str, factor: f64) -> String {
@@ -298,6 +337,15 @@ fn open_window<A: App>(app: &adw::Application, spec: Spec, build: &Rc<impl Fn(Rc
         monitors: RefCell::new(Vec::new()),
     });
     shell.restyle();
+    // GNOME's text size, changed while the window is open
+    if let Some(settings) = gtk::Settings::default() {
+        let weak = Rc::downgrade(&shell);
+        settings.connect_gtk_xft_dpi_notify(move |_| {
+            if let Some(shell) = weak.upgrade() {
+                shell.rescale();
+            }
+        });
+    }
     let own_app = build(shell.clone());
     crate::frame::start_controls(&window);
 
@@ -405,6 +453,16 @@ mod tests {
     #[test]
     fn a_launch_shows_the_window_unless_the_app_says_otherwise() {
         assert!(Plain.presents(&["capture".to_string()]));
+    }
+
+    #[test]
+    fn text_size_scales_font_sizes_only() {
+        let css = ".a { font-size: 12px; margin: 10px; }\n.b{font-size:1.5em;padding:4px}\n.c { --x-font-size: 8px; font-size: 20px }";
+        assert_eq!(
+            scale_fonts(css, 1.5),
+            ".a { font-size: 18px; margin: 10px; }\n.b{font-size:1.5em;padding:4px}\n.c { --x-font-size: 8px; font-size: 30px }"
+        );
+        assert_eq!(scale_fonts(css, 1.0), css);
     }
 
     #[test]

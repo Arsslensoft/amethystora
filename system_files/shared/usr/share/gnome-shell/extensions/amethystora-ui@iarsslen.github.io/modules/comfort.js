@@ -3,8 +3,11 @@
 // Animations switch turned off counts as reduce motion too. Increase contrast is GNOME's own High Contrast, so that
 // the desktop and the apps agree. The power saver is the profile power-profiles-daemon's interface says is active
 // (tuned-ppd answers it on this image): while it is on, the glass is solid and animations take half their time.
-// Nothing here decides when any of them is on and it has no setting of its own: it only listens, to one of GNOME's
-// keys, two of its shell settings and one property on the system bus, and costs nothing in between.
+// Nothing here decides when any of them is on: it only listens, to one of GNOME's keys, two of its shell settings and
+// one property on the system bus, and costs nothing in between. Its one setting is the light desktop (`light` in
+// org.gnome.shell.extensions.amethystora-ui.comfort, ame desktop light-desktop, Control): what the power saver does
+// to the glass and the motion, kept on, and no live window previews in the dock. A computer that draws the screen
+// without a graphics driver, or has little memory, is offered it once (comfort/slow.js).
 //
 // GNOME turns its animations off by itself where the screen is drawn without a GPU (a virtual machine without
 // acceleration, some remote desktops) and while the screen is shared remotely: there, reduce motion is on whatever
@@ -18,8 +21,9 @@
 //                           150 ms
 //   comfort?.highContrast   true while GNOME's High Contrast is on
 //   comfort?.powerSaver     true while the power-saver profile is active
-//   comfort?.lighter        true while the power saver is on or a focus profile asks for what it does (solid glass,
-//                           shorter motion): what the glass and the animations' speed follow
+//   comfort?.lighter        true while the power saver or the light desktop is on or a focus profile asks for what
+//                           they do (solid glass, shorter motion): what the glass and the animations' speed follow
+//   comfort?.light          true while the light desktop is on (the dock's previews follow it too)
 //   comfort?.setLighter(b)  the focus module's ask, in memory
 //   const unlisten = comfort?.listen(c => ...);
 //                           the callback runs once for each change of any of these, with this object; the
@@ -31,6 +35,9 @@
 import Gio from 'gi://Gio';
 import St from 'gi://St';
 
+import {SlowCheck} from './comfort/slow.js';
+
+const SCHEMA = 'org.gnome.shell.extensions.amethystora-ui.comfort';
 // GNOME's accessibility settings: reduced-motion is 'no-preference' or 'reduce'
 const A11Y = 'org.gnome.desktop.a11y.interface';
 const REDUCED_MOTION = 'reduced-motion';
@@ -57,7 +64,11 @@ export class Comfort {
             'notify::enable-animations', () => this._changed(),
             'notify::high-contrast', () => this._changed(),
             this);
+        this._own = this._ext.getSettings(SCHEMA);
+        this._own.connectObject('changed::light', () => this._changed(), this);
         this._state = this._now();
+        this._slow = new SlowCheck(this._ext, this._own);
+        this._slow.start();
 
         // A daemon that is not running means no power saver, and nothing is said about it
         this._cancellable = new Gio.Cancellable();
@@ -81,6 +92,12 @@ export class Comfort {
     }
 
     disable() {
+        this._slow?.stop();
+        this._slow = null;
+        this._own?.disconnectObject(this);
+        // Disposed now rather than by the collector (dock.js says why)
+        this._own?.run_dispose();
+        this._own = null;
         this._cancellable?.cancel();
         this._cancellable = null;
         this._proxy?.disconnectObject(this);
@@ -111,7 +128,17 @@ export class Comfort {
     }
 
     get lighter() {
-        return this._powerSaver || !!this._lighter;
+        return this._powerSaver || !!this._lighter || this.light;
+    }
+
+    get light() {
+        return this._own?.get_boolean('light') ?? false;
+    }
+
+    // For the tests: the slow computer's check, run now with what it would read replaced ({accelerated, memory,
+    // drivers}), whether it was asked before or not
+    checkSlow(facts = null) {
+        return this._slow?.check(facts, true) ?? null;
     }
 
     setLighter(on) {
@@ -139,7 +166,7 @@ export class Comfort {
     }
 
     _now() {
-        return [this.reduceMotion, this.highContrast, this.powerSaver, this.lighter].join();
+        return [this.reduceMotion, this.highContrast, this.powerSaver, this.lighter, this.light].join();
     }
 
     // Each listener hears once per change, however many signals brought it

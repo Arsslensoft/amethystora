@@ -32,6 +32,58 @@ A fullscreen video or game keeps the whole screen; push the pointer against the 
 comes down over it, and goes when you move away. `ame desktop top-bar peek off` turns that off. With
 two monitors or more, each one has a top bar of its own: see [Several monitors](#several-monitors).
 
+### Arranging the bar
+
+Control's **Desktop** page draws the bar as four places, **Left**, **Centre**, **Right** and **Hidden**. Drag an
+item to another place, or along its own, to move it there; each item also has a menu that does the same from the
+keyboard. The clock can go to the left, the workspaces to the middle, the tray anywhere. The clock and the system
+menu can move but never hide, and the privacy dots always stay beside the system menu. **As the image has it** puts
+everything back. In a terminal:
+
+```bash
+ame desktop top-bar layout show            # each item, and where it is
+ame desktop top-bar item clock left 0      # the clock first on the left
+ame desktop top-bar item network hidden    # the network meter off the bar
+ame desktop top-bar layout reset           # as the image has it
+```
+
+The items are `logo`, `workspaces`, `tiling`, `clock`, `processor`, `memory`, `network`, `tray`,
+`clipboard`, `phone`, `shield`, `busy`, `keyboard`, `a11y`, `system`, and `widget-NAME` for each of your
+[widgets](widgets.md). Something another extension puts on the bar keeps its own place.
+
+### The bar's size
+
+Compact (28 pixels), regular (32, the image's) or roomy (40): the bar and everything on it grow or shrink together,
+the icons, the workspaces and the clock's pill. A small laptop screen gets room back; a large screen across the room
+gets bigger targets. [Touch mode](#touch-mode) still makes it taller than any of them.
+
+```bash
+ame desktop top-bar size compact
+```
+
+### At the bottom, or hidden
+
+The bar can sit at the bottom of the screen instead (`ame desktop top-bar position bottom`): its menus open upwards,
+and a dock at the bottom sits just above it. It can also hide until you want it (`ame desktop top-bar autohide on`):
+the windows get its room, and pushing the pointer against its edge brings it in, as over a fullscreen window. Both are
+off until you choose them, and both are in Control's **Top bar** group. Notifications still appear at the top.
+
+### The clock
+
+What the clock shows is GNOME's own choice, in Control's **Clock** group or with `ame desktop clock`: 24 or 12
+hours, seconds, the weekday and the date, and week numbers in the calendar. A second time zone, for family or
+colleagues abroad, shows after the clock with its city:
+
+```bash
+ame desktop clock format 12h
+ame desktop clock seconds on       # the clock then changes every second
+ame desktop clock week-numbers on
+ame desktop clock zone Asia/Tokyo  # "Tokyo 06:41" after the clock; off takes it away
+```
+
+A zone is a name from the computer's own time-zone data, an area and a city such as `Europe/Paris` or
+`America/New_York`; Control offers a city in each part of the world.
+
 ## Quick settings
 
 The menu at the right end of the top bar opens on tiles, two to a row, each saying what it knows: the
@@ -1426,6 +1478,16 @@ ame desktop workspace-switch slide   # each workspace slides in whole
 
 With [Reduce motion](themes.md#comfort) on (`ame desktop comfort reduce-motion on`), windows fade in place instead
 and workspaces crossfade. With animations turned off in Settings, under Accessibility, nothing moves at all.
+
+A window can also arrive and leave its own way: **Pop** grows it into place from a little smaller, **Slide** raises
+it a little into place, **Fade** only fades it in; closing plays it backwards. Dialogs keep GNOME's. It is GNOME's
+own until you choose one (Control's **Opening and closing**):
+
+```bash
+ame desktop window-motion pop   # or slide, fade, gnome
+```
+
+How fast all of this plays is the [animation speed](themes.md#comfort).
 
 ## Workspaces
 

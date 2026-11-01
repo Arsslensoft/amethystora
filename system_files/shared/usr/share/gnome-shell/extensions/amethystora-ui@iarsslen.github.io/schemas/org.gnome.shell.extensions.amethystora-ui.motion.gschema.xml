@@ -21,5 +21,27 @@
       <summary>How workspaces change</summary>
       <description>depth: the wallpaper slides a third as far as the windows, which step back a little on the way. slide: GNOME's own.</description>
     </key>
+    <key name="speed" type="s">
+      <choices>
+        <choice value="snappy"/>
+        <choice value="normal"/>
+        <choice value="relaxed"/>
+        <choice value="off"/>
+      </choices>
+      <default>'normal'</default>
+      <summary>Animation speed</summary>
+      <description>snappy (0.4 of each animation's time), normal (0.6), relaxed (0.9) or off (nothing moves; GNOME's own Animations switch is left as it is). The power saver and the light desktop halve it. Reduce motion still turns movement into fades.</description>
+    </key>
+    <key name="open-close" type="s">
+      <choices>
+        <choice value="pop"/>
+        <choice value="slide"/>
+        <choice value="fade"/>
+        <choice value="gnome"/>
+      </choices>
+      <default>'gnome'</default>
+      <summary>How windows open and close</summary>
+      <description>pop: a window grows into place from a little smaller. slide: it rises a little as it appears. fade: it only fades in. gnome: GNOME's own. Closing plays it backwards; dialogs keep GNOME's; with Reduce motion on, it fades.</description>
+    </key>
   </schema>
 </schemalist>

@@ -1,0 +1,146 @@
+#!/usr/bin/bash
+# What the top bar holds and where (Amethystora UI's bars layout key, modules/bars/arrange.js), for `ame desktop
+# top-bar item|layout` and Control's Top bar, so that the two cannot disagree:
+#
+#   amethystora-bar-layout show [--json]               each item and where it is (the image's arrangement until changed)
+#   amethystora-bar-layout place ITEM ZONE [POSITION]  ITEM to left, center, right or hidden, at POSITION (from 0) or last
+#   amethystora-bar-layout reset                       the bar as the image arranges it
+#
+# The items are the bar's own, by id; a widget is widget-NAME. The clock and the system menu are never hidden. The key
+# is written whole each time, every known item in one list, so that what Control shows is what the bar does.
+
+set -euo pipefail
+export TEXTDOMAIN=amethystora
+# shellcheck source=/dev/null
+source gettext.sh
+
+SCHEMA=org.gnome.shell.extensions.amethystora-ui.bars
+WIDGETS="${XDG_CONFIG_HOME:-${HOME}/.config}/amethystora/widgets"
+ZONES=(left center right hidden)
+FIXED=(clock system)
+# The image's arrangement, as the bar is when nothing was changed (20-tests.sh holds the ids to arrange.js)
+DEFAULT_LEFT=(logo workspaces tiling)
+DEFAULT_CENTER=(clock)
+DEFAULT_RIGHT=(busy processor memory network tray clipboard shield phone a11y keyboard system)
+ID_RE='^[a-z0-9][a-z0-9-]{0,39}$'
+
+usage() {
+    sed -n 's/^#   amethystora-bar-layout /usage: amethystora-bar-layout /p' "$0" >&2
+    exit 64
+}
+
+name_of() {
+    case "$1" in
+        logo) gettext "The Amethystora menu" ;;
+        workspaces) gettext "Workspaces" ;;
+        tiling) gettext "Tiling buttons" ;;
+        clock) gettext "Clock" ;;
+        processor) gettext "Processor" ;;
+        memory) gettext "Memory" ;;
+        network) gettext "Network" ;;
+        tray) gettext "App icons" ;;
+        clipboard) gettext "Clipboard" ;;
+        phone) gettext "Phone" ;;
+        shield) gettext "Security shield" ;;
+        busy) gettext "Busy app" ;;
+        keyboard) gettext "Keyboard layout" ;;
+        a11y) gettext "Accessibility" ;;
+        system) gettext "System menu" ;;
+        *) return 1 ;;
+    esac
+}
+
+# The top bar's widgets, as id and name: those whose widget.json does not put them on the desktop
+widgets() {
+    local dir id
+    shopt -s nullglob
+    for dir in "${WIDGETS}"/*/; do
+        id="$(basename "${dir}")"
+        [[ "${id}" =~ ${ID_RE} && -f "${dir}widget.json" ]] || continue
+        jq -r --arg id "${id}" 'select((.place // "bar") == "bar")
+            | "widget-\($id)\t\(.name // $id | tostring | gsub("[\\u0000-\\u001f]"; "") | .[0:40])"' \
+            "${dir}widget.json" 2>/dev/null || true
+    done
+}
+
+# Every known item as JSON lines {id, name, fixed, zone}, the zone the image gives it
+known() {
+    local id zone
+    for zone in left center right; do
+        local list="DEFAULT_${zone^^}[@]"
+        for id in "${!list}"; do
+            jq -nc --arg id "${id}" --arg name "$(name_of "${id}")" --arg zone "${zone}" \
+                --argjson fixed "$([[ " ${FIXED[*]} " == *" ${id} "* ]] && echo true || echo false)" \
+                '{id: $id, name: $name, fixed: $fixed, zone: $zone}'
+        done
+    done
+    while IFS=$'\t' read -r id name; do
+        [[ -n "${id}" ]] || continue
+        jq -nc --arg id "${id}" --arg name "${name}" '{id: $id, name: $name, fixed: false, zone: "right"}'
+    done < <(widgets)
+}
+
+# The key as JSON: GSettings writes it as {'left': ['a', 'b'], ...}, and the ids hold no quote
+key_json() {
+    gsettings get "${SCHEMA}" layout 2>/dev/null | sed -E "s/^@a\{sas\} //; s/'/\"/g" | jq -c 'if type == "object" then . else {} end' 2>/dev/null ||
+        echo '{}'
+}
+
+# Where each item is now: the key's lists, then each known item no list names in its own zone, last
+current() {
+    jq -nc --argjson key "$(key_json)" --argjson items "$(known | jq -sc .)" '
+        ($items | map(.id)) as $ids
+        | (if ($key | length) == 0 then {} else $key end) as $k
+        | reduce ("left", "center", "right", "hidden") as $z ({}; .[$z] = [($k[$z] // [])[] | select(IN($ids[]))])
+        | . as $placed
+        | ([$placed[]] | add // []) as $named
+        | reduce ($items[] | select(.id | IN($named[]) | not)) as $i (.; .[$i.zone] += [$i.id])
+        | {zones: ., items: [$items[] | . as $i | .zone = ([$placed | to_entries[] | select(.value | index($i.id)) | .key][0]
+            // $i.zone)]}'
+}
+
+show() {
+    local now
+    now="$(current)"
+    if [[ "${1:-}" == --json ]]; then
+        printf '%s\n' "${now}"
+        return
+    fi
+    local zone
+    for zone in "${ZONES[@]}"; do
+        printf '%s: %s\n' "${zone}" "$(jq -r --arg z "${zone}" '.zones[$z] | join(" ")' <<<"${now}")"
+    done
+}
+
+place() {
+    local item="$1" zone="$2" position="${3:-}" now
+    [[ " ${ZONES[*]} " == *" ${zone} "* ]] || usage
+    [[ -z "${position}" || "${position}" =~ ^[0-9]{1,3}$ ]] || usage
+    now="$(current)"
+    if ! jq -e --arg id "${item}" '.items | any(.id == $id)' <<<"${now}" >/dev/null; then
+        echo "$(eval_gettext "The top bar has no item called \${item}.")" >&2
+        exit 1
+    fi
+    if [[ "${zone}" == hidden && " ${FIXED[*]} " == *" ${item} "* ]]; then
+        echo "$(gettext "The clock and the system menu stay on the bar.")" >&2
+        exit 1
+    fi
+    local value
+    value="$(jq -r --arg id "${item}" --arg z "${zone}" --arg p "${position}" '
+        .zones | map_values(map(select(. != $id)))
+        | .[$z] = (.[$z] as $l | ($p | if . == "" then ($l | length) else (tonumber | if . > ($l | length) then ($l | length) else . end) end) as $at
+            | $l[0:$at] + [$id] + $l[$at:])
+        | tojson
+        ' <<<"${now}")"
+    gsettings set "${SCHEMA}" layout "${value}"
+}
+
+case "${1:-}" in
+    show) show "${2:-}" ;;
+    place)
+        [[ $# -ge 3 && $# -le 4 ]] || usage
+        place "$2" "$3" "${4:-}"
+        ;;
+    reset) gsettings reset "${SCHEMA}" layout ;;
+    *) usage ;;
+esac

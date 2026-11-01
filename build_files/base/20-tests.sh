@@ -749,7 +749,7 @@ grep -q "shouldShowApp" "${UI_EXTENSION}/modules/fuzzy.js"
 # apps, its three recipes, and quiet holding banners in memory only: nothing of it writes GNOME's show-banners
 PILL=org.gnome.shell.extensions.amethystora-ui.pill
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${PILL}" | sort | paste -sd ' ')" == \
-    "digest digest-through digest-times digest-wait glow later later-times live meetings privacy-dots quiet quiet-night saving-data whats-new" ]]
+    "digest digest-through digest-times digest-wait glow later later-times live meetings privacy-dots quiet quiet-night saving-data second-zone whats-new" ]]
 for key in live privacy-dots glow quiet later whats-new meetings; do
     [[ "$(GSETTINGS_BACKEND=memory gsettings get "${PILL}" "${key}")" == true ]]
 done
@@ -852,7 +852,7 @@ grep -q "'EnableChargeThreshold'" "${UI_EXTENSION}/modules/quick/battery.js"
 # recipes, and nothing of theirs drawn as markup, since what they show is the person's text (task titles) or GNOME's
 BARS=org.gnome.shell.extensions.amethystora-ui.bars
 TODAY=org.gnome.shell.extensions.amethystora-ui.today
-[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${BARS}" | sort | paste -sd ' ')" == "every-screen peek" ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${BARS}" | sort | paste -sd ' ')" == "autohide every-screen layout peek position size" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${BARS}" every-screen)" == true ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${BARS}" peek)" == true ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${TODAY}" | sort | paste -sd ' ')" == "getting-set tasks weather" ]]
@@ -884,6 +884,38 @@ for recipe in top-bar today weather breaks; do
 done
 [[ -z "$(grep -rnE 'use_markup = true|use_markup: true|set_markup\(' "${UI_EXTENSION}/modules/bars.js" \
     "${UI_EXTENSION}/modules/today.js" "${UI_EXTENSION}/modules/today")" ]]
+# The bar your way, a calm desktop and the clock (plans/ui-ideas/spec-bar.md): the bar's arrangement, size and edge
+# (offered: at the bottom and hiding until touched, both off), the animation speed, how windows open and close (GNOME's
+# own until chosen), the second time zone (none), the light desktop (off), their recipes and the helper Control and the
+# recipe share. The helper's items are the module's; nothing here runs a command or polls; the zone is text.
+[[ "$(GSETTINGS_BACKEND=memory gsettings get "${BARS}" layout)" == "@a{sas} {}" ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings get "${BARS}" position)" == "'top'" ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings get "${BARS}" autohide)" == false ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings get "${BARS}" size)" == "'regular'" ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.motion speed)" == "'normal'" ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.motion open-close)" == "'gnome'" ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.pill second-zone)" == "''" ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys org.gnome.shell.extensions.amethystora-ui.comfort)" == light ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.comfort light)" == false ]]
+for file in modules/bars/arrange.js modules/bars/edge.js modules/comfort/slow.js modules/motion/arrive.js modules/pill/zone.js; do
+    test -s "${UI_EXTENSION}/${file}"
+done
+test -x /usr/libexec/amethystora-bar-layout
+for recipe in clock; do
+    grep -q "^${recipe} \*ARGS:" /usr/share/amethystora/just/desktop.just
+done
+for recipe in animation-speed text-size light-desktop window-motion; do
+    grep -q "^${recipe} [A-Z]*=\"\":" /usr/share/amethystora/just/desktop.just
+done
+BAR_ITEMS="$(sed -n "s/^DEFAULT_[A-Z]*=(\(.*\))\$/\1/p" /usr/libexec/amethystora-bar-layout | tr ' ' '\n' | sort | paste -sd ' ')"
+[[ "${BAR_ITEMS}" == "$(sed -n '/^export const ITEMS = {$/,/^};$/s/^    \([a-z0-9]*\): .*/\1/p' \
+    "${UI_EXTENSION}/modules/bars/arrange.js" | sort | paste -sd ' ')" ]] || { echo "the bar's items differ"; exit 1; }
+[[ -z "$(grep -E 'Util\.spawn|Subprocess|spawn_command_line|use_markup *= *true|setInterval|setTimeout' \
+    "${UI_EXTENSION}/modules/bars/arrange.js" "${UI_EXTENSION}/modules/pill/zone.js" "${UI_EXTENSION}/modules/comfort/slow.js")" ]]
+[[ -z "$(grep -E 'timeout_add' "${UI_EXTENSION}/modules/bars/arrange.js" "${UI_EXTENSION}/modules/pill/zone.js")" ]]
+# The light desktop is offered once, from what GNOME itself reads of the renderer, never asked again for the same machine
+grep -qF "is_rendering_hardware_accelerated()" "${UI_EXTENSION}/modules/comfort/slow.js"
+grep -qF "inhibit_animations()" "${UI_EXTENSION}/modules/tweaks.js"
 # Focus profiles (plans/beyond/spec-focus.md): the schema's 38 keys, nothing on and both triggers off for a new account,
 # the three profiles as the board ships them, the module last among the modules (it lays itself over the others and stops
 # first), its files and recipe. It never writes GNOME's Do Not Disturb, shows nothing as markup and starts nothing but
@@ -1150,7 +1182,7 @@ grep -qF "['uninstall', user ? '--user' : (extra ? installation : '--system'), '
 grep -qF 'appstream:' "${UI_EXTENSION}/modules/bazaar.js"
 # The tweaks: animations at 0.6 of their time through the shell's slow-down factor alone. GNOME's own switch for
 # animations is the person's (Settings, Accessibility), and nothing here may turn it back on.
-grep -q "^const SPEED = 0.6;$" "${UI_EXTENSION}/modules/tweaks.js"
+grep -qF "export const SPEEDS = {snappy: 0.4, normal: 0.6, relaxed: 0.9};" "${UI_EXTENSION}/modules/tweaks.js"
 grep -rqE "set_boolean\(['\"]enable-animations|enable_animations = " "${UI_EXTENSION}" && false
 # The trash empties itself of what was deleted more than 30 days ago, and ame desktop privacy changes that: a
 # number of days or off, nothing else. Settings in memory, as there is no session here
@@ -1991,7 +2023,7 @@ jq -e '[.items[] | select(.id == "quick-theme" or .id == "quick-tiles")] | lengt
     (.choices // [] | .[].command) | select(.[0:3] != ["ame", "desktop", "quick-settings"])' <<<"${CONTROL_LIST}")" ]]
 [[ -z "$(jq -r '.items[].id' <<<"${CONTROL_LIST}" | sort | uniq -d)" ]]
 [[ -z "$(jq -r '.items[].kind' <<<"${CONTROL_LIST}" |
-    grep -vxE 'switch|choice|range|action|link|themes|theme-maker|wallpapers|widgets|webapps|shortcuts|keybindings|trust-image|setup|disks|rows')" ]]
+    grep -vxE 'switch|choice|range|action|link|themes|theme-maker|wallpapers|widgets|webapps|shortcuts|keybindings|trust-image|setup|disks|rows|bar')" ]]
 [[ -z "$(jq -c '.items[] | (.command // empty), (.choices // [] | .[].command), (.commands // {} | .[].command),
     (.disks // [] | .[].actions[].command), (.rows // [] | .[].actions[].command)
     | select(.[0] != "ame" or .[1] == "security")' <<<"${CONTROL_LIST}")" ]]
@@ -3005,7 +3037,7 @@ test -s /usr/share/fonts/amethystora/quicksand/QuicksandVariable.ttf
 # after the tiling; GNOME's own handlers blocked and its methods called, never replaced; no timer; the droplet drawn
 # through a Cogl pipeline of the window's own texture; and workspaces named after their apps, a key of the workspaces
 MOTION=org.gnome.shell.extensions.amethystora-ui.motion
-[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${MOTION}" | sort | paste -sd ' ')" == "minimize workspace-switch" ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${MOTION}" | sort | paste -sd ' ')" == "minimize open-close speed workspace-switch" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${MOTION}" minimize)" == "'droplet'" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${MOTION}" workspace-switch)" == "'depth'" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.workspaces auto-names)" == true ]]

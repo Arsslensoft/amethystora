@@ -331,6 +331,8 @@ const SHELL = ['usr/libexec/amethystora-security-status', 'usr/libexec/amethysto
     'usr/libexec/amethystora-night-restart',
     // Files' New Document menu: the templates' names
     'usr/share/amethystora/user-setup.hooks.d/28-templates.sh',
+    // The top bar's items, which Control and ame desktop top-bar name
+    'usr/libexec/amethystora-bar-layout',
     // The callers of amethystora-notify-users --msgid, which mark their messages with N_
     'usr/libexec/amethystora-scan-alert', 'usr/libexec/amethystora-clamav-onaccess', 'usr/libexec/amethystora-lynis-audit',
     'usr/libexec/amethystora-driver-status', 'usr/libexec/amethystora-gpu-check', 'usr/libexec/amethystora-raid',

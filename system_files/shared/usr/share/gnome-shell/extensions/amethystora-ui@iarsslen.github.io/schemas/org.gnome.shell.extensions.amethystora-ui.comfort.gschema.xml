@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The key of the comfort module (modules/comfort.js): the light desktop, for a computer that draws the screen without
+     a graphics driver or has little memory. Written by ame desktop light-desktop, Control and the card the first login
+     on such a computer shows; read live. Not in the setup file: it is about this machine. -->
+<schemalist>
+  <schema id="org.gnome.shell.extensions.amethystora-ui.comfort" path="/org/gnome/shell/extensions/amethystora-ui/comfort/">
+    <key name="light" type="b">
+      <default>false</default>
+      <summary>The light desktop</summary>
+      <description>The glass drawn solid, motion short and simple, and no live window previews in the dock, as the power saver keeps them, all the time.</description>
+    </key>
+  </schema>
+</schemalist>

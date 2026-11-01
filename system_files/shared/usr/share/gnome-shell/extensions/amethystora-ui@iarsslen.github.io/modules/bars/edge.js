@@ -20,3 +20,12 @@ export function freeTopEdge(monitor, monitors) {
     }
     return spans.filter(([x1, x2]) => x2 > x1);
 }
+
+// The [x1, x2) spans of `monitor`'s bottom edge that no monitor of `monitors` sits right below: where the bar comes up
+// from when it sits at the bottom
+export function freeBottomEdge(monitor, monitors) {
+    const flipped = m => ({x: m.x, y: -(m.y + m.height), width: m.width, height: m.height});
+    const index = monitors.indexOf(monitor);
+    const all = monitors.map(flipped);
+    return freeTopEdge(all[index] ?? flipped(monitor), all);
+}

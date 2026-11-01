@@ -18,9 +18,9 @@ import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js'
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
-// Logical pixels: the plate's height, a round end's width, the padding inside the plate, the widest it gets
+// Logical pixels: the plate's height (unless the bar's size gives another, -amethystora-plate-height in bars.css), the
+// padding inside the plate, the widest it gets. A round end is half the plate's height wide.
 const HEIGHT = 28;
-const CAP = 14;
 const PAD = 12;
 const WIDEST = 320;
 // Milliseconds, before GNOME's slow-down factor: the plate's change of width, its fade between clear and tinted, the
@@ -82,6 +82,16 @@ class AmethystoraPill extends St.Widget {
         return [this._start, this._middle, this._end];
     }
 
+    // The plate's height in pixels: the bar's size can make it smaller or larger (modules/bars.js)
+    get plateHeight() {
+        try {
+            const [found, length] = this.get_theme_node().lookup_length('-amethystora-plate-height', false);
+            if (found && length > 0)
+                return length;
+        } catch {}
+        return HEIGHT * scale();
+    }
+
     get shown() {
         return this._shown;
     }
@@ -126,7 +136,7 @@ class AmethystoraPill extends St.Widget {
     }
 
     vfunc_get_preferred_height(forWidth) {
-        let height = HEIGHT * scale();
+        let height = this.plateHeight;
         for (const child of this.get_children()) {
             if (child === this._plate || !child.visible)
                 continue;
@@ -142,9 +152,9 @@ class AmethystoraPill extends St.Widget {
         const s = scale();
         const width = box.get_width();
         const height = box.get_height();
-        const plateHeight = Math.round(HEIGHT * s);
+        const plateHeight = Math.round(this.plateHeight);
         const top = Math.round((height - plateHeight) / 2);
-        const cap = Math.round(CAP * s);
+        const cap = Math.round(plateHeight / 2);
 
         this._plate.allocate(new Clutter.ActorBox({x1: 0, y1: 0, x2: width, y2: height}));
         this._start.allocate(new Clutter.ActorBox({x1: 0, y1: top, x2: cap, y2: top + plateHeight}));
@@ -228,7 +238,7 @@ class AmethystoraPill extends St.Widget {
             piece.remove_transition('translation-x');
             piece.remove_transition('scale-x');
         }
-        const cap = CAP * scale();
+        const cap = this.plateHeight / 2;
         const travel = (to - from) / 2;
         if (!reduce && from > 0 && to > 2 * cap && Math.abs(travel) >= 0.5) {
             this._start.translation_x = travel;

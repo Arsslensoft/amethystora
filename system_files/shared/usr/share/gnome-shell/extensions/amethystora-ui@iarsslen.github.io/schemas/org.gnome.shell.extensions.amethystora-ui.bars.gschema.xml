@@ -13,5 +13,34 @@
       <summary>The top bar over fullscreen</summary>
       <description>Pushing the pointer against the top edge of a screen with a fullscreen window brings the top bar down over it.</description>
     </key>
+    <key name="layout" type="a{sas}">
+      <default>{}</default>
+      <summary>What the top bar holds, and where</summary>
+      <description>The items of the main bar by their ids (logo, workspaces, tiling, clock, processor, memory, network, tray, clipboard, phone, shield, busy, keyboard, a11y, system, widget-NAME) in the lists left, center, right and hidden, in order. Empty: the bar as the image arranges it. An item no list names stays where it is; the clock and the system menu are never hidden.</description>
+    </key>
+    <key name="position" type="s">
+      <choices>
+        <choice value="top"/>
+        <choice value="bottom"/>
+      </choices>
+      <default>'top'</default>
+      <summary>The bar's edge</summary>
+      <description>top, or bottom, where its menus open upwards and a dock at the bottom sits above it.</description>
+    </key>
+    <key name="autohide" type="b">
+      <default>false</default>
+      <summary>The bar hidden until touched</summary>
+      <description>The bar is hidden and gives its room to the windows; pushing the pointer against its edge brings it in.</description>
+    </key>
+    <key name="size" type="s">
+      <choices>
+        <choice value="compact"/>
+        <choice value="regular"/>
+        <choice value="roomy"/>
+      </choices>
+      <default>'regular'</default>
+      <summary>The bar's size</summary>
+      <description>compact (28 px), regular (32 px) or roomy (40 px), with its icons, the workspaces and the clock's pill scaled together. Touch mode's taller bar wins over each.</description>
+    </key>
   </schema>
 </schemalist>
