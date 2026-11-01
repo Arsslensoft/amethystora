@@ -1,0 +1,226 @@
+#!/usr/bin/bash
+# A guest login that forgets (plans/ui-ideas/spec-later.md, R6-36): a visitor's account, Guest, that logs in at the
+# login screen without a password, into a home folder kept in memory and emptied when the session ends, and sees none
+# of the other accounts' files (their homes are 0700). A security switch, off as the image ships:
+# `ame security guest-login`, through amethystora-hardening's switch guest-login, which runs this as root.
+#
+#   amethystora-guest enable     makes the account and what keeps it forgetful (root)
+#   amethystora-guest disable    takes all of it away again, the account first (root)
+#   amethystora-guest status     on, off, or broken (the switch is on and a part is missing)
+#   amethystora-guest files      the files in /etc that enable writes, one "path<TAB>file" a line, for the watcher
+#   amethystora-guest expected PATH   what enable writes at /etc/PATH
+#   amethystora-guest authselect      whether /etc/authselect is the image's own with with-guest-login (and either
+#                                     duress feature) turned on, every file as authselect writes it
+#   amethystora-guest prepare|cleanup  run by the guest's user manager as root as it starts and after it stops
+#
+# What makes it forget, and keeps it to the login screen:
+#   - the home is a tmpfs (var-home-amethystora\x2dguest.mount) that the guest's user manager requires and is part
+#     of: mounted before the session starts, unmounted when the manager stops at logout;
+#   - logind ends every process of the guest's at logout (logind.conf.d), and cleanup deletes what it left in /tmp,
+#     /var/tmp, /dev/shm and its own journal files;
+#   - the empty password is taken at the graphical login only: the authselect feature with-guest-login (built by
+#     08-hardening.sh) refuses the account in system-auth (sudo, su, the text consoles, polkit) and in password-auth
+#     for every service but gdm-password; sshd also denies it by name.
+# The account is a standard one: not an administrator, and Parental Controls can be set on it as on any other.
+
+set -uo pipefail
+
+ROOT="${AMETHYSTORA_GUEST_ROOT:-}"
+USER_NAME=amethystora-guest
+HOME_DIR=/var/home/amethystora-guest
+MOUNT_UNIT='var-home-amethystora\x2dguest.mount'
+FEATURE=with-guest-login
+LOGIND=systemd/logind.conf.d/60-amethystora-guest.conf
+SSHD=ssh/sshd_config.d/60-amethystora-guest.conf
+MOUNT="systemd/system/${MOUNT_UNIT}"
+IMAGE_CONF=/usr/etc/authselect/authselect.conf
+[[ -e "${IMAGE_CONF}" ]] || IMAGE_CONF=/etc/authselect/authselect.conf
+CONF="${ROOT}/etc/authselect/authselect.conf"
+# The files authselect writes, each with the option `authselect test` prints it with (amethystora-domain-logins')
+GENERATED=(nsswitch.conf:--nsswitch system-auth:--system-auth password-auth:--password-auth
+    smartcard-auth:--smartcard-auth fingerprint-auth:--fingerprint-auth switchable-auth:--switchable-auth
+    postlogin:--postlogin dconf-db:--dconf-db dconf-locks:--dconf-lock)
+
+usage() {
+    sed -n '7,16p' "$0" | sed 's/^# \?//' >&2
+    exit 64
+}
+
+need_root() { [[ "${EUID}" -eq 0 ]] || { echo "This needs root." >&2; exit 77; }; }
+
+uid_of() { getent passwd "${USER_NAME}" | cut -d: -f3; }
+gid_of() { getent passwd "${USER_NAME}" | cut -d: -f4; }
+dropin() { echo "systemd/system/user@$1.service.d/60-amethystora-guest.conf"; }
+
+# What enable writes, given the account's numbers
+expected() {
+    local uid gid
+    uid="$(uid_of)"
+    gid="$(gid_of)"
+    [[ "${uid}" =~ ^[0-9]+$ && "${gid}" =~ ^[0-9]+$ ]] || return 1
+    case "$1" in
+        "${LOGIND}")
+            printf '%s\n' "# Written by ame security guest-login: the guest's processes end with its session" "[Login]" \
+                "KillUserProcesses=yes" "KillOnlyUsers=${USER_NAME}" ;;
+        "${SSHD}")
+            printf '%s\n' "# Written by ame security guest-login: the guest logs in at the login screen only" \
+                "DenyUsers ${USER_NAME}" ;;
+        "${MOUNT}")
+            printf '%s\n' "# Written by ame security guest-login: the guest's home, in memory, emptied at logout" \
+                "[Unit]" "Description=The guest's home folder, in memory" "PartOf=user@${uid}.service" \
+                "Before=user@${uid}.service" "" "[Mount]" "What=tmpfs" "Where=${HOME_DIR}" "Type=tmpfs" \
+                "Options=mode=0700,uid=${uid},gid=${gid},size=25%,nosuid,nodev" "LazyUnmount=yes" ;;
+        "$(dropin "${uid}")")
+            printf '%s\n' "# Written by ame security guest-login: the guest's home is mounted before its session and" \
+                "# goes with it" "[Unit]" "Requires=${MOUNT_UNIT}" "After=${MOUNT_UNIT}" "" "[Service]" \
+                "ExecStartPre=+/usr/libexec/amethystora-guest prepare" \
+                "ExecStopPost=+/usr/libexec/amethystora-guest cleanup" ;;
+        *) return 1 ;;
+    esac
+}
+
+files() {
+    local uid
+    uid="$(uid_of)"
+    [[ -n "${uid}" ]] || return 0
+    printf '%s\tfile\n' "${LOGIND}" "${SSHD}" "${MOUNT}" "$(dropin "${uid}")"
+}
+
+place() {
+    local rel="$1" target="${ROOT}/etc/$1"
+    mkdir -p "${target%/*}"
+    expected "${rel}" >"${target}.new" || { rm -f "${target}.new"; return 1; }
+    chmod 0644 "${target}.new"
+    mv "${target}.new" "${target}"
+}
+
+enable() {
+    need_root
+    if ! getent passwd "${USER_NAME}" >/dev/null; then
+        useradd --comment Guest --home-dir "${HOME_DIR}" --no-create-home --shell /bin/bash --user-group \
+            "${USER_NAME}" || return 1
+    fi
+    # No password: the authselect feature below lets that through at the login screen alone
+    passwd -d "${USER_NAME}" >/dev/null || return 1
+    # The folder the memory is mounted on, root's and closed: nothing the guest writes can land under it
+    mkdir -p "${HOME_DIR}"
+    chown root:root "${HOME_DIR}"
+    chmod 0500 "${HOME_DIR}"
+    local rel
+    while IFS=$'\t' read -r rel _; do
+        place "${rel}" || return 1
+    done < <(files)
+    grep -qx "${FEATURE}" "${CONF}" 2>/dev/null || authselect enable-feature "${FEATURE}" >/dev/null || return 1
+    systemctl daemon-reload
+    # logind and sshd read their settings again; a running sshd only if it runs
+    systemctl reload systemd-logind 2>/dev/null || kill -HUP "$(systemctl show -p MainPID --value systemd-logind)" 2>/dev/null
+    systemctl try-reload-or-restart sshd.service 2>/dev/null || true
+    return 0
+}
+
+disable() {
+    need_root
+    local uid rel
+    uid="$(uid_of)"
+    # A guest still logged in is logged out: what it did goes with it
+    if [[ -n "${uid}" ]]; then
+        loginctl terminate-user "${USER_NAME}" 2>/dev/null
+        systemctl stop "user@${uid}.service" "${MOUNT_UNIT}" 2>/dev/null
+    fi
+    if grep -qx "${FEATURE}" "${CONF}" 2>/dev/null; then
+        authselect disable-feature "${FEATURE}" >/dev/null || return 1
+    fi
+    while IFS=$'\t' read -r rel _; do
+        rm -f "${ROOT}/etc/${rel}"
+    done < <(files)
+    [[ -n "${uid}" ]] && rmdir "${ROOT}/etc/$(dirname "$(dropin "${uid}")")" 2>/dev/null
+    if getent passwd "${USER_NAME}" >/dev/null; then
+        cleanup
+        userdel "${USER_NAME}" 2>/dev/null || return 1
+    fi
+    mountpoint -q "${HOME_DIR}" || rm -rf --one-file-system "${HOME_DIR}"
+    systemctl daemon-reload
+    systemctl reload systemd-logind 2>/dev/null || true
+    systemctl try-reload-or-restart sshd.service 2>/dev/null || true
+    return 0
+}
+
+status() {
+    local switched=off
+    /usr/libexec/amethystora-hardening is-on guest-login 2>/dev/null && switched=on
+    if [[ "${switched}" == off ]]; then
+        getent passwd "${USER_NAME}" >/dev/null && echo broken || echo off
+        return 0
+    fi
+    local rel
+    getent passwd "${USER_NAME}" >/dev/null || { echo broken; return 0; }
+    grep -qx "${FEATURE}" "${CONF}" 2>/dev/null || { echo broken; return 0; }
+    while IFS=$'\t' read -r rel _; do
+        cmp -s "${ROOT}/etc/${rel}" <(expected "${rel}") || { echo broken; return 0; }
+    done < <(files)
+    echo on
+}
+
+# The guest's home, just mounted: it starts as GNOME's first-run questions already answered and Amethystora's first
+# look already seen, so that a visitor goes straight to the desktop
+prepare() {
+    need_root
+    local uid gid
+    uid="$(uid_of)"
+    gid="$(gid_of)"
+    mountpoint -q "${HOME_DIR}" || { echo "${HOME_DIR} is not mounted: the guest does not log in." >&2; return 1; }
+    install -d -o "${uid}" -g "${gid}" -m 0700 "${HOME_DIR}/.config" "${HOME_DIR}/.local" "${HOME_DIR}/.local/state" \
+        "${HOME_DIR}/.local/state/amethystora"
+    install -o "${uid}" -g "${gid}" -m 0600 /dev/null "${HOME_DIR}/.config/gnome-initial-setup-done"
+    echo yes >"${HOME_DIR}/.config/gnome-initial-setup-done"
+    install -o "${uid}" -g "${gid}" -m 0600 /dev/null "${HOME_DIR}/.local/state/amethystora/first-look.json"
+    echo '{"guest": true}' >"${HOME_DIR}/.local/state/amethystora/first-look.json"
+}
+
+# What the guest left outside its home, once its user manager has stopped: its files in the shared temporary folders,
+# and its own journal files
+cleanup() {
+    need_root
+    local uid
+    uid="$(uid_of)"
+    [[ "${uid}" =~ ^[0-9]+$ ]] || return 0
+    find /tmp /var/tmp /dev/shm -xdev -mindepth 1 -user "${uid}" -delete 2>/dev/null
+    # The journal keeps what an account's programs logged in a file of its own, user-UID: closed, then deleted
+    journalctl --rotate >/dev/null 2>&1
+    find /var/log/journal -mindepth 2 -maxdepth 2 -name "user-${uid}[@.]*" -delete 2>/dev/null
+    return 0
+}
+
+# /etc/authselect as authselect writes it for the image's profile, the image's features and with-guest-login, with
+# either duress feature too: the watcher then takes the PAM files as the image's own
+authselect_written() {
+    [[ -f "${IMAGE_CONF}" && -f "${CONF}" ]] || return 1
+    grep -qx "${FEATURE}" "${CONF}" || return 1
+    local profile entry file header
+    profile="$(grep -vE '^[[:space:]]*(#|$)' "${CONF}" | head -n1)"
+    [[ "${profile}" == "$(grep -vE '^[[:space:]]*(#|$)' "${IMAGE_CONF}" | head -n1)" ]] || return 1
+    cmp -s <(grep -vE '^[[:space:]]*(#|$)' "${CONF}" | tail -n +2 |
+        grep -vxE "${FEATURE}|with-duress-fingerprint|with-duress-password") \
+        <(grep -vE '^[[:space:]]*(#|$)' "${IMAGE_CONF}" | tail -n +2) || return 1
+    local -a current
+    mapfile -t current < <(grep -vE '^[[:space:]]*(#|$)' "${CONF}" | tail -n +2)
+    header="$(head -n 5 "${IMAGE_CONF%/*}/system-auth")"
+    for entry in "${GENERATED[@]}"; do
+        file="${ROOT}/etc/authselect/${entry%%:*}"
+        [[ -f "${file}" && ! -L "${file}" && "$(head -n 5 "${file}")" == "${header}" ]] || return 1
+        [[ "$(tail -n +6 "${file}")" == "$(authselect test "${profile}" "${current[@]}" "${entry#*:}" 2>/dev/null | tail -n +2)" ]] ||
+            return 1
+    done
+}
+
+case "${1:-}" in
+    enable) enable ;;
+    disable) disable ;;
+    status) status ;;
+    files) files ;;
+    expected) [[ $# -eq 2 ]] || usage; expected "$2" ;;
+    authselect) authselect_written ;;
+    prepare) prepare ;;
+    cleanup) cleanup ;;
+    *) usage ;;
+esac

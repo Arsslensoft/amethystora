@@ -161,10 +161,18 @@ if [[ -d "${XDG_STATE_HOME:-${HOME:-/nonexistent}/.local/state}/amethystora/pkg/
         "$(gettext "Every day, each container asks its distribution's mirrors for its package list.")" ""
 fi
 
-# Only once live captions were set up: their speech model came from the internet once, and nothing goes out since
-if [[ -f "${XDG_DATA_HOME:-${HOME:-/nonexistent}/.local/share}/amethystora/captions/model/conf/model.conf" ]]; then
+# Only once live captions or dictation were set up: each language's speech model came from the internet once, when it
+# was chosen, and nothing goes out since (English in captions/model, any other in captions/model-LANG)
+CAPTIONS_DIR="${XDG_DATA_HOME:-${HOME:-/nonexistent}/.local/share}/amethystora/captions"
+SPEECH=()
+[[ -f "${CAPTIONS_DIR}/model/conf/model.conf" ]] && SPEECH+=(en)
+for model in "${CAPTIONS_DIR}"/model-*; do
+    [[ -f "${model}/conf/model.conf" || -f "${model}/mfcc.conf" ]] && SPEECH+=("${model##*/model-}")
+done
+if [[ ${#SPEECH[@]} -gt 0 ]]; then
+    LANGUAGES="${SPEECH[*]}"
     row captions off "$(gettext "Live captions")" \
-        "$(gettext "The speech model was downloaded once from alphacephei.com when captions were set up. Captions are made on this computer and nothing is sent.")" \
+        "$(eval_gettext "The speech models of these languages were each downloaded once from alphacephei.com, when they were chosen: \${LANGUAGES}. Captions and dictation are made on this computer and nothing is sent.")" \
         "ame desktop captions"
 fi
 

@@ -54,5 +54,20 @@
       <summary>Glance at files</summary>
       <description>Space shows a file found by the search without opening it.</description>
     </key>
+    <key name="bookmarks" type="b">
+      <default>false</default>
+      <summary>Bookmarks</summary>
+      <description>Firefox's bookmarks, never its history, read from a copy of its bookmarks file when a search starts. Off as the image ships.</description>
+    </key>
+    <key name="notes" type="b">
+      <default>false</default>
+      <summary>Notes</summary>
+      <description>The titles of notes and tasks in Amethystora Notes, asked only while Notes is open and unlocked. Off as the image ships.</description>
+    </key>
+    <key name="meaning" type="b">
+      <default>false</default>
+      <summary>Files by meaning</summary>
+      <description>Files in Documents found by what they are about, from the text GNOME's indexer extracted, with the agent's small embedding model, on this computer. `ame desktop search meaning` also starts and stops its daily reading. Off as the image ships.</description>
+    </key>
   </schema>
 </schemalist>

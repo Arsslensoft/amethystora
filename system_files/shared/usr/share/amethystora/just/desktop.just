@@ -1754,8 +1754,10 @@ phone *ARGS:
     esac
 
 # Live captions: words under the speech this computer plays, made on this computer by the Vosk recognizer
-# (ACTION: on, off, remove or status; without it, it flips). `on` fetches the speech model once, after saying what it
-# downloads and asking; `remove` turns captions off and deletes the model
+# (ACTION: on, off, remove, status or language; without it, it flips). `on` fetches the speech model of the captions'
+# language once, after saying what it downloads and asking; `remove` turns captions and dictation off and deletes every
+# model; `language LANG` picks the language captions and dictation hear, fetching its model the same way (without
+# LANG, it asks which)
 [positional-arguments]
 captions *ARGS:
     #!/usr/bin/bash
@@ -1765,31 +1767,44 @@ captions *ARGS:
     schema=org.gnome.shell.extensions.amethystora-ui.captions
     helper=/usr/libexec/amethystora-captions
     usage() {
-        echo "usage: ame desktop captions [on|off|remove|status]"
+        echo "usage: ame desktop captions [on|off|remove|status|language [en|fr|es|de|it|tr|pt|nl|ru|pl]]"
         exit 64
     }
-    [[ $# -le 1 ]] || usage
+    [[ $# -le 1 || ( $# -eq 2 && "$1" == language ) ]] || usage
     action="${1:-}"
+    lang="$(gsettings get "${schema}" language | tr -d "'")"
+    # What the helper says of one language: its name, or its download in MiB
+    about() {
+        "${helper}" languages | jq -r --arg code "$1" --arg what "$2" '.[] | select(.code == $code) |
+            if $what == "size" then (.download / 1048576 | round | tostring) else .name end'
+    }
+    # Fetches the model of a language once, after saying what it downloads and asking; fails when it is not here after
+    fetch_model() {
+        local name size
+        case "$("${helper}" status "$1")" in
+            no-engine)
+                echo "$(gettext "The speech recognizer is not installed in this image.")"
+                return 1
+                ;;
+            no-model)
+                name="$(about "$1" name)"
+                size="$(about "$1" size)"
+                echo "$(eval_gettext "Captions and dictation in \${name} need a speech model of \${size} MiB, downloaded once from alphacephei.com, the makers of the Vosk recognizer. After that, they are made on this computer: what you hear or say is never recorded or sent.")"
+                echo "$(gettext "While they are on, they hold about 230 MB of memory, and use part of a processor core while speech plays.")"
+                gum confirm "$(gettext "Download it now?")" || return 1
+                if ! "${helper}" fetch "$1"; then
+                    echo "$(gettext "The download failed, and nothing was kept.")"
+                    return 1
+                fi
+                ;;
+        esac
+    }
     if [[ -z "${action}" ]]; then
         if [[ "$(gsettings get "${schema}" enabled)" == true ]]; then action=off; else action=on; fi
     fi
     case "${action}" in
         on)
-            case "$("${helper}" status)" in
-                no-engine)
-                    echo "$(gettext "The speech recognizer is not installed in this image.")"
-                    exit 1
-                    ;;
-                no-model)
-                    echo "$(gettext "Live captions need a speech model of 39 MiB (68 MiB once unpacked), downloaded once from alphacephei.com, the makers of the Vosk recognizer. After that, captions are made on this computer: the sound is never recorded or sent. English only for now.")"
-                    echo "$(gettext "While they are on, they hold about 230 MB of memory, and use part of a processor core while speech plays.")"
-                    gum confirm "$(gettext "Download it now?")" || exit 0
-                    if ! "${helper}" fetch; then
-                        echo "$(gettext "The download failed, and nothing was kept.")"
-                        exit 1
-                    fi
-                    ;;
-            esac
+            fetch_model "${lang}" || exit 1
             gsettings set "${schema}" enabled true
             echo "$(gettext "Live captions are on: they show under speech the computer plays. Quick settings turns them off.")"
             ;;
@@ -1799,11 +1814,12 @@ captions *ARGS:
             ;;
         remove)
             # The model goes first: the shell's watch of its folder takes the toggle away, and the key then says off
-            had="$("${helper}" status)"
+            had="$("${helper}" languages | jq '[.[] | select(.here)] | length')"
             "${helper}" remove
             gsettings set "${schema}" enabled false
-            if [[ "${had}" == ready ]]; then
-                echo "$(gettext "The speech model is removed: 68 MiB freed.")"
+            gsettings set "${schema}" dictation false
+            if [[ "${had}" != 0 ]]; then
+                echo "$(gettext "The speech models are removed, and live captions and dictation are off.")"
             else
                 echo "$(gettext "Live captions are off, and no speech model is left.")"
             fi
@@ -1814,13 +1830,67 @@ captions *ARGS:
             else
                 echo "$(gettext "Live captions are off.")"
             fi
-            case "$("${helper}" status)" in
+            case "$("${helper}" status "${lang}")" in
                 ready) echo "$(gettext "The speech model is on this computer.")" ;;
                 no-model) echo "$(gettext "The speech model is not downloaded.")" ;;
                 *) echo "$(gettext "The speech recognizer is not installed in this image.")" ;;
             esac
+            name="$(about "${lang}" name)"
+            echo "$(eval_gettext "Language: \${name}")"
+            ;;
+        language)
+            code="${2:-}"
+            if [[ -z "${code}" ]]; then
+                code="$("${helper}" languages | jq -r '.[] | .code + "  " + .name' |
+                    gum choose --header "$(gettext "Captions language")" --selected "${lang}  $(about "${lang}" name)")" || exit 0
+                code="${code%% *}"
+            fi
+            [[ -n "$(about "${code}" name)" ]] || usage
+            fetch_model "${code}" || exit 1
+            gsettings set "${schema}" language "${code}"
+            name="$(about "${code}" name)"
+            echo "$(eval_gettext "Captions and dictation hear \${name} now.")"
             ;;
         *) usage ;;
+    esac
+
+# Dictation: Super+Ctrl+Shift+D listens to the microphone and types what is said into the text field in use, made on
+# this computer by the captions' recognizer, in their language (ACTION: on or off; without it, it says which). `on`
+# fetches that language's speech model first if it is not here, after saying what it downloads and asking
+[positional-arguments]
+dictation ACTION="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.captions
+    helper=/usr/libexec/amethystora-captions
+    lang="$(gsettings get "${schema}" language | tr -d "'")"
+    case "${1:-}" in
+        "")
+            if [[ "$(gsettings get "${schema}" dictation)" == true ]]; then
+                echo "$(gettext "Dictation is on: Super+Ctrl+Shift+D starts and stops it.")"
+            else
+                echo "$(gettext "Dictation is off.")"
+            fi
+            ;;
+        on)
+            if [[ "$("${helper}" status "${lang}")" != ready ]]; then
+                # The model comes as the captions' does: said first, asked, checked
+                ame desktop captions language "${lang}" || exit 1
+                [[ "$("${helper}" status "${lang}")" == ready ]] || exit 1
+            fi
+            gsettings set "${schema}" dictation true
+            echo "$(gettext "Dictation is on. Click into a text field, press Super+Ctrl+Shift+D and speak; press it again to stop. It listens on this computer only, and what you say is never recorded or sent.")"
+            ;;
+        off)
+            gsettings set "${schema}" dictation false
+            echo "$(gettext "Dictation is off.")"
+            ;;
+        *)
+            echo "usage: ame desktop dictation [on|off]"
+            exit 64
+            ;;
     esac
 
 # The live pill: the clock shows what is happening now (ame desktop pill [on|off]); the privacy dots and the
@@ -3247,9 +3317,10 @@ dock *ARGS:
     esac
 
 # What the search (Super+Space, and the overview's) finds besides GNOME's own: sums and units, the time in other places,
-# reminders into Notes, Control's settings, the manual, open windows, the clipboard after clip:, the agent row, and
-# Glance on a file (WHAT: answers, times, reminders, settings, manual, windows, clipboard, agent or glance; STATE: on or
-# off). Without STATE it says what WHAT is; without WHAT, all of them
+# reminders into Notes, Control's settings, the manual, open windows, the clipboard after clip:, the agent row, Glance
+# on a file, and, offered and off, Firefox's bookmarks, Notes while it is unlocked and files by meaning (WHAT: answers,
+# times, reminders, settings, manual, windows, clipboard, agent, glance, bookmarks, notes or meaning; STATE: on or off).
+# Without STATE it says what WHAT is; without WHAT, all twelve
 [positional-arguments]
 search WHAT="" STATE="":
     #!/usr/bin/bash
@@ -3257,9 +3328,9 @@ search WHAT="" STATE="":
     # shellcheck source=/dev/null
     source gettext.sh
     schema=org.gnome.shell.extensions.amethystora-ui.search
-    parts=(answers times reminders settings manual windows clipboard agent glance)
+    parts=(answers times reminders settings manual windows clipboard agent glance bookmarks notes meaning)
     usage() {
-        echo "usage: ame desktop search [answers|times|reminders|settings|manual|windows|clipboard|agent|glance] [on|off]"
+        echo "usage: ame desktop search [answers|times|reminders|settings|manual|windows|clipboard|agent|glance|bookmarks|notes|meaning] [on|off]"
         exit 2
     }
     state_of() {
@@ -3284,16 +3355,23 @@ search WHAT="" STATE="":
         clipboard) title="$(gettext "Clipboard history")" ;;
         agent) title="$(gettext "Ask the agent")" ;;
         glance) title="$(gettext "Glance at files")" ;;
+        bookmarks) title="$(gettext "Bookmarks")" ;;
+        notes) title="$(gettext "Notes")" ;;
+        meaning) title="$(gettext "Files by meaning")" ;;
         *) usage ;;
     esac
     case "${state}" in
         "") state_of "${what}" ;;
         on)
             gsettings set "${schema}" "${what}" true
+            # Files by meaning reads Documents' text from the indexer once a day on mains power, starting now
+            [[ "${what}" != meaning ]] || /usr/libexec/amethystora-file-meaning on
             echo "${title}: $(gettext "On")"
             ;;
         off)
             gsettings set "${schema}" "${what}" false
+            # ...and off, its daily reading stops and what it worked out is deleted
+            [[ "${what}" != meaning ]] || /usr/libexec/amethystora-file-meaning off
             echo "${title}: $(gettext "Off")"
             ;;
         *) usage ;;
@@ -4119,7 +4197,7 @@ access *ARGS:
     source gettext.sh
     schema=org.gnome.shell.extensions.amethystora-ui.access
     usage() {
-        echo "usage: ame desktop access [filter none|protan|deutan|tritan|grey|on|off | strength 25-100 | ruler off|band|dim|underline|show|hide | read-aloud on|off | read-aloud-speed 0.75|1|1.5|2]"
+        echo "usage: ame desktop access [filter none|protan|deutan|tritan|grey|on|off | strength 25-100 | ruler off|band|dim|underline|show|hide | read-aloud on|off | read-aloud-speed 0.75|1|1.5|2 | letters on|off]"
         exit 64
     }
     value() { gsettings get "${schema}" "$1" | tr -d "'"; }
@@ -4136,6 +4214,8 @@ access *ARGS:
         if [[ "$(value read-aloud)" == true ]]; then state=on; else state=off; fi
         speed="$(value read-aloud-speed)"
         echo "$(eval_gettext "Read aloud: \${state}, at \${speed}× (Super+Ctrl+S reads the selection)")"
+        if [[ "$(value letters)" == true ]]; then state=on; else state=off; fi
+        echo "$(eval_gettext "Click with the keyboard: \${state} (Super+Alt+K)")"
         exit 0
     fi
     [[ $# -eq 2 ]] || usage
@@ -4180,6 +4260,15 @@ access *ARGS:
             ;;
         read-aloud-speed:0.75 | read-aloud-speed:1 | read-aloud-speed:1.5 | read-aloud-speed:2)
             gsettings set "${schema}" read-aloud-speed "$2"
+            ;;
+        # Click with the keyboard (plans/ui-ideas/spec-later.md, R5-36)
+        letters:on)
+            gsettings set "${schema}" letters true
+            echo "$(gettext "Click with the keyboard is on: Super+Alt+K puts a letter on every button and link of the window in use, and typing it clicks. The window's controls are read from its accessibility tree, on this computer, only while the letters show.")"
+            ;;
+        letters:off)
+            gsettings set "${schema}" letters false
+            echo "$(gettext "Click with the keyboard is off.")"
             ;;
         *) usage ;;
     esac

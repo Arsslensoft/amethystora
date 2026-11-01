@@ -26,3 +26,17 @@
   width: 15px;
   height: 15px;
 }
+
+/* Click with the keyboard (plans/ui-ideas/spec-later.md, R5-36): a small key cap on each control, the same in every
+   theme so that it reads over any window: dark letters on a bright cap, with a thin edge. */
+.amethystora-letters-label {
+    background-color: #ffd84d;
+    color: #1a1a1a;
+    border: 1px solid rgba(0, 0, 0, 0.35);
+    border-radius: 5px;
+    padding: 1px 5px;
+    font-size: 13px;
+    font-weight: 800;
+    font-family: monospace;
+    min-height: 18px;
+}

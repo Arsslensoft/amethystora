@@ -26,6 +26,7 @@ use crate::backend::{self, Backend, Passkey, Shared};
 use crate::data::{self, Fields, Kind, Store};
 use crate::layout::Exact;
 use crate::session::{LockWatch, Notifier};
+use crate::search::{self, Search};
 use crate::today::{self, Today};
 use widgets::toast;
 
@@ -158,6 +159,8 @@ pub struct Notes {
     first_open: Cell<bool>,
     /// Today's tasks on the session bus for the shell, while the notes are open (today.rs)
     today: RefCell<Option<Rc<Today>>>,
+    /// The titles that answer the desktop's search, while the notes are open (search.rs)
+    bus_search: RefCell<Option<Rc<Search>>>,
     /// The quick note's window while it is open (capture.rs)
     pub capture: RefCell<Option<capture::Capture>>,
 }
@@ -306,6 +309,7 @@ impl Notes {
             _lock_watch: RefCell::new(None),
             first_open: Cell::new(true),
             today: RefCell::new(None),
+            bus_search: RefCell::new(None),
             capture: RefCell::new(None),
         });
         shell.window.set_title(Some(&t!("Notes")));
@@ -359,7 +363,17 @@ impl Notes {
             let (total, titles) = today::today_titles(backend.store.as_ref()?, &day);
             Some((day, total, titles))
         });
-        self.today.replace(Some(Today::new(connection, today::SHELL_EXE, Some(today::SHELL_NAME), answer)));
+        self.today.replace(Some(Today::new(connection.clone(), today::SHELL_EXE, Some(today::SHELL_NAME), answer)));
+        // The desktop's search, on the same terms: titles only, to the shell only, while open
+        let weak = self.me.clone();
+        let find: search::Answer = Rc::new(move |words| {
+            let this = weak.upgrade()?;
+            let backend = this.backend.borrow();
+            Some(search::find(backend.store.as_ref()?, words))
+        });
+        let weak = self.me.clone();
+        let show: search::Show = Rc::new(move |kind, id| weak.upgrade().is_some_and(|this| this.show_found(kind, id)));
+        self.bus_search.replace(Some(Search::new(connection, today::SHELL_EXE, Some(today::SHELL_NAME), find, show)));
         self.sync_today();
         // Off the bus before Notes leaves it
         let weak = self.me.clone();
@@ -367,6 +381,9 @@ impl Notes {
             if let Some(this) = weak.upgrade() {
                 if let Some(today) = this.today.borrow().as_ref() {
                     today.unregister();
+                }
+                if let Some(search) = this.bus_search.borrow().as_ref() {
+                    search.unregister();
                 }
             }
         });
@@ -379,6 +396,38 @@ impl Notes {
         if let Some(today) = today {
             today.set_open(open);
         }
+        let search = self.bus_search.borrow().clone();
+        if let Some(search) = search {
+            search.set_open(open);
+        }
+    }
+
+    /// The desktop's search opened a note or a task: the window, on it, while the notes are open
+    fn show_found(&self, kind: &str, id: &str) -> bool {
+        let known_kind = if kind == "task" { Kind::Tasks } else { Kind::Notes };
+        if self.ui.borrow().status != "open" || !self.backend.borrow().store.as_ref().is_some_and(|store| store.has(known_kind, id)) {
+            return false;
+        }
+        if kind == "task" {
+            self.show_task(id);
+            return true;
+        }
+        if self.hidden.replace(false) {
+            self.render();
+        }
+        self.shell.window.present();
+        self.commit();
+        {
+            let mut ui = self.ui.borrow_mut();
+            ui.mode = Mode::Notes;
+            // Every note but those in the trash, where the search found it
+            ui.notes_view = View::of("all");
+            ui.note = Some(id.to_string());
+        }
+        self.clear_query();
+        self.remember();
+        self.render();
+        true
     }
 
     fn today_changed(&self) {

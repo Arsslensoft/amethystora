@@ -1,0 +1,12 @@
+[Unit]
+Description=Read again what Documents' files are about, daily (files by meaning)
+Documentation=file:///usr/share/amethystora/manual/desktop.md
+
+[Timer]
+OnCalendar=daily
+# A laptop that was closed at the scheduled time reads them when it is opened again, on mains power
+Persistent=true
+RandomizedDelaySec=1h
+
+[Install]
+WantedBy=timers.target

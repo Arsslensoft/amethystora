@@ -5,6 +5,7 @@
 
 pub mod act;
 pub mod checks;
+pub mod files;
 pub mod handoff;
 pub mod history;
 pub mod index;

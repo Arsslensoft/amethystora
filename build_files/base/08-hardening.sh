@@ -126,6 +126,32 @@ for profile in local sssd winbind; do
     done
 done
 
+# The guest login (`ame security guest-login`, /usr/libexec/amethystora-guest; plans/ui-ideas/spec-later.md, R6-36): the
+# feature with-guest-login, which the owner turns on per machine, keeps the guest's empty password to the login
+# screen. In system-auth (sudo, su, polkit, the text consoles) the account is refused outright; in password-auth
+# (GDM, SSH and every other network login) it is refused for every service but gdm-password. The lines go first in
+# the auth stack, before pam_unix could take the empty password, each marked {include if} as the duress password's is,
+# so that with the feature off authselect writes the same bytes as before.
+GUEST_SYSTEM='auth        requisite                                            pam_succeed_if.so quiet user != amethystora-guest'
+GUEST_SKIP='auth        [success=1 default=ignore]                           pam_succeed_if.so quiet user != amethystora-guest'
+GUEST_GDM='auth        requisite                                            pam_succeed_if.so quiet service = gdm-password'
+for profile in local sssd winbind; do
+    for file in system-auth password-auth; do
+        vendor="/usr/share/authselect/vendor/${profile}/${file}"
+        [[ -f "${vendor}" && ! -L "${vendor}" ]]
+        [[ "$(grep -cE '^auth[[:space:]]' "${vendor}")" -ge 1 ]]
+        if [[ "${file}" == system-auth ]]; then
+            lines="${GUEST_SYSTEM} {include if \"with-guest-login\"}"
+        else
+            # Two lines, apart by awk's own \n: -v reads the escapes in what it is given
+            lines="${GUEST_SKIP} {include if \"with-guest-login\"}\\n${GUEST_GDM} {include if \"with-guest-login\"}"
+        fi
+        awk -v lines="${lines}" '!done && /^auth[[:space:]]/ { print lines; done = 1 } { print }' "${vendor}" >"${vendor}.new"
+        mv "${vendor}.new" "${vendor}"
+        [[ "$(grep -c 'with-guest-login' "${vendor}")" -eq "$([[ "${file}" == system-auth ]] && echo 1 || echo 2)" ]]
+    done
+done
+
 # Parental Controls' allowed hours at the text consoles and over SSH. GNOME Shell locks a child's desktop
 # when its time runs out and will not unlock it until the time comes round again, but a text console or an
 # SSH login never meets that lock. There pam_malcontent refuses the account outside its hours, and hands

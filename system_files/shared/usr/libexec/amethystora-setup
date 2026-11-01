@@ -202,11 +202,11 @@ TODAY_KEYS='{"tasks": ["b"], "getting-set": ["b"]}'
 BREAKS=org.gnome.desktop.break-reminders
 BREAKS_KEYS='{"selected-breaks": ["as", "breaks"]}'
 # What the search finds besides GNOME's own: each a switch. Never open, the search box's key, which the keybindings
-# part keeps.
+# part keeps, nor meaning, whose `ame desktop search meaning` also starts a daily reading that a file cannot.
 SEARCH=org.gnome.shell.extensions.amethystora-ui.search
 SEARCH_KEYS='{
     "answers": ["b"], "settings": ["b"], "manual": ["b"], "windows": ["b"], "clipboard": ["b"], "agent": ["b"],
-    "glance": ["b"], "times": ["b"], "reminders": ["b"]
+    "glance": ["b"], "times": ["b"], "reminders": ["b"], "bookmarks": ["b"], "notes": ["b"]
 }'
 # The emoji picker's skin tone. Never emoji-picker, its key, which the keybindings part keeps.
 EMOJI=org.gnome.shell.extensions.amethystora-ui.emoji
@@ -293,7 +293,8 @@ FOCUS_KEYS='{
 ACCESS=org.gnome.shell.extensions.amethystora-ui.access
 ACCESS_KEYS='{
     "filter": ["s", ["none", "protan", "deutan", "tritan", "grey"]], "filter-strength": ["i", 25, 100],
-    "ruler": ["s", ["off", "band", "dim", "underline"]], "read-aloud": ["b"], "read-aloud-speed": ["s", ["0.75", "1", "1.5", "2"]]
+    "ruler": ["s", ["off", "band", "dim", "underline"]], "read-aloud": ["b"], "read-aloud-speed": ["s", ["0.75", "1", "1.5", "2"]],
+    "letters": ["b"]
 }'
 # Touch and pen: touch mode and the pen's tools, by name. Never the shortcut, or the pens' buttons, which GNOME keeps per pen.
 TOUCH=org.gnome.shell.extensions.amethystora-ui.touch

@@ -98,7 +98,8 @@ pub fn refusal(argv: &[String]) -> Option<String> {
     {
         return Some("the desktop's view of what the agent changes is the user's: the agent may not change it".into());
     }
-    if program.starts_with("amethystora-security") || program == "amethystora-hardening" {
+    // ...and the guest login's own helper (ame security guest-login), which makes an account with no password
+    if program.starts_with("amethystora-security") || program == "amethystora-hardening" || program == "amethystora-guest" {
         return Some("security switches are changed only through ame security, and only to turn protection on".into());
     }
     None
@@ -314,6 +315,9 @@ mod tests {
             "ame security dns off",
             "ame security walk-away off",
             "ame security settings walk-away on",
+            "ame security guest-login on",
+            "ame security guest-login",
+            "/usr/libexec/amethystora-guest enable",
             "ame system raid create",
             "amethystora-raid create",
             "restic -r x forget --prune",

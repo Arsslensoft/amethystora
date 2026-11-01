@@ -1205,6 +1205,12 @@ brew-attestations ACTION="":
 locked-poweroff ACTION="":
     @/usr/libexec/amethystora-hardening ask locked-poweroff "${1:-}"
 
+# A guest login that forgets: Guest on the login screen, no password, a home in memory emptied at logout, and the
+# login screen the only way in (ACTION: on or off; without it, it asks)
+[positional-arguments]
+guest-login ACTION="":
+    @/usr/libexec/amethystora-hardening ask guest-login "${1:-}"
+
 # A password before anyone edits a boot entry or opens the boot menu's command line
 [positional-arguments]
 boot-password ACTION="":

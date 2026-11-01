@@ -677,6 +677,26 @@ outside its hours, and a session there is closed when its time runs out, with an
 There the daily limit counts each session afresh, and no session runs past midnight while a limit is
 set.
 
+### Guest login
+
+For a friend who needs a browser for ten minutes: with the guest login on, the login screen lists **Guest**, who
+logs in without a password, into a home folder kept in memory. Everything a guest does is gone when they log out:
+their files, their browser's history and passwords, the apps they installed for themselves. They see none of your
+files, since every account's home folder is closed to the others. It is **off**:
+
+```bash
+ame security guest-login on
+```
+
+or **Guest login** on Security's **Settings** page, under Logins. It says what it does and asks first.
+
+- Guest is a standard account, not an administrator: it cannot install apps for the machine or change its settings.
+  Parental controls can be set on it like on any account (above).
+- Only the login screen lets Guest in without a password. The text consoles, SSH, `sudo` and `su` refuse it.
+- What a guest does online is done from your network and your address.
+- Turned off, a guest still logged in is logged out, and the account is deleted.
+- Security's report lists it while it is on, and warns if part of it is missing.
+
 ### Backups
 
 ```bash

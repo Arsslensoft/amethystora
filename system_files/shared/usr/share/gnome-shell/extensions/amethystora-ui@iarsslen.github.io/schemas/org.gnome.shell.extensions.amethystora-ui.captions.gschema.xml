@@ -1,12 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Live captions (plans/beyond/spec-r4-later.md, part B). `ame desktop captions`, Control and the quick settings toggle
-     write the key; the captions module reads it. -->
+<!-- Live captions (plans/beyond/spec-r4-later.md, part B), their language and dictation (plans/ui-ideas/spec-later.md,
+     R6-32 and R5-38). `ame desktop captions`, `ame desktop dictation`, Control, the setup file and the quick settings
+     toggle write the keys; the captions module reads them. -->
 <schemalist>
   <schema id="org.gnome.shell.extensions.amethystora-ui.captions" path="/org/gnome/shell/extensions/amethystora-ui/captions/">
     <key name="enabled" type="b">
       <default>false</default>
       <summary>Show live captions</summary>
       <description>Captions under the speech this computer plays, made on this computer from the sound output while an app plays. They need the speech model `ame desktop captions on` fetches; without it the key does nothing. Off as the image ships.</description>
+    </key>
+    <key name="language" type="s">
+      <choices>
+        <choice value="en"/>
+        <choice value="fr"/>
+        <choice value="es"/>
+        <choice value="de"/>
+        <choice value="it"/>
+        <choice value="tr"/>
+        <choice value="pt"/>
+        <choice value="nl"/>
+        <choice value="ru"/>
+        <choice value="pl"/>
+      </choices>
+      <default>'en'</default>
+      <summary>The language captions and dictation hear</summary>
+      <description>Each language has a speech model of its own, which `ame desktop captions language` fetches once when it is chosen; without its model, captions and dictation do nothing.</description>
+    </key>
+    <key name="dictation" type="b">
+      <default>false</default>
+      <summary>Dictation</summary>
+      <description>While on, the shortcut listens to the microphone and types what is said into the text field in use, made on this computer by the captions' recognizer. Off as the image ships, and its shortcut is not bound.</description>
+    </key>
+    <key name="dictate" type="as">
+      <default><![CDATA[['<Super><Control><Shift>d']]]></default>
+      <summary>Start or stop dictation</summary>
+      <description>Bound only while dictation is on.</description>
     </key>
   </schema>
 </schemalist>

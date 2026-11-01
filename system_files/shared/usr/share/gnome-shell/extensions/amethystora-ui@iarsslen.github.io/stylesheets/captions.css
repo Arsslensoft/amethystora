@@ -12,3 +12,33 @@
     font-size: 24px;
     font-weight: 700;
 }
+
+/* Dictation's pill (plans/ui-ideas/spec-later.md, R5-38): the captions' dark box, smaller, one width whatever is said,
+   a dot that breathes while it listens, the board's words over the words still forming. */
+.amethystora-dictation-pill {
+    background-color: rgba(0, 0, 0, 0.8);
+    border-radius: 999px;
+    padding: 10px 20px 10px 16px;
+    spacing: 12px;
+    width: 420px;
+}
+
+.amethystora-dictation-dot {
+    background-color: #e5484d;
+    border-radius: 999px;
+    width: 12px;
+    height: 12px;
+}
+
+.amethystora-dictation-title {
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.amethystora-dictation-words {
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 600;
+    min-height: 20px;
+}

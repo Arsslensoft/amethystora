@@ -289,7 +289,7 @@ done
 # The search's switches, the emoji picker's skin tone and the not-responding question likewise, each schema less its
 # keybinding (open, emoji-picker, force-quit), which the keybindings part keeps, and the audio module's switches less
 # presets, which name this machine's outputs; and the manifest saves the same keys
-for part in "SEARCH org.gnome.shell.extensions.amethystora-ui.search open" \
+for part in "SEARCH org.gnome.shell.extensions.amethystora-ui.search open|meaning" \
     "EMOJI org.gnome.shell.extensions.amethystora-ui.emoji emoji-picker" \
     "QUIT org.gnome.shell.extensions.amethystora-ui.quit force-quit" \
     "AUDIO org.gnome.shell.extensions.amethystora-ui.audio presets"; do
@@ -297,7 +297,7 @@ for part in "SEARCH org.gnome.shell.extensions.amethystora-ui.search open" \
     table="$(sed -n "/^${name}_KEYS='{\$/,/^}'\$/{s/^${name}_KEYS='//; s/^}'\$/}/; p}" "${SETUP}")"
     [[ -n "${table}" ]] || table="$(sed -n "s/^${name}_KEYS='\(.*\)'\$/\1/p" "${SETUP}")"
     listed="$(jq -r 'keys[]' <<<"${table}" | sort)"
-    schema="$(GSETTINGS_BACKEND=memory /usr/bin/gsettings list-keys "${schema_id}" | grep -vx "${binding}" | sort)"
+    schema="$(GSETTINGS_BACKEND=memory /usr/bin/gsettings list-keys "${schema_id}" | grep -vxE "${binding}" | sort)"
     [[ -n "${listed}" && "${listed}" == "${schema}" ]] ||
         { echo "${name}_KEYS and ${schema_id} differ:"; diff <(echo "${listed}") <(echo "${schema}"); false; }
     while read -r key; do

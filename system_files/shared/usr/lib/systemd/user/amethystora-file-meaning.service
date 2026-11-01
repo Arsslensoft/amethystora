@@ -1,0 +1,15 @@
+[Unit]
+Description=Work out what Documents' files are about, from the text GNOME's indexer extracted (files by meaning)
+Documentation=file:///usr/share/amethystora/manual/desktop.md
+# On mains power only: on battery, the next start of the timer or of the feature does it
+ConditionACPower=true
+
+[Service]
+Type=oneshot
+# Only while the search asks for it: `ame desktop search meaning off` turns the timer off, and a key turned off any
+# other way stops the reading too
+ExecCondition=/usr/bin/sh -c '[ "$(gsettings get org.gnome.shell.extensions.amethystora-ui.search meaning)" = true ]'
+ExecStart=/usr/libexec/amethystora-file-meaning index
+TimeoutStartSec=30min
+Nice=19
+IOSchedulingClass=idle

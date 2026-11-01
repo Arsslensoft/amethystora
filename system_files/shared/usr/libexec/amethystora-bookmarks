@@ -1,0 +1,137 @@
+#!/usr/bin/python3 -I
+# Firefox's bookmarks for the desktop's search (plans/ui-ideas/spec-later.md, R6-35), run as the account by Amethystora
+# UI's search module while `ame desktop search bookmarks` is on.
+#
+#   amethystora-bookmarks list    the bookmarks of Firefox's default profile, as JSON: [{title, url, folder}]
+#
+# Firefox keeps its bookmarks in places.sqlite, which it holds locked while it runs, beside the history. Firefox is left
+# exactly as it is: the file and its write-ahead log are copied into a folder of the account's own in memory
+# ($XDG_RUNTIME_DIR), the copy is opened, only bookmarks are read from it (moz_bookmarks of type 1, each joined to its
+# address in moz_places), and the copy is deleted before anything is printed. No visit is ever read: moz_historyvisits
+# is never named, and an address with no bookmark is never selected. Addresses other than http, https and file are
+# left out, so that a click can never run a javascript: or data: address.
+
+import configparser
+import json
+import os
+import shutil
+import sqlite3
+import sys
+import tempfile
+
+# Where Firefox keeps its profiles: the old folder, the XDG one of newer releases, and the Flatpak's two
+PLACES = ['.mozilla/firefox', '.config/mozilla/firefox', '.var/app/org.mozilla.firefox/.mozilla/firefox',
+          '.var/app/org.mozilla.firefox/config/mozilla/firefox']
+# At most this many bookmarks, and this much of each text
+MOST = 5000
+LONGEST = 300
+SCHEMES = ('http://', 'https://', 'file://')
+# A places.sqlite larger than this is not copied (a real one is a few tens of MB)
+MOST_BYTES = 512 * 1024 * 1024
+
+
+def default_profile():
+    """The folder of the profile Firefox opens: installs.ini's default, else profiles.ini's, else the only one"""
+    home = os.path.expanduser('~')
+    for place in PLACES:
+        root = os.path.join(home, place)
+        found = []
+        for name in ('installs.ini', 'profiles.ini'):
+            ini = configparser.ConfigParser(interpolation=None, strict=False)
+            try:
+                ini.read(os.path.join(root, name), encoding='utf-8')
+            except (configparser.Error, OSError, UnicodeDecodeError):
+                continue
+            for section in ini.sections():
+                entry = ini[section]
+                path = entry.get('Default') if name == 'installs.ini' else entry.get('Path')
+                if not path:
+                    continue
+                if name == 'profiles.ini' and entry.get('IsRelative', '1') == '0':
+                    folder = path
+                else:
+                    folder = os.path.join(root, path)
+                rank = 0 if name == 'installs.ini' else 1 if entry.get('Default') == '1' else 2
+                found.append((rank, folder))
+        for _, folder in sorted(found, key=lambda pair: pair[0]):
+            places = os.path.join(folder, 'places.sqlite')
+            # Only a plain file inside the account's home, never through a link
+            if os.path.isfile(places) and not os.path.islink(places) and \
+                    os.path.realpath(places).startswith(os.path.realpath(home) + os.sep):
+                return places
+    return None
+
+
+def clip(text):
+    return ' '.join(str(text or '').split())[:LONGEST]
+
+
+def read(copy):
+    # The copy is ours, opened as it is: SQLite takes in the copied log, which a read-only open could not
+    connection = sqlite3.connect(copy)
+    try:
+        # A bookmark (type 1), its address, and the title of the folder it is in; nothing else of the database
+        rows = connection.execute(
+            'SELECT b.title, p.url, f.title FROM moz_bookmarks AS b '
+            'JOIN moz_places AS p ON p.id = b.fk '
+            'LEFT JOIN moz_bookmarks AS f ON f.id = b.parent '
+            'WHERE b.type = 1 ORDER BY b.lastModified DESC LIMIT ?', (MOST * 2,)).fetchall()
+    finally:
+        connection.close()
+    out = []
+    seen = set()
+    for title, url, folder in rows:
+        url = str(url or '')
+        if not url.lower().startswith(SCHEMES) or len(url) > 2048 or url in seen:
+            continue
+        seen.add(url)
+        # Firefox's own folders are named by it (menu, toolbar, unfiled): only a folder the person made is said
+        folder = clip(folder)
+        if folder.lower() in ('', 'menu', 'toolbar', 'unfiled', 'mobile', 'bookmarks menu', 'bookmarks toolbar',
+                              'other bookmarks', 'mobile bookmarks'):
+            folder = ''
+        out.append({'title': clip(title) or clip(url), 'url': url, 'folder': folder})
+        if len(out) >= MOST:
+            break
+    return out
+
+
+def list_bookmarks():
+    places = default_profile()
+    if not places:
+        print('[]')
+        return 0
+    runtime = os.environ.get('XDG_RUNTIME_DIR')
+    if not runtime or not os.path.isdir(runtime):
+        print('[]')
+        return 0
+    work = tempfile.mkdtemp(prefix='amethystora-bookmarks-', dir=runtime)
+    found = []
+    try:
+        os.chmod(work, 0o700)
+        if os.path.getsize(places) > MOST_BYTES:
+            raise OSError('too large')
+        copy = os.path.join(work, 'places.sqlite')
+        shutil.copyfile(places, copy)
+        if os.path.isfile(places + '-wal') and not os.path.islink(places + '-wal'):
+            shutil.copyfile(places + '-wal', copy + '-wal')
+        found = read(copy)
+    except (OSError, sqlite3.Error):
+        found = []
+    finally:
+        # The copy holds the history too: it goes before anything is said
+        shutil.rmtree(work, ignore_errors=True)
+    print(json.dumps(found, ensure_ascii=False))
+    return 0
+
+
+
+def main(argv):
+    if argv[1:] == ['list']:
+        return list_bookmarks()
+    print('usage: amethystora-bookmarks list', file=sys.stderr)
+    return 64
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv))

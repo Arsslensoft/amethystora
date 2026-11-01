@@ -1,21 +1,31 @@
 #!/usr/bin/python3 -I
-# Live captions (plans/beyond/spec-r4-later.md, part B): words for the speech this computer plays, made on this
-# computer by the Vosk recognizer through GStreamer's vosk element (Fedora's gst-vosk), and shown by Amethystora UI's
-# captions module. Run as the account.
+# Live captions and dictation (plans/beyond/spec-r4-later.md, part B; plans/ui-ideas/spec-later.md, R6-32 and R5-38):
+# words for the speech this computer plays, or for what is said into its microphone, made on this computer by the Vosk
+# recognizer through GStreamer's vosk element (Fedora's gst-vosk), and shown or typed by Amethystora UI's captions
+# module. Run as the account.
 #
-#   amethystora-captions status    ready, no-model or no-engine
-#   amethystora-captions fetch     downloads the speech model once, checks it against its pinned SHA-256 and unpacks it
-#                                  into ~/.local/share/amethystora/captions/model; nothing is kept when it fails
-#   amethystora-captions remove    deletes the model, and what a fetch that was cut short left
-#   amethystora-captions listen    the recognizer, for the module: `play` and `pause` on stdin, one per line, start and
-#                                  stop listening; JSON lines on stdout, {"partial": TEXT} while a sentence is spoken,
-#                                  {"text": TEXT} when it ends, {"error": "model"|"engine"|"audio"}; it ends with stdin
+#   amethystora-captions status [LANG]   ready, no-model or no-engine
+#   amethystora-captions languages       the languages a model can be fetched for, as JSON: code, name, download and
+#                                        unpacked sizes in bytes, and whether the model is on this computer
+#   amethystora-captions fetch [LANG]    downloads LANG's speech model once (English without one), checks it against its
+#                                        pinned SHA-256 and unpacks it into ~/.local/share/amethystora/captions; nothing
+#                                        is kept when it fails
+#   amethystora-captions remove [LANG]   deletes LANG's model, or every model without one, and what a fetch that was
+#                                        cut short left
+#   amethystora-captions listen [LANG]   the recognizer, for captions: `play` and `pause` on stdin, one per line, start
+#                                        and stop listening; JSON lines on stdout, {"partial": TEXT} while a sentence is
+#                                        spoken, {"text": TEXT} when it ends, {"error": "model"|"engine"|"audio"}; it
+#                                        ends with stdin
+#   amethystora-captions dictate [LANG]  the recognizer, for dictation: the microphone from the start, the same JSON
+#                                        lines; `stop` on stdin ends it once the last words are out, stdin closing at once
 #
-# The sound comes from the monitor of the default output (what the speakers play), only while the module says play,
-# and reaches the recognizer only while it is not silent (a level meter shuts a valve after two seconds of silence, so
-# that a stream a paused player keeps open costs next to nothing); it goes into the recognizer's memory alone: no element of the pipeline writes a file or opens a connection, and
-# the words exist only in the pipe and on the screen. The `ame desktop captions` recipe says all of this, and asks,
-# before `fetch` makes the one connection there is.
+# Captions take the sound from the monitor of the default output (what the speakers play), only while the module says
+# play, and it reaches the recognizer only while it is not silent (a level meter shuts a valve after two seconds of
+# silence, so that a stream a paused player keeps open costs next to nothing). Dictation takes the default microphone,
+# only while the module runs it (GNOME shows its microphone indicator meanwhile). Either way the sound goes into the
+# recognizer's memory alone: no element of the pipeline writes a file or opens a connection, and the words exist only
+# in the pipe, on the screen and in the field they are typed into. The `ame desktop captions` recipe says all of this,
+# and asks, before `fetch` makes the one connection there is.
 
 import hashlib
 import json
@@ -25,15 +35,35 @@ import subprocess
 import sys
 import zipfile
 
-# The model: Vosk's small US English model (Apache-2.0, Alpha Cephei), pinned by its address and SHA-256. Its MD5 is
-# the one the maker's model list gives (09ab50ccd62b674cbaa231b825f9c1cb)
-MODEL_URL = 'https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip'
-MODEL_SHA256 = '30f26242c4eb449f948e42cb302dd7a686cb29a3423a8367f99ff41780942498'
-MODEL_DIR = 'vosk-model-small-en-us-0.15'
-MODEL_BYTES = 41205931
-# A file that tells the folder is a whole model (vosk reads it first)
-MARKER = os.path.join('conf', 'model.conf')
-# What the recognizer is given: 16 kHz mono, as the model was trained; partial results at most every 300 ms
+# The models: Vosk's small models (Apache-2.0, Alpha Cephei), each pinned by its address and SHA-256, computed on a
+# download whose MD5 was the one the maker's model list gives. English is the first, and the only one kept in the
+# folder `model` (captions had only English before). The older models (tr, pt) have their mfcc.conf at the top
+# instead of conf/model.conf: each model's marker is the file that tells its folder holds a whole model.
+#   code: (folder in the archive, SHA-256, archive bytes, unpacked bytes, marker, name in its own language)
+MODELS = {
+    'en': ('vosk-model-small-en-us-0.15', '30f26242c4eb449f948e42cb302dd7a686cb29a3423a8367f99ff41780942498',
+           41205931, 71303168, 'conf/model.conf', 'English'),
+    'fr': ('vosk-model-small-fr-0.22', 'cabf6180e177eb9b3a9a9d43a437bd5e549f3a7d09525e5d69a3fed787be12ad',
+           42233323, 68483807, 'conf/model.conf', 'Français'),
+    'es': ('vosk-model-small-es-0.42', '09b239888f633ef2f0b4e09736e3d9936acfd810bc65d53fad45261762c6511f',
+           39817833, 60286598, 'conf/model.conf', 'Español'),
+    'de': ('vosk-model-small-de-0.15', 'b7e53c90b1f0a38456f4cd62b366ecd58803cd97cd42b06438e2c131713d5e43',
+           46499967, 95621761, 'conf/model.conf', 'Deutsch'),
+    'it': ('vosk-model-small-it-0.22', '9ec65e75861d1c6c2e457cccd932705340dcdf233f5b239f00733b4de0bf3267',
+           49665141, 91299150, 'conf/model.conf', 'Italiano'),
+    'tr': ('vosk-model-small-tr-0.3', '8c8d07cec1bce31add14967c16891c84152cdf76d391e33c08278119b9ea96e5',
+           36855784, 58767995, 'mfcc.conf', 'Türkçe'),
+    'pt': ('vosk-model-small-pt-0.3', '6e1ce909032e1afa7a88e68a3d628ecafff302bdf195befab308826c395e93b7',
+           32453112, 53552717, 'mfcc.conf', 'Português'),
+    'nl': ('vosk-model-small-nl-0.22', '039811c3b829de64e4f123a9f684a53784005b212a346ac0b899dc7efce2ed0a',
+           40441176, 68738604, 'conf/model.conf', 'Nederlands'),
+    'ru': ('vosk-model-small-ru-0.22', '961d5ff98a17f4aa6de69864d0aa71fa5bac682301d2b5d17a3f24c5c99a46d4',
+           46236750, 91289240, 'conf/model.conf', 'Русский'),
+    'pl': ('vosk-model-small-pl-0.22', 'c4cd16498ea544f446f9e9a55cbd602b71cfe5a2b6f2b0834d81e1b6fce15f0d',
+           52979372, 95652517, 'conf/model.conf', 'Polski'),
+}
+MODEL_URL = 'https://alphacephei.com/vosk/models/{}.zip'
+# What the recognizer is given: 16 kHz mono, as the models were trained; partial results at most every 300 ms
 SAMPLE_RATE = 16000
 PARTIAL_MS = 300
 # Silence: a peak under -60 dB for 2 s shuts the valve before the recognizer; the meter looks every 100 ms, so the
@@ -52,12 +82,12 @@ def folder():
     return os.path.join(data, 'amethystora', 'captions')
 
 
-def model_path():
-    return os.path.join(folder(), 'model')
+def model_path(lang='en'):
+    return os.path.join(folder(), 'model' if lang == 'en' else f'model-{lang}')
 
 
-def have_model():
-    return os.path.isfile(os.path.join(model_path(), MARKER))
+def have_model(lang='en'):
+    return os.path.isfile(os.path.join(model_path(lang), MODELS[lang][4]))
 
 
 def gst():
@@ -76,75 +106,90 @@ def have_engine():
     return all(Gst.ElementFactory.find(name) for name in ('vosk', 'pulsesrc', 'audioconvert', 'audioresample', 'level', 'valve'))
 
 
-def status():
-    print('no-engine' if not have_engine() else 'ready' if have_model() else 'no-model')
+def status(lang='en'):
+    print('no-engine' if not have_engine() else 'ready' if have_model(lang) else 'no-model')
     return 0
 
 
-def unpack(archive, into):
+def languages():
+    print(json.dumps([{'code': code, 'name': name, 'download': size, 'unpacked': unpacked, 'here': have_model(code)}
+                      for code, (_, _, size, unpacked, _, name) in MODELS.items()], ensure_ascii=False))
+    return 0
+
+
+def unpack(archive, into, top):
     """The model's members, each kept inside its own folder: nothing absolute, no '..', no link, nothing else"""
     with zipfile.ZipFile(archive) as z:
         for info in z.infolist():
             name = info.filename
             parts = name.split('/')
-            if name.startswith('/') or '\\' in name or '..' in parts or parts[0] != MODEL_DIR:
+            if name.startswith('/') or '\\' in name or '..' in parts or parts[0] != top:
                 raise ValueError(f'the archive holds {name!r}')
             # A link is stored with the Unix mode of one in the upper bits
             if (info.external_attr >> 16) & 0o170000 == 0o120000:
                 raise ValueError(f'the archive holds a link, {name!r}')
         z.extractall(into)
-    return os.path.join(into, MODEL_DIR)
+    return os.path.join(into, top)
 
 
-def fetch():
+def fetch(lang='en'):
+    top, sha256, size, _, marker, _ = MODELS[lang]
     base = folder()
     os.makedirs(base, mode=0o700, exist_ok=True)
     os.chmod(base, 0o700)
-    part = os.path.join(base, '.download.zip')
-    fresh = os.path.join(base, '.unpacking')
-    url = MODEL_URL
+    part = os.path.join(base, f'.download-{lang}.zip')
+    fresh = os.path.join(base, f'.unpacking-{lang}')
+    url = MODEL_URL.format(top)
     protocols = '=https'
-    # The VM lab hands over a copy it keeps. What makes that safe is the pinned SHA-256 below: whatever the address,
-    # only the model's own bytes are ever unpacked, and anything else is deleted
+    # The VM lab hands over a copy it keeps: an address ending in / is a folder holding the archives under their own
+    # names, any other the archive itself. What makes that safe is the pinned SHA-256 below: whatever the address, only
+    # the model's own bytes are ever unpacked, and anything else is deleted
     if os.environ.get('AMETHYSTORA_CAPTIONS_URL'):
         url = os.environ['AMETHYSTORA_CAPTIONS_URL']
+        if url.endswith('/'):
+            url += f'{top}.zip'
         protocols = '=https,http,file'
     try:
         # A redirect is held to the same protocols as the first request (curl's own default lets one go to http)
         subprocess.run([CURL, '--proto', protocols, '--proto-redir', protocols, '--tlsv1.2', '-fL',
-                        '--max-filesize', str(MODEL_BYTES + 1024 * 1024),
+                        '--max-filesize', str(size + 1024 * 1024),
                         '--retry', '2', '--progress-bar', '-o', part, '--', url], check=True)
         digest = hashlib.sha256()
         with open(part, 'rb') as f:
             for block in iter(lambda: f.read(1 << 20), b''):
                 digest.update(block)
-        if digest.hexdigest() != MODEL_SHA256:
+        if digest.hexdigest() != sha256:
             print(f'amethystora-captions: the download is not the model (SHA-256 {digest.hexdigest()})', file=sys.stderr)
             return 1
         shutil.rmtree(fresh, ignore_errors=True)
         os.makedirs(fresh, mode=0o700)
-        unpacked = unpack(part, fresh)
-        if not os.path.isfile(os.path.join(unpacked, MARKER)):
+        unpacked = unpack(part, fresh, top)
+        if not os.path.isfile(os.path.join(unpacked, marker)):
             print('amethystora-captions: the archive holds no model', file=sys.stderr)
             return 1
-        shutil.rmtree(model_path(), ignore_errors=True)
-        os.rename(unpacked, model_path())
+        shutil.rmtree(model_path(lang), ignore_errors=True)
+        os.rename(unpacked, model_path(lang))
         return 0
     except (OSError, ValueError, zipfile.BadZipFile, subprocess.CalledProcessError) as e:
         print(f'amethystora-captions: {e}', file=sys.stderr)
         return 1
     finally:
-        for leftover in (part,):
-            try:
-                os.unlink(leftover)
-            except FileNotFoundError:
-                pass
+        try:
+            os.unlink(part)
+        except FileNotFoundError:
+            pass
         shutil.rmtree(fresh, ignore_errors=True)
 
 
-def remove():
-    # A fetch ended by closing its terminal leaves its partial files
-    for name in ('model', '.unpacking', '.download.zip'):
+def remove(lang=None):
+    # A fetch ended by closing its terminal leaves its partial files; the names before languages came are kept too
+    codes = [lang] if lang else list(MODELS)
+    names = []
+    for code in codes:
+        names += [os.path.basename(model_path(code)), f'.unpacking-{code}', f'.download-{code}.zip']
+    if not lang:
+        names += ['.unpacking', '.download.zip']
+    for name in names:
         path = os.path.join(folder(), name)
         if os.path.isdir(path) and not os.path.islink(path):
             shutil.rmtree(path, ignore_errors=True)
@@ -167,42 +212,53 @@ def sentence(text):
     return text[:1].upper() + text[1:]
 
 
-def listen():
+def recognize(lang, microphone):
+    """The pipeline, from the output's monitor (captions) or the microphone (dictation), until stdin ends"""
     if not have_engine():
         say({'error': 'engine'})
         return 1
-    if not have_model():
+    if not have_model(lang):
         say({'error': 'model'})
         return 1
     Gst = gst()
     from gi.repository import GLib
 
-    pipeline = Gst.Pipeline.new('captions')
+    pipeline = Gst.Pipeline.new('dictation' if microphone else 'captions')
     source = Gst.ElementFactory.make('pulsesrc', 'sound')
-    # The monitor of the default output, which follows the output the person picks; the stream says what it is in the
-    # sound settings
-    source.set_property('device', '@DEFAULT_MONITOR@')
-    source.set_property('client-name', 'Live captions')
-    source.set_property('stream-properties', Gst.Structure.new_from_string(
-        'props,application.id=org.amethystora.Captions,media.role=accessibility'))
+    if microphone:
+        # The default input, which follows the microphone the person picks; the stream says what it is in the sound
+        # settings, and GNOME shows its microphone indicator while it records
+        source.set_property('client-name', 'Dictation')
+        source.set_property('stream-properties', Gst.Structure.new_from_string(
+            'props,application.id=org.amethystora.Dictation,media.role=production'))
+    else:
+        # The monitor of the default output, which follows the output the person picks
+        source.set_property('device', '@DEFAULT_MONITOR@')
+        source.set_property('client-name', 'Live captions')
+        source.set_property('stream-properties', Gst.Structure.new_from_string(
+            'props,application.id=org.amethystora.Captions,media.role=accessibility'))
     convert = Gst.ElementFactory.make('audioconvert')
     resample = Gst.ElementFactory.make('audioresample')
     caps = Gst.ElementFactory.make('capsfilter')
     caps.set_property('caps', Gst.Caps.from_string(f'audio/x-raw,format=S16LE,rate={SAMPLE_RATE},channels=1'))
     recognizer = Gst.ElementFactory.make('vosk', 'words')
-    recognizer.set_property('speech-model', model_path())
+    recognizer.set_property('speech-model', model_path(lang))
     recognizer.set_property('partial-results-interval', PARTIAL_MS)
     # Its noise filter is for a microphone's room; what the speakers play has none, and the filter costs a fifth more
     # time for the same words (measured on a test sentence)
-    recognizer.set_property('enable-denoise', False)
-    # Silence goes no further than the valve: the meter measures what comes, and the valve drops it while it is quiet
-    meter = Gst.ElementFactory.make('level', 'meter')
-    meter.set_property('interval', LEVEL_NS)
-    meter.set_property('post-messages', True)
-    gate = Gst.ElementFactory.make('valve', 'gate')
+    recognizer.set_property('enable-denoise', microphone)
     sink = Gst.ElementFactory.make('fakesink')
     sink.set_property('sync', False)
-    elements = [source, convert, resample, caps, meter, gate, recognizer, sink]
+    meter = gate = None
+    if microphone:
+        elements = [source, convert, resample, caps, recognizer, sink]
+    else:
+        # Silence goes no further than the valve: the meter measures what comes, and the valve drops it while it is quiet
+        meter = Gst.ElementFactory.make('level', 'meter')
+        meter.set_property('interval', LEVEL_NS)
+        meter.set_property('post-messages', True)
+        gate = Gst.ElementFactory.make('valve', 'gate')
+        elements = [source, convert, resample, caps, meter, gate, recognizer, sink]
     for element in elements:
         pipeline.add(element)
     for a, b in zip(elements, elements[1:]):
@@ -212,7 +268,7 @@ def listen():
     last = {'partial': None, 'quiet': 0.0}
 
     def on_message(bus, message):
-        if message.type == Gst.MessageType.ELEMENT and message.src == meter:
+        if meter is not None and message.type == Gst.MessageType.ELEMENT and message.src == meter:
             peaks = message.get_structure().get_value('peak') or []
             if max(peaks, default=-200.0) < SILENT_DB:
                 last['quiet'] += LEVEL_NS / 1e9
@@ -234,6 +290,8 @@ def listen():
             elif result.get('partial', '').strip() and result['partial'] != last['partial']:
                 last['partial'] = result['partial']
                 say({'partial': sentence(result['partial'])})
+        elif message.type == Gst.MessageType.EOS:
+            loop.quit()
         elif message.type == Gst.MessageType.ERROR:
             error, debug = message.parse_error()
             print(f'amethystora-captions: {error.message} ({debug})', file=sys.stderr)
@@ -260,9 +318,12 @@ def listen():
             line, _, rest = bytes(pending).partition(b'\n')
             pending[:] = rest
             word = line.strip()
-            if word == b'play':
+            if word == b'stop' and microphone:
+                # The last words are heard to their end: the recognizer says them as the stream ends, then EOS ends it
+                source.send_event(Gst.Event.new_eos())
+            elif word == b'play' and not microphone:
                 pipeline.set_state(Gst.State.PLAYING)
-            elif word == b'pause':
+            elif word == b'pause' and not microphone:
                 # A live source paused reads nothing: the stream is corked, and the recognizer has nothing to do
                 pipeline.set_state(Gst.State.PAUSED)
         # A line too long to be a word is nobody's
@@ -272,8 +333,9 @@ def listen():
 
     GLib.io_add_watch(GLib.IOChannel.unix_new(sys.stdin.fileno()), GLib.PRIORITY_DEFAULT,
                       GLib.IOCondition.IN | GLib.IOCondition.HUP | GLib.IOCondition.ERR, on_command)
-    # Paused from the start: the model is loaded now, so that the first words of the first sound are not lost
-    pipeline.set_state(Gst.State.PAUSED)
+    # Captions start paused, with the model loaded now so that the first words of the first sound are not lost;
+    # dictation listens at once, since it was asked for
+    pipeline.set_state(Gst.State.PLAYING if microphone else Gst.State.PAUSED)
     try:
         loop.run()
     finally:
@@ -282,11 +344,14 @@ def listen():
 
 
 def main(argv):
-    commands = {'status': status, 'fetch': fetch, 'remove': remove, 'listen': listen}
-    if len(argv) != 2 or argv[1] not in commands:
-        print('usage: amethystora-captions status|fetch|remove|listen', file=sys.stderr)
+    commands = {'status': status, 'languages': languages, 'fetch': fetch, 'remove': remove,
+                'listen': lambda lang='en': recognize(lang, False), 'dictate': lambda lang='en': recognize(lang, True)}
+    if len(argv) not in (2, 3) or argv[1] not in commands or (len(argv) == 3 and argv[2] not in MODELS) or \
+            (argv[1] == 'languages' and len(argv) == 3):
+        print('usage: amethystora-captions status|fetch|remove|listen|dictate [LANG] | languages'
+              f' (LANG: {" ".join(MODELS)})', file=sys.stderr)
         return 64
-    return commands[argv[1]]()
+    return commands[argv[1]](*argv[2:])
 
 
 if __name__ == '__main__':

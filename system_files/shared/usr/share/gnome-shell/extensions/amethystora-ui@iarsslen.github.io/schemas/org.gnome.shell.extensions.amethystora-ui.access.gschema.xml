@@ -68,5 +68,15 @@
       <summary>Read the selection aloud, or stop</summary>
       <description>Bound only while reading aloud is on.</description>
     </key>
+    <key name="letters" type="b">
+      <default>false</default>
+      <summary>Click with the keyboard</summary>
+      <description>While on, the shortcut puts a letter on every button and link of the window in use, read from its accessibility tree; typing the letters clicks it. Off as the image ships.</description>
+    </key>
+    <key name="letters-key" type="as">
+      <default><![CDATA[['<Super><Alt>k']]]></default>
+      <summary>Show the letters to click with</summary>
+      <description>Bound only while click with the keyboard is on.</description>
+    </key>
   </schema>
 </schemalist>

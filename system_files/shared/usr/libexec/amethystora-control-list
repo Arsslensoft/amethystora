@@ -248,7 +248,7 @@ read_in_background phone-photos gsettings get org.amethystora.Connect photo-fold
 read_in_background phone-computers gsettings get org.amethystora.Connect computers
 read_in_background phone-music gsettings get org.amethystora.Connect music
 read_in_background phone-clicker gsettings get org.amethystora.Connect clicker
-read_in_background captions gsettings get org.gnome.shell.extensions.amethystora-ui.captions enabled
+read_in_background captions gsettings list-recursively org.gnome.shell.extensions.amethystora-ui.captions
 read_in_background waydroid-enabled systemctl is-enabled waydroid-container.service
 read_in_background waydroid-active systemctl is-active waydroid-container.service
 read_in_background uupd systemctl is-enabled uupd.timer
@@ -492,7 +492,9 @@ item appearance light-desktop switch "${ gettext "Light desktop"; }" \
     "${ gettext "Solid glass, short and simple motion and no live window previews, for a computer without a graphics driver or with little memory."; }" \
     "$([[ "${ said light; }" == true ]] && echo on || echo off)" themes#the-light-desktop
 # Live captions: on opens a terminal, since the first time it says what it downloads and asks; off never asks
-if [[ "${ ended captions; }" == 0 && "${ said captions; }" == true ]]; then CAPTIONS=on; else CAPTIONS=off; fi
+CAPTIONS_KEYS="${ said captions; }"
+captions_key() { value_of "${CAPTIONS_KEYS}" "$1" "'?([^']*)'?\$"; }
+if [[ "${ ended captions; }" == 0 && "${ captions_key enabled; }" == true ]]; then CAPTIONS=on; else CAPTIONS=off; fi
 # The recognizer is GStreamer's vosk element: its file says it is there, with no Python and no GStreamer started
 [[ -e /usr/lib64/gstreamer-1.0/libgstvosk.so ]] || REASON="${ gettext "The speech recognizer is not in this image."; }"
 choice on "${ON}" "" true ame desktop captions on
@@ -501,6 +503,33 @@ USAGE="ame desktop captions on|off"
 item appearance captions switch "${ gettext "Live captions"; }" \
     "${ gettext "Captions under speech the computer plays, made on this computer. The first time downloads an English speech model of 39 MiB; while on, they hold about 230 MB of memory."; }" \
     "${CAPTIONS}" desktop#live-captions
+# The language captions and dictation hear (plans/ui-ideas/spec-later.md, R6-32): one not on this computer yet opens a
+# terminal, which says what it downloads and asks; one that is here is chosen at once. The names are the languages' own
+CAPTIONS_DIR="${XDG_DATA_HOME:-${HOME}/.local/share}/amethystora/captions"
+for language in en:English fr:Français es:Español de:Deutsch it:Italiano tr:Türkçe pt:Português nl:Nederlands \
+    ru:Русский pl:Polski; do
+    code="${language%%:*}"
+    model="${CAPTIONS_DIR}/model-${code}"
+    [[ "${code}" == en ]] && model="${CAPTIONS_DIR}/model"
+    if [[ -f "${model}/conf/model.conf" || -f "${model}/mfcc.conf" ]]; then
+        choice "${code}" "${language#*:}" "" false ame desktop captions language "${code}"
+    else
+        choice "${code}" "${language#*:}" "${ gettext "Downloaded once when chosen, about 40 MB"; }" true ame desktop captions language "${code}"
+    fi
+done
+[[ -e /usr/lib64/gstreamer-1.0/libgstvosk.so ]] || REASON="${ gettext "The speech recognizer is not in this image."; }"
+USAGE="ame desktop captions language en|fr|es|de|it|tr|pt|nl|ru|pl"
+item appearance captions-language choice "${ gettext "Captions language"; }" \
+    "${ gettext "The language live captions and dictation hear. Each one's speech model is downloaded once from Vosk's makers when it is chosen; what you hear or say is never sent anywhere."; }" \
+    "${ captions_key language; }" desktop#live-captions
+# Dictation (R5-38): on opens a terminal, since it may fetch the language's model first; off never asks
+[[ -e /usr/lib64/gstreamer-1.0/libgstvosk.so ]] || REASON="${ gettext "The speech recognizer is not in this image."; }"
+choice on "${ON}" "" true ame desktop dictation on
+choice off "${OFF}" "" false ame desktop dictation off
+USAGE="ame desktop dictation on|off"
+item appearance dictation switch "${ gettext "Dictation"; }" \
+    "${ gettext "Super+Ctrl+Shift+D listens to the microphone and types what you say into the field in use, made on this computer in the captions' language."; }" \
+    "$([[ "${ captions_key dictation; }" == true ]] && echo on || echo off)" desktop#dictation
 GROUP=""
 
 # Seeing and reading (org.gnome.shell.extensions.amethystora-ui.access): colour filters, the reading ruler and reading
@@ -544,6 +573,13 @@ USAGE="ame desktop access read-aloud on|off"
 item appearance read-aloud switch "${ gettext "Read the selection aloud"; }" \
     "${ gettext "Select text and press Super+Ctrl+S: the screen reader's voice reads it, on this computer."; }" \
     "$([[ "${ access_key read-aloud; }" == true ]] && echo on || echo off)" themes#reading-aloud
+# Click with the keyboard (plans/ui-ideas/spec-later.md, R5-36): offered and off
+switch_choices false ame desktop access letters
+access_reason
+USAGE="ame desktop access letters on|off"
+item appearance click-letters switch "${ gettext "Click with the keyboard"; }" \
+    "${ gettext "Super+Alt+K puts a letter on every button and link of the window in use; type it to click."; }" \
+    "$([[ "${ access_key letters; }" == true ]] && echo on || echo off)" themes#click-with-the-keyboard
 GROUP=""
 
 FONT_SET=theme
@@ -1388,6 +1424,13 @@ search_item agent "${ gettext "Ask the agent"; }" \
     "${ gettext "The last row asks the AI agent, while the agentic features are on."; }"
 search_item glance "${ gettext "Glance at files"; }" \
     "${ gettext "Space shows a file found by the search without opening it."; }"
+# Offered and off (plans/ui-ideas/spec-later.md): bookmarks, Notes while unlocked, and files by meaning
+search_item bookmarks "${ gettext "Bookmarks"; }" \
+    "${ gettext "Firefox's bookmarks, never its history, read from a copy of its bookmarks file. Firefox is left as it is."; }"
+search_item notes "${ gettext "Notes"; }" \
+    "${ gettext "The titles of your notes and tasks, only while Notes is open and unlocked. Locked, it says nothing."; }"
+search_item meaning "${ gettext "Files by meaning"; }" \
+    "${ gettext "Finds files in Documents by what they are about, from the text GNOME's indexer already read, on this computer. It reads them once a day on mains power."; }"
 GROUP=""
 
 # The skin tone of the hands and people in the emoji picker (Super+.)

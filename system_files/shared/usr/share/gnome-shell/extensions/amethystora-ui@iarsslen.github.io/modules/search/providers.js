@@ -27,6 +27,9 @@ import {ClipboardProvider} from './clipboard.js';
 import {AgentProvider} from './agent.js';
 import {TimesProvider} from './timesProvider.js';
 import {RemindProvider} from './remindProvider.js';
+import {BookmarksProvider} from './bookmarks.js';
+import {NotesProvider} from './notes.js';
+import {MeaningProvider} from './meaning.js';
 
 // The key that turns each on, its place, and how many rows it shows at most; GNOME's own come between 4 and 6
 const PROVIDERS = [
@@ -37,6 +40,10 @@ const PROVIDERS = [
     {key: 'settings', rank: 2, max: 5},
     {key: 'windows', rank: 3, max: 5},
     {key: 'manual', rank: 6, max: 3},
+    // Offered and off (plans/ui-ideas/spec-later.md): after GNOME's own, before the manual's place in the list
+    {key: 'notes', rank: 5, max: 5},
+    {key: 'bookmarks', rank: 5, max: 5},
+    {key: 'meaning', rank: 5, max: 3},
     {key: 'agent', rank: 7, max: 1},
 ];
 const GNOME_RANK = 4;
@@ -106,6 +113,9 @@ export class Providers {
         case 'agent': return new AgentProvider(this._ext);
         case 'times': return new TimesProvider();
         case 'reminders': return new RemindProvider();
+        case 'bookmarks': return new BookmarksProvider();
+        case 'notes': return new NotesProvider();
+        case 'meaning': return new MeaningProvider();
         }
         return null;
     }
@@ -122,6 +132,9 @@ export class Providers {
             settings: {title: _('Do it')},
             windows: {title: _('Open windows')},
             manual: {title: _('Manual')},
+            bookmarks: {title: _('Bookmarks'), note: _('From a copy of Firefox’s bookmarks, never its history.')},
+            notes: {title: _('Notes'), tag: _('While Notes is unlocked')},
+            meaning: {title: _('Files by meaning'), tag: _('On this computer')},
             agent: {title: _('The agent'), tag: _('Only while it is on')},
         }[key];
     }

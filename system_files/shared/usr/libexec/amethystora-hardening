@@ -50,7 +50,10 @@ declare -A SENDS=([countme]="Fedora" [connectivity-check]="Fedora" [firmware-met
 # Off until turned on
 STRICTER=(time firewall-away network-daemons block-bluetooth block-webcam block-automount block-user-extensions
     block-xwayland flathub-verified flatpak-password noexec-temp no-coredumps package-cooldown brew-attestations
-    boot-password locked-poweroff audit-locked vscodium-extensions)
+    boot-password locked-poweroff audit-locked vscodium-extensions guest-login)
+# ...of which one loosens rather than tightens: a login that needs no password, for a visitor (amethystora-guest;
+# plans/ui-ideas/spec-later.md, R6-36). The report names it on its own, never among the stricter settings
+LOOSER=(guest-login)
 # The Settings page's category of each switch, beside the detection switches' own (amethystora-security-config)
 declare -A GROUP=([kernel]=system [blocked-modules]=system [firewire]=devices [kernel-args]=system [firewall]=network
     [failed-logins]=logins [lockout]=logins [app-sandbox]=apps [virtual-input]=devices [ssh-settings]=logins
@@ -59,7 +62,7 @@ declare -A GROUP=([kernel]=system [blocked-modules]=system [firewire]=devices [k
     [block-webcam]=devices [block-automount]=devices [block-user-extensions]=apps [block-xwayland]=apps
     [flathub-verified]=apps [flatpak-password]=apps [noexec-temp]=system [no-coredumps]=system [package-cooldown]=apps
     [brew-attestations]=apps [boot-password]=system [locked-poweroff]=logins [audit-locked]=audit
-    [vscodium-extensions]=apps)
+    [vscodium-extensions]=apps [guest-login]=logins)
 # The switches with a level above on, and their levels
 declare -A LEVELS=([kernel]="off standard strict" [package-cooldown]="off on strict")
 # Kernel arguments a switch adds one by one, off until turned on, each with what it puts on the command line
@@ -213,6 +216,11 @@ record() {
 
 # The content of a file a switch writes, for set and for the watcher to compare with
 expected() {
+    # The guest login's files are its helper's, which knows the account's numbers they name
+    if is_on guest-login && /usr/libexec/amethystora-guest files 2>/dev/null | cut -f1 | grep -qxF -- "$1"; then
+        /usr/libexec/amethystora-guest expected "$1"
+        return
+    fi
     case "$1" in
         "${FIREWALLD}")
             sed -E "s/^DefaultZone=.*/DefaultZone=$(is_on firewall-away && echo "${AWAY_ZONE}" || echo "${FALLBACK_ZONE}")/" \
@@ -324,6 +332,7 @@ managed() {
     is_on package-cooldown && printf '%s\tfile\n%s\tfile\n' "${COOLDOWN_ENV}" "${COOLDOWN_PROFILE}"
     is_on brew-attestations && printf '%s\tfile\n%s\tfile\n' "${BREW_ENV}" "${BREW_PROFILE}"
     is_on vscodium-extensions && printf '%s\tfile\n' "${VSCODIUM}"
+    is_on guest-login && /usr/libexec/amethystora-guest files 2>/dev/null
     return 0
 }
 
@@ -756,6 +765,17 @@ set_switch() {
             fi
             return 0
             ;;
+        guest-login)
+            # Recorded first, so that the watcher takes the files it writes as the switch's from the start
+            if [[ "${switched}" == on ]]; then
+                record "${name}" on
+                /usr/libexec/amethystora-guest enable || { /usr/libexec/amethystora-guest disable; record "${name}" off; return 1; }
+            else
+                /usr/libexec/amethystora-guest disable || return 1
+                record "${name}" off
+            fi
+            return 0
+            ;;
         vscodium-extensions)
             present vscodium-extensions || { echo "VSCodium is in the dx images only." >&2; return 1; }
             if [[ "${switched}" == on ]]; then
@@ -821,6 +841,7 @@ words() {
         [vscodium-extensions]="$(gettext "VSCodium extensions")"
         [locked-poweroff]="$(gettext "Power off when locked for long")"
         [audit-locked]="$(gettext "Locked audit rules")"
+        [guest-login]="$(gettext "Guest login")"
     )
     declare -gA TEXT=(
         [kernel]="$(gettext "Hides kernel addresses and messages, keeps programs from reading each other's memory, and turns off unprivileged BPF. Off, gdb -p, strace -p, perf and dmesg work without sudo, from the next restart. Strict also turns off io_uring, lets only root attach a debugger, randomises more of each program's memory layout and blocks IPsec; QEMU, Samba and some Node programs lose io_uring, gdb -p and strace -p need sudo, sanitizers stop working and libreswan and strongSwan cannot connect.")"
@@ -857,6 +878,7 @@ words() {
         [locked-poweroff]="$(gettext "The machine powers off once every desktop session on it has stayed locked for 18 hours, so that the disk keys leave memory, as a phone restarts when it has not been unlocked for long. Whatever was open and not saved is lost.")"
         [vscodium-extensions]="$(gettext "VSCodium stops updating extensions by itself: worms have spread through Open VSX as updates to extensions people already had. Update them yourself, after reading what changed. With extensions or publishers listed one a line in /etc/amethystora/vscodium-extensions, only those can be installed.")"
         [audit-locked]="$(gettext "Changes to accounts, sudo, what starts by itself and the security settings are watched by the kernel's own audit rules, locked until the next restart, instead of by the file-watch sensor. The records are the same, and killing the sensor can no longer stop them without a reboot, but every program on the machine runs a little slower, as audit makes the kernel weigh every system call.")"
+        [guest-login]="$(gettext "A visitor's login, Guest, on the login screen: no password, a home folder kept in memory and emptied when they log out, and none of your files to see. It is a standard account, not an administrator, and only the login screen lets it in without a password: the text consoles, SSH, sudo and su refuse it. Anyone at the machine can use it, and what they do online is done from your network.")"
     )
     # When the change takes effect: turning one off of what the image enforces, or turning a stricter one on
     declare -gA WHEN=(
@@ -894,6 +916,7 @@ words() {
         [vscodium-extensions]="$(gettext "From VSCodium's next start.")"
         [locked-poweroff]="$(gettext "At once: the 18 hours count from the next time every session is locked.")"
         [audit-locked]="$(gettext "From the next restart, when the audit rules are written.")"
+        [guest-login]="$(gettext "At once: Guest is on the login screen the next time it shows. Turned off, a guest still logged in is logged out.")"
     )
 }
 
@@ -1047,6 +1070,7 @@ status() {
                 --arg default "$(stricter "${name}" && echo off || echo on)" \
                 --arg level "$([[ -n "${LEVELS[${name}]+set}" ]] && level "${name}")" \
                 --arg levels "${LEVELS[${name}]:-}" --arg sends "${SENDS[${name}]:-}" \
+                --argjson loosens "$([[ " ${LOOSER[*]} " == *" ${name} "* ]] && echo true || echo false)" \
                 --argjson arguments "$(if [[ "${name}" == kernel-args ]]; then
                     for arg in $(arguments) "${EXTRA_ORDER[@]}"; do
                         jq -nc --arg argument "${arg}" --arg state "$(is_on kernel-args "${arg}" && echo on || echo off)" \
@@ -1054,7 +1078,7 @@ status() {
                             '{$argument, $state, $default}'
                     done | jq -sc .
                 else echo null; fi)" \
-                '{$name, $state, $title, $text, $group, command: ("ame security " + $name), $fixed, $default,
+                '{$name, $state, $title, $text, $group, command: ("ame security " + $name), $fixed, $default, $loosens,
                   sends: (if $sends == "" then null else $sends end),
                   level: (if $level == "" then null else $level end),
                   levels: (if $levels == "" then null else ($levels | split(" ")) end),

@@ -1310,6 +1310,8 @@ drift() {
     /usr/libexec/amethystora-domain-logins check && domain=true
     # The duress finger's feature added last to the image's own, every file as authselect wrote it
     /usr/libexec/amethystora-duress authselect && duress=true
+    # ...and the guest login's feature (ame security guest-login), with or without the duress ones, as authselect writes it
+    /usr/libexec/amethystora-hardening is-on guest-login && /usr/libexec/amethystora-guest authselect && duress=true
     # What the owner turned off with the prevention switches (ame security kernel, firewall, lockout...):
     # exactly the files the switch writes, which amethystora-hardening names, and nothing in between
     while IFS=$'\t' read -r rel kind; do

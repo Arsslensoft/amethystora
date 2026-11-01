@@ -355,6 +355,18 @@ screen reader is saying at that moment, if one is. A long selection is read up t
 twenty thousand characters. The voice is eSpeak NG through Speech Dispatcher, the same as Orca's; other voices that
 Speech Dispatcher knows can be set in its own settings.
 
+### Click with the keyboard
+
+With `ame desktop access letters on` (or **Click with the keyboard** in [Control](control.md)), press **Super+Alt+K** in
+any window: a small letter appears on each of its buttons, links, boxes, tabs and menu items. Type the letters of one
+to click it; a text field gets the cursor instead. `Backspace` takes back a letter, and `Escape`, a click or a letter
+that matches nothing takes them away. With many controls each has two letters.
+
+The letters come from what the window tells the accessibility tree, the one screen readers use, and only while they
+show: nothing is read before **Super+Alt+K** and nothing is kept after. Apps made with GTK, such as Settings, Files and
+Amethystora's own, say the most. Firefox and apps built on Chromium or Electron fill in their tree only while a screen
+reader runs, so they may show no letters. `ame desktop access letters off` turns it off, and its shortcut with it.
+
 ## Fonts
 
 Each theme is written in a font of its own, used by the desktop and the applications:

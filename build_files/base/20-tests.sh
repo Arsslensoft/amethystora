@@ -607,7 +607,7 @@ rm -rf "${UI_RENDER}"
 # The search box is on Super+Space alone, which GNOME's input-source switch must not take (zz0 moves it to
 # Shift+Super+Space): on a base without that line the box never opened
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys org.gnome.shell.extensions.amethystora-ui.search | sort | paste -sd ' ')" == \
-    "agent answers clipboard glance manual open reminders settings times windows" ]]
+    "agent answers bookmarks clipboard glance manual meaning notes open reminders settings times windows" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.search open)" == "['<Super>space']" ]]
 # Search that answers (plans/beyond/spec-search.md): each part on, the emoji picker on Super+. in the yellow tone
 for key in answers times reminders settings manual windows clipboard agent glance; do
@@ -1038,13 +1038,15 @@ grep -q "def HoldProfile" "$(rpm -ql tuned | grep '/tuned/ppd/controller\.py$')"
 # vosk element) and its helper downloads only the pinned model, never writes or sends the sound, and is the only
 # program the module starts but pactl, which it asks whether the players are paused; nothing it hears is markup. The
 # helper's own test runs without the network
-[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys org.gnome.shell.extensions.amethystora-ui.captions)" == enabled ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys org.gnome.shell.extensions.amethystora-ui.captions | sort | paste -sd ' ')" == \
+    "dictate dictation enabled language" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.captions enabled)" == false ]]
 rpm -q gst-vosk >/dev/null
 gst-inspect-1.0 vosk >/dev/null
 test -x /usr/libexec/amethystora-captions
-grep -q "^MODEL_URL = 'https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip'$" /usr/libexec/amethystora-captions
-grep -q "^MODEL_SHA256 = '30f26242c4eb449f948e42cb302dd7a686cb29a3423a8367f99ff41780942498'$" /usr/libexec/amethystora-captions
+grep -q "^MODEL_URL = 'https://alphacephei.com/vosk/models/{}.zip'$" /usr/libexec/amethystora-captions
+grep -q "^    'en': ('vosk-model-small-en-us-0.15', '30f26242c4eb449f948e42cb302dd7a686cb29a3423a8367f99ff41780942498',$" \
+    /usr/libexec/amethystora-captions
 grep -q "'--proto-redir', protocols" /usr/libexec/amethystora-captions
 # While words show, a full-screen window is composited, as GNOME's banners and OSDs have it, and given back after
 [[ "$(grep -cE "global\.compositor\.(disable|enable)_unredirect\(\)" "${UI_EXTENSION}/modules/captions.js")" == 2 ]]
@@ -1052,7 +1054,7 @@ grep -q "'--proto-redir', protocols" /usr/libexec/amethystora-captions
 test -s "${UI_EXTENSION}/modules/captions.js"
 test -s "${UI_EXTENSION}/stylesheets/captions.css"
 [[ "$(grep -cE "Subprocess\.new|Util\.spawn|spawn_command_line|GLib\.spawn|Shell\.App" "${UI_EXTENSION}/modules/captions.js")" == 2 ]]
-grep -q "Gio.Subprocess.new(\[HELPER, 'listen'\]," "${UI_EXTENSION}/modules/captions.js"
+grep -q "Gio.Subprocess.new(\[HELPER, 'listen', this.language\]," "${UI_EXTENSION}/modules/captions.js"
 grep -q "Gio.Subprocess.new(\['pactl', '--format=json', 'list', 'sink-inputs'\]," "${UI_EXTENSION}/modules/captions.js"
 [[ -z "$(grep -nE 'use_markup = true|use_markup: true|set_markup\(' "${UI_EXTENSION}/modules/captions.js")" ]]
 grep -q '^captions \*ARGS:' /usr/share/amethystora/just/desktop.just
@@ -2782,7 +2784,7 @@ grep -q "connectSignal('DeviceAdded'" "${UI_EXTENSION}/modules/power/devices.js"
 ACCESS=org.gnome.shell.extensions.amethystora-ui.access
 TOUCH=org.gnome.shell.extensions.amethystora-ui.touch
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${ACCESS}" | sort | paste -sd ' ')" == \
-    "filter filter-on filter-strength read-aloud read-aloud-key read-aloud-speed ruler ruler-key ruler-shown" ]]
+    "filter filter-on filter-strength letters letters-key read-aloud read-aloud-key read-aloud-speed ruler ruler-key ruler-shown" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${TOUCH}" | sort | paste -sd ' ')" == \
     "pen-ring pen-ring-key pen-ring-tools touch-mode" ]]
 for pair in filter:"'none'" filter-strength:100 ruler:"'off'" read-aloud:false read-aloud-speed:"'1'" \
@@ -2830,7 +2832,7 @@ done
 # Reading aloud starts spd-say alone, twice: each sentence on its standard input (never its command line, which every
 # account can read) and its stop; the pen's tools start Notes' quick note alone
 [[ "$(grep -rhoE "Subprocess\.new\([A-Za-z_\[]+" "${UI_EXTENSION}/modules/access.js" "${UI_EXTENSION}/modules/access" |
-    sort | paste -sd ' ')" == "Subprocess.new([SPD_SAY Subprocess.new(argv" ]]
+    sort | paste -sd ' ')" == "Subprocess.new([HELPER Subprocess.new([SPD_SAY Subprocess.new(argv" ]]
 grep -q "const argv = \[SPD_SAY, '--pipe-mode'," "${UI_EXTENSION}/modules/access/speech.js"
 grep -q "communicate_utf8_async(" "${UI_EXTENSION}/modules/access/speech.js"
 [[ "$(grep -rhoE "Subprocess\.new\([A-Za-z_\[]+" "${UI_EXTENSION}/modules/touch.js" "${UI_EXTENSION}/modules/touch" |
@@ -2853,6 +2855,76 @@ GSETTINGS_BACKEND=memory ame desktop touch mode tablet >/dev/null 2>&1 && false
 GSETTINGS_BACKEND=memory ame desktop touch pen-tools area area >/dev/null 2>&1 && false
 GSETTINGS_BACKEND=memory ame desktop access filter deutan >/dev/null
 GSETTINGS_BACKEND=memory ame desktop touch pen-tools area back >/dev/null
+# The "later" group of rounds 5 and 6 (plans/ui-ideas/spec-later.md; manual: desktop.md#dictation,
+# desktop.md#live-captions, desktop.md#finding-things, themes.md#click-with-the-keyboard, security.md#guest-login),
+# each offered and off. Captions in ten languages, each model pinned; dictation on the captions' recognizer, its
+# shortcut bound only while it is on; Firefox's bookmarks from a copy that never reads a visit; Notes only on the
+# session bus while unlocked; files by meaning from localsearch's text, a user timer that nothing enables, on mains
+# power only; click with the keyboard, its tree read by a program of its own; the guest login a security switch.
+CAPTIONS=org.gnome.shell.extensions.amethystora-ui.captions
+for pair in language:"'en'" dictation:false dictate:"['<Super><Control><Shift>d']"; do
+    [[ "$(GSETTINGS_BACKEND=memory gsettings get "${CAPTIONS}" "${pair%%:*}")" == "${pair#*:}" ]]
+done
+[[ "$(GSETTINGS_BACKEND=memory gsettings range "${CAPTIONS}" language | xargs)" == "enum en fr es de it tr pt nl ru pl" ]]
+[[ "$(grep -cE "^    '[a-z]{2}': \('vosk-model-small-[a-z]{2}(-us)?-0\.[0-9]+', '[0-9a-f]{64}',$" /usr/libexec/amethystora-captions)" == 10 ]]
+[[ "$(grep -cE "Subprocess\.new|Util\.spawn|spawn_command_line|GLib\.spawn" "${UI_EXTENSION}/modules/captions/dictation.js")" == 1 ]]
+grep -q "Gio.Subprocess.new(\[HELPER, 'dictate', language\]," "${UI_EXTENSION}/modules/captions/dictation.js"
+grep -q "Main.wm.addKeybinding(KEY, this._settings" "${UI_EXTENSION}/modules/captions/dictation.js"
+[[ -z "$(grep -nE 'use_markup = true|use_markup: true|set_markup\(' "${UI_EXTENSION}/modules/captions/dictation.js")" ]]
+grep -q '^dictation ACTION="":' /usr/share/amethystora/just/desktop.just
+for key in bookmarks notes meaning; do
+    [[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.search "${key}")" == false ]]
+    test -s "${UI_EXTENSION}/modules/search/${key}.js"
+done
+for helper in amethystora-bookmarks amethystora-file-meaning amethystora-letters amethystora-guest; do
+    test -x "/usr/libexec/${helper}"
+done
+for helper in amethystora-bookmarks amethystora-file-meaning amethystora-letters; do
+    python3 -I -c 'import ast, sys; ast.parse(open(sys.argv[1]).read())' "/usr/libexec/${helper}"
+done
+bash -n /usr/libexec/amethystora-guest
+# The bookmarks are read from a copy, which goes before anything is printed, and never a visit
+[[ -z "$(grep -v '^ *#' /usr/libexec/amethystora-bookmarks | grep -n "moz_historyvisits\|visit_count\|last_visit")" ]]
+grep -q "WHERE b.type = 1" /usr/libexec/amethystora-bookmarks
+grep -q "shutil.rmtree(work, ignore_errors=True)" /usr/libexec/amethystora-bookmarks
+# Notes answers only the shell, at an object that is there only while the notes are open
+grep -q "Gio.DBusCallFlags.NO_AUTO_START" "${UI_EXTENSION}/modules/search/notes.js"
+# Files by meaning: the account's timer, which nothing enables for every account, on mains power, and the index's own model
+grep -qx "ConditionACPower=true" /usr/lib/systemd/user/amethystora-file-meaning.service
+[[ "$(systemctl --global is-enabled amethystora-file-meaning.timer 2>/dev/null)" != enabled ]]
+test -s /usr/share/amethystora/agents/knowledge/model/model.safetensors
+[[ "$(/usr/libexec/amethystora-agent-tools files-search --dir /nonexistent -- tax refund)" == "[]" ]]
+# Click with the keyboard: off, its shortcut, the program that reads the tree the only one it starts
+for pair in letters:false letters-key:"['<Super><Alt>k']"; do
+    [[ "$(GSETTINGS_BACKEND=memory gsettings get "${ACCESS}" "${pair%%:*}")" == "${pair#*:}" ]]
+done
+grep -q "Gio.Subprocess.new(\[HELPER, String(window.get_pid())" "${UI_EXTENSION}/modules/access/letters.js"
+python3 -I -c 'import gi; gi.require_version("Atspi", "2.0"); from gi.repository import Atspi'
+# Its key and dictation's are free: in GNOME's own schemas, the image's custom keybindings, every other key of the
+# extension and the tiling's
+LATER_COMBOS="$(XDG_CURRENT_DESKTOP=GNOME GSETTINGS_BACKEND=memory gsettings list-recursively |
+    grep -vE "^org.gnome.shell.extensions.amethystora-ui.(access letters-key|captions dictate) " | keycombos)"
+LATER_COMBOS+=$'\n'"$(grep -h -d skip -e "^binding=" /etc/dconf/db/distro.d/* | keycombos)"
+for combo in "<alt><super>k" "<control><shift><super>d"; do
+    if grep -qx "${combo}" <<<"${LATER_COMBOS}"$'\n'"${TILING_COMBOS}"; then
+        echo "${combo} is bound elsewhere, and is click with the keyboard's or dictation's"
+        exit 1
+    fi
+done
+# The guest login: a security switch, off, its PAM lines in the image's three profiles only behind its feature, and no
+# such account in the image
+/usr/libexec/amethystora-hardening is-on guest-login && false
+[[ "$(/usr/libexec/amethystora-hardening status --json | jq -r '.[] | select(.name == "guest-login") | "\(.group) \(.default) \(.loosens)"')" == \
+    "logins off true" ]]
+getent passwd amethystora-guest >/dev/null && false
+for profile in local sssd winbind; do
+    [[ "$(grep -c 'pam_succeed_if.so quiet user != amethystora-guest {include if "with-guest-login"}' \
+        "/usr/share/authselect/vendor/${profile}/system-auth")" == 1 ]]
+    grep -q 'pam_succeed_if.so quiet service = gdm-password {include if "with-guest-login"}' \
+        "/usr/share/authselect/vendor/${profile}/password-auth"
+done
+[[ -z "$(grep -n amethystora-guest /etc/authselect/system-auth /etc/authselect/password-auth)" ]]
+grep -q '^guest-login ACTION="":' /usr/share/amethystora/just/security.just
 # The shelf (plans/beyond/spec-r4-shelf.md, R4-08; manual: desktop.md#the-shelf): one key, off for a new account, the
 # module beside the Shelf app (the apps' loop above); the shell starts nothing but the app, with the drop on its standard
 # input and never on its command line, and shows nothing as markup; the app offers what is dragged out as a copy only

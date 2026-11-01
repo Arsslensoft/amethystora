@@ -12,6 +12,10 @@
 // but the toggle, which follows the model folder (a directory watch). The words are text, never markup, and go nowhere
 // but the screen. While they show, a full-screen window is composited (not scanned out), or they would not be seen.
 //
+// The language (the key `language`) picks the model: English in captions/model, any other in captions/model-LANG, each
+// fetched by `ame desktop captions language LANG` (plans/ui-ideas/spec-later.md, R6-32). Dictation (R5-38) uses the
+// same recognizer and language, from the microphone: captions/dictation.js.
+//
 // For the VM suite only: state() says what runs.
 
 import Clutter from 'gi://Clutter';
@@ -26,6 +30,8 @@ import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js'
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {QuickToggle, SystemIndicator} from 'resource:///org/gnome/shell/ui/quickSettings.js';
 import * as Volume from 'resource:///org/gnome/shell/ui/status/volume.js';
+
+import {Dictation} from './captions/dictation.js';
 
 const SCHEMA = 'org.gnome.shell.extensions.amethystora-ui.captions';
 // By its full path: a program of the same name earlier in the session's PATH is not started instead
@@ -53,6 +59,17 @@ const MOST_LINE = 4096;
 const MOST_WORDS = 120;
 // A sound server that went away is tried again this much later, once
 const RETRY_MS = 3000;
+// The languages a model is kept for (the helper's own table), and the file that says a model's folder is whole: the
+// older models have their mfcc.conf at the top
+const LANGUAGES = ['en', 'fr', 'es', 'de', 'it', 'tr', 'pt', 'nl', 'ru', 'pl'];
+const OLD_LAYOUT = ['tr', 'pt'];
+
+function markerOf(folder, language) {
+    const model = language === 'en' ? 'model' : `model-${language}`;
+    return OLD_LAYOUT.includes(language)
+        ? GLib.build_filenamev([folder, model, 'mfcc.conf'])
+        : GLib.build_filenamev([folder, model, 'conf', 'model.conf']);
+}
 
 // An app's own sound, and not one the sound server says is corked or idle (a paused player keeps its stream open)
 function isPlaying(stream) {
@@ -82,9 +99,17 @@ export class Captions {
 
     enable() {
         this._settings = this._ext.getSettings(SCHEMA);
-        this._settings.connectObject('changed::enabled', () => this._sync(), this);
         const folder = GLib.build_filenamev([GLib.get_user_data_dir(), 'amethystora', 'captions']);
-        this._modelFile = Gio.File.new_for_path(GLib.build_filenamev([folder, 'model', 'conf', 'model.conf']));
+        this._folder = folder;
+        this._modelFile = Gio.File.new_for_path(markerOf(folder, this.language));
+        // Another language: its model is looked for, and the recognizer started again with it
+        this._settings.connectObject(
+            'changed::enabled', () => this._sync(),
+            'changed::language', () => {
+                this._modelFile = Gio.File.new_for_path(markerOf(folder, this.language));
+                this._stop();
+                this._sync();
+            }, this);
         // The model coming and going (fetch, remove) shows and takes away the toggle. The folder is made first: a watch
         // on a path that is missing polls, one on a folder is an inotify watch and costs nothing
         if (GLib.mkdir_with_parents(folder, 0o700) === 0) {
@@ -94,9 +119,25 @@ export class Captions {
         // Never at the lock screen, whatever session modes the extension is given one day
         Main.sessionMode.connectObject('updated', () => this._sync(), this);
         this._sync();
+        this._dictation = new Dictation(this._settings, this);
+        this._dictation.enable();
+    }
+
+    // The captions' language, one the helper has a model for
+    get language() {
+        const language = this._settings?.get_string('language') ?? 'en';
+        return LANGUAGES.includes(language) ? language : 'en';
+    }
+
+    // Whether LANGUAGE's model is on this computer, for dictation
+    modelHere(language) {
+        return !!this._folder && LANGUAGES.includes(language) &&
+            GLib.file_test(markerOf(this._folder, language), GLib.FileTest.EXISTS);
     }
 
     disable() {
+        this._dictation?.disable();
+        this._dictation = null;
         this._stop();
         this._dropToggle();
         Main.sessionMode.disconnectObject(this);
@@ -107,6 +148,7 @@ export class Captions {
         this._settings?.run_dispose();
         this._settings = null;
         this._modelFile = null;
+        this._folder = null;
     }
 
     // The toggle while the model is there, the program while the key is on too
@@ -146,7 +188,7 @@ export class Captions {
 
     _start() {
         try {
-            this._proc = Gio.Subprocess.new([HELPER, 'listen'],
+            this._proc = Gio.Subprocess.new([HELPER, 'listen', this.language],
                 Gio.SubprocessFlags.STDIN_PIPE | Gio.SubprocessFlags.STDOUT_PIPE);
         } catch (e) {
             console.warn(`Amethystora UI: live captions could not start: ${e.message}`);
@@ -486,6 +528,8 @@ export class Captions {
     state() {
         return {
             enabled: this._settings?.get_boolean('enabled') ?? false,
+            language: this.language,
+            dictation: this._dictation?.state() ?? null,
             toggle: !!this._toggle,
             checked: this._toggle?.checked ?? false,
             helper: this._proc?.get_identifier() ?? null,

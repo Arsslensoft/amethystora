@@ -590,11 +590,27 @@ anywhere:
 - **Glance**: with the keyboard on a file Files found (`↓` to it), `Space` shows it without opening
   it. `↑` and `↓` go to the other files found; `Space` again closes it, and the search is still there.
 
-Each can be turned off, in Control's **Search** group or in a terminal:
+Three more are offered and off until you turn them on:
+
+- **Bookmarks**: Firefox's bookmarks whose name, address or folder hold what you typed; `Enter` opens one in your
+  browser. They are read from a copy of Firefox's bookmarks file, which is deleted at once, and Firefox's history is
+  never read. Firefox itself is left exactly as it is: `ame desktop search bookmarks on`.
+- **Notes**: the titles of your [notes and tasks](notes.md) that hold what you typed, only while Notes is open and
+  unlocked; `Enter` opens one in Notes. A note's text is never searched, and locked or closed, Notes says nothing:
+  `ame desktop search notes on`.
+- **Files by meaning**: files in your Documents folder found by what they are about, even when no word you typed is
+  in them, with two words or more: *the letter about the tax refund* finds `refund-2025.pdf`. It uses the small
+  model the [AI agent's](ai-agent.md) index already has, on the text GNOME's own indexer read from the files, and works
+  out what each is about once a day, on mains power only, at low priority. What it keeps is in
+  `~/.local/state/amethystora/file-meaning`: the files' names and numbers, never their words. Nothing is sent
+  anywhere: `ame desktop search meaning on`. Off deletes what it kept.
+
+Each can be turned on or off in Control's **Search** group or in a terminal:
 
 ```bash
 ame desktop search                     # each, and whether it is on
-ame desktop search answers off         # answers, times, reminders, settings, manual, windows, clipboard, agent or glance
+ame desktop search answers off         # answers, times, reminders, settings, manual, windows, clipboard, agent,
+                                       # glance, bookmarks, notes or meaning
 ```
 
 ## The app grid
@@ -958,7 +974,13 @@ them on and off.
 
 Good to know:
 
-- Captions are **English only** for now, whatever language the computer is in.
+- Captions hear **English** unless you choose another language: French, Spanish, German, Italian, Turkish,
+  Portuguese, Dutch, Russian or Polish, with **Captions language** in Control or
+  `ame desktop captions language fr` (`es`, `de`, `it`, `tr`, `pt`, `nl`, `ru`, `pl`; `en` is English). Each
+  language's speech model, 31 to 51 MiB, is downloaded once from alphacephei.com when you choose it, after it says
+  so and asks, and checked against the copy the image knows; then that language works offline like English.
+  [What this machine sends](security.md#what-this-machine-sends) names every language downloaded.
+  [Dictation](#dictation) hears the same language.
 - The sound is listened to only while captions are on and an app plays something, and only in memory: it is never
   recorded, written down or sent anywhere, and neither are the words. They are gone a few seconds after they are
   shown.
@@ -968,8 +990,35 @@ Good to know:
 - They cost a part of one processor core while speech plays and hold about 230 MB of memory while they are on.
   Silence, and an app that is paused, cost next to nothing.
 - Recognition is good for clear speech and makes mistakes with music, accents and several voices at once.
-- `ame desktop captions off` turns them off; `ame desktop captions remove` turns them off and deletes the model;
-  `ame desktop captions status` says how things stand.
+- `ame desktop captions off` turns them off; `ame desktop captions remove` turns them and dictation off and deletes
+  every model; `ame desktop captions status` says how things stand.
+
+## Dictation
+
+Dictation types what you say into the text field you are in: a note, a message, a search. It is made on this computer
+by the same recognizer as [live captions](#live-captions), in their language, and it is **off**: turn it on with
+
+```bash
+ame desktop dictation on
+```
+
+or **Dictation** on [Control](control.md)'s **Appearance** page. If the speech model of the captions' language is not
+on this computer yet, it says what it downloads and asks first, as captions do.
+
+Then click into a text field, press **Super+Ctrl+Shift+D** and speak. A small pill near the bottom of the screen says
+*Listening on this computer only* and shows the words as they come; each sentence you finish is typed into the field.
+Press **Super+Ctrl+Shift+D** again to stop. It also stops by itself after 15 seconds without a word, after two
+minutes, or when you go to another window.
+
+Good to know:
+
+- The microphone is listened to only while the pill shows, and GNOME's microphone indicator shows in the top bar
+  meanwhile. Nothing is recorded or written down, and nothing is sent anywhere.
+- It never types into a password field.
+- Most apps take the words as typed text. In a terminal, and in an app that does not take text from the input method,
+  each sentence is pasted instead, so it also lands on the [clipboard](#the-clipboard) and in its history.
+- Dictation writes what it hears without punctuation, and makes the mistakes captions make with noise and accents.
+- `ame desktop dictation off` turns it off, and its shortcut with it.
 
 ## Gestures and keys
 

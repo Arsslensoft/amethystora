@@ -9,6 +9,11 @@
 //!   amethystora-agent-tools manual-search [-k N] -- WORDS...
 //!                                                    the manual's pages that answer WORDS, as JSON, for the
 //!                                                    desktop's search: no policy asked, nothing recorded
+//!   amethystora-agent-tools files-index [--dir DIR] [--model DIR]
+//!                                                    files by meaning: JSON lines {path, modified, text} on stdin
+//!                                                    into the account's own index (paths and vectors only)
+//!   amethystora-agent-tools files-search [-k N] [--dir DIR] [--model DIR] -- WORDS...
+//!                                                    the files nearest to WORDS, as JSON, for the desktop's search
 //!   amethystora-agent-tools policy [--json|--level|--ceiling]
 //!                                                    what this account may use, and the administrator's settings
 //!   amethystora-agent-tools conf allow act|know|off|default [ACCOUNT] | conf root MODE
@@ -22,6 +27,7 @@ use std::io::{BufReader, Write};
 use std::path::PathBuf;
 use std::process::ExitCode;
 
+use amethystora_agent_tools::files;
 use amethystora_agent_tools::history;
 use amethystora_agent_tools::index::build::{self, Sources};
 use amethystora_agent_tools::index::{self, Index, Ranking};
@@ -33,6 +39,7 @@ use serde_json::{Value, json};
 fn usage() -> ExitCode {
     eprintln!("usage: amethystora-agent-tools mcp | search QUERY... | read ID | state TOPIC [FILTER] | history [ID] | undo ID | policy [--json]");
     eprintln!("       amethystora-agent-tools manual-search [-k N] -- WORDS...");
+    eprintln!("       amethystora-agent-tools files-index [--dir DIR] [--model DIR] | files-search [-k N] [--dir DIR] [--model DIR] -- WORDS...");
     eprintln!("       amethystora-agent-tools index --write DIR [--root ROOT] [--sources-only] [--model DIR] | eval GOLDEN [--dir DIR] [--min R]");
     ExitCode::from(64)
 }
@@ -106,6 +113,43 @@ fn main() -> ExitCode {
                     Ok(index) => index::manual_search(&index, &words, k.clamp(1, 5)),
                     Err(_) => Vec::new(),
                 }
+            };
+            println!("{}", Value::Array(found));
+            ExitCode::SUCCESS
+        }
+        // Files by meaning (plans/ui-ideas/spec-later.md, R5-37): the account's own index of Documents, from what
+        // amethystora-file-meaning hands over; nothing of the agent's switches is asked, nothing recorded
+        "files-index" => {
+            let dir = option(rest, "--dir").map(PathBuf::from).unwrap_or_else(files::dir);
+            let model = option(rest, "--model").unwrap_or_else(|| files::MODEL.to_string());
+            let model = match index::embed::Model::load(std::path::Path::new(&model)) {
+                Ok(model) => model,
+                Err(error) => {
+                    eprintln!("files-index: {error}");
+                    return ExitCode::FAILURE;
+                }
+            };
+            match files::write(&dir, &model, std::io::stdin().lock()) {
+                Ok(count) => {
+                    println!("{}", json!({"files": count}));
+                    ExitCode::SUCCESS
+                }
+                Err(error) => {
+                    eprintln!("files-index: {error}");
+                    ExitCode::FAILURE
+                }
+            }
+        }
+        "files-search" => {
+            let words_at = rest.iter().position(|arg| arg == "--").map(|at| at + 1).unwrap_or(rest.len());
+            let options = &rest[..words_at.saturating_sub(1).min(rest.len())];
+            let k = option(options, "-k").and_then(|n| n.parse::<usize>().ok()).unwrap_or(3).clamp(1, 10);
+            let dir = option(options, "--dir").map(PathBuf::from).unwrap_or_else(files::dir);
+            let model = option(options, "--model").unwrap_or_else(|| files::MODEL.to_string());
+            let words = rest[words_at..].join(" ");
+            let found = match index::embed::Model::load(std::path::Path::new(&model)) {
+                Ok(model) if !words.trim().is_empty() => files::search(&dir, &model, &words, k),
+                _ => Vec::new(),
             };
             println!("{}", Value::Array(found));
             ExitCode::SUCCESS

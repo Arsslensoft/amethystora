@@ -1,0 +1,208 @@
+#!/usr/bin/python3 -I
+# Click with the keyboard (plans/ui-ideas/spec-later.md, R5-36): the buttons, links and other controls of the window in
+# use, read from its accessibility tree, for Amethystora UI's access module, which puts a letter on each. Run as the
+# account, by the shell, only while the letters show.
+#
+#   amethystora-letters PID TITLE
+#       finds the active window of process PID (or else the active window titled TITLE) in the accessibility tree,
+#       prints one JSON line {"frame": [x, y, w, h], "items": [[x, y, w, h], ...]} of its controls that show, in the
+#       window's own coordinates (or {"error": WHY}), then reads stdin: `press N` does control N's action (a click, or the
+#       focus for a field) and ends; stdin closing ends it with nothing done
+#
+# A program of its own rather than the shell: every question to the tree is a call to the app over D-Bus, which an app
+# that hangs would make the whole desktop wait for. Here each call waits a second at most, the whole walk two, and at
+# most 300 controls are taken. Nothing is printed of what the controls say: only where they are.
+
+import json
+import sys
+import time
+import warnings
+
+# get_action_name still works where get_name is not in Atspi's bindings yet: its notice is not the journal's business
+warnings.filterwarnings('ignore', category=DeprecationWarning)
+
+# The kinds of control a letter goes on
+ROLES = {'PUSH_BUTTON', 'TOGGLE_BUTTON', 'CHECK_BOX', 'RADIO_BUTTON', 'LINK', 'MENU_ITEM', 'CHECK_MENU_ITEM',
+         'RADIO_MENU_ITEM', 'PAGE_TAB', 'COMBO_BOX', 'ENTRY', 'SPIN_BUTTON', 'SLIDER', 'SWITCH',
+         'LIST_ITEM', 'TABLE_ROW', 'TREE_ITEM', 'PASSWORD_TEXT',
+         # A push button's role is BUTTON in at-spi2-core's newer names
+         'BUTTON'}
+# Text that can be typed into, which GTK 4 gives the role of text: only while it is editable (a label never is)
+EDITABLE = {'TEXT'}
+# What a field gets instead of an action
+FIELDS = {'ENTRY', 'SPIN_BUTTON', 'SLIDER', 'TEXT', 'PASSWORD_TEXT'}
+MOST = 300
+VISITED = 4000
+DEPTH = 60
+WALK_S = 2.0
+# The actions taken first, by name, when a control has several
+PREFERRED = ('click', 'press', 'activate', 'jump', 'toggle', 'select', 'open')
+
+
+def say(record):
+    sys.stdout.write(json.dumps(record) + '\n')
+    sys.stdout.flush()
+
+
+def atspi():
+    import gi
+    gi.require_version('Atspi', '2.0')
+    from gi.repository import Atspi
+    Atspi.init()
+    # Each call to an app waits a second, and an app that is starting three, at most
+    Atspi.set_timeout(1000, 3000)
+    return Atspi
+
+
+def role_name(Atspi, accessible):
+    try:
+        return Atspi.Role(accessible.get_role()).value_name.removeprefix('ATSPI_ROLE_')
+    except Exception:
+        return ''
+
+
+def states(Atspi, accessible):
+    try:
+        return accessible.get_state_set()
+    except Exception:
+        return None
+
+
+def extents(Atspi, accessible):
+    try:
+        rect = accessible.get_component_iface().get_extents(Atspi.CoordType.WINDOW)
+        return [rect.x, rect.y, rect.width, rect.height]
+    except Exception:
+        return None
+
+
+def frame_of(Atspi, pid, title):
+    desktop = Atspi.get_desktop(0)
+    by_title = None
+    for a in range(min(desktop.get_child_count(), 200)):
+        try:
+            app = desktop.get_child_at_index(a)
+            app_pid = app.get_process_id()
+        except Exception:
+            continue
+        for w in range(min(app.get_child_count(), 50)):
+            try:
+                window = app.get_child_at_index(w)
+            except Exception:
+                continue
+            state = states(Atspi, window)
+            if state is None or not state.contains(Atspi.StateType.ACTIVE):
+                continue
+            if app_pid == pid:
+                return window
+            try:
+                if by_title is None and title and window.get_name() == title:
+                    by_title = window
+            except Exception:
+                pass
+    # A sandboxed app reaches the bus through a proxy, whose process is not the app's: its active window by its title
+    return by_title
+
+
+def controls(Atspi, frame):
+    found = []
+    started = time.monotonic()
+    stack = [(frame, 0)]
+    visited = 0
+    while stack and len(found) < MOST and visited < VISITED and time.monotonic() - started < WALK_S:
+        node, depth = stack.pop()
+        visited += 1
+        state = states(Atspi, node)
+        if state is None or not state.contains(Atspi.StateType.SHOWING) or state.contains(Atspi.StateType.DEFUNCT):
+            continue
+        role = role_name(Atspi, node)
+        wanted = role in ROLES or (role in EDITABLE and state.contains(Atspi.StateType.EDITABLE))
+        if node is not frame and wanted and \
+                (state.contains(Atspi.StateType.SENSITIVE) or state.contains(Atspi.StateType.ENABLED)):
+            box = extents(Atspi, node)
+            if box and box[2] > 2 and box[3] > 2:
+                found.append((node, box))
+        if depth >= DEPTH:
+            continue
+        try:
+            count = min(node.get_child_count(), 500)
+        except Exception:
+            continue
+        # In reading order: the first child comes off the stack first
+        for index in reversed(range(count)):
+            try:
+                stack.append((node.get_child_at_index(index), depth + 1))
+            except Exception:
+                continue
+    return found
+
+
+def press(Atspi, node):
+    try:
+        action = node.get_action_iface()
+    except Exception:
+        action = None
+    if action is not None and role_name(Atspi, node) not in FIELDS:
+        try:
+            count = action.get_n_actions()
+            # Atspi.Action.get_name, as at-spi2-core names it now (get_action_name before); called through the interface,
+            # since an accessible's own get_name is its label
+            def name_of(i):
+                try:
+                    return Atspi.Action.get_name(action, i)
+                except (AttributeError, TypeError):
+                    return action.get_action_name(i)
+            names = [(name_of(i) or '').lower() for i in range(count)]
+        except Exception:
+            count, names = 0, []
+        for wanted in PREFERRED:
+            if wanted in names:
+                return action.do_action(names.index(wanted))
+        if count > 0:
+            return action.do_action(0)
+    try:
+        return node.get_component_iface().grab_focus()
+    except Exception:
+        return False
+
+
+def main(argv):
+    if len(argv) != 3 or not argv[1].isdigit():
+        print('usage: amethystora-letters PID TITLE', file=sys.stderr)
+        return 64
+    try:
+        Atspi = atspi()
+        frame = frame_of(Atspi, int(argv[1]), argv[2])
+    except Exception as e:
+        say({'error': 'tree'})
+        print(f'amethystora-letters: {e}', file=sys.stderr)
+        return 1
+    if frame is None:
+        say({'error': 'window'})
+        return 1
+    box = extents(Atspi, frame)
+    found = controls(Atspi, frame)
+    # GTK 4 makes a widget's accessible object when it is first asked for, so a first walk of a window nobody has read
+    # yet can miss a part of it; a second walk, at once, finds what the first one woke up
+    again = controls(Atspi, frame)
+    if len(again) > len(found):
+        found = again
+    if not box or not found:
+        say({'error': 'none'})
+        return 1
+    say({'frame': box, 'items': [item for _, item in found]})
+    for line in sys.stdin:
+        words = line.split()
+        if len(words) == 2 and words[0] == 'press' and words[1].isdigit() and int(words[1]) < len(found):
+            try:
+                press(Atspi, found[int(words[1])][0])
+            except Exception as e:
+                print(f'amethystora-letters: {e}', file=sys.stderr)
+            return 0
+        if len(line) > 64:
+            break
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv))

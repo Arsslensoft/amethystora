@@ -64,6 +64,8 @@ mapfile -t FEATURES < <(features "${IMAGE_CONF}")
 # leaving keeps them as they were, and the sssd and winbind profiles take them as local does (08-hardening.sh)
 grep -qx with-duress-fingerprint "${CONF}" 2>/dev/null && FEATURES+=(with-duress-fingerprint)
 grep -qx with-duress-password "${CONF}" 2>/dev/null && FEATURES+=(with-duress-password)
+# ...as is the guest login's (amethystora-guest), which keeps the guest's empty password to the login screen
+grep -qx with-guest-login "${CONF}" 2>/dev/null && FEATURES+=(with-guest-login)
 case "${1:-}" in
     sssd | winbind)
         COMMAND=(authselect select "$1" "${FEATURES[@]}")

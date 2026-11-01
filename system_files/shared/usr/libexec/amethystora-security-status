@@ -978,7 +978,7 @@ fi
 # The stricter settings the owner turned on (amethystora-hardening): each costs something, so the report
 # names them, in case one is why something stopped working
 mapfile -t STRICTER_ON < <(/usr/libexec/amethystora-hardening status --json 2>/dev/null | jq -r '.[] |
-    (select(.default == "off" and .state == "on") | .title),
+    (select(.default == "off" and .state == "on" and (.loosens | not)) | .title),
     (select(.level == "strict" and .default == "on") | .title + " (strict)"),
     (.arguments // [] | .[] | select(.default == "off" and .state == "on") | .argument)')
 if [[ ${#STRICTER_ON[@]} -gt 0 ]]; then
@@ -1343,6 +1343,19 @@ duress_report password duress-password "$(gettext "Duress password")" "$(gettext
 COMMAND="ame security ssh-codes"
 report optional ssh-codes "$(/usr/libexec/amethystora-ssh-codes status)" "$(gettext "One-time codes for SSH")" \
     "$(gettext "A password login over SSH also asks for a code from an app on your phone, and a key logs in as before")"
+
+# A guest login (ame security guest-login; plans/ui-ideas/spec-later.md, R6-36): said only while it is on, since it is
+# no protection to recommend, and a check when a part of it is missing or the account is there with the switch off
+GUEST="$(/usr/libexec/amethystora-guest status 2>/dev/null)"
+COMMAND="ame security guest-login"
+if [[ "${GUEST}" == broken ]]; then
+    report watching guest-login check "$(gettext "Guest login")" \
+        "$(gettext "The guest login is not as its switch set it up")" "$(gettext "Turn it off, then on again if you want it, with:")"
+elif [[ "${GUEST}" == on ]]; then
+    report optional guest-login on "$(gettext "Guest login")" \
+        "$(gettext "A visitor's login without a password, whose home folder is emptied when they log out")"
+fi
+COMMAND=""
 
 if systemctl --user is-enabled --quiet amethystora-backup.timer 2>/dev/null; then BACKUP=on; else BACKUP=off; fi
 COMMAND="ame backup"

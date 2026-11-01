@@ -1,0 +1,141 @@
+#!/usr/bin/python3 -I
+# Files by meaning (plans/ui-ideas/spec-later.md, R5-37), run as the account. The desktop's search finds files in
+# Documents by what they are about, with the agent's small embedding model (potion-base-8M, in the image), from the text
+# GNOME's own indexer, localsearch, already extracted from them: nothing here opens a file.
+#
+#   amethystora-file-meaning on      the daily reading on (amethystora-file-meaning.timer), and a first reading now
+#   amethystora-file-meaning off     the reading off, and what it worked out deleted
+#   amethystora-file-meaning index   one reading: localsearch is asked, read-only, for the start of the text of each file
+#                                    under Documents, and `amethystora-agent-tools files-index` works out each one's
+#                                    meaning into ~/.local/state/amethystora/file-meaning (paths and vectors, never text)
+#   amethystora-file-meaning texts   what index hands over, as JSON lines, for the tests
+#
+# The ame desktop search meaning recipe runs on and off; the user unit runs index, on mains power only, at low priority.
+
+import json
+import os
+import shutil
+import subprocess
+import sys
+from urllib.parse import unquote, urlparse
+
+TOOLS = '/usr/libexec/amethystora-agent-tools'
+UNIT = 'amethystora-file-meaning'
+# The names localsearch has answered under (the newer first)
+SERVICES = ('org.freedesktop.LocalSearch3', 'org.freedesktop.Tracker3.Miner.Files')
+# How much of each file's text, and how many files, at most
+CHARS = 4000
+MOST = 20000
+
+
+def state_dir():
+    state = os.environ.get('XDG_STATE_HOME', '')
+    if not os.path.isabs(state):
+        state = os.path.join(os.path.expanduser('~'), '.local', 'state')
+    return os.path.join(state, 'amethystora', 'file-meaning')
+
+
+def documents():
+    """The account's Documents folder, as GLib names it (XDG user dirs), never the home itself"""
+    import gi
+    from gi.repository import GLib
+    folder = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DOCUMENTS)
+    home = os.path.realpath(os.path.expanduser('~'))
+    if not folder or os.path.realpath(folder) == home or not os.path.isdir(folder):
+        return None
+    return os.path.realpath(folder)
+
+
+def texts():
+    """(path, modified, text) of each file under Documents that localsearch holds text for"""
+    folder = documents()
+    if not folder:
+        return
+    import gi
+    gi.require_version('Tsparql', '3.0')
+    from gi.repository import Gio, Tsparql
+    prefix = Gio.File.new_for_path(folder).get_uri().rstrip('/') + '/'
+    connection = None
+    for service in SERVICES:
+        try:
+            connection = Tsparql.SparqlConnection.bus_new(service, None, None)
+            break
+        except Exception:
+            connection = None
+    if connection is None:
+        return
+    # The start of each file's text, its address and when it last changed; the address must be under Documents
+    statement = connection.query_statement(
+        'SELECT DISTINCT ?url ?modified SUBSTR(?text, 1, %d) WHERE { '
+        '?file a nfo:FileDataObject ; nie:url ?url ; nfo:fileLastModified ?modified . '
+        '?content nie:isStoredAs ?file ; nie:plainTextContent ?text . '
+        'FILTER (STRSTARTS(?url, ~prefix)) } LIMIT %d' % (CHARS, MOST), None)
+    statement.bind_string('prefix', prefix)
+    cursor = statement.execute(None)
+    try:
+        while cursor.next(None):
+            url = cursor.get_string(0)[0] or ''
+            if not url.startswith(prefix):
+                continue
+            path = unquote(urlparse(url).path)
+            real = os.path.realpath(path)
+            # A file that is still there, under Documents, reached through no link
+            if not real.startswith(folder + os.sep) or not os.path.isfile(real) or real != os.path.abspath(path):
+                continue
+            yield path, cursor.get_string(1)[0] or '', cursor.get_string(2)[0] or ''
+    finally:
+        cursor.close()
+
+
+def print_texts():
+    for path, modified, text in texts():
+        sys.stdout.write(json.dumps({'path': path, 'modified': modified, 'text': text}, ensure_ascii=False) + '\n')
+    return 0
+
+
+def index():
+    out = state_dir()
+    os.makedirs(out, mode=0o700, exist_ok=True)
+    os.chmod(out, 0o700)
+    tools = subprocess.Popen([TOOLS, 'files-index', '--dir', out], stdin=subprocess.PIPE, text=True, encoding='utf-8')
+    try:
+        for path, modified, text in texts():
+            tools.stdin.write(json.dumps({'path': path, 'modified': modified, 'text': text}, ensure_ascii=False) + '\n')
+    except BrokenPipeError:
+        pass
+    finally:
+        try:
+            tools.stdin.close()
+        except BrokenPipeError:
+            pass
+    return tools.wait()
+
+
+def systemctl(*args):
+    return subprocess.run(['systemctl', '--user', *args], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode
+
+
+def on():
+    systemctl('enable', '--now', f'{UNIT}.timer')
+    # The first reading now, in the background: on battery the unit's condition leaves it to the timer
+    systemctl('start', '--no-block', f'{UNIT}.service')
+    return 0
+
+
+def off():
+    systemctl('disable', '--now', f'{UNIT}.timer')
+    systemctl('stop', f'{UNIT}.service')
+    shutil.rmtree(state_dir(), ignore_errors=True)
+    return 0
+
+
+def main(argv):
+    commands = {'on': on, 'off': off, 'index': index, 'texts': print_texts}
+    if len(argv) != 2 or argv[1] not in commands:
+        print('usage: amethystora-file-meaning on|off|index|texts', file=sys.stderr)
+        return 64
+    return commands[argv[1]]()
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv))

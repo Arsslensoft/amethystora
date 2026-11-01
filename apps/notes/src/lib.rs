@@ -15,6 +15,7 @@ pub mod export;
 pub mod import;
 pub mod passkeys;
 pub mod quick;
+pub mod search;
 pub mod sync;
 pub mod today;
 pub mod vault;
