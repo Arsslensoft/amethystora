@@ -14,6 +14,9 @@ jetbrains-toolbox:
     if [[ -x "${DEST}/bin/jetbrains-toolbox" ]]; then
         echo "$(eval_gettext "JetBrains Toolbox is installed in \${DEST}, and keeps itself up to date.")"
         gum confirm --default=false "$(gettext "Install it again?")" || exit 0
+    else
+        echo "$(eval_gettext "JetBrains Toolbox installs and updates JetBrains' IDEs. This downloads it from JetBrains into \${DEST}, and opens it.")"
+        gum confirm "$(gettext "Install JetBrains Toolbox?")" || exit 0
     fi
     case "$(uname -m)" in
         x86_64) platform=linux ;;
@@ -396,8 +399,16 @@ flatpaks:
 # Configure Amethystora-CLI Terminal Experience with Brew
 [no-exit-message]
 cli:
-    @amethystora-bling on
-    PATH="${PATH}:/home/linuxbrew/.linuxbrew/bin" brew bundle --file=/usr/share/amethystora/homebrew/cli.Brewfile
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    brewfile=/usr/share/amethystora/homebrew/cli.Brewfile
+    echo "$(gettext "This turns the terminal's extras on in your shell's settings, and installs these from Homebrew:")"
+    sed -n 's/^brew "\(.*\)"$/\1/p' "${brewfile}" | paste -sd' ' | fold -s -w 78
+    gum confirm "$(gettext "Install the command line tools?")" || exit 0
+    amethystora-bling on
+    PATH="${PATH}:/home/linuxbrew/.linuxbrew/bin" brew bundle --file="${brewfile}"
 
 # Sites in windows of their own, with a launcher in the app grid: list, install, remove (amethystora-webapp)
 [no-cd]

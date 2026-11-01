@@ -6444,6 +6444,15 @@ msgstr ""
 
 #: usr/share/amethystora/just/apps.just
 #, sh-format
+msgid "JetBrains Toolbox installs and updates JetBrains' IDEs. This downloads it from JetBrains into ${DEST}, and opens it."
+msgstr ""
+
+#: usr/share/amethystora/just/apps.just
+msgid "Install JetBrains Toolbox?"
+msgstr ""
+
+#: usr/share/amethystora/just/apps.just
+#, sh-format
 msgid "JetBrains makes no Toolbox for ${architecture}."
 msgstr ""
 
@@ -6667,6 +6676,14 @@ msgstr ""
 
 #: usr/share/amethystora/just/apps.just
 msgid "Note: Some of these take a while to load, we'll keep working on it."
+msgstr ""
+
+#: usr/share/amethystora/just/apps.just
+msgid "This turns the terminal's extras on in your shell's settings, and installs these from Homebrew:"
+msgstr ""
+
+#: usr/share/amethystora/just/apps.just
+msgid "Install the command line tools?"
 msgstr ""
 
 #: usr/share/amethystora/just/apps.just

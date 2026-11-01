@@ -742,11 +742,11 @@ if [[ "${SUITE_PHASE}" == 9 ]]; then
     else
         skip "the chosen agent (${chosen}) is installed already"
     fi
-    in_card 900 -- jetbrains-toolbox
+    in_card 900 'Install JetBrains Toolbox' y -- jetbrains-toolbox
     card_ok "JetBrains Toolbox installed: ${CARD}" "[[ -x ${HOME_DIR}/.local/share/jetbrains-toolbox/bin/jetbrains-toolbox ]]" \
         "item jetbrains-toolbox | jq -e '.state == \"installed\"'"
     pkill -u "${TEST_USER}" -f jetbrains-toolbox || true
-    in_card 1500 -- cli
+    in_card 1500 'Install the command line tools' y -- cli
     card_ok "the command-line tools installed from Homebrew, the terminal tools on: ${CARD}" "[[ \"\$(state bling)\" == on ]]" \
         "as_user '${BREW} list eza'"
     # Bold Brew, which the command-line tools install, asked for when they did not; a list picked (ai-tools, the
