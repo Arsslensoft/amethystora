@@ -7,7 +7,11 @@ After=network-online.target
 
 [Service]
 Type=oneshot
+# On a connection that counts data, the timer's backup to the network waits for one that does not, at most a week; a
+# backup to a disk of this machine, and Back up now, do not (amethystora-metered)
+ExecCondition=/usr/libexec/amethystora-metered wait backup
 ExecStart=/usr/libexec/amethystora-backup
+ExecStartPost=/usr/libexec/amethystora-metered done backup
 # A backup that makes the desktop stutter is a backup the user turns off
 Nice=19
 IOSchedulingClass=idle

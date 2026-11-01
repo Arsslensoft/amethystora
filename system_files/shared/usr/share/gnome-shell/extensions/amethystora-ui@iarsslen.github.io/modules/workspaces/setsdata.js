@@ -91,6 +91,38 @@ export function clean(data) {
     return result;
 }
 
+// The apps open before an update's restart (workspaces/resume.js), as resume.json may hold them: each workspace's
+// windows in a saved set's shape, by the workspace's place, at most MAX_SETS workspaces; `from` is the system that wrote
+// it (IMAGE_VERSION and BUILD_ID), `kind` who asked ('restart', or 'locked' for the snapshot a lock takes), `active` the
+// workspace that was in front. null when nothing fits.
+const VERSION_ID = /^[A-Za-z0-9._:+-]{1,96}$/;
+export function cleanResume(data) {
+    if (!isObject(data) || data.version !== 1 || !Number.isFinite(data.saved) || typeof data.from !== 'string' ||
+        !VERSION_ID.test(data.from) || !['restart', 'locked'].includes(data.kind) || !Array.isArray(data.workspaces))
+        return null;
+    const seen = new Set();
+    const workspaces = [];
+    for (const entry of data.workspaces.slice(0, 4 * MAX_SETS)) {
+        if (!isObject(entry) || !isInt(entry.index, 0, 63) || seen.has(entry.index))
+            continue;
+        const set = cleanSet({name: `${entry.index + 1}`, saved: data.saved, layout: entry.layout,
+            windows: entry.windows});
+        if (!set)
+            continue;
+        seen.add(entry.index);
+        workspaces.push({index: entry.index, layout: set.layout, windows: set.windows});
+        if (workspaces.length === MAX_SETS)
+            break;
+    }
+    if (!workspaces.length)
+        return null;
+    workspaces.sort((a, b) => a.index - b.index);
+    return {
+        version: 1, saved: Math.floor(data.saved), from: data.from, kind: data.kind,
+        active: isInt(data.active, 0, 63) ? data.active : workspaces[0].index, workspaces,
+    };
+}
+
 // A set added to the list: one of the same name gives way to it, and past MAX_SETS the oldest go
 export function addSet(data, set) {
     // First, so that it stays ahead of sets saved in the same second

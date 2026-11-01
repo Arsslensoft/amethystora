@@ -52,6 +52,10 @@ struct PageState {
     details: bool,
     /// LVFS is being asked again for firmware
     checking_firmware: bool,
+    /// Tonight's restart is being set or taken away
+    arming: bool,
+    /// Opened as `amethystora-update update` (the pill's Update anyway): the update starts once the status is in
+    wants_update: bool,
     /// When the status was last read
     loaded: f64,
 }
@@ -92,6 +96,21 @@ impl App for Updates {
     fn reload(&self) {
         let this = self.rc();
         glib::spawn_future_local(async move { this.reload().await });
+    }
+
+    /// `amethystora-update update`: Update anyway, from the pill's Saving data. An update already running is followed.
+    fn open(&self, args: &[String]) {
+        if args.first().map(String::as_str) != Some("update") {
+            return;
+        }
+        let this = self.rc();
+        if this.state.borrow().status.is_some() {
+            if this.hero_kind() != "running" {
+                this.start_update();
+            }
+        } else {
+            this.state.borrow_mut().wants_update = true;
+        }
     }
 }
 
@@ -157,6 +176,8 @@ impl Updates {
         let containers = glib::spawn_future_local(backend::containers());
         let agent = glib::spawn_future_local(backend::agent_on());
         let firmware = glib::spawn_future_local(backend::firmware());
+        let night = glib::spawn_future_local(backend::night());
+        let metered = glib::spawn_future_local(backend::metered());
         let status = Status {
             machine: machine.await.ok().flatten(),
             automatic: automatic.await.unwrap_or_default(),
@@ -164,6 +185,8 @@ impl Updates {
             containers: containers.await.unwrap_or_default(),
             agent: agent.await.unwrap_or(false),
             firmware: firmware.await.unwrap_or_default(),
+            night: night.await.unwrap_or_default(),
+            metered: metered.await.unwrap_or_default(),
         };
         self.last_containers.replace(Some(status.containers.clone()));
         self.last_recent.replace(status.recent.clone());
@@ -175,6 +198,10 @@ impl Updates {
         let status = self.status().await;
         self.state.borrow_mut().status = Some(status);
         self.render();
+        let wanted = std::mem::take(&mut self.state.borrow_mut().wants_update);
+        if wanted && self.hero_kind() != "running" {
+            self.rc().start_update();
+        }
     }
 
     /// The update that failed, followed here or found ended, handed to the agent by its unit's name, which

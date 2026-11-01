@@ -524,6 +524,16 @@ impl Updates {
                 };
                 notes.push(t!("No hurry: shutting down at the end of the day does it too"));
                 actions.push(self.button(&t!("Restart now"), Some("power"), true, false, false, |this| this.restart_now()).upcast());
+                // Restart while you are away, once a night time is chosen (ame update night-restart)
+                if let Some(night) = status.night.time.as_ref() {
+                    let arming = self.state.borrow().arming;
+                    if let Some(at) = status.night.armed {
+                        notes.push(t!("Restarts {when} if the screen is locked, no app holds the logout and it is on mains power", when = when(at)));
+                        actions.push(self.button(&t!("Not tonight"), None, false, false, arming, |this| this.tonight(false)).upcast());
+                    } else {
+                        actions.push(self.button(&t!("Tonight at {time}", time = night), Some("clock"), false, false, arming, |this| this.tonight(true)).upcast());
+                    }
+                }
                 actions.push(self.button(&t!("Check again"), Some("refresh"), false, false, false, |this| this.update_now()).upcast());
             }
             "restart" => {
@@ -943,6 +953,12 @@ impl Updates {
                 Some(self.manual_link(&t!("Holding on to one build"), "book", "updates#holding-on-to-one-build").upcast()),
             ));
         }
+        if let Some(waited) = self.waited_callout(kind) {
+            self.view.append(&waited);
+        }
+        if let Some(saving) = self.saving_callout() {
+            self.view.append(&saving);
+        }
         let steps_title = if kind == "running" || self.update.borrow().is_some() { t!("This update") } else { t!("What gets updated") };
         self.view.append(&Self::section(&steps_title, &[steps.upcast()]));
         if let Some(details) = self.details_section() {
@@ -970,7 +986,78 @@ impl Updates {
         self.view.append(&terminal);
     }
 
+    /// A night that did not restart (Restart while you are away), said while the update still waits for it
+    fn waited_callout(&self, kind: &str) -> Option<gtk::Box> {
+        let status = self.state.borrow().status.clone()?;
+        let waited = status.night.last.clone()?;
+        if kind == "running" || !status.machine.as_ref().is_some_and(|m| m.next.is_some()) {
+            return None;
+        }
+        let at = time(waited.night);
+        let text = match waited.why.as_str() {
+            "late" => t!("The computer was asleep at {time}, so it did not restart.", time = &at),
+            "unlocked" => t!("The screen was not locked at {time}, so nothing was closed.", time = &at),
+            "inhibited" => match waited.app.as_deref().and_then(backend::app_name) {
+                Some(app) => t!("{app} had unsaved work, so nothing was closed.", app = app),
+                None => t!("An app had unsaved work, so nothing was closed."),
+            },
+            "battery" => t!("The computer was on battery power, so it waited."),
+            _ => t!("The restart was refused: somebody else may be signed in."),
+        };
+        let arming = self.state.borrow().arming;
+        let mut buttons: Vec<gtk::Widget> = Vec::new();
+        if status.night.time.is_some() && status.night.armed.is_none() {
+            buttons.push(self.button(&t!("Tonight again"), Some("clock"), false, true, arming, |this| this.tonight(true)).upcast());
+        }
+        buttons.push(self.button(&t!("Restart now"), Some("power"), false, true, false, |this| this.restart_now()).upcast());
+        Some(Self::callout("check", &t!("Not restarted last night"), &text, Some(Self::actions(buttons, false).upcast())))
+    }
+
+    /// Saving data: on a connection that counts it, the automatic updates wait (amethystora-metered)
+    fn saving_callout(&self) -> Option<gtk::Box> {
+        let metered = self.state.borrow().status.as_ref()?.metered.clone();
+        if !metered.on {
+            return None;
+        }
+        let mut text = t!("This connection counts data, so the automatic updates wait for one that does not, never longer than a week. Update now updates anyway.");
+        if let Some(since) = metered.since {
+            text = format!("{text} {}", t!("They have waited since {when}.", when = when(since)));
+        }
+        Some(Self::callout("info", &t!("Saving data"), &text, Some(self.manual_link(&t!("Saving data in the manual"), "book", "updates#saving-data").upcast())))
+    }
+
     // --- What the buttons do ------------------------------------------------------------------------------
+
+    /// Update anyway, from the pill's Saving data
+    pub(crate) fn start_update(self: &Rc<Self>) {
+        self.update_now();
+    }
+
+    /// Tonight's restart set or taken away, then what the helper says of it now
+    fn tonight(self: &Rc<Self>, on: bool) {
+        {
+            let mut state = self.state.borrow_mut();
+            state.arming = true;
+            state.notice.clear();
+        }
+        self.render();
+        let this = self.clone();
+        gtk::glib::spawn_future_local(async move {
+            let result = backend::set_tonight(on).await;
+            let night = backend::night().await;
+            {
+                let mut state = this.state.borrow_mut();
+                state.arming = false;
+                if let Some(status) = state.status.as_mut() {
+                    status.night = night;
+                }
+                if let Err(error) = result {
+                    state.notice = error;
+                }
+            }
+            this.render();
+        });
+    }
 
     fn update_now(self: &Rc<Self>) {
         {
@@ -1111,9 +1198,13 @@ impl Updates {
     }
 }
 
-/// GNOME's own restart dialog, which gives open apps the chance to object, and restarts the computer
+/// GNOME's own restart dialog, which gives open apps the chance to object, and restarts the computer; the open apps
+/// are kept first for the login after it (Pick up where you left off)
 fn restart() {
-    process::launch("gnome-session-quit", &["--reboot"]);
+    gtk::glib::spawn_future_local(async {
+        backend::keep_open_apps().await;
+        process::launch("gnome-session-quit", &["--reboot"]);
+    });
 }
 
 

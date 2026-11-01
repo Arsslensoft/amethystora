@@ -8,8 +8,11 @@ ConditionPathIsDirectory=%S/amethystora/pkg/containers
 [Service]
 Type=oneshot
 # Started by the timer, it holds back the way uupd's automatic updates do (on battery, under load);
-# started by hand or by System Updates, it does not
+# started by hand or by System Updates, it does not. On a connection that counts data, the timer's run waits for one
+# that does not, at most a week (amethystora-metered)
+ExecCondition=/usr/libexec/amethystora-metered wait containers
 ExecStart=/usr/bin/amethystora-pkg upgrade-all
+ExecStartPost=/usr/libexec/amethystora-metered done containers
 TimeoutStartSec=4h
 # An upgrade that makes the desktop stutter is an upgrade the user turns off
 Nice=19

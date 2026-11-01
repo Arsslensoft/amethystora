@@ -246,6 +246,15 @@ listed, and only while the menu is open. How much each app sends would need an a
 the list counts connections, not bytes. **Network per app, in Security** opens the Apps page, where an
 app's network can be taken away.
 
+### A new network's zone
+
+The first time you join a network, a notification names the firewall zone it is in and what that means: in the
+default zone, phone pairing is closed and nothing on this computer is shared; in the home zone, phones can pair;
+in the away zone, nothing that starts on that network reaches the computer. **Open Security** opens its Network
+settings, where a network can be named home ([home networks](security.md#on-from-the-start)). It changes
+nothing itself, and it says this once per network: the networks this account has joined before are remembered
+by NetworkManager's id for them, never by name. `ame desktop zone-notice off` turns it off.
+
 ## Notifications
 
 GNOME folds an app's notifications in the calendar's list into one stack; a folded stack shows how many it

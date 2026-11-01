@@ -139,6 +139,15 @@ export default class AmethystoraUI extends Extension {
     }
 
     disable() {
+        // Before anything stops, while every module still runs: what a module keeps of the desktop as it is (a lock
+        // keeping the open apps for an update's restart, workspaces/resume.js)
+        for (const [name, module] of this.modules ?? []) {
+            try {
+                module.beforeDisable?.();
+            } catch (e) {
+                console.error(`Amethystora UI: the ${name} module could not keep its state: ${e.message}`);
+            }
+        }
         for (const [name, module] of [...this.modules ?? []].reverse()) {
             try {
                 module.disable();

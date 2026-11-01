@@ -9,7 +9,8 @@
 // piece by piece, and a file that cannot be read never stops the shell.
 //
 // Nothing is connected between openings. While one runs (30 seconds at most) it watches for new windows, and each
-// new window until it is placed.
+// new window until it is placed. The apps open before an update's restart (workspaces/resume.js) come back the same
+// way, one workspace after another (openQueue).
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
@@ -109,11 +110,16 @@ export class Sets {
         this._claims = new WeakMap();
         // How many signal connections an opening holds on the display now (0 between openings), for the tests
         this.connections = 0;
+        // The workspaces still to open after an update's restart (openQueue), and the one shown at the end
+        this._queue = null;
+        this._queueActive = null;
+        this._queueId = 0;
         if (copy)
             this._write();
     }
 
     disable() {
+        this._clearQueue();
         this._endOpening();
         if (this._writeId)
             GLib.source_remove(this._writeId);
@@ -144,6 +150,7 @@ export class Sets {
                 connected: opening.connected,
             } : null,
             connections: this.connections,
+            queued: this._queue?.length ?? 0,
             risen: this._ext.modules?.get('motion')?.risen ?? 0,
         };
     }
@@ -220,6 +227,18 @@ export class Sets {
     save(workspace) {
         if (!this._data || !workspace)
             return null;
+        const captured = this.capture(workspace);
+        if (!captured)
+            return null;
+        this._data = addSet(this._data, captured.set);
+        this._queueWrite();
+        return {name: captured.set.name, count: captured.set.windows.length, left: captured.left};
+    }
+
+    // A workspace's windows as a set would hold them, checked as the file would be ({set, left}), or null when it has none
+    capture(workspace) {
+        if (!workspace)
+            return null;
         const index = workspace.index();
         const all = this.windowsOf(workspace);
         // Beyond the limit, the windows used last are kept: the top of the stack
@@ -259,11 +278,7 @@ export class Sets {
         const set = {name, saved: now(), layout: engine ? 'tiling' : 'classic', windows: saved};
         // What the file would hold is what is kept: an entry the file would refuse is not kept either
         const checked = clean({version: 1, sets: [set]}).sets[0];
-        if (!checked)
-            return null;
-        this._data = addSet(this._data, checked);
-        this._queueWrite();
-        return {name, count: checked.windows.length, left: all.length - windows.length};
+        return checked ? {set: checked, left: all.length - windows.length} : null;
     }
 
     // Where a window is on its screen: where it is drawn, under the tiling, which may be beside its frame
@@ -306,16 +321,67 @@ export class Sets {
         const set = this.list.find(s => s.name === name);
         if (!set)
             return;
+        // A set opened from the menu ends what the queue below still had to open
+        this._clearQueue();
+        this._openSet(set, null, true);
+    }
+
+    // The apps open before an update's restart (workspaces/resume.js): each entry ({index, layout, windows}) on the
+    // workspace at its own place, one after another, and the workspace that was in front shown at the end
+    openQueue(entries, active) {
+        this._clearQueue();
+        this._endOpening();
+        this._queue = [...entries];
+        this._queueActive = active;
+        this._nextQueued();
+    }
+
+    _clearQueue() {
+        if (this._queueId)
+            GLib.source_remove(this._queueId);
+        this._queueId = 0;
+        this._queue = null;
+        this._queueActive = null;
+    }
+
+    // The workspace at a place, made when dynamic workspaces have fewer; null when GNOME keeps a fixed number short of it
+    _workspaceAt(index) {
+        const manager = global.workspace_manager;
+        while (manager.n_workspaces <= index && Meta.prefs_get_dynamic_workspaces() && manager.n_workspaces < 36)
+            manager.append_new_workspace(false, global.get_current_time());
+        return manager.get_workspace_by_index(index);
+    }
+
+    _nextQueued() {
+        const queue = this._queue;
+        if (!queue || !this._data)
+            return;
+        const entry = queue.shift();
+        if (!entry) {
+            const front = this._queueActive !== null ? global.workspace_manager.get_workspace_by_index(this._queueActive) : null;
+            this._clearQueue();
+            if (front && front !== global.workspace_manager.get_active_workspace())
+                front.activate(global.get_current_time());
+            return;
+        }
+        const set = {name: `${entry.index + 1}`, saved: 0, layout: entry.layout, windows: entry.windows};
+        const target = this._workspaceAt(entry.index);
+        this._openSet(set, target, false, true);
+    }
+
+    // `target` the workspace to open on (null: the one you are on when empty, else the next empty one), `named` whether
+    // an unnamed workspace takes the set's name, `queued` whether the queue goes on when this opening ends
+    _openSet(set, target, named, queued = false) {
         this._endOpening();
         const manager = global.workspace_manager;
         const active = manager.get_active_workspace();
-        const target = this._targetFor(active);
+        target ??= this._targetFor(active);
         const appSystem = Shell.AppSystem.get_default();
         const order = tileOrder(set);
         const since = Math.max(0, ...global.display.list_all_windows().map(w => w.get_stable_sequence()));
         const opening = {
             name: set.name, target, since, began: GLib.get_monotonic_time(), claims: [], byWindow: new Map(),
-            apps: new Map(), owners: new Map(), connected: false, timer: 0, later: 0,
+            apps: new Map(), owners: new Map(), connected: false, timer: 0, later: 0, queued,
         };
         set.windows.forEach((saved, index) => {
             // An app that is not installed any more is left out
@@ -337,7 +403,8 @@ export class Sets {
 
         if (target !== active)
             target.activate(global.get_current_time());
-        this._module.nameIfUnnamed(target.index(), set.name);
+        if (named)
+            this._module.nameIfUnnamed(target.index(), set.name);
 
         // New windows are watched from now on, before any app is asked for one
         global.display.connectObject('window-created', (d, window) => this._created(window), this);
@@ -393,8 +460,9 @@ export class Sets {
                 console.warn(`Amethystora UI: the set ${opening.name} could not start ${group.app.get_id()}: ${e.message}`);
                 for (const claim of open)
                     claim.done = true;
-                Main.notify(_('%s could not be started').format(app.get_name()),
-                    _('The set %s opened without it.').format(opening.name));
+                Main.notify(_('%s could not be started').format(app.get_name()), opening.queued
+                    ? _('The apps that were open before the restart came back without it.')
+                    : _('The set %s opened without it.').format(opening.name));
             }
             return;
         }
@@ -645,6 +713,14 @@ export class Sets {
         for (const claim of opening.claims) {
             if (!claim.window)
                 claim.done = true;
+        }
+        // The next workspace of the queue, once this signal or timer has returned
+        if (opening.queued && this._queue && !this._queueId) {
+            this._queueId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+                this._queueId = 0;
+                this._nextQueued();
+                return GLib.SOURCE_REMOVE;
+            });
         }
     }
 

@@ -4,7 +4,7 @@
 // What a tampered sets.json may hold and what is kept of it, and where an opening's windows go in a strip. A failure
 // throws, which makes either exit with an error.
 
-import {MAX_SETS, addSet, clean, cleanName, isAppId, isName, slot, tileOrder} from
+import {MAX_SETS, addSet, clean, cleanName, cleanResume, isAppId, isName, slot, tileOrder} from
     '../../system_files/shared/usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/workspaces/setsdata.js';
 
 const say = globalThis.print ?? console.log;
@@ -120,6 +120,21 @@ expect('into its column', slot([[t(0)], [t(1, 0), t(1, 2)]], t(1, 1)), {column: 
 expect('top of its column', slot([[t(1, 1)]], t(1, 0)), {column: 0, row: 0});
 // Two windows of one app around another: kitty, Files, kitty
 expect('kitty files kitty', slot([[t(0)], [t(2)]], t(1)), {column: 1});
+
+// What an update's restart keeps (resume.json, workspaces/resume.js): each workspace by its place, with a set's windows
+const resume = {version: 1, saved: 1761900000, from: 'latest-45.20261031:abc1234', kind: 'restart', active: 2,
+    workspaces: [{index: 2, layout: 'tiling', windows: good.windows}, {index: 0, layout: 'classic', windows: [good.windows[0]]}]};
+expect('resume kept, by place', cleanResume(resume)?.workspaces.map(w => [w.index, w.windows.length]), [[0, 1], [2, 3]]);
+expect('resume: the workspace in front', cleanResume(resume)?.active, 2);
+for (const [what, bad] of [['version', {...resume, version: 2}], ['kind', {...resume, kind: 'x'}],
+    ['from', {...resume, from: 'a b'}], ['saved', {...resume, saved: 'now'}], ['not an object', []],
+    ['nothing left', {...resume, workspaces: [{index: 1, layout: 'classic', windows: [{app: 'bad', rank: 0}]}]}]])
+    expect(`resume refused: ${what}`, cleanResume(bad), null);
+expect('resume: a place twice, a place out of range', cleanResume({...resume, workspaces: [
+    {index: 1, layout: 'classic', windows: good.windows}, {index: 1, layout: 'classic', windows: good.windows},
+    {index: 64, layout: 'classic', windows: good.windows}]})?.workspaces.map(w => w.index), [1]);
+expect('resume: no title survives', JSON.stringify(cleanResume({...resume, workspaces: [{index: 0, layout: 'classic',
+    windows: [{app: 'kitty.desktop', rank: 0, title: 'secret'}]}]})).includes('secret'), false);
 
 if (failures.length) {
     for (const f of failures)

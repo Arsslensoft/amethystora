@@ -137,10 +137,11 @@ GLASS_KEYS='{"material": ["s", ["frost", "prism", "clear"]], "solid": ["b"], "bl
 # The motion's keys: how a window goes into the dock, and how workspaces change
 MOTION=org.gnome.shell.extensions.amethystora-ui.motion
 MOTION_KEYS='{"minimize": ["s", ["droplet", "shrink"]], "workspace-switch": ["s", ["depth", "slide"]]}'
-# The top bar's workspaces: their names from their main app, and the saved sets in their menu. Never its two
+# The top bar's workspaces: their names from their main app, the saved sets in their menu, and picking up after an
+# update's restart (never resume.json, which is this machine's state). Never its two
 # keybindings, which the keybindings part keeps, nor sets.json, which names this machine's screens.
 WORKSPACES=org.gnome.shell.extensions.amethystora-ui.workspaces
-WORKSPACES_KEYS='{"auto-names": ["b"], "sets": ["b"]}'
+WORKSPACES_KEYS='{"auto-names": ["b"], "sets": ["b"], "resume": ["b"]}'
 # The windows module's keys: snap layouts, the switcher, the Super card, the corners, show desktop, the gestures,
 # places, dimming, the drop-down terminal and the scratchpad, keep on top, see-through windows (and the apps that open
 # so, by launcher ID), the frame, sizes for recording and reopening. Never snap-chooser, drop-down-key, keep-on-top-key
@@ -174,7 +175,8 @@ PILL_KEYS='{
     "live": ["b"], "privacy-dots": ["b"], "glow": ["b"], "quiet": ["b"], "quiet-night": ["b"],
     "digest": ["b"], "digest-times": ["as", "times"], "later": ["b"], "later-times": ["as", "times"], "whats-new": ["b"],
     "meetings": ["b"],
-    "digest-through": ["as", "launchers"], "digest-wait": ["as", "launchers"]
+    "digest-through": ["as", "launchers"], "digest-wait": ["as", "launchers"],
+    "saving-data": ["b"]
 }'
 # Quick settings' tiles: the order they come first in and the ones put away, each a tile's short name
 QUICK=org.gnome.shell.extensions.amethystora-ui.quick
@@ -293,11 +295,11 @@ SCREENSHOT_KEYS='{"capture-thumbnail": ["b"], "capture-pin": ["b"], "recording-t
 DESKWIDGETS=org.gnome.shell.extensions.amethystora-ui.deskwidgets
 DESKWIDGETS_KEYS='{"enabled": ["b"]}'
 # The privacy module: the share guard's look, the apps it covers (launchers by their ID) and the Private folder's windows,
-# the shield's place, and network by app
+# the shield's place, network by app and a new network's zone (never networks-seen.json, this machine's own)
 PRIVACY=org.gnome.shell.extensions.amethystora-ui.privacy
 PRIVACY_KEYS='{
     "share-guard": ["s", ["blur", "card", "off"]], "share-guard-apps": ["as", "launchers"], "share-guard-private": ["b"],
-    "shield": ["s", ["tile", "mark", "attention", "off"]], "network-apps": ["b"]
+    "shield": ["s", ["tile", "mark", "attention", "off"]], "network-apps": ["b"], "zone-notice": ["b"]
 }'
 # The tools module: Convert in Files' Scripts menu
 TOOLS=org.gnome.shell.extensions.amethystora-ui.tools

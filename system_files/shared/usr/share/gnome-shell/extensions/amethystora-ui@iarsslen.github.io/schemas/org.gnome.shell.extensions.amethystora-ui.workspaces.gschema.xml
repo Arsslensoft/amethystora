@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- The keys of the workspaces in the top bar (modules/workspaces.js); ame desktop space-names and Control write
-     auto-names, ame desktop sets and Control write sets, the setup file carries both. The workspaces themselves, their names and
+     auto-names, ame desktop sets and Control write sets, ame desktop resume and Control write resume, the setup file
+     carries all three. The workspaces themselves, their names and
      the keys that switch them are GNOME's own (org.gnome.desktop.wm.preferences, org.gnome.desktop.wm.keybindings). -->
 <schemalist>
   <schema id="org.gnome.shell.extensions.amethystora-ui.workspaces" path="/org/gnome/shell/extensions/amethystora-ui/workspaces/">
@@ -23,6 +24,11 @@
       <default>true</default>
       <summary>Saved sets in the workspace menu</summary>
       <description>Save a workspace's apps and their places, and open them again from the workspace menu. Turned off, the menu has no Sets, and the saved sets are kept for when it is on again.</description>
+    </key>
+    <key name="resume" type="b">
+      <default>true</default>
+      <summary>Pick up where you left off after an update's restart</summary>
+      <description>When an update restarts the computer, the apps that were open and their places are kept (app IDs and places only, never a title or a file), and the first session after it offers to open them again, once. ame desktop resume and Control write it.</description>
     </key>
   </schema>
 </schemalist>

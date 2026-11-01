@@ -80,12 +80,12 @@ for key in minimize workspace-switch; do
 done
 saved="$(sed -n 's/^MOTION_KEYS=(\(.*\))$/\1/p' "$(dirname "${SETUP}")/amethystora-setup-manifest" | tr ' ' '\n' | sort | xargs)"
 [[ "${saved}" == "$(jq -r 'keys | join(" ")' <<<"${MOTION_TABLE}")" ]] || { echo "the manifest saves other motion keys"; false; }
-# The top bar's workspaces: auto-names and sets, two switches, and none of its two keybindings
+# The top bar's workspaces: auto-names, sets and resume, three switches, and none of its two keybindings
 WORKSPACES=org.gnome.shell.extensions.amethystora-ui.workspaces
 WORKSPACES_TABLE="$(sed -n "s/^WORKSPACES_KEYS='\(.*\)'\$/\1/p" "${SETUP}")"
 [[ "$(jq -r 'keys | join(" ")' <<<"${WORKSPACES_TABLE}")" == "$(GSETTINGS_BACKEND=memory /usr/bin/gsettings list-keys "${WORKSPACES}" |
     grep -vx 'move-workspace-left\|move-workspace-right' | sort | xargs)" ]] || { echo "WORKSPACES_KEYS and the schema differ"; false; }
-for key in auto-names sets; do
+for key in auto-names sets resume; do
     [[ "$(jq -c --arg k "${key}" '.[$k]' <<<"${WORKSPACES_TABLE}")" == '["b"]' &&
         "$(GSETTINGS_BACKEND=memory /usr/bin/gsettings range "${WORKSPACES}" "${key}")" == "type b" ]]
 done

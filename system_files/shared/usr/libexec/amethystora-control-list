@@ -190,6 +190,7 @@ read_in_background audio gsettings list-recursively org.gnome.shell.extensions.a
 read_in_background sink pactl get-default-sink
 read_in_background space-names gsettings get org.gnome.shell.extensions.amethystora-ui.workspaces auto-names
 read_in_background sets gsettings get org.gnome.shell.extensions.amethystora-ui.workspaces sets
+read_in_background resume gsettings get org.gnome.shell.extensions.amethystora-ui.workspaces resume
 read_in_background pill gsettings list-recursively org.gnome.shell.extensions.amethystora-ui.pill
 read_in_background quick gsettings get org.gnome.shell.extensions.amethystora-ui.quick tile-hidden
 read_in_background bars gsettings list-recursively org.gnome.shell.extensions.amethystora-ui.bars
@@ -1278,6 +1279,12 @@ USAGE="ame desktop sets on|off"
 item desktop sets switch "${ gettext "Saved sets"; }" \
     "${ gettext "Save a workspace’s apps and their places from its menu, and open them again."; }" \
     "$([[ "${ said sets; }" == true ]] && echo on || echo off)" desktop#saved-sets
+switch_choices false ame desktop resume
+[[ "${ ended resume; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
+USAGE="ame desktop resume on|off"
+item desktop resume switch "${ gettext "Pick up where you left off"; }" \
+    "${ gettext "When an update restarts the computer, the first login after it offers to open again the apps that were open, in their places."; }" \
+    "$([[ "${ said resume; }" == true ]] && echo on || echo off)" updates#picking-up-where-you-left-off
 GROUP=""
 
 # How long Amethystora Clipboard, the history on Super+Shift+V, keeps what was copied (keep-history)
@@ -1632,6 +1639,9 @@ item desktop later-times choice "${ gettext "This evening and tomorrow morning";
 PILLKEY=whats-new pill_item whats-new "${ gettext "What's new after an update"; }" \
     "${ gettext "The first session after an update, the pill says Updated once and shows what it brought."; }" \
     updates#whats-new ame desktop whats-new
+PILLKEY=saving-data pill_item saving-data "${ gettext "Saving data"; }" \
+    "${ gettext "On a connection that counts data, such as a phone's hotspot, the pill says what waits for another network, with Update anyway."; }" \
+    updates#saving-data ame desktop saving-data
 GROUP=""
 
 
@@ -1974,6 +1984,13 @@ if [[ "${ privacy_key network-apps; }" == true ]]; then value=on; else value=off
 item desktop network-apps switch "${ gettext "Network by app"; }" \
     "${ gettext "The network meter's menu lists which apps are talking to the network, and to where, while it is open. Nothing is sent anywhere."; }" \
     "${value}" desktop#network-by-app
+privacy_reason
+switch_choices false ame desktop zone-notice
+USAGE="ame desktop zone-notice on|off"
+if [[ "${ privacy_key zone-notice; }" == true ]]; then value=on; else value=off; fi
+item desktop zone-notice switch "${ gettext "A new network's zone"; }" \
+    "${ gettext "The first time a network is joined, a notification says which firewall zone it is in, with Open Security. It changes nothing."; }" \
+    "${value}" desktop#a-new-networks-zone
 GROUP=""
 
 # Convert pictures in Files (the tools module), offered and off
@@ -2366,6 +2383,24 @@ GROUP="${ gettext "The system"; }"
 USAGE="ame system rebase IMAGE STREAM"
 item system stream choice "${ gettext "Stream"; }" "${ gettext "How new the builds this machine follows are."; }" \
     "${IMAGE_TAG}" updates#streams
+
+# Restart while you're away: the night time System Updates offers beside Restart now (amethystora-night-restart)
+NIGHT=""
+[[ -r "${CONFIG_DIR}/night-restart" ]] && IFS= read -r NIGHT <"${CONFIG_DIR}/night-restart"
+[[ "${NIGHT}" =~ ^(0[2-4]:[0-5][0-9]|05:00)$ ]] || NIGHT=off
+choice off "${OFF}" "${ gettext "Restart now only, when you choose"; }" false ame update night-restart off
+for time in 02:00 03:00 04:00 05:00; do
+    choice "${time}" "${time}" "" false ame update night-restart "${time}"
+done
+case "${NIGHT}" in
+    off | 02:00 | 03:00 | 04:00 | 05:00) ;;
+    *) DETAIL="${ eval_gettext "Set from a terminal: \${NIGHT}."; }" ;;
+esac
+GROUP="${ gettext "The system"; }"
+USAGE="ame update night-restart off|HH:MM"
+item system night-restart choice "${ gettext "Restart while you're away"; }" \
+    "${ gettext "Updates offers Tonight beside Restart now: the computer restarts at this time only if the screen is locked, no app holds the logout and it is on mains power."; }" \
+    "${NIGHT}" updates#restarting-while-youre-away
 
 # amethystora-dx and amethystora-dx-nvidia-open are the developer images
 if grep -qE -e "-dx(-|$)" <<<"${IMAGE_NAME}"; then DEVMODE=on; else DEVMODE=off; fi

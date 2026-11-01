@@ -1034,6 +1034,90 @@ sets VALUE="":
             ;;
     esac
 
+# Pick up where you left off: when an update restarts the computer, the open apps and their places are kept, and the
+# first login after it offers to open them again (VALUE: on or off; without it, it flips)
+[positional-arguments]
+resume VALUE="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.workspaces
+    value="${1:-}"
+    if [[ -z "${value}" ]]; then
+        if [[ "$(gsettings get "${schema}" resume)" == true ]]; then value=off; else value=on; fi
+    fi
+    case "${value}" in
+        on)
+            gsettings set "${schema}" resume true
+            echo "$(gettext "After an update's restart, the first login offers to open again the apps that were open, in their places.")"
+            ;;
+        off)
+            gsettings set "${schema}" resume false
+            echo "$(gettext "An update's restart keeps nothing of the open apps.")"
+            ;;
+        *)
+            echo "usage: ame desktop resume on|off"
+            exit 64
+            ;;
+    esac
+
+# Saving data: on a connection that counts data, the pill says so and lists what waits for another network (VALUE: on
+# or off; without it, it flips). The waiting is the connection's metered flag, which Settings switches per network.
+[positional-arguments]
+saving-data VALUE="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.pill
+    value="${1:-}"
+    if [[ -z "${value}" ]]; then
+        if [[ "$(gsettings get "${schema}" saving-data)" == true ]]; then value=off; else value=on; fi
+    fi
+    case "${value}" in
+        on)
+            gsettings set "${schema}" saving-data true
+            echo "$(gettext "On a connection that counts data, the pill says Saving data and what waits.")"
+            ;;
+        off)
+            gsettings set "${schema}" saving-data false
+            echo "$(gettext "The pill says nothing of a connection that counts data. The automatic updates still wait on one.")"
+            ;;
+        *)
+            echo "usage: ame desktop saving-data on|off"
+            exit 64
+            ;;
+    esac
+
+# A new network's zone: the first time a network is joined, a notification names its firewall zone, with Open Security
+# (VALUE: on or off; without it, it flips). It switches nothing: naming a network home is ame security home-networks.
+[positional-arguments]
+zone-notice VALUE="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.privacy
+    value="${1:-}"
+    if [[ -z "${value}" ]]; then
+        if [[ "$(gsettings get "${schema}" zone-notice)" == true ]]; then value=off; else value=on; fi
+    fi
+    case "${value}" in
+        on)
+            gsettings set "${schema}" zone-notice true
+            echo "$(gettext "The first time a network is joined, a notification says which firewall zone it is in.")"
+            ;;
+        off)
+            gsettings set "${schema}" zone-notice false
+            echo "$(gettext "New networks are joined without a word about their zone.")"
+            ;;
+        *)
+            echo "usage: ame desktop zone-notice on|off"
+            exit 64
+            ;;
+    esac
+
 # Open the tiling's settings: the gaps, the sizes windows step through, how the strip moves, every shortcut and the window rules
 tiling-settings:
     #!/usr/bin/bash

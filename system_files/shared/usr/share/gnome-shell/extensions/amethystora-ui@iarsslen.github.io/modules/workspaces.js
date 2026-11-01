@@ -11,7 +11,9 @@
 // move the workspace you are on one place to the left or right. There are always as many workspaces as GNOME is set
 // to keep (six), so that Super+1 to Super+6 reach every one: nothing here adds or removes one. The workspaces, their
 // names and the keys that switch them are GNOME's own. The same menu saves the workspace's apps and their places as
-// a set, and opens a saved set again (workspaces/sets.js, ame desktop sets).
+// a set, and opens a saved set again (workspaces/sets.js, ame desktop sets). An update's restart keeps every
+// workspace's apps the same way, and the first session after it offers them again (workspaces/resume.js, ame desktop
+// resume).
 
 import Atk from 'gi://Atk';
 import Clutter from 'gi://Clutter';
@@ -32,6 +34,7 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 import {ACCENTS, SCHEMA as THEME_SCHEMA, accentName, workspaceAccent} from './theme/accents.js';
 import {OverviewNames} from './workspaces/overview.js';
+import {Resume, forgetUnread} from './workspaces/resume.js';
 import {Sets} from './workspaces/sets.js';
 import {SetsMenu} from './workspaces/setsmenu.js';
 
@@ -318,7 +321,7 @@ export class Workspaces {
         this._themeSettings.connectObject('changed::accent-per-workspace', () => this._buildAccents(), this);
         this._buildAccents();
         // Saved sets, while they are on
-        this._settings.connectObject('changed::sets', () => this._syncSets(), this);
+        this._settings.connectObject('changed::sets', () => this._syncSets(), 'changed::resume', () => this._syncSets(), this);
         this._syncSets();
         // A window dragged in the overview: the label under it lights up
         Main.overview.connectObject(
@@ -691,27 +694,65 @@ export class Workspaces {
 
     // ---- Saved sets (workspaces/sets.js, workspaces/setsmenu.js) ----
 
+    // The sets run while the menu's sets or picking up after a restart (workspaces/resume.js) want them; the menu's part
+    // only while its key is on
     _syncSets() {
-        const on = this._settings?.get_boolean('sets') ?? false;
-        if (on && !this.sets && this._menu) {
+        const menu = this._settings?.get_boolean('sets') ?? false;
+        const resume = this._settings?.get_boolean('resume') ?? false;
+        if (!resume)
+            forgetUnread();
+        if ((menu || resume) && !this.sets && this._menu) {
             this.sets = new Sets(this);
             try {
                 this.sets.enable();
-                this._setsMenu = new SetsMenu(this, this._menu);
             } catch (e) {
                 console.error(`Amethystora UI: the saved sets did not start: ${e.message}`);
                 this._stopSets();
+                return;
             }
-        } else if (!on) {
+        } else if (!menu && !resume) {
             this._stopSets();
+            return;
+        }
+        if (!this.sets)
+            return;
+        if (menu && !this._setsMenu) {
+            try {
+                this._setsMenu = new SetsMenu(this, this._menu);
+            } catch (e) {
+                console.error(`Amethystora UI: the saved sets' menu did not start: ${e.message}`);
+            }
+        } else if (!menu && this._setsMenu) {
+            this._setsMenu.destroy();
+            this._setsMenu = null;
+        }
+        if (resume && !this.resume) {
+            this.resume = new Resume(this);
+            try {
+                this.resume.enable();
+            } catch (e) {
+                console.error(`Amethystora UI: picking up after a restart did not start: ${e.message}`);
+                this.resume.disable();
+                this.resume = null;
+            }
+        } else if (!resume && this.resume) {
+            this.resume.disable();
+            this.resume = null;
         }
     }
 
     _stopSets() {
+        this.resume?.disable();
+        this.resume = null;
         this._setsMenu?.destroy();
         this._setsMenu = null;
         this.sets?.disable();
         this.sets = null;
+    }
+
+    // Before any module stops (extension.js): a lock keeps the open apps while an update waits for the restart
+    beforeDisable() {
+        this.resume?.beforeDisable();
     }
 
     // What the top bar calls a workspace: its own name, else its main app's while names come from apps, else ''

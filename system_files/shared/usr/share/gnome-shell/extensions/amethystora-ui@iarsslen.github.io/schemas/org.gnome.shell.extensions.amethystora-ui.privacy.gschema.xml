@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- The keys of the privacy module (modules/privacy.js, plans/beyond/spec-r4-privacy.md): the share guard, the shield
-     and network by app. Written by ame desktop share-guard, shield and network-apps, Control and the setup file.
+<!-- The keys of the privacy module (modules/privacy.js, plans/beyond/spec-r4-privacy.md): the share guard, the shield,
+     network by app and a new network's zone. Written by ame desktop share-guard, shield, network-apps and zone-notice,
+     Control and the setup file.
      Walk-away lock is a security switch (WALK_AWAY in /etc/amethystora/security.conf), not a key here. -->
 <schemalist>
   <schema id="org.gnome.shell.extensions.amethystora-ui.privacy" path="/org/gnome/shell/extensions/amethystora-ui/privacy/">
@@ -39,6 +40,11 @@
       <default>false</default>
       <summary>Network by app</summary>
       <description>The network meter's menu lists the apps with open connections and where to, only while it is open.</description>
+    </key>
+    <key name="zone-notice" type="b">
+      <default>true</default>
+      <summary>A new network's zone</summary>
+      <description>The first time a network is joined, a notification names the firewall zone it is in and what that means, with Open Security. It switches nothing. ame desktop zone-notice and Control write it.</description>
     </key>
   </schema>
 </schemalist>

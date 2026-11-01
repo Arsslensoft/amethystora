@@ -53,6 +53,10 @@ pub const CONTAINERS_LOG: &str = "amethystora-pkg-upgrade";
 /// The AI agent, which a failed update can be handed to, unless the account turned it off
 pub const AGENT: &str = "/usr/bin/amethystora-agent";
 pub const SOFT_REBOOT: &str = "/usr/libexec/amethystora-soft-reboot";
+/// Restart while you are away: the night time chosen, tonight's timer, and what the last night did
+pub const NIGHT: &str = "/usr/libexec/amethystora-night-restart";
+/// Saving data: whether the connection counts data, and since when the automatic update has waited
+pub const METERED: &str = "/usr/libexec/amethystora-metered";
 
 /// One version of the system: what it is called, when it was built (seconds) and which image it follows
 #[derive(Debug, Clone, Default)]
@@ -113,6 +117,33 @@ pub struct Firmware {
     pub devices: Vec<Device>,
 }
 
+/// A night that did not restart: when it was set for (seconds), why (late, unlocked, inhibited, battery, refused), and
+/// the app that held the logout, by its ID
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Waited {
+    pub night: f64,
+    pub why: String,
+    pub app: Option<String>,
+}
+
+/// Restart while you are away, as amethystora-night-restart says
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Night {
+    /// HH:MM between 02:00 and 05:00, while it is on
+    pub time: Option<String>,
+    /// When tonight's timer is set for (seconds)
+    pub armed: Option<f64>,
+    pub last: Option<Waited>,
+}
+
+/// Saving data on a connection that counts it
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Metered {
+    pub on: bool,
+    /// When the automatic update first waited for another connection (seconds)
+    pub since: Option<f64>,
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct Status {
     pub machine: Option<Machine>,
@@ -121,6 +152,8 @@ pub struct Status {
     pub containers: Containers,
     pub agent: bool,
     pub firmware: Firmware,
+    pub night: Night,
+    pub metered: Metered,
 }
 
 /// One of uupd's modules, as the page shows it
@@ -285,6 +318,86 @@ pub async fn restart_quickly() -> Restart {
             Restart::Failed(if line.is_empty() { t!("The machine could not be restarted.") } else { line })
         }
     }
+}
+
+/// The apps open now, kept by Amethystora UI for the first login after the restart (its workspaces module's
+/// org.amethystora.UI.Resume, `ame desktop resume`), before GNOME's restart dialog. Nothing is kept without the
+/// extension or with the key off, and the restart goes on either way.
+pub async fn keep_open_apps() {
+    process::run(
+        "gdbus",
+        &["call", "--session", "--timeout", "5", "--dest", "org.gnome.Shell", "--object-path", "/org/amethystora/UI/Resume", "--method", "org.amethystora.UI.Resume.Save"],
+    )
+    .await;
+}
+
+// --- Restart while you are away --------------------------------------------------------------------------------
+
+/// What amethystora-night-restart status --json says
+pub fn read_night(text: &str) -> Night {
+    let Ok(value) = serde_json::from_str::<Value>(text) else { return Night::default() };
+    let time = value.get("time").and_then(Value::as_str).filter(|t| valid_night_time(t)).map(str::to_string);
+    let armed = value.get("armed").and_then(Value::as_f64).filter(|t| *t > 0.0);
+    let last = value.get("last").filter(|l| l.is_object()).and_then(|last| {
+        let why = last.get("why").and_then(Value::as_str)?;
+        ["late", "unlocked", "inhibited", "battery", "refused"].contains(&why).then(|| Waited {
+            night: last.get("night").and_then(Value::as_f64).unwrap_or(0.0),
+            why: why.to_string(),
+            app: last
+                .get("app")
+                .and_then(Value::as_str)
+                .filter(|a| !a.is_empty() && a.len() <= 200 && a.chars().all(|c| c.is_ascii_alphanumeric() || "._-".contains(c)))
+                .map(str::to_string),
+        })
+    });
+    Night { time, armed, last }
+}
+
+/// HH:MM from 02:00 to 05:00, as the helper takes it
+pub fn valid_night_time(time: &str) -> bool {
+    let bytes = time.as_bytes();
+    if bytes.len() != 5 || bytes[2] != b':' || !time.chars().enumerate().all(|(i, c)| i == 2 || c.is_ascii_digit()) {
+        return false;
+    }
+    let (hour, minute): (u32, u32) = (time[..2].parse().unwrap_or(99), time[3..].parse().unwrap_or(99));
+    minute < 60 && ((2..5).contains(&hour) || (hour == 5 && minute == 0))
+}
+
+pub async fn night() -> Night {
+    read_night(&process::run(NIGHT, &["status", "--json"]).await.stdout)
+}
+
+/// Tonight's restart set, or taken away; the helper's own words when it could not be
+pub async fn set_tonight(on: bool) -> Result<(), String> {
+    let output = process::run(NIGHT, &[if on { "arm" } else { "cancel" }]).await;
+    if output.ok() {
+        Ok(())
+    } else {
+        let line = output.last_error_line();
+        Err(if line.is_empty() { t!("Tonight's restart could not be set.") } else { line })
+    }
+}
+
+/// An app's name from its launcher, for the night that did not restart because of it
+pub fn app_name(id: &str) -> Option<String> {
+    use amethystora_ui::gio::prelude::AppInfoExt;
+    let wanted = format!("{id}.desktop");
+    amethystora_ui::gio::AppInfo::all().into_iter().find(|app| app.id().as_deref() == Some(wanted.as_str())).map(|app| app.name().to_string())
+}
+
+// --- Saving data ----------------------------------------------------------------------------------------------
+
+/// What amethystora-metered status --json says
+pub fn read_metered(text: &str) -> Metered {
+    let Ok(value) = serde_json::from_str::<Value>(text) else { return Metered::default() };
+    Metered {
+        on: value.get("metered").and_then(Value::as_bool).unwrap_or(false),
+        since: value.get("waiting").and_then(|w| w.get("system")).and_then(Value::as_f64).filter(|t| *t > 0.0),
+    }
+}
+
+pub async fn metered() -> Metered {
+    read_metered(&process::run(METERED, &["status", "--json"]).await.stdout)
 }
 
 /// "ostree-image-signed:docker://ghcr.io/iarsslen/amethystora:stable" -> "ghcr.io/iarsslen/amethystora:stable"
@@ -679,6 +792,34 @@ mod tests {
         assert_eq!(u.containers.as_ref().unwrap().failed, vec!["arch"]);
         assert_eq!(read_containers(&mut u, r#"{"done":true,"failed":1}"#, true), (true, true));
         assert_eq!(u.step("Distrobox").unwrap().state, "failed");
+    }
+
+    #[test]
+    fn night_restart() {
+        for good in ["02:00", "03:30", "04:59", "05:00"] {
+            assert!(valid_night_time(good), "{good}");
+        }
+        for bad in ["01:59", "05:01", "06:00", "3:00", "03:60", "0a:00", "03-00", "", "03:000"] {
+            assert!(!valid_night_time(bad), "{bad}");
+        }
+        assert_eq!(read_night("garbage"), Night::default());
+        assert_eq!(
+            read_night(r#"{"time":"03:00","armed":1761966000,"last":null}"#),
+            Night { time: Some("03:00".into()), armed: Some(1761966000.0), last: None }
+        );
+        let waited = read_night(r#"{"time":"07:00","armed":null,"last":{"night":1,"result":"waited","why":"inhibited","app":"org.gnome.TextEditor"}}"#);
+        assert_eq!(waited.time, None);
+        assert_eq!(waited.last, Some(Waited { night: 1.0, why: "inhibited".into(), app: Some("org.gnome.TextEditor".into()) }));
+        // A reason the page does not know, or an app ID that is no ID, is left out
+        assert_eq!(read_night(r#"{"last":{"night":1,"why":"other"}}"#).last, None);
+        assert_eq!(read_night(r#"{"last":{"night":1,"why":"late","app":"../x y"}}"#).last.unwrap().app, None);
+    }
+
+    #[test]
+    fn saving_data() {
+        assert_eq!(read_metered(""), Metered::default());
+        assert_eq!(read_metered(r#"{"metered":true,"waiting":{"system":1761900000,"containers":null,"backup":null}}"#), Metered { on: true, since: Some(1761900000.0) });
+        assert_eq!(read_metered(r#"{"metered":false,"waiting":{"system":null}}"#), Metered { on: false, since: None });
     }
 
     #[test]

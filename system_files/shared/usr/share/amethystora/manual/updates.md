@@ -77,6 +77,52 @@ locked again, shut down.
 The [live pill](desktop.md#the-live-pill) says **Ready** when an update waits for the restart; its **Restart now**
 opens System Updates.
 
+## Picking up where you left off
+
+When an update restarts the computer, from **Restart now**, `ame update restart` or a
+[restart while you're away](#restarting-while-youre-away), the apps that were open and where their windows were
+are kept. The first time you log in after it, the clock in the top bar says **Reopen your apps**: its card shows
+them, and **Reopen** opens each one on its workspace, in its place, as a [saved set](desktop.md#saved-sets)
+does. **Not now**, or ten minutes, forgets it; it is offered once.
+
+Only the apps and their places are kept: never a window's title, a file, a page or a tab, so each app opens as
+it does from its launcher (Notes opens locked). The note is a small file of your account's, deleted as soon as
+the next login has read it. `ame desktop resume off` keeps nothing; **Pick up where you left off** in
+[Control](control.md) is the same switch.
+
+## Restarting while you're away
+
+An update that waits for its restart can be finished at night instead. Choose a time between 02:00 and 05:00
+in [Control](control.md) (**Restart while you're away**) or with `ame update night-restart 03:00`, and
+System Updates offers **Tonight at 03:00** beside **Restart now**. At that time the computer restarts only if
+nobody would lose anything:
+
+- the screen is locked;
+- no app asks not to end the session, for work not yet saved;
+- it is on mains power;
+- and it is awake: a computer asleep then stays asleep, nothing wakes it.
+
+Otherwise nothing is closed, a notification says why, with **Tonight again**, and System Updates says the same
+until the update is done. **Not tonight** takes it back. No password is stored and nothing unlocks: the
+restart is the one **Restart now** makes, and the apps come back at the next login as above.
+
+| Command | Does |
+| --- | --- |
+| `ame update night-restart 03:00` | Offer Tonight at that time (`02:00` to `05:00`), or `off` |
+| `ame update tonight` | Restart tonight at that time, or `off` to take it back |
+
+## Saving data
+
+On a connection that counts data (a phone's hotspot, mobile broadband, or a network marked **Metered
+connection** in Settings), the big downloads wait for one that does not: the automatic system update with your
+apps and Homebrew tools, the daily upgrade of your containers, and a backup over the network. A backup to a disk
+of this computer still runs. They never wait longer than a week: after that, they run on any connection.
+
+The clock in the top bar says **Saving data** meanwhile, and its card lists what waits and since when.
+**Update anyway** opens System Updates and updates now, as **Update now** and **Back up now** always do,
+whatever the connection. `ame desktop saving-data off` keeps the pill quiet about it; the updates still wait. To
+have a connection count as unlimited, turn **Metered connection** off for it in Settings, under Wi-Fi or Network.
+
 ## Firmware
 
 The firmware of the machine and of its devices (the UEFI firmware, docks, SSDs, keyboards, the

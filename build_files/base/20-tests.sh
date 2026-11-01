@@ -562,7 +562,7 @@ done
 # row's keys swap a workspace with its neighbour, which collide with nothing GNOME binds, and name a space after its
 # main app (auto-names, the motion plan's), and saved sets in its menu (sets, phase 7's).
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys org.gnome.shell.extensions.amethystora-ui.workspaces | sort | paste -sd ' ')" == \
-    "auto-names move-workspace-left move-workspace-right sets" ]]
+    "auto-names move-workspace-left move-workspace-right resume sets" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.workspaces move-workspace-left)" == \
     "['<Control><Alt><Super>Left']" ]]
 # The tiling: a switch (the classic layout is it off) and the settings its preferences window changes, under the
@@ -749,7 +749,7 @@ grep -q "shouldShowApp" "${UI_EXTENSION}/modules/fuzzy.js"
 # apps, its three recipes, and quiet holding banners in memory only: nothing of it writes GNOME's show-banners
 PILL=org.gnome.shell.extensions.amethystora-ui.pill
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${PILL}" | sort | paste -sd ' ')" == \
-    "digest digest-through digest-times digest-wait glow later later-times live meetings privacy-dots quiet quiet-night whats-new" ]]
+    "digest digest-through digest-times digest-wait glow later later-times live meetings privacy-dots quiet quiet-night saving-data whats-new" ]]
 for key in live privacy-dots glow quiet later whats-new meetings; do
     [[ "$(GSETTINGS_BACKEND=memory gsettings get "${PILL}" "${key}")" == true ]]
 done
@@ -1079,7 +1079,7 @@ bash /ctx/build_files/shared/test-agent-text.sh
 # switch, off, in Security's logins, never in the setup file; the agent may turn it on and never off
 PRIVACY=org.gnome.shell.extensions.amethystora-ui.privacy
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${PRIVACY}" | sort | paste -sd ' ')" == \
-    "network-apps share-guard share-guard-apps share-guard-private shield" ]]
+    "network-apps share-guard share-guard-apps share-guard-private shield zone-notice" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${PRIVACY}" share-guard)" == "'blur'" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${PRIVACY}" shield)" == "'tile'" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${PRIVACY}" share-guard-private)" == true ]]
@@ -1867,7 +1867,51 @@ rm -rf "${PERMISSIONS_TEST}"
 
 # The Updates app replaces upstream's System Update launcher, while `ame update` stays for the terminal
 test ! -e /usr/share/applications/system-update.desktop
-grep -rqx 'update ACTION="":' /usr/share/amethystora/just/
+grep -rqx 'update ACTION="" VALUE="":' /usr/share/amethystora/just/
+# After a restart (plans/ui-ideas/spec-restart.md): the open apps kept for the first login after an update's restart
+# (the workspaces module's resume, asked for by the soft reboot, Updates' full restart and the night restart), the
+# night restart's helper, saving data on a connection that counts it (each automatic updater's own condition, never
+# Update now's), and a new network's zone (the privacy module's, which opens Security and switches nothing)
+[[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.workspaces resume)" == true ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.pill saving-data)" == true ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.privacy zone-notice)" == true ]]
+for file in /usr/libexec/amethystora-soft-reboot /usr/libexec/amethystora-night-restart /ctx/apps/update/src/backend.rs; do
+    grep -q "org.amethystora.UI.Resume.Save" "${file}"
+done
+grep -q "'/org/amethystora/UI/Resume'" "${UI_EXTENSION}/modules/workspaces/resume.js"
+grep -q "module.beforeDisable?.()" "${UI_EXTENSION}/extension.js"
+test -x /usr/libexec/amethystora-night-restart
+test -x /usr/libexec/amethystora-metered
+NIGHT_HOME="$(mktemp -d)"
+night() { XDG_CONFIG_HOME="${NIGHT_HOME}" XDG_STATE_HOME="${NIGHT_HOME}" /usr/libexec/amethystora-night-restart "$@"; }
+night set 06:00 2>/dev/null && false
+night set 3:00 2>/dev/null && false
+night set 03:00
+[[ "$(night get)" == 03:00 ]]
+night set 05:00
+[[ "$(night get)" == 05:00 ]]
+night set off
+[[ -z "$(night get)" ]]
+rm -rf "${NIGHT_HOME}"
+unset -f night
+systemctl cat uupd.service | grep -qx "ExecCondition=/usr/libexec/amethystora-metered wait system"
+systemctl cat uupd.service | grep -qx "ExecStartPost=/usr/libexec/amethystora-metered done system"
+systemctl cat uupd-manual.service | grep -q amethystora-metered && false
+grep -qx "ExecCondition=/usr/libexec/amethystora-metered wait containers" /usr/lib/systemd/user/amethystora-pkg-upgrade.service
+grep -qx "ExecCondition=/usr/libexec/amethystora-metered wait backup" /usr/lib/systemd/user/amethystora-backup.service
+# A run a person starts always runs, and nothing is metered here
+env -u TRIGGER_UNIT /usr/libexec/amethystora-metered wait system
+/usr/libexec/amethystora-metered metered && false
+for recipe in resume saving-data zone-notice; do
+    grep -q "^${recipe} VALUE=\"\":" /usr/share/amethystora/just/desktop.just
+done
+[[ -z "$(grep -nE 'use_markup = true|use_markup: true|set_markup\(|useBodyMarkup' "${UI_EXTENSION}/modules/privacy/zone.js" \
+    "${UI_EXTENSION}/modules/pill/saving.js" "${UI_EXTENSION}/modules/pill/resume.js")" ]]
+# The zone notice only reads: nothing in it changes a connection or the firewall
+if grep -nE "changeZone|addInterface|removeInterface|Update2|AddAndActivate|ame security" "${UI_EXTENSION}/modules/privacy/zone.js"; then
+    echo "the zone notice switches something"
+    exit 1
+fi
 # "Update now" starts uupd's manual unit, which the rule the uupd package ships lets anyone start
 # without a password. Without the rule it would still start, after asking for one. The ublue-os/packages
 # build this image installs puts the rule in /etc, uupd's own spec in /usr/share: either will do.

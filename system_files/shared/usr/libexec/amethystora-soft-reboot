@@ -16,7 +16,8 @@
 #                         a system mirror's first start from its new disk) or OsIndications set
 #   prepare   the update mounted at /run/nextroot for the restart, after the same checks
 #   reset     that undone
-#   restart   prepare, then the restart, asked of logind as whoever asks: logind makes it a soft reboot when
+#   restart   prepare, the open apps kept for the next login (Amethystora UI's org.amethystora.UI.Resume), then
+#             the restart, asked of logind as whoever asks: logind makes it a soft reboot when
 #             /run/nextroot is there, and still asks for a password while somebody else is signed in. Exits 1
 #             when there is nothing to finish quickly, 3 when an app asks not to end the session, which only
 #             GNOME's own restart dialog lets it say, and 4 when the restart was refused.
@@ -156,6 +157,14 @@ inhibited() {
         --method org.gnome.SessionManager.IsInhibited 1 2>/dev/null)" == "(true,)" ]]
 }
 
+# The apps open now, kept by Amethystora UI so that the first login after the restart offers them again (its workspaces
+# module, ame desktop resume). Without a session bus, the extension or the key, nothing is kept and the restart goes on.
+keep_open_apps() {
+    [[ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]] || return 0
+    gdbus call --session --timeout 5 --dest org.gnome.Shell --object-path /org/amethystora/UI/Resume \
+        --method org.amethystora.UI.Resume.Save >/dev/null 2>&1 || true
+}
+
 as_root() {
     if [[ "${EUID}" -eq 0 ]]; then "do_$1"; else pkexec "${SELF}" "$1"; fi
 }
@@ -173,6 +182,7 @@ do_restart() {
         exit 3
     fi
     as_root prepare || exit 1
+    keep_open_apps
     if ! systemctl reboot; then
         as_root reset || true
         exit 4

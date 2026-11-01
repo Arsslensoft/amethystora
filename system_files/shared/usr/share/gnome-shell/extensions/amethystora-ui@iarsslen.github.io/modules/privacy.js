@@ -7,11 +7,13 @@
 //  - network by app, offered and off: the network meter's menu lists which apps are talking to the network, and to
 //    where, only while it is open (privacy/connections.js);
 //  - walk-away lock, a security switch (WALK_AWAY in /etc/amethystora/security.conf, off): the screen locks when the
-//    paired phone has left and the computer is left alone; it never unlocks (privacy/away.js).
+//    paired phone has left and the computer is left alone; it never unlocks (privacy/away.js);
+//  - a new network's zone: the first time a network is joined, a notification names its firewall zone and what that
+//    means, with Open Security; it switches nothing (privacy/zone.js).
 //
 // Each part exists only while its key (or, for walk-away lock, a phone leaving) asks for it, and idles on signals: no
 // timer runs while nothing happens. The keys are org.gnome.shell.extensions.amethystora-ui.privacy, written by ame
-// desktop share-guard, shield and network-apps, Control and the setup file.
+// desktop share-guard, shield, network-apps and zone-notice, Control and the setup file.
 //
 // For the VM suite: state(), and the parts by their getters.
 
@@ -19,6 +21,7 @@ import {Away} from './privacy/away.js';
 import {Connections} from './privacy/connections.js';
 import {Guard} from './privacy/guard.js';
 import {Shield} from './privacy/shield.js';
+import {Zone} from './privacy/zone.js';
 
 const SCHEMA = 'org.gnome.shell.extensions.amethystora-ui.privacy';
 
@@ -35,11 +38,13 @@ export class Privacy {
             'changed::share-guard-private', () => this._part('the share guard', () => this._guard?.appsChanged()),
             'changed::shield', () => this._part('the shield', () => this._syncShield()),
             'changed::network-apps', () => this._part('network by app', () => this._syncConnections()),
+            'changed::zone-notice', () => this._part('the zone notice', () => this._syncZone()),
             this);
         // Each part on its own: one that fails leaves the others running, the share guard above all
         this._part('the share guard', () => this._syncGuard());
         this._part('the shield', () => this._syncShield());
         this._part('network by app', () => this._syncConnections());
+        this._part('the zone notice', () => this._syncZone());
         this._part('walk-away lock', () => {
             this._away = new Away(this._ext);
             this._away.start();
@@ -53,6 +58,8 @@ export class Privacy {
         this._guard = null;
         this._part('walk-away lock', () => this._away?.stop());
         this._away = null;
+        this._part('the zone notice', () => this._zone?.stop());
+        this._zone = null;
         this._part('network by app', () => this._connections?.stop());
         this._connections = null;
         this._part('the shield', () => this._shield?.stop());
@@ -113,6 +120,17 @@ ${e.stack}`);
         }
     }
 
+    _syncZone() {
+        const on = this._settings.get_boolean('zone-notice');
+        if (on && !this._zone) {
+            this._zone = new Zone(this._ext);
+            this._zone.start();
+        } else if (!on && this._zone) {
+            this._zone.stop();
+            this._zone = null;
+        }
+    }
+
     // --- For the VM suite ---------------------------------------------------------------------------------------------
 
     state() {
@@ -121,6 +139,7 @@ ${e.stack}`);
             shield: this._shield?.state() ?? null,
             connections: this._connections?.state() ?? null,
             away: this._away?.state() ?? null,
+            zone: this._zone?.state() ?? null,
         };
     }
 
@@ -138,5 +157,9 @@ ${e.stack}`);
 
     get away() {
         return this._away;
+    }
+
+    get zone() {
+        return this._zone;
     }
 }

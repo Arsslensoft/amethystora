@@ -1,0 +1,248 @@
+#!/usr/bin/bash
+# Restart while I'm away (plans/ui-ideas/spec-restart.md 2): an update that waits for its restart is finished at night,
+# at a time between 02:00 and 05:00 the account chose, and only if nobody would lose anything: the screen is locked, no
+# app asks not to end the session, the computer is on mains power, and it is not more than an hour past the time (a
+# computer asleep then stays asleep: no wake alarm is set). Otherwise nothing closes, and a notification says why, with
+# Open Updates and Tonight again. The restart is the one Restart now makes (amethystora-soft-reboot: a soft reboot when
+# the update allows it, else logind's restart), as the account; nothing unlocks and no password is stored.
+#
+#   get            the time chosen (HH:MM), or nothing while it is off
+#   set HH:MM|off  the time, between 02:00 and 05:00, or off (which also cancels tonight's)
+#   arm            tonight's restart at that time: a transient timer of the account, amethystora-night-restart.timer,
+#                  which a logout or a restart takes away
+#   cancel         tonight's taken away
+#   status --json  {"time": "03:00"|null, "armed": SECONDS|null, "last": {"night", "result", "why", "app"}|null}
+#   run AT         the timer's: AT is the time it was set for (seconds since the epoch)
+#   notice         the notification of a night that did not restart (started apart from the timer's run)
+#
+# The setting is ~/.config/amethystora/night-restart (one line, HH:MM), what the last night did
+# ~/.local/state/amethystora/night-restart.json. System Updates offers Tonight at HH:MM while it is set; `ame update
+# night-restart` and Control set it.
+
+set -euo pipefail
+
+export TEXTDOMAIN=amethystora
+# shellcheck source=/dev/null
+source gettext.sh
+
+SELF=/usr/libexec/amethystora-night-restart
+CONFIG="${XDG_CONFIG_HOME:-${HOME}/.config}/amethystora/night-restart"
+STATE_DIR="${XDG_STATE_HOME:-${HOME}/.local/state}/amethystora"
+LAST="${STATE_DIR}/night-restart.json"
+UNIT=amethystora-night-restart
+STAGED=/run/ostree/staged-deployment
+# A restart more than this late is not made: the computer was asleep, and somebody may be waking it
+LATE=3600
+TIME_RE='^(0[2-4]:[0-5][0-9]|05:00)$'
+
+usage() {
+    echo "usage: ${0##*/} get | set HH:MM|off | arm | cancel | status --json" >&2
+    exit 2
+}
+
+chosen() {
+    local time
+    time="$(head -n1 -- "${CONFIG}" 2>/dev/null | tr -d '[:space:]')" || true
+    [[ "${time}" =~ ${TIME_RE} ]] && echo "${time}"
+    return 0
+}
+
+staged() {
+    [[ -e "${STAGED}" && ! -e "${STAGED}-locked" ]]
+}
+
+# When the timer is set for, in seconds, or nothing
+armed() {
+    local next
+    next="$(systemctl --user show "${UNIT}.timer" --timestamp=unix -p NextElapseUSecRealtime --value 2>/dev/null)" || true
+    next="${next#@}"
+    [[ "${next}" =~ ^[0-9]+$ && "$(systemctl --user is-active "${UNIT}.timer" 2>/dev/null)" == active ]] && echo "${next}"
+    return 0
+}
+
+do_cancel() {
+    systemctl --user stop "${UNIT}.timer" >/dev/null 2>&1 || true
+}
+
+do_arm() {
+    local time at
+    time="$(chosen)"
+    if [[ -z "${time}" ]]; then
+        echo "$(gettext "No night time is chosen: ame update night-restart 03:00 chooses one.")" >&2
+        exit 1
+    fi
+    at="$(date -d "today ${time}" +%s)"
+    [[ "${at}" -gt "$(date +%s)" ]] || at="$(date -d "tomorrow ${time}" +%s)"
+    do_cancel
+    systemctl --user reset-failed "${UNIT}.timer" "${UNIT}.service" >/dev/null 2>&1 || true
+    rm -f -- "${LAST}"
+    systemd-run --user --quiet --unit="${UNIT}" --description="Restart while you are away" \
+        --on-calendar="$(date -d "@${at}" '+%Y-%m-%d %H:%M:%S')" --timer-property=AccuracySec=1min \
+        --timer-property=Persistent=false "${SELF}" run "${at}"
+    echo "$(eval_gettext "The computer restarts tonight at \${time}, if the screen is locked, no app holds the logout and it is on mains power.")"
+}
+
+# What the night did, for System Updates and the notice: the night's time, why it waited, the app that held the logout
+record() {
+    local at="$1" why="$2" app="${3:-}"
+    mkdir -p -m 0700 -- "${STATE_DIR}"
+    jq -nc --argjson night "${at}" --arg why "${why}" --arg app "${app}" \
+        '{night: $night, result: "waited", why: $why, app: (if $app == "" then null else $app end)}' >"${LAST}.new"
+    mv -f -- "${LAST}.new" "${LAST}"
+    # The notification waits for its answer, apart from this run, so that Tonight again can set the timer anew
+    systemd-run --user --quiet --collect --unit="${UNIT}-notice-$$" "${SELF}" notice >/dev/null 2>&1 || true
+}
+
+session_call() {
+    gdbus call --session --timeout 5 "$@" 2>/dev/null
+}
+
+# The first app that asks not to end the session, by its ID, or nothing
+inhibitor() {
+    local path flags id
+    for path in $(session_call --dest org.gnome.SessionManager --object-path /org/gnome/SessionManager \
+        --method org.gnome.SessionManager.GetInhibitors | grep -oE "/org/gnome/SessionManager/Inhibitor[0-9]+"); do
+        flags="$(session_call --dest org.gnome.SessionManager --object-path "${path}" \
+            --method org.gnome.SessionManager.Inhibitor.GetFlags | tr -dc 0-9)"
+        [[ -n "${flags}" && $((flags & 1)) -ne 0 ]] || continue
+        id="$(session_call --dest org.gnome.SessionManager --object-path "${path}" \
+            --method org.gnome.SessionManager.Inhibitor.GetAppId | sed -E "s/^\('(.*)',\)$/\1/")"
+        if [[ "${id}" =~ ^[A-Za-z0-9._-]{1,200}$ ]]; then
+            echo "${id%.desktop}"
+            return 0
+        fi
+    done
+    return 0
+}
+
+do_run() {
+    local at="$1" now code
+    [[ "${at}" =~ ^[0-9]+$ ]] || usage
+    now="$(date +%s)"
+    # Nothing waits for a restart any more: nothing to do, and nothing to say
+    if ! staged; then
+        rm -f -- "${LAST}"
+        return 0
+    fi
+    if [[ $((now - at)) -gt ${LATE} ]]; then
+        record "${at}" late
+        return 0
+    fi
+    if [[ "$(session_call --dest org.gnome.ScreenSaver --object-path /org/gnome/ScreenSaver \
+        --method org.gnome.ScreenSaver.GetActive)" != "(true,)" ]]; then
+        record "${at}" unlocked
+        return 0
+    fi
+    if [[ "$(session_call --dest org.gnome.SessionManager --object-path /org/gnome/SessionManager \
+        --method org.gnome.SessionManager.IsInhibited 1)" == "(true,)" ]]; then
+        record "${at}" inhibited "$(inhibitor)"
+        return 0
+    fi
+    if [[ "$(busctl --system get-property org.freedesktop.UPower /org/freedesktop/UPower \
+        org.freedesktop.UPower OnBattery 2>/dev/null)" == "b true" ]]; then
+        record "${at}" battery
+        return 0
+    fi
+    rm -f -- "${LAST}"
+    # The open apps for the next login (Amethystora UI is off while the screen is locked: the lock kept them already)
+    session_call --dest org.gnome.Shell --object-path /org/amethystora/UI/Resume \
+        --method org.amethystora.UI.Resume.Save >/dev/null || true
+    code=0
+    /usr/libexec/amethystora-soft-reboot restart >/dev/null 2>&1 || code=$?
+    case "${code}" in
+        0) return 0 ;;
+        1) systemctl reboot >/dev/null 2>&1 && return 0 ;;
+        3)
+            record "${at}" inhibited "$(inhibitor)"
+            return 0
+            ;;
+    esac
+    record "${at}" refused
+}
+
+# The app's name from its launcher, for the notice
+app_name() {
+    local id="$1" dir file name
+    [[ "${id}" =~ ^[A-Za-z0-9._-]{1,200}$ ]] || return 0
+    for dir in "${XDG_DATA_HOME:-${HOME}/.local/share}" ${XDG_DATA_DIRS//:/ }; do
+        file="${dir}/applications/${id}.desktop"
+        [[ -r "${file}" ]] || continue
+        name="$(sed -n 's/^Name=//p' "${file}" | head -n1 | tr -d '[:cntrl:]' | cut -c1-60)"
+        [[ -n "${name}" ]] && { echo "${name}"; return 0; }
+    done
+    return 0
+}
+
+do_notice() {
+    local why app time answer body
+    [[ -s "${LAST}" ]] || return 0
+    why="$(jq -r '.why // ""' "${LAST}" 2>/dev/null)" || return 0
+    app="$(app_name "$(jq -r '.app // ""' "${LAST}" 2>/dev/null)")"
+    time="$(date -d "@$(jq -r '.night // 0' "${LAST}")" '+%H:%M' 2>/dev/null)" || time=""
+    case "${why}" in
+        late) body="$(eval_gettext "The computer was asleep at \${time}, so it did not restart.")" ;;
+        unlocked) body="$(eval_gettext "The screen was not locked at \${time}, so nothing was closed.")" ;;
+        inhibited)
+            if [[ -n "${app}" ]]; then
+                body="$(eval_gettext "\${app} had unsaved work, so nothing was closed.")"
+            else
+                body="$(gettext "An app had unsaved work, so nothing was closed.")"
+            fi
+            ;;
+        battery) body="$(gettext "The computer was on battery power, so it waited.")" ;;
+        *) body="$(gettext "The restart was refused: somebody else may be signed in.")" ;;
+    esac
+    answer="$(notify-send --app-name="$(gettext "System Updates")" --icon=amethystora-update --wait \
+        --hint=string:desktop-entry:amethystora-update \
+        --action=open="$(gettext "Open Updates")" --action=again="$(gettext "Tonight again")" \
+        "$(gettext "Not restarted last night")" "${body}" 2>/dev/null)" || true
+    case "${answer}" in
+        open) exec /usr/bin/amethystora-update ;;
+        again) do_arm >/dev/null ;;
+    esac
+}
+
+[[ $# -ge 1 ]] || usage
+case "$1" in
+    get)
+        [[ $# -eq 1 ]] || usage
+        chosen
+        ;;
+    set)
+        [[ $# -eq 2 ]] || usage
+        if [[ "$2" == off ]]; then
+            rm -f -- "${CONFIG}"
+            do_cancel
+        elif [[ "$2" =~ ${TIME_RE} ]]; then
+            mkdir -p -- "$(dirname -- "${CONFIG}")"
+            printf '%s\n' "$2" >"${CONFIG}"
+        else
+            echo "$(gettext "The time is between 02:00 and 05:00, as HH:MM.")" >&2
+            exit 2
+        fi
+        ;;
+    arm)
+        [[ $# -eq 1 ]] || usage
+        do_arm
+        ;;
+    cancel)
+        [[ $# -eq 1 ]] || usage
+        do_cancel
+        ;;
+    status)
+        [[ $# -eq 2 && "$2" == --json ]] || usage
+        last=null
+        [[ -s "${LAST}" ]] && last="$(jq -c '{night, result, why, app}' "${LAST}" 2>/dev/null || echo null)"
+        jq -nc --arg time "$(chosen)" --arg armed "$(armed)" --argjson last "${last}" \
+            '{time: (if $time == "" then null else $time end), armed: (if $armed == "" then null else ($armed | tonumber) end), last: $last}'
+        ;;
+    run)
+        [[ $# -eq 2 ]] || usage
+        do_run "$2"
+        ;;
+    notice)
+        [[ $# -eq 1 ]] || usage
+        do_notice
+        ;;
+    *) usage ;;
+esac

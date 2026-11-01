@@ -890,6 +890,20 @@ fwupd asks before a restart; `fwupd-refresh.timer`, which `17-cleanup.sh` enable
 it to GNOME Software, fetches what LVFS has. `amethystora-update-alert` says at login, once for each
 release, that firmware waits, and the security report's `firmware` check names it. The top bar draws the same wordmark as Security.
 
+**After a restart** (`plans/ui-ideas/spec-restart.md`). Before an update's restart (`amethystora-soft-reboot restart`,
+the window's full restart, the night restart) the open apps are kept by Amethystora UI's workspaces module through
+`org.amethystora.UI.Resume.Save()` on the session bus, as app IDs and places only (`~/.local/state/amethystora/resume.json`,
+read and deleted by the next GNOME Shell, offered in the pill only when the system's version changed); a lock while an
+update is staged keeps them too (the extension's `beforeDisable` hook, while the tiling still runs), and the unlock
+deletes them. **Restart while you're away** (`/usr/libexec/amethystora-night-restart`, `ame update night-restart` and
+`ame update tonight`, off) is a transient timer of the account that restarts only with the screen locked, nothing
+inhibiting the logout, on mains and within the hour, never waking the machine; it is never in the setup file, since a
+shared file must not schedule another machine's restarts. **Saving data**: `uupd.service` (a drop-in), and the user units
+`amethystora-pkg-upgrade.service` and `amethystora-backup.service`, ask `/usr/libexec/amethystora-metered wait WHAT` in
+`ExecCondition=`: a run its timer started waits on a metered connection (NetworkManager's 1 or 3), at most a week by the
+stamp of its first wait, and a backup to a local disk never; `uupd-manual.service` (Update now, the pill's Update anyway)
+has no condition. Keep both: the waiting must never stop an update a person asked for, nor last longer than a week.
+
 ### The Logs app
 
 Amethystora Logs (`amethystora-logs`, **Logs** in the app grid) replaces GNOME Logs, which

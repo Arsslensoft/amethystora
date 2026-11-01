@@ -69,5 +69,10 @@
       <summary>What's new after an update</summary>
       <description>The first session after an update, the pill says "Updated" for a minute, and a click shows what the update brought and opens the Manual's page for it.</description>
     </key>
+    <key name="saving-data" type="b">
+      <default>true</default>
+      <summary>Saving data on a connection that counts it</summary>
+      <description>On a connection NetworkManager calls metered (a phone's hotspot, mobile broadband, or one marked so), the pill says "Saving data", lists what waits for another network and offers Update anyway. It only shows: the waiting is the updaters' own, by the connection's metered flag. ame desktop saving-data and Control write it.</description>
+    </key>
   </schema>
 </schemalist>

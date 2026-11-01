@@ -19,9 +19,11 @@
 // itself: the person has just asked for it. A focus profile's mark (modules/focus/mark.js) comes last: it says what the
 // desktop is set to, not what happens. A meeting about to start (pill/meeting.js) comes before a link: it waits for
 // the person, at a time the person set.
+// Reopening the apps after an update's restart (pill/resume.js) asks the person, so it comes before what the update
+// brought; saving data (pill/saving.js) only says how the connection is, after an update ready.
 
 export const ORDER = ['call', 'recording', 'present', 'meeting', 'link', 'battery', 'agent', 'waiting', 'reading', 'timer',
-    'news', 'media', 'update', 'quiet', 'focus'];
+    'resume', 'news', 'media', 'update', 'saving', 'quiet', 'focus'];
 
 // At most this many others are listed in a card
 const OTHERS = 3;

@@ -6,7 +6,7 @@
 // brightness as a pill under the top bar.
 //
 // Each part is a key of org.gnome.shell.extensions.amethystora-ui.pill (ame desktop pill|quiet|digest|notifications|
-// whats-new, Control), read
+// whats-new|saving-data, Control), read
 // live; a part that is off has nothing connected and nothing made. Nothing here polls: every source is a signal. A
 // focus profile (modules/focus.js) tells the pill its banners and sounds (setFocus) and gives it its mark
 // (setFocusMark), the last of the activities.
@@ -28,6 +28,8 @@ import {Meetings} from './pill/meeting.js';
 import {Osd} from './pill/osd.js';
 import {Phone} from './pill/phone.js';
 import {Privacy} from './pill/privacy.js';
+import {ResumeCard} from './pill/resume.js';
+import {Saving} from './pill/saving.js';
 import {Stacks} from './pill/stacks.js';
 import {disposeSettings} from './pill/text.js';
 import {Timer, armOffRing, disarmOffRing} from './pill/timer.js';
@@ -98,12 +100,14 @@ export class Pill {
             'changed::digest-wait', () => this._sync(),
             'changed::later', () => this._sync(),
             'changed::meetings', () => this._sync(),
+            'changed::saving-data', () => this._sync(),
             this);
         this._sync();
     }
 
     disable() {
         this._settings?.disconnectObject(this);
+        this._stopPart('_saving');
         this._stopLive();
         // Turned off whole (as while the screen is locked): nothing waits; the timer rings at the next enable if it ended
         disarmOffRing();
@@ -161,6 +165,8 @@ export class Pill {
             // The live pill off: a timer that runs still rings at its end
             armOffRing();
         }
+        // Saving data on a connection that counts it: a mark of the live pill, as its own key says
+        this._toggle('_saving', on('live') && on('saving-data'), () => new Saving(this._activities));
         this._toggle('_privacy', on('privacy-dots'), () => new Privacy(this._capture));
         this._toggle('_glow', on('glow'), () => new Glow(this._capture, () => this._reduce()));
         // The apps that always wait for the digest hold their banners also while the digest itself is off
@@ -294,6 +300,7 @@ export class Pill {
             ['_recording', () => new Recording(this._activities, notice, this._capture, reduce)],
             ['_update', () => new Update(this._activities)],
             ['_news', () => new News(this._activities, this._settings)],
+            ['_resume', () => new ResumeCard(this._activities, () => this._ext.modules?.get('workspaces')?.resume ?? null)],
             ['_battery', () => new Battery(this._activities, notice, this._comfort, () => this._glass())],
         ];
         const connect = this._ext.modules?.get('connect');
@@ -433,6 +440,24 @@ export class Pill {
         return this._meetings ?? null;
     }
 
+    get resume() {
+        return this._resume;
+    }
+
+    get saving() {
+        return this._saving;
+    }
+
+    // For the suites: the welcome back card started again, as the live pill's start would find it; says whether it shows
+    resumeForTest() {
+        if (!this._live)
+            return false;
+        this._stopPart('_resume');
+        this._toggle('_resume', true,
+            () => new ResumeCard(this._activities, () => this._ext.modules?.get('workspaces')?.resume ?? null));
+        return this._resume?.shown ?? false;
+    }
+
     // What the battery would show for a reading (a pure function, for the suites): {offer, hover}
     batteryView(reading) {
         const {offer, hover} = batteryView(reading);
@@ -454,6 +479,8 @@ export class Pill {
             digest: {held: this._hold?.digestHeld ?? 0, shown: this._hold?.digestShown ?? false},
             later: this._hold?.later?.state() ?? null,
             news: this._news?.shown ? this._news.news : null,
+            resume: this._resume?.shown ?? false,
+            saving: this._saving?.shown ?? false,
             osd: this._osd?.state ?? null,
             timer: {running: this._timer?.running ?? false, paused: this._timer?.paused ?? false, left: Math.round(this._timer?.left ?? 0)},
             paused: this._media?.paused === true,
