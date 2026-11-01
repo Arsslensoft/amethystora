@@ -19,6 +19,8 @@ if changed '^apps/' && [[ -z "${APPS}" ]]; then echo "delta: apps/ changed, but 
 changed '^po/|^build_files/base/14-security\.sh|^build_files/shared/ips-config\.py' && steps+=(build_files/base/14-security.sh)
 # The agent's index is of the image as it is: anything in system_files may change it
 changed '^system_files/' && steps+=(build_files/shared/build-agent-index.sh)
+# A tree may bring a script of its own for steps the list above does not know (packages, hardening): run it first
+[[ -f "${CTX}/.live-extra.sh" ]] && steps=(.live-extra.sh "${steps[@]}")
 echo "delta: steps: ${steps[*]:-none}"
 
 name="live-delta-${TAG}"

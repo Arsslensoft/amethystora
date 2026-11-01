@@ -138,7 +138,7 @@ async function stopVm(force) {
 async function installApps() {
   await write('/usr/lib/amethystora-apps/amethystora-apps.live', fs.readFileSync(`${DIR}/amethystora-apps`), '0755');
   await root(`mv -f /usr/lib/amethystora-apps/amethystora-apps.live /usr/lib/amethystora-apps/amethystora-apps
-    for app in manual security update notes logs backups control phone shelf; do
+    for app in manual security update notes logs backups control phone shelf trim; do
       mkdir -p /usr/lib/amethystora-$app
       ln -f /usr/lib/amethystora-apps/amethystora-apps /usr/lib/amethystora-$app/amethystora-$app; done
     restorecon -F /usr/lib/amethystora-apps/amethystora-apps`);
