@@ -68,7 +68,7 @@ channel_selected=${channel_choice%% *}
 # switched to it would pull that same build at every update, forever
 rebase_target="${base_image}:${channel_selected}"
 
-gum confirm "Confirm rebase to ${rebase_target}?" || exit 1
+gum confirm "Confirm rebase to ${rebase_target}?" || exit 0
 
 # A sealed image has neither rpm-ostree nor its configuration
 if [[ -e /usr/share/amethystora/sealed ]] || grep -q "^LockLayering=true" /etc/rpm-ostreed.conf; then
