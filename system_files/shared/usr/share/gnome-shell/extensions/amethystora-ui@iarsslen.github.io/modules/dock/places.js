@@ -9,6 +9,7 @@ import Shell from 'gi://Shell';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 import {EventEmitter} from 'resource:///org/gnome/shell/misc/signals.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 import * as ShellMountOperation from 'resource:///org/gnome/shell/ui/shellMountOperation.js';
 
 const FILES = 'org.gnome.Nautilus.desktop';
@@ -279,6 +280,8 @@ export class Places extends EventEmitter {
                 else
                     mount.unmount_with_operation_finish(result);
             } catch (e) {
+                if (e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.BUSY) && this._busyNotice(place, mount, eject))
+                    return;
                 if (!e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.FAILED_HANDLED)) {
                     Main.notifyError(eject
                         ? _('%s could not be ejected').format(place.name)
@@ -290,5 +293,24 @@ export class Places extends EventEmitter {
             mount.eject_with_operation(Gio.MountUnmountFlags.NONE, operation.mountOp, null, done);
         else
             mount.unmount_with_operation(Gio.MountUnmountFlags.NONE, operation.mountOp, null, done);
+    }
+
+    // A drive kept busy: the notice offers to show what keeps it so (the tools module, plans/ui-ideas/spec-tools.md
+    // R5-18); false when that module is not running, and the plain error is said instead
+    _busyNotice(place, mount, eject) {
+        const tools = Main.extensionManager.lookup('amethystora-ui@iarsslen.github.io')?.stateObj?.modules?.get('tools');
+        if (!tools?.showUsersOfMount)
+            return false;
+        const source = MessageTray.getSystemSource();
+        const notification = new MessageTray.Notification({
+            source,
+            title: eject ? _('Cannot eject %s').format(place.name) : _('Cannot unmount %s').format(place.name),
+            body: _('It is busy.'),
+            iconName: 'media-eject-symbolic',
+            isTransient: true,
+        });
+        notification.addAction(_('Show what'), () => tools.showUsersOfMount(mount));
+        source.addNotification(notification);
+        return true;
     }
 }

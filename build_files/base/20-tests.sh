@@ -352,7 +352,7 @@ bash -n /usr/libexec/amethystora-back-in-time
 # picture's metadata for it
 test -x /usr/libexec/amethystora-clean-copy
 bash -n /usr/libexec/amethystora-clean-copy
-grep -q "^version-script files-menu user 2 " /usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh
+grep -q "^version-script files-menu user 3 " /usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh
 grep -q '"Copy without hidden data")" /usr/libexec/amethystora-clean-copy$' /usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh
 grep -vh '^ *#' /usr/libexec/amethystora-clean-copy | grep -qE 'NAUTILUS_SCRIPT_|eval |bash -c|sh -c|--inplace' && false
 grep -q 'mv -n -- ' /usr/libexec/amethystora-clean-copy
@@ -1100,6 +1100,48 @@ for combo in "<shift><super>a" "<control><shift><super>escape"; do
         exit 1
     fi
 done
+
+# Tools at hand (plans/ui-ideas/spec-tools.md): the tools module's three keys and their defaults, between privacy and
+# focus; its two keys, Super+Alt+C and Super+Alt+M, bound nowhere else; the QR codes' qrencode, handed its text on stdin
+# only; the helpers of What is using this? and Convert, which read argv only and run no shell; no markup and no shell in
+# the module or the clipboard's text actions; Convert offered and off; What is using this? in Files' Scripts menu
+TOOLS=org.gnome.shell.extensions.amethystora-ui.tools
+[[ "$(GSETTINGS_BACKEND=memory gsettings list-recursively "${TOOLS}" | cut -d' ' -f2- | LC_ALL=C sort | paste -sd ';')" == \
+    "colour-picker ['<Super><Alt>c'];convert-in-files false;mute-microphone ['<Super><Alt>m']" ]] ||
+    { echo "the tools module's keys or defaults are not the spec's"; exit 1; }
+TOOLS_ORDER="$(grep -oE "^    \['[a-z]+'," "${UI_EXTENSION}/extension.js" | tr -d " [',")"
+tools_at() { grep -nx "$1" <<<"${TOOLS_ORDER}" | cut -d: -f1; }
+(($(tools_at privacy) < $(tools_at tools) && $(tools_at tools) < $(tools_at focus)))
+for file in modules/tools.js modules/tools/microphone.js modules/tools/picker.js modules/tools/qr.js modules/tools/run.js \
+    modules/tools/users.js modules/tools/wifi.js stylesheets/tools.css; do
+    test -s "${UI_EXTENSION}/${file}"
+done
+test -s /usr/share/amethystora/themed/shell-tools.css.tpl
+test -s /usr/share/gnome-shell/extensions/amethystora-clipboard@iarsslen.github.io/textActions.js
+[[ "$(GSETTINGS_BACKEND=memory gsettings list-recursively "${TOOLS}" | grep -E ' (colour-picker|mute-microphone) ' | keycombos |
+    paste -sd ' ')" == "<alt><super>c <alt><super>m" ]]
+for combo in "<alt><super>c" "<alt><super>m"; do
+    if grep -qx "${combo}" <<<"${TILING_COMBOS}"$'\n'"${KEPT_COMBOS}"$'\n'"${GNOME_COMBOS}"; then
+        echo "${combo} is bound elsewhere, and is the tools module's"
+        exit 1
+    fi
+done
+command -v qrencode >/dev/null
+[[ "$(printf 'https://amethystora.org' | qrencode -t ASCII -m 0 -l M -8 | head -c 14)" == "##############" ]]
+grep -qF "run([QRENCODE, '-t', 'ASCII', '-m', '0', '-l', 'M', '-8']," "${UI_EXTENSION}/modules/tools/qr.js"
+[[ -z "$(grep -rnE 'use_markup = true|use_markup: true|set_markup\(|spawn_command_line|GLib\.spawn_async|Util\.spawn' \
+    "${UI_EXTENSION}/modules/tools.js" "${UI_EXTENSION}/modules/tools" \
+    /usr/share/gnome-shell/extensions/amethystora-clipboard@iarsslen.github.io/textActions.js)" ]]
+for helper in amethystora-what-uses amethystora-convert; do
+    test -x "/usr/libexec/${helper}"
+    python3 -I -c 'import ast, sys; ast.parse(open(sys.argv[1], encoding="utf-8").read())' "/usr/libexec/${helper}"
+    grep -vh '^ *#' "/usr/libexec/${helper}" | grep -qE 'NAUTILUS_SCRIPT_|shell=True|os\.system|bash -c|sh -c' && false
+    [[ "$("/usr/libexec/${helper}" >/dev/null 2>&1; echo $?)" == 64 ]]
+done
+[[ "$(/usr/libexec/amethystora-what-uses list --json -- /nonexistent | jq -c .)" == '{"targets":[],"holders":[],"truncated":false}' ]]
+grep -q '^files-convert STATE="":' /usr/share/amethystora/just/desktop.just
+grep -q 'ame desktop files-convert' /usr/libexec/amethystora-control-list
+grep -q '"What is using this?")" /usr/libexec/amethystora-what-uses show$' /usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh
 
 # The glass and the dock are Amethystora UI's own modules, in place of Blur my Shell and Dash to Dock. The glass
 # is a stylesheet and a shader (modules/glass/lens.glsl) with no setting of its own, and no Shell.GLSLEffect,

@@ -1,0 +1,396 @@
+#!/usr/bin/python3 -I
+"""amethystora-convert: Files' Scripts › Convert (R5-19, offered and off: `ame desktop files-convert on` puts it there).
+Each picture named becomes a new file beside it, never written over one: as PNG, JPEG or WebP, half the size, 1920
+pixels wide, or all of them as the pages of one PDF.
+
+    amethystora-convert png|jpeg|webp|half|1920|pdf -- PATH...
+    amethystora-convert menu on|off|status       the Convert entries in Files' Scripts menu, written or taken away
+
+Pictures are read through GdkPixbuf, which in Fedora 44 and later reads every kind through glycin's sandboxed loaders,
+and written through it too (PNG, JPEG, WebP); the PDF is drawn with cairo. A picture is turned the way it is meant to
+be seen first, and nothing of its metadata (where a photo was taken among it) is carried over. The paths are Files'
+arguments (relative to the folder it shows), read from argv only and always after --; nothing here runs a shell.
+
+The menu's entries carry the marker 24-files-menu.sh writes, so that only a file this wrote is ever replaced or
+removed: a script of the person's own under the same name stays. What was written is listed in
+~/.local/state/amethystora/files-convert.json, which exists exactly while the entries are on."""
+
+import io
+import json
+import os
+import subprocess
+import sys
+import tempfile
+
+import gettext
+
+_translation = gettext.translation("amethystora", fallback=True)
+_ = _translation.gettext
+ngettext = _translation.ngettext
+
+MARK = ("# amethystora-files-menu 1. Written by the image (/usr/libexec/amethystora-convert); "
+        "ame desktop files-convert off removes it.")
+WIDE = 1920
+# A4, in points
+A4 = (595.276, 841.89)
+QUALITY = "90"
+WRITABLE = {"png": "png", "jpeg": "jpg", "webp": "webp", "tiff": "tif", "bmp": "bmp"}
+
+
+def usage():
+    print("usage: amethystora-convert png|jpeg|webp|half|1920|pdf -- PATH... | menu on|off|status", file=sys.stderr)
+    sys.exit(64)
+
+
+# --- The menu ---------------------------------------------------------------------------------------------------------
+
+def data_home():
+    return os.environ.get("XDG_DATA_HOME") or os.path.join(os.path.expanduser("~"), ".local", "share")
+
+
+def state_file():
+    state = os.environ.get("XDG_STATE_HOME") or os.path.join(os.path.expanduser("~"), ".local", "state")
+    return os.path.join(state, "amethystora", "files-convert.json")
+
+
+def entry_name(translated, english):
+    """A name as the menu shows it: a catalog can never make it a path, a hidden file or nothing"""
+    name = translated.replace("/", "").replace("\n", "")
+    return name if name and not name.startswith(".") else english
+
+
+def entries():
+    # Translators: the submenu of Files' Scripts menu that holds the six ways to convert pictures
+    folder = entry_name(_("Convert"), "Convert")
+    return folder, [
+        (entry_name(_("As PNG"), "As PNG"), "png"),
+        (entry_name(_("As JPEG"), "As JPEG"), "jpeg"),
+        (entry_name(_("As WebP"), "As WebP"), "webp"),
+        (entry_name(_("Half the size"), "Half the size"), "half"),
+        (entry_name(_("1920 pixels wide"), "1920 pixels wide"), "1920"),
+        (entry_name(_("Into one PDF"), "Into one PDF"), "pdf"),
+    ]
+
+
+def marked(path):
+    try:
+        if os.path.islink(path) or not os.path.isfile(path):
+            return False
+        with open(path, encoding="utf-8", errors="replace") as f:
+            f.readline()
+            return f.readline().startswith("# amethystora-files-menu ")
+    except OSError:
+        return False
+
+
+def known_paths():
+    for name in (state_file(), state_file() + ".bak"):
+        try:
+            with open(name, encoding="utf-8") as f:
+                paths = json.load(f).get("paths", [])
+            return [p for p in paths if isinstance(p, str)]
+        except (OSError, ValueError, AttributeError):
+            continue
+    return []
+
+
+def write_state(paths):
+    target = state_file()
+    os.makedirs(os.path.dirname(target), exist_ok=True)
+    text = json.dumps({"version": 1, "paths": paths}) + "\n"
+    for name in (target, target + ".bak"):
+        with open(name + ".new", "w", encoding="utf-8") as f:
+            f.write(text)
+        os.replace(name + ".new", name)
+
+
+def menu_on():
+    scripts = os.path.join(data_home(), "nautilus", "scripts")
+    os.makedirs(os.path.dirname(scripts), exist_ok=True)
+    for folder in (os.path.dirname(scripts), scripts):
+        if not os.path.isdir(folder):
+            os.mkdir(folder, 0o700)
+    name, items = entries()
+    folder = os.path.join(scripts, name)
+    if os.path.islink(folder) or (os.path.exists(folder) and not os.path.isdir(folder)):
+        return 1
+    if not os.path.isdir(folder):
+        os.mkdir(folder, 0o700)
+    written = [folder]
+    for label, kind in items:
+        path = os.path.join(folder, label)
+        if os.path.lexists(path) and not marked(path):
+            continue
+        fd, temporary = tempfile.mkstemp(prefix=".files-menu.", dir=folder)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(f'#!/bin/sh\n{MARK}\nexec /usr/libexec/amethystora-convert {kind} -- "$@"\n')
+        os.chmod(temporary, 0o755)
+        os.replace(temporary, path)
+        written.append(path)
+    write_state(written)
+    return 0
+
+
+def menu_off():
+    folders = []
+    for path in known_paths():
+        if os.path.isdir(path) and not os.path.islink(path):
+            folders.append(path)
+        elif marked(path):
+            os.unlink(path)
+    # The folder goes only once nothing of the person's own is left in it
+    for folder in folders:
+        try:
+            os.rmdir(folder)
+        except OSError:
+            pass
+    for name in (state_file(), state_file() + ".bak"):
+        try:
+            os.unlink(name)
+        except FileNotFoundError:
+            pass
+    return 0
+
+
+def menu(action):
+    if action == "on":
+        return menu_on()
+    if action == "off":
+        return menu_off()
+    if action == "status":
+        print("on" if os.path.exists(state_file()) else "off")
+        return 0
+    usage()
+    return 64
+
+
+# --- The pictures -----------------------------------------------------------------------------------------------------
+
+def pixbuf_module():
+    import gi
+
+    gi.require_version("GdkPixbuf", "2.0")
+    from gi.repository import GdkPixbuf
+
+    return GdkPixbuf
+
+
+def shown(name):
+    """A file's name, which its author chose, as text: what could disguise it taken away"""
+    helper = "/usr/libexec/amethystora-security-text"
+    if os.access(helper, os.X_OK):
+        try:
+            return subprocess.run([helper, "--max", "120", "--", name], capture_output=True, text=True,
+                                  timeout=5, check=True).stdout.strip() or "?"
+        except (OSError, subprocess.SubprocessError):
+            pass
+    return "".join(c for c in name if c.isprintable())[:120] or "?"
+
+
+def claim(directory, stem, extension):
+    """The first name nothing has: STEM.EXT, STEM 2.EXT..., created empty so that nothing else takes it"""
+    n = 1
+    while n < 1000:
+        name = f"{stem}{'' if n == 1 else f' {n}'}.{extension}"
+        path = os.path.join(directory, name)
+        try:
+            fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+            os.close(fd)
+            return path
+        except FileExistsError:
+            n += 1
+    raise OSError("no free name")
+
+
+def put_beside(directory, stem, extension, write):
+    """Writes the file through WRITE(temporary path) into a private file, then moves it under a name nothing had"""
+    fd, temporary = tempfile.mkstemp(prefix=".convert.", suffix=f".{extension}", dir=directory)
+    os.close(fd)
+    try:
+        write(temporary)
+        # As any new file of the account's: mkstemp makes it private
+        umask = os.umask(0)
+        os.umask(umask)
+        os.chmod(temporary, 0o666 & ~umask)
+        target = claim(directory, stem, extension)
+        os.replace(temporary, target)
+        return target
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
+def load(GdkPixbuf, path):
+    pixbuf = GdkPixbuf.Pixbuf.new_from_file(path)
+    upright = pixbuf.apply_embedded_orientation()
+    return upright or pixbuf
+
+
+def flattened(GdkPixbuf, pixbuf):
+    """Over white, without its alpha: what JPEG holds"""
+    if not pixbuf.get_has_alpha():
+        return pixbuf
+    width, height = pixbuf.get_width(), pixbuf.get_height()
+    ground = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, False, 8, width, height)
+    ground.fill(0xFFFFFFFF)
+    pixbuf.composite(ground, 0, 0, width, height, 0, 0, 1, 1, GdkPixbuf.InterpType.NEAREST, 255)
+    return ground
+
+
+def save(GdkPixbuf, pixbuf, kind, path):
+    if kind == "jpeg":
+        flattened(GdkPixbuf, pixbuf).savev(path, "jpeg", ["quality"], [QUALITY])
+    elif kind == "webp":
+        pixbuf.savev(path, "webp", ["quality"], [QUALITY])
+    else:
+        pixbuf.savev(path, kind, [], [])
+
+
+def source_kind(GdkPixbuf, path):
+    info = GdkPixbuf.Pixbuf.get_file_info(path)
+    fmt = info[0] if isinstance(info, tuple) else info
+    name = fmt.get_name() if fmt else ""
+    return name if name in WRITABLE else None
+
+
+def split(path):
+    directory, name = os.path.split(path)
+    stem, dot, extension = name.rpartition(".")
+    if not dot or not stem:
+        stem, extension = name, ""
+    return directory or ".", stem, extension
+
+
+def convert(kind, paths):
+    GdkPixbuf = pixbuf_module()
+    made, unreadable, unwritable, same, narrow = [], 0, 0, 0, 0
+    pictures = []
+    for path in paths:
+        full = path if path.startswith("/") else os.path.join(os.getcwd(), path)
+        if not os.path.isfile(full) or not os.access(full, os.R_OK):
+            unreadable += 1
+            continue
+        try:
+            pixbuf = load(GdkPixbuf, full)
+        except Exception:  # noqa: BLE001 - GdkPixbuf's errors for a file it cannot read
+            unreadable += 1
+            continue
+        if kind == "pdf":
+            pictures.append((full, pixbuf))
+            continue
+        directory, stem, extension = split(full)
+        original = source_kind(GdkPixbuf, full)
+        if kind in ("png", "jpeg", "webp"):
+            if original == kind:
+                same += 1
+                continue
+            target_kind, target_extension, target_stem = kind, WRITABLE[kind], stem
+        else:
+            target_kind = original or "png"
+            target_extension = extension if original and extension else WRITABLE[target_kind]
+            width, height = pixbuf.get_width(), pixbuf.get_height()
+            if kind == "half":
+                size = (max(1, width // 2), max(1, height // 2))
+                # Translators: added to a picture's name for its copy at half the size, "holiday (half size).jpg"
+                target_stem = f"{stem} ({_('half size')})"
+            else:
+                if width <= WIDE:
+                    narrow += 1
+                    continue
+                size = (WIDE, max(1, round(height * WIDE / width)))
+                # Translators: added to a picture's name for its copy 1920 pixels wide, "holiday (1920 px).jpg"
+                target_stem = f"{stem} ({_('1920 px')})"
+            pixbuf = pixbuf.scale_simple(size[0], size[1], GdkPixbuf.InterpType.HYPER)
+        try:
+            made.append(put_beside(directory, target_stem, target_extension,
+                                   lambda temporary, p=pixbuf, k=target_kind: save(GdkPixbuf, p, k, temporary)))
+        except Exception:  # noqa: BLE001 - a folder it cannot write in, a full disk
+            unwritable += 1
+    if kind == "pdf" and pictures:
+        try:
+            made.append(write_pdf(GdkPixbuf, pictures))
+        except Exception:  # noqa: BLE001
+            unwritable += len(pictures)
+    tell(kind, made, unreadable, unwritable, same, narrow)
+    return 0 if made else 1
+
+
+def write_pdf(GdkPixbuf, pictures):
+    import cairo
+
+    first = pictures[0][0]
+    directory, stem, _extension = split(first)
+
+    def draw(temporary):
+        surface = cairo.PDFSurface(temporary, *A4)
+        context = cairo.Context(surface)
+        for path, pixbuf in pictures:
+            width, height = pixbuf.get_width(), pixbuf.get_height()
+            page = A4 if height >= width else (A4[1], A4[0])
+            surface.set_size(*page)
+            ok, png = pixbuf.save_to_bufferv("png", [], [])
+            if not ok:
+                raise OSError("no picture")
+            image = cairo.ImageSurface.create_from_png(io.BytesIO(png))
+            # A photo goes in as a JPEG of the picture as it is drawn (turned upright), which keeps the PDF the size
+            # of the photos; anything else (a scan, a screenshot) losslessly
+            if source_kind(GdkPixbuf, path) == "jpeg":
+                ok, jpeg = flattened(GdkPixbuf, pixbuf).save_to_bufferv("jpeg", ["quality"], [QUALITY])
+                if ok:
+                    image.set_mime_data(cairo.MIME_TYPE_JPEG, jpeg)
+            scale = min(page[0] / width, page[1] / height)
+            context.save()
+            context.translate((page[0] - width * scale) / 2, (page[1] - height * scale) / 2)
+            context.scale(scale, scale)
+            context.set_source_surface(image, 0, 0)
+            context.paint()
+            context.restore()
+            context.show_page()
+        surface.finish()
+
+    return put_beside(directory, stem, "pdf", draw)
+
+
+def notify(title, body):
+    try:
+        subprocess.run(["notify-send", "--app-name=Files", "--icon=image-x-generic", "--", title, body],
+                       timeout=10, check=False)
+    except (OSError, subprocess.SubprocessError):
+        pass
+
+
+def tell(kind, made, unreadable, unwritable, same, narrow):
+    if len(made) == 1:
+        title = _("Wrote %s beside it") % shown(os.path.basename(made[0]))
+    elif made:
+        title = ngettext("%d picture written", "%d pictures written", len(made)) % len(made)
+    else:
+        title = _("Nothing was written")
+    body = []
+    if unreadable:
+        body.append(ngettext("%d file could not be read as a picture.", "%d files could not be read as pictures.",
+                             unreadable) % unreadable)
+    if same:
+        body.append(ngettext("%d picture was already of that kind.", "%d pictures were already of that kind.",
+                             same) % same)
+    if narrow:
+        # (both forms on one line: the catalog's reader reads a call a line at a time)
+        body.append(ngettext("%d picture was 1920 pixels wide or narrower.", "%d pictures were 1920 pixels wide or narrower.",
+                             narrow) % narrow)
+    if unwritable:
+        body.append(ngettext("%d could not be saved in its folder.", "%d could not be saved in their folders.",
+                             unwritable) % unwritable)
+    notify(title, " ".join(body))
+
+
+def main(argv):
+    if len(argv) == 2 and argv[0] == "menu":
+        return menu(argv[1])
+    if len(argv) >= 3 and argv[0] in ("png", "jpeg", "webp", "half", "1920", "pdf") and argv[1] == "--":
+        return convert(argv[0], argv[2:])
+    usage()
+    return 64
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

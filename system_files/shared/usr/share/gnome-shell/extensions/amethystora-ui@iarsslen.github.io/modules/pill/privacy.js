@@ -357,8 +357,15 @@ export class Privacy {
                 });
                 row.add_child(stop);
             }
+            // The microphone's mute for every app, as Super+Alt+M (the tools module; its own mute when that is off)
+            let mute = null;
+            if (kind === 'microphone') {
+                mute = new St.Button({style_class: 'amethystora-pill-small-button amethystora-pill-privacy-mute', label: _('Mute'), can_focus: true, y_align: Clutter.ActorAlign.CENTER});
+                mute.connect('clicked', () => this._toggleMute());
+                row.add_child(mute);
+            }
             box.add_child(row);
-            this._listRows[kind] = {row, mark, who, stop};
+            this._listRows[kind] = {row, mark, who, stop, mute};
         }
         this._updateList();
         if (askCamera && this._used('camera')) {
@@ -386,7 +393,25 @@ export class Privacy {
             who.text = used ? this._who(kind) : _('Not in use');
             if (stop)
                 stop.visible = used;
+            const {mute} = rows[kind];
+            if (mute) {
+                const muted = !!this._mixer?.get_default_source()?.is_muted;
+                mute.label = muted ? _('Unmute') : _('Mute');
+                mute.accessible_name = muted ? _('Turn the microphone back on') : _('Mute the microphone in every app');
+                mute.visible = used || muted;
+            }
         }
+    }
+
+    _toggleMute() {
+        const tools = Main.extensionManager.lookup('amethystora-ui@iarsslen.github.io')?.stateObj?.modules?.get('tools');
+        if (tools) {
+            tools.toggleMicrophone();
+        } else {
+            const source = this._mixer?.get_default_source();
+            source?.change_is_muted(!source.is_muted);
+        }
+        this._updateList();
     }
 
     _who(kind) {

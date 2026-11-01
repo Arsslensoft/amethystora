@@ -326,6 +326,13 @@ done <<<"${listed}"
 saved="$(sed -n 's/^PRIVACY_KEYS=(\(.*\))$/\1/p' "$(dirname "${SETUP}")/amethystora-setup-manifest" | tr ' ' '\n' | sort)"
 [[ "${saved}" == "${listed}" ]] ||
     { echo "the manifest saves other privacy keys than amethystora-setup reads:"; diff <(echo "${saved}") <(echo "${listed}"); false; }
+# The tools module: Convert in Files, the schema's one key besides its two keybindings (the keybindings part keeps those),
+# and the manifest saves the same key
+[[ "$(sed -n "s/^TOOLS_KEYS='\(.*\)'\$/\1/p" "${SETUP}" | jq -c .)" == '{"convert-in-files":["b"]}' ]]
+[[ "$(GSETTINGS_BACKEND=memory /usr/bin/gsettings list-keys org.gnome.shell.extensions.amethystora-ui.tools |
+    grep -vxE 'colour-picker|mute-microphone' | sort | xargs)" == "convert-in-files" ]]
+[[ "$(GSETTINGS_BACKEND=memory /usr/bin/gsettings range org.gnome.shell.extensions.amethystora-ui.tools convert-in-files | xargs)" == "type b" ]]
+[[ "$(sed -n 's/^TOOLS_KEYS=(\(.*\))$/\1/p' "$(dirname "${SETUP}")/amethystora-setup-manifest")" == "convert-in-files" ]]
 
 # A machine with two apps, three things from Homebrew, a container, an extension and a theme, whose
 # dock, close key, terminal key, tiling key, two tiling settings and window rules are not the image's. What

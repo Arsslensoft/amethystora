@@ -3370,3 +3370,37 @@ network-apps STATE="":
             exit 64
             ;;
     esac
+
+# Convert pictures in Files (the tools module, plans/ui-ideas/spec-tools.md R5-19; offered and off): Files' Scripts menu
+# gains Convert, a picture as PNG, JPEG or WebP, half the size, 1920 pixels wide or several in one PDF, each a new file
+# beside it (STATE: on or off; without it, it says which)
+[positional-arguments]
+files-convert STATE="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.tools
+    case "${1:-}" in
+        "")
+            if [[ "$(gsettings get "${schema}" convert-in-files)" == true ]]; then
+                echo "$(gettext "Convert in Files: on.")"
+            else
+                echo "$(gettext "Convert in Files: off.")"
+            fi
+            ;;
+        on)
+            gsettings set "${schema}" convert-in-files true
+            /usr/libexec/amethystora-convert menu on
+            echo "$(gettext "Convert in Files: on. Pick pictures in Files, right-click, and choose Scripts › Convert.")"
+            ;;
+        off)
+            gsettings set "${schema}" convert-in-files false
+            /usr/libexec/amethystora-convert menu off
+            echo "$(gettext "Convert in Files: off.")"
+            ;;
+        *)
+            echo "usage: ame desktop files-convert [on|off]"
+            exit 64
+            ;;
+    esac

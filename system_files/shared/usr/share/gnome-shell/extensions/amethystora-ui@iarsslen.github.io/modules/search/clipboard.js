@@ -19,6 +19,28 @@ const PREFIX = /^\s*clip:\s*/iu;
 const LONGEST = 200;
 const SHOWN = 8;
 
+const COLOURS = /^\s*colou?r:\s*/iu;
+// What a colour's row draws: the colour itself, from the picker's own #RRGGBB, rgb() or hsl() text
+const COLOUR_TEXT = /^(#[0-9A-F]{6}|rgb\(\d{1,3}, \d{1,3}, \d{1,3}\)|hsl\(\d{1,3}, \d{1,3}%, \d{1,3}%\))$/;
+
+// St's stylesheets read #rrggbb and rgb() but not hsl(): an hsl() colour as rgb()
+function cssColour(text) {
+    const hsl = /^hsl\((\d+), (\d+)%, (\d+)%\)$/.exec(text);
+    if (!hsl)
+        return text;
+    const [h, s, l] = [Number(hsl[1]), Number(hsl[2]) / 100, Number(hsl[3]) / 100];
+    const a = s * Math.min(l, 1 - l);
+    const channel = n => {
+        const k = (n + h / 30) % 12;
+        return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))));
+    };
+    return `rgb(${channel(0)}, ${channel(8)}, ${channel(4)})`;
+}
+
+function toolsModule() {
+    return Main.extensionManager.lookup('amethystora-ui@iarsslen.github.io')?.stateObj?.modules?.get('tools') ?? null;
+}
+
 function clipboardExtension() {
     const state = Main.extensionManager.lookup(CLIPBOARD)?.stateObj;
     return typeof state?.history === 'function' && typeof state.content === 'function' ? state : null;
@@ -44,6 +66,20 @@ export class ClipboardProvider {
         this._previous = this._found;
         this._found = new Map();
         const text = terms.join(' ');
+        // colour: the colours the picker copied last (the tools module, in memory), newest first
+        const colours = COLOURS.exec(text);
+        if (colours) {
+            const wanted = fold(text.slice(colours[0].length)).trim();
+            const ids = [];
+            for (const colour of toolsModule()?.colours?.() ?? []) {
+                if (typeof colour !== 'string' || (wanted && !fold(colour).includes(wanted)))
+                    continue;
+                const id = `colour:${colour}`;
+                this._found.set(id, {kind: 'colour', text: colour});
+                ids.push(id);
+            }
+            return Promise.resolve(ids);
+        }
         const match = PREFIX.exec(text);
         if (!match)
             return Promise.resolve([]);
@@ -77,6 +113,17 @@ export class ClipboardProvider {
             const item = (this._found.get(id) ?? this._previous.get(id));
             if (!item)
                 return {id, name: id};
+            if (item.kind === 'colour') {
+                const css = COLOUR_TEXT.test(item.text) ? cssColour(item.text) : 'transparent';
+                return {
+                    id, name: item.text, description: _('Picked from the screen'),
+                    createIcon: size => new St.Widget({
+                        width: size, height: size,
+                        style: `background-color: ${css}; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.6);`,
+                    }),
+                    hint: _('Enter pastes'),
+                };
+            }
             const picture = item.kind === 'image';
             let name;
             if (picture) {
@@ -106,6 +153,11 @@ export class ClipboardProvider {
 
     activateResult(id) {
         const item = (this._found.get(id) ?? this._previous.get(id));
+        if (item?.kind === 'colour') {
+            if (toolsModule()?.copyColour?.(item.text))
+                paste({keysOnly: true, window: this._host.typingWindow});
+            return;
+        }
         const extension = clipboardExtension();
         if (!item || !extension)
             return;

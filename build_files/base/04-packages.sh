@@ -152,6 +152,8 @@ FEDORA_PACKAGES=(
     pulseaudio-utils
     python3-pip
     python3-pygit2
+    # QR codes of a copied link and of the Wi-Fi in use (Amethystora UI's tools module), the text on its stdin
+    qrencode
     rclone
     restic
     rsms-inter-fonts

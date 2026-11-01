@@ -85,6 +85,8 @@ own apps.
 | `Super+F1` | This manual |
 | `Super+Alt+N` | A quick note into Notes' inbox |
 | `Super+Alt+D` | Draw on the screen, while Present mode is on (`ame desktop present on`) |
+| `Super+Alt+C` | Pick a colour from the screen: a click copies it as hex, `Shift`+click as rgb(), `Ctrl`+click as hsl() |
+| `Super+Alt+M` | Mute the microphone in every app, or turn it back on |
 
 ## Appearance
 

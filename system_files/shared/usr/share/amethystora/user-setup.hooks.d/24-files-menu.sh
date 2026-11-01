@@ -1,9 +1,10 @@
 #!/usr/bin/bash
 #
-# Files' scripts menu: Folder colour (the six colours and No colour), Back in time and Copy without hidden data, in the
-# account's language, as tiny scripts in ~/.local/share/nautilus/scripts that hand Files' arguments to
-# /usr/libexec/amethystora-folder-colour, /usr/libexec/amethystora-back-in-time and /usr/libexec/amethystora-clean-copy.
-# Files shows them under Scripts in the menu of a selection.
+# Files' scripts menu: Folder colour (the six colours and No colour), Back in time, Copy without hidden data and What is
+# using this?, in the account's language, as tiny scripts in ~/.local/share/nautilus/scripts that hand Files' arguments to
+# /usr/libexec/amethystora-folder-colour, /usr/libexec/amethystora-back-in-time, /usr/libexec/amethystora-clean-copy and
+# /usr/libexec/amethystora-what-uses show. Files shows them under Scripts in the menu of a selection. Convert, which is
+# offered and off, is written by /usr/libexec/amethystora-convert menu instead (ame desktop files-convert).
 #
 # Each file carries a marker in its second line, and only such a file is ever written over: a script of the person's
 # own under the same name stays, and that entry is not written. What was written is listed in
@@ -14,7 +15,7 @@ source /usr/lib/amethystora/setup-services/libsetup.sh
 
 command -v jq >/dev/null || exit 0
 
-version-script files-menu user 2 || exit 0
+version-script files-menu user 3 || exit 0
 
 set -uo pipefail
 
@@ -118,6 +119,9 @@ entry "${SCRIPTS}/$(entry_name "$(gettext "Back in time")" "Back in time")" /usr
 # Translators: an entry of Files' Scripts menu, which makes a copy of each file picked without its location, camera,
 # author and edit history
 entry "${SCRIPTS}/$(entry_name "$(gettext "Copy without hidden data")" "Copy without hidden data")" /usr/libexec/amethystora-clean-copy
+# Translators: an entry of Files' Scripts menu, which lists the programs of the person's own that hold the file, folder
+# or drive picked (one that will not eject), each with Quit
+entry "${SCRIPTS}/$(entry_name "$(gettext "What is using this?")" "What is using this?")" /usr/libexec/amethystora-what-uses show
 
 # The list, written whole beside a copy, so that a file cut short never loses it
 mkdir -p -- "${STATE%/*}"

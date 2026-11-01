@@ -50,6 +50,7 @@ import {Desks} from './modules/desks.js';
 import {Agent} from './modules/agent.js';
 import {Quit} from './modules/quit.js';
 import {Privacy} from './modules/privacy.js';
+import {Tools} from './modules/tools.js';
 import {Focus} from './modules/focus.js';
 
 // In the order they start, by the name of their stylesheet; they stop in the opposite order. The desktop style comes
@@ -98,6 +99,7 @@ const MODULES = [
     ['agent', Agent],
     ['quit', Quit],
     ['privacy', Privacy],
+    ['tools', Tools],
     ['focus', Focus],
 ];
 

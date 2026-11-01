@@ -97,3 +97,38 @@
     padding: 8px;
     min-width: 384px;
 }
+
+/* Amethystora: the text actions dialog (textActions.js) */
+.ci-text-actions-dialog .modal-dialog-content-box {
+    spacing: 6px;
+    min-width: 320px;
+}
+
+.ci-text-actions-title {
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.ci-text-actions-preview,
+.ci-text-actions-detail,
+.ci-text-actions-count {
+    font-size: 11.5px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.ci-text-actions-list {
+    spacing: 1px;
+    padding: 4px 0;
+}
+
+.ci-text-actions-row {
+    padding: 7px 10px;
+    border-radius: 9px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.ci-text-actions-row:hover,
+.ci-text-actions-row:focus {
+    background-color: rgba(255, 255, 255, 0.1);
+}

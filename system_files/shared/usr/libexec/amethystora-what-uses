@@ -1,0 +1,242 @@
+#!/usr/bin/python3 -I
+"""amethystora-what-uses: which of the account's own programs hold a file, a folder or a drive, so that a stick that will
+not eject or a file that will not go can be let go of (R5-18). Files' Scripts › What is using this? runs `show`; the
+desktop (Amethystora UI's tools module) runs `list` and `quit`.
+
+    amethystora-what-uses list --json -- PATH...   the holders of each PATH or anything under it, as JSON
+    amethystora-what-uses quit PID START           asks that process to end (SIGTERM), if it is still the one listed
+    amethystora-what-uses show -- PATH...          asks the desktop to show them, with Quit for each
+
+Only the caller's own processes are ever read or ended: a process is the caller's when /proc/PID is owned by the
+caller's user id. What holds a path: its working folder, its root, its program, a file it has open or a file it has
+mapped into memory. The paths are Files' arguments (relative to the folder it shows), read from argv only and always
+after --; nothing here is given to a shell."""
+
+import json
+import os
+import signal
+import sys
+import time
+
+import gettext
+
+_ = gettext.translation("amethystora", fallback=True).gettext
+
+LIMIT_HOLDERS = 200
+LIMIT_FDS = 4096
+LIMIT_SECONDS = 10
+REASONS_KEPT = 3
+BUS_NAME = "org.gnome.Shell"
+BUS_PATH = "/org/amethystora/Tools"
+BUS_INTERFACE = "org.amethystora.Tools"
+
+
+def usage():
+    print("usage: amethystora-what-uses list --json -- PATH... | quit PID START | show -- PATH...", file=sys.stderr)
+    sys.exit(64)
+
+
+def own_pids(uid):
+    """The caller's processes, by /proc's owner"""
+    for name in os.listdir("/proc"):
+        if not name.isdigit():
+            continue
+        try:
+            if os.stat(f"/proc/{name}").st_uid == uid:
+                yield int(name)
+        except OSError:
+            continue
+
+
+def stat_fields(pid):
+    """The parent and the start time (field 22, in clock ticks since boot) of PID, and its name, or None"""
+    try:
+        with open(f"/proc/{pid}/stat", "rb") as f:
+            text = f.read().decode("utf-8", "replace")
+    except OSError:
+        return None
+    # The name is between the first ( and the last ), and may hold either
+    head, _sep, tail = text.rpartition(")")
+    name = head.partition("(")[2]
+    fields = tail.split()
+    if len(fields) < 20:
+        return None
+    try:
+        return {"ppid": int(fields[1]), "start": int(fields[19]), "name": name[:64]}
+    except ValueError:
+        return None
+
+
+def link(path):
+    try:
+        target = os.readlink(path)
+    except OSError:
+        return None
+    if target.endswith(" (deleted)"):
+        target = target[: -len(" (deleted)")]
+    return target if target.startswith("/") else None
+
+
+def under(path, targets):
+    for target in targets:
+        if path == target or path.startswith(target.rstrip("/") + "/"):
+            return True
+    return False
+
+
+def holds(pid, targets, deadline):
+    """What of the targets PID holds: [{kind, path}], each path once"""
+    found = {}
+    for kind, entry in (("cwd", "cwd"), ("root", "root"), ("exe", "exe")):
+        path = link(f"/proc/{pid}/{entry}")
+        # Every process's root is /: only a root somewhere else says anything
+        if path and path != "/" and under(path, targets):
+            found.setdefault(path, "cwd" if kind == "root" else kind)
+    try:
+        fds = os.listdir(f"/proc/{pid}/fd")
+    except OSError:
+        fds = []
+    for fd in fds[:LIMIT_FDS]:
+        path = link(f"/proc/{pid}/fd/{fd}")
+        if path and under(path, targets):
+            found.setdefault(path, "file")
+        if time.monotonic() > deadline:
+            break
+    try:
+        with open(f"/proc/{pid}/maps", "rb") as f:
+            for line in f:
+                parts = line.split(None, 5)
+                if len(parts) == 6:
+                    path = parts[5].strip().decode("utf-8", "replace")
+                    if path.endswith(" (deleted)"):
+                        path = path[: -len(" (deleted)")]
+                    if path.startswith("/") and under(path, targets):
+                        found.setdefault(path, "map")
+    except OSError:
+        pass
+    return [{"kind": kind, "path": path} for path, kind in found.items()]
+
+
+def targets_of(paths):
+    targets = []
+    for path in paths:
+        if "\0" in path or len(path) > 4096:
+            continue
+        full = os.path.realpath(path if path.startswith("/") else os.path.join(os.getcwd(), path))
+        if os.path.exists(full) and full != "/":
+            targets.append(full)
+    return targets
+
+
+def holders(paths):
+    uid = os.getuid()
+    me = os.getpid()
+    caller = os.getppid()
+    targets = targets_of(paths)
+    deadline = time.monotonic() + LIMIT_SECONDS
+    about = {}
+    for pid in own_pids(uid):
+        fields = stat_fields(pid)
+        if fields:
+            about[pid] = fields
+    result = []
+    truncated = False
+    for pid, fields in sorted(about.items()):
+        if pid == me or not targets:
+            continue
+        if time.monotonic() > deadline or len(result) >= LIMIT_HOLDERS:
+            truncated = True
+            break
+        reasons = holds(pid, targets, deadline)
+        if not reasons:
+            continue
+        # The chain of the caller's own processes above it, nearest first, for the desktop to find the app it is in
+        ancestors = []
+        parent = fields["ppid"]
+        while parent in about and parent not in ancestors and len(ancestors) < 32:
+            ancestors.append(parent)
+            parent = about[parent]["ppid"]
+        result.append({
+            "pid": pid,
+            "start": fields["start"],
+            "name": fields["name"],
+            "ancestors": ancestors,
+            # The desktop that asked, and the account's service manager, are never offered Quit
+            "essential": pid == caller or (fields["ppid"] == 1 and fields["name"] == "systemd"),
+            "reasons": reasons[:REASONS_KEPT],
+            "more": max(0, len(reasons) - REASONS_KEPT),
+        })
+    return {"targets": targets, "holders": result, "truncated": truncated}
+
+
+def quit_process(pid_text, start_text):
+    if not pid_text.isdigit() or not start_text.isdigit():
+        usage()
+    pid, start = int(pid_text), int(start_text)
+    if pid <= 1 or pid == os.getpid():
+        return 1
+    try:
+        if os.stat(f"/proc/{pid}").st_uid != os.getuid():
+            return 1
+    except OSError:
+        return 1
+    fields = stat_fields(pid)
+    if not fields or fields["start"] != start:
+        return 1
+    try:
+        os.kill(pid, signal.SIGTERM)
+    except OSError:
+        return 1
+    return 0
+
+
+def notify(title, body):
+    try:
+        os.spawnvp(os.P_WAIT, "notify-send", ["notify-send", "--app-name=Files", "--icon=system-search", "--", title, body])
+    except OSError:
+        pass
+
+
+def show(paths):
+    targets = targets_of(paths)
+    if not targets:
+        notify(_("What is using this?"), _("Nothing was picked that is still there."))
+        return 1
+    try:
+        import gi
+
+        gi.require_version("Gio", "2.0")
+        from gi.repository import Gio, GLib
+
+        bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+        bus.call_sync(BUS_NAME, BUS_PATH, BUS_INTERFACE, "ShowUsers", GLib.Variant("(as)", (targets,)),
+                      None, Gio.DBusCallFlags.NONE, 5000, None)
+        return 0
+    except Exception:  # noqa: BLE001 - the desktop is not there to ask: say it in a notification instead
+        pass
+    found = holders(targets)["holders"]
+    # Names programs give themselves, shown as text: only letters, digits and a few signs
+    names = sorted({"".join(c for c in h["name"] if c.isalnum() or c in " ._-+") or "?" for h in found})
+    title = os.path.basename(targets[0]) if len(targets) == 1 else _("What is using this?")
+    if names:
+        notify(title, _("In use by: %s.") % ", ".join(names))
+    else:
+        notify(title, _("Nothing of yours is using it."))
+    return 0
+
+
+def main(argv):
+    if len(argv) >= 3 and argv[0] == "list" and argv[1] == "--json" and argv[2] == "--":
+        json.dump(holders(argv[3:]), sys.stdout, ensure_ascii=False)
+        sys.stdout.write("\n")
+        return 0
+    if len(argv) == 3 and argv[0] == "quit":
+        return quit_process(argv[1], argv[2])
+    if len(argv) >= 2 and argv[0] == "show" and argv[1] == "--":
+        return show(argv[2:])
+    usage()
+    return 64
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

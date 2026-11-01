@@ -1,7 +1,8 @@
 // Modified for Amethystora: Amethystora Clipboard is Clipboard Indicator v71 with its history sealed
 // (registry.js, store.js, keyring.js) instead of written to ~/.cache in plain text, kept as keep-history
 // says, and with nothing recorded that a password manager marks secret, and gives Amethystora UI's search a
-// read-only view of the history (history(), content()).
+// read-only view of the history (history(), content()), and with text actions and QR codes on each text item
+// (textActions.js, Amethystora's own).
 
 import Clutter from 'gi://Clutter';
 import Cogl from 'gi://Cogl';
@@ -23,6 +24,7 @@ import { Registry, ClipboardEntry } from './registry.js';
 import { DialogManager } from './confirmDialog.js';
 import { PrefsFields } from './constants.js';
 import { Keyboard } from './keyboard.js';
+import { TextActionsDialog } from './textActions.js';
 
 const CLIPBOARD_TYPE = St.ClipboardType.CLIPBOARD;
 
@@ -184,6 +186,8 @@ const ClipboardIndicator = GObject.registerClass({
         this._clearDelayedSelectionTimeout();
         this.#clearTimeouts();
         this.#closeImagePreview();
+        this._textActionsDialog?.close();
+        this._textActionsDialog = null;
         this._removeHistoryLabel();
         this._destroyNotifSource();
         this.dialogManager.destroy();
@@ -563,7 +567,8 @@ const ClipboardIndicator = GObject.registerClass({
         // Empty state section
         this.emptyStateSection = new St.BoxLayout({
             style_class: 'clipboard-indicator-empty-state',
-            vertical: true
+            // GNOME 51 has no vertical property: orientation, as 50 takes too
+            orientation: Clutter.Orientation.VERTICAL
         });
         this.emptyStateSection.add_child(new St.Icon({
             icon_name: INDICATOR_ICON,
@@ -849,6 +854,12 @@ const ClipboardIndicator = GObject.registerClass({
                 case Clutter.KEY_t:
                     this.#showTagDialog(menuItem, true);
                     return Clutter.EVENT_STOP;
+                case Clutter.KEY_a:
+                    if (entry.isText()) {
+                        this.#showTextActions(menuItem, true);
+                        return Clutter.EVENT_STOP;
+                    }
+                    break;
                 case Clutter.KEY_KP_Enter:
                 case Clutter.KEY_Return:
                     if (PASTE_ON_SELECT) {
@@ -913,6 +924,21 @@ const ClipboardIndicator = GObject.registerClass({
             });
             menuItem.editBtn.connect('clicked', () => this.#showEditDialog(menuItem));
             menuItem.actor.add_child(menuItem.editBtn);
+
+            // Text actions and the QR code (textActions.js)
+            menuItem.actionsBtn = new St.Button({
+                style_class: 'ci-action-btn',
+                can_focus: true,
+                accessible_name: _('Text actions'),
+                child: new St.Icon({
+                    icon_name: 'view-more-symbolic',
+                    style_class: 'system-status-icon',
+                }),
+                x_expand: false,
+                y_expand: true,
+            });
+            menuItem.actionsBtn.connect('clicked', () => this.#showTextActions(menuItem));
+            menuItem.actor.add_child(menuItem.actionsBtn);
         }
 
         // Favorite button
@@ -2008,7 +2034,7 @@ const ClipboardIndicator = GObject.registerClass({
             style_class: 'ci-edit-textbox',
             x_expand: true,
             y_expand: true,
-            vertical: true,
+            orientation: Clutter.Orientation.VERTICAL,
         });
 
         textBox.add_child(clutterText);
@@ -2044,6 +2070,40 @@ const ClipboardIndicator = GObject.registerClass({
         if (reopenOnClose) this.menu.close();
         dialog.open();
         clutterText.grab_key_focus();
+    }
+
+    // Make a new copy: the item's text actions, each result a new item at the top and on the clipboard
+    #showTextActions (menuItem, reopenOnClose = false) {
+        const text = menuItem.entry.getStringValue();
+        this.menu.close();
+        this._textActionsDialog?.close();
+        const dialog = new TextActionsDialog(text, result => this.#copyAsNew(result), () => {
+            if (this._textActionsDialog === dialog) this._textActionsDialog = null;
+            if (reopenOnClose && !this._destroyed) {
+                this._focusItemOnOpen = menuItem;
+                this.menu.open();
+            }
+        });
+        this._textActionsDialog = dialog;
+        dialog.open();
+    }
+
+    #copyAsNew (text) {
+        if (this._destroyed) return;
+        const entry = new ClipboardEntry('text/plain;charset=utf-8', new TextEncoder().encode(text), false);
+        const known = this.clipItemsRadioGroup.find(item => item.entry.equals(entry));
+        if (known) {
+            this._selectMenuItem(known, true);
+            return;
+        }
+        if (PRIVATEMODE) {
+            this.extension.clipboard.set_text(CLIPBOARD_TYPE, text);
+            return;
+        }
+        this.#addToCache(entry);
+        aboutEntry(entry).copiedAt = GLib.DateTime.new_now_local();
+        this._addEntry(entry, true, true);
+        this._removeOldestEntries();
     }
 
     #closeImagePreview () {

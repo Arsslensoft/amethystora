@@ -490,6 +490,13 @@ ame desktop app-grid folders reset     # the folders as the image has them, forg
 again, type to search, and pin the ones you keep coming back to. It is also the clipboard icon in
 the top bar.
 
+**Text actions and QR codes.** The ⋯ button of a text in the history (or `A` on it) opens **Make a new copy**:
+the text as **Pretty JSON**, in **UPPER CASE**, **lower case** or **Title Case**, with its spaces trimmed, on
+**One line**, or with a web address's `%20`s decoded, each one a new item at the top of the history and on the
+clipboard, ready to paste, and the text's characters and words counted. The original stays as it was. For a link
+or a short text, **Show as QR code** shows it as a code any phone's camera reads, to hand it to a phone that is not
+paired, or to somebody else's. While the screen is shared or recorded the code is not shown.
+
 The history is never on disk as you copied it: text and pictures alike are sealed (encrypted) in
 `~/.local/state/amethystora/clipboard`, under a key kept in your login keyring, which your password
 protects. A copy of the disk, a snapshot or a stolen laptop shows nothing of it without that password.
@@ -1179,6 +1186,31 @@ every image update the image's own extensions are switched back on, so that one 
 accident, or by a crash, does not stay off for good. Turning one off lasts until the next update. The
 [classic layout](#classic-windows) is not an extension turned off, so it stays as you set it.
 
+## Tools at hand
+
+### Pick a colour
+
+`Super+Alt+C` holds the screen still and puts a loupe under the pointer: the pixels around it, magnified, and the
+colour under it named. Click to copy the colour as `#9148F0`, `Shift`+click as `rgb(145, 72, 240)` and
+`Ctrl`+click as `hsl(266, 85%, 61%)`; `Esc`, a right click or the key again closes it with nothing copied. The
+colour goes on the clipboard (and so into its history), and the last eight you picked are in the search: type
+`colour:`. Nothing of the screen is kept once the loupe closes, and it does not open while the screen is shared.
+
+### Mute the microphone
+
+`Super+Alt+M` mutes the microphone for every app at once, in a call or not: it is the input's own mute, the one the
+microphone slider in quick settings sets. While it is muted, **Mic off** stays in the top bar; its menu turns the
+microphone back on, and so do the key again and the slider. A microphone you plug in meanwhile (a headset) is muted
+too. The [privacy dots](#privacy-dots) list has the same **Mute** button beside the apps using the microphone.
+
+### Share this Wi-Fi
+
+In quick settings, the Wi-Fi menu has **Share this Wi-Fi** while you are on a network a phone can join with its
+password alone. Click it and the menu shows a QR code: a guest's phone camera joins with it, with no password read
+aloud or typed. The password is read only then, may need yours to read, and goes when the menu closes. It is not
+offered for a network that needs a user name (802.1X) or for the hotspot this computer makes, and not shown while the
+screen is shared or recorded.
+
 ## Files
 
 `Super+Shift+F` opens a Files window and `Super+E` your home folder. Folders open on a grid, where
@@ -1221,7 +1253,26 @@ taken out (*Removed: place, camera, time*). The original is never changed. It is
 What the content itself shows or says stays: a face, a street sign, words in a picture, a name typed in a
 document, and the file's own name. A file of another kind is left as it was, and the notification says so.
 
-The three are scripts in `~/.local/share/nautilus/scripts`, written once for each account: delete one and it stays gone.
+### What is using this?
+
+When a stick will not eject or a file will not go, select it (or the stick's folder) and pick **Scripts › What is
+using this?**: a window lists the programs of yours that hold it, and what each holds (*its folder is open here*,
+*report.txt is open*), each with **Quit**. Only your own programs are listed: never another account's. GNOME's own
+**Volume is busy** dialog gains **Show what is using it**, and so does the dock's notice when a drive cannot be
+ejected.
+
+### Convert and shrink
+
+Offered and off: `ame desktop files-convert on` (or **Convert pictures in Files** in [Control](control.md)) adds
+**Scripts › Convert** to Files, with **As PNG**, **As JPEG**, **As WebP**, **Half the size**, **1920 pixels wide** and
+**Into one PDF**. Each writes a new file beside the picture, never over one: `holiday.png`, `holiday (half
+size).jpg`, `holiday (1920 px).jpg`, and for several pictures one PDF named after the first, a page each. A picture
+is turned upright first, and its metadata (where a photo was taken among it) is not carried over. A JPEG is saved
+over white where the picture was transparent. Pictures Files cannot show cannot be converted either: an iPhone's HEIC
+needs a decoder Fedora does not ship. `ame desktop files-convert off` takes the menu away.
+
+These are scripts in `~/.local/share/nautilus/scripts`. The first four are written once for each account: delete one
+and it stays gone. Convert is there exactly while it is on.
 
 ## The trash
 

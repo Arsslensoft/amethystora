@@ -200,6 +200,7 @@ read_in_background agent-ui gsettings list-recursively org.gnome.shell.extension
 read_in_background quit gsettings list-recursively org.gnome.shell.extensions.amethystora-ui.quit
 # The UI's privacy apart from GNOME's above: one name each, or both reads write one file and the last wins
 read_in_background ui-privacy gsettings list-recursively org.gnome.shell.extensions.amethystora-ui.privacy
+read_in_background ui-tools gsettings get org.gnome.shell.extensions.amethystora-ui.tools convert-in-files
 read_in_background breaks gsettings get org.gnome.desktop.break-reminders selected-breaks
 read_in_background search gsettings list-recursively org.gnome.shell.extensions.amethystora-ui.search
 read_in_background emoji gsettings get org.gnome.shell.extensions.amethystora-ui.emoji skin-tone
@@ -1564,6 +1565,17 @@ if [[ "${ privacy_key network-apps; }" == true ]]; then value=on; else value=off
 item desktop network-apps switch "${ gettext "Network by app"; }" \
     "${ gettext "The network meter's menu lists which apps are talking to the network, and to where, while it is open. Nothing is sent anywhere."; }" \
     "${value}" desktop#network-by-app
+GROUP=""
+
+# Convert pictures in Files (the tools module), offered and off
+GROUP="${ gettext "Files"; }"
+[[ "${ ended ui-tools; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
+switch_choices false ame desktop files-convert
+USAGE="ame desktop files-convert on|off"
+if [[ "${ said ui-tools; }" == true* ]]; then value=on; else value=off; fi
+item desktop files-convert switch "${ gettext "Convert pictures in Files"; }" \
+    "${ gettext "Files' Scripts menu gains Convert: a picture as PNG, JPEG or WebP, smaller, or several in one PDF, each a new file beside it."; }" \
+    "${value}" desktop#convert-and-shrink
 GROUP=""
 
 if [[ -e "${CONFIG_DIR}/no-greeting" ]]; then GREETING=off; else GREETING=on; fi

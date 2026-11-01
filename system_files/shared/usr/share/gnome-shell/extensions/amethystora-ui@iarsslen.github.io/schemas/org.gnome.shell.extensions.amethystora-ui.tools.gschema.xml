@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Tools at hand (modules/tools.js): the colour picker's and the microphone's keys, and whether Files' Scripts menu
+     has Convert. `ame desktop files-convert on|off`, Control and the setup file write convert-in-files; the setup
+     file keeps the two keys with the other keybindings. -->
+<schemalist>
+  <schema id="org.gnome.shell.extensions.amethystora-ui.tools" path="/org/gnome/shell/extensions/amethystora-ui/tools/">
+    <key name="colour-picker" type="as">
+      <default><![CDATA[['<Super><Alt>c']]]></default>
+      <summary>Pick a colour from the screen</summary>
+      <description>A loupe over the screen; a click copies the colour under it as hex, with Shift as rgb() and with Ctrl as hsl(). An empty list turns the picker off.</description>
+    </key>
+    <key name="mute-microphone" type="as">
+      <default><![CDATA[['<Super><Alt>m']]]></default>
+      <summary>Mute the microphone in every app</summary>
+      <description>Mutes the default input, or turns it back on. While it is muted a mark stays in the top bar. An empty list leaves the key unbound.</description>
+    </key>
+    <key name="convert-in-files" type="b">
+      <default>false</default>
+      <summary>Convert pictures in Files</summary>
+      <description>Files' Scripts menu gains Convert: a picture as PNG, JPEG or WebP, half the size or 1920 pixels wide, or several in one PDF, each written as a new file beside it.</description>
+    </key>
+  </schema>
+</schemalist>

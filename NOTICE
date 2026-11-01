@@ -204,8 +204,9 @@ modified copy of Clipboard Indicator version 71 (commit
 c880c7fb88dc7232a61a5864d125989a4f375daa), Copyright (c) 2014 Yotam Bar-On, under
 the MIT License, which ships in the extension's folder as LICENSE.rst.
 Amethystora's changes seal its history instead of writing it in plain text, and let
-the desktop's search read it;
-the files it changed say so at their top. Its translations, in
+the desktop's search read it, and add text actions and QR codes to its items;
+the files it changed say so at their top. textActions.js in it is Amethystora's
+own, under the Apache License, Version 2.0. Its translations, in
 usr/share/locale/*/LC_MESSAGES/amethystora-clipboard.mo, are Clipboard
 Indicator's translators', under the same licence.
 

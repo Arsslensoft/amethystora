@@ -312,7 +312,9 @@ for (const app of APPS) {
 // it for each account. A comment that starts "# Translators:" goes to the translators with every message up to
 // the next empty line.
 
-const PYTHON = ['usr/libexec/amethystora-text-shortcuts'];
+const PYTHON = ['usr/libexec/amethystora-text-shortcuts',
+    // Files' What is using this? and Convert (plans/ui-ideas/spec-tools.md)
+    'usr/libexec/amethystora-what-uses', 'usr/libexec/amethystora-convert'];
 const SHELL = ['usr/libexec/amethystora-security-status', 'usr/libexec/amethystora-app-permissions', 'usr/libexec/amethystora-layout-offer',
     'usr/libexec/amethystora-control-list', 'usr/libexec/amethystora-security-config', 'usr/libexec/amethystora-hardening',
     'usr/libexec/amethystora-phone-link-notice', 'usr/libexec/amethystora-deja-dup-notice',
@@ -328,6 +330,8 @@ const SHELL = ['usr/libexec/amethystora-security-status', 'usr/libexec/amethysto
     ...PYTHON,
     'usr/share/gnome-shell/extensions/amethystora-widgets@iarsslen.github.io/extension.js',
     'usr/share/gnome-shell/extensions/amethystora-logo-menu@iarsslen.github.io/extension.js',
+    // Amethystora Clipboard's text actions, Amethystora's own file in it, in domain amethystora
+    'usr/share/gnome-shell/extensions/amethystora-clipboard@iarsslen.github.io/textActions.js',
     ...['agent', 'apps', 'backup', 'changelog', 'desktop', 'report', 'security', 'system', 'update'].map((group) => `usr/share/amethystora/just/${group}.just`),
     // Amethystora UI: every module, however deep it is split
     ...jsFiles('usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io')];
