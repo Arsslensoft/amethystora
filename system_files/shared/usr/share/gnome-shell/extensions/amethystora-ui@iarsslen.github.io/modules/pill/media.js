@@ -97,9 +97,11 @@ function position(micro) {
 }
 
 export class Media {
-    constructor(activities, reduceMotion) {
+    // phoneSource: the phone's players (modules/connect/players.js), or null
+    constructor(activities, reduceMotion, phoneSource = () => null) {
         this._activities = activities;
         this._reduce = reduceMotion;
+        this._phoneSource = phoneSource;
         this.id = 'media';
         this.row = {icon: 'audio-x-generic-symbolic', text: ''};
     }
@@ -108,17 +110,22 @@ export class Media {
         this._players = new Map();
         this._current = null;
         this._source = playerSource();
-        this._source.connectObject(
-            'player-added', (source, player) => this._add(player),
-            'player-removed', (source, player) => this._remove(player),
-            this);
-        for (const player of this._source.players)
-            this._add(player);
+        this._phones = this._phoneSource();
+        for (const source of [this._source, this._phones].filter(Boolean)) {
+            source.connectObject(
+                'player-added', (s, player) => this._add(player),
+                'player-removed', (s, player) => this._remove(player),
+                this);
+            for (const player of source.players)
+                this._add(player);
+        }
     }
 
     disable() {
         this._source?.disconnectObject(this);
         this._source = null;
+        this._phones?.disconnectObject(this);
+        this._phones = null;
         for (const player of this._players?.keys() ?? [])
             player.disconnectObject(this);
         this._players = null;
@@ -421,8 +428,13 @@ class AmethystoraPillMediaCard extends St.BoxLayout {
     _watchPosition() {
         const player = this._media.player;
         const bus = player?._busName;
-        if (typeof bus !== 'string')
+        if (typeof bus !== 'string') {
+            // A phone's player says where it was each time it says anything
+            const micro = read(player, 'trackPositionMicro', null);
+            if (Number.isFinite(micro))
+                this._setPosition(micro);
             return;
+        }
         this._bus = bus;
         this._cancellable = new Gio.Cancellable();
         Gio.DBus.session.call(bus, '/org/mpris/MediaPlayer2', 'org.freedesktop.DBus.Properties', 'Get',
@@ -471,13 +483,13 @@ class AmethystoraPillMediaCard extends St.BoxLayout {
             this._art.set_child(artwork(player, 72, 'amethystora-pill-cover'));
         }
         this._title.text = media.title;
-        const app = plain(read(player, 'app', null)?.get_name?.() ?? player._mprisProxy?.Identity ?? '', 60);
+        const app = plain(read(player, 'source', '') || (read(player, 'app', null)?.get_name?.() ?? player._mprisProxy?.Identity ?? ''), 60);
         this._sub.text = [media.artist, app].filter(Boolean).join(' · ');
 
-        let length = 0;
+        let length = Number(read(player, 'trackLengthMicro', 0));
         try {
             const metadata = player._playerProxy?.Metadata;
-            length = Number(metadata?.['mpris:length']?.deepUnpack?.() ?? 0);
+            length ||= Number(metadata?.['mpris:length']?.deepUnpack?.() ?? 0);
         } catch {}
         this._lengthMicro = Number.isFinite(length) && length > 0 ? length : 0;
         this._progress.visible = this._lengthMicro > 0;
@@ -494,6 +506,13 @@ class AmethystoraPillMediaCard extends St.BoxLayout {
         this._output.text = output ? _('Playing on %s').format(output) : '';
         this._output.visible = output !== '';
 
+        // A phone's player says where it is with each change, and is taken at its word
+        const phoneAt = typeof player._busName === 'string' ? null : read(player, 'trackPositionMicro', null);
+        if (Number.isFinite(phoneAt) && phoneAt !== this._phoneAt) {
+            this._phoneAt = phoneAt;
+            this._wasPlaying = playing;
+            this._setPosition(phoneAt);
+        }
         // While it plays, the bar moves on once a second, from where the player last said it was
         if (this._wasPlaying !== playing) {
             this._position = this._currentPosition();

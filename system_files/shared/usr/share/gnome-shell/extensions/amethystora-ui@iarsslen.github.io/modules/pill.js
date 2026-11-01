@@ -280,7 +280,8 @@ export class Pill {
         }
         this._live = [];
         const parts = [
-            ['_media', () => new Media(this._activities, reduce)],
+            // The phone's players too, while music from either side is on (the connect module's)
+            ['_media', () => new Media(this._activities, reduce, () => this._ext.modules?.get('connect')?.mediaSource ?? null)],
             ['_timer', () => new Timer(this._activities, notice)],
             ['_recording', () => new Recording(this._activities, notice, this._capture, reduce)],
             ['_update', () => new Update(this._activities)],

@@ -25,6 +25,9 @@ const ROOT = `
     <method name="TakeLinks">
       <arg name="take" type="b" direction="in"/>
     </method>
+    <method name="Presenting">
+      <arg name="presenting" type="b" direction="in"/>
+    </method>
     <signal name="DeviceAdded">
       <arg name="device" type="o"/>
     </signal>
@@ -38,6 +41,10 @@ const ROOT = `
     <signal name="UrlReceived">
       <arg name="device_id" type="s"/>
       <arg name="url" type="s"/>
+    </signal>
+    <signal name="Clicker">
+      <arg name="device_id" type="s"/>
+      <arg name="action" type="s"/>
     </signal>
   </interface>
 </node>`;
@@ -55,7 +62,13 @@ const DEVICE = `
     <property name="SignalStrength" type="i" access="read"/>
     <property name="NetworkType" type="s" access="read"/>
     <property name="Features" type="as" access="read"/>
+    <property name="Players" type="aa{sv}" access="read"/>
     <method name="Ping"/>
+    <method name="Ring"/>
+    <method name="MediaAction">
+      <arg name="player" type="s" direction="in"/>
+      <arg name="action" type="s" direction="in"/>
+    </method>
     <method name="SendUrl">
       <arg name="url" type="s" direction="in"/>
     </method>

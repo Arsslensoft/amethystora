@@ -27,6 +27,9 @@ import time
 PHONE_IN = ["kdeconnect.ping", "kdeconnect.battery.request", "kdeconnect.notification.request",
             "kdeconnect.share.request", "kdeconnect.clipboard"]
 PHONE_OUT = ["kdeconnect.ping", "kdeconnect.battery", "kdeconnect.share.request", "kdeconnect.connectivity_report"]
+# PEER_IN_MORE and PEER_OUT_MORE, comma lists, add packet types: the ring, the players and the presenter of suite 64
+PHONE_IN += [t for t in os.environ.get("PEER_IN_MORE", "").split(",") if t]
+PHONE_OUT += [t for t in os.environ.get("PEER_OUT_MORE", "").split(",") if t]
 
 
 def log(directory, line):
@@ -101,10 +104,13 @@ def reader(directory, tls):
         while b"\n" in buffer:
             line, buffer = buffer.split(b"\n", 1)
             try:
-                kind = json.loads(line).get("type")
+                got = json.loads(line)
+                kind = got.get("type")
+                body = json.dumps(got.get("body", {}), separators=(",", ":"), sort_keys=True)
             except ValueError:
-                kind = "?"
-            log(directory, f"got {kind}")
+                kind, body = "?", ""
+            # The body after the type, for the suites that look into it: "got TYPE" stays the start of the line
+            log(directory, f"got {kind} {body}")
     log(directory, "closed by the computer")
 
 
@@ -122,6 +128,10 @@ def run(directory, host, port):
             return 1
         theirs += data
     log(directory, f"connected to {json.loads(theirs)['body'].get('deviceName')}")
+    # What the computer listed, for the suites that look at it (64: what its switches add)
+    for side in ("incoming", "outgoing"):
+        listed = json.loads(theirs)["body"].get(f"{side}Capabilities", [])
+        log(directory, f"their {side} {','.join(listed)}")
     tls.settimeout(None)
     threading.Thread(target=reader, args=(directory, tls), daemon=True).start()
     commands = os.path.join(directory, "commands")

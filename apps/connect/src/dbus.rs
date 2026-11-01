@@ -44,6 +44,11 @@ const MODULE_METHODS: &[&str] = &[
     "MuteRinger",
     // The module says whether it shows the links phones share, which the program then does not notify itself
     "TakeLinks",
+    // The phone's menu rings it; the live pill plays and pauses the phone's music; Present says while it presents
+    // (plans/ui-ideas/spec-phone.md)
+    "Ring",
+    "MediaAction",
+    "Presenting",
 ];
 
 pub fn role_of_exe(exe: &str, app: &str, module: &str) -> Role {
@@ -121,12 +126,14 @@ fn note_client(service: &Service, sender: Option<&str>, role: Role) {
 pub fn audience(role: Role, signal: &str, args: Option<&glib::Variant>) -> bool {
     match role {
         // The clipboard is the shell's to set, and a shared link the shell's to show (the live pill)
-        Role::App => !matches!(signal, "ClipboardReceived" | "UrlReceived"),
+        Role::App => !matches!(signal, "ClipboardReceived" | "UrlReceived" | "Clicker"),
         Role::Module => match signal {
             "DeviceAdded" | "DeviceRemoved" | "PropertiesChanged" | "ClipboardReceived" => true,
             // The live pill: a phone ringing, and a link shared from one
             "Call" => true,
             "UrlReceived" => true,
+            // The phone as a slide clicker, which only the shell turns into a key
+            "Clicker" => true,
             // (transfer_id, name, incoming, done, total, state)
             "Transfer" => args.filter(|a| a.n_children() > 2).and_then(|a| a.child_value(2).get::<bool>()) == Some(false),
             _ => false,
@@ -143,6 +150,7 @@ fn redact(value: &glib::Variant) -> glib::Variant {
         "i" => (-1i32).to_variant(),
         "x" => 0i64.to_variant(),
         "as" => Vec::<String>::new().to_variant(),
+        "aa{sv}" => Vec::<HashMap<String, glib::Variant>>::new().to_variant(),
         _ => false.to_variant(),
     }
 }
@@ -159,6 +167,7 @@ fn watch_callers(service: &Rc<Service>, bus: &gio::DBusConnection) {
                 service.callers.borrow_mut().remove(&name);
                 service.clients.borrow_mut().remove(&name);
                 service.link_takers.borrow_mut().remove(&name);
+                service.presenters.borrow_mut().remove(&name);
             }
         }
     });
@@ -299,6 +308,9 @@ pub fn export(service: &Rc<Service>, bus: &gio::DBusConnection) -> Result<(), gl
                     // Only a client of the module's role takes them, and only for its own connection
                     return nothing(invocation, arg::<bool>(&params, 0).map(|on| set_link_taker(&service, sender, role, on)));
                 }
+                if method == "Presenting" {
+                    return nothing(invocation, arg::<bool>(&params, 0).map(|on| set_presenter(&service, sender, role, on)));
+                }
                 root_method(&service, method, &params, invocation)
             }
             None => invocation.return_dbus_error(NOT_AVAILABLE, "the program is stopping"),
@@ -369,6 +381,23 @@ pub fn set_link_taker(service: &Service, sender: Option<&str>, role: Role, on: b
     } else {
         service.link_takers.borrow_mut().remove(sender);
     }
+}
+
+/// Whether a connection is presenting (Presenting): only the module's, and only while it is a client
+pub fn set_presenter(service: &Service, sender: Option<&str>, role: Role, on: bool) {
+    let Some(sender) = sender else { return };
+    if on && role == Role::Module {
+        service.presenters.borrow_mut().insert(sender.to_string());
+    } else {
+        service.presenters.borrow_mut().remove(sender);
+    }
+}
+
+/// Whether the shell is presenting now: a connection of the module's that is still a client said so, and has not
+/// said otherwise. Only then are the clicker's keys passed on
+pub fn presenting(service: &Service) -> bool {
+    let clients = service.clients.borrow();
+    service.presenters.borrow().iter().any(|name| clients.get(name) == Some(&Role::Module))
 }
 
 /// Whether a web link goes to the shell's module now: a connection of the module's that is still a client has taken
@@ -452,6 +481,8 @@ fn device_method(service: &Rc<Service>, id: &str, method: &str, params: &glib::V
             }
             "SendMessage" => service.send_message(id, &arg::<Vec<String>>(params, 0)?, &arg::<String>(params, 1)?, arg::<i64>(params, 2)?).map(|_| None)?,
             "MuteRinger" => service.mute_ringer(id).map(|_| None)?,
+            "Ring" => service.ring(id).map(|_| None)?,
+            "MediaAction" => service.media_action(id, &arg::<String>(params, 0)?, &arg::<String>(params, 1)?).map(|_| None)?,
             _ => return Err(ApiError::InvalidArgs("no such method".into())),
         })
     })();

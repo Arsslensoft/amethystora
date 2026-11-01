@@ -1345,8 +1345,16 @@ in `plans/amethystora-connect/` are the protocol, the plugins and the desktop si
   under a name that cannot leave it and never overwrites; texts live in memory only. Received links are shown, never opened.
 - **The clipboard is two switches, both off** (`org.amethystora.Connect` `clipboard-send` and `clipboard-receive`, `ame
   desktop phone clipboard send|receive on|off`, two Control entries): a phone pasting into a password field is a risk the
-  person takes on knowingly. Not in the first version: the phone's storage, remote input, media control, run command,
-  sending this computer's notifications, and `tel:`/`sms:` handlers.
+  person takes on knowingly. Not in the first version: the phone's storage, remote input, run command, sending this
+  computer's notifications, and `tel:`/`sms:` handlers.
+- **Ring, music and the clicker** (`plans/ui-ideas/spec-phone.md`): ringing the phone (`Ring`, the menu, `ame desktop phone
+  ring`) is always offered. `music` and `clicker` (`org.amethystora.Connect`, both off; `ame desktop phone music|clicker
+  on|off`) change what the program lists (`identity::advertised`), so a switch closes each phone's connection and it comes
+  back with the new lists. Music: the phone's players are the device property `Players`, shown by the pill through
+  `connect/players.js`, and the program reads the session's MPRIS players only while a phone takes them (`players.rs`), no
+  album art either way. The clicker lists only `kdeconnect.presenter`, never `kdeconnect.mousepad.request`, which would offer
+  the phone's remote input; that packet is heard only as Next, Previous or Blank (`media::clicker_of`), only while a module
+  connection said `Presenting(true)`, and becomes the signal `Clicker`, which Present presses as Page Down, Page Up or B.
 - **Other computers pair only once chosen** (`org.amethystora.Connect` `computers`, off; `ame desktop phone computers
   on|off`, Control's **Pair with other computers**), for files and the clipboard: off, a device that says it is a computer
   is neither shown nor let in, and its transfers are cancelled (`apps/connect/tests/computers.rs`).

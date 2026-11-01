@@ -1035,7 +1035,9 @@ greeting ACTION="":
 # calls (ACTION: on or off; without it, it flips). Off until turned on: the program listens only while its user
 # service is enabled. `phone clipboard send|receive [on|off]` shares the clipboard one way or the other, both off;
 # `phone photos [pictures|downloads]` says where pictures a phone sends go, Pictures/Phone as the image ships;
-# `phone computers [on|off]` lets other computers with the phone link pair too, for files and the clipboard, off
+# `phone computers [on|off]` lets other computers with the phone link pair too, for files and the clipboard, off;
+# `phone ring` rings the paired phones, even on silent; `phone music [on|off]` shows the music of either side on the
+# other, and `phone clicker [on|off]` lets a phone go to the next or previous slide while Present mode presents, both off
 [positional-arguments]
 phone *ARGS:
     #!/usr/bin/bash
@@ -1091,6 +1093,37 @@ phone *ARGS:
                 ;;
             *)
                 echo "usage: ame desktop phone photos [pictures|downloads]"
+                exit 64
+                ;;
+        esac
+        exit 0
+    fi
+    if [[ "${1:-}" == ring ]]; then
+        # The Phone app rings them without its window, and shows it only to say why it could not
+        [[ $# -eq 1 ]] || { echo "usage: ame desktop phone ring"; exit 64; }
+        exec /usr/bin/amethystora-phone ring
+    fi
+    if [[ "${1:-}" == music || "${1:-}" == clicker ]]; then
+        key="$1"
+        case "$(flip "${2:-}" "$(gsettings get org.amethystora.Connect "${key}")")" in
+            on)
+                gsettings set org.amethystora.Connect "${key}" true
+                if [[ "${key}" == music ]]; then
+                    echo "$(gettext "Music from either side is on: what plays here shows on your paired phone, and what plays on the phone shows in the clock's pill.")"
+                else
+                    echo "$(gettext "While Present mode presents, your paired phone can go to the next or previous slide, or blank the screen, and nothing else.")"
+                fi
+                ;;
+            off)
+                gsettings set org.amethystora.Connect "${key}" false
+                if [[ "${key}" == music ]]; then
+                    echo "$(gettext "Music from either side is off")"
+                else
+                    echo "$(gettext "The phone is no slide clicker now: it can send no keys at all.")"
+                fi
+                ;;
+            *)
+                echo "usage: ame desktop phone ${key} [on|off]"
                 exit 64
                 ;;
         esac

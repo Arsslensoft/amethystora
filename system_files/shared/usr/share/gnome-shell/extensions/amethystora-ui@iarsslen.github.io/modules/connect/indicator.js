@@ -90,6 +90,8 @@ class Section {
             [_('Send files…'), 'share', true, () => actions.sendFiles(device)],
             [_('Send a link'), 'share', false, () => actions.sendLink(device)],
             [_('Ping'), 'ping', false, () => actions.ping(device)],
+            // Even when it is silent, until Found it is pressed on it (plans/ui-ideas/spec-phone.md 2)
+            [_('Ring the phone'), 'ring', false, () => actions.ring(device)],
             [_('Messages'), 'sms', true, () => actions.messages(device)],
         ].map(([label, feature, app, run]) => {
             const item = new PopupMenu.PopupMenuItem(label);
@@ -126,7 +128,7 @@ class Section {
 export const Indicator = GObject.registerClass(
 class PhoneIndicator extends PanelMenu.Button {
     /**
-     * @param {object} actions - what a row does, each given the phone: sendFiles, sendLink, ping, messages, and
+     * @param {object} actions - what a row does, each given the phone: sendFiles, sendLink, ping, ring, messages, and
      *     phones() for the app's window
      * @param {Gio.Icon} bolt - the mark of a phone that is charging
      */

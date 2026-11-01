@@ -3,7 +3,9 @@
 // reason of its own), the pill says "Presenting" and for how long, and the pointer is easy to follow: a halo or a
 // torch (modules/present/mark.js). It ends by hand, or with the screen it was started
 // for, or with the share or recording that was running when it started. Super+Alt+D draws on the screen while Present
-// mode is offered, presenting or not (modules/present/scribble.js).
+// mode is offered, presenting or not (modules/present/scribble.js). While presenting, a paired phone may be a slide clicker:
+// the phone link passes on its Next, Previous and Blank only while the person's switch `clicker` of org.amethystora.Connect
+// is on, and they are pressed here as Page Down, Page Up and B (plans/ui-ideas/spec-phone.md 4).
 //
 // The keys are org.gnome.shell.extensions.amethystora-ui.present: enabled (offered), pointer-mark, ask-on-screen and
 // scribble (the keybinding), written by `ame desktop present`, Control and the setup file. Presenting itself is the
@@ -32,6 +34,8 @@ const MARKS = ['halo', 'torch', 'none'];
 // gnome-session's flag for "the session is not idle": no blanking, no lock, no suspend for being idle
 const INHIBIT_IDLE = 8;
 const ICON = 'video-display-symbolic';
+// The phone as a slide clicker (plans/ui-ideas/spec-phone.md 4): the three words the phone link says, as keys
+const CLICKER_KEYS = {next: Clutter.KEY_Page_Down, previous: Clutter.KEY_Page_Up, blank: Clutter.KEY_b};
 
 // Across a screen lock, when GNOME stops the extension, presenting waits here to start again
 let waiting = null;
@@ -103,6 +107,14 @@ class PresentMark {
         });
         text.clutter_text.line_wrap = true;
         body.add_child(text);
+        if (this._present.clicker) {
+            const phone = new St.Label({
+                style_class: 'amethystora-pill-card-text',
+                text: _('Your phone can go to the next or previous slide, or blank the screen.'),
+            });
+            phone.clutter_text.line_wrap = true;
+            body.add_child(phone);
+        }
         body.add_child(buttonRow([cardButton(_('Stop'), () => {
             api.close();
             this._present.stop();
@@ -258,6 +270,7 @@ export class Present {
         this._since = since || GLib.get_monotonic_time();
         this._forConnector = connector;
         this._inhibit();
+        this._listenToPhone();
         this._activity = new PresentMark(this);
         this._pill?.setPresent(this._activity);
         this._syncMark();
@@ -284,6 +297,7 @@ export class Present {
         this._pointer?.destroy();
         this._pointer = null;
         this._uninhibit();
+        this._stopListeningToPhone();
         this._unlistenCapture?.();
         this._unlistenCapture = null;
         this._capture = null;
@@ -301,6 +315,46 @@ export class Present {
 
     get _pill() {
         return this._ext.modules?.get('pill') ?? null;
+    }
+
+    // ---- The phone as a slide clicker ----
+
+    // While presenting, the phone link is told so (it passes the phone's keys on only while the person has the clicker
+    // on, which it checks itself), and each click is pressed as its key into the focused window
+    _listenToPhone() {
+        const connect = this._ext.modules?.get('connect');
+        if (!connect?.onClicker)
+            return;
+        this._connect = connect;
+        this._unlistenClicker = connect.onClicker((device, action) => this._click(action));
+        connect.setPresenting(true);
+    }
+
+    _stopListeningToPhone() {
+        this._unlistenClicker?.();
+        this._unlistenClicker = null;
+        this._connect?.setPresenting(false);
+        this._connect = null;
+        // Made at the first click, gone with the presenting
+        this._keyboard?.run_dispose();
+        this._keyboard = null;
+    }
+
+    // Whether the phone can click now: the person's switch, and the phone link there
+    get clicker() {
+        return this._presenting === true && this._connect?.clicker === true;
+    }
+
+    _click(action) {
+        const key = CLICKER_KEYS[action];
+        if (!this._presenting || key === undefined)
+            return;
+        this._keyboard ??= global.stage.context.get_backend().get_default_seat()
+            .create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);
+        const time = GLib.get_monotonic_time();
+        this._keyboard.notify_keyval(time, key, Clutter.KeyState.PRESSED);
+        this._keyboard.notify_keyval(time + 1, key, Clutter.KeyState.RELEASED);
+        this.clicks = (this.clicks ?? 0) + 1;
     }
 
     _syncMark() {
@@ -469,6 +523,9 @@ export class Present {
             timer: Boolean(this._tick),
             scribble: this._scribble?.isOpen ?? false,
             strokes: this._scribble?.strokes ?? 0,
+            phoneListened: Boolean(this._unlistenClicker),
+            keyboard: Boolean(this._keyboard),
+            clicks: this.clicks ?? 0,
         };
     }
 }

@@ -142,6 +142,10 @@ these commands in the agent's own shell, as the user. Read before writing, chang
   `ame desktop phone photos pictures|downloads`. The phone in the top bar is Amethystora UI's `connect` module, shown only while a paired phone
   is connected: one phone's battery and signal bars (`SignalStrength`, `NetworkType` on the device's D-Bus object,
   from the phone's connectivity report, which needs the phone app's permission to read the phone state).
+- `ame desktop phone ring` rings the paired phones, even when silent (Found it on the phone stops it). Music from either
+  side (`ame desktop phone music on|off`) and the phone as a slide clicker while Present presents (`ame desktop phone
+  clicker on|off`) are off as shipped; each switch makes a connected phone reconnect once. The clicker sends only Page
+  Down, Page Up and B, and only while presenting.
 
 ## Files' scripts menu
 

@@ -97,3 +97,6 @@ pub const MESSAGE_BODY: usize = 16 * 1024;
 pub const REQUESTS_OUTSTANDING: usize = 2;
 
 pub const BATCH_QUIET: Duration = Duration::from_secs(60);
+
+/// The phone as a slide clicker: at most one click in this long (plans/ui-ideas/spec-phone.md 4)
+pub const CLICK_SPACING: Duration = Duration::from_millis(150);

@@ -17,9 +17,9 @@ use serde_json::json;
 use crate::battery::Alert;
 use crate::connectivity;
 use crate::device::Device;
-use crate::identity;
 use crate::limits;
 use crate::link::Link;
+use crate::media;
 use crate::netinfo;
 use crate::notifications::{self, Incoming, Kind, Outcome, Parsed};
 use crate::notify::Notice;
@@ -52,8 +52,12 @@ impl Service {
         if !dev.paired() {
             return self.unpaired_packet(dev, link);
         }
+        // The phone as a slide clicker: its keys are heard although we never list them (media.rs says why)
+        if packet.kind == media::KEYS {
+            return self.on_click(dev, &packet);
+        }
         // What we did not say we handle is dropped, whoever sends it
-        if !identity::INCOMING.contains(&packet.kind.as_str()) {
+        if !self.local.borrow().handles(&packet.kind) {
             return;
         }
         match packet.kind.as_str() {
@@ -69,6 +73,10 @@ impl Service {
             "kdeconnect.sms.messages" => self.on_sms(dev, &packet),
             "kdeconnect.telephony" => self.on_telephony(dev, &packet),
             "kdeconnect.connectivity_report" => self.on_connectivity(dev, &packet),
+            media::MPRIS => self.on_mpris(dev, &packet),
+            media::MPRIS_REQUEST => self.on_mpris_request(dev, &packet.body),
+            // Listed so that the phone offers its presenter; its pointer is never acted on
+            media::PRESENTER => {}
             // The ones we only list so that the phone offers them: battery.request, notification.request
             _ => {}
         }
@@ -89,6 +97,11 @@ impl Service {
         }
         self.send_to(dev, "kdeconnect.contacts.request_all_uids_timestamps", json!({}));
         self.send_to(dev, "kdeconnect.sms.request_conversations", json!({}));
+        // Music from either side: the phone's players are asked for, and this computer's watched while it sees them
+        if self.music.get() && dev.sends(media::MPRIS) {
+            self.send_to(dev, media::MPRIS_REQUEST, media::ask_list());
+        }
+        self.sync_players();
         dbus::props_changed(self, dev);
     }
 
@@ -100,8 +113,11 @@ impl Service {
             // Away, the bars simply go: a phone that comes back says its signal again when it changes
             st.signal = None;
             st.contacts_queue.clear();
+            st.players.clear();
+            st.last_click = None;
             (st.notifications.clear(), st.call.take().is_some())
         };
+        self.sync_players();
         for entry in entries {
             self.notifier.close(&nkey(&dev.id, &entry.id));
         }
@@ -516,6 +532,57 @@ impl Service {
 
     pub fn mute_ringer(self: &Rc<Self>, device: &str) -> ApiResult<()> {
         self.require_send(device, "kdeconnect.telephony.request_mute", json!({}))
+    }
+
+    // --- Ringing, music, the clicker (plans/ui-ideas/spec-phone.md) -------------------------------------------
+
+    /// Makes the phone ring, even when it is silent, until Found it is pressed on it (or this is sent again)
+    pub fn ring(&self, device: &str) -> ApiResult<()> {
+        self.require_send(device, media::RING, json!({}))
+    }
+
+    /// The phone's players: its list, or one's state. Heard only while music from either side is on
+    fn on_mpris(self: &Rc<Self>, dev: &Rc<Device>, p: &Packet) {
+        if !self.music.get() {
+            return;
+        }
+        let heard = dev.st.borrow_mut().players.apply(&p.body);
+        for player in &heard.ask {
+            self.send_to(dev, media::MPRIS_REQUEST, media::ask_state(player));
+        }
+        if heard.changed {
+            dbus::props_changed(self, dev);
+        }
+    }
+
+    /// One of the phone's players told to play, pause or skip
+    pub fn media_action(&self, device: &str, player: &str, action: &str) -> ApiResult<()> {
+        let dev = self.device(device).ok_or_else(|| ApiError::unavailable("no such device"))?;
+        if !self.music.get() {
+            return Err(ApiError::unavailable("music from either side is off"));
+        }
+        if !dev.st.borrow().players.knows(player) {
+            return Err(ApiError::unavailable("no such player on the phone"));
+        }
+        let body = media::action_request(player, action).ok_or_else(|| ApiError::InvalidArgs("not an action of a player".into()))?;
+        self.require_send(device, media::MPRIS_REQUEST, body)
+    }
+
+    /// A key from the phone: a click of the slide clicker, when the person chose it and is presenting now, and one of
+    /// the three; anything else is dropped without a word
+    fn on_click(self: &Rc<Self>, dev: &Rc<Device>, p: &Packet) {
+        if !self.clicker.get() || !dbus::presenting(self) {
+            return;
+        }
+        let Some(click) = media::clicker_of(&p.kind, &p.body) else { return };
+        {
+            let mut st = dev.st.borrow_mut();
+            if st.last_click.is_some_and(|t| t.elapsed() < limits::CLICK_SPACING) {
+                return;
+            }
+            st.last_click = Some(Instant::now());
+        }
+        dbus::emit(self, None, "Clicker", Some((dev.id.as_str(), click.word()).to_variant()));
     }
 
     // --- The rest of the bus ------------------------------------------------------------------------------

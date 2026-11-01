@@ -23,8 +23,8 @@ for file in /usr/libexec/amethystora-connect /usr/bin/amethystora-phone /usr/lib
 done
 # The clipboard is shared only when chosen, one way at a time, and both ways start off
 keys="$(GSETTINGS_BACKEND=memory gsettings list-keys org.amethystora.Connect 2>&1 | sort | paste -sd ' ')"
-if [[ "${keys}" == "clipboard-receive clipboard-send computers device-name photo-folder" ]]; then
-    ok "the phone link's settings are the name phones see, the two clipboard switches, where pictures go and other computers"
+if [[ "${keys}" == "clicker clipboard-receive clipboard-send computers device-name music photo-folder" ]]; then
+    ok "the phone link's settings are the name phones see, the two clipboard switches, where pictures go, other computers, music and the clicker"
 else
     not_ok "the phone link has other settings than the name, the two clipboard switches, the photo folder and computers" "${keys}"
 fi

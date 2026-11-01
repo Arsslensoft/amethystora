@@ -109,6 +109,9 @@ pub struct Settings {
     pub photo_folder: PhotoFolder,
     /// Other computers pair too (the GSettings key computers), off as the image ships
     pub computers: bool,
+    /// Music from either side and the phone as a slide clicker (the keys music and clicker), off as the image ships
+    pub music: bool,
+    pub clicker: bool,
 }
 
 /// Where pictures from a phone go (the GSettings key photo-folder)
@@ -173,6 +176,14 @@ pub struct Service {
     pub photo_folder: Cell<PhotoFolder>,
     /// Whether other computers are talked to (identity::is_computer); phones and tablets always are
     pub computers: Cell<bool>,
+    /// Music from either side, and the phone as a slide clicker (plans/ui-ideas/spec-phone.md)
+    pub music: Cell<bool>,
+    pub clicker: Cell<bool>,
+    /// This computer's players while a phone is shown them (players.rs)
+    pub players: RefCell<Option<crate::players::Watcher>>,
+    /// The module's connections that said they are presenting (Presenting): the clicker's keys reach the module only
+    /// while one of them is a client and has not said otherwise
+    pub presenters: RefCell<HashSet<String>>,
     pub home: HomeZone,
     pub next: Cell<u64>,
     handshakes: Cell<usize>,
@@ -226,6 +237,7 @@ impl Service {
         store::private_dir(&cfg.state_dir).map_err(|e| format!("{}: {e}", cfg.state_dir.display()))?;
         let name = identity::default_name(&settings.name, pretty_host.as_deref(), &glib::host_name());
         let mut local = Local::new(&me.device_id, &name, &cfg.kind);
+        (local.incoming, local.outgoing) = identity::advertised(settings.music, settings.clicker);
         if let Some((incoming, outgoing)) = &cfg.capabilities {
             local.incoming = incoming.clone();
             local.outgoing = outgoing.clone();
@@ -251,6 +263,10 @@ impl Service {
             clip_receive: Cell::new(settings.clipboard_receive),
             photo_folder: Cell::new(settings.photo_folder),
             computers: Cell::new(settings.computers),
+            music: Cell::new(settings.music),
+            clicker: Cell::new(settings.clicker),
+            players: RefCell::default(),
+            presenters: RefCell::default(),
             home,
             next: Cell::new(1),
             handshakes: Cell::new(0),
@@ -371,6 +387,7 @@ impl Service {
             }
         }
         let dev = Device::with_policy(id, path, name, kind, protocol, self.cfg.show_silent, self.cfg.show_ongoing);
+        dev.st.borrow_mut().offers = device::Offers { music: self.music.get(), clicker: self.clicker.get() };
         self.devices.borrow_mut().insert(id.to_string(), dev.clone());
         crate::dbus::register_device(&self.weak.upgrade().expect("the service is alive"), &dev);
         dev
@@ -1582,6 +1599,44 @@ impl Service {
         self.clip_send.set(send);
         self.clip_receive.set(receive);
         crate::dbus::root_props_changed(self);
+    }
+
+    /// The switches music and clicker. What this computer lists changes with them, and a phone reads the list only
+    /// when it connects: each connected phone is let go and called again, and comes back within seconds with the
+    /// features as they are now. A test that gave the program lists of its own keeps them.
+    pub fn set_media_switches(self: &Rc<Self>, music: bool, clicker: bool) {
+        if self.music.get() == music && self.clicker.get() == clicker {
+            return;
+        }
+        self.music.set(music);
+        self.clicker.set(clicker);
+        if self.cfg.capabilities.is_none() {
+            let mut local = self.local.borrow_mut();
+            (local.incoming, local.outgoing) = identity::advertised(music, clicker);
+        }
+        let devices: Vec<Rc<Device>> = self.devices.borrow().values().cloned().collect();
+        let mut reconnect = Vec::new();
+        for dev in &devices {
+            {
+                let mut st = dev.st.borrow_mut();
+                st.offers = device::Offers { music, clicker };
+                if !music {
+                    st.players.clear();
+                }
+            }
+            if dev.paired() && dev.connected() && self.cfg.capabilities.is_none() {
+                reconnect.extend(dev.st.borrow().links.iter().filter(|l| !l.is_closed()).cloned());
+            }
+            crate::dbus::props_changed(self, dev);
+        }
+        self.sync_players();
+        // Each connection's reading ends with it, and says the phone went; the phone is then called at once
+        if !reconnect.is_empty() {
+            for link in &reconnect {
+                link.close();
+            }
+            self.look_again();
+        }
     }
 
     pub fn set_photo_folder(self: &Rc<Self>, folder: PhotoFolder) {

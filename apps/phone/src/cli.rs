@@ -20,6 +20,8 @@
 //!                                               the reply to a notification of a phone
 //!   amethystora-phone pair [--] DEVICE          the pairing of a phone
 //!   amethystora-phone text [--] DEVICE -- TEXT  text a phone shared, shown as text
+//!   amethystora-phone ring [--device=ID]        rings the phone named, or every phone that can ring, without the
+//!                                               window unless none can (`ame desktop phone ring`, search's "ring")
 
 use std::path::Path;
 
@@ -38,6 +40,7 @@ pub enum Command {
     Reply { device: String, notification: String },
     Pair { device: String },
     Text { device: String, text: String },
+    Ring { device: Option<String> },
 }
 
 /// What the send dialog starts with
@@ -155,8 +158,21 @@ pub fn parse(args: &[String], cwd: &Path) -> Result<Command, Problem> {
             }
         }
         "send" => send(rest, cwd),
+        "ring" => match rest {
+            [] => Ok(Command::Ring { device: None }),
+            [option, id] if option == "--device" || option == "-d" => ring_device(id),
+            [word] => match word.strip_prefix("--device=") {
+                Some(id) => ring_device(id),
+                None => Err(Problem::Usage("ring")),
+            },
+            _ => Err(Problem::Usage("ring")),
+        },
         other => Err(Problem::Unknown(other.chars().take(40).collect())),
     }
+}
+
+fn ring_device(id: &str) -> Result<Command, Problem> {
+    if valid_device(id) { Ok(Command::Ring { device: Some(id.to_string()) }) } else { Err(Problem::Id) }
 }
 
 fn send(rest: &[String], cwd: &Path) -> Result<Command, Problem> {
@@ -247,6 +263,16 @@ mod tests {
         assert_eq!(parse(&words("pair dev1"), cwd()), Ok(Command::Pair { device: "dev1".into() }));
         assert_eq!(parse(&words("pair"), cwd()), Err(Problem::Usage("pair")));
         assert_eq!(parse(&words("pair a;b"), cwd()), Err(Problem::Id));
+    }
+
+    #[test]
+    fn ring_takes_a_phone_or_none() {
+        assert_eq!(parse(&words("ring"), cwd()), Ok(Command::Ring { device: None }));
+        assert_eq!(parse(&words("ring --device=dev1"), cwd()), Ok(Command::Ring { device: Some("dev1".into()) }));
+        assert_eq!(parse(&words("ring --device dev1"), cwd()), Ok(Command::Ring { device: Some("dev1".into()) }));
+        assert_eq!(parse(&words("ring --device=a/b"), cwd()), Err(Problem::Id));
+        assert_eq!(parse(&words("ring dev1"), cwd()), Err(Problem::Usage("ring")));
+        assert_eq!(parse(&words("ring --device"), cwd()), Err(Problem::Usage("ring")));
     }
 
     #[test]

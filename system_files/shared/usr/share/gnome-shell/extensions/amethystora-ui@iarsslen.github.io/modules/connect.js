@@ -10,6 +10,10 @@
 //    text on to the program when the person has turned sending on, and sets it when a phone's text comes and the
 //    person has turned receiving on (the settings org.amethystora.Connect, written by `ame desktop phone`).
 //
+// The menu also rings a phone (even a silent one), the phone's music reaches the live pill's now playing while the person
+// has music from either side on (connect/players.js), and Present hears the phone's slide clicker through it, only while
+// presenting with the clicker on (plans/ui-ideas/spec-phone.md).
+//
 // It also passes a call ringing and a link a phone shared to whoever listens (the live pill, modules/pill.js). A link
 // nobody takes is shown here, as a notification with Open and Copy, so that a link is never lost and never opened by
 // itself: the program raises none of its own for it while the shell is its client.
@@ -31,6 +35,7 @@ import {Bridge, KEY_RECEIVE, KEY_SEND, openSettings} from './connect/clipboard.j
 import {shownAddress} from './pill/text.js';
 import {Indicator} from './connect/indicator.js';
 import {Link} from './connect/link.js';
+import {PhonePlayers} from './connect/players.js';
 
 const ROLE = 'amethystora-connect';
 // By its full path: the session's PATH may hold a folder of the account's own before the system's
@@ -39,6 +44,8 @@ const APP = '/usr/bin/amethystora-phone';
 const SYSTEM_ROLES = ['screenRecording', 'screenSharing', 'dwellClick', 'a11y', 'keyboard', 'quickSettings'];
 // The longest address sent from the clipboard, in characters
 const MAX_ADDRESS = 8192;
+// The phone as a slide clicker, off as the image ships (plans/ui-ideas/spec-phone.md 4)
+const KEY_CLICKER = 'clicker';
 
 // The clipboard's text (or a link a phone shared) if it is one web address and nothing else, otherwise null
 export function address(text) {
@@ -66,6 +73,7 @@ export class Connect {
             sendFiles: device => this._appFor(device, ['send', '--device', device.id]),
             sendLink: device => this._sendLink(device),
             ping: device => this._ping(device),
+            ring: device => this._ring(device),
             messages: device => this._appFor(device, ['messages', device.id]),
             phones: () => this._app([]),
         };
@@ -73,9 +81,14 @@ export class Connect {
         this._trusted = false;
         this._listeners = new Set();
         this._phoneListeners = new Set();
+        this._clickListeners = new Set();
+        this._presenting = false;
+        this._toldPresenting = false;
         this._settings = openSettings();
         this._settings?.connectObject(`changed::${KEY_SEND}`, () => this._switchesChanged(),
             `changed::${KEY_RECEIVE}`, () => this._switchesChanged(), this);
+        if (this._settings?.settings_schema.has_key(KEY_CLICKER))
+            this._settings.connectObject(`changed::${KEY_CLICKER}`, () => this._syncPresenting(), this);
         this._link = new Link({
             devices: () => this._devicesChanged(),
             trust: trusted => {
@@ -84,6 +97,9 @@ export class Connect {
                 // The shell shows the links phones share from now on (in the live pill, or here when nobody listens)
                 if (trusted)
                     this._link?.takeLinks(true);
+                // A new program has heard nothing of presenting yet
+                this._toldPresenting = false;
+                this._syncPresenting();
                 // The program went: a phone that was ringing is no longer heard
                 if (!trusted)
                     this._endCalls();
@@ -91,6 +107,7 @@ export class Connect {
             received: text => this._bridge?.receive(text),
             call: (device, state, number, name) => this._tell('call', device, state, number, name),
             url: (device, url) => this._url(device, url),
+            clicker: (device, action) => this._clicked(device, action),
         });
         this._link.start();
     }
@@ -102,6 +119,15 @@ export class Connect {
         this._settings = null;
         // The program says links itself again while the shell does not run this (the screen locked, the extension off)
         this._link?.takeLinks(false);
+        // And hears no clicks: the shell is not presenting while this is off
+        if (this._toldPresenting)
+            this._link?.presenting(false);
+        this._toldPresenting = false;
+        this._presenting = false;
+        this._clickListeners?.clear();
+        this._clickListeners = null;
+        this._phonePlayers?.sync([]);
+        this._phonePlayers = null;
         // The link says, as it stops, that there are no phones and nothing to trust, which takes the rest down
         this._link?.stop();
         this._link = null;
@@ -139,6 +165,7 @@ export class Connect {
         if (!this._link)
             return;
         const ready = this._ready();
+        this._phonePlayers?.sync(ready);
         for (const listener of [...this._phoneListeners ?? []]) {
             try {
                 listener();
@@ -191,6 +218,12 @@ export class Connect {
         device.ping().catch(e => this._failed(device, e));
     }
 
+    // One request; a second one, by the protocol's own rule, stops the ringing
+    _ring(device) {
+        device.ring().then(() => this._say(_('Ringing %s').format(device.name), _('Until Found it is pressed on the phone.')))
+            .catch(e => this._failed(device, e));
+    }
+
     // The address in the clipboard, if it is one. The clipboard is read here, for this request only. Without an
     // address the app's own dialog opens, where one can be typed.
     _sendLink(device) {
@@ -224,6 +257,57 @@ export class Connect {
     onPhonesChanged(callback) {
         this._phoneListeners?.add(callback);
         return () => this._phoneListeners?.delete(callback);
+    }
+
+    // --- Music from either side and the clicker (plans/ui-ideas/spec-phone.md 3.2, 4) -------------------------------
+
+    // The phone's players, as a list the pill's now playing follows beside GNOME's own: made when first asked for
+    get mediaSource() {
+        if (!this._link)
+            return null;
+        if (!this._phonePlayers) {
+            this._phonePlayers = new PhonePlayers();
+            this._phonePlayers.sync(this._ready());
+        }
+        return this._phonePlayers;
+    }
+
+    // Present says whether it is presenting; the program is told only while the clicker is on too
+    setPresenting(on) {
+        this._presenting = on === true;
+        this._syncPresenting();
+    }
+
+    // Whether the clicker can click now: the switch on and the program the image's own
+    get clicker() {
+        return this._trusted === true && this._settings?.settings_schema.has_key(KEY_CLICKER) === true &&
+            this._settings.get_boolean(KEY_CLICKER);
+    }
+
+    _syncPresenting() {
+        const want = this._presenting && this.clicker;
+        if (want === this._toldPresenting || !this._link)
+            return;
+        this._toldPresenting = want;
+        this._link.presenting(want);
+    }
+
+    // callback(device, action) for each click while presenting; returns what stops it
+    onClicker(callback) {
+        this._clickListeners?.add(callback);
+        return () => this._clickListeners?.delete(callback);
+    }
+
+    _clicked(device, action) {
+        if (!this._toldPresenting)
+            return;
+        for (const listener of [...this._clickListeners ?? []]) {
+            try {
+                listener(device, action);
+            } catch (e) {
+                console.error(`Amethystora UI: a listener of the clicker failed: ${e.message}`);
+            }
+        }
     }
 
     // --- For the live pill ----------------------------------------------------------------------------------------

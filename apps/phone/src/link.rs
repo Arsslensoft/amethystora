@@ -490,6 +490,11 @@ impl Link {
         self.on_device(id, "Ping", None).await.map(|_| ())
     }
 
+    /// Makes the phone ring, even when it is silent, until Found it is pressed on it
+    pub async fn ring(&self, id: &str) -> Result<(), Failure> {
+        self.on_device(id, "Ring", None).await.map(|_| ())
+    }
+
     /// Sends files (file: addresses); the ids of their transfers
     pub async fn send_files(&self, id: &str, uris: &[String]) -> Result<Vec<String>, Failure> {
         let reply = self.on_device(id, "SendFiles", Some((uris.to_vec(),).to_variant())).await?;

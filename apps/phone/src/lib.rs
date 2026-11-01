@@ -224,9 +224,9 @@ impl Parts {
 }
 
 impl App for Phone {
-    /// The dock's drop on a phone (`send --now` with files) shows no window unless it needs the person
+    /// The dock's drop on a phone (`send --now` with files) and ringing a phone show no window unless they need the person
     fn presents(&self, args: &[String]) -> bool {
-        !matches!(cli::parse(args, std::path::Path::new("/")), Ok(Command::Send { now: true, what: cli::Sending::Files(_), .. }))
+        !matches!(cli::parse(args, std::path::Path::new("/")), Ok(Command::Send { now: true, what: cli::Sending::Files(_), .. }) | Ok(Command::Ring { .. }))
     }
 
     // A file on the command line is relative to where the launch was made from, a second launch's own folder included
@@ -454,7 +454,47 @@ impl Phone {
                 self.show_if_first(Page::Phones);
                 self.open_text(&device, &text);
             }
+            Command::Ring { device } => self.ring_command(device),
         }
+    }
+
+    /// `amethystora-phone ring`: the phone named, or every phone that can ring, is rung without the window, which a
+    /// window never shown then closes; it shows, saying why, when the link is off, no phone can ring, or one failed
+    fn ring_command(self: &Rc<Self>, device: Option<String>) {
+        let shown_before = self.shell.window.is_visible();
+        let ringable: Vec<model::Device> = model::listed(&self.link.devices())
+            .into_iter()
+            .filter(|d| d.situation() == Situation::Ready && d.has("ring") && device.as_ref().is_none_or(|id| &d.id == id))
+            .collect();
+        if !self.link.present() || ringable.is_empty() {
+            self.show(Page::Phones);
+            self.shell.window.present();
+            if self.link.present() {
+                self.say(true, t!("No phone can ring now. Pair a phone, connect it, and try again."));
+            }
+            return;
+        }
+        let this = self.clone();
+        glib::spawn_future_local(async move {
+            let mut failed = None;
+            for phone in &ringable {
+                if let Err(failure) = this.link.ring(&phone.id).await {
+                    failed = Some(failure);
+                }
+            }
+            match failed {
+                Some(failure) => {
+                    this.show(Page::Phones);
+                    this.shell.window.present();
+                    this.say(true, failure_text(&failure));
+                }
+                None if !shown_before && !this.shell.window.is_visible() => this.shell.app.quit(),
+                None => {
+                    let names: Vec<String> = ringable.iter().map(|d| model::bdi(&d.title())).collect();
+                    this.say(false, t!("Ringing {phone}. It rings until Found it is pressed on it.", phone = i18n::list(&names)));
+                }
+            }
+        });
     }
 
     /// A dialog opened from the command line is over the page the window was left on, or the phones when it opens

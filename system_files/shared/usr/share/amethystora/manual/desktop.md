@@ -337,6 +337,9 @@ on:
 - the pointer is easy to follow: a **Halo** round it (the default), or a **Torch** that dims everything but a
   circle round it. `ame desktop present mark halo`, `torch` or `none` changes it.
 
+With [the phone as a slide clicker](phone.md#the-phone-as-a-slide-clicker) on, a paired phone goes to the next or
+previous slide, or blanks the screen, while you present.
+
 When you plug in a screen, a projector for instance, Amethystora asks whether to present on it, once for each
 screen; nothing happens until you click **Present**, and presenting then ends when that screen is unplugged.
 Started while you share your screen in a call, it ends with the share. `ame desktop present ask off` stops the

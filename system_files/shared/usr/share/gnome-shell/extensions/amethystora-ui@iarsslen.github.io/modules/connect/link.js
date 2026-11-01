@@ -21,6 +21,11 @@ export const TRUSTED_EXE = '/usr/libexec/amethystora-connect';
 const CREDENTIALS_TIMEOUT = 5000;
 
 const TYPES = new Set(['phone', 'tablet', 'laptop', 'desktop', 'tv']);
+// Music from either side (plans/ui-ideas/spec-phone.md 3.2): what a player may be told, and how many of a phone's are read
+const ACTIONS = ['Play', 'Pause', 'PlayPause', 'Next', 'Previous', 'Stop'];
+const PLAYERS = 8;
+// The phone as a slide clicker: the only three words the program says
+const CLICKS = new Set(['next', 'previous', 'blank']);
 // A name is somebody else's text: this long is all that is shown of one
 const NAME_LENGTH = 48;
 // Control characters, and the characters that turn text round or hide it (bidirectional marks and overrides)
@@ -132,6 +137,44 @@ export class Device {
     muteRinger() {
         return this.proxy.MuteRingerAsync();
     }
+
+    // Rings the phone, even when it is silent, until Found it is pressed on it (the menu's Ring the phone)
+    ring() {
+        return this.proxy.RingAsync();
+    }
+
+    // The phone's players while music from either side is on, each checked: {player, title, artist, album, playing,
+    // canPlay, canPause, canNext, canPrevious, length, position}, the times in milliseconds
+    get players() {
+        let list = [];
+        try {
+            list = this.proxy.get_cached_property('Players')?.recursiveUnpack() ?? [];
+        } catch {}
+        if (!Array.isArray(list))
+            return [];
+        const text = value => plain(typeof value === 'string' ? value : '');
+        const time = value => Number.isSafeInteger(value) && value > 0 ? value : 0;
+        return list.slice(0, PLAYERS).filter(p => p && typeof p.player === 'string' && text(p.player) !== '').map(p => ({
+            player: p.player,
+            title: text(p.title),
+            artist: text(p.artist),
+            album: text(p.album),
+            playing: p.playing === true,
+            canPlay: p.can_play === true,
+            canPause: p.can_pause === true,
+            canNext: p.can_next === true,
+            canPrevious: p.can_previous === true,
+            length: time(p.length),
+            position: time(p.position),
+        }));
+    }
+
+    // Tells one of the phone's players to play, pause or skip: one of the program's six words
+    mediaAction(player, action) {
+        if (!ACTIONS.includes(action))
+            return Promise.reject(new Error(`not an action: ${action}`));
+        return this.proxy.MediaActionAsync(player, action);
+    }
 }
 
 export class Link {
@@ -143,6 +186,7 @@ export class Link {
      * @param {function(Device, string, string, string): void} [handlers.call] - a phone's call: its state
      *   ("ringing", "talking", "missed", "ended"), number and name
      * @param {function(Device, string): void} [handlers.url] - a web link a ready phone shared
+     * @param {function(Device, string): void} [handlers.clicker] - "next", "previous" or "blank" from a ready phone
      * @param {string} [trustedExe] - the program that may be the phone link, for a test to change
      */
     constructor(handlers, trustedExe = TRUSTED_EXE) {
@@ -173,6 +217,14 @@ export class Link {
     takeLinks(take) {
         this._root?.TakeLinksAsync(take).catch(e => {
             console.debug(`Amethystora UI: the phone link did not take TakeLinks: ${Gio.DBusError.strip_remote_error(e)}`);
+        });
+    }
+
+    // Says to the program whether the shell presents with the phone as a slide clicker: only while it does are the
+    // phone's three keys passed on (Clicker)
+    presenting(on) {
+        this._root?.PresentingAsync(on).catch(e => {
+            console.debug(`Amethystora UI: the phone link did not take Presenting: ${Gio.DBusError.strip_remote_error(e)}`);
         });
     }
 
@@ -260,6 +312,7 @@ export class Link {
                 root.connectSignal('DeviceRemoved', (proxy, sender, [path]) => this._remove(path)),
                 root.connectSignal('ClipboardReceived', (proxy, sender, [, text]) => this._handlers.received(text)),
                 root.connectSignal('UrlReceived', (proxy, sender, [deviceId, url]) => this._url(deviceId, url)),
+                root.connectSignal('Clicker', (proxy, sender, [deviceId, action]) => this._click(deviceId, action)),
             ];
             this._handlers.trust(true);
             for (const path of paths)
@@ -319,6 +372,13 @@ export class Link {
         if (device.callSignal)
             device.proxy.disconnectSignal(device.callSignal);
         device.callSignal = 0;
+    }
+
+    // A click of the slide clicker, from a ready phone, one of the three words
+    _click(deviceId, action) {
+        const device = this.devices.find(d => d.id === deviceId && d.ready);
+        if (device && CLICKS.has(action))
+            this._handlers.clicker?.(device, action);
     }
 
     // A link a phone shared. A phone whose object is still being read (one paired a moment ago) is not known yet:

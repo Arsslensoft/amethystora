@@ -15,6 +15,7 @@ use crate::battery::Battery;
 use crate::connectivity::Signal;
 use crate::contacts::Book;
 use crate::link::Link;
+use crate::media;
 use crate::notifications::Table;
 use crate::pairing::{Machine, Phase};
 use crate::sms::Sms;
@@ -51,6 +52,29 @@ pub fn features(incoming: &[String], outgoing: &[String]) -> Vec<&'static str> {
     }
     if sends("kdeconnect.connectivity_report") {
         out.push("connectivity");
+    }
+    if takes(media::RING) {
+        out.push("ring");
+    }
+    out
+}
+
+/// The features that are there only while the person has chosen them (plans/ui-ideas/spec-phone.md 3 and 4)
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Offers {
+    pub music: bool,
+    pub clicker: bool,
+}
+
+fn offered(offers: Offers, incoming: &[String], outgoing: &[String]) -> Vec<&'static str> {
+    let takes = |t: &str| incoming.iter().any(|c| c == t);
+    let sends = |t: &str| outgoing.iter().any(|c| c == t);
+    let mut out = Vec::new();
+    if offers.music && (sends(media::MPRIS) || takes(media::MPRIS)) {
+        out.push("music");
+    }
+    if offers.clicker && (sends(media::KEYS) || sends(media::PRESENTER)) {
+        out.push("clicker");
     }
     out
 }
@@ -97,6 +121,12 @@ pub struct State {
     /// does not fill the screen
     pub mismatch_told: Option<Instant>,
     pub unpaired_since_connect: bool,
+    /// Music from either side and the clicker, as the person has them now
+    pub offers: Offers,
+    /// The phone's players, while music from either side is on and it is connected
+    pub players: media::Phone,
+    /// When the phone last made a click of the clicker, which comes no faster than one in `limits::CLICK_SPACING`
+    pub last_click: Option<Instant>,
 }
 
 pub struct Device {
@@ -142,6 +172,9 @@ impl Device {
                 published: HashMap::new(),
                 mismatch_told: None,
                 unpaired_since_connect: false,
+                offers: Offers::default(),
+                players: media::Phone::default(),
+                last_click: None,
             }),
         })
     }
@@ -174,7 +207,7 @@ impl Device {
 
     pub fn features(&self) -> Vec<&'static str> {
         let st = self.st.borrow();
-        if st.paired && st.links.iter().any(|l| !l.is_closed()) { features(&st.incoming, &st.outgoing) } else { Vec::new() }
+        if st.paired && st.links.iter().any(|l| !l.is_closed()) { st.features() } else { Vec::new() }
     }
 
     /// Every property of the device interface as it stands
@@ -196,9 +229,11 @@ impl Device {
                 IpAddr::V6(ip) => format!("[{ip}]:{}", l.peer.1),
             })
             .unwrap_or_default();
-        let features: Vec<&str> = if st.paired && connected { features(&st.incoming, &st.outgoing) } else { Vec::new() };
-        // Like the features, the signal is the phone's only while it is here
+        let features: Vec<&str> = if st.paired && connected { st.features() } else { Vec::new() };
+        // Like the features, the signal and the players are the phone's only while it is here
         let signal = st.signal.as_ref().filter(|_| st.paired && connected);
+        let players: Vec<HashMap<String, glib::Variant>> =
+            if st.paired && connected && st.offers.music { st.players.players().iter().map(media::Remote::to_dict).collect() } else { Vec::new() };
         vec![
             ("Id", self.id.to_variant()),
             ("Name", st.name.to_variant()),
@@ -214,7 +249,17 @@ impl Device {
             ("SignalStrength", signal.map_or(-1, |s| s.strength).to_variant()),
             ("NetworkType", signal.map(|s| s.network.clone()).unwrap_or_default().to_variant()),
             ("Features", features.to_variant()),
+            ("Players", players.to_variant()),
         ]
+    }
+}
+
+impl State {
+    /// What can be done with the phone, from what both sides listed and what the person chose
+    fn features(&self) -> Vec<&'static str> {
+        let mut out = features(&self.incoming, &self.outgoing);
+        out.extend(offered(self.offers, &self.incoming, &self.outgoing));
+        out
     }
 }
 
@@ -261,6 +306,20 @@ mod tests {
     }
 
     #[test]
+    fn ringing_and_the_chosen_features() {
+        // Ringing needs only the phone to take the request
+        assert_eq!(features(&caps(&[media::RING]), &[]), vec!["ring"]);
+        let incoming = caps(&[media::MPRIS, media::MPRIS_REQUEST]);
+        let outgoing = caps(&[media::MPRIS, media::KEYS, media::PRESENTER]);
+        // Music and the clicker only while chosen
+        assert!(offered(Offers::default(), &incoming, &outgoing).is_empty());
+        assert_eq!(offered(Offers { music: true, clicker: false }, &incoming, &outgoing), vec!["music"]);
+        assert_eq!(offered(Offers { music: true, clicker: true }, &incoming, &outgoing), vec!["music", "clicker"]);
+        // A phone that sends no keys and no presenter is no clicker
+        assert!(offered(Offers { music: false, clicker: true }, &incoming, &caps(&[media::MPRIS])).is_empty());
+    }
+
+    #[test]
     fn object_paths() {
         assert_eq!(path_of("4a8f2c7e_91d3_4b5a_8e6f_0c1d2e3f4a5b"), "/org/amethystora/Connect/Device/4a8f2c7e_91d3_4b5a_8e6f_0c1d2e3f4a5b");
         assert_eq!(path_of("a-b"), "/org/amethystora/Connect/Device/a_b");
@@ -278,7 +337,8 @@ mod tests {
         assert_eq!(props["Features"].get::<Vec<String>>(), Some(vec![]));
         assert_eq!(props["SignalStrength"].get::<i32>(), Some(-1));
         assert_eq!(props["NetworkType"].get::<String>().as_deref(), Some(""));
-        assert_eq!(props.len(), 14);
+        assert_eq!(props.len(), 15);
+        assert_eq!(props["Players"].n_children(), 0);
         // A signal kept from before shows only while the phone is paired and here
         d.st.borrow_mut().signal = Some(Signal { strength: 3, network: "LTE".into() });
         let props: HashMap<_, _> = d.properties().into_iter().collect();

@@ -216,6 +216,8 @@ read_in_background clipboard-send gsettings get org.amethystora.Connect clipboar
 read_in_background clipboard-receive gsettings get org.amethystora.Connect clipboard-receive
 read_in_background phone-photos gsettings get org.amethystora.Connect photo-folder
 read_in_background phone-computers gsettings get org.amethystora.Connect computers
+read_in_background phone-music gsettings get org.amethystora.Connect music
+read_in_background phone-clicker gsettings get org.amethystora.Connect clicker
 read_in_background captions gsettings get org.gnome.shell.extensions.amethystora-ui.captions enabled
 read_in_background waydroid-enabled systemctl is-enabled waydroid-container.service
 read_in_background waydroid-active systemctl is-active waydroid-container.service
@@ -1596,6 +1598,28 @@ switch_choices false ame desktop phone computers
 USAGE="ame desktop phone computers on|off"
 item desktop phone-computers switch "${ gettext "Pair with other computers"; }" \
     "${ gettext "Send files and share the clipboard with another computer that has the phone link on, on the networks named home."; }" "${COMPUTERS}" phone#computers
+
+# The phone, a little further (plans/ui-ideas/spec-phone.md): ring it, even on silent, while the phone link is on; music
+# from either side and the phone as a slide clicker, each offered and off
+[[ "${PHONE}" == on ]] || REASON="${ gettext "Turn Phone pairing on first."; }"
+COMMAND=(ame desktop phone ring)
+TERMINAL=false
+BUTTON="${ gettext "Ring"; }"
+USAGE="ame desktop phone ring"
+item desktop phone-ring action "${ gettext "Ring the phone"; }" \
+    "${ gettext "Find a lost phone: it rings at full volume, even when it is silent, until Found it is pressed on it."; }" "" phone#ringing-the-phone
+for key in music clicker; do
+    if [[ "${ ended phone-${key}; }" == 0 && "${ said phone-${key}; }" == true ]]; then CHOSEN=on; else CHOSEN=off; fi
+    switch_choices false ame desktop phone "${key}"
+    USAGE="ame desktop phone ${key} on|off"
+    if [[ "${key}" == music ]]; then
+        item desktop phone-music switch "${ gettext "Music from either side"; }" \
+            "${ gettext "What plays here shows on your paired phone, and what plays on the phone shows in the clock's pill, each played and paused from the other."; }" "${CHOSEN}" phone#music-from-either-side
+    else
+        item desktop phone-clicker switch "${ gettext "The phone as a slide clicker"; }" \
+            "${ gettext "Only while Present mode presents: Next, Previous and Blank from your phone, and nothing else."; }" "${CHOSEN}" phone#the-phone-as-a-slide-clicker
+    fi
+done
 
 # The clipboard goes between this computer and a phone only when chosen, one way at a time: a phone that can paste
 # into a password field is a risk the person takes on knowingly

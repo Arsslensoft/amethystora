@@ -48,6 +48,25 @@ pub const OUTGOING: &[&str] = &[
     "kdeconnect.telephony.request_mute",
 ];
 
+/// What this computer advertises now (plans/ui-ideas/spec-phone.md 1): the lists above, ringing the phone always,
+/// the media packets both ways while music from either side is on, and the presenter's packet while the clicker is
+/// on. Off, the phone's own app shows neither feature for this computer.
+pub fn advertised(music: bool, clicker: bool) -> (Vec<String>, Vec<String>) {
+    let mut incoming: Vec<String> = INCOMING.iter().map(|s| s.to_string()).collect();
+    let mut outgoing: Vec<String> = OUTGOING.iter().map(|s| s.to_string()).collect();
+    outgoing.push(crate::media::RING.to_string());
+    if music {
+        for kind in [crate::media::MPRIS, crate::media::MPRIS_REQUEST] {
+            incoming.push(kind.to_string());
+            outgoing.push(kind.to_string());
+        }
+    }
+    if clicker {
+        incoming.push(crate::media::PRESENTER.to_string());
+    }
+    (incoming, outgoing)
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum IdentityError {
     /// No `deviceId`, or one that is not 32 to 38 of `A-Za-z0-9_-`
@@ -164,13 +183,13 @@ pub struct Local {
 
 impl Local {
     pub fn new(device_id: &str, name: &str, kind: &str) -> Local {
-        Local {
-            device_id: device_id.to_string(),
-            name: name.to_string(),
-            kind: kind.to_string(),
-            incoming: INCOMING.iter().map(|s| s.to_string()).collect(),
-            outgoing: OUTGOING.iter().map(|s| s.to_string()).collect(),
-        }
+        let (incoming, outgoing) = advertised(false, false);
+        Local { device_id: device_id.to_string(), name: name.to_string(), kind: kind.to_string(), incoming, outgoing }
+    }
+
+    /// Whether this computer listed the type among those it handles
+    pub fn handles(&self, kind: &str) -> bool {
+        self.incoming.iter().any(|c| c == kind)
     }
 
     /// The identity packet: with every capability (inside TLS, and in plain text before it), or trimmed to

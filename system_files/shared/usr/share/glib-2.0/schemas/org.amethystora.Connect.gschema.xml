@@ -33,5 +33,15 @@
       <summary>Pair with other computers</summary>
       <description>Other computers with the phone link on are listed, paired with the same key check and talked to, on the networks named home, for files and the clipboard. Off as the image ships: only phones and tablets are. A computer paired before is kept while it is off, and connects again once it is on.</description>
     </key>
+    <key name="music" type="b">
+      <default>false</default>
+      <summary>Music from either side</summary>
+      <description>This computer's players are shown on the paired phones and played from there, and a phone's player is shown in the live pill and played from here. The titles go only to the phones you paired, on the networks named home. Off as the image ships.</description>
+    </key>
+    <key name="clicker" type="b">
+      <default>false</default>
+      <summary>The phone as a slide clicker</summary>
+      <description>While Present mode is presenting, a paired phone's presenter may go to the next or previous slide or blank the screen (Page Down, Page Up and B), and nothing else. Not presenting, the phone can send no key at all. Off as the image ships.</description>
+    </key>
   </schema>
 </schemalist>

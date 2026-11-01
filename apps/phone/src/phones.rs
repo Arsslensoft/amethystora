@@ -46,6 +46,7 @@ enum Do {
     Reject,
     Unpair,
     Ping,
+    Ring,
 }
 
 /// "Expires in 20 seconds"
@@ -318,6 +319,10 @@ impl Phone {
                 if device.has("ping") {
                     buttons.push(act(t!("Ping"), Look { icon: Some("bell"), ..Default::default() }, Do::Ping));
                 }
+                // Rings even when the phone is silent, until Found it is pressed on it
+                if device.has("ring") {
+                    buttons.push(act(t!("Ring"), Look { icon: Some("phone"), ..Default::default() }, Do::Ring));
+                }
                 buttons.push(act(t!("Unpair…"), Look { icon: Some("unlink"), ..Default::default() }, Do::Unpair));
             }
             Situation::Away => {
@@ -364,6 +369,7 @@ impl Phone {
                 Do::Reject => this.link.reject_pairing(&id).await,
                 Do::Unpair => this.link.unpair(&id).await,
                 Do::Ping => this.link.ping(&id).await,
+                Do::Ring => this.link.ring(&id).await,
             };
             this.state.borrow_mut().busy.remove(&id);
             this.render();
@@ -372,6 +378,7 @@ impl Phone {
                 (Ok(()), Do::Accept) => this.say(false, t!("Paired with {phone}.", phone = name)),
                 (Ok(()), Do::Unpair) => this.say(false, t!("{phone} is unpaired.", phone = name)),
                 (Ok(()), Do::Ping) => this.say(false, t!("Pinged {phone}.", phone = name)),
+                (Ok(()), Do::Ring) => this.say(false, t!("Ringing {phone}. It rings until Found it is pressed on it.", phone = name)),
                 (Ok(()), _) => {}
             }
         });

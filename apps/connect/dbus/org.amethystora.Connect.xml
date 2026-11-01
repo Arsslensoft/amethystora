@@ -78,6 +78,18 @@
       <arg name="device_id" type="s"/>
       <arg name="url" type="s"/>
     </signal>
+    <!-- The module says whether the shell is presenting (Present mode) with the phone as a slide clicker on: true while it
+         is, false when it stops. Believed for that connection only, and forgotten with it (plans/ui-ideas/spec-phone.md 4) -->
+    <method name="Presenting">
+      <arg name="presenting" type="b" direction="in"/>
+    </method>
+    <!-- A paired, connected phone sent one of the three keys of a slide clicker: action "next", "previous" or "blank".
+         Only while the GSettings key clicker is on and a module client has said Presenting(true); sent to the module only,
+         which presses Page Down, Page Up or B. Nothing else a phone sends ever becomes a key -->
+    <signal name="Clicker">
+      <arg name="device_id" type="s"/>
+      <arg name="action" type="s"/>
+    </signal>
   </interface>
 
   <!-- One phone (or tablet, or other computer that speaks the protocol): /org/amethystora/Connect/Device/ID -->
@@ -107,8 +119,13 @@
          SignalStrength is -1 -->
     <property name="NetworkType" type="s" access="read"/>
     <!-- What can be done now with this phone, from what both sides advertised: any of "ping", "battery", "notifications",
-         "share", "clipboard", "sms", "telephony", "connectivity". Empty while it is not connected and paired -->
+         "share", "clipboard", "sms", "telephony", "connectivity", "ring", and, while the person chose them, "music" and
+         "clicker". Empty while it is not connected and paired -->
     <property name="Features" type="as" access="read"/>
+    <!-- The phone's media players while the GSettings key music is on (music from either side): a{sv} each, in the phone's
+         order, with "player", "title", "artist", "album" (s), "playing", "can_play", "can_pause", "can_next",
+         "can_previous" (b), "length" and "position" (x, milliseconds, 0 when not said). Empty while off or not connected -->
+    <property name="Players" type="aa{sv}" access="read"/>
 
     <!-- Pairing. Pair asks the phone; AcceptPairing and RejectPairing answer a request of the phone's (the notification's
          buttons do the same); Unpair ends a pairing, or cancels a pending request, and removes the pinned certificate
@@ -196,6 +213,15 @@
          module hears Call too (the live pill), and may call MuteRinger -->
     <!-- Silences the phone's ringer: the app or the shell module -->
     <method name="MuteRinger"/>
+    <!-- Makes the phone ring at full volume, even when it is silent, until Found it is pressed on it; sent again, the
+         protocol takes it as stop. Fails with NotAvailable when the phone cannot ring (Features has no "ring") -->
+    <method name="Ring"/>
+    <!-- Tells one of the phone's players (its "player" in Players) to "Play", "Pause", "PlayPause", "Next", "Previous"
+         or "Stop". Fails with NotAvailable while music is off or the player is not the phone's -->
+    <method name="MediaAction">
+      <arg name="player" type="s" direction="in"/>
+      <arg name="action" type="s" direction="in"/>
+    </method>
     <signal name="Call">
       <arg name="state" type="s"/>
       <arg name="number" type="s"/>

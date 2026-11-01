@@ -307,9 +307,22 @@ grep -qE '^(MemoryMax|TasksMax|LimitNOFILE)=' /usr/lib/systemd/user/amethystora-
 [[ -z "$(grep -E '^(Protect(System|Home|Kernel[A-Za-z]*|ControlGroups|Clock|Hostname)|ReadWritePaths|ReadOnlyPaths|InaccessiblePaths|Private[A-Za-z]*|CapabilityBoundingSet)=' /usr/lib/systemd/user/amethystora-connect.service)" ]]
 # ...whose only settings are the name phones see, the two ways the clipboard may be shared, both off, and where
 # pictures from a phone go, Pictures/Phone (plans/beyond/spec-phone-files-first.md 2.3), and whether other computers
-# pair too, off (plans/beyond/spec-r4-later.md A.2)
+# pair too, off (plans/beyond/spec-r4-later.md A.2), and music from either side and the phone as a slide clicker, both off
+# (plans/ui-ideas/spec-phone.md)
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys org.amethystora.Connect | sort | paste -sd ' ')" == \
-    "clipboard-receive clipboard-send computers device-name photo-folder" ]]
+    "clicker clipboard-receive clipboard-send computers device-name music photo-folder" ]]
+for key in music clicker; do
+    [[ "$(GSETTINGS_BACKEND=memory gsettings get org.amethystora.Connect "${key}")" == false ]]
+    grep -q "desktop phone ${key}" /usr/libexec/amethystora-control-list
+done
+grep -q 'exec /usr/bin/amethystora-phone ring' /usr/share/amethystora/just/desktop.just
+# Ringing, the phone's players and the clicker reach the module only through the program; Present presses the clicker's
+# three keys and no other (the program sends only these three words)
+for name in Ring MediaAction Players Presenting Clicker; do
+    grep -q "name=\"${name}\"" /usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/connect/interfaces.js
+done
+grep -q "^const CLICKER_KEYS = {next: Clutter.KEY_Page_Down, previous: Clutter.KEY_Page_Up, blank: Clutter.KEY_b};" \
+    /usr/share/gnome-shell/extensions/amethystora-ui@iarsslen.github.io/modules/present.js
 [[ "$(GSETTINGS_BACKEND=memory gsettings get org.amethystora.Connect clipboard-send)" == false ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get org.amethystora.Connect clipboard-receive)" == false ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get org.amethystora.Connect photo-folder)" == "'pictures'" ]]

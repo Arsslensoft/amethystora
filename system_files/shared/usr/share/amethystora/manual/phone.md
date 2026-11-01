@@ -143,8 +143,46 @@ other copy.
 ## The top bar
 
 While a paired phone is connected, it appears in the top bar: its [battery and signal](#battery-and-signal), or a phone
-icon when it has said neither. Its menu has **Send files…**, **Send a link**, **Ping**, **Messages** (when the
-phone shares its texts) and **Phones…**, which opens this app.
+icon when it has said neither. Its menu has **Send files…**, **Send a link**, **Ping**, **Ring the phone**,
+**Messages** (when the phone shares its texts) and **Phones…**, which opens this app.
+
+## Ringing the phone
+
+Lost the phone somewhere in the house? **Ring the phone** in its top bar menu, **Ring** on its card in the Phone app,
+or type *ring* in the search box (`Super+Space`) and press Enter: the phone rings at full volume, even when it is
+silent, until **Found it** is pressed on it. Pressing it again stops the ringing. It is one request to a phone you
+paired, on a network you named home, as everything else here; in a terminal it is `ame desktop phone ring`.
+
+## Music from either side
+
+With this on, what plays on this computer shows on your paired phone, in KDE Connect's media control, and can be
+played, paused and skipped from there; and what plays on the phone shows in the [live pill](desktop.md#the-live-pill)
+beside this computer's own music, with its title, its player and the phone's name, played and paused from here. It is
+**off**:
+
+```bash
+ame desktop phone music on
+```
+
+or **Music from either side** on [Control](control.md)'s **Desktop** page. The phone reconnects once, within seconds,
+to see the change. Titles, artists and albums go only to the phones you paired, on the networks you named home; no
+cover art goes either way, and nothing of this computer's files. While it is off, or while no phone is connected,
+nothing watches the players.
+
+## The phone as a slide clicker
+
+While [Present mode](desktop.md#presenting) presents, a paired phone's presenter (KDE Connect's *Presentation
+remote*) can go to the next slide, back one, or blank the screen: Page Down, Page Up and B, pressed into the window
+in front, which is what slide shows and PDF readers take. Nothing else the phone sends becomes a key, and when
+presenting stops, or the screen locks, the phone can send no keys at all: the phone's remote touchpad and keyboard stay
+unavailable for this computer. It is **off**:
+
+```bash
+ame desktop phone clicker on
+```
+
+or **The phone as a slide clicker** on [Control](control.md)'s **Desktop** page. The presenter's pointer does nothing
+here.
 
 ## Battery and signal
 
@@ -183,9 +221,10 @@ say) keeps it on for you. Folders kept the same on both computers are not part o
 
 ## What it does not do
 
-The link is deliberately small. It does not let a phone run commands here, type on this computer,
-control its volume or its players, or mount its storage, and it does not send this computer's
-notifications to the phone. KDE Connect has features for some of those; this computer does not
+The link is deliberately small. It does not let a phone run commands here, type on this computer
+(the [slide clicker](#the-phone-as-a-slide-clicker)'s three keys aside, while presenting), control its volume, or
+mount its storage, and it does not send this computer's notifications to the phone. Its players only while
+[music from either side](#music-from-either-side) is on. KDE Connect has features for some of those; this computer does not
 advertise them, so the app on the phone shows them as unavailable.
 
 ## When something does not work
@@ -211,6 +250,9 @@ advertise them, so the app on the phone shows them as unavailable.
 | `ame desktop phone [on\|off]` | Turns the link on or off |
 | `ame desktop phone clipboard send\|receive [on\|off]` | Shares the clipboard one way or the other |
 | `ame desktop phone photos [pictures\|downloads]` | Where pictures from the phone go |
+| `ame desktop phone ring` | Rings the paired phones, even when they are silent |
+| `ame desktop phone music [on\|off]` | Music from either side |
+| `ame desktop phone clicker [on\|off]` | The phone as a slide clicker, while presenting |
 | `amethystora-phone` | Opens the app on the phones |
 | `amethystora-phone messages [ID]` | Opens it on a phone's texts |
 | `amethystora-phone send [--device ID] FILE_OR_LINK...` | Sends files, or one link |
