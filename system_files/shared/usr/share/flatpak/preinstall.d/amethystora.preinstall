@@ -14,8 +14,9 @@ IsRuntime=false
 Branch=stable
 IsRuntime=false
 
-# Extensions from extensions.gnome.org. The image's own are turned on and off in GNOME's Extensions app,
-# where Extension Manager shows no details of them
+# Extensions from extensions.gnome.org. See Details in its 0.6.5 asks only that site, which has none of the image's
+# own, so for those it says "No extension details available" (its 0.7.0 shows what the extension itself says).
+# Their row in it shows the description and version, as does GNOME's Extensions app
 [Flatpak Preinstall com.mattjakeman.ExtensionManager]
 Branch=stable
 IsRuntime=false

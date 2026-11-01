@@ -1164,7 +1164,10 @@ These GNOME Shell extensions come with the image:
 | Amethystora Widgets | Your own [widgets](widgets.md) in the top bar; nothing until you add one |
 
 Turn any of them off, or change their settings, in **Extensions** (Extension Manager is for finding
-new ones on extensions.gnome.org, which has none of these). One thing to know: after
+new ones on extensions.gnome.org, which has none of these). For these five, **See Details** in Extension
+Manager 0.6.5 says "An Error Occurred: No extension details available", because it asks only that site:
+nothing is wrong with them. Each one's description and version are in Extension Manager's row, under the
+arrow, and in **Extensions**, under the three dots. One thing to know: after
 every image update the image's own extensions are switched back on, so that one turned off by
 accident, or by a crash, does not stay off for good. Turning one off lasts until the next update. The
 [classic layout](#classic-windows) is not an extension turned off, so it stays as you set it.
