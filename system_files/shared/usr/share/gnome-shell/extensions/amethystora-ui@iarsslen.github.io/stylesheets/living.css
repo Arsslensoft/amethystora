@@ -1,0 +1,7 @@
+/* Living wallpapers (modules/living.js): neutral stand-ins for the three colours until a theme's shell-living.css is
+   loaded over them */
+.amethystora-living {
+  -amethystora-living-ground: #1c1230;
+  -amethystora-living-accent: #9148f0;
+  -amethystora-living-second: #5b8cf5;
+}

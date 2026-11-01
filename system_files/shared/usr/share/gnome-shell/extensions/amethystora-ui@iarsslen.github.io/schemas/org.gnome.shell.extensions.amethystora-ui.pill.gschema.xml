@@ -39,6 +39,16 @@
       <summary>Digest times</summary>
       <description>When the digest comes, as HH:MM on the 24-hour clock, one to six of them. Anything else is ignored.</description>
     </key>
+    <key name="digest-through" type="as">
+      <default>[]</default>
+      <summary>Apps that always come through</summary>
+      <description>Launcher IDs (APP.desktop) whose banners show at once while the digest is on. Quiet, a mute and a focus profile still hold them.</description>
+    </key>
+    <key name="digest-wait" type="as">
+      <default>[]</default>
+      <summary>Apps that always wait</summary>
+      <description>Launcher IDs (APP.desktop) whose banners always wait for the next digest time, also while the digest is off. Calls, alarms and urgent banners still pass.</description>
+    </key>
     <key name="later" type="b">
       <default>true</default>
       <summary>Later and mute</summary>

@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Trim
+GenericName=Recording Trimmer
+Comment=Keep a part of a screen recording as WebM or a GIF
+Exec=amethystora-trim -- %f
+Icon=video-x-generic
+Terminal=false
+NoDisplay=true
+Categories=AudioVideo;Video;
+Keywords=trim;cut;recording;screencast;gif;webm;
+StartupNotify=true
+StartupWMClass=org.amethystora.Trim

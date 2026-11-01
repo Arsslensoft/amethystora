@@ -28,6 +28,7 @@ import {DRAWING, MAX_WIDTH, MIN_WIDTH} from './screenshot/marks.js';
 import {Pins, forgetWaiting} from './screenshot/pins.js';
 import {Capture} from './pill/capture.js';
 import {Session} from './screenshot/session.js';
+import {RecordingTrim} from './screenshot/trim.js';
 
 // The mode GNOME's screenshot UI opens in for an app's interactive screenshot through the screenshot portal
 const PORTAL_MODE = 2;
@@ -80,6 +81,9 @@ export class Screenshot {
                 if (!this._settings.get_boolean('capture-thumbnail'))
                     this._card?.close(true);
             }, this);
+        // Trim on a recording's notice (R6-19), while recording-trim is on
+        this.trim = new RecordingTrim(ui, this._settings);
+        this.trim.enable();
     }
 
     // GNOME's screenshot UI on a selection, whose capture copies the text in it (through Gradia), for the pen's Text
@@ -102,6 +106,8 @@ export class Screenshot {
         const ui = this._ui;
         if (!ui)
             return;
+        this.trim?.disable();
+        this.trim = null;
         this._settings?.disconnectObject(this);
         ui.disconnectObject(this);
         this._endSession();

@@ -1,0 +1,45 @@
+/* The resting screen (modules/rest.js): the clock and its words over the wallpaper, white on a dark veil whatever the
+   theme, as the lock screen's are */
+.amethystora-rest-screen {
+  background-color: #000000;
+}
+
+.amethystora-rest-veil {
+  background-color: rgba(10, 6, 18, 0.45);
+}
+
+.amethystora-rest-face {
+  spacing: 6px;
+}
+
+.amethystora-rest-time {
+  font-size: 96px;
+  font-weight: 300;
+  color: #ffffff;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+}
+
+.amethystora-rest-day {
+  font-size: 22px;
+  font-weight: bold;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+}
+
+.amethystora-rest-playing {
+  margin-top: 14px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: bold;
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.12);
+  max-width: 480px;
+}
+
+.amethystora-rest-note {
+  margin-top: 28px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+}

@@ -283,6 +283,11 @@ class Picture {
         return found;
     }
 
+    // A material's tint changed (glass.js, R6-28): the extremes are worked out again as they are next asked for
+    forgetExtremes() {
+        this._extremes.clear();
+    }
+
     // Drawn again from scratch, as after the GPU lost its memory
     refresh() {
         this.ready = false;

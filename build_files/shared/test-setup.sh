@@ -62,6 +62,11 @@ GLASS_TABLE="$(sed -n "s/^GLASS_KEYS='\(.*\)'\$/\1/p" "${SETUP}")"
 [[ "$(jq -c .material <<<"${GLASS_TABLE}")" == "[\"s\",$(GSETTINGS_BACKEND=memory /usr/bin/gsettings range "${GLASS}" material |
     sed -n "2,\$p" | tr "'" '"' | jq -sc .)]" ]] || { echo "GLASS_KEYS' material has other choices than the schema"; false; }
 [[ "$(jq -c .solid <<<"${GLASS_TABLE}")" == '["b"]' && "$(GSETTINGS_BACKEND=memory /usr/bin/gsettings range "${GLASS}" solid)" == "type b" ]]
+# Each glass's blur and tint (R6-28), with the schema's range
+for key in blur-frost blur-prism blur-clear tint-frost tint-prism tint-clear; do
+    want="$(GSETTINGS_BACKEND=memory /usr/bin/gsettings range "${GLASS}" "${key}" | xargs | awk '{print "[\"d\"," $3 + 0 "," $4 + 0 "]"}')"
+    [[ "$(jq -c --arg k "${key}" '.[$k]' <<<"${GLASS_TABLE}")" == "${want}" ]] || { echo "GLASS_KEYS' ${key} is not the schema's"; false; }
+done
 saved="$(sed -n 's/^GLASS_KEYS=(\(.*\))$/\1/p' "$(dirname "${SETUP}")/amethystora-setup-manifest" | tr ' ' '\n' | sort | xargs)"
 [[ "${saved}" == "$(jq -r 'keys | join(" ")' <<<"${GLASS_TABLE}")" ]] || { echo "the manifest saves other glass keys"; false; }
 # The motion's two likewise, each with the schema's choices, and the manifest saves both
@@ -123,6 +128,7 @@ while read -r key; do
     case "${key}:${range}" in
         *":type b") want='["b"]' ;;
         *":range d "*) want="$(awk '{print "[\"d\"," $3 + 0 "," $4 + 0 "]"}' <<<"${range}")" ;;
+        *":range i "*) want="$(awk '{print "[\"i\"," $3 "," $4 "]"}' <<<"${range}")" ;;
         *":enum"*) want="[\"s\",$(GSETTINGS_BACKEND=memory /usr/bin/gsettings range "${DOCK}" "${key}" |
             sed -n "2,\$p" | tr "'" '"' | jq -sc .)]" ;;
         "folders:type a{sas}") want='["folders"]' ;;
@@ -148,6 +154,7 @@ while read -r key; do
     case "${key}:${range}" in
         *":type b") want='["b"]' ;;
         "digest-times:type as" | "later-times:type as") want='["as","times"]' ;;
+        "digest-through:type as" | "digest-wait:type as") want='["as","launchers"]' ;;
         *) want="? ${range}" ;;
     esac
     [[ "$(jq -c --arg k "${key}" '.[$k]' <<<"${PILL_TABLE}")" == "${want}" ]] ||
@@ -298,7 +305,9 @@ for table in 'ACCESS:org.gnome.shell.extensions.amethystora-ui.access:filter-on|
     'TOUCH:org.gnome.shell.extensions.amethystora-ui.touch:filter-on|ruler-shown|.*-key' \
     PRESENT:org.gnome.shell.extensions.amethystora-ui.present:scribble \
     SCREENSHOT:org.gnome.shell.extensions.amethystora-ui.screenshot:tool-settings \
-    DESKWIDGETS:org.gnome.shell.extensions.amethystora-ui.deskwidgets:-; do
+    DESKWIDGETS:org.gnome.shell.extensions.amethystora-ui.deskwidgets:- \
+    REST:org.gnome.shell.extensions.amethystora-ui.rest:- \
+    LIVING:org.gnome.shell.extensions.amethystora-ui.living:-; do
     IFS=: read -r name id left_out <<<"${table}"
     TABLE="$(sed -n "s/^${name}_KEYS='\(.*\)'\$/\1/p" "${SETUP}")"
     # A table over several lines is read as bash reads it

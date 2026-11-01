@@ -1,0 +1,12 @@
+# Amethystora Trim (round 6, R6-19): the window a screen recording's notice opens with Trim, to keep a part of the
+# recording as WebM or a short GIF beside it. The recording itself is never changed. Frames and the cut are made by
+# ffmpeg (Fedora's ffmpeg-free, in the image), always as an argument vector.
+[package]
+name = "amethystora-trim"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+amethystora-ui.workspace = true

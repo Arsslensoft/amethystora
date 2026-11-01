@@ -1561,6 +1561,11 @@ impl Control {
         }
         if item.available {
             below.push(rows);
+            // The gallery (R6-29): the widgets that ship, each added to the bar or the desktop in one click
+            if !item.gallery.is_empty() {
+                below.push(ui::label(&t!("Ready to add, in the bar or on the desktop. None is on until you add it."), &["form-note"]).upcast());
+                below.push(self.widget_gallery(item, busy).upcast());
+            }
             let form = Flex::new(8, 8, &["form"]);
             form.append_with(
                 &ui::label(&t!("Start one from an example, then change its files in ~/.config/amethystora/widgets:"), &["form-note"]),
@@ -1581,6 +1586,36 @@ impl Control {
             }
         }
         self.card_frame(item, None, below, false, Vec::new())
+    }
+
+    // One row for each widget of the gallery: its name and what it shows, and a button for each place it may go. The
+    // names and words are the list's, already in the session's language (amethystora-control-list)
+    fn widget_gallery(&self, item: &Item, busy: bool) -> gtk::Box {
+        Self::rows(
+            item.gallery
+                .iter()
+                .map(|entry| {
+                    let row = ui::hbox(12, &["row"]);
+                    row.append(&Self::row_words(&entry.name, entry.text.as_deref(), false, false));
+                    for place in &entry.places {
+                        let label = match place.as_str() {
+                            "bar" => t!("Add to the bar"),
+                            "desktop" => t!("Add to the desktop"),
+                            _ => continue,
+                        };
+                        let (card, example, place) = (item.id.clone(), entry.example.clone(), place.clone());
+                        let button = self.button(&label, Look { small: true, icon: Some("plus"), disabled: busy, ..Default::default() }, move |this| {
+                            let (example, place) = (example.clone(), place.clone());
+                            let that = this.clone();
+                            this.perform(&card, async move { backend::perform(backend::gallery_widget(that.known().as_deref(), &example, &place)).await });
+                        });
+                        button.set_valign(gtk::Align::Center);
+                        row.append(&button);
+                    }
+                    row
+                })
+                .collect(),
+        )
     }
 
     fn webapps_card(&self, item: &Item) -> gtk::Box {

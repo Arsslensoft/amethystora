@@ -17,5 +17,10 @@
       <summary>Pin pictures on top</summary>
       <description>A capture can be pinned above every window, from the thumbnail or from the Pin button in the screenshot bar (Ctrl+P). Off, there is no Pin, and pinned pictures let go.</description>
     </key>
+    <key name="recording-trim" type="b">
+      <default>false</default>
+      <summary>Trim a recording</summary>
+      <description>A screen recording's notice offers Trim, which opens the recording in amethystora-trim to keep a part of it as WebM or a GIF. The recording itself is never changed.</description>
+    </key>
   </schema>
 </schemalist>

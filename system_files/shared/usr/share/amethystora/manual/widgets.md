@@ -22,13 +22,28 @@ need to log out. Ask for changes the same way: "make the weather widget show tom
 When a widget stops working, the bar shows a warning sign in its place. Click it to read what went
 wrong; **Fix it with the AI agent** hands the problem to the agent.
 
+## The gallery
+
+Some widgets come ready, and [Control](control.md)'s **Desktop** page, under **Top bar widgets**, adds each in one
+click, to the bar or to the desktop: a **Clock** in big type with the day under it, a **Calendar** with the date and the
+week's number, **Now playing** with the player's buttons, **System** with how busy the processor is, the memory and the
+disk, the **Pomodoro** timer and **Do not disturb**. None is on until you add it, and each is a widget like any other:
+a folder of your own you can read and change. Adding one to the desktop turns widgets on the desktop on too. In a
+terminal:
+
+```bash
+amethystora-widgets add clock desktop
+amethystora-widgets add system bar
+```
+
 ## Commands
 
 | Command | Does |
 | --- | --- |
 | `amethystora-widgets` | Lists your widgets, and which are on |
 | `amethystora-widgets make ["<idea>"]` | Has the agent make one |
-| `amethystora-widgets new <name> [<example>]` | Starts one from an example: `hello`, `pomodoro` or `do-not-disturb` |
+| `amethystora-widgets new <name> [<example>]` | Starts one from an example: `hello`, `pomodoro`, `do-not-disturb`, `clock`, `calendar`, `now-playing` or `system` |
+| `amethystora-widgets add <example> [bar\|desktop]` | Adds a widget of the gallery under a name of its own, to the bar or the desktop |
 | `amethystora-widgets run <name>` | Runs it once the way the bar does, and says what is wrong with it |
 | `amethystora-widgets fix <name> ["<what is wrong>"]` | Has the agent find out why it fails, and fix it |
 | `amethystora-widgets off <name>` and `on <name>` | Hides it from the bar, or shows it again |

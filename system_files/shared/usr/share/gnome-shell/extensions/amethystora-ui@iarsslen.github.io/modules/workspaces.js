@@ -31,6 +31,7 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 import {ACCENTS, SCHEMA as THEME_SCHEMA, accentName, workspaceAccent} from './theme/accents.js';
+import {OverviewNames} from './workspaces/overview.js';
 import {Sets} from './workspaces/sets.js';
 import {SetsMenu} from './workspaces/setsmenu.js';
 
@@ -62,7 +63,7 @@ const HINT_GAP = 6;
 // app whose oldest window there is oldest, so that the name does not change as you click between two windows. Windows
 // on every workspace, kept out of the taskbar or fixed to another window, and apps known only by a window's title,
 // say nothing.
-function mainApp(workspace) {
+export function mainApp(workspace) {
     const tracker = Shell.WindowTracker.get_default();
     const counts = new Map();
     for (const window of workspace.list_windows()) {
@@ -329,11 +330,16 @@ export class Workspaces {
         Main.wm.addKeybinding(KEYS[0], this._settings, Meta.KeyBindingFlags.NONE, modes, () => this._shift(-1));
         Main.wm.addKeybinding(KEYS[1], this._settings, Meta.KeyBindingFlags.NONE, modes, () => this._shift(1));
         this._keys = true;
+        // Each workspace's name and picture in the overview's strip (R5-32)
+        this._overviewNames = new OverviewNames(this, mainApp);
+        this._overviewNames.enable();
 
         this._refresh();
     }
 
     disable() {
+        this._overviewNames?.disable();
+        this._overviewNames = null;
         if (this._keys) {
             for (const key of KEYS)
                 Main.wm.removeKeybinding(key);

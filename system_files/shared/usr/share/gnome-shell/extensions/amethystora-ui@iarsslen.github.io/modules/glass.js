@@ -59,10 +59,17 @@ export class Glass {
 
         this._settings = this._ext.getSettings(SCHEMA);
         this.variant = this._readVariant();
+        this._strengths = new Map();
         this._settings.connectObject(
             'changed::material', () => this._syncVariant(),
             'changed::solid', () => this._syncSolid(),
             this);
+        for (const variant of Object.keys(VARIANTS)) {
+            this._settings.connectObject(
+                `changed::blur-${variant}`, () => this._syncBlur(variant),
+                `changed::tint-${variant}`, () => this._syncTint(variant),
+                this);
+        }
         this._unlisten = this.comfort?.listen(() => this._syncSolid()) ?? null;
         this._freeId = 0;
         // Comfort learns the power profile a moment after it starts: logging in with the power saver on builds the
@@ -270,10 +277,62 @@ export class Glass {
     }
 
     _newFrost() {
-        return new Frost(VARIANTS[this.variant].recipe, () => ({
+        return new Frost(this.recipeFor(this.variant), () => ({
             variant: this.variant,
-            material: VARIANTS[this.variant].materials.glass,
+            material: this.materialFor('glass'),
         }), this._lastStats);
+    }
+
+    // ---- How deep each glass's blur is and how dense its tint (R6-28) ----
+
+    // A share of the glass's own, from the key, held to its range
+    _strength(kind, variant) {
+        const value = this._settings?.get_double(`${kind}-${variant}`) ?? 1;
+        return Number.isFinite(value) ? Math.min(1.5, Math.max(0.5, value)) : 1;
+    }
+
+    // The variant's recipe with its blur scaled: the same pass, a longer or shorter radius
+    recipeFor(variant) {
+        const recipe = VARIANTS[variant].recipe;
+        return {...recipe, radius: Math.max(1, Math.round(recipe.radius * this._strength('blur', variant)))};
+    }
+
+    // One of the variant's materials with its tint and veil scaled. The guard (contrast.js) still thickens the veil
+    // wherever text would not read, so the floor of 4.5:1 holds at every strength.
+    materialFor(name) {
+        const variant = this.variant ?? DEFAULT_VARIANT;
+        const material = VARIANTS[variant]?.materials[name] ?? null;
+        const tint = this._strength('tint', variant);
+        if (!material || tint === 1)
+            return material;
+        const key = `${variant}:${tint}:${name}`;
+        let scaled = this._strengths.get(key);
+        if (!scaled) {
+            scaled = {
+                ...material,
+                tint: Math.min(0.9, material.tint * tint),
+                veil: material.veil.map(v => Math.min(0.95, v * tint)),
+            };
+            this._strengths.set(key, scaled);
+        }
+        return scaled;
+    }
+
+    _syncBlur(variant) {
+        if (variant === this.variant)
+            this.frost?.setRecipe('glass', this.recipeFor(variant));
+    }
+
+    _syncTint(variant) {
+        this._strengths.clear();
+        if (variant !== this.variant)
+            return;
+        for (const picture of this.frost?.pictures('glass') ?? [])
+            picture.forgetExtremes?.();
+        for (const [actor, surface] of this._surfaces) {
+            surface.effect?.repicture();
+            actor.queue_redraw();
+        }
     }
 
     // Another kind of glass: its pictures are blurred again (the old ones shown until the new ones are ready), and
@@ -283,7 +342,7 @@ export class Glass {
         if (variant === this.variant)
             return;
         this.variant = variant;
-        this.frost?.setRecipe('glass', VARIANTS[variant].recipe);
+        this.frost?.setRecipe('glass', this.recipeFor(variant));
         for (const [actor, surface] of this._surfaces) {
             if (surface.scheme && surface.look.shadow)
                 surface.look.shadow = this.shadow;

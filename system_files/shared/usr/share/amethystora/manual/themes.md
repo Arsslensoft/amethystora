@@ -115,6 +115,19 @@ Daylight is on unless you turn it off, in Control (Appearance, **Daylight wallpa
 first picture: a picture of your own, set in GNOME's Settings or with `ame desktop background`, is never replaced.
 `Super+Ctrl+Space` goes on to the theme's second picture as before, and round again to Daylight.
 
+### Living wallpapers
+
+A living wallpaper moves slowly over your wallpaper, drawn in the theme's colours: **Aurora** (bands of light swaying
+across the sky), **Drifting facets**, **Rain on glass** or **Slow dusk**. It moves only while you can see it: it is not
+drawn at all while a window fills the screen, and it holds still in the overview, on battery, in the power saver, while a
+game is in front (Games) and with reduced motion. While it moves, each frame costs a little power, which is why it is off
+until you pick one, in Control (Appearance, **Living wallpaper**) or in a terminal:
+
+    ame desktop living-wallpaper aurora     # or facets, rain, dusk; off for the wallpaper as it is
+
+A workspace with a wallpaper of its own shows that wallpaper instead, and the glass is still cut from the wallpaper
+under it.
+
 ## Accents
 
 Any theme can take one of twelve accents in place of its own: Amethyst, Iris, Sky, Lagoon, Jade, Moss, Amber, Ember,
@@ -244,6 +257,14 @@ keeps round corners that match its outline.
 Run `ame desktop glass frost`, `ame desktop glass prism` or `ame desktop glass clear`, or
 `ame desktop glass` alone to pick from a list, or use the **Glass** choice on Control's **Appearance** page.
 The glass changes at once.
+
+Each kind of glass also has its own strength: how deep its blur is, from light to deep, and how dense its tint, from
+clear to dense, each from half to one and a half times its own. Control's **Glass blur** and **Glass tint** sliders move
+the glass you use now, live; each glass keeps its own. Text on the glass stays readable at every strength.
+
+    ame desktop glass-strength blur 130            # the glass in use; 50 to 150 per cent
+    ame desktop glass-strength tint 70 frost       # one glass by name
+    ame desktop glass-strength                     # all of them
 
 ## Comfort
 

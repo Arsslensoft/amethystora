@@ -1,0 +1,49 @@
+/* Amethystora Trim, at the board's sizes (plans/ui-ideas/R6Files.html, R6-19): the frame large, the strip of frames
+   40 to 64 px high rounded 8 px with its two ends, the times under it, the two buttons at the end. The colours are the
+   theme's (palette.rs). */
+
+.trim {
+    padding: 4px 18px 18px;
+    color: var(--fg);
+}
+
+.trim-title {
+    font-weight: bold;
+    font-size: 15px;
+}
+
+.trim-preview {
+    border-radius: 12px;
+    background-color: color-mix(in oklab, var(--fg) 6%, transparent);
+}
+
+.trim-film {
+    border-radius: 8px;
+    min-height: 64px;
+    background-color: color-mix(in oklab, var(--fg) 10%, transparent);
+}
+
+.trim-times {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.trim-time {
+    font-feature-settings: "tnum";
+    color: color-mix(in oklab, var(--fg) 75%, transparent);
+}
+
+.trim-kept {
+    font-weight: bold;
+    color: var(--accent-text);
+}
+
+.trim-status {
+    font-size: 12.5px;
+}
+
+.trim-actions button {
+    border-radius: 999px;
+    padding: 4px 14px;
+    font-weight: bold;
+}

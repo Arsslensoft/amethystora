@@ -4,8 +4,8 @@ echo "::group:: ===$(basename "$0")==="
 
 set -eoux pipefail
 
-# The Amethystora apps: the Manual (Super+F1), Security, Updates, Notes, Logs, Backups, Control, Phone and the Shelf
-# (a window the desktop opens while something is put down on it, round 4's R4-08). They are
+# The Amethystora apps: the Manual (Super+F1), Security, Updates, Notes, Logs, Backups, Control, Phone, the Shelf
+# (a window the desktop opens while something is put down on it, round 4's R4-08) and Trim (R6-19). They are
 # one program, written in Rust with GTK 4 and libadwaita (apps/), which the Containerfile's apps stage built
 # on this same base, and which picks the app by the name it is started as: each app's own path is a hard
 # link to it, so that /usr/bin/amethystora-<app>, the process names and the launchers stay as they were.
@@ -21,7 +21,7 @@ APPS_DIR=/usr/lib/amethystora-apps
 LICENSE_DIR=/usr/share/licenses/amethystora-apps
 
 install -Dpm0755 /apps-stage/out/amethystora-apps "${APPS_DIR}/amethystora-apps"
-for app in manual security update notes logs backups control phone shelf; do
+for app in manual security update notes logs backups control phone shelf trim; do
     install -d "/usr/lib/amethystora-${app}"
     ln -f "${APPS_DIR}/amethystora-apps" "/usr/lib/amethystora-${app}/amethystora-${app}"
 done

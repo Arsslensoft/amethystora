@@ -109,8 +109,10 @@ class AmethystoraGlassEffect extends Clutter.Effect {
         return St.ThemeContext.get_for_stage(global.stage).scale_factor;
     }
 
+    // The material with the person's tint (glass.js), or the variant's own
     get _material() {
-        return VARIANTS[this._glass.variant]?.materials[this.look.material] ?? null;
+        return this._glass.materialFor?.(this.look.material) ??
+            VARIANTS[this._glass.variant]?.materials[this.look.material] ?? null;
     }
 
     // The drop shadow, as the variant has it for the scheme

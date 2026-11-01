@@ -24,7 +24,8 @@ Conky, Argos or another widget extension to do what a widget does.
    place, and it shows in the bar at once. Or write the two files yourself. The examples are in
    `/usr/share/amethystora/widgets/examples`: `hello` is a starting point with a menu, `pomodoro`
    keeps state and runs commands from a click and its menu, `do-not-disturb` keeps running and prints
-   a line on each change.
+   a line on each change. `clock`, `calendar`, `now-playing` and `system` are the gallery's ready widgets
+   (`amethystora-widgets add <example> [bar|desktop]` adds one under a free id).
 3. Write `widget.json` and the command, usually a `widget.sh` (bash, building its JSON with `jq -c`)
    or a Python 3 script, and `chmod +x` it.
 4. Run `amethystora-widgets run <id>` until it says **It works.** with no warnings. It runs the command

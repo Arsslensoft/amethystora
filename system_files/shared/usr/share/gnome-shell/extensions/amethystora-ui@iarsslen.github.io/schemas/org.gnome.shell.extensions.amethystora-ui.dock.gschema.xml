@@ -98,5 +98,11 @@
       <summary>This workspace's apps only</summary>
       <description>Running apps with no window on the workspace a screen shows leave that screen's dock; pinned apps stay.</description>
     </key>
+    <key name="icon-size" type="i">
+      <range min="40" max="64"/>
+      <default>48</default>
+      <summary>The dock's icon size</summary>
+      <description>How large the icons are at rest, in pixels before the screen's scale. A dock too long for the screen draws them smaller; touch mode draws them larger.</description>
+    </key>
   </schema>
 </schemalist>

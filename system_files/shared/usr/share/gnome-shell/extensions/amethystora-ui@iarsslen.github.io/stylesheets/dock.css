@@ -91,6 +91,12 @@
     margin: 2px;
 }
 
+/* The Downloads stack's count (R5-35); its colours follow the theme in shell-dock.css */
+.amethystora-dock-arrivals {
+    background-color: #ffd27a;
+    color: #2a1748;
+}
+
 .amethystora-dock-progress {
     background-color: rgba(0, 0, 0, 0.45);
     border: 1px solid rgba(0, 0, 0, 0.7);

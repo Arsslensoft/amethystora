@@ -1,6 +1,8 @@
 // Folders kept in the dock (spec 1.10): Downloads by default, and any folder dragged there from Files. A stack shows
 // the folder's own icon (a custom one too, so a folder's colour shows) and opens as a grid of the twelve newest
-// things in it. The folder is read when the grid opens and never watched: nothing runs for a stack while it is shut.
+// things in it. The folder is read when the grid opens; nothing runs for a stack while it is shut, but for one thing:
+// the Downloads stack counts what arrives in it ("+3" on its tile, R5-35) from a monitor of that one folder, and the
+// count, kept in memory only, is gone once the stack or the folder is opened. Nothing is read or written for it.
 
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
@@ -24,6 +26,11 @@ const GRID_ROW = 12;
 const GRID_COLUMN = 8;
 const GAP = 12;
 const POP = {from: 16, scale: 0.94, open: 260, close: 160, openMode: EASE.quart, closeMode: EASE.quart};
+// The stack that counts what arrives, and the names a browser gives a download until it is whole
+const COUNTED = 'xdg:DOWNLOAD';
+const PARTIAL = /\.(part|crdownload|download|partial|tmp)$/i;
+// Names remembered, so that a download made in two steps (an empty file, then the whole one renamed onto it) counts once
+const MOST_NAMES = 200;
 const ATTRIBUTES = 'standard::name,standard::display-name,standard::icon,standard::content-type,' +
     'standard::is-hidden,standard::type,time::modified,metadata::custom-icon-name';
 
@@ -102,7 +109,63 @@ export class Stacks extends EventEmitter {
         this._cancellable = null;
         this._dock.settings.disconnectObject(this);
         St.TextureCache.get_default().disconnectObject(this);
+        for (const place of this._places)
+            this._unwatch(place);
         this._places = [];
+    }
+
+    // ---- What arrives in Downloads (R5-35) ----
+
+    _watch(place) {
+        if (place.value !== COUNTED || place.monitor)
+            return;
+        place.arrived = 0;
+        place.names = new Set();
+        try {
+            place.monitor = Gio.File.new_for_path(place.path).monitor_directory(Gio.FileMonitorFlags.WATCH_MOVES, null);
+        } catch (e) {
+            this._say(`${place.value}: not watched: ${e.message}`);
+            return;
+        }
+        place.monitor.connect('changed', (monitor, file, other, event) => this._changed(place, file, other, event));
+    }
+
+    _unwatch(place) {
+        place.monitor?.cancel();
+        place.monitor = null;
+        place.arrived = 0;
+        place.names = null;
+    }
+
+    // A whole file under a name of its own: made there, moved in, or a download's partial name turned into its own
+    _changed(place, file, other, event) {
+        const E = Gio.FileMonitorEvent;
+        let name = null;
+        if (event === E.CREATED || event === E.MOVED_IN)
+            name = file?.get_basename();
+        else if (event === E.RENAMED && PARTIAL.test(file?.get_basename() ?? ''))
+            name = other?.get_basename();
+        if (!name || name.startsWith('.') || PARTIAL.test(name) || !place.names || place.names.has(name))
+            return;
+        if (place.names.size >= MOST_NAMES)
+            place.names.clear();
+        place.names.add(name);
+        place.arrived++;
+        this.emit('arrived', place);
+    }
+
+    // Opened: the count is gone
+    _seen(place) {
+        if (!place.arrived)
+            return;
+        place.arrived = 0;
+        place.names?.clear();
+        this.emit('arrived', place);
+    }
+
+    // For the suites: how many have arrived in a stack since it was last opened
+    arrivals(value = COUNTED) {
+        return this._places.find(place => place.value === value)?.arrived ?? 0;
     }
 
     list() {
@@ -137,6 +200,12 @@ export class Stacks extends EventEmitter {
             });
             places[places.length - 1].value = value;
         }
+        for (const place of this._places) {
+            if (!places.includes(place))
+                this._unwatch(place);
+        }
+        for (const place of places)
+            this._watch(place);
         this._places = places;
         this._icons();
         this.emit('changed');
@@ -203,6 +272,7 @@ export class Stacks extends EventEmitter {
     }
 
     open(place) {
+        this._seen(place);
         try {
             Gio.AppInfo.launch_default_for_uri(place.uri, global.create_app_launch_context(0, -1));
         } catch (e) {
@@ -263,6 +333,7 @@ export class Stacks extends EventEmitter {
     show(dash, state) {
         const place = state.key;
         const cancellable = new Gio.Cancellable();
+        this._seen(place);
         this.refresh(place);
         const popover = new Popover(this._dock, dash, state, {
             styleClass: 'amethystora-dock-stack',

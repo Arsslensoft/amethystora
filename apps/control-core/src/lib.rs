@@ -66,6 +66,16 @@ pub struct Widget {
     pub broken: bool,
 }
 
+/// A widget of the gallery (R6-29): one of the examples that ship, its words, and where it may be added
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct GalleryWidget {
+    pub example: String,
+    pub name: String,
+    pub text: Option<String>,
+    /// "bar", "desktop" or both
+    pub places: Vec<String>,
+}
+
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Webapp {
     pub name: String,
@@ -169,6 +179,7 @@ pub struct Item {
     pub widgets: Vec<Widget>,
     pub bar: bool,
     pub examples: Vec<String>,
+    pub gallery: Vec<GalleryWidget>,
     pub agentic: bool,
     pub commands: HashMap<String, Command>,
     pub webapps: Vec<Webapp>,
@@ -298,6 +309,16 @@ fn item(value: &Value) -> Item {
             .collect(),
         bar: truthy(field("bar")),
         examples: array(field("examples")).iter().filter_map(|example| example.as_str().map(str::to_string)).collect(),
+        gallery: array(field("gallery"))
+            .iter()
+            .map(|entry| GalleryWidget {
+                example: string(entry.get("example")),
+                name: string(entry.get("name")),
+                text: text(entry.get("text")),
+                places: array(entry.get("places")).iter().filter_map(|place| place.as_str().map(str::to_string)).collect(),
+            })
+            .filter(|entry| !entry.example.is_empty() && !entry.name.is_empty())
+            .collect(),
         agentic: truthy(field("agentic")),
         commands: field("commands")
             .and_then(Value::as_object)
@@ -503,7 +524,7 @@ pub fn valid_widget_name(item: &Item, name: &str) -> bool {
 pub fn widget(list: Option<&List>, action: &str, id: &str) -> Result<Run, Refusal> {
     let item = list.and_then(|list| list.find("widgets")).ok_or(Refusal::Refused)?;
     let command = item.commands.get(action);
-    let Some(command) = command.filter(|_| item.available && action != "new") else {
+    let Some(command) = command.filter(|_| item.available && action != "new" && action != "add") else {
         return Err(Refusal::Refused);
     };
     if (action == "make" || action == "fix") && !item.agentic {
@@ -527,6 +548,18 @@ pub fn new_widget(list: Option<&List>, id: &str, example: &str) -> Result<Run, R
     }
     let command = item.commands.get("new").ok_or(Refusal::Refused)?;
     filled(command.command.as_ref(), command.terminal, &[("{id}", id), ("{example}", example)])
+}
+
+/// A widget of the gallery added to the bar or the desktop in one click (R6-29): an example the gallery lists, at a
+/// place it lists for it; amethystora-widgets picks its name
+pub fn gallery_widget(list: Option<&List>, example: &str, place: &str) -> Result<Run, Refusal> {
+    let item = list.and_then(|list| list.find("widgets")).ok_or(Refusal::Refused)?;
+    let offered = item.gallery.iter().any(|entry| entry.example == example && entry.places.iter().any(|known| known == place));
+    if !item.available || !offered || !matches!(place, "bar" | "desktop") {
+        return Err(Refusal::Refused);
+    }
+    let command = item.commands.get("add").ok_or(Refusal::Refused)?;
+    filled(command.command.as_ref(), command.terminal, &[("{example}", example), ("{place}", place)])
 }
 
 /// A web app the list named, removed; or a new one, added in a terminal
@@ -821,7 +854,10 @@ mod tests {
         {"page": "desktop", "id": "widgets", "kind": "widgets", "title": "Top bar widgets", "available": true, "bar": false, "agentic": false,
          "widgets": [{"id": "pomodoro", "name": "Pomodoro", "on": true, "broken": false}, {"id": "half", "name": null, "on": false, "broken": true}],
          "examples": ["hello", "pomodoro"],
+         "gallery": [{"example": "clock", "name": "Clock", "text": "The time", "places": ["desktop", "bar"]},
+                     {"example": "pomodoro", "name": "Pomodoro", "places": ["bar"]}, {"example": "", "name": "Nameless"}],
          "commands": {"on": {"terminal": false, "command": ["ame", "desktop", "widgets", "on", "{id}"]},
+                      "add": {"terminal": false, "command": ["ame", "desktop", "widgets", "add", "{example}", "{place}"]},
                       "new": {"terminal": false, "command": ["ame", "desktop", "widgets", "new", "{id}", "{example}"]},
                       "restart": {"terminal": false, "command": ["ame", "desktop", "widgets", "restart"]},
                       "fix": {"terminal": true, "command": ["ame", "desktop", "widgets", "fix", "{id}"]}}},
@@ -913,6 +949,22 @@ mod tests {
             assert_eq!(new_widget(Some(&list), bad, "hello"), Err(Refusal::WidgetName), "{bad}");
         }
         assert!(new_widget(Some(&list), &"a".repeat(40), "hello").is_ok());
+    }
+
+    #[test]
+    fn gallery_widgets_where_the_gallery_offers_them() {
+        let list = list();
+        let widgets = list.find("widgets").unwrap();
+        // An entry without its example or name is not offered
+        assert_eq!(widgets.gallery.len(), 2);
+        assert_eq!(widgets.gallery[0].places, ["desktop", "bar"]);
+        assert_eq!(argv(gallery_widget(Some(&list), "clock", "desktop")), ["ame", "desktop", "widgets", "add", "clock", "desktop"]);
+        assert_eq!(argv(gallery_widget(Some(&list), "clock", "bar")), ["ame", "desktop", "widgets", "add", "clock", "bar"]);
+        assert_eq!(gallery_widget(Some(&list), "pomodoro", "desktop"), Err(Refusal::Refused));
+        assert_eq!(gallery_widget(Some(&list), "hello", "bar"), Err(Refusal::Refused));
+        assert_eq!(gallery_widget(Some(&list), "clock", "elsewhere"), Err(Refusal::Refused));
+        // Only through gallery_widget, with its two values checked
+        assert!(widget(Some(&list), "add", "clock").is_err());
     }
 
     #[test]

@@ -160,6 +160,11 @@ pub fn new_widget(list: Option<&List>, id: &str, example: &str) -> Result<Run, S
     core::new_widget(list, id, example).map_err(words)
 }
 
+/// A widget of the gallery, added to the bar or the desktop in one click
+pub fn gallery_widget(list: Option<&List>, example: &str, place: &str) -> Result<Run, String> {
+    core::gallery_widget(list, example, place).map_err(words)
+}
+
 /// A web app the list named, removed; or a new one, added in a terminal
 pub fn webapp(list: Option<&List>, action: &str, name: &str) -> Result<Run, String> {
     core::webapp(list, action, name).map_err(words)

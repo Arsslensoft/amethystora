@@ -110,6 +110,7 @@ export class Dock {
             'changed::autohide', () => this._rebuild(),
             'changed::workspace-apps', () => this._syncFilters(),
             'changed::updating', () => this._syncUpdates(),
+            'changed::icon-size', () => this._syncIconSize(),
             this);
         Main.layoutManager.connectObject('monitors-changed', () => this._rebuild(), this);
         global.display.connectObject('workareas-changed', () => this._sites.forEach(site => site.place()), this);
@@ -253,6 +254,21 @@ export class Dock {
         this.touchMode = !!on;
         if (this.settings)
             this._rebuild();
+    }
+
+    // The icons' size a person picked (R6-28), or null for GNOME's own choice as the image ships
+    get iconSize() {
+        if (!this.settings || this.settings.get_user_value('icon-size') === null)
+            return null;
+        return Math.min(64, Math.max(40, this.settings.get_int('icon-size')));
+    }
+
+    // A new size: each dock measured again, at once, so that a slider moved in Control is followed as it moves
+    _syncIconSize() {
+        for (const site of this._sites) {
+            site.place();
+            site.dash?._queueRedisplay?.();
+        }
     }
 
     // A screen added, taken away or rearranged, or another edge: the docks are made again

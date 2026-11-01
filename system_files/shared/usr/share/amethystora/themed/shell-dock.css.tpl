@@ -35,6 +35,12 @@
   color: {{ background }};
 }
 
+/* What arrived in the Downloads stack (R5-35): the theme's yellow, not an alarm's red */
+#uiGroup .amethystora-dock-badge.amethystora-dock-arrivals {
+  background-color: {{ color3 }};
+  color: {{ background }};
+}
+
 #uiGroup .amethystora-dock-progress {
   background-color: rgba({{ background_rgb }}, 0.75);
 }

@@ -627,6 +627,42 @@ glass MATERIAL="":
         echo "$(gettext "The glass is drawn solid while Reduce transparency, High Contrast or the power saver is on.")"
     fi
 
+# How deep a glass's blur is and how dense its tint (R6-28): 50 to 150 per cent of the glass's own, for the glass in
+# use or the one named (ame desktop glass-strength blur|tint PERCENT|reset [frost|prism|clear]); without anything it
+# shows them all. The text on the glass keeps 4.5:1 at every strength.
+[positional-arguments]
+glass-strength *ARGS:
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    SCHEMA=org.gnome.shell.extensions.amethystora-ui.glass
+    usage() { echo "usage: ame desktop glass-strength blur|tint 50..150|reset [frost|prism|clear]" >&2; exit 64; }
+    percent() { awk -v a="$(gsettings get "${SCHEMA}" "$1")" 'BEGIN { printf "%.0f", a * 100 }'; }
+    if [[ $# -eq 0 ]]; then
+        for material in frost prism clear; do
+            echo "${material} blur $(percent "blur-${material}") tint $(percent "tint-${material}")"
+        done
+        exit 0
+    fi
+    kind="${1:-}"
+    value="${2:-}"
+    material="${3:-$(gsettings get "${SCHEMA}" material | tr -d "'")}"
+    [[ $# -le 3 && ( "${kind}" == blur || "${kind}" == tint ) && -n "${value}" ]] || usage
+    case "${material}" in frost | prism | clear) ;; *) usage ;; esac
+    if [[ "${value}" == reset ]]; then
+        gsettings reset "${SCHEMA}" "${kind}-${material}"
+    else
+        [[ "${value}" =~ ^[0-9]{1,3}$ ]] && ((10#${value} >= 50 && 10#${value} <= 150)) || usage
+        gsettings set "${SCHEMA}" "${kind}-${material}" "$(awk -v v="${value}" 'BEGIN { printf "%.2f", v / 100 }')"
+    fi
+    shown="$(percent "${kind}-${material}")"
+    if [[ "${kind}" == blur ]]; then
+        echo "$(eval_gettext "The \${material} glass's blur is \${shown}% of its own.")"
+    else
+        echo "$(eval_gettext "The \${material} glass's tint is \${shown}% of its own.")"
+    fi
+
 # Comfort: reduce transparency, reduce motion and increase contrast (WHAT: one of those, then on or off; without it, it flips)
 [positional-arguments]
 comfort *ARGS:
@@ -1705,7 +1741,8 @@ quiet *ARGS:
     esac
 
 # The digest: banners that are not urgent wait and come together at the digest times (ame desktop digest [on|off];
-# ame desktop digest times HH:MM [HH:MM]..., one to six of them). Without on or off, it asks
+# ame desktop digest times HH:MM [HH:MM]..., one to six of them; ame desktop digest through|wait [APP.desktop...], the
+# apps that always come through and the apps that always wait). Without on or off, it asks
 [positional-arguments]
 digest *ARGS:
     #!/usr/bin/bash
@@ -1731,6 +1768,86 @@ digest *ARGS:
         gsettings set "${schema}" digest-times "[${list}]"
         shown="$(times)"
         echo "$(eval_gettext "The digest comes at \${shown}.")"
+        exit 0
+    fi
+    # The two lists (R5-33): apps whose banners always come through while the digest is on, and apps whose banners
+    # always wait for its next time, also while it is off. By launcher ID; an app is on one list at most. Without IDs,
+    # in a terminal, pick from the launchers a person sees.
+    if [[ "${1:-}" == through || "${1:-}" == wait ]]; then
+        which="$1"
+        key="digest-${which}"
+        other="digest-through"
+        [[ "${which}" == through ]] && other="digest-wait"
+        shift
+        usage() { echo "usage: ame desktop digest through|wait [APP.desktop...] | through|wait reset" >&2; exit 64; }
+        if [[ "${1:-}" == reset ]]; then
+            [[ $# -eq 1 ]] || usage
+            gsettings reset "${schema}" "${key}"
+            if [[ "${which}" == through ]]; then
+                echo "$(gettext "No app comes through the digest by itself any more.")"
+            else
+                echo "$(gettext "No app waits for the digest by itself any more.")"
+            fi
+            exit 0
+        fi
+        dirs=("${XDG_DATA_HOME:-${HOME}/.local/share}/applications" "${HOME}/.local/share/flatpak/exports/share/applications"
+            /var/lib/flatpak/exports/share/applications /usr/local/share/applications /usr/share/applications)
+        apps=("$@")
+        if ((${#apps[@]} == 0)); then
+            [[ -t 0 ]] || usage
+            declare -A seen=()
+            labels=() ids=()
+            for dir in "${dirs[@]}"; do
+                for file in "${dir}"/*.desktop; do
+                    [[ -f "${file}" ]] || continue
+                    id="${file##*/}"
+                    [[ -z "${seen[${id}]:-}" ]] || continue
+                    seen[${id}]=1
+                    grep -qx 'NoDisplay=true' "${file}" && continue
+                    label="$(sed -n 's/^Name=//p' "${file}" | head -n1)"
+                    [[ -n "${label}" ]] || continue
+                    labels+=("${label//,/ } (${id})")
+                    ids+=("${id}")
+                done
+            done
+            current="$(gsettings get "${schema}" "${key}")"
+            selected=()
+            for i in "${!ids[@]}"; do
+                [[ "${current}" == *"'${ids[i]}'"* ]] && selected+=("${labels[i]}")
+            done
+            if [[ "${which}" == through ]]; then
+                header="$(gettext "Which apps always come through while the digest is on? (space to pick, enter when done)")"
+            else
+                header="$(gettext "Which apps always wait for the digest? (space to pick, enter when done)")"
+            fi
+            if ! chosen="$(printf '%s\n' "${labels[@]}" | sort | gum choose --no-limit --header "${header}" \
+                --selected "$(IFS=,; echo "${selected[*]}")")"; then
+                echo "$(gettext "Nothing changed.")"
+                exit 0
+            fi
+            while IFS= read -r line; do
+                [[ -n "${line}" ]] || continue
+                id="${line##*(}"
+                apps+=("${id%)}")
+            done <<<"${chosen}"
+        fi
+        for app in "${apps[@]}"; do
+            [[ "${app}" =~ ^[A-Za-z0-9._+-]+\.desktop$ ]] || usage
+        done
+        list="$(printf '%s\n' "${apps[@]}" | awk 'NF && !seen[$0]++' | sed "s/.*/'&'/" | paste -sd, -)"
+        gsettings set "${schema}" "${key}" "@as [${list}]"
+        # Off the other list
+        # A list as words: the IDs hold no space, quote or comma
+        words() { gsettings get "${schema}" "$1" | sed -e 's/^@as //' -e "s/[][',]/ /g" | xargs -n1; }
+        rest="$(words "${other}" | grep -vxF -f <(printf '%s\n' "${apps[@]}") | sed "s/.*/'&'/" | paste -sd, - || true)"
+        gsettings set "${schema}" "${other}" "@as [${rest}]"
+        shown="$(words "${key}" | paste -sd, - | sed 's/,/, /g')"
+        [[ -n "${shown}" ]] || shown="$(gettext "none")"
+        if [[ "${which}" == through ]]; then
+            echo "$(eval_gettext "Always come through while the digest is on: \${shown}")"
+        else
+            echo "$(eval_gettext "Always wait for the digest: \${shown}")"
+        fi
         exit 0
     fi
     [[ $# -le 1 ]] || { echo "usage: ame desktop digest [on|off]"; exit 64; }
@@ -2720,6 +2837,26 @@ dock *ARGS:
             echo "updating $(onoff updating)"
             echo "folders $(gsettings get "${SCHEMA}" folders)"
             echo "stacks $(gsettings get "${SCHEMA}" stacks)"
+            echo "size $(gsettings get "${SCHEMA}" icon-size)"
+            ;;
+        # The icons' size at rest (R6-28), 40 to 64 px; reset gives the dock GNOME's own choice again
+        size)
+            if [[ -z "${value}" ]]; then
+                value="$(gum input --header "$(gettext "The dock's icon size, 40 to 64 pixels")" \
+                    --value "$(gsettings get "${SCHEMA}" icon-size)")" || exit 0
+            fi
+            if [[ "${value}" == reset ]]; then
+                gsettings reset "${SCHEMA}" icon-size
+                echo "$(gettext "The dock's icons are the size it picks itself again.")"
+                exit 0
+            fi
+            if [[ ! "${value}" =~ ^[0-9]{1,3}$ ]] || ((10#${value} < 40 || 10#${value} > 64)); then
+                echo "usage: ame desktop dock size 40..64|reset" >&2
+                exit 64
+            fi
+            value="$((10#${value}))"
+            gsettings set "${SCHEMA}" icon-size "${value}"
+            echo "$(eval_gettext "The dock's icons are \${value} pixels.")"
             ;;
         magnify | launch | indicator | edge | screens | autohide)
             case "${setting}" in
@@ -3830,7 +3967,7 @@ screenshot WHAT="" STATE="":
     source gettext.sh
     schema=org.gnome.shell.extensions.amethystora-ui.screenshot
     usage() {
-        echo "usage: ame desktop screenshot thumbnail|pin on|off"
+        echo "usage: ame desktop screenshot thumbnail|pin|trim on|off"
         exit 64
     }
     case "${1:-}/${2:-}" in
@@ -3854,6 +3991,15 @@ screenshot WHAT="" STATE="":
         pin/off)
             gsettings set "${schema}" capture-pin false
             echo "$(gettext "Pinning pictures is off; pinned pictures are gone.")"
+            ;;
+        # Trim on the recording's notice (R6-19, offered, off)
+        trim/on)
+            gsettings set "${schema}" recording-trim true
+            echo "$(gettext "After a screen recording, its notice offers Trim: keep a part of it as WebM or a GIF. The recording itself stays.")"
+            ;;
+        trim/off)
+            gsettings set "${schema}" recording-trim false
+            echo "$(gettext "A recording's notice offers no Trim.")"
             ;;
         *) usage ;;
     esac
@@ -3881,6 +4027,78 @@ desktop-widgets STATE="":
             ;;
         *)
             echo "usage: ame desktop desktop-widgets on|off"
+            exit 64
+            ;;
+    esac
+
+# The resting screen (R6-06, offered, off): left alone, a large clock over the drifting wallpaper, the windows hidden,
+# until a key or the pointer; the lock comes when it would anyway (ame desktop resting-screen on|off; after MINUTES,
+# 1 to 30, how long alone first). Without anything it says how it stands
+[positional-arguments]
+resting-screen *ARGS:
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.rest
+    usage() { echo "usage: ame desktop resting-screen on|off | after 1..30" >&2; exit 64; }
+    minutes() { echo $(($(gsettings get "${schema}" after) / 60)); }
+    case "${1:-}" in
+        "")
+            [[ $# -eq 0 ]] || usage
+            m="$(minutes)"
+            if [[ "$(gsettings get "${schema}" enabled)" == true ]]; then
+                echo "$(eval_gettext "The resting screen comes after \${m} minutes alone.")"
+            else
+                echo "$(gettext "The resting screen is off.")"
+            fi
+            ;;
+        on)
+            [[ $# -eq 1 ]] || usage
+            gsettings set "${schema}" enabled true
+            m="$(minutes)"
+            echo "$(eval_gettext "Left alone \${m} minutes, the desktop rests: a large clock, the windows hidden. Any key brings everything back; the screen locks when it would anyway.")"
+            ;;
+        off)
+            [[ $# -eq 1 ]] || usage
+            gsettings set "${schema}" enabled false
+            echo "$(gettext "The resting screen is off.")"
+            ;;
+        after)
+            [[ $# -eq 2 && "${2}" =~ ^[0-9]{1,2}$ ]] || usage
+            m="$((10#${2}))"
+            ((m >= 1 && m <= 30)) || usage
+            gsettings set "${schema}" after "$((m * 60))"
+            echo "$(eval_gettext "The resting screen comes after \${m} minutes alone.")"
+            ;;
+        *) usage ;;
+    esac
+
+# Living wallpapers (R6-07, offered, off): a slow picture in the theme's colours over the wallpaper, moving only while it
+# can be seen, and still on battery, in the power saver, under Games and with reduced motion
+# (ame desktop living-wallpaper off|aurora|facets|rain|dusk). Without anything it says which
+[positional-arguments]
+living-wallpaper KIND="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.living
+    case "${1:-}" in
+        "")
+            kind="$(gsettings get "${schema}" wallpaper | tr -d "'")"
+            echo "$(eval_gettext "Living wallpaper: \${kind}")"
+            ;;
+        off)
+            gsettings set "${schema}" wallpaper off
+            echo "$(gettext "The wallpaper holds still.")"
+            ;;
+        aurora | facets | rain | dusk)
+            gsettings set "${schema}" wallpaper "$1"
+            echo "$(gettext "The wallpaper moves slowly while you can see it, and holds still on battery, in the power saver, under Games and with reduced motion.")"
+            ;;
+        *)
+            echo "usage: ame desktop living-wallpaper off|aurora|facets|rain|dusk" >&2
             exit 64
             ;;
     esac

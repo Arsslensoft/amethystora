@@ -15,7 +15,7 @@ import Pango from 'gi://Pango';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
 
-import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
+import {gettext as _, ngettext} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as AppFavorites from 'resource:///org/gnome/shell/ui/appFavorites.js';
 import * as Dash from 'resource:///org/gnome/shell/ui/dash.js';
 import * as DND from 'resource:///org/gnome/shell/ui/dnd.js';
@@ -182,7 +182,8 @@ class AmethystoraDockDash extends Dash.Dash {
                 this._queueGeometry();
             }, this);
         dock.stacks?.connectObject('changed', () => this._syncPlaces(),
-            'place-changed', (o, place) => this._placeChanged(place), this);
+            'place-changed', (o, place) => this._placeChanged(place),
+            'arrived', (o, place) => this._arrived(place), this);
         dock.folders?.connectObject('changed', () => this._queueRedisplay(), this);
         dock.recent?.connectObject('changed', () => this._queueRedisplay(), this);
         // A count, a bar or an update changed, or notifications were silenced or let through again
@@ -333,8 +334,42 @@ class AmethystoraDockDash extends Dash.Dash {
         // GNOME takes the dash's top and bottom margins off the bound across the row; on a side dock those centre it
         // along the row instead, and are given back
         const along = vertical ? this.margin_top + this.margin_bottom : 0;
-        const largest = this._dock.touchMode ? LARGEST_TOUCH : LARGEST;
+        const largest = this._dock.touchMode ? LARGEST_TOUCH : Math.max(LARGEST, this._dock.iconSize ?? LARGEST);
         this.setMaxSize(Math.max(0, length - ends), around + (largest + 4) * scale + along);
+    }
+
+    // The size a person picked (R6-28, icon-size, 40 to 64 px), as large as the row's length lets every item be; with
+    // none picked, or in touch mode, GNOME's own choice among its sizes. The arithmetic is the row's: its length, less
+    // what each item takes around its picture and the gaps between them, shared out.
+    _adjustIconSize() {
+        const wanted = this._dock.touchMode ? null : this._dock.iconSize;
+        if (!wanted) {
+            super._adjustIconSize();
+            return;
+        }
+        if (this._maxWidth === -1 || this._maxHeight === -1)
+            return;
+        const items = this._box.get_children().filter(actor => actor.child?._delegate?.icon && !actor.animatingOut);
+        items.push(this._showAppsIcon);
+        const button = items[0].child;
+        const icon = button?._delegate?.icon;
+        if (!icon?.icon)
+            return;
+        icon.icon.ensure_style();
+        const [, , pictureWidth] = icon.icon.get_preferred_size();
+        const [, , buttonWidth] = button.get_preferred_size();
+        const node = this.get_theme_node();
+        const gaps = (items.length - 1) * node.get_length('spacing');
+        const room = this._maxWidth - node.get_horizontal_padding() - items.length * (buttonWidth - pictureWidth) - gaps;
+        const fits = Math.floor(room / items.length / scaleFactor());
+        const size = Math.max(16, Math.min(wanted, fits));
+        if (size === this.iconSize)
+            return;
+        this.iconSize = size;
+        for (const item of items)
+            item.child._delegate.icon.setIconSize(size);
+        // After the sizes, so that what follows the signal (the recent apps' smaller icons) has the last word
+        this.emit('icon-size-changed');
     }
 
     vfunc_scroll_event() {
@@ -539,6 +574,30 @@ class AmethystoraDockDash extends Dash.Dash {
         const item = this._placeItems.get(place);
         item?.child.sync();
         item?.setLabelText(place.name);
+    }
+
+    // Something arrived in the Downloads stack, or it was opened (R5-35): the count on its tile, and, for a new
+    // arrival, a short hop of its icon, the newest put forward for a moment
+    _arrived(place) {
+        const item = this._placeItems.get(place);
+        const state = item ? this._items.get(item.child) : null;
+        if (!state)
+            return;
+        const before = state.arrivedShown ?? 0;
+        this._sync(state);
+        // The picture's holder, as an app starting hops (launch.js): the item itself is the swell's to move
+        const bin = item.child.icon?._iconBin;
+        if ((place.arrived ?? 0) > before && bin && St.Settings.get().enable_animations &&
+            !this._dock.ext?.modules?.get('comfort')?.reduceMotion) {
+            const along = this.edge.short === 'y' ? 'translation_y' : 'translation_x';
+            bin.remove_transition(along === 'translation_y' ? 'translation-y' : 'translation-x');
+            bin.ease({
+                [along]: this.edge.away * 8 * scaleFactor(),
+                duration: 160,
+                mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+                onStopped: () => bin.ease({[along]: 0, duration: 260, mode: Clutter.AnimationMode.EASE_OUT_BOUNCE}),
+            });
+        }
     }
 
     _syncPlaces() {
@@ -1011,6 +1070,19 @@ class AmethystoraDockDash extends Dash.Dash {
         };
         state.marks = new ItemMarks(state);
         item.label?.add_style_class_name('amethystora-dock-label');
+        // The Downloads stack's count of what arrived since it was last opened (R5-35), in the corner an app's
+        // count has
+        if (key.stack && key.value === 'xdg:DOWNLOAD' && container) {
+            state.arrivals = new St.Label({
+                style_class: 'amethystora-dock-badge amethystora-dock-arrivals',
+                x_align: Clutter.ActorAlign.END,
+                y_align: Clutter.ActorAlign.START,
+                x_expand: true,
+                y_expand: true,
+                visible: false,
+            });
+            container.add_child(state.arrivals);
+        }
 
         // A row too long for the screen shows an item the pointer rests on, or the keyboard reaches
         button.connect('notify::hover', () => {
@@ -1057,6 +1129,15 @@ class AmethystoraDockDash extends Dash.Dash {
             return;
         if (key.folder || key.stack) {
             state.marks?.sync(this._dock.indicator, 0);
+            if (state.arrivals) {
+                const count = key.arrived ?? 0;
+                state.arrivedShown = count;
+                state.arrivals.visible = count > 0;
+                // "+3": a count, which the language writes
+                state.arrivals.text = count > 0 ? `+${count.toLocaleString()}` : '';
+                button.accessible_name = count > 0
+                    ? ngettext('%s, %d new', '%s, %d new', count).format(key.name, count) : key.name;
+            }
             return;
         }
         const windows = this.windowsOf(key);

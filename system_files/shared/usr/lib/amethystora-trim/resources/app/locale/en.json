@@ -1,0 +1,20 @@
+{
+  "End": "End",
+  "It could not be saved: {why}": "It could not be saved: {why}",
+  "Keep a part of a screen recording as WebM or a GIF": "Keep a part of a screen recording as WebM or a GIF",
+  "Open a recording to trim it: amethystora-trim FILE": "Open a recording to trim it: amethystora-trim FILE",
+  "Recording Trimmer": "Recording Trimmer",
+  "Save as GIF": "Save as GIF",
+  "Save as WebM": "Save as WebM",
+  "Saved as {name}": "Saved as {name}",
+  "Saving…": "Saving…",
+  "Show in Files": "Show in Files",
+  "Start": "Start",
+  "The frame at the end being moved": "The frame at the end being moved",
+  "This recording could not be opened: {why}": "This recording could not be opened: {why}",
+  "This recording could not be read.": "This recording could not be read.",
+  "Trim": "Trim",
+  "Trim · {name}": "Trim · {name}",
+  "kept {time}": "kept {time}",
+  "trim;cut;recording;screencast;gif;webm;": "trim;cut;recording;screencast;gif;webm;"
+}

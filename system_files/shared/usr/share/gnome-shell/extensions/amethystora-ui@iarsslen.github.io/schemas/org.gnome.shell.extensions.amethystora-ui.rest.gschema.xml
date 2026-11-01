@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The resting screen (modules/rest.js, R6-06): a large clock over the drifting wallpaper while the computer is left
+     alone, the windows hidden, until a key or the pointer; the lock comes when it would anyway. Written by ame desktop
+     resting-screen, Control and the setup file. -->
+<schemalist>
+  <schema id="org.gnome.shell.extensions.amethystora-ui.rest" path="/org/gnome/shell/extensions/amethystora-ui/rest/">
+    <key name="enabled" type="b">
+      <default>false</default>
+      <summary>The resting screen</summary>
+      <description>Left alone, the desktop shows a large clock over the wallpaper, the windows hidden. Not while something keeps the session awake, a window is fullscreen or the screen is shared.</description>
+    </key>
+    <key name="after" type="i">
+      <range min="60" max="1800"/>
+      <default>120</default>
+      <summary>When it rests</summary>
+      <description>Seconds left alone before the resting screen comes. Locking keeps its own time.</description>
+    </key>
+  </schema>
+</schemalist>

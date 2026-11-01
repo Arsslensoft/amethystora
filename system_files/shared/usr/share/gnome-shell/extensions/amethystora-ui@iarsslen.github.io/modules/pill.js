@@ -95,6 +95,7 @@ export class Pill {
             'changed::quiet', () => this._sync(),
             'changed::quiet-night', () => this._sync(),
             'changed::digest', () => this._sync(),
+            'changed::digest-wait', () => this._sync(),
             'changed::later', () => this._sync(),
             'changed::meetings', () => this._sync(),
             this);
@@ -162,7 +163,9 @@ export class Pill {
         }
         this._toggle('_privacy', on('privacy-dots'), () => new Privacy(this._capture));
         this._toggle('_glow', on('glow'), () => new Glow(this._capture, () => this._reduce()));
-        this._toggle('_hold', on('quiet') || on('quiet-night') || on('digest') || on('later') || this._focusWants() ||
+        // The apps that always wait for the digest hold their banners also while the digest itself is off
+        this._toggle('_hold', on('quiet') || on('quiet-night') || on('digest') ||
+            this._settings.get_strv('digest-wait').length > 0 || on('later') || this._focusWants() ||
             !!this._presentMark,
             () => new Hold(this._settings, this._capture, this._activities, (...a) => this.notice(...a), () => this._glass()));
         this._hold?.setFocus(this._focusRule ?? null);

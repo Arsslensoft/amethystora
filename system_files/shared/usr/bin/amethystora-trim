@@ -1,0 +1,16 @@
+#!/usr/bin/bash
+#
+# Amethystora Trim: keep a part of a screen recording as WebM or a short GIF, beside it. The recording itself is never
+# changed, and nothing is ever written over. A recording's notice offers it while `ame desktop screenshot trim on`.
+#
+#   amethystora-trim [--] FILE   the recording to trim
+#
+# The window is a GTK program, one with the other Amethystora apps (apps/, build_files/base/13-apps.sh); its frames and
+# the cut are ffmpeg's.
+
+set -euo pipefail
+
+case "${1:-}" in
+    -h | --help | help) sed -n '3,9p' "$0" | sed 's/^# \?//' ;;
+    *) exec /usr/lib/amethystora-trim/amethystora-trim "$@" ;;
+esac

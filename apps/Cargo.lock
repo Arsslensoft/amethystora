@@ -76,6 +76,7 @@ dependencies = [
  "amethystora-phone",
  "amethystora-security",
  "amethystora-shelf",
+ "amethystora-trim",
  "amethystora-ui",
  "amethystora-update",
 ]
@@ -216,6 +217,13 @@ version = "1.0.0"
 dependencies = [
  "amethystora-ui",
  "serde_json",
+]
+
+[[package]]
+name = "amethystora-trim"
+version = "1.0.0"
+dependencies = [
+ "amethystora-ui",
 ]
 
 [[package]]

@@ -749,7 +749,7 @@ grep -q "shouldShowApp" "${UI_EXTENSION}/modules/fuzzy.js"
 # apps, its three recipes, and quiet holding banners in memory only: nothing of it writes GNOME's show-banners
 PILL=org.gnome.shell.extensions.amethystora-ui.pill
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${PILL}" | sort | paste -sd ' ')" == \
-    "digest digest-times glow later later-times live meetings privacy-dots quiet quiet-night whats-new" ]]
+    "digest digest-through digest-times digest-wait glow later later-times live meetings privacy-dots quiet quiet-night whats-new" ]]
 for key in live privacy-dots glow quiet later whats-new meetings; do
     [[ "$(GSETTINGS_BACKEND=memory gsettings get "${PILL}" "${key}")" == true ]]
 done
@@ -757,6 +757,11 @@ for key in quiet-night digest; do
     [[ "$(GSETTINGS_BACKEND=memory gsettings get "${PILL}" "${key}")" == false ]]
 done
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${PILL}" digest-times)" == "['12:00', '18:00']" ]]
+# The digest's two lists (R5-33), empty as the image ships
+for key in digest-through digest-wait; do
+    [[ "$(GSETTINGS_BACKEND=memory gsettings get "${PILL}" "${key}")" == "@as []" ]]
+done
+grep -q "_forDigest(notification)" "${UI_EXTENSION}/modules/pill/hold.js"
 test -s "${UI_EXTENSION}/modules/pill.js"
 test -s "${UI_EXTENSION}/stylesheets/pill.css"
 test -s /usr/share/amethystora/themed/shell-pill.css.tpl
@@ -926,6 +931,51 @@ for file in modules/present.js modules/present/mark.js modules/present/scribble.
     modules/screenshot/pins.js modules/screenshot/picture.js stylesheets/present.css stylesheets/deskwidgets.css; do
     test -s "${UI_EXTENSION}/${file}"
 done
+# What the boards drew and rounds 5 and 6 finish (plans/ui-ideas/spec-finish.md, suite 68): the overview's named spaces,
+# the Downloads stack's count, the gallery of widgets, the resting screen, living wallpapers and trimming a recording
+for file in modules/workspaces/overview.js modules/rest.js modules/living.js modules/living/living.glsl \
+    modules/screenshot/trim.js stylesheets/rest.css stylesheets/living.css; do
+    test -s "${UI_EXTENSION}/${file}"
+done
+test -s /usr/share/amethystora/themed/shell-living.css.tpl
+grep -q "ThumbnailsBox.prototype.addThumbnails" "${UI_EXTENSION}/modules/workspaces/overview.js"
+grep -q "^const COUNTED = 'xdg:DOWNLOAD';$" "${UI_EXTENSION}/modules/dock/stacks.js"
+# The resting screen and living wallpapers are offered and off; each module after the pill and comfort it asks
+REST_SCHEMA=org.gnome.shell.extensions.amethystora-ui.rest
+LIVING_SCHEMA=org.gnome.shell.extensions.amethystora-ui.living
+[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${REST_SCHEMA}" | sort | paste -sd ' ')" == "after enabled" ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings get "${REST_SCHEMA}" enabled)" == false ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings get "${REST_SCHEMA}" after)" == 120 ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${LIVING_SCHEMA}")" == wallpaper ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings get "${LIVING_SCHEMA}" wallpaper)" == "'off'" ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings range "${LIVING_SCHEMA}" wallpaper | sed -n '2,$p' | tr -d "'" | paste -sd ' ')" == \
+    "off aurora facets rain dusk" ]]
+[[ "$(grep -oE "^    \['(pill|comfort|rest|living|focus)'," "${UI_EXTENSION}/extension.js" | tr -d " [',")" == \
+    "$(printf '%s\n' comfort pill rest living focus)" ]]
+grep -q "^resting-screen \*ARGS:" /usr/share/amethystora/just/desktop.just
+grep -q '^living-wallpaper KIND="":' /usr/share/amethystora/just/desktop.just
+# The living wallpapers' shader is in what a Cogl snippet takes on every GPU (GLSL ES 1.0 too): no version or precision
+# line, no loops, and no pow() of what can be negative; they draw at most FPS frames a second, only while seen
+[[ -z "$(grep -nE '^#version|precision |\b(for|while) *\(|\bpow\(' "${UI_EXTENSION}/modules/living/living.glsl")" ]]
+grep -q "^const FPS = 15;$" "${UI_EXTENSION}/modules/living.js"
+# Trim a recording (R6-19): offered and off, ffmpeg-free's encoders the window asks for, and the window itself
+[[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.screenshot recording-trim)" == false ]]
+for encoder in gif libvpx-vp9; do
+    ffmpeg -hide_banner -encoders 2>/dev/null | grep -qE "^ V[.A-Z]{5} ${encoder} " || { echo "ffmpeg has no ${encoder}"; exit 1; }
+done
+for filter in palettegen paletteuse tile; do
+    ffmpeg -hide_banner -filters 2>/dev/null | grep -qE " ${filter} " || { echo "ffmpeg has no ${filter}"; exit 1; }
+done
+test -x /usr/bin/ffprobe
+grep -q "^const TRIM = '/usr/bin/amethystora-trim';$" "${UI_EXTENSION}/modules/screenshot/trim.js"
+grep -q "^NoDisplay=true" /usr/share/applications/amethystora-trim.desktop
+# The gallery of widgets (R6-29): every widget it offers is an example that ships, and none is on for an account
+for example in clock calendar now-playing system pomodoro do-not-disturb; do
+    test -d "/usr/share/amethystora/widgets/examples/${example}"
+    grep -q "^gallery ${example} " /usr/libexec/amethystora-control-list
+done
+grep -q '^    add) add_widget "${2:-}" "${3:-}" ;;$' /usr/bin/amethystora-widgets
+[[ ! -e /etc/skel/.config/amethystora/widgets ]]
 # Nothing they show is markup, nothing they run is a shell: the present module spawns nothing, the desktop's widgets
 # run only through the widgets extension's runner
 grep -rqE "use_markup = true|set_use_markup\(true\)" "${UI_EXTENSION}/modules/present.js" "${UI_EXTENSION}/modules/present" \
@@ -1083,7 +1133,7 @@ grep -q -- "'flatpak', 'run', GRADIA, \`--ocr-file=" "${UI_EXTENSION}/modules/sc
 grep -q "^export const GRADIA = 'be.alexandervanhee.gradia';$" "${UI_EXTENSION}/modules/screenshot/capture.js"
 test -s "${UI_EXTENSION}/icons/screenshot/extract-symbolic.svg"
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys org.gnome.shell.extensions.amethystora-ui.screenshot | sort | paste -sd ' ')" == \
-    "capture-pin capture-thumbnail tool-settings" ]]
+    "capture-pin capture-thumbnail recording-trim tool-settings" ]]
 # Pin a capture (R4-17): the thumbnail and pinning on as the image ships, the bar's Pin button and Ctrl+P, the pin's two
 # icons drawn for the extension, at most six pinned, and a pinned picture never saved by itself
 for key in capture-thumbnail capture-pin; do
@@ -1260,7 +1310,15 @@ env LD_LIBRARY_PATH=/apps-stage/usr/lib64 NODE_ICU_DATA="$(echo /apps-stage/usr/
 # The glass's two keys (ame desktop glass, ame desktop comfort reduce-transparency): Prism by default, the three
 # variants the schema offers each a table of materials.js
 GLASS=org.gnome.shell.extensions.amethystora-ui.glass
-[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${GLASS}" | sort | paste -sd ' ')" == "material solid" ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${GLASS}" | sort | paste -sd ' ')" == \
+    "blur-clear blur-frost blur-prism material solid tint-clear tint-frost tint-prism" ]]
+# Each glass's blur and tint (R6-28): its own at 1, from half to one and a half
+for key in blur-clear blur-frost blur-prism tint-clear tint-frost tint-prism; do
+    [[ "$(GSETTINGS_BACKEND=memory gsettings get "${GLASS}" "${key}")" == 1.0 ]]
+    [[ "$(GSETTINGS_BACKEND=memory gsettings range "${GLASS}" "${key}" | xargs)" == "range d 0.5 1.5" ]]
+done
+grep -q "^    materialFor(name) {" "${UI_EXTENSION}/modules/glass.js"
+grep -q "^glass-strength \*ARGS:" /usr/share/amethystora/just/desktop.just
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${GLASS}" material)" == "'prism'" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${GLASS}" solid)" == false ]]
 [[ "$(sed -n 's/.*<choice value="\([a-z]*\)"\/>.*/\1/p' "${UI_EXTENSION}/schemas/${GLASS}.gschema.xml" | paste -sd ' ')" == \
@@ -1308,12 +1366,12 @@ done
 # A window's title is never markup in it, and it runs nothing through a shell
 [[ -z "$(grep -rnE 'use_markup = true|spawn_command_line|GLib\.spawn_async' "${UI_EXTENSION}/modules/windows.js" \
     "${UI_EXTENSION}/modules/windows")" ]]
-# The dock (plans/beyond/spec-dock.md): its thirteen keys and their defaults; the choices of each that the schema,
+# The dock (plans/beyond/spec-dock.md): its fourteen keys and their defaults; the choices of each that the schema,
 # ame desktop dock and Control give alike; ame desktop dock refusing what it does not know; and what it may never do:
 # take a name for markup, send files to a phone itself (only the Phone app may), or carry another maker's names
 DOCK=org.gnome.shell.extensions.amethystora-ui.dock
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-recursively "${DOCK}" | cut -d' ' -f2- | LC_ALL=C sort | paste -sd ';')" == \
-    "autohide 'off';edge 'bottom';folders @a{sas} {};indicator 'bar';launch 'halo';magnify 'swell';magnify-amount 1.6000000000000001;previews true;recent true;screens 'every';stacks ['xdg:DOWNLOAD'];updating true;workspace-apps false" ]] ||
+    "autohide 'off';edge 'bottom';folders @a{sas} {};icon-size 48;indicator 'bar';launch 'halo';magnify 'swell';magnify-amount 1.6000000000000001;previews true;recent true;screens 'every';stacks ['xdg:DOWNLOAD'];updating true;workspace-apps false" ]] ||
     { echo "the dock's keys or defaults are not the spec's"; exit 1; }
 for key in magnify launch indicator edge screens autohide; do
     schema="$(GSETTINGS_BACKEND=memory gsettings range "${DOCK}" "${key}" | sed -n '2,$p' | tr -d "'" | LC_ALL=C sort | xargs)"
@@ -1324,8 +1382,9 @@ for key in magnify launch indicator edge screens autohide; do
     [[ -n "${schema}" && "${schema}" == "${recipe}" && "${schema}" == "${control}" ]] ||
         { echo "the dock's ${key}: the schema offers ${schema}, ame desktop dock ${recipe}, Control ${control}"; exit 1; }
 done
-[[ "$(GSETTINGS_BACKEND=memory ame desktop dock | wc -l)" == 13 ]]
-for wrong in "magnify wobble" "amount 300" "edge top" "recent maybe" "stack add /nonexistent" "folder" "sideways"; do
+[[ "$(GSETTINGS_BACKEND=memory ame desktop dock | wc -l)" == 14 ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings range "${DOCK}" icon-size | xargs)" == "range i 40 64" ]]
+for wrong in "size 30" "size 65" "size big" "magnify wobble" "amount 300" "edge top" "recent maybe" "stack add /nonexistent" "folder" "sideways"; do
     # shellcheck disable=SC2086
     GSETTINGS_BACKEND=memory ame desktop dock ${wrong} >/dev/null 2>&1 && { echo "ame desktop dock ${wrong} was taken"; exit 1; }
 done
@@ -1655,7 +1714,7 @@ grep -q "paperwm@paperwm.github.com" /usr/share/amethystora/user-setup.hooks.d/1
 # wordmarks, which the program carries, is the logo's own, cropped the way branding/generate.mjs crops it.
 APPS_PROGRAM=/usr/lib/amethystora-apps/amethystora-apps
 test -x "${APPS_PROGRAM}"
-for app in manual security update notes logs backups phone control shelf; do
+for app in manual security update notes logs backups phone control shelf trim; do
     test -x "/usr/bin/amethystora-${app}"
     [[ "/usr/lib/amethystora-${app}/amethystora-${app}" -ef "${APPS_PROGRAM}" ]]
     [[ "$(env -u DISPLAY -u WAYLAND_DISPLAY "/usr/lib/amethystora-${app}/amethystora-${app}" --version)" == "amethystora-${app} "* ]]

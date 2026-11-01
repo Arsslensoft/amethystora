@@ -7,7 +7,9 @@
 #   amethystora-widgets [list [--json]]   the widgets, and which are on
 #   amethystora-widgets make ["<idea>"]   have the AI agent make one
 #   amethystora-widgets new <id> [<example>]   start one from an example: hello (the default),
-#                                         pomodoro or do-not-disturb
+#                                         pomodoro, do-not-disturb, clock, calendar, now-playing or system
+#   amethystora-widgets add <example> [bar|desktop]   the gallery's one click: the example under a name of
+#                                         its own, in the bar or on the desktop
 #   amethystora-widgets run <id>          run it once the way the bar does, and check what it prints
 #   amethystora-widgets fix <id> ["<what is wrong>"]   have the AI agent find out why it fails, and fix it
 #   amethystora-widgets on|off <id>       show it in the bar, or not
@@ -28,7 +30,7 @@ SKILL=/usr/share/amethystora/agents/skills/amethystora-widgets/SKILL.md
 WIDGETS_DIR="${CONFIG_DIR}/widgets"
 
 usage() {
-    sed -n '3,17p' "$0" | sed 's/^# \?//'
+    sed -n '3,19p' "$0" | sed 's/^# \?//'
 }
 
 # The folder of a widget that exists
@@ -89,6 +91,43 @@ new_widget() {
     echo "Change its files there, and check it with: amethystora-widgets run ${id}"
 }
 
+# The gallery's one click (R6-29, Control's Widgets): an example under its own name, or its name and a number when
+# that is taken, put in the bar or on the desktop; on the desktop, widgets on the desktop are turned on with it, since
+# that is where it was asked to be. The place is written into its widget.json before it is moved in, so that neither
+# the bar nor the desktop loads it half made.
+add_widget() {
+    local example="$1" place="${2:-}" id n=2 desk=org.gnome.shell.extensions.amethystora-ui.deskwidgets
+    [[ ${example} =~ ^[a-z0-9][a-z0-9-]*$ && -d "${EXAMPLES}/${example}" ]] ||
+        die "there is no example ${example}: $(ls "${EXAMPLES}" | paste -sd' ')"
+    [[ -z ${place} ]] && place="$(jq -r '.place // "bar"' "${EXAMPLES}/${example}/widget.json")"
+    [[ ${place} == bar || ${place} == desktop ]] || die "a widget goes in the bar or on the desktop: amethystora-widgets add <example> [bar|desktop]"
+    id="${example}"
+    while [[ -e "${WIDGETS_DIR}/${id}" ]]; do
+        id="${example}-${n}"
+        n=$((n + 1))
+    done
+    mkdir -p "${WIDGETS_DIR}"
+    rm -rf "${WIDGETS_DIR}/.${id}.new"
+    cp -r "${EXAMPLES}/${example}" "${WIDGETS_DIR}/.${id}.new"
+    local manifest="${WIDGETS_DIR}/.${id}.new/widget.json"
+    # A corner on the desktop, a side of the bar; the first line's size is the desktop's only
+    jq --arg place "${place}" 'if $place == "desktop"
+        then .place = "desktop" | .position = (if (.position // "") | test("^(top|bottom)-(left|right)$") then .position else "top-right" end)
+        else .place = "bar" | .position = (if (.position // "") | test("^(left|center|right)$") then .position else "right" end) | del(.size) end' \
+        "${manifest}" >"${manifest}.tmp"
+    mv "${manifest}.tmp" "${manifest}"
+    mv "${WIDGETS_DIR}/.${id}.new" "${WIDGETS_DIR}/${id}"
+    if [[ ${place} == desktop ]]; then
+        if [[ "$(gsettings get "${desk}" enabled 2>/dev/null)" != true ]]; then
+            gsettings set "${desk}" enabled true
+            echo "Widgets on the desktop are on now."
+        fi
+        echo "Added ${id} to the desktop, from ${WIDGETS_DIR}/${id}."
+    else
+        echo "Added ${id} to the top bar, from ${WIDGETS_DIR}/${id}."
+    fi
+}
+
 # The method is in the skill, written once for whichever agent is chosen; this only says what to make
 make_widget() {
     local idea="$*"
@@ -122,6 +161,7 @@ case "${1:-list}" in
     list) list "${2:-}" ;;
     make) shift; make_widget "$@" ;;
     new) new_widget "${2:-}" "${3:-}" ;;
+    add) add_widget "${2:-}" "${3:-}" ;;
     run)
         dir="$(widget_dir "${2:-}" run)"
         exec gjs -m "${CHECK}" "${dir}"

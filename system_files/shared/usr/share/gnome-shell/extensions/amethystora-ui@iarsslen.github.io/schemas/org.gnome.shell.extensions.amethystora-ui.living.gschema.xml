@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Living wallpapers (modules/living.js, R6-07): a slow picture drawn in the theme's colours over the wallpaper, moving
+     only while it can be seen. Written by ame desktop living-wallpaper, Control and the setup file. -->
+<schemalist>
+  <schema id="org.gnome.shell.extensions.amethystora-ui.living" path="/org/gnome/shell/extensions/amethystora-ui/living/">
+    <key name="wallpaper" type="s">
+      <choices>
+        <choice value="off"/>
+        <choice value="aurora"/>
+        <choice value="facets"/>
+        <choice value="rain"/>
+        <choice value="dusk"/>
+      </choices>
+      <default>'off'</default>
+      <summary>Living wallpaper</summary>
+      <description>off: the wallpaper as it is; aurora, facets (drifting facets), rain (rain on glass) or dusk (a slow dusk), in the theme's colours. Still while covered, on battery, in the power saver, under Games and with reduced motion.</description>
+    </key>
+  </schema>
+</schemalist>

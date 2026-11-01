@@ -251,6 +251,9 @@ read_in_background kb-keyboard gsettings list-recursively org.gnome.desktop.peri
 read_in_background kb-paste gsettings get org.gnome.desktop.interface gtk-enable-primary-paste
 read_in_background kb-super gsettings get org.gnome.shell.extensions.amethystora-ui.keys super-alone
 read_in_background kb-accents gsettings get org.gnome.shell.extensions.amethystora-ui.typing accents
+# The resting screen and the living wallpaper (R6-06, R6-07)
+read_in_background rest gsettings list-recursively org.gnome.shell.extensions.amethystora-ui.rest
+read_in_background living gsettings get org.gnome.shell.extensions.amethystora-ui.living wallpaper
 wait
 
 # --- Appearance ------------------------------------------------------------------------------------
@@ -413,6 +416,23 @@ choice clear "${ gettext "Clear"; }" "${ gettext "The thinnest glass and the bri
 USAGE="ame desktop glass frost|prism|clear"
 item appearance glass choice "${ gettext "Glass"; }" \
     "${ gettext "What the top bar, the dock, menus and notifications show of the wallpaper behind them."; }" "${GLASS}" themes#glass
+# The glass in use, its blur and its tint (R6-28), as a share of its own; each glass keeps its own
+for KIND in blur tint; do
+    [[ "${ ended glass; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
+    VALUE="$(said glass | sed -n "s/^[^ ]* ${KIND}-${GLASS:-prism} \(.*\)$/\1/p")"
+    EXTRA="$(jq -nc --arg kind "${KIND}" --arg glass "${GLASS:-prism}" '{min: 50, max: 150, step: 5, unit: "%", terminal: false,
+        command: ["ame", "desktop", "glass-strength", $kind, "{value}", $glass]}')"
+    USAGE="ame desktop glass-strength ${KIND} 50..150 [frost|prism|clear]"
+    STATE="$(awk -v a="${VALUE}" 'BEGIN { if (a != "") printf "%.0f", a * 100 }')"
+    if [[ "${KIND}" == blur ]]; then
+        item appearance glass-blur range "${ gettext "Glass blur"; }" \
+            "${ gettext "How deep the glass in use blurs the wallpaper, from light to deep."; }" "${STATE}" themes#glass
+    else
+        item appearance glass-tint range "${ gettext "Glass tint"; }" \
+            "${ gettext "How dense its tint is, from clear to dense. Text on it stays readable at every strength."; }" \
+            "${STATE}" themes#glass
+    fi
+done
 
 GROUP="${ gettext "Comfort"; }"
 [[ "${ ended glass; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
@@ -543,6 +563,20 @@ USAGE="ame desktop daylight on|off"
 item appearance daylight switch "${ gettext "Daylight wallpapers"; }" \
     "${ gettext "The theme's first wallpaper follows the time of day: dawn, day, dusk and night."; }" \
     "$([[ "${DAYLIGHT}" == off ]] && echo off || echo on)" themes#daylight
+# Living wallpapers (R6-07, offered, off)
+LIVING="${ said living; }"
+LIVING="${LIVING//\'/}"
+LIVING="${LIVING//$'\n'/}"
+[[ "${ ended living; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
+choice off "${ gettext "Still"; }" "${ gettext "The wallpaper as it is"; }" false ame desktop living-wallpaper off
+choice aurora "${ gettext "Aurora"; }" "${ gettext "Bands of light sway across the sky"; }" false ame desktop living-wallpaper aurora
+choice facets "${ gettext "Drifting facets"; }" "${ gettext "Large facets whose corners drift"; }" false ame desktop living-wallpaper facets
+choice rain "${ gettext "Rain on glass"; }" "${ gettext "Drops run down a window pane"; }" false ame desktop living-wallpaper rain
+choice dusk "${ gettext "Slow dusk"; }" "${ gettext "An evening sky whose colours sink and rise"; }" false ame desktop living-wallpaper dusk
+USAGE="ame desktop living-wallpaper off|aurora|facets|rain|dusk"
+item appearance living-wallpaper choice "${ gettext "Living wallpaper"; }" \
+    "${ gettext "Moves slowly in the theme's colours while you can see it; still when covered, on battery, in the power saver, under Games and with reduced motion. Each frame costs a little power."; }" \
+    "${LIVING:-off}" themes#living-wallpapers
 
 # --- Make it yours (rounds 5 and 6): a theme of your own, a look in one file, drawn wallpapers, light by day ---------
 
@@ -1036,6 +1070,14 @@ USAGE="ame desktop dock amount 120..220"
 item desktop dock-amount range "${ gettext "How far Swell grows"; }" \
     "${ gettext "How large the icon under the pointer becomes, in per cent."; }" \
     "$(awk -v a="${ dock_key magnify-amount; }" 'BEGIN { if (a != "") printf "%.0f", a * 100 }')" desktop#how-the-dock-moves
+# The icons' size at rest (R6-28)
+dock_reason
+EXTRA='{"min": 40, "max": 64, "step": 2, "unit": "px", "terminal": false,
+    "command": ["ame", "desktop", "dock", "size", "{value}"]}'
+USAGE="ame desktop dock size 40..64|reset"
+item desktop dock-size range "${ gettext "Icon size"; }" \
+    "${ gettext "How large the dock's icons are at rest, in pixels. A dock too long for the screen draws them smaller."; }" \
+    "${ dock_key icon-size; }" desktop#how-the-dock-moves
 choice halo "${ gettext "Halo"; }" "${ gettext "A ring runs round the icon"; }" false ame desktop dock launch halo
 choice hop "${ gettext "Hop"; }" "${ gettext "The icon hops"; }" false ame desktop dock launch hop
 choice breathe "${ gettext "Breathe"; }" "${ gettext "The icon pulses, nothing moves"; }" false ame desktop dock launch breathe
@@ -1272,10 +1314,30 @@ else
     WIDGETS='{"bar": true, "widgets": []}'
     REASON="${ gettext "The widgets could not be listed."; }"
 fi
+# The gallery (R6-29): the examples that ship, each with its words and the places it may be added to in one click
+# (ame desktop widgets add EXAMPLE bar|desktop); only those the image has
+GALLERY=()
+gallery() {
+    [[ -d "/usr/share/amethystora/widgets/examples/$1" ]] || return 0
+    # One record for the jq below, its fields apart by the unit separator: no jq of its own for each
+    local IFS=$'\x1f'
+    GALLERY+=("$*")
+}
+gallery clock "${ gettext "Clock"; }" "${ gettext "The time in big type, with the day under it"; }" "desktop bar"
+gallery calendar "${ gettext "Calendar"; }" "${ gettext "Today's date and the week's number"; }" "desktop bar"
+gallery now-playing "${ gettext "Now playing"; }" "${ gettext "What a player plays, with its buttons"; }" "bar desktop"
+gallery system "${ gettext "System"; }" "${ gettext "How busy the processor is, the memory and the disk"; }" "bar desktop"
+gallery pomodoro "${ gettext "Pomodoro"; }" "${ gettext "A 25-minute focus timer: click it to start"; }" "bar"
+gallery do-not-disturb "${ gettext "Do not disturb"; }" "${ gettext "Shown while notifications are silenced, with a switch that brings them back"; }" "bar"
 EXTRA="$(jq -nc --argjson list "${WIDGETS}" --argjson agentic "${AGENTIC}" \
     --argjson examples "$(find /usr/share/amethystora/widgets/examples -mindepth 1 -maxdepth 1 -type d \
         -printf '%f\n' 2>/dev/null | sort | jq -Rsc 'split("\n") | map(select(. != ""))')" \
-    '{widgets: $list.widgets, bar: $list.bar, $examples, $agentic, commands: {
+    --arg gallery "$(printf '%s\n' "${GALLERY[@]}")" \
+    '{widgets: $list.widgets, bar: $list.bar, $examples, $agentic,
+      gallery: ($gallery | split("\n") | map(select(. != "") | split("\u001f")
+          | {example: .[0], name: .[1], text: .[2], places: (.[3] | split(" "))})),
+      commands: {
+        add: {terminal: false, command: ["ame", "desktop", "widgets", "add", "{example}", "{place}"]},
         on: {terminal: false, command: ["ame", "desktop", "widgets", "on", "{id}"]},
         off: {terminal: false, command: ["ame", "desktop", "widgets", "off", "{id}"]},
         remove: {terminal: false, command: ["ame", "desktop", "widgets", "remove", "{id}"]},
@@ -1296,6 +1358,24 @@ USAGE="ame desktop desktop-widgets on|off"
 item desktop desktop-widgets switch "${ gettext "Widgets on the desktop"; }" \
     "${ gettext "Widgets placed on the desktop in their widget.json are drawn on the wallpaper, under the windows."; }" \
     "${DESK_WIDGETS}" widgets#on-the-desktop
+# The resting screen (R6-06, offered, off) and when it comes
+REST="${ said rest; }"
+rest_reason() { [[ "${ ended rest; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"; }
+GROUP="${ gettext "Resting"; }"
+rest_reason
+switch_choices false ame desktop resting-screen
+USAGE="ame desktop resting-screen on|off"
+item desktop resting-screen switch "${ gettext "A resting screen"; }" \
+    "${ gettext "Left alone, the desktop shows a large clock over the slowly drifting wallpaper, the windows hidden. Any key brings everything back; the screen locks when it would anyway."; }" \
+    "$([[ "${ value_of "${REST}" enabled "(.*)$"; }" == true ]] && echo on || echo off)" desktop#a-resting-screen
+rest_reason
+for MINUTES in 1 2 5 10; do
+    choice "$((MINUTES * 60))" "${ eval_gettext "After \${MINUTES} min"; }" "" false ame desktop resting-screen after "${MINUTES}"
+done
+USAGE="ame desktop resting-screen after 1..30"
+item desktop resting-screen-after choice "${ gettext "When it rests"; }" "${ gettext "How long the computer is left alone first."; }" \
+    "${ value_of "${REST}" after "(.*)$"; }" desktop#a-resting-screen
+GROUP=""
 
 # Quick settings as live tiles: the theme block, and every tile back (org.gnome.shell.extensions.amethystora-ui.quick)
 QUICK_HIDDEN="${ said quick; }"
@@ -1431,6 +1511,22 @@ esac
 USAGE="ame desktop digest times HH:MM [HH:MM]..."
 item desktop digest-times choice "${ gettext "Digest times"; }" "${ gettext "When the digest comes."; }" "${TIMES}" \
     desktop#the-digest
+# The digest's two lists (R5-33), each picked from the launchers in a terminal
+for LIST in through wait; do
+    [[ "${ ended pill; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
+    DETAIL="$(pill_key "digest-${LIST}" | sed -e 's/^@as //' -e "s/[][']//g")"
+    COMMAND=(ame desktop digest "${LIST}")
+    BUTTON="${ gettext "Choose"; }"
+    USAGE="ame desktop digest ${LIST} [APP.desktop...]"
+    if [[ "${LIST}" == through ]]; then
+        item desktop digest-through action "${ gettext "Always come through"; }" \
+            "${ gettext "Apps whose banners show at once while the digest is on."; }" "" desktop#the-digest
+    else
+        item desktop digest-wait action "${ gettext "Always wait"; }" \
+            "${ gettext "Apps whose banners always wait for the next digest, also while the digest is off."; }" "" \
+            desktop#the-digest
+    fi
+done
 # Later and mute on banners (in memory only), their two times, and What's new after an update
 PILLKEY=later pill_item later "${ gettext "Later and mute"; }" \
     "${ gettext "Later on any banner brings it back in an hour, this evening, tomorrow or when you next unlock; Mute holds an app's banners for an hour."; }" \
@@ -1644,6 +1740,13 @@ USAGE="ame desktop screenshot pin on|off"
 item desktop screenshot-pin switch "${ gettext "Pin pictures on top"; }" \
     "${ gettext "Keep a screenshot above every window while you work below it."; }" \
     "${ onoff_of "${SCREENSHOT}" capture-pin; }" desktop#pinned-pictures
+# Trim a recording (R6-19, offered, off)
+ui_reason screenshot
+switch_choices false ame desktop screenshot trim
+USAGE="ame desktop screenshot trim on|off"
+item desktop screenshot-trim switch "${ gettext "Trim a recording"; }" \
+    "${ gettext "A screen recording's notice offers Trim: drag its two ends, then save that part as WebM or a short GIF. The recording stays as it was."; }" \
+    "${ onoff_of "${SCREENSHOT}" recording-trim; }" desktop#trim-a-recording
 # The shelf (shelf module): where things are put down while moving between apps, offered and off
 SHELF="${ said shelf; }"
 SHELF="${SHELF//\'/}"

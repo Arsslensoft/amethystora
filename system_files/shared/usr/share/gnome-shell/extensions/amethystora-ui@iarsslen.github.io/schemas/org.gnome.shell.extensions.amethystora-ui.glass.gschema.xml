@@ -18,5 +18,43 @@
       <summary>Reduce transparency</summary>
       <description>Draw every glass surface in the theme's solid colours. Nothing is blurred, which also saves power.</description>
     </key>
+    <!-- How deep each glass's blur is and how dense its tint (R6-28): a share of the glass's own, written by
+         ame desktop glass-strength and Control. The text on the glass keeps 4.5:1 at every value. -->
+    <key name="blur-frost" type="d">
+      <range min="0.5" max="1.5"/>
+      <default>1.0</default>
+      <summary>Frost's blur</summary>
+      <description>How deep Frost's blur is, as a share of its own: 0.5 is light, 1.5 deep.</description>
+    </key>
+    <key name="blur-prism" type="d">
+      <range min="0.5" max="1.5"/>
+      <default>1.0</default>
+      <summary>Prism's blur</summary>
+      <description>How deep Prism's blur is, as a share of its own: 0.5 is light, 1.5 deep.</description>
+    </key>
+    <key name="blur-clear" type="d">
+      <range min="0.5" max="1.5"/>
+      <default>1.0</default>
+      <summary>Clear's blur</summary>
+      <description>How deep Clear's blur is, as a share of its own: 0.5 is light, 1.5 deep.</description>
+    </key>
+    <key name="tint-frost" type="d">
+      <range min="0.5" max="1.5"/>
+      <default>1.0</default>
+      <summary>Frost's tint</summary>
+      <description>How dense Frost's tint is, as a share of its own: 0.5 is clearer, 1.5 denser.</description>
+    </key>
+    <key name="tint-prism" type="d">
+      <range min="0.5" max="1.5"/>
+      <default>1.0</default>
+      <summary>Prism's tint</summary>
+      <description>How dense Prism's tint is, as a share of its own: 0.5 is clearer, 1.5 denser.</description>
+    </key>
+    <key name="tint-clear" type="d">
+      <range min="0.5" max="1.5"/>
+      <default>1.0</default>
+      <summary>Clear's tint</summary>
+      <description>How dense Clear's tint is, as a share of its own: 0.5 is clearer, 1.5 denser.</description>
+    </key>
   </schema>
 </schemalist>

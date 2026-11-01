@@ -58,6 +58,13 @@ export function passes(notification) {
     return CLOCKS.includes(source?._appId) || CLOCKS.includes(source?.app?.get_id?.());
 }
 
+// The launcher IDs a notification's app goes by, each as APP.desktop
+function idsOf(notification) {
+    const source = notification.source;
+    return [source?._appId, source?.app?.get_id?.()].filter(Boolean)
+        .map(id => (id.endsWith('.desktop') ? id : `${id}.desktop`));
+}
+
 // Whether GNOME would show it as a banner at all (its own tests)
 function wouldPopUp(notification) {
     if (notification.acknowledged || notification.urgency === MessageTray.Urgency.LOW)
@@ -129,6 +136,8 @@ export class Hold {
             'changed::quiet-night', () => this._configure(),
             'changed::digest', () => this._configure(),
             'changed::digest-times', () => this._configure(),
+            'changed::digest-through', () => this._configure(),
+            'changed::digest-wait', () => this._configure(),
             'changed::later', () => this._configure(),
             this);
         this._configure();
@@ -176,6 +185,24 @@ export class Hold {
         return digestTimes(this._settings.get_strv('digest-times'));
     }
 
+    // The digest's two lists (R5-33): apps that always come through while it is on, and apps that always wait for
+    // its next time, also while it is off. Read at each banner, a lookup in a list of a few names.
+    _listed(key, notification) {
+        const list = this._settings.get_strv(key);
+        return list.length > 0 && idsOf(notification).some(id => list.includes(id));
+    }
+
+    get _waitList() {
+        return this._settings.get_strv('digest-wait').length > 0;
+    }
+
+    // Whether a banner held now waits for the digest: everything the digest holds but the apps let through, and the
+    // apps that always wait
+    _forDigest(notification) {
+        return (this._digest && !this._listed('digest-through', notification)) ||
+            this._listed('digest-wait', notification);
+    }
+
     _configure() {
         if (this._settings.get_boolean('later'))
             this._startLater();
@@ -194,15 +221,18 @@ export class Hold {
             this._watchNight();
         else
             this._unwatchNight();
-        if (this._night || this._digest)
+        if (this._night || this._digest || this._waitList)
             this._watchClock();
         else
             this._unwatchClock();
-        if (!this._digest && this._digestHeld.size > 0) {
-            // The digest turned off: what it held waits in the list, and is not followed any more
+        if (this._digestHeld.size > 0) {
+            // The digest turned off, or an app moved off a list: what it no longer holds waits in the list, and is not
+            // followed any more
             for (const notification of [...this._digestHeld]) {
+                if (this._forDigest(notification))
+                    continue;
                 this._digestHeld.delete(notification);
-                if (!this._quietHeld.has(notification))
+                if (!this._quietHeld.has(notification) && !this._focusHeld.has(notification))
                     this._forget(notification);
             }
         }
@@ -291,7 +321,7 @@ export class Hold {
 
     _minute() {
         this._update();
-        if (!this._digest)
+        if (!this._digest && !this._waitList)
             return;
         const now = GLib.DateTime.new_now_local().format('%H:%M');
         if (this.times.includes(now) && this._digestHeld.size > 0) {
@@ -329,7 +359,7 @@ export class Hold {
     }
 
     _holding() {
-        return this._reason !== null || this._digest || this._focusHolding() || !!this._later?.muting;
+        return this._reason !== null || this._digest || this._waitList || this._focusHolding() || !!this._later?.muting;
     }
 
     // --- Later and mute (later.js) --------------------------------------------------------------------------------
@@ -458,16 +488,13 @@ export class Hold {
     _lets(notification) {
         if (passes(notification))
             return true;
-        if (this._reason !== null || this._digest || this._later?.muteOf(notification))
+        if (this._reason !== null || this._later?.muteOf(notification) || this._forDigest(notification))
             return false;
         if (!this._focusHolding())
             return true;
         if (this._focus.banners !== 'apps')
             return false;
-        const source = notification.source;
-        const ids = [source?._appId, source?.app?.get_id?.()].filter(Boolean)
-            .map(id => (id.endsWith('.desktop') ? id : `${id}.desktop`));
-        return ids.some(id => this._focus.apps.includes(id));
+        return idsOf(notification).some(id => this._focus.apps.includes(id));
     }
 
     _silenced(notification) {
@@ -479,9 +506,8 @@ export class Hold {
     _focusReleased() {
         const held = [...this._focusHeld].filter(n => !this._quietHeld.has(n));
         this._focusHeld.clear();
-        if (this._digest)
-            return;
-        const waiting = held.filter(n => this._held.has(n));
+        // What the digest holds waits for it
+        const waiting = held.filter(n => this._held.has(n) && !this._digestHeld.has(n));
         for (const notification of waiting)
             this._forget(notification);
         if (waiting.length > 0) {
@@ -515,15 +541,12 @@ export class Hold {
         const held = [...this._quietHeld];
         this._quietHeld.clear();
         this._takeOffQueue(held);
-        if (this._digest) {
-            if (this._digestDue) {
-                this._digestDue = false;
-                this._showDigest(GLib.DateTime.new_now_local().format('%H:%M'));
-            }
-            return;
+        if (this._digestDue) {
+            this._digestDue = false;
+            this._showDigest(GLib.DateTime.new_now_local().format('%H:%M'));
         }
-        // What a focus profile still holds stays held until it ends
-        const waiting = held.filter(n => this._held.has(n) && !this._focusHeld.has(n));
+        // What a focus profile still holds stays held until it ends, and what the digest holds waits for it
+        const waiting = held.filter(n => this._held.has(n) && !this._focusHeld.has(n) && !this._digestHeld.has(n));
         for (const notification of waiting)
             this._forget(notification);
         if (waiting.length > 0) {
@@ -584,7 +607,7 @@ export class Hold {
         }
         if (this._reason)
             this._quietHeld.add(notification);
-        if (this._digest)
+        if (this._forDigest(notification))
             this._digestHeld.add(notification);
         if (this._focusHolding())
             this._focusHeld.add(notification);

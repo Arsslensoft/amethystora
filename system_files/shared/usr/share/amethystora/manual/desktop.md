@@ -276,6 +276,16 @@ digest times (12:00 and 18:00 to begin with): one row for each app, **Show all**
 Nothing is lost when the card goes: everything is in the list. `ame desktop digest on|off`, and
 `ame desktop digest times 12:00 18:00` for other times (up to six). Control offers four sets.
 
+Two lists change that for the apps you pick. **Always come through**: while the digest is on, these apps' banners show
+at once, as they would without it (quiet, a mute or a focus profile still hold them). **Always wait**: these apps'
+banners always wait for the next digest time, even while the digest itself is off, so a noisy chat or store can wait
+while everything else comes as it comes. An app is on one list at most; calls, alarms and urgent banners always pass.
+Pick them in Control, **Desktop**, **Notifications**, or in a terminal:
+
+    ame desktop digest through org.gnome.Calendar.desktop     # or none, to pick from a list
+    ame desktop digest wait org.gnome.Fractal.desktop
+    ame desktop digest wait reset
+
 ### Later and mute
 
 A reminder you cannot act on now can come back when you can. Rest the pointer on a banner (or reach it
@@ -752,6 +762,20 @@ works in apps that tell GNOME's input method their text (GNOME's apps, Amethysto
 others), and not in terminals, fullscreen windows such as games, or apps that run through X11. It is not part
 of your setup file.
 
+## A resting screen
+
+With **A resting screen** on (Control, **Desktop**, **Resting**, or `ame desktop resting-screen on`), a computer left
+alone for a few minutes rests: a large clock and the day over your wallpaper, which drifts slowly, what is playing if
+something plays, and when the screen will lock. The windows are hidden under it. Any key, a click or moving the pointer
+brings everything back, and that key never reaches a window. The screen locks when it would have anyway: the resting
+screen neither holds it back nor brings it forward.
+
+It does not come while something keeps the computer awake (a video playing, a presentation), while a window is
+fullscreen, or while the screen is shared or recorded. On battery, in the power saver and with reduced motion the
+wallpaper holds still. Choose how long the computer is left alone first, 1 to 30 minutes:
+
+    ame desktop resting-screen after 5
+
 ## Screenshots
 
 `Print` opens GNOME's screenshot bar. Above it, for an area or the whole screen, are tools to draw on the
@@ -783,6 +807,17 @@ where it was, without being saved or copied.
 - While you share or record the whole screen, pinned pictures and the thumbnail are blurred, for everyone and for
   you, and carry a small mark: a picture of another window could hold what the share should not show. They are
   sharp again when the share ends.
+
+### Trim a recording
+
+With **Trim a recording** on (Control, **Desktop**, **Screenshots**, or `ame desktop screenshot trim on`), the notice
+that a screen recording was saved offers **Trim**. It opens the recording as a strip of frames: drag its two ends (or
+use the **Start** and **End** sliders), and the frame at the end you move shows above. The times under the strip say
+where the part starts and ends and how long it is. **Save as WebM** keeps that part as a video, and **Save as GIF** as
+a short GIF for a chat or an issue, both beside the recording, as `NAME (trimmed).webm` or `.gif`; **Show in Files**
+shows it. The recording itself is never changed and nothing is written over. To trim any recording from a terminal:
+
+    amethystora-trim ~/Videos/Screencasts/recording.webm
 
 `ame desktop screenshot pin off` turns pinning off and lets go of every pinned picture.
 
@@ -917,6 +952,9 @@ in [Control](control.md)'s **Dock** settings or in a terminal:
 
     ame desktop dock magnify lift      # or swell, off
     ame desktop dock amount 180        # how far Swell grows, 120 to 220 per cent
+    ame desktop dock size 56           # the icons at rest, 40 to 64 pixels; reset for the dock's own choice
+
+A dock too long for its screen draws its icons smaller than the size you picked, so that every one fits.
 
 While an app starts, a ring runs round its icon until its window opens (`ame desktop dock launch hop`, `breathe`
 or `off` for another sign or none). A bar under an icon marks a running app, twice as long when it has two windows
@@ -937,8 +975,9 @@ Drop one pinned app on another and wait until it lights up, to make a folder of 
 and click its name to rename it; **Take the folder apart** in its menu puts the apps back.
 
 Your Downloads folder is a stack: click it to see the twelve newest things in it, newest first, and **Open in Files**
-for the rest. Drag a folder from Files onto the dock to keep it there as a stack too, and drag a stack off the dock to
-take it away. Files dropped on a stack are moved into that folder, or copied while you hold `Ctrl`, by Files, which
+for the rest. While files arrive in Downloads, its stack counts them (**+3**) and hops for each; the count is gone once
+you open the stack. It is kept in memory only. Drag a folder from Files onto the dock to keep it there as a stack too,
+and drag a stack off the dock to take it away. Files dropped on a stack are moved into that folder, or copied while you hold `Ctrl`, by Files, which
 shows how far it got and can undo it. Files dropped on **Phone** go to your paired phone.
 
     ame desktop dock stack add ~/Documents
@@ -1283,6 +1322,10 @@ A workspace shows its number, and after it the name of the app with most windows
 name of your own with a right click on it; **Use the app's name** in that menu goes back to the automatic one, and
 `ame desktop space-names off` turns automatic names off. To move a window to another workspace, open the overview
 and drag the window onto the workspace in the top bar, or onto its picture at the top of the overview.
+
+In the overview, each workspace's picture at the top carries the same name along its bottom edge (its number when it
+has none), and a workspace with a wallpaper of its own (the tiling's **Workspaces** settings) shows that wallpaper
+there, under its windows.
 
 ### Saved sets
 
