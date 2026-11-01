@@ -5,15 +5,12 @@
 
 import Atk from 'gi://Atk';
 import Clutter from 'gi://Clutter';
-import GLib from 'gi://GLib';
 import Graphene from 'gi://Graphene';
 import Meta from 'gi://Meta';
 import Mtk from 'gi://Mtk';
 import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import {WindowMenu} from 'resource:///org/gnome/shell/ui/windowMenu.js';
-import {PopupSeparatorMenuItem} from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {GLIDE, ease, glide} from './util.js';
@@ -40,32 +37,7 @@ export class Keep {
     }
 
     enable() {
-        // The item joins each window menu as GNOME opens it: GNOME's one menu manager, wrapped on its instance, so that
-        // the tiling's wrap of the menu's class (its own entry) and this never stack on each other
-        const keep = this;
-        const manager = Main.wm._windowMenuManager;
-        const original = manager.showWindowMenuForWindow;
-        this._manager = manager;
-        this._ownMethod = Object.getOwnPropertyDescriptor(manager, 'showWindowMenuForWindow') ?? null;
-        manager.showWindowMenuForWindow = function (window, type, rect) {
-            const before = this._manager?.activeMenu ?? null;
-            original.call(this, window, type, rect);
-            const menu = this._manager?.activeMenu;
-            if (!menu || menu === before || !(menu instanceof WindowMenu))
-                return;
-            // GNOME destroys this menu as it closes, in the click on one of its lines, whose press then ends on a line
-            // that is gone: the menu goes just after that event instead
-            const destroy = menu.destroy;
-            menu.destroy = () => GLib.idle_add(GLib.PRIORITY_HIGH, () => {
-                destroy.call(menu);
-                return GLib.SOURCE_REMOVE;
-            });
-            try {
-                keep._addItem(menu, window);
-            } catch (e) {
-                console.error(`Amethystora UI: the window menu's item was not added: ${e.message}`);
-            }
-        };
+        // Its line in the window menu comes through the module's one hook (menu.js): menuItems() below
         // A window kept before the screen locked comes back as a copy, if it is still out of sight
         if (waiting) {
             const {id, corner} = waiting;
@@ -77,15 +49,6 @@ export class Keep {
     }
 
     disable() {
-        // GNOME's own method again: the class's, which the instance only covered
-        if (this._manager) {
-            if (this._ownMethod)
-                Object.defineProperty(this._manager, 'showWindowMenuForWindow', this._ownMethod);
-            else
-                delete this._manager.showWindowMenuForWindow;
-        }
-        this._manager = null;
-        this._ownMethod = null;
         if (this._window && Main.sessionMode.isLocked)
             waiting = {id: this._window.get_id(), corner: this._corner};
         this._giveBack(!Main.sessionMode.isLocked, true);
@@ -103,18 +66,11 @@ export class Keep {
         return !!window && window === this._window;
     }
 
-    _addItem(menu, window) {
+    // Its line in a window menu GNOME has just built, for the module's hook to place
+    menuItems(menu, window) {
         if (window.get_window_type() !== Meta.WindowType.NORMAL || window.is_fullscreen())
-            return;
-        const item = menu.addAction(_('Keep a copy in view'), () => this.keep(window));
-        const items = menu._getMenuItems();
-        let separator = -1;
-        items.forEach((each, i) => {
-            if (each instanceof PopupSeparatorMenuItem)
-                separator = i;
-        });
-        if (separator >= 0)
-            menu.moveMenuItem(item, separator);
+            return null;
+        return menu.addAction(_('Keep a copy in view'), () => this.keep(window));
     }
 
     // Keeps a copy of the window in view and puts the window out of sight

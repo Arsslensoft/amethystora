@@ -1041,8 +1041,11 @@ tiling-settings:
     gnome-extensions prefs amethystora-ui@iarsslen.github.io
 
 # Windows in the classic layout: snap layouts, the switcher, the Super card, hot corners, show desktop, gestures,
-# places and dimming: ame desktop windows [snap|switcher|show-desktop|places|dim on|off] [hold-super on|off|MS]
+# places and dimming, and for every layout the drop-down terminal and the scratchpad, keep on top, see-through
+# windows, the frame, sizes for recording and reopening the app just closed:
+# ame desktop windows [snap|switcher|show-desktop|places|dim on|off] [hold-super on|off|MS]
 # [corner top-left|top-right|bottom-left|bottom-right ACTION] [gesture pinch|spread|down|today on|off] [places forget]
+# [drop-down|scratchpad|keep-on-top|see-through|frame|recording-sizes|reopen on|off] [see-through-app APP PERCENT|off]
 [positional-arguments]
 windows *ARGS:
     #!/usr/bin/bash
@@ -1051,7 +1054,7 @@ windows *ARGS:
     source gettext.sh
     schema=org.gnome.shell.extensions.amethystora-ui.windows
     usage() {
-        echo "usage: ame desktop windows [snap|switcher|show-desktop|places|dim on|off] [hold-super on|off|MS] [corner top-left|top-right|bottom-left|bottom-right none|overview|desktop|lock|note|notifications] [gesture pinch|spread|down|today on|off] [places forget]"
+        echo "usage: ame desktop windows [snap|switcher|show-desktop|places|dim on|off] [hold-super on|off|MS] [corner top-left|top-right|bottom-left|bottom-right none|overview|desktop|lock|note|notifications] [gesture pinch|spread|down|today on|off] [places forget] [drop-down|scratchpad|keep-on-top|see-through|frame|recording-sizes|reopen on|off] [see-through-app APP.desktop 40-100|off]"
         exit 64
     }
     # The words a person types back, so left as they are
@@ -1070,9 +1073,54 @@ windows *ARGS:
         for name in pinch spread down today; do
             echo "gesture ${name} $(word "gesture-${name}")"
         done
+        for key in drop-down scratchpad keep-on-top see-through frame recording-sizes reopen; do
+            echo "${key} $(word "${key}")"
+        done
+        echo "see-through-apps $(gsettings get "${schema}" see-through-apps)"
         exit 0
     fi
     case "$1" in
+        drop-down | scratchpad | keep-on-top | see-through | frame | recording-sizes | reopen)
+            [[ $# -eq 2 ]] || usage
+            onoff "$2"
+            gsettings set "${schema}" "$1" "$(bool "$2")"
+            case "$1:$2" in
+                drop-down:on) echo "$(gettext "Super+Alt+Return slides a terminal down from the top of the screen, and hides it again, still running.")" ;;
+                drop-down:off) echo "$(gettext "No drop-down terminal. One that was open is an ordinary terminal window again.")" ;;
+                scratchpad:on) echo "$(gettext "In the classic layout, a window's menu can move it to the scratchpad, which Super+Alt+Return shows and hides.")" ;;
+                scratchpad:off) echo "$(gettext "No scratchpad. The windows that were in it are back as they were.")" ;;
+                keep-on-top:on) echo "$(gettext "Super+Alt+P keeps the window you are using on top, with a ring and a pin to show it.")" ;;
+                keep-on-top:off) echo "$(gettext "Windows kept on top show nothing, and Super+Alt+P does nothing.")" ;;
+                see-through:on) echo "$(gettext "Hold Super+Alt and scroll over a window to see through it, from 40 % to solid, until it closes.")" ;;
+                see-through:off) echo "$(gettext "Every window is solid.")" ;;
+                frame:on) echo "$(gettext "In the classic layout, the window you are using has a frame in the theme's colours.")" ;;
+                frame:off) echo "$(gettext "No frame round the window in use.")" ;;
+                recording-sizes:on) echo "$(gettext "A window's menu offers sizes for recording: 1280 × 720, 1920 × 1080, square and upright.")" ;;
+                recording-sizes:off) echo "$(gettext "A window's menu offers no sizes for recording.")" ;;
+                reopen:on) echo "$(gettext "Super+Alt+T opens again the app you just closed, at its place; five back. Nothing is written down.")" ;;
+                reopen:off) echo "$(gettext "Super+Alt+T does nothing, and what had closed is forgotten.")" ;;
+            esac
+            ;;
+        see-through-app)
+            # An app's windows open see-through: its launcher's ID and a percentage from 40 to 100, or off
+            [[ $# -eq 3 && "$2" =~ ^[A-Za-z0-9_][A-Za-z0-9._+-]*\.desktop$ ]] || usage
+            app="$2"
+            [[ "$3" == off ]] || { [[ "$3" =~ ^[0-9]{2,3}$ ]] && ((10#$3 >= 40 && 10#$3 <= 100)); } || usage
+            # The rules as they are, each 'ID': PERCENT (IDs are checked names, so no quote is in one), less this app's
+            entries=()
+            while read -r id value; do
+                [[ "${id}" == "${app}" ]] || entries+=("'${id}': ${value}")
+            done < <(gsettings get "${schema}" see-through-apps | grep -oE "'[A-Za-z0-9._+-]+': [0-9]+" | tr -d "':")
+            if [[ "$3" == off ]]; then
+                echo "$(eval_gettext "\${app} opens solid.")"
+            else
+                percent="$((10#$3))"
+                entries+=("'${app}': ${percent}")
+                echo "$(eval_gettext "\${app} opens at \${percent} %. See-through windows work while they are on: ame desktop windows see-through on")"
+            fi
+            joined="$(IFS=,; echo "${entries[*]}")"
+            gsettings set "${schema}" see-through-apps "@a{si} {${joined//,/, }}"
+            ;;
         snap | switcher | show-desktop | dim)
             [[ $# -eq 2 ]] || usage
             onoff "$2"
@@ -1148,6 +1196,103 @@ windows *ARGS:
             name="$2"
             state="$3"
             echo "$(eval_gettext "The \${name} gesture is \${state}.")"
+            ;;
+        *) usage ;;
+    esac
+
+# The window settings GNOME keeps out of sight, GNOME's own keys: ame desktop window-settings
+# [focus-follows-pointer|centre-new|resize-right|attach-dialogs on|off] [double-click|middle-click|right-click ACTION]
+# [drag-key super|alt]
+[positional-arguments]
+window-settings *ARGS:
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    wm=org.gnome.desktop.wm.preferences
+    mutter=org.gnome.mutter
+    usage() {
+        echo "usage: ame desktop window-settings [focus-follows-pointer|centre-new|resize-right|attach-dialogs on|off] [double-click|middle-click|right-click toggle-maximize|minimize|lower|menu|none] [drag-key super|alt]"
+        exit 64
+    }
+    word() { if [[ "$(gsettings get "$1" "$2")" == true ]]; then echo on; else echo off; fi; }
+    bool() { if [[ "$1" == on ]]; then echo true; else echo false; fi; }
+    onoff() { [[ "$1" == on || "$1" == off ]] || usage; }
+    if [[ $# -eq 0 ]]; then
+        if [[ "$(gsettings get "${wm}" focus-mode)" == "'click'" ]]; then echo "focus-follows-pointer off"; else echo "focus-follows-pointer on"; fi
+        echo "centre-new $(word "${mutter}" center-new-windows)"
+        for click in double middle right; do
+            echo "${click}-click $(gsettings get "${wm}" "action-${click}-click-titlebar" | tr -d "'")"
+        done
+        if [[ "$(gsettings get "${wm}" mouse-button-modifier)" == "'<Alt>'" ]]; then echo "drag-key alt"; else echo "drag-key super"; fi
+        echo "resize-right $(word "${wm}" resize-with-right-button)"
+        echo "attach-dialogs $(word "${mutter}" attach-modal-dialogs)"
+        exit 0
+    fi
+    [[ $# -eq 2 ]] || usage
+    case "$1" in
+        focus-follows-pointer)
+            onoff "$2"
+            if [[ "$2" == on ]]; then
+                gsettings set "${wm}" focus-mode sloppy
+                echo "$(gettext "The window under the pointer takes the keys.")"
+            else
+                gsettings set "${wm}" focus-mode click
+                echo "$(gettext "A window takes the keys when you click it.")"
+            fi
+            ;;
+        centre-new)
+            onoff "$2"
+            gsettings set "${mutter}" center-new-windows "$(bool "$2")"
+            if [[ "$2" == on ]]; then
+                echo "$(gettext "New windows open in the middle of the screen.")"
+            else
+                echo "$(gettext "New windows open where GNOME places them.")"
+            fi
+            ;;
+        double-click | middle-click | right-click)
+            case "$2" in toggle-maximize | minimize | lower | menu | none) ;; *) usage ;; esac
+            gsettings set "${wm}" "action-${1%-click}-click-titlebar" "$2"
+            click="$1"
+            action="$2"
+            echo "$(eval_gettext "A \${click} on a title bar now does: \${action}.")"
+            ;;
+        drag-key)
+            case "$2" in
+                super)
+                    gsettings set "${wm}" mouse-button-modifier '<Super>'
+                    echo "$(gettext "Hold Super and drag to move a window from anywhere in it.")"
+                    ;;
+                alt)
+                    gsettings set "${wm}" mouse-button-modifier '<Alt>'
+                    echo "$(gettext "Hold Alt and drag to move a window from anywhere in it. Apps no longer see Alt with a click.")"
+                    ;;
+                *) usage ;;
+            esac
+            ;;
+        resize-right)
+            onoff "$2"
+            gsettings set "${wm}" resize-with-right-button "$(bool "$2")"
+            if [[ "$2" == on ]]; then
+                echo "$(gettext "Hold the drag key and drag with the right button to resize a window.")"
+            else
+                echo "$(gettext "The drag key with the right button opens the window's menu.")"
+            fi
+            ;;
+        attach-dialogs)
+            onoff "$2"
+            # The tiling keeps dialogs apart while it runs (a dialog glued to a window the strip moves is left behind),
+            # and gives back what was there when it stops: changed now, the tiling would take it as the person's
+            if [[ "$(gsettings get org.gnome.shell.extensions.amethystora-ui.tiling enabled 2>/dev/null)" != false ]]; then
+                echo "$(gettext "The tiling keeps dialogs apart while it is on. Switch to the classic layout first: ame desktop layout classic")" >&2
+                exit 1
+            fi
+            gsettings set "${mutter}" attach-modal-dialogs "$(bool "$2")"
+            if [[ "$2" == on ]]; then
+                echo "$(gettext "A dialog stays attached to its window and moves with it.")"
+            else
+                echo "$(gettext "A dialog is a window of its own.")"
+            fi
             ;;
         *) usage ;;
     esac

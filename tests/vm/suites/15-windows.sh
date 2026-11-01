@@ -3,7 +3,7 @@
 # The windows module of Amethystora UI (plans/beyond/spec-windows.md, section 7), in the classic layout unless a
 # check says otherwise, asked of the session through GNOME Shell's Eval (the lab-only vmlab-eval@lab extension, never
 # in the image) and driven as a person would, with keys.py's keyboard and pointers and touchpad.py's touchpad:
-#   15.0  the schema's sixteen keys and their defaults, the module running;
+#   15.0  the schema's keys and their defaults (rounds 5 and 6 added eleven: suite 57), the module running;
 #   15.1  snap layouts: Super+Z and its thirteen places, to the pixel; a drag to the top and onto a place; the old size
 #         back when dragged away; GNOME's maximise at the very top; nothing in the tiling layout or with snap off;
 #   15.2  the switcher: the grid, typing (which keeps it open), Alt+Tab's quick switch, Escape, no shortcut firing on
@@ -123,9 +123,9 @@ was_tiling="$(gs get org.gnome.shell.extensions.amethystora-ui.tiling enabled)"
 classic
 
 # --- 15.0 Schema and defaults ---------------------------------------------------------------------------------------
-same "the windows schema has the spec's sixteen keys and defaults" \
+same "the windows schema has the spec's keys and defaults" \
     "$(gs list-recursively "${SCHEMA}" | cut -d' ' -f2- | LC_ALL=C sort | paste -sd ';')" \
-    "corner-bottom-left 'none';corner-bottom-right 'none';corner-top-left 'none';corner-top-right 'none';dim false;gesture-down true;gesture-pinch true;gesture-spread true;gesture-today true;hold-super true;hold-super-delay 1000;places true;show-desktop false;snap true;snap-chooser ['<Super>z'];switcher true"
+    "corner-bottom-left 'none';corner-bottom-right 'none';corner-top-left 'none';corner-top-right 'none';dim false;drop-down true;drop-down-key ['<Super><Alt>Return'];frame false;gesture-down true;gesture-pinch true;gesture-spread true;gesture-today true;hold-super true;hold-super-delay 1000;keep-on-top true;keep-on-top-key ['<Super><Alt>p'];places true;recording-sizes true;reopen true;reopen-key ['<Super><Alt>t'];scratchpad true;see-through false;see-through-apps @a{si} {};show-desktop false;snap true;snap-chooser ['<Super>z'];switcher true"
 check "the windows module runs" is_true "${UI}.has('windows')"
 
 # A plain window with no size of its own to defend (Files will not shrink to a quarter of the lab's 1280 x 800), for

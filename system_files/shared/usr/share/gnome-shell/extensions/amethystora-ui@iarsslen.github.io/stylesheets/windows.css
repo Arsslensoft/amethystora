@@ -237,3 +237,50 @@
   border-radius: 12px;
   box-shadow: 0 0 0 2px rgb(179, 125, 249);
 }
+
+/* A window kept on top: the ring over its edge, the glow under it, and the pin on its top corner (the board's 2 px,
+   22 px of glow at 55 %, a 26 px pin) */
+.amethystora-windows-ontop {
+  border: 2px solid rgb(179, 125, 249);
+  border-radius: 14px;
+}
+
+.amethystora-windows-ontop-glow {
+  border-radius: 14px;
+  background-color: rgb(145, 72, 240);
+  box-shadow: 0 0 22px rgba(145, 72, 240, 0.55);
+}
+
+.amethystora-windows-ontop-pin {
+  border-radius: 999px;
+  background-color: rgb(145, 72, 240);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+  color: #ffffff;
+}
+
+.amethystora-windows-ontop-pin-icon {
+  icon-size: 14px;
+}
+
+/* The pill that says what a key did: a see-through window's opacity, an app opened again */
+.amethystora-windows-osd {
+  padding: 8px 14px;
+  spacing: 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background-color: rgba(26, 16, 42, 0.66);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.4);
+  color: #efe4ff;
+}
+
+.amethystora-windows-osd-label {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* The frame round the window in use, drawn with Cairo in these three colours, at 0, 55 and 100 % of its gradient */
+.amethystora-windows-frame {
+  -amethystora-frame-start: rgb(224, 138, 90);
+  -amethystora-frame-middle: rgb(145, 72, 240);
+  -amethystora-frame-end: rgb(111, 214, 208);
+}

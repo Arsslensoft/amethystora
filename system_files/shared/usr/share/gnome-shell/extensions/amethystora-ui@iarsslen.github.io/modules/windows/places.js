@@ -367,9 +367,10 @@ export class Places {
         return id ? this._siblings(window, id).filter(w => w !== window).length : -1;
     }
 
-    // A window a saved set is opening goes where the set says (workspaces/sets.js), not where its app's was
+    // A window a saved set is opening goes where the set says (workspaces/sets.js), not where its app's was; so do the
+    // drop-down terminal and an app opened again by Super+Alt+T (the module's claims)
     _claimed(window) {
-        return this._ext.modules?.get('workspaces')?.claimed?.(window) ?? false;
+        return (this._ext.modules?.get('workspaces')?.claimed?.(window) ?? false) || this._module.claims(window);
     }
 
     _configure(window, config) {

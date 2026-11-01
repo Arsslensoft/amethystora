@@ -208,7 +208,8 @@ class Cover {
 }
 
 // The covers by window actor. The glass keeps off a covered window, which it would draw at 84 % over its pane, the cover
-// with it: a card let the window show through. It is told whenever a cover comes or goes
+// with it: a card let the window show through. It is told whenever a cover comes or goes, and so are see-through
+// windows (the windows module), which a cover keeps solid
 class Covers extends Map {
     constructor(changed) {
         super();
@@ -240,7 +241,11 @@ export class Guard {
         this._settings = settings;
         // Every share and recording Mutter told of: whether it records, and whether someone else controls this computer
         this._handles = new Map();
-        this._covers = new Covers(() => this._ext.modules?.get('glass')?.windows?.restyle());
+        // The glass, and the windows module, which draws a covered window solid however see-through it was, are told
+        this._covers = new Covers(() => {
+            this._ext.modules?.get('glass')?.windows?.restyle();
+            this._ext.modules?.get('windows')?.coversChanged?.();
+        });
         // The windows' actors looked at during this share, each with its window
         this._watched = new Map();
         this._uncovered = new Set();

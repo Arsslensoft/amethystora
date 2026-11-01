@@ -58,6 +58,10 @@ the top bar on the left.
 | `Super+Tab` / `Alt+Tab` | Switch application / window; type to filter (classic layout) |
 | `` Super+` `` | Switch between the windows of the app you are in |
 | `Super+Z` | Snap layouts for the focused window (classic layout) |
+| `Super+Alt+Return` | The drop-down terminal, and the scratchpad's windows in the classic layout |
+| `Super+Alt+P` | Keep the window on top, with a ring and a pin, or let it go |
+| `Super+Alt+T` | Reopen the app you just closed, at its place; five back |
+| `Super+Alt` and scroll | See through the window under the pointer, while see-through windows are on |
 | Hold `Super` | The main shortcuts, and numbers on the dock |
 
 ## Launching

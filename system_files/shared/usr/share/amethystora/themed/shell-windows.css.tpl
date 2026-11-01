@@ -94,3 +94,29 @@
 #uiGroup .amethystora-windows-keep-ring {
   box-shadow: 0 0 0 2px {{ accent }};
 }
+
+#uiGroup .amethystora-windows-ontop {
+  border-color: {{ accent }};
+}
+
+#uiGroup .amethystora-windows-ontop-glow {
+  background-color: {{ accent }};
+  box-shadow: 0 0 22px rgba({{ accent_rgb }}, 0.55);
+}
+
+#uiGroup .amethystora-windows-ontop-pin {
+  background-color: {{ accent }};
+  color: {{ accent_fg }};
+}
+
+#uiGroup .amethystora-windows-osd {
+  border-color: rgba({{ foreground_rgb }}, 0.16);
+  background-color: rgba({{ background_rgb }}, 0.66);
+  color: {{ foreground }};
+}
+
+#uiGroup .amethystora-windows-frame {
+  -amethystora-frame-start: {{ color3 }};
+  -amethystora-frame-middle: {{ accent }};
+  -amethystora-frame-end: {{ color6 }};
+}

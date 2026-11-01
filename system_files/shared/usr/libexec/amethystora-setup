@@ -22,7 +22,8 @@
 #   extensions   the GNOME extensions turned on, of those installed here
 #   theme        the desktop theme
 #   settings     {layout, favorites, keybindings, tiling, pointer, glass, motion, workspaces, windows, dock, pill, quick,
-#                bars, today, breaks, search, emoji, bezel, audio, sound, look, transitions, hints, appgrid, focus, power,
+#                bars, today, breaks, search, emoji, bezel, audio, sound, wm, mutter, look, transitions, hints, appgrid,
+#                focus, power,
 #                access, touch, present, screenshot, deskwidgets, shelf, desks,
 #                quit, privacy, tools, input, keyboard, paste, keys, rest, living}: the window
 #                layout, the dock's apps, the keys of
@@ -40,7 +41,8 @@
 #                the search finds besides GNOME's own (SEARCH_KEYS), the emoji picker's skin tone (EMOJI_KEYS), rounded
 #                corners on a laptop's own screen (BEZEL_KEYS), the audio module's switches (AUDIO_KEYS; never
 #                the presets, which name this machine's outputs), whether the desktop makes its own sounds (SOUND_KEYS;
-#                never the sound theme's name, which Settings sets to a folder of the account's), the look: the
+#                never the sound theme's name, which Settings sets to a folder of the account's), GNOME's window
+#                settings (WM_KEYS, MUTTER_KEYS; never attach-modal-dialogs, which the tiling writes), the look: the
 #                accent, Daylight, colours from the wallpaper, the drawn wallpaper, an accent per workspace and light by
 #                day and dark by night (LOOK_KEYS; never a theme made or imported, which is the account's own folder),
 #                the reveal at
@@ -140,8 +142,10 @@ MOTION_KEYS='{"minimize": ["s", ["droplet", "shrink"]], "workspace-switch": ["s"
 WORKSPACES=org.gnome.shell.extensions.amethystora-ui.workspaces
 WORKSPACES_KEYS='{"auto-names": ["b"], "sets": ["b"]}'
 # The windows module's keys: snap layouts, the switcher, the Super card, the corners, show desktop, the gestures,
-# places and dimming. Never snap-chooser, a keybinding the keybindings part keeps, nor places.json, which is the
-# machine's own, made of its screens' connectors.
+# places, dimming, the drop-down terminal and the scratchpad, keep on top, see-through windows (and the apps that open
+# so, by launcher ID), the frame, sizes for recording and reopening. Never snap-chooser, drop-down-key, keep-on-top-key
+# or reopen-key, keybindings the keybindings part keeps, nor places.json, which is the machine's own, made of its
+# screens' connectors.
 WINDOWS=org.gnome.shell.extensions.amethystora-ui.windows
 WINDOWS_KEYS='{
     "snap": ["b"], "switcher": ["b"], "hold-super": ["b"], "hold-super-delay": ["i", 500, 3000],
@@ -150,7 +154,9 @@ WINDOWS_KEYS='{
     "corner-bottom-left": ["s", ["none", "overview", "desktop", "lock", "note", "notifications"]],
     "corner-bottom-right": ["s", ["none", "overview", "desktop", "lock", "note", "notifications"]],
     "show-desktop": ["b"], "gesture-pinch": ["b"], "gesture-spread": ["b"], "gesture-down": ["b"],
-    "gesture-today": ["b"], "places": ["b"], "dim": ["b"]
+    "gesture-today": ["b"], "places": ["b"], "dim": ["b"],
+    "drop-down": ["b"], "scratchpad": ["b"], "keep-on-top": ["b"], "see-through": ["b"], "see-through-apps": ["opacity"],
+    "frame": ["b"], "recording-sizes": ["b"], "reopen": ["b"]
 }'
 # The dock's keys: how it moves, what it holds and where it lives. Its folders by name, each two launcher IDs or more,
 # and its stacks as special folders or folders under the home folder only: a folder elsewhere names this machine.
@@ -207,6 +213,17 @@ AUDIO_KEYS='{"pause-on-unplug": ["b"], "clear-voice": ["b"], "sound-presets": ["
 # theme it writes into the account's own folder for the alert sound, which another machine does not have.
 SOUND=org.gnome.desktop.sound
 SOUND_KEYS='{"event-sounds": ["b"]}'
+# GNOME's window settings it keeps out of sight (ame desktop window-settings): focus following the pointer, what a click
+# on a title bar does, the key that drags a window, resizing with the right button, and new windows centred. Never
+# attach-modal-dialogs: the tiling writes it while it runs, and a file saved then would carry the tiling's value.
+WM=org.gnome.desktop.wm.preferences
+WM_TITLEBAR='["toggle-shade", "toggle-maximize", "toggle-maximize-horizontally", "toggle-maximize-vertically", "minimize",
+    "none", "lower", "menu"]'
+WM_KEYS="{\"focus-mode\": [\"s\", [\"click\", \"sloppy\", \"mouse\"]], \"action-double-click-titlebar\": [\"s\", ${WM_TITLEBAR}],
+    \"action-middle-click-titlebar\": [\"s\", ${WM_TITLEBAR}], \"action-right-click-titlebar\": [\"s\", ${WM_TITLEBAR}],
+    \"mouse-button-modifier\": [\"s\", [\"<Super>\", \"<Alt>\"]], \"resize-with-right-button\": [\"b\"]}"
+MUTTER=org.gnome.mutter
+MUTTER_KEYS='{"center-new-windows": ["b"]}'
 # The look: the accent, Daylight and colours from the wallpaper, which are the account's files that the theme reads (set
 # through their `ame desktop` commands), and an accent per workspace, the theme module's keys. Each value from its list, the
 # accents' ids the twelve of ACCENTS in /usr/lib/amethystora/theme/lib.sh (20-tests.sh holds the two together).
@@ -332,6 +349,8 @@ def valid($spec): $spec as [$t, $a, $b] |
     elif $t == "as" and $a == "xkb" then type == "array" and length <= 32 and (unique | length) == length
         and all(.[]; type == "string" and test("^[a-z0-9_]{1,32}:[a-z0-9_]{1,32}$"))
     elif $t == "s" then type == "string" and IN($a[])
+    elif $t == "opacity" then type == "object" and length <= 32 and all(to_entries[];
+        (.key | test("^[A-Za-z0-9._+-]+[.]desktop$")) and (.value | type == "number" and . == floor and . >= 40 and . <= 100))
     else false end;
 def wanted($spec): $spec as [$t, $a, $b] |
     if $t == "b" then "true or false"
@@ -348,6 +367,7 @@ def wanted($spec): $spec as [$t, $a, $b] |
     elif $a == "xkb" then "a list of 32 different keyboard options at most, each such as caps:escape"
     elif $a == "accents" then "a list of one to 36 accents, each theme or one of the twelve accents' names"
     elif $t == "folders" then "folders by name (1 to 40 characters), each with two launcher IDs or more"
+    elif $t == "opacity" then "32 launcher IDs at most, each NAME.desktop with a percentage from 40 to 100"
     elif $t == "ad" then "a list of numbers"
     else "a list of colours, each \"\" or one such as \"#314e6c\"" end;
 # A file from before the tiling replaced PaperWM: its gaps are the tiling's, unless the file has a tiling of its
@@ -434,7 +454,8 @@ if type != "object" then "it is not a JSON object" else
     at("extensions"; each("extensions"; name; "an extension's id")),
     at("theme"; if type == "string" and test("^[A-Za-z0-9][A-Za-z0-9._-]*$") then empty else "theme is not a theme's name" end),
     at("settings"; only(["layout", "favorites", "keybindings", "tiling", "paperwm", "pointer", "glass", "motion", "workspaces",
-            "windows", "dock", "pill", "quick", "bars", "today", "breaks", "search", "emoji", "bezel", "audio", "sound", "look", "transitions",
+            "windows", "dock", "pill", "quick", "bars", "today", "breaks", "search", "emoji", "bezel", "audio", "sound",
+            "wm", "mutter", "look", "transitions",
             "hints", "appgrid", "focus", "power", "access", "touch", "present",
             "screenshot", "deskwidgets", "shelf", "desks", "quit", "privacy", "tools", "input", "keyboard", "paste", "keys", "rest", "living"]; "settings."),
         (if type == "object" then
@@ -453,7 +474,8 @@ if type != "object" then "it is not a JSON object" else
                         if (.key | test("^[a-z0-9][a-z0-9-]*$")) and .key != "custom-keybindings" and (.value | accels)
                             # The windows module's, the search's, the emoji picker's, the agent's and force quit's
                             # schemas hold one keybinding each among their settings
-                            and ($s != "org.gnome.shell.extensions.amethystora-ui.windows" or .key == "snap-chooser")
+                            and ($s != "org.gnome.shell.extensions.amethystora-ui.windows"
+                                or IN(.key; "snap-chooser", "drop-down-key", "keep-on-top-key", "reopen-key"))
                             and ($s != "org.gnome.shell.extensions.amethystora-ui.search" or .key == "open")
                             and ($s != "org.gnome.shell.extensions.amethystora-ui.emoji" or .key == "emoji-picker")
                             and ($s != "org.gnome.shell.extensions.amethystora-ui.agent" or .key == "ask-selection")
@@ -530,6 +552,14 @@ if type != "object" then "it is not a JSON object" else
             at("sound"; only($sound | keys; "settings.sound."),
                 (if type == "object" then to_entries[] | select(.key | IN($sound | keys[])) | $sound[.key] as $spec
                     | if .value | valid($spec) then empty else "settings.sound.\(.key) is \(wanted($spec))" end
+                 else empty end)),
+            at("wm"; only($wm | keys; "settings.wm."),
+                (if type == "object" then to_entries[] | select(.key | IN($wm | keys[])) | $wm[.key] as $spec
+                    | if .value | valid($spec) then empty else "settings.wm.\(.key) is \(wanted($spec))" end
+                 else empty end)),
+            at("mutter"; only($mutter | keys; "settings.mutter."),
+                (if type == "object" then to_entries[] | select(.key | IN($mutter | keys[])) | $mutter[.key] as $spec
+                    | if .value | valid($spec) then empty else "settings.mutter.\(.key) is \(wanted($spec))" end
                  else empty end)),
             at("look"; only($look | keys; "settings.look."),
                 (if type == "object" then to_entries[] | select(.key | IN($look | keys[])) | $look[.key] as $spec
@@ -623,6 +653,7 @@ check() {
         --argjson bars "${BARS_KEYS}" --argjson today "${TODAY_KEYS}" --argjson breaks "${BREAKS_KEYS}" \
         --argjson search "${SEARCH_KEYS}" --argjson emoji "${EMOJI_KEYS}" \
         --argjson bezel "${BEZEL_KEYS}" --argjson audio "${AUDIO_KEYS}" --argjson sound "${SOUND_KEYS}" \
+        --argjson wm "${WM_KEYS}" --argjson mutter "${MUTTER_KEYS}" \
         --argjson look "${LOOK_KEYS}" \
         --argjson transitions "${TRANSITIONS_KEYS}" --argjson hints "${HINTS_KEYS}" --argjson appgrid "${APPGRID_KEYS}" \
         --argjson focus "${FOCUS_KEYS}" --argjson power "${POWER_KEYS}" \
@@ -776,14 +807,16 @@ current() {
             value="$(gsettings get "${PILL}" "${key}" 2>/dev/null | as_json)"
             jq -nc --arg k "${key}" --argjson v "${value:-null}" '{pill: {($k): $v}}'
         done < <(jq -r '.settings.pill // {} | keys[]' <<<"$1")
-        for area in quick bars today breaks search emoji bezel audio sound transitions hints appgrid focus power access touch \
-            present screenshot deskwidgets shelf desks quit privacy tools input keyboard paste keys rest living; do
+        for area in quick bars today breaks search emoji bezel audio sound wm mutter transitions hints appgrid focus power \
+            access touch present screenshot deskwidgets shelf desks quit privacy tools input keyboard paste keys rest living; do
             case "${area}" in
                 input) schema="${INPUT}" ;;
                 keyboard) schema="${KEYBOARD}" ;;
                 paste) schema="${PASTE}" ;;
                 keys) schema="${KEYS}" ;;
                 quick) schema="${QUICK}" ;;
+                wm) schema="${WM}" ;;
+                mutter) schema="${MUTTER}" ;;
                 bars) schema="${BARS}" ;;
                 today) schema="${TODAY}" ;;
                 breaks) schema="${BREAKS}" ;;
@@ -822,7 +855,8 @@ current() {
         done < <(jq -r '.settings.look // {} | keys[]' <<<"$1")
     } | jq -sc 'reduce .[] as $x ({favorites: null, keybindings: {}, tiling: {}, pointer: {}, glass: {}, motion: {},
         workspaces: {}, windows: {}, dock: {}, pill: {}, quick: {}, bars: {}, today: {}, breaks: {}, search: {}, emoji: {},
-        bezel: {}, audio: {}, sound: {}, look: {}, transitions: {}, hints: {}, appgrid: {}, focus: {}, power: {}, access: {},
+        bezel: {}, audio: {}, sound: {}, wm: {}, mutter: {}, look: {}, transitions: {}, hints: {}, appgrid: {}, focus: {},
+        power: {}, access: {},
         touch: {}, present: {},
         screenshot: {}, deskwidgets: {}, shelf: {}, desks: {},
         quit: {}, privacy: {}, tools: {}, input: {}, keyboard: {}, paste: {}, keys: {}, rest: {}, living: {}};
@@ -966,13 +1000,15 @@ def brew($x; $k): $x.brew[$k] // [];
         + if $v == null then {ok: false, why: "this machine has no such pill setting"} else {} end),
     ($hs.pill // {} | to_entries[] | .key as $k | select($fs.pill // {} | has($k) | not)
         | {area: "pill", action: "remove", key: $k, from: .value}),
-    (("quick", "bars", "today", "breaks", "search", "emoji", "bezel", "audio", "sound", "transitions", "hints", "appgrid", "focus", "power",
+    (("quick", "bars", "today", "breaks", "search", "emoji", "bezel", "audio", "sound", "wm", "mutter", "transitions",
+        "hints", "appgrid", "focus", "power",
         "access", "touch", "present",
         "screenshot", "deskwidgets", "shelf", "desks", "quit", "privacy", "tools", "input", "keyboard", "paste", "keys", "rest", "living") as $a
     | ($fs[$a] // {} | to_entries[] | .key as $k | $now[$a][$k] as $v
         | select(.value != $v) | {area: $a, action: "set", key: $k, to: .value, from: $v}
         + if $v == null then {ok: false, why: "this machine has no such \({quick: "quick settings", bezel: "screen corners",
-            access: "seeing and reading", touch: "touch and pen"}[$a] // $a) setting"} else {} end),
+            access: "seeing and reading", touch: "touch and pen", wm: "window", mutter: "window"}[$a] // $a) setting"}
+            else {} end),
       ($hs[$a] // {} | to_entries[] | .key as $k | select($fs[$a] // {} | has($k) | not)
         | {area: $a, action: "remove", key: $k, from: .value})),
     ($fs.look // {} | to_entries[] | .key as $k | $now.look[$k] as $v
@@ -1043,6 +1079,7 @@ def text:
           else ", \(.from | tojson) here, back to the image's" end
     elif .area == "quick" or .area == "bars" or .area == "today" or .area == "breaks"
         or .area == "search" or .area == "emoji" or .area == "bezel" or .area == "audio" or .area == "sound"
+        or .area == "wm" or .area == "mutter"
         or .area == "transitions" or .area == "hints" or .area == "appgrid" or .area == "focus" or .area == "power"
         or .area == "access" or .area == "touch"
         or .area == "present" or .area == "screenshot" or .area == "deskwidgets"
@@ -1051,6 +1088,7 @@ def text:
         or .area == "rest" or .area == "living" then
         {quick: "quick settings'", bars: "the top bar's", today: "the calendar's", breaks: "the rest reminders'",
             search: "the search's", emoji: "the emoji picker's", bezel: "the screen's", audio: "the audio module's", sound: "the desktop's",
+            wm: "the windows'", mutter: "the windows'",
             transitions: "the transitions'", hints: "the tips'", appgrid: "the app grid's",
             focus: "focus profiles'", power: "the power module's",
             access: "seeing and reading's", touch: "touch and pen's",
@@ -1302,8 +1340,8 @@ add_all() {
         name="$(jq -r .key <<<"${change}")"
         gsettings set "${PILL}" "${name}" "$(jq -c .to <<<"${change}")" || FAILED+=("the live pill's ${name}")
     done
-    for area in quick bars today breaks search emoji bezel audio sound transitions hints appgrid focus power access touch \
-        present screenshot deskwidgets shelf desks quit privacy tools input keyboard paste keys rest living; do
+    for area in quick bars today breaks search emoji bezel audio sound wm mutter transitions hints appgrid focus power \
+        access touch present screenshot deskwidgets shelf desks quit privacy tools input keyboard paste keys rest living; do
         case "${area}" in
             input) schema="${INPUT}" label="the input sources'" ;;
             keyboard) schema="${KEYBOARD}" label="the keyboard's" ;;
@@ -1318,6 +1356,8 @@ add_all() {
             bezel) schema="${BEZEL}" label="the screen's" ;;
             audio) schema="${AUDIO}" label="the audio module's" ;;
             sound) schema="${SOUND}" label="the desktop's" ;;
+            wm) schema="${WM}" label="the windows'" ;;
+            mutter) schema="${MUTTER}" label="the windows'" ;;
             transitions) schema="${TRANSITIONS}" label="the transitions'" ;;
             hints) schema="${HINTS}" label="the tips'" ;;
             appgrid) schema="${APPGRID}" label="the app grid's" ;;
@@ -1437,8 +1477,8 @@ remove_all() {
     for name in "${names[@]}"; do
         gsettings reset "${PILL}" "${name}" || FAILED+=("the live pill's ${name}")
     done
-    for area in quick bars today breaks search emoji bezel audio sound transitions hints appgrid focus power access touch \
-        present screenshot deskwidgets shelf desks quit privacy tools input keyboard paste keys rest living; do
+    for area in quick bars today breaks search emoji bezel audio sound wm mutter transitions hints appgrid focus power \
+        access touch present screenshot deskwidgets shelf desks quit privacy tools input keyboard paste keys rest living; do
         case "${area}" in
             input) schema="${INPUT}" label="the input sources'" ;;
             keyboard) schema="${KEYBOARD}" label="the keyboard's" ;;
@@ -1453,6 +1493,8 @@ remove_all() {
             bezel) schema="${BEZEL}" label="the screen's" ;;
             audio) schema="${AUDIO}" label="the audio module's" ;;
             sound) schema="${SOUND}" label="the desktop's" ;;
+            wm) schema="${WM}" label="the windows'" ;;
+            mutter) schema="${MUTTER}" label="the windows'" ;;
             transitions) schema="${TRANSITIONS}" label="the transitions'" ;;
             hints) schema="${HINTS}" label="the tips'" ;;
             appgrid) schema="${APPGRID}" label="the app grid's" ;;
@@ -1582,6 +1624,8 @@ bake() {
           section("org.gnome.shell.extensions.amethystora-ui.bezel"; ($s.bezel // {})),
           section("org.gnome.shell.extensions.amethystora-ui.audio"; ($s.audio // {})),
           section("org.gnome.desktop.sound"; ($s.sound // {})),
+          section("org.gnome.desktop.wm.preferences"; ($s.wm // {})),
+          section("org.gnome.mutter"; ($s.mutter // {})),
           section("org.gnome.shell.extensions.amethystora-ui.focus"; ($s.focus // {})),
           section("org.gnome.shell.extensions.amethystora-ui.present"; ($s.present // {})),
           section("org.gnome.shell.extensions.amethystora-ui.screenshot"; ($s.screenshot // {})),

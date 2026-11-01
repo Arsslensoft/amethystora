@@ -96,7 +96,8 @@ saved="$(sed -n 's/^WORKSPACES_KEYS=(\(.*\))$/\1/p' "$(dirname "${SETUP}")/ameth
 WINDOWS=org.gnome.shell.extensions.amethystora-ui.windows
 WINDOWS_TABLE="$(sed -n "/^WINDOWS_KEYS='{\$/,/^}'\$/{s/^WINDOWS_KEYS='//; s/^}'\$/}/; p}" "${SETUP}")"
 listed="$(jq -r 'keys[]' <<<"${WINDOWS_TABLE}" | sort)"
-schema="$(GSETTINGS_BACKEND=memory /usr/bin/gsettings list-keys "${WINDOWS}" | grep -vx snap-chooser | sort)"
+schema="$(GSETTINGS_BACKEND=memory /usr/bin/gsettings list-keys "${WINDOWS}" |
+    grep -vxE 'snap-chooser|drop-down-key|keep-on-top-key|reopen-key' | sort)"
 [[ -n "${listed}" && "${listed}" == "${schema}" ]] ||
     { echo "WINDOWS_KEYS and the windows module's schema differ:"; diff <(echo "${listed}") <(echo "${schema}"); false; }
 while read -r key; do
@@ -104,6 +105,8 @@ while read -r key; do
     case "${range}" in
         "type b") want='["b"]' ;;
         "range i "*) want="$(awk '{print "[\"i\"," $3 "," $4 "]"}' <<<"${range}")" ;;
+        # The apps whose windows open see-through, each a launcher ID with a percentage
+        "type a{si}") want='["opacity"]' ;;
         enum*) want="[\"s\",$(GSETTINGS_BACKEND=memory /usr/bin/gsettings range "${WINDOWS}" "${key}" |
             sed -n "2,\$p" | tr "'" '"' | jq -sc .)]" ;;
         *) want="? ${range}" ;;
@@ -206,6 +209,32 @@ for table in BARS:org.gnome.shell.extensions.amethystora-ui.bars TODAY:org.gnome
     saved="$(sed -n "s/^${name}_KEYS=(\(.*\))\$/\1/p" "$(dirname "${SETUP}")/amethystora-setup-manifest" | tr ' ' '\n' | sort)"
     [[ "${saved}" == "${listed}" ]] ||
         { echo "the manifest saves other ${name} keys than amethystora-setup reads:"; diff <(echo "${saved}") <(echo "${listed}"); false; }
+done
+# GNOME's window settings (WM_KEYS, MUTTER_KEYS): each a key GNOME's schema has, a choice with exactly the schema's
+# choices (the drag key the two the recipe offers), never attach-modal-dialogs, which the tiling writes; and the manifest
+# saves the same keys
+eval "$(sed -n '/^WM=org/,/^MUTTER_KEYS=/p' "${SETUP}")"
+for table in WM:org.gnome.desktop.wm.preferences MUTTER:org.gnome.mutter; do
+    name="${table%%:*}" id="${table#*:}"
+    TABLE="$(eval "echo \"\${${name}_KEYS}\"" | jq -c .)"
+    [[ -n "${TABLE}" ]] || { echo "${name}_KEYS is not JSON"; false; }
+    jq -e 'has("attach-modal-dialogs") | not' <<<"${TABLE}" >/dev/null
+    while read -r key; do
+        range="$(GSETTINGS_BACKEND=memory /usr/bin/gsettings range "${id}" "${key}" | xargs)"
+        case "${key}:${range}" in
+            *":type b") want='["b"]' ;;
+            "mouse-button-modifier:type s") want='["s",["<Super>","<Alt>"]]' ;;
+            *":enum "*) want="$(jq -cn --arg r "${range#enum }" '["s", ($r | split(" "))]')" ;;
+            *) want="? ${range}" ;;
+        esac
+        [[ "$(jq -c --arg k "${key}" '.[$k]' <<<"${TABLE}")" == "${want}" ]] ||
+            { echo "${name}_KEYS has ${key} as $(jq -c --arg k "${key}" '.[$k]' <<<"${TABLE}"), the schema as ${want}"; false; }
+    done < <(jq -r 'keys[]' <<<"${TABLE}")
+    saved="$(awk -v start="${name}_KEYS=(" 'index($0, start) == 1 { on = 1 } on { print; if (/\)$/) exit }' \
+        "$(dirname "${SETUP}")/amethystora-setup-manifest" | sed "s/^${name}_KEYS=(//; s/)\$//" | tr -s ' ' '\n' |
+        sed '/^$/d' | sort)"
+    [[ "${saved}" == "$(jq -r 'keys[]' <<<"${TABLE}" | sort)" ]] ||
+        { echo "the manifest saves other ${name} keys than amethystora-setup reads"; false; }
 done
 # The desktop's sounds: GNOME's switch for them alone, never the sound theme's name (Settings points it at a folder of
 # the account's), and the manifest saves the same key
@@ -713,6 +742,16 @@ for bad in '{"version": 1, "token": "x"}' '{"version": 2}' \
     '{"version": 1, "settings": {"windows": {"dim": "on"}}}' \
     '{"version": 1, "settings": {"windows": {"snap-chooser": ["<Super>z"]}}}' \
     '{"version": 1, "settings": {"windows": {"places.json": {}}}}' \
+    '{"version": 1, "settings": {"windows": {"drop-down-key": ["<Super>Return"]}}}' \
+    '{"version": 1, "settings": {"windows": {"see-through-apps": {"kitty.desktop": 20}}}}' \
+    '{"version": 1, "settings": {"windows": {"see-through-apps": {"rm -rf ~": 90}}}}' \
+    '{"version": 1, "settings": {"windows": {"see-through-apps": ["kitty.desktop"]}}}' \
+    '{"version": 1, "settings": {"wm": {"focus-mode": "everywhere"}}}' \
+    '{"version": 1, "settings": {"wm": {"mouse-button-modifier": "<Control>"}}}' \
+    '{"version": 1, "settings": {"wm": {"button-layout": "close:"}}}' \
+    '{"version": 1, "settings": {"mutter": {"attach-modal-dialogs": true}}}' \
+    '{"version": 1, "settings": {"mutter": {"center-new-windows": "yes"}}}' \
+    '{"version": 1, "settings": {"keybindings": {"org.gnome.shell.extensions.amethystora-ui.windows": {"frame": ["<Super>a"]}}}}' \
     '{"version": 1, "settings": {"keybindings": {"org.gnome.shell.extensions.amethystora-ui.windows": {"snap": ["<Super>a"]}}}}' \
     '{"version": 1, "settings": {"dock": {"no-such-setting": true}}}' \
     '{"version": 1, "settings": {"dock": {"magnify": "wobble"}}}' \
@@ -817,6 +856,13 @@ for bad in '{"version": 1, "token": "x"}' '{"version": 2}' \
     "${SETUP}" apply --yes "${T}/bad.json" >/dev/null 2>&1 && { echo "applied: ${bad}"; false; }
 done
 [[ ! -s "${LOG}" ]]
+# ...and a file with the windows' new settings, their keybindings and GNOME's window settings is one it reads
+jq '.settings.windows += {"see-through-apps": {"kitty.desktop": 92}, "frame": true, "drop-down": false}
+    | .settings.wm = {"focus-mode": "sloppy", "mouse-button-modifier": "<Alt>", "action-middle-click-titlebar": "lower"}
+    | .settings.mutter = {"center-new-windows": false}
+    | .settings.keybindings["org.gnome.shell.extensions.amethystora-ui.windows"] = {"reopen-key": ["<Super><Alt>t"]}' \
+    "${FILE}" >"${T}/windows.json"
+"${SETUP}" diff --json "${T}/windows.json" >/dev/null
 
 # The look: what is in force is saved (the account's files, as the theme reads them, and the theme module's keys), and
 # apply sets it through ame's own commands, the workspaces' accents (one past the sixth too) through the key

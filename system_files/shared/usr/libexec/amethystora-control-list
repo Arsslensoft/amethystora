@@ -172,6 +172,9 @@ read_in_background animations gsettings get org.gnome.desktop.interface enable-a
 # The layout switch, which was read here one process late in the list and took the list over a second with many apps
 read_in_background tiling gsettings get org.gnome.shell.extensions.amethystora-ui.tiling enabled
 read_in_background windows gsettings list-recursively org.gnome.shell.extensions.amethystora-ui.windows
+# GNOME's own window settings (ame desktop window-settings)
+read_in_background wm-prefs gsettings list-recursively org.gnome.desktop.wm.preferences
+read_in_background mutter gsettings list-recursively org.gnome.mutter
 read_in_background dock gsettings list-recursively org.gnome.shell.extensions.amethystora-ui.dock
 read_in_background shake gsettings get org.gnome.shell.extensions.amethystora-ui.pointer shake
 read_in_background dense gsettings get org.gnome.shell.extensions.amethystora-ui.pointer dense
@@ -959,6 +962,85 @@ USAGE="ame desktop windows places forget"
 item desktop windows-places-forget action "${ gettext "Forget the places"; }" "" "" desktop#places
 win_item windows-dim dim "${ gettext "Dim the windows not in use"; }" \
     "${ gettext "The windows behind the one you are using are drawn a little darker."; }" desktop#dimming false
+# Rounds 5 and 6 (plans/ui-ideas/spec-windows.md): the drop-down terminal and the scratchpad, keep on top, see-through
+# windows and the terminal's own opacity, the frame, sizes for recording and reopening
+win_item windows-drop-down drop-down "${ gettext "Drop-down terminal"; }" \
+    "${ gettext "Super+Alt+Return slides a terminal down from the top of the screen, and hides it again, still running."; }" \
+    desktop#drop-down-terminal false
+win_item windows-scratchpad scratchpad "${ gettext "The scratchpad"; }" \
+    "${ gettext "A window's menu can move it out of sight, to come back with the drop-down terminal."; }" \
+    desktop#drop-down-terminal true
+win_item windows-keep-on-top keep-on-top "${ gettext "Keep on top, visibly"; }" \
+    "${ gettext "Super+Alt+P keeps the window in use above the rest, with a ring and a pin; again lets it go."; }" \
+    desktop#keep-on-top false
+win_item windows-see-through see-through "${ gettext "See-through windows"; }" \
+    "${ gettext "Hold Super+Alt and scroll over a window to see through it, until it closes."; }" desktop#see-through-windows false
+# The terminal's windows at an opacity of their own (a rule in see-through-apps); 100 is solid
+TERMINAL_OPACITY=100
+[[ "${ value_of "${WINDOWS}" see-through-apps "(.*)\$"; }" =~ \'kitty\.desktop\':\ ([0-9]+) ]] && TERMINAL_OPACITY="${BASH_REMATCH[1]}"
+[[ "${ ended windows; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
+[[ "${ onoff see-through; }" == on ]] || DETAIL="${ gettext "It applies while see-through windows are on."; }"
+EXTRA='{"min": 40, "max": 100, "step": 5, "unit": "%", "terminal": false,
+    "command": ["ame", "desktop", "windows", "see-through-app", "kitty.desktop", "{value}"]}'
+USAGE="ame desktop windows see-through-app kitty.desktop PERCENT|off"
+item desktop windows-see-through-terminal range "${ gettext "The terminal's opacity"; }" \
+    "${ gettext "The terminal's windows open this see-through; 100 is solid."; }" "${TERMINAL_OPACITY}" desktop#see-through-windows
+win_item windows-frame frame "${ gettext "A frame in the theme's colours"; }" \
+    "${ gettext "The window you are using has a still line round it, in the theme's colours."; }" desktop#window-frame true
+win_item windows-recording-sizes recording-sizes "${ gettext "Sizes for recording"; }" \
+    "${ gettext "A window's menu makes it 1280 × 720, 1920 × 1080, square or upright, centred."; }" \
+    desktop#sizes-for-recording false
+win_item windows-reopen reopen "${ gettext "Reopen the app you just closed"; }" \
+    "${ gettext "Super+Alt+T opens it again, at its place; five back. Kept in memory only."; }" desktop#reopen false
+
+# The window settings GNOME keeps out of sight (R5-12): GNOME's own keys, each an ame desktop window-settings command
+WM="${ said wm-prefs; }"
+MUTTER="${ said mutter; }"
+wm_key() { value_of "${WM}" "$1" "'?([^']*)'?\$"; }
+mutter_key() { value_of "${MUTTER}" "$1" "'?([^']*)'?\$"; }
+GROUP="${ gettext "Window settings"; }"
+switch_choices false ame desktop window-settings focus-follows-pointer
+USAGE="ame desktop window-settings focus-follows-pointer on|off"
+if [[ "${ wm_key focus-mode; }" == click ]]; then FOCUS_MODE=off; else FOCUS_MODE=on; fi
+item desktop window-settings-focus switch "${ gettext "Focus follows the pointer"; }" \
+    "${ gettext "The window under the pointer takes the keys."; }" "${FOCUS_MODE}" desktop#window-settings
+switch_choices false ame desktop window-settings centre-new
+USAGE="ame desktop window-settings centre-new on|off"
+if [[ "${ mutter_key center-new-windows; }" == true ]]; then CENTRE=on; else CENTRE=off; fi
+item desktop window-settings-centre switch "${ gettext "New windows centred"; }" "" "${CENTRE}" desktop#window-settings
+for click in double middle right; do
+    case "${click}" in
+        double) title="${ gettext "Double-click a title bar"; }" ;;
+        middle) title="${ gettext "Middle-click a title bar"; }" ;;
+        right) title="${ gettext "Right-click a title bar"; }" ;;
+    esac
+    choice toggle-maximize "${ gettext "Maximize"; }" "" false ame desktop window-settings "${click}-click" toggle-maximize
+    choice minimize "${ gettext "Minimize"; }" "" false ame desktop window-settings "${click}-click" minimize
+    choice lower "${ gettext "Lower"; }" "" false ame desktop window-settings "${click}-click" lower
+    choice menu "${ gettext "The window's menu"; }" "" false ame desktop window-settings "${click}-click" menu
+    choice none "${ gettext "Nothing"; }" "" false ame desktop window-settings "${click}-click" none
+    USAGE="ame desktop window-settings ${click}-click ACTION"
+    item desktop "window-settings-${click}-click" choice "${title}" "" "${ wm_key "action-${click}-click-titlebar"; }" \
+        desktop#window-settings
+done
+choice super "${ gettext "Super"; }" "" false ame desktop window-settings drag-key super
+choice alt "${ gettext "Alt"; }" "" false ame desktop window-settings drag-key alt
+USAGE="ame desktop window-settings drag-key super|alt"
+if [[ "${ wm_key mouse-button-modifier; }" == "<Alt>" ]]; then DRAG_KEY=alt; else DRAG_KEY=super; fi
+item desktop window-settings-drag-key choice "${ gettext "Drag a window with"; }" \
+    "${ gettext "The key held to move a window from anywhere in it."; }" "${DRAG_KEY}" desktop#window-settings
+switch_choices false ame desktop window-settings resize-right
+USAGE="ame desktop window-settings resize-right on|off"
+if [[ "${ wm_key resize-with-right-button; }" == true ]]; then RESIZE_RIGHT=on; else RESIZE_RIGHT=off; fi
+item desktop window-settings-resize-right switch "${ gettext "Resize with the right button"; }" \
+    "${ gettext "With the drag key held."; }" "${RESIZE_RIGHT}" desktop#window-settings
+switch_choices false ame desktop window-settings attach-dialogs
+USAGE="ame desktop window-settings attach-dialogs on|off"
+[[ "${LAYOUT}" == tiling ]] && REASON="${ gettext "The tiling keeps dialogs apart while it is on."; }"
+if [[ "${ mutter_key attach-modal-dialogs; }" == true ]]; then ATTACH=on; else ATTACH=off; fi
+item desktop window-settings-attach-dialogs switch "${ gettext "Dialogs stay attached"; }" \
+    "${ gettext "A dialog moves with its window."; }" "${ATTACH}" desktop#window-settings
+GROUP="${ gettext "Windows"; }"
 
 # Force quit (org.gnome.shell.extensions.amethystora-ui.quit): the list's key, and GNOME's not-responding dialog
 QUIT="${ said quit; }"

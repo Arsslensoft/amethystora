@@ -1201,6 +1201,10 @@ KEPT_COMBOS="$(
         GSETTINGS_BACKEND=memory gsettings get org.gnome.mutter.wayland.keybindings restore-shortcuts
         GSETTINGS_BACKEND=memory gsettings get org.gnome.mutter.keybindings cancel-input-capture
         GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.windows snap-chooser
+        # The drop-down terminal's, keep on top's and reopen's (Super+Alt+Return, P and T)
+        for key in drop-down-key keep-on-top-key reopen-key; do
+            GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.windows "${key}"
+        done
         # The reading ruler's, reading aloud's and the pen's tools' (Super+Ctrl+R, S and P)
         GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.access ruler-key
         GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.access read-aloud-key
@@ -1229,6 +1233,15 @@ GNOME_COMBOS="$(for schema in org.gnome.desktop.wm.keybindings org.gnome.shell.k
     org.gnome.mutter.wayland.keybindings org.gnome.settings-daemon.plugins.media-keys; do
     GSETTINGS_BACKEND=memory gsettings list-recursively "${schema}"
 done | keycombos)"
+# Super+Alt+Return, P and T are the windows module's (the drop-down terminal, keep on top, reopen): neither the tiling
+# nor any of GNOME's own keybinding schemas has them
+for combo in "<alt><super>return" "<alt><super>p" "<alt><super>t"; do
+    grep -qx "${combo}" <<<"${KEPT_COMBOS}" || { echo "${combo} is not the windows module's"; exit 1; }
+    if grep -qx "${combo}" <<<"${TILING_COMBOS}"$'\n'"${GNOME_COMBOS}"; then
+        echo "${combo} is bound by the tiling or GNOME, and is the windows module's"
+        exit 1
+    fi
+done
 for combo in "<shift><super>a" "<control><shift><super>escape"; do
     if grep -qx "${combo}" <<<"${TILING_COMBOS}"$'\n'"${KEPT_COMBOS}"$'\n'"${GNOME_COMBOS}"; then
         echo "${combo} is bound elsewhere, and is the agent's or force quit's"
@@ -1349,20 +1362,50 @@ for word in amethystora-glass-solid amethystora-glass-contrast -amethystora-glas
 done
 test ! -e /etc/dconf/db/distro.d/05-blur-my-shell-extension
 # The windows module (snap layouts, the switcher, the Super card, hot corners, show desktop, gestures, places, a copy
-# kept in view, dimming): its sixteen keys and their defaults, after the tiling, whose layout it reads, and
-# ame desktop windows, which refuses what it does not know. Super+Z is in KEPT_COMBOS above.
+# kept in view, dimming, and rounds 5 and 6's drop-down terminal and scratchpad, keep on top, see-through windows, the
+# frame, sizes for recording and reopening, plans/ui-ideas/spec-windows.md): its twenty-seven keys and their defaults,
+# after the tiling, whose layout it reads, and ame desktop windows, which refuses what it does not know. Super+Z,
+# Super+Alt+Return, Super+Alt+P and Super+Alt+T are in KEPT_COMBOS above.
 WINDOWS=org.gnome.shell.extensions.amethystora-ui.windows
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-recursively "${WINDOWS}" | cut -d' ' -f2- | LC_ALL=C sort | paste -sd ';')" == \
-    "corner-bottom-left 'none';corner-bottom-right 'none';corner-top-left 'none';corner-top-right 'none';dim false;gesture-down true;gesture-pinch true;gesture-spread true;gesture-today true;hold-super true;hold-super-delay 1000;places true;show-desktop false;snap true;snap-chooser ['<Super>z'];switcher true" ]] ||
+    "corner-bottom-left 'none';corner-bottom-right 'none';corner-top-left 'none';corner-top-right 'none';dim false;drop-down true;drop-down-key ['<Super><Alt>Return'];frame false;gesture-down true;gesture-pinch true;gesture-spread true;gesture-today true;hold-super true;hold-super-delay 1000;keep-on-top true;keep-on-top-key ['<Super><Alt>p'];places true;recording-sizes true;reopen true;reopen-key ['<Super><Alt>t'];scratchpad true;see-through false;see-through-apps @a{si} {};show-desktop false;snap true;snap-chooser ['<Super>z'];switcher true" ]] ||
     { echo "the windows module's keys or defaults are not the spec's"; exit 1; }
 [[ " ${MODULE_ORDER} " == *" tiling windows "* ]] || { echo "the windows module does not start right after the tiling"; exit 1; }
 test -s "${UI_EXTENSION}/stylesheets/windows.css"
 test -s /usr/share/amethystora/themed/shell-windows.css.tpl
 GSETTINGS_BACKEND=memory ame desktop windows >/dev/null
-for wrong in "snap maybe" "hold-super 100" "corner middle overview" "corner top-left explode" "gesture swipe on" "places keep"; do
+for wrong in "snap maybe" "hold-super 100" "corner middle overview" "corner top-left explode" "gesture swipe on" "places keep" \
+    "drop-down maybe" "frame" "see-through-app kitty.desktop 20" "see-through-app kitty.desktop 101" \
+    "see-through-app ../kitty.desktop 90" "see-through-app kitty 90"; do
     # shellcheck disable=SC2086
     GSETTINGS_BACKEND=memory ame desktop windows ${wrong} >/dev/null 2>&1 && { echo "ame desktop windows ${wrong} was taken"; exit 1; }
 done
+# An app's see-through level is kept beside the others' and taken away alone
+# (A keyfile of its own: the memory backend keeps nothing from one command to the next)
+env GSETTINGS_BACKEND=keyfile XDG_CONFIG_HOME="$(mktemp -d)" bash -c 'ame desktop windows see-through-app kitty.desktop 92 >/dev/null &&
+    ame desktop windows see-through-app org.gnome.Nautilus.desktop 80 >/dev/null &&
+    ame desktop windows see-through-app kitty.desktop off >/dev/null &&
+    [[ "$(gsettings get org.gnome.shell.extensions.amethystora-ui.windows see-through-apps)" == "{'"'"'org.gnome.Nautilus.desktop'"'"': 80}" ]]' ||
+    { echo "ame desktop windows see-through-app does not keep each app's level"; exit 1; }
+# GNOME's window settings (ame desktop window-settings, R5-12): listed, each set as GNOME's own key, the unknown refused,
+# and dialogs left to the tiling while it runs
+GSETTINGS_BACKEND=memory ame desktop window-settings >/dev/null
+for wrong in "drag-key ctrl" "double-click explode" "focus-follows-pointer maybe" "button-layout close:" "centre-new"; do
+    # shellcheck disable=SC2086
+    GSETTINGS_BACKEND=memory ame desktop window-settings ${wrong} >/dev/null 2>&1 &&
+        { echo "ame desktop window-settings ${wrong} was taken"; exit 1; }
+done
+env GSETTINGS_BACKEND=keyfile XDG_CONFIG_HOME="$(mktemp -d)" bash -c 'ame desktop window-settings focus-follows-pointer on >/dev/null &&
+    ame desktop window-settings drag-key alt >/dev/null && ame desktop window-settings middle-click lower >/dev/null &&
+    [[ "$(gsettings get org.gnome.desktop.wm.preferences focus-mode)" == "'"'"'sloppy'"'"'" &&
+        "$(gsettings get org.gnome.desktop.wm.preferences mouse-button-modifier)" == "'"'"'<Alt>'"'"'" &&
+        "$(gsettings get org.gnome.desktop.wm.preferences action-middle-click-titlebar)" == "'"'"'lower'"'"'" ]] &&
+    ! ame desktop window-settings attach-dialogs on >/dev/null 2>&1' ||
+    { echo "ame desktop window-settings does not set GNOME's keys, or changes dialogs under the tiling"; exit 1; }
+# The window menu's lines go through one hook (windows/menu.js), and the drop-down terminal is kitty started with an
+# argument vector of the shell's own
+grep -q "kitty', '--class', DROP_DOWN_CLASS" "${UI_EXTENSION}/modules/windows/scratch.js"
+[[ "$(grep -rl "showWindowMenuForWindow" "${UI_EXTENSION}/modules/windows" | xargs -n1 basename)" == menu.js ]]
 # A window's title is never markup in it, and it runs nothing through a shell
 [[ -z "$(grep -rnE 'use_markup = true|spawn_command_line|GLib\.spawn_async' "${UI_EXTENSION}/modules/windows.js" \
     "${UI_EXTENSION}/modules/windows")" ]]

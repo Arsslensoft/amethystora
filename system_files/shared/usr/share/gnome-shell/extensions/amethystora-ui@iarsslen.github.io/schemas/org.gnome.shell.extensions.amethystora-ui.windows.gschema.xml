@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- The keys of the windows module (modules/windows.js): snap layouts, the window switcher, the Super card, hot corners,
-     show desktop, touchpad gestures, places, keep a copy in view and dimming. Written by ame desktop windows, Control
-     and the setup file; snap-chooser is a keybinding. -->
+     show desktop, touchpad gestures, places, keep a copy in view, dimming, the drop-down terminal and the scratchpad, keep
+     on top, see-through windows, the frame, sizes for recording and reopening. Written by ame desktop windows, Control
+     and the setup file; snap-chooser, drop-down-key, keep-on-top-key and reopen-key are keybindings. -->
+<!-- No list of strings here but keybindings: the setup manifest keeps every such key of this schema as one -->
+
 <schemalist>
   <schema id="org.gnome.shell.extensions.amethystora-ui.windows" path="/org/gnome/shell/extensions/amethystora-ui/windows/">
     <key name="snap" type="b">
@@ -116,6 +119,59 @@
       <default>false</default>
       <summary>Dim the windows not in use</summary>
       <description>The windows behind the one in use are drawn a little darker.</description>
+    </key>
+    <key name="drop-down" type="b">
+      <default>true</default>
+      <summary>Drop-down terminal</summary>
+      <description>Super+Alt+Return slides a terminal down from the top of the screen and hides it again, still running.</description>
+    </key>
+    <key name="drop-down-key" type="as">
+      <default><![CDATA[['<Super><Alt>Return']]]></default>
+      <summary>Show or hide the drop-down terminal and the scratchpad</summary>
+      <description>Shows the drop-down terminal, with the scratchpad's windows in the classic layout, and hides them again.</description>
+    </key>
+    <key name="scratchpad" type="b">
+      <default>true</default>
+      <summary>The scratchpad</summary>
+      <description>In the classic layout, any window can go to the scratchpad from its menu: out of sight, shown and hidden with the drop-down terminal.</description>
+    </key>
+    <key name="keep-on-top" type="b">
+      <default>true</default>
+      <summary>Keep on top, visibly</summary>
+      <description>Super+Alt+P keeps the window in use above the rest; a window kept on top has a ring in the accent and a pin.</description>
+    </key>
+    <key name="keep-on-top-key" type="as">
+      <default><![CDATA[['<Super><Alt>p']]]></default>
+      <summary>Keep the window in use on top, or let it go</summary>
+    </key>
+    <key name="see-through" type="b">
+      <default>false</default>
+      <summary>See-through windows</summary>
+      <description>Super+Alt and the scroll wheel over a window set its opacity, from 40 % to fully solid, until it closes.</description>
+    </key>
+    <key name="see-through-apps" type="a{si}">
+      <default>{}</default>
+      <summary>Apps whose windows are always see-through</summary>
+      <description>Each launcher ID (such as kitty.desktop) with the opacity its windows open at, from 40 to 100 percent.</description>
+    </key>
+    <key name="frame" type="b">
+      <default>false</default>
+      <summary>A frame in the theme's colours</summary>
+      <description>In the classic layout, a still gradient line from the theme's colours round the window in use.</description>
+    </key>
+    <key name="recording-sizes" type="b">
+      <default>true</default>
+      <summary>Sizes for recording</summary>
+      <description>The window menu's Size for recording makes a window 1280 × 720, 1920 × 1080, square or upright, centred.</description>
+    </key>
+    <key name="reopen" type="b">
+      <default>true</default>
+      <summary>Reopen the app just closed</summary>
+      <description>Super+Alt+T opens again the app whose window closed last, on its workspace and at its place; five back. Kept in memory only.</description>
+    </key>
+    <key name="reopen-key" type="as">
+      <default><![CDATA[['<Super><Alt>t']]]></default>
+      <summary>Reopen the app just closed</summary>
     </key>
   </schema>
 </schemalist>

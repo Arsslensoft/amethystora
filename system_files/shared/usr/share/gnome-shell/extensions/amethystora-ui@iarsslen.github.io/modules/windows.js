@@ -1,11 +1,14 @@
 // Windows, for the classic layout and for every window whichever layout is on: snap layouts (drag to the top, or
 // Super+Z), a window switcher you can type into, the shortcuts shown while Super is held, hot corners, show the desktop
 // by clicking the wallpaper, touchpad gestures, windows that go back to their places for each arrangement of screens,
-// a live copy of a window kept in view, and dimming the windows not in use. Each is a key of its own, read live; the
-// parts that belong to the classic layout stand aside while the tiling is on and come back when it is off.
+// a live copy of a window kept in view, dimming the windows not in use, the drop-down terminal and the scratchpad,
+// windows kept on top that show it, see-through windows, a frame round the window in use, sizes for recording and
+// opening again the app just closed. Each is a key of its own, read live; the parts that belong to the classic layout
+// stand aside while the tiling is on and come back when it is off.
 //
-// The parts are in windows/: snap.js, switcher.js, hold.js, corners.js, desktop.js, gestures.js, places.js, keep.js
-// and dim.js. None of them runs anything while nothing happens: they listen, and only while they are on.
+// The parts are in windows/: snap.js, switcher.js, hold.js, corners.js, desktop.js, gestures.js, places.js, keep.js,
+// dim.js, scratch.js, ontop.js, seethrough.js, frame.js, sizes.js and reopen.js; menu.js puts their lines in the
+// window menu. None of them runs anything while nothing happens: they listen, and only while they are on.
 
 import GLib from 'gi://GLib';
 
@@ -18,8 +21,18 @@ import {Gestures} from './windows/gestures.js';
 import {Places} from './windows/places.js';
 import {Keep} from './windows/keep.js';
 import {Dim} from './windows/dim.js';
+import {MenuHook} from './windows/menu.js';
+import {Scratch} from './windows/scratch.js';
+import {OnTop} from './windows/ontop.js';
+import {SeeThrough} from './windows/seethrough.js';
+import {Frame} from './windows/frame.js';
+import {Sizes} from './windows/sizes.js';
+import {Reopen} from './windows/reopen.js';
 
 const GESTURES = ['pinch', 'spread', 'down', 'today'];
+// In the order they start; they stop in the opposite one
+const PARTS = ['snap', 'switcher', 'hold', 'desktop', 'corners', 'gestures', 'places', 'keep', 'dimmer',
+    'scratch', 'ontop', 'seeThrough', 'frame', 'sizes', 'reopen'];
 
 export class Windows {
     constructor(ext) {
@@ -45,7 +58,17 @@ export class Windows {
         this.places = new Places(this);
         this.keep = new Keep(this);
         this.dimmer = new Dim(this);
+        this.scratch = new Scratch(this);
+        this.ontop = new OnTop(this);
+        this.seeThrough = new SeeThrough(this);
+        this.frame = new Frame(this);
+        this.sizes = new Sizes(this);
+        this.reopen = new Reopen(this);
         this._running = new Set();
+        // The window menu's lines of the parts that run (a copy kept in view, the scratchpad, the sizes)
+        this.menu = new MenuHook((menu, window) => ['keep', 'scratch', 'sizes']
+            .filter(name => this._running?.has(name)).map(name => this[name].menuItems(menu, window)));
+        this.menu.enable();
         this.settings.connectObject('changed', (s, key) => this._changed(key), this);
         // A change of layout is followed once the tiling has started or stopped itself, so that what it puts back
         // of GNOME's (the switchers' handlers) is not put over what this sets
@@ -66,9 +89,11 @@ export class Windows {
             GLib.source_remove(this._layoutId);
         this._layoutId = 0;
         // In the opposite order of starting; places writes what it holds, the kept copy waits out a screen lock
-        for (const name of ['dimmer', 'keep', 'places', 'gestures', 'corners', 'desktop', 'hold', 'switcher', 'snap'])
+        for (const name of [...PARTS].reverse())
             this._stop(name, true);
         this._running = null;
+        this.menu?.disable();
+        this.menu = null;
         // Disposed now rather than by the collector (dock.js says why)
         this.settings?.run_dispose();
         this.settings = null;
@@ -95,17 +120,26 @@ export class Windows {
             places: classic && s.get_boolean('places'),
             keep: true,
             dimmer: s.get_boolean('dim'),
+            scratch: s.get_boolean('drop-down') || classic && s.get_boolean('scratchpad'),
+            ontop: s.get_boolean('keep-on-top'),
+            seeThrough: s.get_boolean('see-through'),
+            frame: classic && s.get_boolean('frame'),
+            sizes: s.get_boolean('recording-sizes'),
+            reopen: s.get_boolean('reopen'),
         };
     }
 
     _sync() {
         const wanted = this._wanted();
-        for (const name of ['snap', 'switcher', 'hold', 'desktop', 'corners', 'gestures', 'places', 'keep', 'dimmer']) {
+        for (const name of PARTS) {
             if (wanted[name])
                 this._start(name);
             else
                 this._stop(name, true);
         }
+        // What the scratchpad holds follows the layout and its switches
+        if (this._running.has('scratch'))
+            this.scratch.sync();
         this.surfacesChanged();
     }
 
@@ -125,6 +159,9 @@ export class Windows {
             this._stop('places', false);
             return;
         }
+        // Reopening turned off forgets what closed
+        if (key === 'reopen' && !this.settings.get_boolean('reopen'))
+            this.reopen.forget();
         this._sync();
     }
 
@@ -164,7 +201,31 @@ export class Windows {
 
     // The motion module asks before it animates a minimize: a window kept in view goes out of sight its own way
     isKept(window) {
-        return this.keep?.isKept(window) ?? false;
+        return (this.keep?.isKept(window) ?? false) || this.holds(window);
+    }
+
+    // The drop-down terminal and the scratchpad's windows, which the shell itself keeps above and on every workspace
+    holds(window) {
+        return this._running?.has('scratch') ? this.scratch.holds(window) : false;
+    }
+
+    // Places asks before it puts a new window where its app's was: the drop-down terminal, and an app opened again by
+    // Super+Alt+T, go where they go
+    claims(window) {
+        return (!!this._running?.has('scratch') && this.scratch.claims(window)) ||
+            (!!this._running?.has('reopen') && this.reopen.claimed(window));
+    }
+
+    // The share guard covered or uncovered windows: a covered one is drawn solid
+    coversChanged() {
+        if (this._running?.has('seeThrough'))
+            this.seeThrough.coversChanged();
+    }
+
+    // The scratchpad took or gave back a window: whether it has a ring follows
+    heldChanged(window) {
+        if (this._running?.has('ontop'))
+            this.ontop.resync(window);
     }
 
     glassSurfaces() {

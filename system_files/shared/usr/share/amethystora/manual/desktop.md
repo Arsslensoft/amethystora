@@ -1260,6 +1260,74 @@ copy then shows their last picture. This works in both layouts.
 `ame desktop windows dim on` draws the windows behind the one you are using a little darker, so the eye goes
 to the right one. A video an app draws on its own may stay bright.
 
+### Drop-down terminal
+
+`Super+Alt+Return` slides a terminal down from the top of the screen, over whatever is open and on any
+workspace; the same key slides it away again, still running, with whatever it was doing. Pressed while the
+terminal is down but another window has the keys, it gives the terminal the keys instead. It is kitty,
+started the first time you press the key, with no title bar (type `exit` to close it); the next press starts
+another. This works in both layouts. `ame desktop windows drop-down off` turns it off, and a terminal that was
+down stays open as an ordinary window.
+
+In the classic layout any window can join it: **Move to the scratchpad** in the window's menu (right-click
+its title bar, or `Alt+Space`) puts it out of sight, and `Super+Alt+Return` then shows and hides it with the
+terminal, each where it was left, on every workspace and above the rest. **Take out of the scratchpad**, in
+the same menu, gives it back as it was. The tiling has its floating windows for this instead
+(`Super+Alt+Esc`). `ame desktop windows scratchpad off` turns the scratchpad off.
+
+### Keep on top
+
+`Super+Alt+P` keeps the window you are using above every other window, and again lets it go. A window kept on
+top shows it: a thin ring in the theme's accent and a pin on its top corner, which you click to let it go.
+**Always on Top** in the window's menu does the same. `ame desktop windows keep-on-top off` turns the key and
+the ring off; windows already on top stay so.
+
+### See-through windows
+
+With `ame desktop windows see-through on`, hold `Super+Alt` and scroll over a window: down to see more of what
+is behind it, as far as 40 %, up to make it solid again. The window forgets it when it closes. To have an app's
+windows always open see-through, give it a level: `ame desktop windows see-through-app kitty.desktop 92`, or
+the terminal's own slider in [Control](control.md); `off` in place of the number takes the rule away. While
+the screen is shared, a window the [share guard](#share-guard) covers is solid. `Super` and the scroll wheel
+alone still change workspace.
+
+### Window frame
+
+With `ame desktop windows frame on`, the window you are using has a still line round it, from the theme's
+warm colour through its accent to its cool one, in the classic layout (the tiling frames the window in use
+its own way). A maximised window, and one kept on top, have none.
+
+### Sizes for recording
+
+**Size for recording**, in a window's menu, makes the window exactly 1280 × 720, 1920 × 1080, 1080 × 1080
+or 1080 × 1920 and puts it in the middle of its screen, for screencasts and screenshots that line up. The
+sizes are the screen's own pixels, whatever its scale; one that does not fit the screen is greyed out. In
+the tiling layout it is offered for floating windows only. `ame desktop windows recording-sizes off`
+takes it out of the menu.
+
+### Reopen
+
+Closed the wrong window? `Super+Alt+T` opens that app again, on its workspace and, in the classic layout, at
+the place and size its window had; press it again for the one before, five back. Only the app is started:
+what it had open is the app's own to bring back. What closed is kept in memory only and forgotten when you
+log out. `ame desktop windows reopen off` turns it off and forgets.
+
+## Window settings
+
+The window settings GNOME keeps out of sight, in [Control](control.md)'s **Window settings** and with
+`ame desktop window-settings`, which lists them:
+
+| Setting | Command |
+| --- | --- |
+| The window under the pointer takes the keys | `ame desktop window-settings focus-follows-pointer on` |
+| New windows open in the middle of the screen | `ame desktop window-settings centre-new on` (on as the image ships) |
+| What a double, middle or right click on a title bar does | `ame desktop window-settings middle-click lower`: `toggle-maximize`, `minimize`, `lower`, `menu` or `none` |
+| The key held to drag a window from anywhere in it | `ame desktop window-settings drag-key alt` (`super` as the image ships) |
+| Resize with the right button, the drag key held | `ame desktop window-settings resize-right on` |
+| Dialogs stay attached to their window | `ame desktop window-settings attach-dialogs on`, in the classic layout: the tiling keeps them apart |
+
+With `Alt` as the drag key, apps no longer see a click made with `Alt` held.
+
 ## Force quit
 
 `Super+Ctrl+Shift+Esc` lists the apps that are running, with how much of the processor and memory each
@@ -1283,6 +1351,10 @@ agent why** opens the agent on that app, to find out what it is waiting for with
 | `Super+H` | Minimise the window |
 | `Super+Tab` / `Alt+Tab` | Switch between apps / between windows; type to filter (classic layout) |
 | `Super+Z` | Snap layouts for the focused window (classic layout) |
+| `Super+Alt+Return` | The drop-down terminal, and the scratchpad in the classic layout |
+| `Super+Alt+P` | Keep the window on top, or let it go |
+| `Super+Alt+T` | Reopen the app you just closed |
+| `Super+Alt` and scroll | See through a window, when see-through windows are on |
 | Hold `Super` | The main shortcuts, and numbers on the dock |
 | `` Super+` `` | Switch between the windows of the app you are in |
 

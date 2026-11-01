@@ -77,11 +77,12 @@ MOTION=org.gnome.shell.extensions.amethystora-ui.motion
 MOTION_KEYS=(minimize workspace-switch)
 WORKSPACES=org.gnome.shell.extensions.amethystora-ui.workspaces
 WORKSPACES_KEYS=(auto-names sets)
-# The windows module's keys amethystora-setup's WINDOWS_KEYS takes; its keybinding, snap-chooser, is kept with the
-# other keybindings (KEY_SCHEMAS lists its schema for that)
+# The windows module's keys amethystora-setup's WINDOWS_KEYS takes; its keybindings (snap-chooser, drop-down-key,
+# keep-on-top-key, reopen-key) are kept with the other keybindings (KEY_SCHEMAS lists its schema for that)
 WINDOWS=org.gnome.shell.extensions.amethystora-ui.windows
 WINDOWS_KEYS=(snap switcher hold-super hold-super-delay corner-top-left corner-top-right corner-bottom-left
-    corner-bottom-right show-desktop gesture-pinch gesture-spread gesture-down gesture-today places dim)
+    corner-bottom-right show-desktop gesture-pinch gesture-spread gesture-down gesture-today places dim
+    drop-down scratchpad keep-on-top see-through see-through-apps frame recording-sizes reopen)
 # The dock's keys amethystora-setup's DOCK_KEYS takes; a stack outside the home folder names this machine and is
 # left out (test-setup.sh holds the list to the schema)
 DOCK=org.gnome.shell.extensions.amethystora-ui.dock
@@ -120,6 +121,13 @@ AUDIO=org.gnome.shell.extensions.amethystora-ui.audio
 AUDIO_KEYS=(pause-on-unplug clear-voice sound-presets)
 SOUND=org.gnome.desktop.sound
 SOUND_KEYS=(event-sounds)
+# GNOME's window settings, which amethystora-setup's WM_KEYS and MUTTER_KEYS take; never attach-modal-dialogs, which
+# the tiling writes while it runs
+WM=org.gnome.desktop.wm.preferences
+WM_KEYS=(focus-mode action-double-click-titlebar action-middle-click-titlebar action-right-click-titlebar
+    mouse-button-modifier resize-with-right-button)
+MUTTER=org.gnome.mutter
+MUTTER_KEYS=(center-new-windows)
 # The theme module's keys amethystora-setup's LOOK_KEYS takes beside the account's look files: an accent per workspace
 THEME_UI=org.gnome.shell.extensions.amethystora-ui.theme
 THEME_UI_KEYS=(accent-per-workspace workspace-accents day-night day-night-times day-starts night-starts)
@@ -267,6 +275,8 @@ settings() {
         changed "${BEZEL}" | awk 'NR == FNR { kept[$1]; next } $2 in kept' <(printf '%s\n' "${BEZEL_KEYS[@]}") -
         changed "${AUDIO}" | awk 'NR == FNR { kept[$1]; next } $2 in kept' <(printf '%s\n' "${AUDIO_KEYS[@]}") -
         changed "${SOUND}" | awk 'NR == FNR { kept[$1]; next } $2 in kept' <(printf '%s\n' "${SOUND_KEYS[@]}") -
+        changed "${WM}" | awk 'NR == FNR { kept[$1]; next } $2 in kept' <(printf '%s\n' "${WM_KEYS[@]}") -
+        changed "${MUTTER}" | awk 'NR == FNR { kept[$1]; next } $2 in kept' <(printf '%s\n' "${MUTTER_KEYS[@]}") -
         changed "${TRANSITIONS}" | awk 'NR == FNR { kept[$1]; next } $2 in kept' <(printf '%s\n' "${TRANSITIONS_KEYS[@]}") -
         changed "${HINTS}" | awk 'NR == FNR { kept[$1]; next } $2 in kept' <(printf '%s\n' "${HINTS_KEYS[@]}") -
         changed "${APPGRID}" | awk 'NR == FNR { kept[$1]; next } $2 in kept' <(printf '%s\n' "${APPGRID_KEYS[@]}") -
@@ -309,6 +319,7 @@ SETTINGS="$(settings | jq -sc --arg layout "${LAYOUT}" --arg tiling "${TILING}" 
     --arg windows "${WINDOWS}" --arg dock "${DOCK}" --arg motion "${MOTION}" --arg workspaces "${WORKSPACES}" \
     --arg pill "${PILL}" --arg quick "${QUICK}" --arg bars "${BARS}" --arg today "${TODAY}" --arg breaks "${BREAKS}" \
     --arg search "${SEARCH}" --arg emoji "${EMOJI}" --arg bezel "${BEZEL}" --arg audio "${AUDIO}" --arg sound "${SOUND}" \
+    --arg wm "${WM}" --arg mutter "${MUTTER}" \
     --arg transitions "${TRANSITIONS}" --arg hints "${HINTS}" --arg appgrid "${APPGRID}" \
     --arg focus "${FOCUS}" --arg power "${POWER}" --arg access "${ACCESS}" --arg touch "${TOUCH}" \
     --arg present "${PRESENT}" --arg screenshot "${SCREENSHOT}" --arg deskwidgets "${DESKWIDGETS}" \
@@ -318,17 +329,19 @@ SETTINGS="$(settings | jq -sc --arg layout "${LAYOUT}" --arg tiling "${TILING}" 
     map(if .schema == "custom" then .value |= (if . == "" then [] else [.] end) else . end) as $all
     | {layout: $layout}
     + ([$all[] | select(.schema == "org.gnome.shell")] | if length > 0 then {favorites: .[0].value} else {} end)
-    + {keybindings: (reduce ($all[] | select(if .schema == $windows then .key == "snap-chooser"
+    + {keybindings: (reduce ($all[] | select(if .schema == $windows
+                then .key | IN("snap-chooser", "drop-down-key", "keep-on-top-key", "reopen-key")
             elif .schema == $search then .key == "open" elif .schema == $emoji then .key == "emoji-picker"
             elif .schema == $quit then .key == "force-quit"
             elif .schema == $tools then .key != "convert-in-files"
             elif .schema == $keys then .key == "plain-paste"
             else .schema | IN("org.gnome.shell", $tiling, $pointer, $glass, $motion, $workspaces, $dock, $pill, $quick, $bars,
-                $today, $breaks, $bezel, $audio, $sound, $transitions, $hints, $appgrid, $focus, $power,
+                $today, $breaks, $bezel, $audio, $sound, $wm, $mutter, $transitions, $hints, $appgrid, $focus, $power,
                 $access, $touch, $present, $screenshot,
                 $deskwidgets, $shelf, $desks, $privacy, $input, $keyboard, $paste, $rest, $living) | not end))
         as $e ({}; .[$e.schema][$e.key] = $e.value))}
-    + ([$all[] | select(.schema == $windows and .key != "snap-chooser")]
+    + ([$all[] | select(.schema == $windows
+            and (.key | IN("snap-chooser", "drop-down-key", "keep-on-top-key", "reopen-key") | not))]
         | if length > 0 then {windows: (map({(.key): .value}) | add)} else {} end)
     + ([$all[] | select(.schema == $tiling)] | if length > 0 then {tiling: (map({(.key): .value}) | add)} else {} end)
     + ([$all[] | select(.schema == $pointer)] | if length > 0 then {pointer: (map({(.key): .value}) | add)} else {} end)
@@ -350,6 +363,8 @@ SETTINGS="$(settings | jq -sc --arg layout "${LAYOUT}" --arg tiling "${TILING}" 
     + ([$all[] | select(.schema == $bezel)] | if length > 0 then {bezel: (map({(.key): .value}) | add)} else {} end)
     + ([$all[] | select(.schema == $audio)] | if length > 0 then {audio: (map({(.key): .value}) | add)} else {} end)
     + ([$all[] | select(.schema == $sound)] | if length > 0 then {sound: (map({(.key): .value}) | add)} else {} end)
+    + ([$all[] | select(.schema == $wm)] | if length > 0 then {wm: (map({(.key): .value}) | add)} else {} end)
+    + ([$all[] | select(.schema == $mutter)] | if length > 0 then {mutter: (map({(.key): .value}) | add)} else {} end)
     + ([$all[] | select(.schema == $transitions)] | if length > 0 then {transitions: (map({(.key): .value}) | add)} else {} end)
     + ([$all[] | select(.schema == $hints)] | if length > 0 then {hints: (map({(.key): .value}) | add)} else {} end)
     + ([$all[] | select(.schema == $appgrid)] | if length > 0 then {appgrid: (map({(.key): .value}) | add)} else {} end)
