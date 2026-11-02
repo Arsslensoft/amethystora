@@ -15,7 +15,7 @@
 #     the bar leaves it alone; the widgets extension off stops them;
 #   - the light theme and a theme switch;
 #   - ten disables and enables with everything on, nothing left behind, and nothing thrown.
-# vmlab-paths: @ui/extension.js @ui/*present* @ui/*deskwidgets* @ui/*screenshot* @ui/*pill* @ui/*tiling/backgrounds* @ui/*focus/picture* @sf/*themed/shell-present* @sf/*themed/shell-deskwidgets* @sf/*themed/shell-screenshot* @sf/usr/share/gnome-shell/extensions/amethystora-widgets@* @sf/usr/libexec/amethystora-control-list @sf/*just/desktop.just
+# vmlab-paths: @ui/extension.js @ui/*present* @ui/*deskwidgets* @ui/*screenshot* @ui/*pill* @ui/*tiling/backgrounds* @ui/*focus/picture* @sf/*themed/shell-present* @sf/*themed/shell-deskwidgets* @sf/*themed/shell-screenshot* @sf/usr/share/gnome-shell/extensions/amethystora-widgets@* @sf/usr/libexec/amethystora-control-list @sf/*just/desktop.just @sf/usr/libexec/amethystora-cover-private
 source "$(dirname "$0")/lib.sh"
 
 UUID=amethystora-ui@arsslensoft.github.io

@@ -317,7 +317,7 @@ for (const app of APPS) {
 
 const PYTHON = ['usr/libexec/amethystora-text-shortcuts',
     // Files' What is using this? and Convert (plans/ui-ideas/spec-tools.md)
-    'usr/libexec/amethystora-what-uses', 'usr/libexec/amethystora-convert',
+    'usr/libexec/amethystora-what-uses', 'usr/libexec/amethystora-convert', 'usr/libexec/amethystora-mirror',
     // A missing command, found (plans/ui-ideas/spec-time.md)
     'usr/libexec/amethystora-missing-command',
     // Downloads tidied (plans/ui-ideas/spec-apps.md)

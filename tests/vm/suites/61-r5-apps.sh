@@ -13,7 +13,7 @@
 #   - the templates seeded and not executable; Downloads tidied and put back;
 #   - the backup disk recognized on a mount at the repository's place;
 #   - ten disables and enables leave GNOME's own grid, names and filter.
-# vmlab-paths: @ui/extension.js @ui/modules/appgrid* @ui/modules/fuzzy.js @ui/modules/bazaar.js @ui/modules/bazaar/* @sf/usr/libexec/amethystora-uninstall @ui/modules/backupdisk.js @ui/stylesheets/appgrid.css @ui/schemas/*appgrid* @ui/schemas/*backupdisk* @sf/usr/libexec/amethystora-app-look @sf/usr/libexec/amethystora-startup @sf/usr/libexec/amethystora-tidy-downloads @sf/usr/lib/systemd/user/amethystora-tidy-downloads.* @sf/*28-templates.sh @sf/usr/libexec/amethystora-security-watch @sf/usr/libexec/amethystora-control-list @sf/usr/libexec/amethystora-setup* @sf/*just/desktop.just @sf/*just/apps.just apps/security/* apps/control/* apps/control-core/* @sf/usr/libexec/amethystora-flatpak-ask
+# vmlab-paths: @ui/extension.js @ui/modules/appgrid* @ui/modules/fuzzy.js @ui/modules/bazaar.js @ui/modules/bazaar/* @sf/usr/libexec/amethystora-uninstall @ui/modules/backupdisk.js @ui/stylesheets/appgrid.css @ui/schemas/*appgrid* @ui/schemas/*backupdisk* @sf/usr/libexec/amethystora-app-look @sf/usr/libexec/amethystora-startup @sf/usr/libexec/amethystora-tidy-downloads @sf/usr/lib/systemd/user/amethystora-tidy-downloads.* @sf/*28-templates.sh @sf/usr/libexec/amethystora-security-watch @sf/usr/libexec/amethystora-control-list @sf/usr/libexec/amethystora-setup* @sf/*just/desktop.just @sf/*just/apps.just apps/security/* apps/control/* apps/control-core/* @sf/usr/libexec/amethystora-flatpak-ask @ui/modules/windows/simple.js
 source "$(dirname "$0")/lib.sh"
 
 UUID=amethystora-ui@arsslensoft.github.io

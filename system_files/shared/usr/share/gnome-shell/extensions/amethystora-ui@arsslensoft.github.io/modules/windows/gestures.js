@@ -153,6 +153,11 @@ export class Gestures {
     }
 
     _recognise(seq) {
+        // Handing a window over (R7-64): no gesture opens the grid, the windows or Today and its notifications meanwhile
+        if (this._module.handOver?.active) {
+            seq.state = 'ignored';
+            return;
+        }
         const normal = Main.actionMode === Shell.ActionMode.NORMAL;
         if (seq.kind === 'pinch') {
             if (seq.fingers !== 3)

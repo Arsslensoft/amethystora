@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- If it's lost, it says whose it is: Amethystora UI's found module. amethystora-if-found (ame system if-found) writes it
+     for every account through the system's dconf; never the setup file, which can be shared. -->
+<schemalist>
+  <schema id="org.gnome.shell.extensions.amethystora-ui.found" path="/org/gnome/shell/extensions/amethystora-ui/found/">
+    <key name="line" type="s">
+      <default>''</default>
+      <summary>The line on the lock screen</summary>
+      <description>One line anyone holding the computer can read, to return it. Empty shows nothing.</description>
+    </key>
+  </schema>
+</schemalist>

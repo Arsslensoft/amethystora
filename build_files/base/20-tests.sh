@@ -676,6 +676,7 @@ for file in pill/printing.js pill/printwords.js pill/through.js quick/sounding.j
 done
 # The tile only ever opens the app, and only a person's yes in a terminal fetches it
 grep -q 'flatpak' "${UI_EXTENSION}/modules/quick/tv.js" && false
+env LD_LIBRARY_PATH=/apps-stage/usr/lib64 NODE_ICU_DATA="$(echo /apps-stage/usr/share/node-*/icudata)" /apps-stage/usr/bin/node /ctx/build_files/shared/test-your-year.mjs
 # Text shortcuts (plans/beyond/spec-phase7.md, part B): off as the image ships, since they look at what is typed, the
 # module after the emoji picker, the helper the only writer of the file, its rules and the shell's one list of cases (the
 # installed helper, on the apps stage's Node), its two commands, and neither the switch nor a text in the setup file
@@ -788,7 +789,7 @@ grep -q "shouldShowApp" "${UI_EXTENSION}/modules/fuzzy.js"
 # apps, its three recipes, and quiet holding banners in memory only: nothing of it writes GNOME's show-banners
 PILL=org.gnome.shell.extensions.amethystora-ui.pill
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${PILL}" | sort | paste -sd ' ')" == \
-    "digest digest-through digest-times digest-wait drop-targets get-through glow hello later later-times live meetings moving music-bars music-see printing privacy-dots quiet quiet-night removable-writes saving-data second-zone stay-awake timer-feel two-at-once weight whats-new" ]]
+    "digest digest-through digest-times digest-wait drop-targets get-through glow hello later later-times live meeting-mirror meetings moving music-bars music-see printing privacy-dots quiet quiet-night removable-writes saving-data second-zone stay-awake timer-feel two-at-once weight whats-new" ]]
 for key in live privacy-dots glow quiet later whats-new meetings printing get-through; do
     [[ "$(GSETTINGS_BACKEND=memory gsettings get "${PILL}" "${key}")" == true ]]
 done
@@ -942,7 +943,7 @@ TODAY=org.gnome.shell.extensions.amethystora-ui.today
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${BARS}" | sort | paste -sd ' ')" == "autohide every-screen layout peek position size" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${BARS}" every-screen)" == false ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${BARS}" peek)" == true ]]
-[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${TODAY}" | sort | paste -sd ' ')" == "getting-set tasks weather" ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${TODAY}" | sort | paste -sd ' ')" == "getting-set tasks weather your-year your-year-seen" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${TODAY}" tasks)" == true ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${TODAY}" getting-set)" == true ]]
 # Getting set runs two of the image's helpers, as the account, and nothing else; the lines it opens are the image's apps
@@ -1257,7 +1258,7 @@ grep -q -- "'flatpak', 'run', GRADIA, \`--ocr-file=" "${UI_EXTENSION}/modules/sc
 grep -q "^export const GRADIA = 'be.alexandervanhee.gradia';$" "${UI_EXTENSION}/modules/screenshot/capture.js"
 test -s "${UI_EXTENSION}/icons/screenshot/extract-symbolic.svg"
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys org.gnome.shell.extensions.amethystora-ui.screenshot | sort | paste -sd ' ')" == \
-    "capture-pin capture-thumbnail recording-trim tool-settings" ]]
+    "capture-pin capture-thumbnail hide-private recording-trim tool-settings" ]]
 # Pin a capture (R4-17): the thumbnail and pinning on as the image ships, the bar's Pin button and Ctrl+P, the pin's two
 # icons drawn for the extension, at most six pinned, and a pinned picture never saved by itself
 for key in capture-thumbnail capture-pin; do
@@ -1269,6 +1270,28 @@ grep -q "^export const MOST = 6;$" "${UI_EXTENSION}/modules/screenshot/pins.js"
 test -s "${UI_EXTENSION}/icons/screenshot/pin-symbolic.svg"
 test -s "${UI_EXTENSION}/icons/screenshot/through-symbolic.svg"
 grep -qE "saveToFolder|replace_contents" "${UI_EXTENSION}/modules/screenshot/pins.js" && false
+# If it's lost (R7-71): off until written, no key in the image, GDM's banner the one on the login screen
+[[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.found line)" == "''" ]]
+grep -q "system-db:gdm" /usr/share/dconf/profile/gdm /etc/dconf/profile/gdm 2>/dev/null
+test ! -e /etc/dconf/db/gdm.d/70-amethystora-if-found
+bash /ctx/build_files/shared/test-if-found.sh
+# Your year (R7-30): never kept. How do I look and sound? (R7-44): frames and sound go nowhere
+bash /ctx/build_files/shared/test-your-year.sh
+bash /ctx/build_files/shared/test-mirror.sh
+# What the people group (R7-64, 65, 67, 71, 30) added to the shell never waits for the disk or a process. The pattern wants
+# a letter before "_sync(", since several of these files have a method of their own with that name
+for file in found.js today/year.js today/yearwindow.js windows/handover.js windows/simple.js screenshot/cover.js; do
+    if grep -nE '[a-z0-9]_sync\(|file_get_contents|mkdir_with_parents|\.communicate\(|\.communicate_utf8\(|\.wait_check\(' "${UI_EXTENSION}/modules/${file}"; then
+        echo "${file} waits for the disk or a process"
+        exit 1
+    fi
+done
+# Hide what's private (R7-67): on as the image ships, its helper's patterns, solid boxes, a pipe and no file
+[[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.screenshot hide-private)" == true ]]
+test -s "${UI_EXTENSION}/icons/screenshot/cover-symbolic.svg"
+test -x /usr/libexec/amethystora-cover-private
+command -v tesseract >/dev/null
+bash /ctx/build_files/shared/test-cover-private.sh
 # Uninstalling from an app's menu: Flatpak's own command, as the account, and Bazaar for the details
 grep -qF "['uninstall', user ? '--user' : (extra ? installation : '--system'), '-y', id]" "${UI_EXTENSION}/modules/bazaar.js"
 grep -qF 'appstream:' "${UI_EXTENSION}/modules/bazaar.js"
@@ -1546,9 +1569,18 @@ test ! -e /etc/dconf/db/distro.d/05-blur-my-shell-extension
 # Super+Alt+Return, Super+Alt+P and Super+Alt+T are in KEPT_COMBOS above.
 WINDOWS=org.gnome.shell.extensions.amethystora-ui.windows
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-recursively "${WINDOWS}" | cut -d' ' -f2- | LC_ALL=C sort | paste -sd ';')" == \
-    "corner-bottom-left 'none';corner-bottom-right 'none';corner-top-left 'none';corner-top-right 'none';dim false;drop-down true;drop-down-key ['<Super><Alt>Return'];frame false;gesture-down true;gesture-pinch true;gesture-spread true;gesture-today true;hold-super true;hold-super-delay 1000;keep-on-top true;keep-on-top-key ['<Super><Alt>p'];places true;recording-sizes true;reopen true;reopen-key ['<Super><Alt>t'];scratchpad true;see-through false;see-through-apps @a{si} {};show-desktop false;snap true;snap-chooser ['<Super>z'];switcher true" ]] ||
+    "corner-bottom-left 'none';corner-bottom-right 'none';corner-top-left 'none';corner-top-right 'none';dim false;drop-down true;drop-down-key ['<Super><Alt>Return'];frame false;gesture-down true;gesture-pinch true;gesture-spread true;gesture-today true;hand-over true;hold-super true;hold-super-delay 1000;keep-on-top true;keep-on-top-key ['<Super><Alt>p'];places true;recording-sizes true;reopen true;reopen-key ['<Super><Alt>t'];scratchpad true;see-through false;see-through-apps @a{si} {};show-desktop false;simple-desktop false;simple-desktop-leave ['<Super><Alt>Home'];simple-tiles @as [];snap true;snap-chooser ['<Super>z'];switcher true" ]] ||
     { echo "the windows module's keys or defaults are not the spec's"; exit 1; }
 [[ " ${MODULE_ORDER} " == *" tiling windows "* ]] || { echo "the windows module does not start right after the tiling"; exit 1; }
+# A simple desktop (R7-65): every key it sets exists, and takes what it is set to; Super+Alt+Home is free. Hand it over
+# (R7-64) says what it is, and ends at the lock
+for pair in tiling:enabled keys:super-alone dock:icon-size bars:layout; do
+    grep -q "UI}.${pair%:*}\`, '${pair#*:}'" "${UI_EXTENSION}/modules/windows/simple.js"
+    GSETTINGS_BACKEND=memory gsettings get "org.gnome.shell.extensions.amethystora-ui.${pair%:*}" "${pair#*:}" >/dev/null
+done
+grep -qx "<alt><super>home" <<<"${TILING_COMBOS}"$'\n'"${KEPT_COMBOS}" && { echo "Super+Alt+Home is bound elsewhere, and leaves the simple desktop"; exit 1; }
+grep -q "This is a courtesy, not a lock" "${UI_EXTENSION}/modules/windows/handover.js"
+grep -q "filter-keybinding" "${UI_EXTENSION}/modules/windows/handover.js"
 test -s "${UI_EXTENSION}/stylesheets/windows.css"
 test -s /usr/share/amethystora/themed/shell-windows.css.tpl
 GSETTINGS_BACKEND=memory ame desktop windows >/dev/null

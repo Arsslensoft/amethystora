@@ -19,6 +19,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {GettingSet} from './today/getting.js';
 import {Tasks} from './today/tasks.js';
 import {Weather} from './today/weather.js';
+import {YourYear} from './today/year.js';
 
 const SCHEMA = 'org.gnome.shell.extensions.amethystora-ui.today';
 const CLASS = 'amethystora-today';
@@ -45,9 +46,14 @@ export class Today {
         // Getting set, first in the column (modules/today/getting.js)
         this._getting = new GettingSet(dateMenu, this._settings);
         this._getting.enable();
+        // Your year, around the turn of the year (modules/today/year.js)
+        this._year = new YourYear(dateMenu, this._settings);
+        this._year.enable();
     }
 
     disable() {
+        this._year?.disable();
+        this._year = null;
         this._getting?.disable();
         this._getting = null;
         this._weather?.disable();
@@ -108,5 +114,9 @@ export class Today {
 
     get getting() {
         return this._getting;
+    }
+
+    get year() {
+        return this._year;
     }
 }

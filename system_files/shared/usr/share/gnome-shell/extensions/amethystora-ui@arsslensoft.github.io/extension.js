@@ -59,6 +59,7 @@ import {Tools} from './modules/tools.js';
 import {Guide} from './modules/guide.js';
 import {Rest} from './modules/rest.js';
 import {Living} from './modules/living.js';
+import {Found} from './modules/found.js';
 import {Focus} from './modules/focus.js';
 
 // In the order they start, by the name of their stylesheet; they stop in the opposite order. The desktop style comes
@@ -117,6 +118,7 @@ const MODULES = [
     ['guide', Guide],
     ['rest', Rest],
     ['living', Living],
+    ['found', Found],
     ['focus', Focus],
 ];
 

@@ -1,0 +1,68 @@
+#!/usr/bin/bash
+# If it's lost, it says whose it is (R7-71; offered, off until written): one line of the owner's, shown on the login screen
+# through GDM's banner and on the lock screen by Amethystora UI's found module, for anyone holding the computer to read.
+# It is public by choice and adds no way in. Both places read it from dconf: this writes one system database file for
+# every account's lock screen and one for GDM, so that one command sets it for the whole machine.
+#
+#   amethystora-if-found status      the line, or nothing; needs no root
+#   amethystora-if-found set         as root: the line on standard input, one line of 120 characters at most
+#   amethystora-if-found clear       as root: takes it away from both
+#
+# The line reaches these files as a quoted GVariant string, never as anything else: nothing in it can add a key.
+
+set -euo pipefail
+
+# AMETHYSTORA_IF_FOUND_ROOT is for build_files/shared/test-if-found.sh
+ROOT="${AMETHYSTORA_IF_FOUND_ROOT:-}"
+ACCOUNTS="${ROOT}/etc/dconf/db/local.d/70-amethystora-if-found"
+LOGIN="${ROOT}/etc/dconf/db/gdm.d/70-amethystora-if-found"
+MOST=120
+
+usage() {
+    sed -n 's/^#   amethystora-if-found /usage: amethystora-if-found /p' "$0" >&2
+    exit 64
+}
+
+# A GVariant string: what closes it or escapes in it is escaped, and the checks below keep out what ends a line
+quoted() {
+    local text="$1"
+    text="${text//\\/\\\\}"
+    text="${text//\'/\\\'}"
+    printf "'%s'" "${text}"
+}
+
+update() {
+    [[ -n "${ROOT}" ]] || dconf update
+}
+
+case "${1:-}" in
+    status)
+        [[ -r "${ACCOUNTS}" ]] || exit 0
+        sed -n "s/^line='\(.*\)'$/\1/p" "${ACCOUNTS}" | sed -e "s/\\\\'/'/g" -e 's/\\\\/\\/g'
+        ;;
+    set)
+        IFS= read -r line || [[ -n "${line:-}" ]] || exit 65
+        # Nothing but ordinary text, on one line: no control characters of any kind, and no end of line
+        # ...in valid UTF-8, which dconf would otherwise have to parse, in the database that holds the hardening's locks too
+        if [[ -z "${line//[[:space:]]/}" ]] || ! iconv -f UTF-8 -t UTF-8 <<<"${line}" >/dev/null 2>&1 ||
+            LC_ALL=C.UTF-8 grep -qP '[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]' <<<"${line}"; then
+            echo "amethystora-if-found: the line is empty, or holds what is not text" >&2
+            exit 65
+        fi
+        if (($(LC_ALL=C.UTF-8 wc -m <<<"${line}") - 1 > MOST)); then
+            echo "amethystora-if-found: the line is longer than ${MOST} characters" >&2
+            exit 65
+        fi
+        value="$(quoted "${line}")"
+        umask 022
+        mkdir -p "${ACCOUNTS%/*}" "${LOGIN%/*}"
+        printf '[org/gnome/shell/extensions/amethystora-ui/found]\nline=%s\n' "${value}" >"${ACCOUNTS}"
+        printf '[org/gnome/login-screen]\nbanner-message-enable=true\nbanner-message-text=%s\n' "${value}" >"${LOGIN}"
+        update
+        ;;
+    clear)
+        rm -f "${ACCOUNTS}" "${LOGIN}"
+        update
+        ;;
+    *) usage ;;
+esac

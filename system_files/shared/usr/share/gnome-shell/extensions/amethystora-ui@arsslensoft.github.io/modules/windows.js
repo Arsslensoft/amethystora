@@ -3,12 +3,12 @@
 // by clicking the wallpaper, touchpad gestures, windows that go back to their places for each arrangement of screens,
 // a live copy of a window kept in view, dimming the windows not in use, the drop-down terminal and the scratchpad,
 // windows kept on top that show it, see-through windows, a frame round the window in use, sizes for recording and
-// opening again the app just closed. Each is a key of its own, read live; the parts that belong to the classic layout
-// stand aside while the tiling is on and come back when it is off.
+// opening again the app just closed, handing one window over and a simple desktop. Each is a key of its own, read live; the parts that
+// belong to the classic layout stand aside while the tiling is on and come back when it is off.
 //
 // The parts are in windows/: snap.js, switcher.js, hold.js, corners.js, desktop.js, gestures.js, places.js, keep.js,
-// dim.js, scratch.js, ontop.js, seethrough.js, frame.js, sizes.js and reopen.js; menu.js puts their lines in the
-// window menu. None of them runs anything while nothing happens: they listen, and only while they are on.
+// dim.js, scratch.js, ontop.js, seethrough.js, frame.js, sizes.js, reopen.js, handover.js and simple.js; menu.js puts their lines
+// in the window menu. None of them runs anything while nothing happens: they listen, and only while they are on.
 
 import GLib from 'gi://GLib';
 
@@ -28,11 +28,13 @@ import {SeeThrough} from './windows/seethrough.js';
 import {Frame} from './windows/frame.js';
 import {Sizes} from './windows/sizes.js';
 import {Reopen} from './windows/reopen.js';
+import {HandOver} from './windows/handover.js';
+import {Simple} from './windows/simple.js';
 
 const GESTURES = ['pinch', 'spread', 'down', 'today'];
 // In the order they start; they stop in the opposite one
 const PARTS = ['snap', 'switcher', 'hold', 'desktop', 'corners', 'gestures', 'places', 'keep', 'dimmer',
-    'scratch', 'ontop', 'seeThrough', 'frame', 'sizes', 'reopen'];
+    'scratch', 'ontop', 'seeThrough', 'frame', 'sizes', 'reopen', 'handOver', 'simple'];
 
 export class Windows {
     constructor(ext) {
@@ -64,9 +66,11 @@ export class Windows {
         this.frame = new Frame(this);
         this.sizes = new Sizes(this);
         this.reopen = new Reopen(this);
+        this.handOver = new HandOver(this);
+        this.simple = new Simple(this);
         this._running = new Set();
         // The window menu's lines of the parts that run (a copy kept in view, the scratchpad, the sizes)
-        this.menu = new MenuHook((menu, window) => ['keep', 'scratch', 'sizes']
+        this.menu = new MenuHook((menu, window) => ['keep', 'scratch', 'sizes', 'handOver']
             .filter(name => this._running?.has(name)).map(name => this[name].menuItems(menu, window)));
         this.menu.enable();
         this.settings.connectObject('changed', (s, key) => this._changed(key), this);
@@ -80,6 +84,10 @@ export class Windows {
             });
         }, this);
         this._sync();
+        // Turned off while this was not running (a terminal, the screen locked, a setup file applied): what the simple
+        // desktop set is given back now. One small read, and nothing when it left nothing.
+        if (!this.settings.get_boolean('simple-desktop'))
+            this.simple.restore().catch(logError);
     }
 
     disable() {
@@ -126,6 +134,8 @@ export class Windows {
             frame: classic && s.get_boolean('frame'),
             sizes: s.get_boolean('recording-sizes'),
             reopen: s.get_boolean('reopen'),
+            handOver: s.get_boolean('hand-over'),
+            simple: s.get_boolean('simple-desktop'),
         };
     }
 
@@ -158,6 +168,11 @@ export class Windows {
         if (key === 'places' && !this.settings.get_boolean('places')) {
             this._stop('places', false);
             return;
+        }
+        // The simple desktop turned off by the person: stopped, and each key it set back as it was
+        if (key === 'simple-desktop' && !this.settings.get_boolean('simple-desktop')) {
+            this._stop('simple', true);
+            this.simple.restore().catch(logError);
         }
         // Reopening turned off forgets what closed
         if (key === 'reopen' && !this.settings.get_boolean('reopen'))
@@ -231,7 +246,7 @@ export class Windows {
     glassSurfaces() {
         if (!this._running)
             return [];
-        return [this.snap, this.switcher, this.hold, this.desktop]
+        return [this.snap, this.switcher, this.hold, this.desktop, this.simple]
             .flatMap(part => part.glassSurfaces?.() ?? []);
     }
 

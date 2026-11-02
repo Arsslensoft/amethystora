@@ -87,6 +87,9 @@ pub fn refusal(argv: &[String]) -> Option<String> {
     if program == "amethystora-raid" && argv.get(1).map(String::as_str) != Some("status") {
         return Some("pools of disks are made, changed and erased only by the user, in a terminal".into());
     }
+    if program == "amethystora-if-found" && argv.get(1).map(String::as_str) != Some("status") {
+        return Some("the line on the login and lock screens is the user's own words: the user writes it".into());
+    }
     if matches!(program, "ame" | "ujust" | "just") {
         return match recipe_words(&argv[1..]) {
             // A group's own justfile is read both ways: as that group's recipes and as the file it may only be named like
@@ -216,6 +219,8 @@ fn ame_refusal(args: &[String]) -> Option<String> {
             Some("the live pill's list of what the agent changes is the user's to turn off".into())
         }
         ["apps", "aur", ..] => Some("turning the AUR on is the user's choice alone".into()),
+        // Anyone holding the computer reads it at the login and lock screens: its words are chosen by the person
+        ["system", "if-found", ..] => Some("the line on the login and lock screens is the user's own words: the user writes it".into()),
         // External screens' brightness gives the person at the machine the displays' i2c buses, which reach other chips
         // of the graphics card too: an access grant only the machine's owner makes (taking it back is fine)
         ["desktop", "phone", "codes"] | ["desktop", "phone", "codes", "on", ..] => {
@@ -315,6 +320,11 @@ mod tests {
             "ame desktop text-shortcuts on",
             "ame desktop text-shortcuts",
             "ame desktop text-shortcut add ;x",
+            "ame system if-found off",
+            "ame system if-found Call me",
+            "ame -q system::if-found",
+            "amethystora-if-found set",
+            "amethystora-if-found clear",
             "ame desktop text-shortcut show ;sig",
             "ame desktop text-shortcut remove ;sig",
             "cat /var/home/a/.config/amethystora/text-shortcuts.json",
@@ -445,6 +455,7 @@ mod tests {
             "ame security kernel-args init_on_free=1 on",
             "ame security dns quad9",
             "ame system raid status",
+            "amethystora-if-found status",
             "ame desktop text-shortcuts off",
             "ame desktop phone codes off",
             "gsettings set org.amethystora.Connect codes false",

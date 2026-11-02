@@ -1257,7 +1257,7 @@ tiling-settings:
 # windows, the frame, sizes for recording and reopening the app just closed:
 # ame desktop windows [snap|switcher|show-desktop|places|dim on|off] [hold-super on|off|MS]
 # [corner top-left|top-right|bottom-left|bottom-right ACTION] [gesture pinch|spread|down|today on|off] [places forget]
-# [drop-down|scratchpad|keep-on-top|see-through|frame|recording-sizes|reopen on|off] [see-through-app APP PERCENT|off]
+# [drop-down|scratchpad|keep-on-top|see-through|frame|recording-sizes|reopen|hand-over|simple-desktop on|off] [simple-tiles LAUNCHER.desktop...] [see-through-app APP PERCENT|off]
 [positional-arguments]
 windows *ARGS:
     #!/usr/bin/bash
@@ -1266,7 +1266,7 @@ windows *ARGS:
     source gettext.sh
     schema=org.gnome.shell.extensions.amethystora-ui.windows
     usage() {
-        echo "usage: ame desktop windows [snap|switcher|show-desktop|places|dim on|off] [hold-super on|off|MS] [corner top-left|top-right|bottom-left|bottom-right none|overview|desktop|lock|note|notifications] [gesture pinch|spread|down|today on|off] [places forget] [drop-down|scratchpad|keep-on-top|see-through|frame|recording-sizes|reopen on|off] [see-through-app APP.desktop 40-100|off]"
+        echo "usage: ame desktop windows [snap|switcher|show-desktop|places|dim on|off] [hold-super on|off|MS] [corner top-left|top-right|bottom-left|bottom-right none|overview|desktop|lock|note|notifications] [gesture pinch|spread|down|today on|off] [places forget] [drop-down|scratchpad|keep-on-top|see-through|frame|recording-sizes|reopen|hand-over|simple-desktop on|off] [simple-tiles LAUNCHER.desktop...] [see-through-app APP.desktop 40-100|off]"
         exit 64
     }
     # The words a person types back, so left as they are
@@ -1285,14 +1285,14 @@ windows *ARGS:
         for name in pinch spread down today; do
             echo "gesture ${name} $(word "gesture-${name}")"
         done
-        for key in drop-down scratchpad keep-on-top see-through frame recording-sizes reopen; do
+        for key in drop-down scratchpad keep-on-top see-through frame recording-sizes reopen hand-over simple-desktop; do
             echo "${key} $(word "${key}")"
         done
         echo "see-through-apps $(gsettings get "${schema}" see-through-apps)"
         exit 0
     fi
     case "$1" in
-        drop-down | scratchpad | keep-on-top | see-through | frame | recording-sizes | reopen)
+        drop-down | scratchpad | keep-on-top | see-through | frame | recording-sizes | reopen | hand-over | simple-desktop)
             [[ $# -eq 2 ]] || usage
             onoff "$2"
             gsettings set "${schema}" "$1" "$(bool "$2")"
@@ -1311,7 +1311,30 @@ windows *ARGS:
                 recording-sizes:off) echo "$(gettext "A window's menu offers no sizes for recording.")" ;;
                 reopen:on) echo "$(gettext "Super+Alt+T opens again the app you just closed, at its place; five back. Nothing is written down.")" ;;
                 reopen:off) echo "$(gettext "Super+Alt+T does nothing, and what had closed is forgotten.")" ;;
+                hand-over:on) echo "$(gettext "A window's menu offers Hand this over: that window alone until the screen is locked. A courtesy, not a security boundary.")" ;;
+                hand-over:off) echo "$(gettext "A window's menu does not offer Hand this over.")" ;;
+                simple-desktop:on) echo "$(gettext "A simple desktop: big tiles, large text and one window at a time, for this account. Nothing is taken out of the system, and Super+Alt+Home goes back.")" ;;
+                simple-desktop:off) echo "$(gettext "The full desktop again, with the settings as they were.")" ;;
             esac
+            ;;
+        simple-tiles)
+            # The simple desktop's tiles by their launchers, six at most; none: the four it picks itself
+            shift
+            # In a terminal with none given (Control's Choose…): asked for, and an empty answer is none
+            if [[ $# -eq 0 && -t 0 && -t 1 ]]; then
+                chosen=()
+                read -ra chosen < <(gum input --header "$(gettext "The launchers of the tiles, up to six, with spaces between (none: it picks four itself)")" \
+                    --placeholder "firefox.desktop org.gnome.Nautilus.desktop" || true) || true
+                set -- "${chosen[@]}"
+            fi
+            (($# <= 6)) || usage
+            list=""
+            for app in "$@"; do
+                [[ "${app}" =~ ^[A-Za-z0-9_][A-Za-z0-9._+-]*\.desktop$ ]] || usage
+                list+="${list:+, }'${app}'"
+            done
+            gsettings set "${schema}" simple-tiles "[${list}]"
+            echo "$(gettext "The simple desktop's tiles are set.")"
             ;;
         see-through-app)
             # An app's windows open see-through: its launcher's ID and a percentage from 40 to 100, or off
@@ -2056,7 +2079,7 @@ pill *ARGS:
     source gettext.sh
     schema=org.gnome.shell.extensions.amethystora-ui.pill
     usage() {
-        echo "usage: ame desktop pill [dots|glow|meetings|two-at-once|weight|timer|moving|stay-awake|hello|drop|music|music-bars] [on|off]"
+        echo "usage: ame desktop pill [dots|glow|meetings|mirror|two-at-once|weight|timer|moving|stay-awake|hello|drop|music|music-bars] [on|off]"
         exit 64
     }
     what=live
@@ -2073,6 +2096,7 @@ pill *ARGS:
         drop) what=drop-targets; shift ;;
         music) what=music-see; shift ;;
         music-bars) what=music-bars; shift ;;
+        mirror) what=meeting-mirror; shift ;;
     esac
     [[ $# -le 1 ]] || usage
     state="${1:-}"
@@ -2107,6 +2131,8 @@ pill *ARGS:
         music-see:off) echo "$(gettext "The pill keeps the theme's colours and the position in its card is a line.")" ;;
         music-bars:on) echo "$(gettext "The pill's bars follow the real sound of the player, read by a small program that runs only while they show.")" ;;
         music-bars:off) echo "$(gettext "The pill's bars play four beats as before, and nothing reads the sound.")" ;;
+        meeting-mirror:on) echo "$(gettext "A meeting's card offers How do I look and sound?: the camera and a microphone level, only while the window shows. Nothing is recorded.")" ;;
+        meeting-mirror:off) echo "$(gettext "A meeting's card does not offer How do I look and sound?")" ;;
         *) usage ;;
     esac
     if [[ "${state}" == on ]]; then gsettings set "${schema}" "${what}" true; else gsettings set "${schema}" "${what}" false; fi
@@ -3185,6 +3211,32 @@ today *ARGS:
         *) usage ;;
     esac
     if [[ "${state}" == on ]]; then gsettings set "${schema}" tasks true; else gsettings set "${schema}" tasks false; fi
+
+# Your year, on this machine: on|off, Today's card around the turn of the year; now, the page in this terminal. Worked out
+# when asked and never kept
+[positional-arguments]
+your-year ACTION="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.today
+    case "${1:-}" in
+        "") if [[ "$(gsettings get "${schema}" your-year)" == true ]]; then echo on; else echo off; fi ;;
+        on)
+            gsettings set "${schema}" your-year true
+            echo "$(gettext "Around the turn of the year, Today offers one page about your year on this machine.")"
+            ;;
+        off)
+            gsettings set "${schema}" your-year false
+            echo "$(gettext "Today does not offer your year.")"
+            ;;
+        now) /usr/libexec/amethystora-your-year ;;
+        *)
+            echo "usage: ame desktop your-year [on|off|now]"
+            exit 64
+            ;;
+    esac
 
 # The weather beside the clock and in the calendar menu, for the place you chose in Weather. It sends that place to a
 # weather service, so it is off until you turn it on (ame desktop weather [on|off]). Without on or off, it asks
@@ -4778,7 +4830,7 @@ screenshot WHAT="" STATE="":
     source gettext.sh
     schema=org.gnome.shell.extensions.amethystora-ui.screenshot
     usage() {
-        echo "usage: ame desktop screenshot thumbnail|pin|trim on|off"
+        echo "usage: ame desktop screenshot thumbnail|pin|trim|private on|off"
         exit 64
     }
     case "${1:-}/${2:-}" in
@@ -4802,6 +4854,15 @@ screenshot WHAT="" STATE="":
         pin/off)
             gsettings set "${schema}" capture-pin false
             echo "$(gettext "Pinning pictures is off; pinned pictures are gone.")"
+            ;;
+        # Hide what's private (R7-67, on)
+        private/on)
+            gsettings set "${schema}" hide-private true
+            echo "$(gettext "The screenshot bar offers Hide what's private: solid boxes over addresses, card, phone and account numbers, read on this computer.")"
+            ;;
+        private/off)
+            gsettings set "${schema}" hide-private false
+            echo "$(gettext "The screenshot bar does not offer Hide what's private.")"
             ;;
         # Trim on the recording's notice (R6-19, offered, off)
         trim/on)

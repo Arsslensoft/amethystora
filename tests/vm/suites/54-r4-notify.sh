@@ -15,7 +15,7 @@
 #   - ten disables and enables leaving nothing, Control's entries and the setup file.
 # A software-rendered lab shell leaves a banner queued until it is told to look again (Main.messageTray._updateState()):
 # the suite does that (poke) where a banner should show, which a real session does by itself at its next event.
-# vmlab-paths: @ui/extension.js @ui/*pill* @ui/*today* @ui/*power* @ui/*quick* @sf/*themed/shell-pill* @sf/*themed/shell-today* @sf/*themed/shell-power* @sf/*manual/whats-new.md build_files/shared/*whats-new* @sf/usr/libexec/amethystora-control-list @sf/*just/desktop.just
+# vmlab-paths: @ui/extension.js @ui/*pill* @ui/*today* @ui/*power* @ui/*quick* @sf/*themed/shell-pill* @sf/*themed/shell-today* @sf/*themed/shell-power* @sf/*manual/whats-new.md build_files/shared/*whats-new* @sf/usr/libexec/amethystora-control-list @sf/*just/desktop.just @ui/modules/windows/handover.js
 source "$(dirname "$0")/lib.sh"
 
 UUID=amethystora-ui@arsslensoft.github.io

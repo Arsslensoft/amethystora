@@ -776,6 +776,9 @@ export class Bars {
 
     // The bar comes down over the fullscreen window, from where it is if it was on its way back up
     _peek(index) {
+        // A window handed over (R7-64) is all there is: the bar, with the notifications and the power menu, stays up
+        if (this._ext.modules?.get('windows')?.handOver?.active)
+            return;
         const bar = this._barOf(index);
         if (!bar)
             return;

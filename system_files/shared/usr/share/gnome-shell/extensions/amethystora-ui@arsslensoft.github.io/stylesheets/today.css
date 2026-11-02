@@ -226,3 +226,36 @@
   font-size: 12px;
   font-weight: 700;
 }
+
+/* Your year (modules/today/year.js): the page. Its card is Getting set's */
+.amethystora-today-year {
+  spacing: 12px;
+  min-width: 360px;
+}
+
+.amethystora-today-year-title {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.amethystora-today-year-row {
+  spacing: 2px;
+}
+
+.amethystora-today-year-name {
+  font-size: 12px;
+  font-weight: 700;
+  opacity: 0.75;
+}
+
+.amethystora-today-year-value {
+  font-size: 15px;
+}
+
+.amethystora-today-year-foot {
+  font-size: 11.5px;
+}
+
+.amethystora-today-year-buttons {
+  spacing: 12px;
+}

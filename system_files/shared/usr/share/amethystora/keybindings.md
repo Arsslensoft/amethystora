@@ -61,6 +61,7 @@ the top bar on the left.
 | `Super+Alt+Return` | The drop-down terminal, and the scratchpad's windows in the classic layout |
 | `Super+Alt+P` | Keep the window on top, with a ring and a pin, or let it go |
 | `Super+Alt+T` | Reopen the app you just closed, at its place; five back |
+| `Super+Alt+Home` | Leave the simple desktop, while it is on |
 | `Super+Alt` and scroll | See through the window under the pointer, while see-through windows are on |
 | Hold `Super` | The main shortcuts, and numbers on the dock |
 

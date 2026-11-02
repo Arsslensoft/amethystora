@@ -258,7 +258,7 @@ export class Pill {
         this._hold?.setPresenting(!!this._presentMark);
         // A meeting about to start: a part of the live pill, while both keys are on
         const notice = (...a) => this.notice(...a);
-        this._toggle('_meetings', !!this._clock && on('meetings'), () => new Meetings(this._activities, notice));
+        this._toggle('_meetings', !!this._clock && on('meetings'), () => new Meetings(this._activities, notice, this._settings));
         if (on('live') || on('privacy-dots'))
             this._hideGnomeCapture();
         else

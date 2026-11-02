@@ -173,5 +173,24 @@
       <default><![CDATA[['<Super><Alt>t']]]></default>
       <summary>Reopen the app just closed</summary>
     </key>
+    <key name="simple-desktop" type="b">
+      <default>false</default>
+      <summary>A simple desktop</summary>
+      <description>Big tiles on the wallpaper, large text, a larger pointer, one window at a time and a plain top bar with Home, for this account. Off puts back what each setting held.</description>
+    </key>
+    <key name="simple-tiles" type="as">
+      <default>[]</default>
+      <summary>The simple desktop's tiles</summary>
+      <description>Launcher IDs (name.desktop), six at most. Empty: the internet, email, photos and files, by the apps this account opens them with.</description>
+    </key>
+    <key name="simple-desktop-leave" type="as">
+      <default><![CDATA[['<Super><Alt>Home']]]></default>
+      <summary>Leave the simple desktop</summary>
+    </key>
+    <key name="hand-over" type="b">
+      <default>true</default>
+      <summary>Hand a window over</summary>
+      <description>A window's menu offers Hand this over: that window alone, full screen, until the screen is locked. A courtesy, not a security boundary.</description>
+    </key>
   </schema>
 </schemalist>

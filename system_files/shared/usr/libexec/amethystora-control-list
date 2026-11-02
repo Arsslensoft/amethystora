@@ -1317,6 +1317,17 @@ win_item windows-recording-sizes recording-sizes "${ gettext "Sizes for recordin
     desktop#sizes-for-recording false
 win_item windows-reopen reopen "${ gettext "Reopen the app you just closed"; }" \
     "${ gettext "Super+Alt+T opens it again, at its place; five back. Kept in memory only."; }" desktop#reopen false
+win_item windows-hand-over hand-over "${ gettext "Hand a window over"; }"     "${ gettext "A window's menu pins that window alone until the screen is locked. A courtesy, not a security boundary."; }" desktop#hand-it-over false
+win_item windows-simple-desktop simple-desktop "${ gettext "A simple desktop"; }" \
+    "${ gettext "Big tiles, large text and one window at a time, for this account. Nothing is taken out of the system, and Super+Alt+Home goes back."; }" desktop#a-simple-desktop false
+# Which apps are its tiles: asked in a terminal, up to six launchers, or none for the four it picks itself
+COMMAND=(ame desktop windows simple-tiles)
+TERMINAL=true
+BUTTON="${ gettext "Choose…"; }"
+USAGE="ame desktop windows simple-tiles [LAUNCHER.desktop...]"
+[[ "${ onoff_of "${WINDOWS}" simple-desktop; }" == on ]] || DETAIL="${ gettext "They show once the simple desktop is on."; }"
+item desktop windows-simple-tiles action "${ gettext "The simple desktop's tiles"; }" \
+    "${ gettext "Up to six apps, by their launchers; none, and it picks four itself."; }" "" desktop#a-simple-desktop
 
 # The window settings GNOME keeps out of sight (R5-12): GNOME's own keys, each an ame desktop window-settings command
 WM="${ said wm-prefs; }"
@@ -1943,6 +1954,9 @@ PILLKEY=music-see pill_item pill-music "${ gettext "Music you can see"; }" \
 PILLKEY=music-bars pill_item pill-music-bars "${ gettext "Bars that follow the sound"; }" \
     "${ gettext "The pill's bars follow the real sound of the player, read by a small program that runs only while they show. Off, they play four beats."; }" \
     desktop#music-you-can-see ame desktop pill music-bars
+PILLKEY=meeting-mirror pill_item pill-mirror "${ gettext "How do I look and sound?"; }" \
+    "${ gettext "A meeting's card offers a small window with the camera and a microphone level. The camera opens only while it shows, and nothing is recorded."; }" \
+    desktop#how-do-i-look-and-sound ame desktop pill mirror
 
 # A top bar on every screen, the bar over fullscreen, Today's tasks and the weather
 # (org.gnome.shell.extensions.amethystora-ui.bars and .today)
@@ -1978,6 +1992,9 @@ ui_switch today weather weather "${ gettext "Weather beside the clock"; }" \
 ui_switch today getting-set getting-set "${ gettext "Getting set"; }" \
     "${ gettext "For your first four weeks, the calendar menu lists the steps that protect the machine and make it yours."; }" \
     desktop#getting-set false ame desktop getting-set
+ui_switch today your-year your-year "${ gettext "Your year, on this machine"; }" \
+    "${ gettext "Around the turn of the year, Today offers one page about your year here, worked out when you open it and never kept."; }" \
+    desktop#your-year false ame desktop your-year
 
 # The bar your way: what it holds and where (one entry the window draws as the bar), its size and its edge
 bars_value() { value_of "${BARS}" "$1" "'(.*)'\$"; }
@@ -2385,6 +2402,13 @@ USAGE="ame desktop screenshot pin on|off"
 item desktop screenshot-pin switch "${ gettext "Pin pictures on top"; }" \
     "${ gettext "Keep a screenshot above every window while you work below it."; }" \
     "${ onoff_of "${SCREENSHOT}" capture-pin; }" desktop#pinned-pictures
+# Hide what's private (R7-67, on)
+ui_reason screenshot
+switch_choices false ame desktop screenshot private
+USAGE="ame desktop screenshot private on|off"
+item desktop screenshot-private switch "${ gettext "Hide what's private"; }" \
+    "${ gettext "A button in the screenshot bar covers addresses, card, phone and account numbers with solid boxes, read on this computer. It can miss things, and says so."; }" \
+    "${ onoff_of "${SCREENSHOT}" hide-private; }" desktop#hide-whats-private
 # Trim a recording (R6-19, offered, off)
 ui_reason screenshot
 switch_choices false ame desktop screenshot trim
@@ -3086,6 +3110,15 @@ while read -r stream; do
     esac
 done < <(jq -r '.streams[]' <<<"${CHOICES_JSON}")
 [[ "${SEALED}" == true ]] && REASON="${ gettext "This machine is sealed, so it follows the sealed stream only."; }"
+GROUP="${ gettext "The system"; }"
+# If it's lost, it says whose it is (R7-71): written in a terminal, which says first who can read it
+COMMAND=(ame system if-found)
+TERMINAL=true
+BUTTON="${ gettext "Write the line"; }"
+USAGE="ame system if-found [LINE|off]"
+item system if-found action "${ gettext "If it's lost, it says whose it is"; }" \
+    "${ gettext "One line of yours on the login and lock screens, for an honest finder. Anyone holding the computer can read it."; }" \
+    "" hardware#if-its-lost
 GROUP="${ gettext "The system"; }"
 USAGE="ame system rebase IMAGE STREAM"
 item system stream choice "${ gettext "Stream"; }" "${ gettext "How new the builds this machine follows are."; }" \

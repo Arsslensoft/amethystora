@@ -11,7 +11,7 @@
 #      time the image's PAM setup kept
 #
 # The domain controller is set up in the background from the start, since installing it takes minutes.
-# vmlab-paths: @sf/usr/libexec/amethystora-domain-logins @sf/usr/libexec/amethystora-ssh-codes @sf/etc/realmd.conf @sf/etc/security/*
+# vmlab-paths: @sf/usr/libexec/amethystora-domain-logins @sf/usr/libexec/amethystora-ssh-codes @sf/etc/realmd.conf @sf/etc/security/* @sf/usr/libexec/amethystora-if-found @ui/modules/found.js
 source "$(dirname "$0")/lib.sh"
 
 KID=vmlabkid

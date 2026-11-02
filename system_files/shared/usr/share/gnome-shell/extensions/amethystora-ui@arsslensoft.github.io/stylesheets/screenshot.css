@@ -201,3 +201,43 @@
   color: #ffffff;
   background-color: -st-accent-color;
 }
+
+/* Hide what's private: the card under the toolbar */
+.amethystora-screenshot-cover-card {
+  width: 380px;
+  padding: 12px 14px;
+  spacing: 10px;
+  border-radius: 14px;
+  background-color: rgba(34, 34, 38, 0.97);
+  color: #ffffff;
+}
+
+.amethystora-screenshot-cover-text {
+  font-size: 13px;
+}
+
+.amethystora-screenshot-cover-buttons {
+  spacing: 8px;
+}
+
+.amethystora-screenshot-cover-button {
+  padding: 5px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.14);
+}
+
+.amethystora-screenshot-cover-button:hover {
+  background-color: rgba(255, 255, 255, 0.24);
+}
+
+.amethystora-screenshot-cover-primary {
+  color: #000000;
+  background-color: #ffffff;
+}
+
+.amethystora-screenshot-cover-primary:hover {
+  background-color: rgba(255, 255, 255, 0.85);
+}

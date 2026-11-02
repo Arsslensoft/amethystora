@@ -7,6 +7,11 @@
       <summary>The colour and line width each drawing tool last had</summary>
       <description>Written by the screenshot tools as they are used, so that each drawing tool comes back with the colour and width it was left with.</description>
     </key>
+    <key name="hide-private" type="b">
+      <default>true</default>
+      <summary>Hide what's private in a screenshot</summary>
+      <description>A button in the screenshot bar reads the picture on this computer and covers e-mail addresses, card, phone and bank account numbers with solid boxes, saying what it covered.</description>
+    </key>
     <key name="capture-thumbnail" type="b">
       <default>true</default>
       <summary>A thumbnail after a screenshot</summary>

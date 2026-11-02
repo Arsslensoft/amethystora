@@ -17,6 +17,7 @@ import {
     pickBox, textSize,
 } from './marks.js';
 import {Toolbar} from './toolbar.js';
+import {Cover} from './cover.js';
 
 // The keys that choose the tools, in the toolbar's order: the number row, the same row of a French or Belgian
 // keyboard without Shift, and a letter each
@@ -30,6 +31,12 @@ const FRAMING_OPACITY = 100;
 const READOUT_FADE = 400;
 // The size readout says nothing about an area smaller than this, in logical pixels
 const READOUT_MIN = [100, 50];
+// The bar's panel is 329 px wide as GNOME draws it (a 291 px content box, 19 px of padding each side), which leaves three
+// buttons room on the right of the shutter, that is centred; a button is 36 px (10 px of padding either side and a 16 px
+// icon). Each button beyond three needs twice its width more, for its own and the shutter's mirror side
+// (measured in the GNOME 51 harness: 4 buttons overlap the shutter by 22 px in 329, and clear it in 401).
+const PANEL_WIDTH = 291;
+const BUTTON_WIDTH = 36;
 const MODIFIERS = Clutter.ModifierType.CONTROL_MASK | Clutter.ModifierType.MOD1_MASK |
     Clutter.ModifierType.SUPER_MASK | Clutter.ModifierType.HYPER_MASK | Clutter.ModifierType.META_MASK;
 
@@ -132,6 +139,7 @@ export class Session {
             ui.add_child(this._extractTip);
         }
         this.syncPin(false);
+        this.syncCover(false);
 
         for (const button of [ui._selectionButton, ui._screenButton, ui._windowButton, ui._castButton])
             button.connectObject('notify::checked', () => this._sync(), this);
@@ -159,6 +167,12 @@ export class Session {
         this._pinTip?.destroy();
         this._pin?.destroy();
         this._pinTip = this._pin = null;
+        this._coverer?.destroy();
+        this._coverer = null;
+        this._coverTip?.destroy();
+        this._cover?.destroy();
+        this._coverTip = this._cover = null;
+        this._ui._panel.set_style(null);
         this._toolbarBin.destroy();
         this._overlay.destroy();
         this._input.destroy();
@@ -214,6 +228,72 @@ export class Session {
             this._sync();
     }
 
+    // Hide what's private reads what will be in the picture: an area or the screen, as Pin
+    get coverLive() {
+        return Boolean(this._cover) && !this._portal && this._ui._shotButton.checked &&
+            (this._ui._selectionButton.checked || this._ui._screenButton.checked);
+    }
+
+    // Hide what's private, after Pin, while hide-private is on; made or taken away as the key changes
+    syncCover(resync = true) {
+        const ui = this._ui;
+        const wanted = this._module.coverOn;
+        if (wanted && !this._cover) {
+            this._cover = new St.Button({
+                style_class: 'screenshot-ui-show-pointer-button amethystora-screenshot-compact',
+                child: new St.Icon({gicon: this._module.icon('cover'), icon_size: 16}),
+                accessible_name: _('Hide what’s private'),
+            });
+            this._cover.connect('clicked', () => {
+                this._closeEntry(true);
+                this._coverer?.run().catch(logError);
+            });
+            ui._showPointerButtonContainer.insert_child_below(this._cover, this._compact);
+            this._coverTip = new ScreenshotUI.Tooltip(this._cover, {
+                text: _('Hide what’s private'),
+                style_class: 'screenshot-ui-tooltip',
+                visible: false,
+            });
+            ui.add_child(this._coverTip);
+            this._coverer = new Cover(this, ui, this._overlay);
+        } else if (!wanted && this._cover) {
+            this._coverer?.uncover();
+            this._coverer?.destroy();
+            this._coverer = null;
+            this._coverTip?.destroy();
+            this._cover.destroy();
+            this._coverTip = this._cover = null;
+        }
+        if (resync)
+            this._sync();
+    }
+
+    // For Hide what's private, which covers with marks like any other: drawn, picked up and burnt in the same way
+    addMarks(marks) {
+        this._marks.push(...marks);
+        this._redraw();
+    }
+
+    removeMarks(marks) {
+        this._marks = this._marks.filter(mark => !marks.includes(mark));
+        this._picked = null;
+        this._sync();
+        this._redraw();
+    }
+
+    copy() {
+        this._module.copyNow();
+    }
+
+    // Hide what's private is still reading: a picture taken now would have no boxes, so none is taken, and the card says
+    get coverReading() {
+        return Boolean(this._coverer?.reading);
+    }
+
+    coverWait() {
+        this._coverer?.wait();
+    }
+
     get marks() {
         return this.drawing ? this._marks : [];
     }
@@ -260,6 +340,22 @@ export class Session {
             this._pin.reactive = live;
             this._pin.ease({opacity: live ? 255 : 80, duration: 200, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
         }
+        if (this._cover) {
+            const live = this.coverLive;
+            // Where nothing can be burnt in (a window, a recording, an app's screenshot), no card says "covered"
+            if (!live)
+                this._coverer?.uncover();
+            this._cover.reactive = live;
+            this._cover.ease({opacity: live ? 255 : 80, duration: 200, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
+        }
+        this._syncWidth();
+    }
+
+    // The shutter is in the middle of the panel and the buttons on the right reach under it when there are more than
+    // three: the panel gets 72 px (twice a button) for each one beyond, wherever they come from
+    _syncWidth() {
+        const count = this._ui._showPointerButtonContainer.get_children().length;
+        this._ui._panel.set_style(count > 3 ? `min-width: ${PANEL_WIDTH + (count - 3) * 2 * BUTTON_WIDTH}px;` : null);
     }
 
     // While an area is dragged out, the toolbar fades so that it hides nothing, and the area's size is shown

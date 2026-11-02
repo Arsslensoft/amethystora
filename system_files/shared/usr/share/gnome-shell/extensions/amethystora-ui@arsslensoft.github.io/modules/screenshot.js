@@ -8,6 +8,9 @@
 // Pin a capture (board 48): the card is a thumbnail with Edit, Copy, Pin on top, Show in Files and Delete
 // (capture-thumbnail; off, GNOME's own words come back as a notification), and a capture can be pinned above every
 // window, from the thumbnail or straight from the bar's Pin button or Ctrl+P (capture-pin; screenshot/pins.js).
+//
+// Hide what's private (R7-67): a button beside Pin covers addresses, card, phone and account numbers with solid boxes
+// (hide-private; screenshot/cover.js).
 
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
@@ -35,7 +38,7 @@ const PORTAL_MODE = 2;
 const SCHEMA = 'org.gnome.shell.extensions.amethystora-ui.screenshot';
 // Icons drawn for the toolbar, in icons/screenshot; the rest are the icon theme's
 const OWN_ICONS = new Set(['move', 'pen', 'box', 'fill', 'highlight', 'arrow', 'text', 'marker', 'extract', 'pin',
-    'through']);
+    'through', 'cover']);
 // GNOME's own words for a capture, in its own translations, for the notification that stands in for the thumbnail
 const gnome = text => Gettext.dgettext('gnome-shell', text);
 const THEME_ICONS = {area: 'screenshot-ui-area-symbolic', display: 'screenshot-ui-display-symbolic'};
@@ -77,6 +80,7 @@ export class Screenshot {
             forgetWaiting();
         this._settings.connectObject(
             'changed::capture-pin', () => this._pinChanged(),
+            'changed::hide-private', () => this._session?.syncCover(),
             'changed::capture-thumbnail', () => {
                 if (!this._settings.get_boolean('capture-thumbnail'))
                     this._card?.close(true);
@@ -145,6 +149,15 @@ export class Screenshot {
         if (!this.pinOn)
             this._pins?.clear();
         this._session?.syncPin();
+    }
+
+    // Hide what's private (R7-67, screenshot/cover.js)
+    get coverOn() {
+        return this._settings?.get_boolean('hide-private') ?? false;
+    }
+
+    copyNow() {
+        this._take('copy').catch(logError);
     }
 
     // The pinned pictures' buttons and the thumbnail are glass panes
@@ -291,6 +304,11 @@ export class Screenshot {
         const ui = this._ui;
         if (this._busy || !ui)
             return Promise.resolve();
+        // Hide what's private is still reading the picture: it is not taken without the boxes it was asked to put on
+        if (this._session?.coverReading) {
+            this._session.coverWait();
+            return Promise.resolve();
+        }
         let picturing;
         try {
             picturing = this._picture();

@@ -97,7 +97,7 @@ WINDOWS=org.gnome.shell.extensions.amethystora-ui.windows
 WINDOWS_TABLE="$(sed -n "/^WINDOWS_KEYS='{\$/,/^}'\$/{s/^WINDOWS_KEYS='//; s/^}'\$/}/; p}" "${SETUP}")"
 listed="$(jq -r 'keys[]' <<<"${WINDOWS_TABLE}" | sort)"
 schema="$(GSETTINGS_BACKEND=memory /usr/bin/gsettings list-keys "${WINDOWS}" |
-    grep -vxE 'snap-chooser|drop-down-key|keep-on-top-key|reopen-key' | sort)"
+    grep -vxE 'snap-chooser|drop-down-key|keep-on-top-key|reopen-key|simple-desktop-leave' | sort)"
 [[ -n "${listed}" && "${listed}" == "${schema}" ]] ||
     { echo "WINDOWS_KEYS and the windows module's schema differ:"; diff <(echo "${listed}") <(echo "${schema}"); false; }
 while read -r key; do
@@ -107,6 +107,8 @@ while read -r key; do
         "range i "*) want="$(awk '{print "[\"i\"," $3 "," $4 "]"}' <<<"${range}")" ;;
         # The apps whose windows open see-through, each a launcher ID with a percentage
         "type a{si}") want='["opacity"]' ;;
+        # The simple desktop's tiles, by their launchers
+        "type as") want='["as","launchers"]' ;;
         enum*) want="[\"s\",$(GSETTINGS_BACKEND=memory /usr/bin/gsettings range "${WINDOWS}" "${key}" |
             sed -n "2,\$p" | tr "'" '"' | jq -sc .)]" ;;
         *) want="? ${range}" ;;
@@ -201,7 +203,7 @@ for table in BARS:org.gnome.shell.extensions.amethystora-ui.bars TODAY:org.gnome
     listed="$(jq -r 'keys[]' <<<"${TABLE}" | sort)"
     # Never the app grid's names and icons of the account's own: a name is the person's text, a picture this machine's
     # Nor the flat battery's Not yet shortcut: a shortcut, like the tiling's, is never in a file
-    schema="$(GSETTINGS_BACKEND=memory /usr/bin/gsettings list-keys "${id}" | grep -vxE 'weather|flat-hold' |
+    schema="$(GSETTINGS_BACKEND=memory /usr/bin/gsettings list-keys "${id}" | grep -vxE 'weather|flat-hold|your-year-seen' |
         { if [[ "${name}" == APPGRID ]]; then grep -vxE 'names|icons'; else cat; fi; } | sort)"
     [[ -n "${listed}" && "${listed}" == "${schema}" ]] ||
         { echo "${name}_KEYS and ${id} differ:"; diff <(echo "${listed}") <(echo "${schema}"); false; }

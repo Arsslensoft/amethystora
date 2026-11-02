@@ -226,6 +226,16 @@ calendar nothing but the titles of those tasks, and nothing at all when the menu
 GNOME Shell alone: an app in a sandbox cannot ask, but a program you run yourself outside one could, as it
 could read anything else of yours while your notes are open. `ame desktop today tasks off` leaves them out.
 
+### Your year
+
+Around the turn of the year, from the middle of December to the middle of January, a card in Today offers **Your year, on
+this machine**: one page with how long you have been together, the apps you used most, and what was looked after. The
+days are counted from the day the computer was installed, when its file system keeps that day, and are left out when it
+does not. It is worked out from what is already on the computer at the moment you open it, shown, and gone
+when you close it: nothing is collected for it, kept or sent, and a line it cannot read is left out. **Not this year**
+puts the card away until next year. `ame desktop your-year now` shows the page in a terminal at any time, and `ame desktop
+your-year off` stops the card.
+
 ### Getting set
 
 For your first four weeks, the calendar menu starts with **Getting set**: the few steps that protect
@@ -405,6 +415,17 @@ While such a disk is mounted and you are at the computer, it reads one small num
 minute of calm), the disk's own numbers only when the computer's waiting data has risen or the disk's top folder has
 changed, each second while the disk is busy, and nothing at all with no such disk, a disk mounted read-only, or after a
 minute with no input. Nothing is written down. `ame desktop usb-writes on|off`, also in [Control](control.md).
+
+### How do I look and sound?
+
+A meeting's card in the pill offers **How do I look and sound?**: a small window with your camera, a microphone level
+and the name of the microphone in use, which says so when nothing is heard, or when a Bluetooth headset's microphone would
+lower your sound. Close it when you have seen enough; it closes by itself after three minutes, when the screen locks, and
+when the screen starts being shared, and it is not offered while it is shared.
+
+The camera opens only while the window shows, so its light is on only then, and the privacy dots say so. Nothing is
+recorded or sent. A camera blocked in Security stays blocked, and the window says it found none. `ame desktop pill mirror
+off` takes it out of the card.
 
 ## Privacy dots
 
@@ -1124,6 +1145,19 @@ copies it again, **Pin on top** pins it (below), **Show in Files** shows it in i
 it to the trash. `ame desktop screenshot thumbnail off` (or Control, **Desktop**, **Screenshots**) puts GNOME's
 own notification back instead.
 
+### Hide what's private
+
+Before you send a screenshot, the button beside the pointer button in the screenshot bar, **Hide what's private**, has
+the picture read and draws a solid black box over each e-mail address, card number, phone number and bank account
+number it finds, and says what it covered. A solid box cannot be undone in the picture, as a blur sometimes can.
+**Uncover** takes the boxes off and **Copy** copies the picture with them; any other way of taking the picture keeps them
+too, and each box is a mark you can move or remove like the others. A picture asked for while it is still being read is
+not taken, and the card says so; and in a window or recording, where boxes cannot be burnt in, the button is off.
+
+It will miss things: a name, a street address, small or unusual text, or a number written in another script. So look
+at the picture before you send it. It is read on this computer: nothing is sent, nothing is written, and only what the
+screenshot holds is read, when you press the button. `ame desktop screenshot private off` takes the button away.
+
 ### Pinned pictures
 
 A pinned picture stays above every window, on every workspace, while you work in the window below: numbers
@@ -1681,6 +1715,40 @@ Closed the wrong window? `Super+Alt+T` opens that app again, on its workspace an
 the place and size its window had; press it again for the one before, five back. Only the app is started:
 what it had open is the app's own to bring back. What closed is kept in memory only and forgotten when you
 log out. `ame desktop windows reopen off` turns it off and forgets.
+
+### Hand it over
+
+Someone asks to look something up on your computer, or a child wants one game. **Hand this over…**, in a window's
+menu, keeps that window alone on the screen: full screen, no other apps, no notifications, the other screens covered,
+and the shortcuts that would leave it go to the app instead. A chip at the top says how to end it. You get everything
+back by locking the screen, from the chip or with `Super+L`, and unlocking it with your password, and the window goes
+back to how it was. If the app's last window closes, the screen locks. The bar at the top, with the notifications and
+the power menu, does not come down while a window is handed over. An app that takes over the keyboard, such as a virtual
+machine or a remote desktop, can keep `Super+L` from reaching the desktop: `Super+Esc` gives the shortcuts back, and the
+chip, the screen locking by itself and the power button always work.
+
+It is a courtesy, not a security boundary. The app can still open what it can open (a browser reaches the web, and its
+file dialogs reach your files), and an account without a password unlocks without one. For longer, or for someone you
+do not trust, use a [guest login](security.md#guest-login). `ame desktop windows hand-over off` takes it out of the
+menu.
+
+### A simple desktop
+
+For someone who wants the computer to be simple, and for the family's technical one to set up once: `ame desktop windows
+simple-desktop on`, or **A simple desktop** in [Control](control.md), gives this account big tiles on the wallpaper for
+the internet, email, photos and files, large text, a larger pointer, one window at a time, and a plain top bar with a
+**Home** button that puts the windows down and shows the tiles.
+
+Choose the tiles yourself, six at most, by their launchers: `ame desktop windows simple-tiles org.gnome.Calculator.desktop
+firefox.desktop`; with none, it picks the apps this account opens those four kinds of thing with. In a terminal, `ame
+desktop windows simple-tiles` on its own asks for them, which is what **The simple desktop's tiles** in Control does. The
+switch and the tiles travel in [your setup file](setup.md). If it cannot keep the settings it replaces, it does not turn
+on and says so, so that what it changes can always be given back; and if it is turned off while the desktop is not running
+(from a text console, or with the screen locked), the settings come back as soon as the desktop is.
+
+Nothing is taken out of the system: everything is still there, every other account is as it was, and `Super+Alt+Home`
+goes back, with each setting as it was unless you have changed it since. It is not a lock: for a child or a shared
+machine, see Parental Controls.
 
 ## Window settings
 

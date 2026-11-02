@@ -41,7 +41,7 @@ SETUP_CHECKER_FILE="${HOME:-}/.local/share/amethystora/setup_versioning.json"
 # software comes from, its hardware and virtual machines, and what the system writes there itself
 KEEP=(
     'passwd*' 'group*' 'shadow*' 'gshadow*' 'subuid*' 'subgid*' 'authselect/*' nsswitch.conf 'sssd/*' krb5.conf
-    'krb5.conf.d/*' krb5.keytab 'samba/*' realmd.conf 'gdm/*'
+    'krb5.conf.d/*' krb5.keytab 'samba/*' realmd.conf 'gdm/*' 'dconf/db/*.d/70-amethystora-if-found'
     fstab crypttab 'cryptsetup-keys.d/*' mdadm.conf 'lvm/*' 'multipath*' 'iscsi/*' 'nvme/*' 'dracut.conf.d/*'
     'kernel/*' default/grub
     hostname machine-info machine-id 'NetworkManager/system-connections/*' 'wireguard/*' 'openvpn/*'
@@ -229,6 +229,23 @@ undo_machine() {
 PROFILE=""
 own_dconf() { DCONF_PROFILE="${PROFILE}" dconf "$@"; }
 
+# A simple desktop that is on has set values of its own over the account's, which the shell gives back when the switch
+# goes off: it is turned off first, and waited for, so that what is saved and what the reset keeps are the account's
+# own and not the simple desktop's
+SIMPLE_KEY=/org/gnome/shell/extensions/amethystora-ui/windows/simple-desktop
+SIMPLE_STATE="${XDG_STATE_HOME:-${HOME}/.local/state}/amethystora/simple.json"
+simple_off() {
+    local waited=0
+    [[ "$(own_dconf read "${SIMPLE_KEY}")" == true ]] || return 0
+    own_dconf write "${SIMPLE_KEY}" false
+    while [[ -e "${SIMPLE_STATE}" && "${waited}" -lt 50 ]]; do
+        sleep 0.1
+        waited=$((waited + 1))
+    done
+    [[ ! -e "${SIMPLE_STATE}" ]] ||
+        echo "The simple desktop has not given your settings back yet (the screen is locked, or the desktop is not running): it does at your next login." >&2
+}
+
 account() {
     local save hook key index choice
     local -a values=()
@@ -237,6 +254,7 @@ account() {
     mkdir -p "${save}" || die "Could not make ${save}."
     PROFILE="${save}/profile"
     echo user-db:user >"${PROFILE}"
+    simple_off
     own_dconf dump / >"${save}/dconf.ini" || die "Could not read your settings, so nothing changed."
     [[ -d "${CONFIG}/current" ]] && cp -a "${CONFIG}/current" "${save}/current"
     for choice in "${CHOICES[@]}"; do

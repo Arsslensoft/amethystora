@@ -12,7 +12,7 @@
 #   7. light by day, dark by night: the theme flips to its pair at a boundary, once; a theme flipped by hand stays; a
 #      theme without a pair is left alone; off waits for nothing;
 #   8. ten disables and enables of Amethystora UI with it on leave one timeout; the setup file saves the new keys.
-# vmlab-paths: @ui/modules/theme.js @ui/modules/theme/* @ui/schemas/*theme* @sf/usr/lib/amethystora/theme/* @sf/usr/bin/amethystora-theme @sf/usr/libexec/amethystora-theme-file @sf/usr/libexec/amethystora-control-list @sf/usr/libexec/amethystora-setup* @sf/*just/desktop.just @sf/usr/share/applications/amethystora-look.desktop @sf/usr/share/applications/amethystora-theme-import.desktop @sf/usr/share/mime/packages/amethystora-look.xml apps/control/* apps/control-core/* build_files/base/09-fonts.sh
+# vmlab-paths: @ui/modules/theme.js @ui/modules/theme/* @ui/schemas/*theme* @sf/usr/lib/amethystora/theme/* @sf/usr/bin/amethystora-theme @sf/usr/libexec/amethystora-theme-file @sf/usr/libexec/amethystora-control-list @sf/usr/libexec/amethystora-setup* @sf/*just/desktop.just @sf/usr/share/applications/amethystora-look.desktop @sf/usr/share/applications/amethystora-theme-import.desktop @sf/usr/share/mime/packages/amethystora-look.xml apps/control/* apps/control-core/* build_files/base/09-fonts.sh @ui/modules/windows/simple.js
 source "$(dirname "$0")/lib.sh"
 
 UUID=amethystora-ui@arsslensoft.github.io

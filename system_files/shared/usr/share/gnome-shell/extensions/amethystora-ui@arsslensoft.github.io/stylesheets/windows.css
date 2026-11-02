@@ -284,3 +284,49 @@
   -amethystora-frame-middle: rgb(145, 72, 240);
   -amethystora-frame-end: rgb(111, 214, 208);
 }
+
+/* Hand it over: the chip over the window held, and what covers the other screens. No colours from the theme: it must
+   read over whatever the window shows */
+.amethystora-windows-handover-chip {
+  padding: 5px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffffff;
+  background-color: rgba(20, 14, 32, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+}
+
+.amethystora-windows-handover-cover {
+  background-color: #000000;
+}
+
+/* A simple desktop: the tiles over the wallpaper, in the colours of the desktop's widgets (the theme's
+   shell-deskwidgets.css), and Home in the bar */
+.amethystora-windows-simple-grid {
+  spacing: 24px;
+}
+
+.amethystora-windows-simple-row {
+  spacing: 24px;
+}
+
+.amethystora-windows-simple-tile {
+  width: 300px;
+  height: 200px;
+  max-width: 300px;
+  border-radius: 24px;
+}
+
+.amethystora-windows-simple-content {
+  spacing: 14px;
+}
+
+.amethystora-windows-simple-name {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.amethystora-windows-simple-home {
+  spacing: 6px;
+}

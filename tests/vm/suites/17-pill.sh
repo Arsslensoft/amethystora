@@ -125,9 +125,9 @@ trap cleanup EXIT
 check "1 the pill module runs" test "$(ev "${UI}.has('pill')")" == true
 # Seven of the pill's own, Later's two and What's new's (the notify group), the digest's lists (finish), the meetings
 # (time), saving data (restart), the second zone (bar), and printing and get-through (devices)
-same "1 the schema has its twenty-seven keys" \
+same "1 the schema has its twenty-eight keys" \
     "$(in_session "gsettings list-keys ${PILL}" | sort | paste -sd ' ')" \
-    "digest digest-through digest-times digest-wait drop-targets get-through glow hello later later-times live meetings moving music-bars music-see printing privacy-dots quiet quiet-night removable-writes saving-data second-zone stay-awake timer-feel two-at-once weight whats-new"
+    "digest digest-through digest-times digest-wait drop-targets get-through glow hello later later-times live meeting-mirror meetings moving music-bars music-see printing privacy-dots quiet quiet-night removable-writes saving-data second-zone stay-awake timer-feel two-at-once weight whats-new"
 same "2 idle" "$(st .activity)" '"idle"'
 same "2 the date menu's only child is the pill, GNOME's clock box in it and shown" \
     "$(ev "(() => { const d = ${PILL_ACTOR}; const box = d._clockDisplay.get_parent(); return d.get_n_children() + ' ' + d.get_first_child().style_class + ' ' + (box.get_parent() === d.get_first_child()) + ' ' + box.visible; })()")" \

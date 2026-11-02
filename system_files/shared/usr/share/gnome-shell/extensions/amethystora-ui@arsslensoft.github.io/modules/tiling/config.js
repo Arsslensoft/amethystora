@@ -166,6 +166,7 @@ const BUILT_IN = [
     {wmClass: matcher('Gnome-shell-extension-prefs'), title: null, rule: {scratch_layer: true, focus: true}},
     {wmClass: matcher('/gnome-screenshot/i'), title: null, rule: {scratch_layer: true, focus: true}},
     {wmClass: matcher('org.amethystora.Notes'), title: null, plain: true, rule: {scratch_layer: true, focus: true}},
+    {wmClass: matcher('org.amethystora.Mirror'), title: null, rule: {scratch_layer: true, focus: true}},
 ];
 
 // The rule a window opens under: the settings' first, then the built-in ones

@@ -1,0 +1,284 @@
+#!/usr/bin/python3 -I
+# How do I look and sound? (R7-44): a small window with the camera and a microphone level, opened from a call's card in the
+# pill, closed by the person, by the screen locking, by a share starting, or after three minutes. Run as the account, in a
+# scope with a memory limit, by Amethystora UI.
+#
+# The camera opens only while the window shows, so its light says so, and GNOME's privacy dots name the camera and the
+# microphone. Frames and sound go to the window and the meter and nowhere else: no element of either pipeline writes a
+# file or opens a connection, and no effect is added. A camera blocked in Security is no device here, and the window says
+# there is none.
+
+import gettext
+import re
+import resource
+import signal
+import sys
+
+_translation = gettext.translation("amethystora", fallback=True)
+_ = _translation.gettext
+
+APP_ID = 'org.amethystora.Mirror'
+# The most it stays open, so that a camera is never left on by a window behind another
+MOST_S = 180
+# Small, and no more often than this: it is a look in a mirror
+WIDTH, HEIGHT, RATE = 480, 270, 15
+LEVEL_NS = 100_000_000
+QUIET_DB = -50.0
+FLOOR_DB = -60.0
+# How long nothing heard before it says so
+SILENT_S = 5
+
+
+def fraction(peak_db):
+    """A peak in decibels as a place on the meter."""
+    return min(1.0, max(0.0, (peak_db - FLOOR_DB) / -FLOOR_DB))
+
+
+def advice(source, source_bluetooth, sink_bluetooth):
+    """What it says under the meter: which microphone, and what a headset would do to the sound."""
+    if not source:
+        return _('No microphone was found.')
+    if source_bluetooth:
+        return _('%s. Using it lowers your headset’s sound for as long as it is in use.') % source
+    if sink_bluetooth:
+        return _('%s. Your headset’s would lower your sound.') % source
+    return _('%s.') % source
+
+
+CAMERA = ('videoconvert name=head ! videoscale add-borders=true ! videorate drop-only=true ! '
+          f'video/x-raw,format=RGBA,width={WIDTH},height={HEIGHT},framerate={RATE}/1,pixel-aspect-ratio=1/1 ! '
+          'appsink name=frames max-buffers=1 drop=true sync=false emit-signals=true')
+MICROPHONE = (f'pulsesrc client-name=amethystora-mirror ! level name=meter interval={LEVEL_NS} post-messages=true ! '
+              'fakesink sync=false')
+
+
+def default_device(Gst, kind):
+    """The default of a kind of device, as (description, whether it is Bluetooth), or (None, False)."""
+    monitor = Gst.DeviceMonitor.new()
+    monitor.add_filter(kind, None)
+    if not monitor.start():
+        return None, False
+    try:
+        devices = monitor.get_devices() or []
+    finally:
+        monitor.stop()
+    chosen = None
+    for device in devices:
+        properties = device.get_properties()
+        if properties and properties.get_value('is-default'):
+            chosen = device
+            break
+    chosen = chosen or (devices[0] if devices else None)
+    if not chosen:
+        return None, False
+    properties = chosen.get_properties()
+    api = properties.get_string('device.api') if properties else ''
+    return chosen.get_display_name(), api == 'bluez5' or api == 'bluez'
+
+
+def colour_caps(structures):
+    """Whether a device's caps (each structure as text) include a picture in colour: a sensor that offers only grey
+    (Y8, Y16) is an infrared one, which is not how anyone will see you."""
+    if not structures:
+        return True
+    for text in structures:
+        if not text.startswith('video/x-raw'):
+            return True
+        found = re.search(r'format=\(string\)(\{[^}]*\}|[^,;\s]+)', text)
+        if not found or any(not name.startswith('GRAY') for name in re.findall(r'[A-Za-z0-9_]+', found.group(1))):
+            return True
+    return False
+
+
+def virtual_camera(driver):
+    """A virtual camera (v4l2loopback) shows what some program puts into it, not you."""
+    return 'loopback' in (driver or '').lower()
+
+
+def first_camera(Gst):
+    """The first real camera that sees in colour: not an infrared sensor beside it, and not a virtual one."""
+    monitor = Gst.DeviceMonitor.new()
+    monitor.add_filter('Video/Source', None)
+    if not monitor.start():
+        return None
+    try:
+        devices = monitor.get_devices() or []
+    finally:
+        monitor.stop()
+    for device in devices:
+        properties = device.get_properties()
+        driver = properties.get_string('v4l2.device.driver') if properties else None
+        caps = device.get_caps()
+        structures = [caps.get_structure(i).to_string() for i in range(caps.get_size())] if caps else []
+        if not virtual_camera(driver) and colour_caps(structures):
+            return device
+    return None
+
+
+class Mirror:
+    def __init__(self, Gtk, Gdk, GLib, Gst):
+        self.Gtk, self.Gdk, self.GLib, self.Gst = Gtk, Gdk, GLib, Gst
+        self.pipelines = []
+        self.heard = False
+        self.frame = None
+        self.app = Gtk.Application(application_id=APP_ID)
+        self.app.connect('activate', self.activate)
+
+    def activate(self, app):
+        Gtk = self.Gtk
+        window = Gtk.ApplicationWindow(application=app, title=_('How do I look and sound?'), resizable=False)
+        window.connect('close-request', lambda *_args: self.stop() or False)
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8, margin_top=12, margin_bottom=12,
+                      margin_start=12, margin_end=12)
+        window.set_child(box)
+        self.picture = Gtk.Picture(content_fit=Gtk.ContentFit.COVER, can_shrink=True)
+        self.picture.set_size_request(WIDTH * 3 // 4, HEIGHT * 3 // 4)
+        box.append(self.picture)
+        self.seen = Gtk.Label(label=_('You, as they will see you'), wrap=True, max_width_chars=44, xalign=0)
+        self.seen.add_css_class('dim-label')
+        box.append(self.seen)
+        self.meter = Gtk.LevelBar(min_value=0.0, max_value=1.0)
+        box.append(self.meter)
+        self.sound = Gtk.Label(wrap=True, max_width_chars=44, xalign=0)
+        box.append(self.sound)
+        self.warning = Gtk.Label(wrap=True, max_width_chars=44, xalign=0, visible=False)
+        self.warning.add_css_class('warning')
+        box.append(self.warning)
+        window.present()
+        self.window = window
+        # The limit is armed before anything is opened, so that no failure below can leave a camera on with none
+        self.GLib.timeout_add_seconds(MOST_S, self.quit)
+        self.GLib.idle_add(self.begin)
+
+    # After the window shows: asking for the devices takes a moment, and the window must not wait for it
+    def begin(self):
+        Gst, GLib = self.Gst, self.GLib
+        source, source_bluetooth = default_device(Gst, 'Audio/Source')
+        _sink, sink_bluetooth = default_device(Gst, 'Audio/Sink')
+        self.sound.set_text(advice(source, source_bluetooth, sink_bluetooth))
+        camera = first_camera(Gst)
+        if camera:
+            try:
+                self.start_camera(camera)
+            except (GLib.Error, TypeError, AttributeError):
+                self.stop()
+                self.on_camera_error(None, None)
+        else:
+            self.say_camera(_('No camera was found. A camera blocked in Security stays blocked here.'))
+        if source:
+            try:
+                self.start(MICROPHONE, self.on_sound_error)
+                GLib.timeout_add_seconds(SILENT_S, self.check_heard)
+            except GLib.Error:
+                self.on_sound_error(None, None)
+        return GLib.SOURCE_REMOVE
+
+    def say_camera(self, text):
+        self.seen.set_text(text)
+        self.picture.set_visible(False)
+
+    def start(self, description, on_error):
+        pipeline = self.Gst.parse_launch(description)
+        bus = pipeline.get_bus()
+        bus.add_signal_watch()
+        bus.connect('message::error', on_error)
+        bus.connect('message::element', self.on_element)
+        pipeline.set_state(self.Gst.State.PLAYING)
+        self.pipelines.append(pipeline)
+        return pipeline
+
+    def start_camera(self, device):
+        Gst = self.Gst
+        # The camera's element, in front of the rest, made from its device rather than from its name
+        chain = Gst.parse_launch(CAMERA)
+        source = device.create_element('camera')
+        chain.add(source)
+        source.link(chain.get_by_name('head'))
+        chain.get_by_name('frames').connect('new-sample', self.on_sample)
+        bus = chain.get_bus()
+        bus.add_signal_watch()
+        bus.connect('message::error', self.on_camera_error)
+        chain.set_state(Gst.State.PLAYING)
+        self.pipelines.append(chain)
+
+    # On GStreamer's thread: the newest frame only, drawn on the main one
+    def on_sample(self, sink):
+        Gst = self.Gst
+        sample = sink.emit('pull-sample')
+        if not sample:
+            return Gst.FlowReturn.OK
+        buffer = sample.get_buffer()
+        ok, info = buffer.map(Gst.MapFlags.READ)
+        if ok:
+            pending = self.frame is not None
+            self.frame = self.GLib.Bytes.new(bytes(info.data))
+            buffer.unmap(info)
+            if not pending:
+                self.GLib.idle_add(self.draw)
+        return Gst.FlowReturn.OK
+
+    def draw(self):
+        frame, self.frame = self.frame, None
+        if frame:
+            self.picture.set_paintable(self.Gdk.MemoryTexture.new(WIDTH, HEIGHT, self.Gdk.MemoryFormat.R8G8B8A8, frame, WIDTH * 4))
+        return self.GLib.SOURCE_REMOVE
+
+    def on_element(self, _bus, message):
+        structure = message.get_structure()
+        if not structure or structure.get_name() != 'level':
+            return
+        peaks = structure.get_value('peak') or []
+        peak = max(peaks, default=-200.0)
+        if peak > QUIET_DB and not self.heard:
+            self.heard = True
+            self.warning.set_visible(False)
+        self.meter.set_value(fraction(peak))
+
+    def check_heard(self):
+        if not self.heard:
+            self.warning.set_text(_('Nothing is heard from your microphone. Say something, or check that it is not muted.'))
+            self.warning.set_visible(True)
+        return self.GLib.SOURCE_REMOVE
+
+    def on_camera_error(self, _bus, _message):
+        self.say_camera(_('The camera could not be opened. It may be in use, or blocked in Security.'))
+
+    def on_sound_error(self, _bus, _message):
+        self.warning.set_text(_('The microphone could not be opened.'))
+        self.warning.set_visible(True)
+
+    # The camera's light goes out here, before anything else
+    def stop(self):
+        for pipeline in self.pipelines:
+            pipeline.set_state(self.Gst.State.NULL)
+        self.pipelines = []
+
+    def quit(self):
+        self.stop()
+        self.app.quit()
+        return self.GLib.SOURCE_REMOVE
+
+
+def end_on_signals(GLib, mirror):
+    """The shell asks it to end with SIGTERM (a lock, a share, the card): the pipelines are put down first, so that the
+    camera's light goes out."""
+    for number in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+        GLib.unix_signal_add(GLib.PRIORITY_HIGH, number, mirror.quit)
+
+
+def main():
+    import gi
+    gi.require_version('Gtk', '4.0')
+    gi.require_version('Gdk', '4.0')
+    gi.require_version('Gst', '1.0')
+    from gi.repository import Gdk, GLib, Gst, Gtk
+    # What the camera and the microphone give must not reach the disk through a core dump
+    resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
+    Gst.init(None)
+    mirror = Mirror(Gtk, Gdk, GLib, Gst)
+    end_on_signals(GLib, mirror)
+    return mirror.app.run([])
+
+
+if __name__ == '__main__':
+    sys.exit(main())

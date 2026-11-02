@@ -9,7 +9,7 @@
 #   - ame desktop breaks writes GNOME's own key; the weather is off, listed among what the machine sends;
 #   - pushing against the top of a fullscreen window brings the bar down; ten cycles leave nothing behind.
 # The VM draws in software, where GNOME turns its animations off: the peek is checked by its state, not its slide.
-# vmlab-paths: @ui/extension.js @ui/*today* @ui/*bars* @sf/*themed/shell-today* apps/notes/* @sf/*just/desktop.just
+# vmlab-paths: @ui/extension.js @ui/*today* @ui/*bars* @sf/*themed/shell-today* apps/notes/* @sf/*just/desktop.just @sf/usr/libexec/amethystora-your-year
 source "$(dirname "$0")/lib.sh"
 
 UUID=amethystora-ui@arsslensoft.github.io

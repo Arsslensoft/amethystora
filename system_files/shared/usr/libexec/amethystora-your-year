@@ -1,0 +1,124 @@
+#!/usr/bin/python3 -I
+# Your year, on this machine (R7-30): the page Today's card offers once a year, worked out when it is opened from what is
+# already on the machine, printed, and never kept. Run as the account; it writes nothing, sends nothing, and leaves out a
+# line it cannot read (only administrators read the security history). A number it is not sure of is not given:
+# the days are counted from when /var was made, which a new deployment of the system does not remake (/etc is copied
+# into each, and is no birth), and nothing is said of updates, since the journal's record of a finished run is not a
+# count of updates; the security history holds only its most recent lines, so its count is said to be of lately.
+#
+#   amethystora-your-year            the page, in sentences
+#   amethystora-your-year --json     {"year", "days", "snapshots", "last_backup", "findings"}, null where unknown
+#
+# A year means this one, or last year's during January. The apps used most are GNOME's own record of use, which the shell
+# holds, so only its page has them.
+
+import datetime
+import gettext
+import json
+import os
+import subprocess
+import sys
+
+_translation = gettext.translation("amethystora", fallback=True)
+_ = _translation.gettext
+ngettext = _translation.ngettext
+
+# AMETHYSTORA_YEAR_ROOT is for build_files/shared/test-your-year.sh, which runs this against stand-ins
+ROOT = os.environ.get('AMETHYSTORA_YEAR_ROOT', '')
+EVENTS = f'{ROOT}/var/lib/amethystora/security/events.json'
+# Made when the system was installed and shared by every deployment after it; /etc/machine-id is copied into each new one
+BORN = f'{ROOT}/var'
+RESTORE = f'{ROOT}/usr/libexec/amethystora-restore'
+STAT = f'{ROOT}/usr/bin/stat' if ROOT else '/usr/bin/stat'
+ASK_S = 20
+# What the watcher told someone about; "quiet" is only recorded
+TOLD = ('normal', 'critical')
+
+
+def run(argv):
+    try:
+        done = subprocess.run(argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                              timeout=ASK_S, check=False, text=True, errors='replace')
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return done.stdout if done.returncode == 0 else None
+
+
+def which_year(today):
+    return today.year - 1 if today.month == 1 else today.year
+
+
+def days_here(today):
+    """Days since this machine was installed: the birth of /var. A file system that keeps no birth, or says one that
+    cannot be (none, or in the future), gives no number, rather than a false one."""
+    out = run([STAT, '-c', '%W', BORN])
+    try:
+        born = int(out)
+    except (TypeError, ValueError):
+        return None
+    if born <= 0:
+        return None
+    days = (today - datetime.date.fromtimestamp(born)).days
+    return days if days >= 0 else None
+
+
+def looked_after():
+    out = run([RESTORE, 'status', '--json'])
+    try:
+        status = json.loads(out)
+        return status['snapshots']['count'] or None, status['backup']['last_success']
+    except (TypeError, ValueError, KeyError):
+        return None, None
+
+
+def findings_in(year):
+    try:
+        with open(EVENTS, encoding='utf-8') as file:
+            events = json.load(file)
+        count = 0
+        for event in events if isinstance(events, list) else []:
+            when = datetime.datetime.fromtimestamp(float(event.get('time', 0)))
+            if when.year == year and event.get('level') in TOLD:
+                count += 1
+    except (OSError, ValueError, AttributeError, TypeError):
+        return None
+    return count
+
+
+def page(today):
+    year = which_year(today)
+    snapshots, last = looked_after()
+    return {'year': year, 'days': days_here(today), 'snapshots': snapshots, 'last_backup': last,
+            'findings': findings_in(year)}
+
+
+def sentences(answer):
+    lines = [_('Your year on Amethystora, %d') % answer['year']]
+    if answer['days'] is not None:
+        lines.append(ngettext('Together for %d day', 'Together for %d days', answer['days']) % answer['days'])
+    if answer['snapshots']:
+        lines.append(ngettext('%d snapshot of your home folder kept', '%d snapshots of your home folder kept',
+                              answer['snapshots']) % answer['snapshots'])
+    if answer['last_backup']:
+        lines.append(_('Last backed up on %s') % datetime.date.fromtimestamp(answer['last_backup']).strftime('%x'))
+    if answer['findings'] is not None:
+        lines.append(ngettext('%d thing the security watch told you about lately',
+                              '%d things the security watch told you about lately', answer['findings']) % answer['findings'])
+    lines.append(_('Worked out here. Nothing was sent.'))
+    return lines
+
+
+def main():
+    answer = page(datetime.date.today())
+    if sys.argv[1:] == ['--json']:
+        print(json.dumps(answer))
+    elif sys.argv[1:]:
+        print('usage: amethystora-your-year [--json]', file=sys.stderr)
+        return 64
+    else:
+        print('\n'.join(sentences(answer)))
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

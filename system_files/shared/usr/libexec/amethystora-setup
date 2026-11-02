@@ -146,8 +146,8 @@ WORKSPACES=org.gnome.shell.extensions.amethystora-ui.workspaces
 WORKSPACES_KEYS='{"auto-names": ["b"], "sets": ["b"], "resume": ["b"]}'
 # The windows module's keys: snap layouts, the switcher, the Super card, the corners, show desktop, the gestures,
 # places, dimming, the drop-down terminal and the scratchpad, keep on top, see-through windows (and the apps that open
-# so, by launcher ID), the frame, sizes for recording and reopening. Never snap-chooser, drop-down-key, keep-on-top-key
-# or reopen-key, keybindings the keybindings part keeps, nor places.json, which is the machine's own, made of its
+# so, by launcher ID), the frame, sizes for recording, reopening, handing a window over and the simple desktop. Never snap-chooser, drop-down-key,
+# keep-on-top-key, reopen-key or simple-desktop-leave, keybindings the keybindings part keeps, nor places.json, which is the machine's own, made of its
 # screens' connectors.
 WINDOWS=org.gnome.shell.extensions.amethystora-ui.windows
 WINDOWS_KEYS='{
@@ -159,7 +159,8 @@ WINDOWS_KEYS='{
     "show-desktop": ["b"], "gesture-pinch": ["b"], "gesture-spread": ["b"], "gesture-down": ["b"],
     "gesture-today": ["b"], "places": ["b"], "dim": ["b"],
     "drop-down": ["b"], "scratchpad": ["b"], "keep-on-top": ["b"], "see-through": ["b"], "see-through-apps": ["opacity"],
-    "frame": ["b"], "recording-sizes": ["b"], "reopen": ["b"]
+    "frame": ["b"], "recording-sizes": ["b"], "reopen": ["b"], "hand-over": ["b"],
+    "simple-desktop": ["b"], "simple-tiles": ["as", "launchers"]
 }'
 # The dock's keys: how it moves, what it holds and where it lives. Its folders by name, each two launcher IDs or more,
 # and its stacks as special folders or folders under the home folder only: a folder elsewhere names this machine.
@@ -176,7 +177,7 @@ PILL=org.gnome.shell.extensions.amethystora-ui.pill
 PILL_KEYS='{
     "live": ["b"], "privacy-dots": ["b"], "glow": ["b"], "quiet": ["b"], "quiet-night": ["b"],
     "digest": ["b"], "digest-times": ["as", "times"], "later": ["b"], "later-times": ["as", "times"], "whats-new": ["b"],
-    "meetings": ["b"],
+    "meetings": ["b"], "meeting-mirror": ["b"],
     "digest-through": ["as", "launchers"], "digest-wait": ["as", "launchers"],
     "saving-data": ["b"],
     "two-at-once": ["b"], "weight": ["b"], "timer-feel": ["b"], "moving": ["b"], "stay-awake": ["b"], "hello": ["b"], "drop-targets": ["b"], "music-see": ["b"], "music-bars": ["b"],
@@ -200,7 +201,7 @@ CALENDAR_KEYS='{"show-weekdate": ["b"]}'
 # Today's tasks in the calendar menu. Never the weather, which sends the place chosen in Weather: a file someone
 # shares must not turn that on.
 TODAY=org.gnome.shell.extensions.amethystora-ui.today
-TODAY_KEYS='{"tasks": ["b"], "getting-set": ["b"]}'
+TODAY_KEYS='{"tasks": ["b"], "getting-set": ["b"], "your-year": ["b"]}'
 # GNOME's own rest reminders: which of its two kinds of break are on
 BREAKS=org.gnome.desktop.break-reminders
 BREAKS_KEYS='{"selected-breaks": ["as", "breaks"]}'
@@ -310,7 +311,7 @@ PRESENT=org.gnome.shell.extensions.amethystora-ui.present
 PRESENT_KEYS='{"enabled": ["b"], "pointer-mark": ["s", ["halo", "torch", "none"]], "ask-on-screen": ["b"]}'
 # The thumbnail after a screenshot and pinning pictures on top. Never tool-settings, the drawing tools' last colours
 SCREENSHOT=org.gnome.shell.extensions.amethystora-ui.screenshot
-SCREENSHOT_KEYS='{"capture-thumbnail": ["b"], "capture-pin": ["b"], "recording-trim": ["b"]}'
+SCREENSHOT_KEYS='{"capture-thumbnail": ["b"], "capture-pin": ["b"], "recording-trim": ["b"], "hide-private": ["b"]}'
 # Widgets on the desktop: the switch only; the widgets themselves are commands, which a setup file never carries
 DESKWIDGETS=org.gnome.shell.extensions.amethystora-ui.deskwidgets
 DESKWIDGETS_KEYS='{"enabled": ["b"]}'
@@ -510,7 +511,7 @@ if type != "object" then "it is not a JSON object" else
                             # The windows module's, the search's, the emoji picker's, the agent's and force quit's
                             # schemas hold one keybinding each among their settings
                             and ($s != "org.gnome.shell.extensions.amethystora-ui.windows"
-                                or IN(.key; "snap-chooser", "drop-down-key", "keep-on-top-key", "reopen-key"))
+                                or IN(.key; "snap-chooser", "drop-down-key", "keep-on-top-key", "reopen-key", "simple-desktop-leave"))
                             and ($s != "org.gnome.shell.extensions.amethystora-ui.search" or .key == "open")
                             and ($s != "org.gnome.shell.extensions.amethystora-ui.emoji" or .key == "emoji-picker")
                             and ($s != "org.gnome.shell.extensions.amethystora-ui.agent" or .key == "ask-selection")

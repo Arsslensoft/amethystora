@@ -7,7 +7,7 @@
 # An image of your own, the machine's side: `ame system trust-image` makes the machine take a repository's images
 # only with its key's signature (bootc refuses one without), never for Amethystora's own, and
 # amethystora-image-check passes here. The suites after this one get the machine back as it was.
-# vmlab-paths: @sf/usr/libexec/amethystora-setup* @sf/usr/libexec/amethystora-restore-setup @sf/usr/libexec/amethystora-trust-image @sf/usr/libexec/amethystora-image-check @sf/usr/libexec/amethystora-backup @sf/*just/setup.just @sf/*just/backup.just
+# vmlab-paths: @sf/usr/libexec/amethystora-setup* @sf/usr/libexec/amethystora-restore-setup @sf/usr/libexec/amethystora-trust-image @sf/usr/libexec/amethystora-image-check @sf/usr/libexec/amethystora-backup @sf/*just/setup.just @sf/*just/backup.just @ui/modules/windows/simple.js
 source "$(dirname "$0")/lib.sh"
 
 HOME_DIR="$(realpath "$(getent passwd "${TEST_USER}" | cut -d: -f6)")"

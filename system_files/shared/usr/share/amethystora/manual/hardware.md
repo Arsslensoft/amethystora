@@ -402,6 +402,19 @@ fwupdmgr update
 `ame system power-draw` measures what the machine draws while idle, with powerstat: run it on
 battery, and leave the machine alone for the few minutes it takes.
 
+### If it's lost
+
+A laptop left on a train has only a login screen to say whose it is. `ame system if-found`, or **If it's lost, it says
+whose it is** in [Control](control.md)'s System page, writes one line of yours, 120 characters at most, on the login screen
+and at the bottom of the lock screen, for every account: "If found, please call Sam", and a number. It needs an
+administrator's password.
+
+Anyone holding the computer can read it, so choose what it says. It adds no way in, no account and no tracking. A
+computer that was turned off with its disk encrypted asks for the disk's password first, and shows the line only after
+that, so on a laptop the line is mostly seen when it was only asleep. `ame system if-found off` takes it away. The
+login screen shows a change the next time it appears, and the lock screen of an account the next time that account
+logs in; it shows only what the administrator wrote, never a line a program of that account sets for itself.
+
 ## Cameras
 
 Virtual cameras (OBS's, for instance) work without anything to install, through the loopback

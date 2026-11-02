@@ -77,6 +77,10 @@ FEDORA_PACKAGES=(
     # with openfst and rnnoise), about 64 MiB; /usr/libexec/amethystora-captions runs it, and only once the account
     # turned captions on and fetched the model (plans/beyond/spec-r4-later.md, part B)
     gst-vosk
+    # Hide what's private in a screenshot, and the reading behind it (amethystora-cover-private): Tesseract (Apache-2.0)
+    # with its English data, about 11 MiB with leptonica; it runs only after the button is pressed
+    tesseract
+    tesseract-langpack-eng
     # gettext and gettext.sh, through which the security report and the app permissions speak the
     # session's language (po/amethystora)
     gettext-runtime

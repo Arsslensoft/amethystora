@@ -8,6 +8,10 @@
 // by the image's helper (/usr/libexec/amethystora-meeting-link), once for each event as it comes within five minutes,
 // the event's id on its standard input. One timeout waits for the next moment anything changes (an event's five
 // minutes before, the next minute of the countdown, the end of its showing, midnight); nothing else runs.
+//
+// How do I look and sound? (R7-44, meeting-mirror): the card offers a small window with the camera and a microphone level
+// (/usr/libexec/amethystora-mirror). It runs only after that click, in a scope of its own, and is ended by a screen lock
+// and by a share starting; it is not offered while the screen is shared, when anyone watching would see the mirror too.
 
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
@@ -18,10 +22,33 @@ import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {gettext as _, ngettext} from 'resource:///org/gnome/shell/extensions/extension.js';
 
+import {Capture} from './capture.js';
 import {buttonRow, cardButton, retire} from './clock.js';
 import {plain, shownAddress, timeOfDay} from './text.js';
 
 const HELPER = '/usr/libexec/amethystora-meeting-link';
+const MIRROR = ['systemd-run', '--user', '--scope', '--quiet', '--collect', '-p', 'MemoryMax=256M', '-p', 'CPUWeight=50',
+    '/usr/libexec/amethystora-mirror'];
+const MIRROR_ID = 'org.amethystora.Mirror';
+// Below the top bar, in the middle of the screen, as the pill's card is
+const MIRROR_TOP = 12;
+// How long a mirror has to put its pipelines down after it is asked to, before it is ended without being asked
+const MIRROR_GRACE_S = 4;
+
+// SIGTERM asks the mirror to put the camera down. A driver that is stuck in doing so would hold the camera's light on for
+// good, so the process is ended if it is still there after a few seconds. A source of its own and not the module's
+// state: a screen lock stops the module first, and the camera must not wait for the unlock.
+function endMirror(process) {
+    // Already gone (the window was closed by the person): nothing to wait for
+    if (process.get_identifier() === null)
+        return;
+    process.send_signal(15);
+    GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, MIRROR_GRACE_S, () => {
+        if (process.get_identifier() !== null)
+            process.force_exit();
+        return GLib.SOURCE_REMOVE;
+    });
+}
 // Seconds: shown this long before an event starts, and at most this long after
 const LEAD = 5 * 60;
 const AFTER = 10 * 60;
@@ -45,9 +72,10 @@ function checked(link) {
 }
 
 export class Meetings {
-    constructor(activities, notice) {
+    constructor(activities, notice, settings) {
         this._activities = activities;
         this._notice = notice;
+        this._settings = settings;
     }
 
     enable() {
@@ -71,8 +99,70 @@ export class Meetings {
             GLib.source_remove(this._timer);
         this._timer = 0;
         this._end();
+        this.closeMirror();
         this._links = null;
         this._dismissed = null;
+    }
+
+    // ---- How do I look and sound? ----
+
+    // While the screen is shared or recorded, it is not offered
+    get mirrorOffered() {
+        if (!this._settings?.get_boolean('meeting-mirror'))
+            return false;
+        const capture = new Capture();
+        const unlisten = capture.listen(() => {});
+        const shared = capture.active;
+        unlisten();
+        return !shared;
+    }
+
+    openMirror() {
+        if (this._mirror)
+            return;
+        try {
+            this._mirror = Gio.Subprocess.new(MIRROR, Gio.SubprocessFlags.NONE);
+        } catch (e) {
+            console.warn(`Amethystora UI: the mirror did not start: ${e.message}`);
+            return;
+        }
+        const process = this._mirror;
+        process.wait_async(null, () => {
+            if (this._mirror === process)
+                this.closeMirror();
+        });
+        // A share that starts ends it: the camera goes off rather than onto someone else's screen
+        this._mirrorCapture = new Capture();
+        this._unlistenCapture = this._mirrorCapture.listen(() => {
+            if (this._mirrorCapture?.active)
+                this.closeMirror();
+        });
+        global.display.connectObject('window-created', (display, window) => this._placeMirror(window), this);
+    }
+
+    closeMirror() {
+        global.display.disconnectObject(this);
+        this._unlistenCapture?.();
+        this._unlistenCapture = null;
+        this._mirrorCapture = null;
+        const process = this._mirror;
+        this._mirror = null;
+        // SIGTERM: it puts its pipelines down first, and the camera's light goes out; and a stronger end if it does not
+        if (process)
+            endMirror(process);
+    }
+
+    _placeMirror(window) {
+        window.connectObject('shown', () => {
+            window.disconnectObject(this);
+            if (window.get_sandboxed_app_id?.() !== MIRROR_ID && window.get_wm_class() !== MIRROR_ID)
+                return;
+            const monitor = Main.layoutManager.primaryMonitor;
+            const area = Main.layoutManager.getWorkAreaForMonitor(monitor.index);
+            const frame = window.get_frame_rect();
+            window.move_frame(true, Math.round(area.x + (area.width - frame.width) / 2), area.y + MIRROR_TOP);
+            window.make_above();
+        }, this);
     }
 
     _follow() {
@@ -350,6 +440,14 @@ class MeetingActivity {
         ]);
         row.x_align = Clutter.ActorAlign.END;
         body.add_child(row);
+        if (this._meetings.mirrorOffered) {
+            const look = buttonRow([cardButton(_('How do I look and sound?'), () => {
+                api.close();
+                this._meetings.openMirror();
+            })]);
+            look.x_align = Clutter.ActorAlign.END;
+            body.add_child(look);
+        }
         return body;
     }
 

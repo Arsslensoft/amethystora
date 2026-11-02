@@ -19,5 +19,15 @@
       <summary>Getting set</summary>
       <description>For an account's first four weeks, the calendar menu lists a few steps that protect the machine and make it yours, each ticked by what the machine already says. Hide turns this off.</description>
     </key>
+    <key name="your-year" type="b">
+      <default>true</default>
+      <summary>Your year, on this machine</summary>
+      <description>Around the turn of the year, the calendar menu offers one page about the year on this computer, worked out when it is opened and never kept.</description>
+    </key>
+    <key name="your-year-seen" type="i">
+      <default>0</default>
+      <summary>The year it was last offered for</summary>
+      <description>Written when the page is opened or put away; nothing else of it is kept.</description>
+    </key>
   </schema>
 </schemalist>

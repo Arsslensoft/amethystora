@@ -59,6 +59,11 @@
       <summary>This evening and tomorrow morning</summary>
       <description>When Later's "This evening" and "Tomorrow morning" come back, as HH:MM on the 24-hour clock, in that order. A missing or bad one takes its default.</description>
     </key>
+    <key name="meeting-mirror" type="b">
+      <default>true</default>
+      <summary>How do I look and sound?</summary>
+      <description>A meeting's card offers a small window with the camera and a microphone level, open only while it shows. Nothing is recorded.</description>
+    </key>
     <key name="meetings" type="b">
       <default>true</default>
       <summary>Meetings in the pill</summary>

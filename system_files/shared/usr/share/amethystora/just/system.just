@@ -247,6 +247,30 @@ dx-group *GROUPS:
     done
     echo "$(gettext "Log out and back in for it to apply.")"
 
+# One line on the login and lock screens, for whoever finds this computer: off takes it away, a line sets it, and
+# without one it explains and asks
+[positional-arguments]
+if-found *LINE:
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    if [[ "${1:-}" == off && $# -eq 1 ]]; then
+        sudo /usr/libexec/amethystora-if-found clear
+        echo "$(gettext "The line is gone from the login screen, and from the lock screen when each account next logs in.")"
+        exit 0
+    fi
+    line="$*"
+    if [[ -z "${line}" ]]; then
+        current="$(/usr/libexec/amethystora-if-found status)"
+        [[ -z "${current}" ]] || echo "$(eval_gettext "Now: \${current}")"
+        echo "$(gettext "This shows your words on the login and lock screens, to anyone holding this computer, so choose what they say: a phone number or an address gives an honest finder a way to return it. It adds no way in. It is not encrypted, and a computer whose disk is encrypted shows it only once the disk is open.")"
+        line="$(gum input --char-limit 120 --placeholder "$(gettext "If found, please call...")" --value "${current}")" || exit 0
+        [[ -n "${line}" ]] || exit 0
+    fi
+    printf '%s\n' "${line}" | sudo /usr/libexec/amethystora-if-found set
+    echo "$(gettext "The line shows on the login screen, and on the lock screen when each account next logs in. ame system if-found off takes it away.")"
+
 # Settings back as the image ships them, your files, apps and accounts kept: your account's, the machine's or both, each saved first (WHAT: account, machine, both, or undo with account or machine; without it, asks)
 [no-exit-message]
 [positional-arguments]
