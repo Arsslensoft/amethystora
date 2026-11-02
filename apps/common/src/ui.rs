@@ -130,6 +130,32 @@ pub fn wrap(spacing: i32, line_spacing: i32, classes: &[&str]) -> adw::WrapBox {
 }
 
 /// Takes every child out of a box, to build it again
+/// Work done a little at a time, between frames, so that a long page fills in while the window goes on answering: at
+/// most `per_frame` steps a frame, and fewer when they take longer than a frame can spare. It ends with `on`.
+pub fn in_frames(on: &impl IsA<gtk::Widget>, per_frame: usize, steps: std::collections::VecDeque<Box<dyn FnOnce()>>) {
+    if steps.is_empty() {
+        return;
+    }
+    let steps = std::cell::RefCell::new(steps);
+    on.as_ref().add_tick_callback(move |widget, _| {
+        if widget.root().is_none() {
+            return glib::ControlFlow::Break;
+        }
+        let began = std::time::Instant::now();
+        for _ in 0..per_frame {
+            let step = steps.borrow_mut().pop_front();
+            match step {
+                Some(step) => step(),
+                None => break,
+            }
+            if began.elapsed() > std::time::Duration::from_millis(5) {
+                break;
+            }
+        }
+        if steps.borrow().is_empty() { glib::ControlFlow::Break } else { glib::ControlFlow::Continue }
+    });
+}
+
 /// A search's results, drawn once the typing has paused: laying out a page takes longer than a key takes to press.
 /// A key that acts on the results asks `cancel` first, and draws them at once if something was waiting.
 #[derive(Default)]
