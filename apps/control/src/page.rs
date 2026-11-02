@@ -181,6 +181,9 @@ pub fn plain(text: &str) -> String {
     glib::normalize(text, glib::NormalizeMode::Default).chars().filter(|c| !c.is_mark()).collect::<String>().to_lowercase()
 }
 
+/// The most settings a search draws at once
+const SEARCH_CARDS: usize = 30;
+
 fn matches(item: &Item, words: &[String]) -> bool {
     let mut parts: Vec<String> = vec![
         item.title.clone(),
@@ -2495,7 +2498,7 @@ impl Control {
             (state.search.clone(), state.list.clone())
         };
         let words: Vec<String> = plain(&search).split_whitespace().map(str::to_string).collect();
-        let found: Vec<&Item> = list.as_ref().map(|list| list.items.iter().filter(|item| matches(item, &words)).collect()).unwrap_or_default();
+        let mut found: Vec<&Item> = list.as_ref().map(|list| list.items.iter().filter(|item| matches(item, &words)).collect()).unwrap_or_default();
         let view = ui::vbox(28, &["page"]);
         if found.is_empty() {
             let actions = Self::actions(vec![
@@ -2513,6 +2516,15 @@ impl Control {
             &t!("Search"),
             &t!("{count, plural, one {One setting matches} other {# settings match}} “{search}”.", count = found.len(), search = &search),
         ));
+        // The settings named by the words first, then as many others as can be laid out without the window stopping
+        if found.len() > SEARCH_CARDS {
+            found.sort_by_key(|item| {
+                let title = plain(&item.title);
+                !words.iter().all(|word| title.contains(word.as_str()))
+            });
+            found.truncate(SEARCH_CARDS);
+            view.append(&ui::label(&t!("Showing the first {shown}. Type more to narrow them down.", shown = i18n::number(SEARCH_CARDS as f64)), &["form-note"]));
+        }
         for page in backend::PAGES {
             let here: Vec<&Item> = found.iter().copied().filter(|item| item.page == page).collect();
             if !here.is_empty() {

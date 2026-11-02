@@ -141,6 +141,7 @@
   "Settings": "Settings",
   "Shortcut": "Shortcut",
   "Show {name} in the top bar": "Show {name} in the top bar",
+  "Showing the first {shown}. Type more to narrow them down.": "Showing the first {shown}. Type more to narrow them down.",
   "Start from": "Start from",
   "Start one from an example, then change its files in ~/.config/amethystora/widgets:": "Start one from an example, then change its files in ~/.config/amethystora/widgets:",
   "Style": "Style",
