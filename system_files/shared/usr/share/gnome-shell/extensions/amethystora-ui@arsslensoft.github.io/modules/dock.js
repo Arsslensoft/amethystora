@@ -1,5 +1,5 @@
 // The dock: the pinned apps and folders, the running ones, the last few used, the stacks, the drives, the trash and
-// the app grid button, in one row along an edge of every screen (or of the main one). Its strip of the screen is kept
+// the app grid button, in one row along an edge of the main screen (or of every one). Its strip of the screen is kept
 // free, so maximized and tiled windows stop beside it, unless it hides when a window touches it. In the overview it
 // stands for GNOME's dash. Its background is the glass, which the glass module draws behind it; on a light theme a
 // faint dark veil over the glass keeps the icons clear of a pale wallpaper.

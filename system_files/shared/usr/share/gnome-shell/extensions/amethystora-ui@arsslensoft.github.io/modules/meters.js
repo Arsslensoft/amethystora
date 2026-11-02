@@ -7,6 +7,9 @@
 // draws again only when what it shows changed, with no animation. The processes are looked at only while one of the
 // menus is open. Only network interfaces with a device behind them are counted, so that what a VPN or a container
 // sends is not counted twice. The colours are the theme's (shell-meters.css).
+//
+// A meter hidden in the bars' layout key (ame desktop top-bar meter, Control's Top bar) is off: nothing is read for it,
+// and with all three off and nobody riding the reading, there is no timer either.
 
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
@@ -19,6 +22,7 @@ import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js'
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 
+import {cleanLayout} from './bars/arrange.js';
 import * as Format from './meters/format.js';
 import * as Sources from './meters/sources.js';
 import * as Widgets from './meters/widgets.js';
@@ -29,6 +33,7 @@ const INTERVAL = 5;
 const FIRST_LOOK_MS = 1500;
 const MINUTES = Math.round(Widgets.SAMPLES * INTERVAL / 60);
 const SYSTEM_MONITOR = 'io.missioncenter.MissionCenter.desktop';
+const BARS = 'org.gnome.shell.extensions.amethystora-ui.bars';
 const ROLES = ['amethystora-meters-processor', 'amethystora-meters-memory', 'amethystora-meters-network'];
 const NETWORK_MANAGER = 'org.freedesktop.NetworkManager';
 // NetworkManager's word for no connectivity at all
@@ -293,17 +298,21 @@ export class Meters {
         this._counters = this._interfaces.read();
         this._readAt = GLib.get_monotonic_time();
         this._rates = null;
+        this._barSettings = this._ext.getSettings(BARS);
+        this._barSettings.connectObject('changed::layout', () => this._readsChanged(), this);
+        this._reads = this._wanted();
         this._read(true);
-        this._timer = GLib.timeout_add_seconds(GLib.PRIORITY_LOW, INTERVAL, () => {
-            this._read();
-            return GLib.SOURCE_CONTINUE;
-        });
+        this._keepReading();
     }
 
     disable() {
+        this._barSettings?.disconnectObject(this);
+        this._barSettings?.run_dispose();
+        this._barSettings = null;
         if (this._timer)
             GLib.source_remove(this._timer);
         this._timer = 0;
+        this._reads = null;
         this._listeners = null;
         this._stopLooking();
         this._connectivity?.disconnectObject(this);
@@ -324,8 +333,70 @@ export class Meters {
         this._networkOpen = false;
     }
 
+    // What is read: each meter that is on, and the processor as well for whoever rides its reading
+    _wanted() {
+        const {hidden} = cleanLayout(this._barSettings.get_value('layout').recursiveUnpack());
+        return {
+            processor: !hidden.includes('processor') || (this._listeners?.size ?? 0) > 0,
+            memory: !hidden.includes('memory'),
+            network: !hidden.includes('network'),
+        };
+    }
+
+    // A meter turned back on starts from now, with an empty chart: not an average over the time it was off
+    _readsChanged() {
+        if (!this._barSettings)
+            return;
+        const was = this._reads;
+        this._reads = this._wanted();
+        if (this._reads.processor && !was.processor) {
+            this._times = Sources.processorTimes();
+            this._history.load = [];
+        }
+        if (this._reads.memory && !was.memory) {
+            this._history.memory = [];
+            this._readMemory();
+        }
+        if (this._reads.network && !was.network) {
+            this._counters = this._interfaces.read();
+            this._readAt = GLib.get_monotonic_time();
+            this._rates = null;
+            this._history.sent = [];
+            this._history.received = [];
+            this._network.showBar(null, this._online);
+        }
+        this._keepReading();
+    }
+
+    _keepReading() {
+        const needed = Object.values(this._reads).some(Boolean);
+        if (needed && !this._timer) {
+            this._timer = GLib.timeout_add_seconds(GLib.PRIORITY_LOW, INTERVAL, () => {
+                this._read();
+                return GLib.SOURCE_CONTINUE;
+            });
+        } else if (!needed && this._timer) {
+            GLib.source_remove(this._timer);
+            this._timer = 0;
+        }
+    }
+
     // The bar's reading, every few seconds
     _read(first = false) {
+        if (this._reads.processor)
+            this._readProcessor();
+        if (this._reads.memory)
+            this._readMemory();
+        if (this._reads.network)
+            this._readNetwork(first);
+
+        if (this._looking)
+            this._showMenus();
+        if (this._networkOpen)
+            this._networkSection?.tick();
+    }
+
+    _readProcessor() {
         const times = Sources.processorTimes();
         const loads = [...times.each].map(([cpu, now]) => Sources.load(this._times.each.get(cpu), now));
         this._load = Sources.load(this._times.all, times.all);
@@ -335,14 +406,18 @@ export class Meters {
         // Whoever rides this reading (the power module's busy app): the whole processor's load, nothing read for it
         for (const listener of [...this._listeners ?? []])
             listener({load: this._load});
+    }
 
+    _readMemory() {
         this._memoryNow = Sources.memory();
         const {total, available} = this._memoryNow;
         const used = total > 0 ? (total - available) / total : 0;
         remember(this._history.memory, used);
         this._memory.showBar(used);
+    }
 
-        // What each interface moved since the last reading; one that came or went in between counts from the next
+    // What each interface moved since the last reading; one that came or went in between counts from the next
+    _readNetwork(first) {
         const now = GLib.get_monotonic_time();
         const counters = this._interfaces.read();
         const seconds = (now - this._readAt) / 1e6;
@@ -362,11 +437,6 @@ export class Meters {
             remember(this._history.received, this._rates.received);
         }
         this._network.showBar(this._rates, this._online);
-
-        if (this._looking)
-            this._showMenus();
-        if (this._networkOpen)
-            this._networkSection?.tick();
     }
 
     // Network by app (modules/privacy/connections.js), the privacy module's: a section at the end of the network menu,
@@ -398,8 +468,12 @@ export class Meters {
     }
 
     _showMenus() {
-        this._processor.showMenu(this._load ?? 0, this._history.load);
-        this._memory.showMenu(this._memoryNow, this._history.memory);
+        if (this._reads.processor)
+            this._processor.showMenu(this._load ?? 0, this._history.load);
+        if (this._reads.memory)
+            this._memory.showMenu(this._memoryNow, this._history.memory);
+        if (!this._reads.network)
+            return;
         let sent = 0, received = 0;
         for (const counter of this._counters.values()) {
             sent += counter.sent;
@@ -413,7 +487,16 @@ export class Meters {
     listen(listener) {
         this._listeners ??= new Set();
         this._listeners.add(listener);
-        return () => this._listeners?.delete(listener);
+        this._readsChanged();
+        return () => {
+            this._listeners?.delete(listener);
+            this._readsChanged();
+        };
+    }
+
+    // For the tests: what is being read, and whether anything keeps reading
+    get reading() {
+        return {...this._reads, timer: Boolean(this._timer)};
     }
 
     // The processor's button in the top bar, which a chip of the power module stands before

@@ -152,7 +152,7 @@ dock_defaults() {
     [[ "$(in_session "gsettings list-recursively ${DOCK_SCHEMA}" | cut -d' ' -f2- | LC_ALL=C sort | paste -sd ';')" == "$1" ]]
 }
 check "the dock's keys have the spec's defaults" wait_for 10 dock_defaults \
-    "autohide 'off';edge 'bottom';folders @a{sas} {};icon-size 48;indicator 'bar';launch 'halo';magnify 'swell';magnify-amount 1.6000000000000001;previews true;recent true;screens 'every';stacks ['xdg:DOWNLOAD'];updating true;workspace-apps false"
+    "autohide 'off';edge 'bottom';folders @a{sas} {};icon-size 48;indicator 'bar';launch 'halo';magnify 'swell';magnify-amount 1.6000000000000001;previews true;recent true;screens 'primary';stacks ['xdg:DOWNLOAD'];updating true;workspace-apps false"
 bad=""
 while read -r setting value key want shown; do
     in_session "ame desktop dock ${setting} ${value}" >/dev/null 2>&1 || bad+="ame desktop dock ${setting} ${value} failed; "
@@ -168,7 +168,7 @@ indicator glow indicator 'glow' D.settings.get_string('indicator')
 recent off recent false String(Boolean(D.recent))
 previews off previews false String(D.settings.get_boolean('previews'))
 edge left edge 'left' D.state().docks[0].edge
-screens primary screens 'primary' D.settings.get_string('screens')
+screens every screens 'every' D.settings.get_string('screens')
 autohide touch autohide 'touch' (D.state().docks[0].touch ? 'touch' : 'off')
 workspace-apps on workspace-apps true String(D.workspaceApps)
 updating off updating false String(D.settings.get_boolean('updating'))

@@ -31,6 +31,7 @@ settle (section "Left open by the lab"). Mark each line as the other files do: `
 ## Bar and motion (R5-05..07, R5-22..24, R5-26, R6-08)
 
 - [ ] B-BAR-01 Arrange the bar. How: Control › Top bar: drag the clock to the left, hide the meters, Reset. Expect: the bar follows at once; Reset brings GNOME's order back.
+- [ ] B-BAR-01b Each meter's switch. How: Control › Top bar: turn the processor, memory and network meters off, one at a time, then on. Expect: each leaves the bar at once and comes back in its old place.
 - [ ] B-BAR-02 Bar at the bottom. How: `ame desktop top-bar position bottom`. Expect: the bar along the bottom, the dock lifted above it, menus and quick settings opening upwards; windows maximise above it. [changes setting: put back with `ame desktop top-bar position top`]
 - [ ] B-BAR-03 Hidden until touched. How: `ame desktop top-bar autohide on`, push the pointer against the edge. Expect: the bar slides in, goes when you leave; maximised windows get the whole height. [changes setting: put back with `ame desktop top-bar autohide off`]
 - [ ] B-BAR-04 Bar size. How: `ame desktop top-bar size compact`, then `roomy`. Expect: 28 and 40 px bars, the pill and icons scaled to fit; HiDPI correct. [changes setting: put back with `ame desktop top-bar size regular`]
@@ -138,5 +139,6 @@ What the VM lab could not settle on 2026-11-01, each to be seen here first (deta
 - [ ] B-OPEN-03 Quick settings after a lock. How: lock and unlock, open quick settings, the volume and the pill. Expect: all work; no "already disposed" lines for pill/clock.js in the shell's log.
 - [ ] B-OPEN-04 The bar's menus after many locks. How: lock and unlock ten times, open each bar menu. Expect: each opens once, with its items once; nothing duplicated.
 - [ ] B-OPEN-05 Search finds pictures in Files. How: put a picture in ~/Pictures, wait a minute, search its name. Expect: Files' results list it.
-- [ ] B-OPEN-06 Multi-screen bars and dock. How: with two screens, a fullscreen window on screen 2, then push against its top; maximise on screen 1. Expect: screen 2's bar hides and peeks; screen 1's dock hides for the maximised window. [needs: two screens]
+- [ ] B-OPEN-05b One screen's bar and dock by default. How: on a fresh account with two screens, look at the second one; then `ame desktop top-bar screens on` and `ame desktop dock screens every`. Expect: at first the bar and the dock are on the main screen only; then on both. [needs: two screens]
+- [ ] B-OPEN-06 Multi-screen bars and dock. How: with two screens, the bar and the dock on every screen as above, a fullscreen window on screen 2, then push against its top; maximise on screen 1. Expect: screen 2's bar hides and peeks; screen 1's dock hides for the maximised window. [needs: two screens]
 - [ ] B-OPEN-07 The installer and the sealed image. How: install the beta from its ISO, and once from the live ISO's sealed installer, on a spare disk. Expect: both start, ask the LUKS passphrase, and sign the account in. [needs: a spare disk]

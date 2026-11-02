@@ -75,7 +75,7 @@
         <choice value="every"/>
         <choice value="primary"/>
       </choices>
-      <default>'every'</default>
+      <default>'primary'</default>
       <summary>Which screens have a dock</summary>
       <description>every: each screen, with the apps whose windows are on it; primary: the main screen only.</description>
     </key>

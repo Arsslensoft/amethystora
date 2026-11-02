@@ -2770,8 +2770,8 @@ focus *ARGS:
 
 # The top bar on every screen (ame desktop top-bar screens [on|off]), and over a fullscreen window when you push the
 # pointer against the top edge (ame desktop top-bar peek [on|off]); its size (size compact|regular|roomy), its edge
-# (position top|bottom), hidden until touched (autohide on|off), and what it holds where (item ITEM ZONE [POSITION],
-# layout show|reset). Without on or off, it asks
+# (position top|bottom), hidden until touched (autohide on|off), what it holds where (item ITEM ZONE [POSITION], layout
+# show|reset), and each meter on or off (meter processor|memory|network [on|off]). Without on or off, it asks
 [positional-arguments]
 top-bar *ARGS:
     #!/usr/bin/bash
@@ -2785,10 +2785,39 @@ top-bar *ARGS:
         echo "       ame desktop top-bar position top|bottom"
         echo "       ame desktop top-bar item ITEM left|center|right|hidden [POSITION]"
         echo "       ame desktop top-bar layout show|reset"
+        echo "       ame desktop top-bar meter processor|memory|network [on|off]"
         exit 64
     }
     [[ $# -ge 1 ]] || usage
     case "$1" in
+        meter)
+            [[ $# -ge 2 && $# -le 3 ]] || usage
+            case "$2" in
+                processor | memory | network) ;;
+                *) usage ;;
+            esac
+            state="${3:-}"
+            if [[ -z "${state}" ]]; then
+                if /usr/libexec/amethystora-bar-layout show | grep -qE "^hidden:.* $2( |\$)"; then current=off; else current=on; fi
+                what="$2"
+                state="$(gum choose --header "$(eval_gettext "Top bar \${what} (current: \${current})")" --selected "${current}" on off)" || exit 0
+            fi
+            case "$2:${state}" in
+                processor:on) echo "$(gettext "The processor meter is on the top bar.")" ;;
+                processor:off) echo "$(gettext "The processor meter is off, and nothing is read for it.")" ;;
+                memory:on) echo "$(gettext "The memory meter is on the top bar.")" ;;
+                memory:off) echo "$(gettext "The memory meter is off, and nothing is read for it.")" ;;
+                network:on) echo "$(gettext "The network meter is on the top bar.")" ;;
+                network:off) echo "$(gettext "The network meter is off, and nothing is read for it.")" ;;
+                *) usage ;;
+            esac
+            if [[ "${state}" == on ]]; then
+                /usr/libexec/amethystora-bar-layout unhide "$2"
+            else
+                /usr/libexec/amethystora-bar-layout place "$2" hidden
+            fi
+            exit 0
+            ;;
         size)
             [[ $# -eq 2 ]] || usage
             case "$2" in

@@ -30,7 +30,8 @@ also show [widgets](widgets.md) of your own, which the AI agent makes for you on
 
 A fullscreen video or game keeps the whole screen; push the pointer against the top edge and the bar
 comes down over it, and goes when you move away. `ame desktop top-bar peek off` turns that off. With
-two monitors or more, each one has a top bar of its own: see [Several monitors](#several-monitors).
+two monitors or more, the bar and the dock are on the main one until you ask for them on the others: see
+[Several monitors](#several-monitors).
 
 ### Arranging the bar
 
@@ -46,6 +47,15 @@ ame desktop top-bar item clock left 0      # the clock first on the left
 ame desktop top-bar item network hidden    # the network meter off the bar
 ame desktop top-bar layout reset           # as the image has it
 ```
+
+Each meter has a switch of its own in Control, under **Top bar**, and in a terminal:
+
+```bash
+ame desktop top-bar meter processor off    # or memory, network; on brings it back
+```
+
+A meter that is off or hidden reads nothing, and its menu is gone with it, **Network by app** included. The
+[busy app](#power-you-can-see) chip has its own switch and keeps reading the processor until you turn that off too.
 
 The items are `logo`, `workspaces`, `tiling`, `clock`, `processor`, `memory`, `network`, `tray`,
 `clipboard`, `phone`, `shield`, `busy`, `keyboard`, `a11y`, `system`, and `widget-NAME` for each of your
@@ -125,7 +135,7 @@ you plug in or unplug.
 the top bar names the app that kept it busy, such as **Firefox is busy**. Click it for **Show it**,
 **Not now** and **Quit Firefox**, which asks the app to quit as its own menu would. It is said once per
 app per hour, never while a window is fullscreen in front (a game), and the chip goes when the
-processor calms down. It rides the meters' own reading, so without the meters there is no chip.
+processor calms down. It rides the meters' own reading, so it still reads the processor with its meter off the bar.
 
 **Your devices' batteries.** The same menu lists the battery of every device that says how full it is: a wireless
 mouse or keyboard, headphones and headsets, a game controller, a pen, and your paired [phone](hardware.md#phones),
@@ -1136,11 +1146,11 @@ opens. `ame desktop dock updating off` leaves the icons as they are.
 
 ### Where the dock lives
 
-The dock is at the bottom of every screen, and each screen's dock shows the apps whose windows are on that screen
-beside the pinned ones. Put it on the left or right, or on the main screen only:
+The dock is at the bottom of the main screen, and shows the apps of every window. Put it on the left or right, or on
+every screen, where each screen's dock shows the apps whose windows are on that screen beside the pinned ones:
 
     ame desktop dock edge left          # or right, bottom
-    ame desktop dock screens primary    # or every
+    ame desktop dock screens every      # or primary, the main screen only
 
 To have it out of the way, `ame desktop dock autohide touch`: windows then use the whole screen, and the dock slides
 away while one touches it. Push the pointer against that edge to bring it back. Where a screen continues on another
@@ -1225,13 +1235,15 @@ more than you have monitors. When you unplug the monitor you are working on, the
 of the other monitors becomes the current one, and a monitor plugged back in shows the workspace it had,
 if it is still there.
 
-Every monitor but the main one has a top bar of its own, as tall and as round as the main one, with the
+The top bar and the dock start on the main monitor only. `ame desktop top-bar screens on` gives every other
+monitor a top bar of its own, and `ame desktop dock screens every` a dock of its own; Control has both.
+Such a bar is as tall and as round as the main one, with the
 workspaces (the one that monitor shows lit) and the clock. Click a workspace there to show it on that
 monitor; one another monitor shows swaps places with it. Drop a window from the overview on a workspace
 to send it there. The tray, quick settings and the menus stay on the main monitor's bar, and a bar you
 hide with `Super+Ctrl+B` hides on the monitor showing that workspace. In the classic layout, where the
 other monitors keep their windows on every workspace, their bars show the clock alone.
-`ame desktop top-bar screens off` leaves the other monitors without a bar.
+`ame desktop top-bar screens off` takes the other monitors' bars away again.
 
 ### Arranging
 

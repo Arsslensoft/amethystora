@@ -73,6 +73,10 @@ restart_session
 ev "Main.overview.hide(); 1" >/dev/null
 
 check "GNOME has four screens" four_screens
+check "as the image ships: one dock, on the main screen" test "$(ev "${S}.docks.map(d => d.monitor).join(' ')")" == \
+    "$(ev "Main.layoutManager.primaryIndex")"
+in_session "ame desktop dock screens every" >/dev/null
+sleep 2
 # Each dock's strip and the work area of its screen, as "strip-top work-area-bottom" per screen
 struts() { ev "${S}.docks.map(d => [d.monitor, Math.round(d.strip.y), (() => { const a = global.workspace_manager.get_active_workspace().get_work_area_for_monitor(d.monitor); return a.y + a.height; })()].join(':')).join(' ')"; }
 check "every screen: four docks, one for each screen" test "$(ev "${S}.docks.map(d => d.monitor).join(' ')")" == "0 1 2 3"
@@ -126,6 +130,7 @@ ev "const w = ${files}; w.move_to_monitor(1); w.change_workspace(global.workspac
 sleep 2
 check "a maximized window on screen 1 hides its dock" test "$(ev "${S}.docks.find(d => d.monitor === 1).hidden")" == true
 in_session "ame desktop dock edge bottom" >/dev/null
+in_session "gsettings reset ${DOCK_SCHEMA} screens" >/dev/null
 user_bus gsettings set org.gnome.shell favorite-apps "${FAVORITES}"
 user_bus systemctl --user stop "vmlab-dock4-files-$$" >/dev/null 2>&1
 

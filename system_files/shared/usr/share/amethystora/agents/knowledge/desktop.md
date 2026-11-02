@@ -64,8 +64,9 @@ these commands in the agent's own shell, as the user. Read before writing, chang
 
 ## The top bar and the calendar
 
-- With two screens or more every other screen has a top bar with its workspaces and the clock:
-  `ame desktop top-bar screens on|off`. Pushing the pointer against the top edge over a fullscreen window brings
+- The top bar and the dock start on the main screen only. `ame desktop top-bar screens on` gives every other screen a
+  bar with its workspaces and the clock, and `ame desktop dock screens every` a dock of its own. Each meter on the bar
+  is switched by `ame desktop top-bar meter processor|memory|network on|off`; off reads nothing. Pushing the pointer against the top edge over a fullscreen window brings
   the bar down: `ame desktop top-bar peek on|off`.
 - The calendar menu lists today's and overdue tasks from Notes while Notes is open and unlocked:
   `ame desktop today tasks on|off`. Notes says them on the session bus (`org.amethystora.Notes`,

@@ -4,7 +4,8 @@
 # of GNOME Shell itself through Eval, which a lab-only extension of the test account opens (never in the image):
 #   1 the keys with their defaults;
 #   2 arranging the bar: the clock first on the left, meters hidden, the clock and the system menu never hidden, and
-#     the bar exactly as it was once the layout is reset; the helper and the recipe say the same;
+#     the bar exactly as it was once the layout is reset; the helper and the recipe say the same; a meter switched off
+#     reads nothing, with all three off and no busy chip there is no timer, and on brings them back in their order;
 #   3 the bar's size: 28, 32 and 40 pixels inside its edges, the pill's plate with it, touch mode still taller;
 #   4 at the bottom: the main bar at the screen's bottom with the room kept, its menus opening upwards, the dock above
 #     it, and back at the top;
@@ -19,7 +20,7 @@
 #  11 ten disables and enables leaving nothing; Control's entries and the setup file.
 # The VM draws in software, where GNOME turns its animations off: what moves is checked with global.force_animations on,
 # and put back after.
-# vmlab-paths: @ui/extension.js @ui/*bars* @ui/*tweaks* @ui/*comfort* @ui/*motion* @ui/*pill* @ui/*dock* @sf/usr/libexec/amethystora-bar-layout @sf/usr/libexec/amethystora-control-list @sf/usr/libexec/amethystora-setup* @sf/*just/desktop.just @sf/*manual/desktop.md @sf/*manual/themes.md
+# vmlab-paths: @ui/extension.js @ui/*bars* @ui/*meters* @ui/*tweaks* @ui/*comfort* @ui/*motion* @ui/*pill* @ui/*dock* @sf/usr/libexec/amethystora-bar-layout @sf/usr/libexec/amethystora-control-list @sf/usr/libexec/amethystora-setup* @sf/*just/desktop.just @sf/*manual/desktop.md @sf/*manual/themes.md
 source "$(dirname "$0")/lib.sh"
 
 UUID=amethystora-ui@arsslensoft.github.io
@@ -29,6 +30,7 @@ BARS=org.gnome.shell.extensions.amethystora-ui.bars
 MOTION=org.gnome.shell.extensions.amethystora-ui.motion
 PILL=org.gnome.shell.extensions.amethystora-ui.pill
 COMFORT=org.gnome.shell.extensions.amethystora-ui.comfort
+POWER=org.gnome.shell.extensions.amethystora-ui.power
 STATE="${HOME_DIR}/.local/state/amethystora"
 ev() {
     user_bus gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell --method org.gnome.Shell.Eval "$1" |
@@ -53,6 +55,7 @@ reset_all() {
     for key in speed open-close; do gs reset "${MOTION}" "${key}"; done
     gs reset "${PILL}" second-zone
     gs reset "${COMFORT}" light
+    gs reset "${POWER}" busy-app
     for key in clock-format clock-show-seconds text-scaling-factor; do gs reset org.gnome.desktop.interface "${key}"; done
 }
 
@@ -118,6 +121,29 @@ in_session "ame desktop top-bar layout reset" >/dev/null
 wait_for 10 is "${order}" "${before}"
 same "2 reset: the bar as it was" "$(ev "${order}")" "${before}"
 same "2 reset: the meter back" "$(ev "Main.panel.statusArea['amethystora-meters-memory']?.container.visible ?? true")" true
+# Each meter's switch. The busy chip rides the processor's reading, so that goes on until its own switch is off too
+R="JSON.stringify(${UI}.get('meters').reading)"
+same "2 every meter reads" "$(ev "${R}")" '{"processor":true,"memory":true,"network":true,"timer":true}'
+in_session "ame desktop top-bar meter memory off" >/dev/null
+wait_for 10 is "${R}" '{"processor":true,"memory":false,"network":true,"timer":true}'
+same "2 the memory meter off reads nothing" "$(ev "${R}")" '{"processor":true,"memory":false,"network":true,"timer":true}'
+same "2 ...and has left the bar" "$(ev "Main.panel.statusArea['amethystora-meters-memory'].container.visible")" false
+in_session "ame desktop top-bar meter network off" >/dev/null
+in_session "ame desktop top-bar meter processor off" >/dev/null
+wait_for 10 is "${R}" '{"processor":true,"memory":false,"network":false,"timer":true}'
+same "2 all three off: the busy chip still reads the processor" "$(ev "${R}")" '{"processor":true,"memory":false,"network":false,"timer":true}'
+in_session "ame desktop power busy off" >/dev/null
+wait_for 10 is "${R}" '{"processor":false,"memory":false,"network":false,"timer":false}'
+same "2 ...and with its switch off nothing reads" "$(ev "${R}")" '{"processor":false,"memory":false,"network":false,"timer":false}'
+same "2 Control says they are off" "$(in_session "/usr/libexec/amethystora-control-list --json" 2>/dev/null | jq -r '[.items[] | select(.id | IN("top-bar-processor", "top-bar-memory", "top-bar-network")) | .state] | join(" ")')" "off off off"
+for meter in processor network memory; do in_session "ame desktop top-bar meter ${meter} on" >/dev/null; done
+wait_for 10 is "${R}" '{"processor":true,"memory":true,"network":true,"timer":true}'
+same "2 on again: all read" "$(ev "${R}")" '{"processor":true,"memory":true,"network":true,"timer":true}'
+same "2 ...in their order" "$(ev "${B}.placed.right.slice(0, 3).join(' ')")" "processor memory network"
+same "2 Control says they are on" "$(in_session "/usr/libexec/amethystora-control-list --json" 2>/dev/null | jq -r '[.items[] | select(.id | IN("top-bar-processor", "top-bar-memory", "top-bar-network")) | .state] | join(" ")')" "on on on"
+gs reset "${POWER}" busy-app
+in_session "ame desktop top-bar layout reset" >/dev/null
+wait_for 10 is "${order}" "${before}"
 
 # --- 3: the size ----------------------------------------------------------------------------------------------------------
 # The panel's height less its own top and bottom edges (the floating style draws 1 px each)

@@ -4,6 +4,7 @@
 #
 #   amethystora-bar-layout show [--json]               each item and where it is (the image's arrangement until changed)
 #   amethystora-bar-layout place ITEM ZONE [POSITION]  ITEM to left, center, right or hidden, at POSITION (from 0) or last
+#   amethystora-bar-layout unhide ITEM                 ITEM back from hidden, where the image has it among the right's
 #   amethystora-bar-layout reset                       the bar as the image arranges it
 #
 # The items are the bar's own, by id; a widget is widget-NAME. The clock and the system menu are never hidden. The key
@@ -135,11 +136,35 @@ place() {
     gsettings set "${SCHEMA}" layout "${value}"
 }
 
+# Before the first item on the right that the image has after this one, and last when there is none. An item that is
+# not hidden stays where it is.
+unhide() {
+    local item="$1" now id at past=false position
+    now="$(current)"
+    jq -e --arg id "${item}" '.zones.hidden | index($id)' <<<"${now}" >/dev/null || return 0
+    position="$(jq -r '.zones.right | length' <<<"${now}")"
+    for id in "${DEFAULT_RIGHT[@]}"; do
+        if [[ "${past}" == true ]]; then
+            at="$(jq -r --arg id "${id}" '.zones.right | index($id) // empty' <<<"${now}")"
+            if [[ -n "${at}" ]]; then
+                position="${at}"
+                break
+            fi
+        fi
+        [[ "${id}" == "${item}" ]] && past=true
+    done
+    place "${item}" right "${position}"
+}
+
 case "${1:-}" in
     show) show "${2:-}" ;;
     place)
         [[ $# -ge 3 && $# -le 4 ]] || usage
         place "$2" "$3" "${4:-}"
+        ;;
+    unhide)
+        [[ $# -eq 2 ]] || usage
+        unhide "$2"
         ;;
     reset) gsettings reset "${SCHEMA}" layout ;;
     *) usage ;;

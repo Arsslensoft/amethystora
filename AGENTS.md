@@ -1216,7 +1216,9 @@ The modules, and what each replaced:
 - `workspaces`, Space Bar: the six labels after the logo; rename only in its menu (the six stay six); the keys
   `Super+Ctrl+Alt+Left/Right` swap a workspace with its neighbour.
 - `meters`, TopHat: a reading every 5 s that redraws only what changed; the process walk only while a menu is open;
-  only interfaces with a device behind them count.
+  only interfaces with a device behind them count. A meter hidden in the bars' `layout` key reads nothing (`ame desktop
+  top-bar meter`, Control's three switches, which are that key and no key of their own), and with all three hidden and
+  the busy chip off there is no timer.
 - `tray`, AppIndicator: the shell is the StatusNotifierWatcher and host, from the public SNI and dbusmenu specs.
 - `search` and `fuzzy`, Search Light and Fuzzy App Search: `Super+Space`'s box over GNOME's own search, and app search
   that forgives typos, with Parental Controls' filter kept and nothing on disk.
@@ -1258,7 +1260,8 @@ The modules, and what each replaced:
   tiling from starting nor a shortcut from coming back. A strip follows its monitor's connector, and one whose screen
   goes away is merged into the primary's. `21-retire-paperwm.sh` hands an account over from PaperWM once.
 - `dock` and `glass`, Dash to Dock and Blur my Shell: the dock is GNOME's own list of pinned apps in a row at the
-  bottom (`modules/dock/`), with no setting of its own; the glass is a shader (`modules/glass/lens.glsl`) and a
+  bottom (`modules/dock/`), on the main screen unless `screens` says every, as the top bar is unless `every-screen` is
+  on (the maintainer's choice of 2026-11-02); the glass the glass is a shader (`modules/glass/lens.glsl`) and a
   stylesheet, with no setting either. Each screen's wallpaper is blurred once into a texture the surfaces share (the top
   bar, the dock, menus, notifications, unfocused windows, the overview), drawn behind a surface by a `Clutter.Effect`
   with its own shader and never by `Shell.GLSLEffect`, which GNOME 51 no longer has (`20-tests.sh` fails on it in any

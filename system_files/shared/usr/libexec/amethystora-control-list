@@ -1908,6 +1908,26 @@ USAGE="ame desktop top-bar item ITEM left|center|right|hidden [POSITION]"
 item desktop top-bar-layout bar "${ gettext "What the top bar holds"; }" \
     "${ gettext "Drag an item to the left, the centre or the right of the bar, or onto Hidden. The clock and the system menu stay."; }" \
     "" desktop#arranging-the-bar
+# Each meter's switch: off is hidden in that layout, where nothing is read for it
+BAR_HIDDEN=""
+bar_hidden='"hidden":\[([^]]*)\]'
+if [[ "${ said bar-layout; }" =~ ${bar_hidden} ]]; then BAR_HIDDEN="${BASH_REMATCH[1]}"; fi
+meter_switch() {
+    local meter="$1" title="$2" text="$3"
+    shift 3
+    [[ "${ ended bar-layout; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
+    switch_choices false "$@"
+    USAGE="$* on|off"
+    local state=on
+    if [[ "${BAR_HIDDEN}" == *"\"${meter}\""* ]]; then state=off; fi
+    item desktop "top-bar-${meter}" switch "${title}" "${text}" "${state}" desktop#arranging-the-bar
+}
+meter_switch processor "${ gettext "Processor meter"; }" "${ gettext "How busy each processor is. Off, nothing is read for it."; }" \
+    ame desktop top-bar meter processor
+meter_switch memory "${ gettext "Memory meter"; }" "${ gettext "How much memory is in use. Off, nothing is read for it."; }" \
+    ame desktop top-bar meter memory
+meter_switch network "${ gettext "Network meter"; }" "${ gettext "What the network sends and receives. Off, nothing is read for it."; }" \
+    ame desktop top-bar meter network
 [[ "${ ended bars; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
 choice compact "${ gettext "Compact"; }" "${ gettext "28 pixels, for a small screen"; }" false ame desktop top-bar size compact
 choice regular "${ gettext "Regular"; }" "${ gettext "32 pixels, the image's"; }" false ame desktop top-bar size regular

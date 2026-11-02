@@ -4103,6 +4103,30 @@ msgid "Drag an item to the left, the centre or the right of the bar, or onto Hid
 msgstr ""
 
 #: usr/libexec/amethystora-control-list
+msgid "Processor meter"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "How busy each processor is. Off, nothing is read for it."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Memory meter"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "How much memory is in use. Off, nothing is read for it."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Network meter"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "What the network sends and receives. Off, nothing is read for it."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
 msgid "Compact"
 msgstr ""
 
@@ -9648,6 +9672,35 @@ msgid "${shown} lets through banners from: ${list}"
 msgstr ""
 
 #: usr/share/amethystora/just/desktop.just
+#, sh-format
+msgid "Top bar ${what} (current: ${current})"
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "The processor meter is on the top bar."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "The processor meter is off, and nothing is read for it."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "The memory meter is on the top bar."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "The memory meter is off, and nothing is read for it."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "The network meter is on the top bar."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "The network meter is off, and nothing is read for it."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
 msgid "The top bar is compact: 28 pixels high, with everything on it smaller."
 msgstr ""
 
@@ -9669,11 +9722,6 @@ msgstr ""
 
 #: usr/share/amethystora/just/desktop.just
 msgid "The top bar holds what the image puts on it, where it puts it."
-msgstr ""
-
-#: usr/share/amethystora/just/desktop.just
-#, sh-format
-msgid "Top bar ${what} (current: ${current})"
 msgstr ""
 
 #: usr/share/amethystora/just/desktop.just

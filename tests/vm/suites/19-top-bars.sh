@@ -60,6 +60,9 @@ ev "Main.overview.hide(); 1" >/dev/null
 check "GNOME has four screens" four_screens
 check "the bars module runs" ev_is "${UI}.has('bars')" true
 check "the tiling runs with a workspace per screen" ev_is "Boolean(${UI}.get('tiling')?.engine?.screens?.separate)" true
+check "as the image ships: the main screen's bar alone" ev_is "${B}.bars().length" 0
+in_session "ame desktop top-bar screens on" >/dev/null
+wait_for 10 ev_is "${B}.bars().length" 3
 
 # 1. Three bars, each at its screen's top, as wide as it and as tall as the main bar
 check "three secondary bars" ev_is "${B}.bars().length" 3
@@ -179,6 +182,7 @@ sleep 1
 check "...and GNOME's visibility rule is its own again while disabled" ev_is "!Object.prototype.hasOwnProperty.call(Main.layoutManager, '_updateActorVisibility') && !Main.layoutManager.uiGroup.get_children().some(a => a.has_style_class_name?.('amethystora-bars-box'))" true
 ev "Main.extensionManager.enableExtension('${UUID}'); 1" >/dev/null
 sleep 2
+in_session "gsettings reset org.gnome.shell.extensions.amethystora-ui.bars every-screen" >/dev/null
 
 log="$(journalctl --since "${since}" "_UID=$(id -u "${TEST_USER}")" _COMM=gnome-shell --no-pager -o cat 2>/dev/null)"
 errors="$(grep -E 'JS ERROR|Amethystora UI: the [a-z]+ module did not' <<<"${log}" | head -n 10)"

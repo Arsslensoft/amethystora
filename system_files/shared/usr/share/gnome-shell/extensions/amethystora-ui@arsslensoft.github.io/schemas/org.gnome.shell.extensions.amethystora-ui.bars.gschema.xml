@@ -4,9 +4,9 @@
 <schemalist>
   <schema id="org.gnome.shell.extensions.amethystora-ui.bars" path="/org/gnome/shell/extensions/amethystora-ui/bars/">
     <key name="every-screen" type="b">
-      <default>true</default>
+      <default>false</default>
       <summary>A top bar on every screen</summary>
-      <description>With two screens or more, each screen has a top bar with the workspace it shows and the time.</description>
+      <description>With two screens or more, each screen has a top bar with the workspace it shows and the time. Off: the main screen only.</description>
     </key>
     <key name="peek" type="b">
       <default>true</default>

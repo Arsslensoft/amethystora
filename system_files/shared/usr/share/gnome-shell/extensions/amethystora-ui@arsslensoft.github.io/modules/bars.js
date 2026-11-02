@@ -1,6 +1,6 @@
-// The top bar on every screen, and the top bar over a fullscreen window. With two screens or more, each screen but the
-// main one gets a bar of its own at its top, drawn as the main bar is (the same names and classes, so the desktop
-// style and the glass give it the same shape), holding two things: the workspaces, the one that screen shows lit,
+// The top bar on every screen, and the top bar over a fullscreen window. With two screens or more and every-screen on
+// (it is off as the image ships), each screen but the main one gets a bar of its own at its top, drawn as the main bar
+// is (the same names and classes, so the desktop style and the glass give it the same shape), holding two things: the workspaces, the one that screen shows lit,
 // and the clock. A click on a workspace shows it on that screen, swapping with the screen that showed it. The tray,
 // quick settings and the menus stay on the main screen. In the classic layout, while GNOME keeps the other screens'
 // windows on every workspace, the bar holds the clock only. A bar the tiling hides on a workspace (Super+Ctrl+B) is
