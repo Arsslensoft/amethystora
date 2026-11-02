@@ -1,8 +1,8 @@
 // Quick settings as live tiles. The menu at the right end of the top bar keeps GNOME's own tiles, sliders and buttons,
 // laid out again: the tiles first, two to a row, each saying what it knows (the Wi-Fi network and its strength, the
 // earbuds and their battery, when the battery runs out, the phone and its battery); then GNOME's sliders, each app's own
-// volume while something plays, a swatch for every theme, and Screenshot, Lock, Settings and Power in a row at the
-// bottom. Holding a tile arranges them: tiles can be moved and put away (modules/quick/arrange.js), which the keys
+// volume while something plays, a swatch for every theme, and Screenshot, Lock, Log out, Settings and Power in a row at
+// the bottom. Holding a tile arranges them: tiles can be moved and put away (modules/quick/arrange.js), which the keys
 // tile-order and tile-hidden of org.gnome.shell.extensions.amethystora-ui.quick keep (`ame desktop quick-settings`).
 //
 // GNOME's items stay GNOME's: they are put in another order, given other words beside GNOME's and styled, never made
@@ -18,12 +18,14 @@
 // batterySubtitle() and toggleBatteryLimit().
 
 import Clutter from 'gi://Clutter';
+import GObject from 'gi://GObject';
 import Meta from 'gi://Meta';
 import St from 'gi://St';
 
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import {QuickToggle} from 'resource:///org/gnome/shell/ui/quickSettings.js';
+import {QuickSettingsItem, QuickToggle} from 'resource:///org/gnome/shell/ui/quickSettings.js';
+import * as SystemActions from 'resource:///org/gnome/shell/misc/systemActions.js';
 
 import {Arrange} from './quick/arrange.js';
 import {BatteryTile} from './quick/battery.js';
@@ -459,15 +461,30 @@ export class Quick {
                 box.remove_child(child);
         }
         const words = [_('Screenshot'), _('Lock'), _('Settings'), _('Power')];
+        // Log out is the row's own, GNOME's entry being inside the Power menu. zz1 sets always-show-log-out, without which
+        // GNOME takes logging out to be unavailable on a machine with one account
+        const logOut = new QuickSettingsItem({style_class: 'icon-button', can_focus: true, accessible_name: _('Log out')});
+        logOut.set_child(new St.Icon({icon_name: 'system-log-out-symbolic', style_class: 'popup-menu-icon'}));
+        logOut.connect('clicked', () => {
+            Main.panel.closeQuickSettings();
+            SystemActions.getDefault().activateLogout();
+        });
+        SystemActions.getDefault().bind_property('can-logout', logOut, 'visible', GObject.BindingFlags.SYNC_CREATE);
+        box.insert_child_at_index(logOut, 2);
+        this._logOut = logOut;
+        buttons.splice(2, 0, logOut);
+        words.splice(2, 0, _('Log out'));
         buttons.forEach((button, i) => {
             box.set_child_at_index(button, i);
             const icon = button.get_child();
             button.set_child(null);
+            // The icon above its word: five words side by side do not fit
             const content = new St.BoxLayout({style_class: 'amethystora-quick-action-box',
+                orientation: Clutter.Orientation.VERTICAL,
                 x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER});
             if (icon)
                 content.add_child(icon);
-            content.add_child(new St.Label({text: words[i], y_align: Clutter.ActorAlign.CENTER}));
+            content.add_child(new St.Label({text: words[i], x_align: Clutter.ActorAlign.CENTER}));
             button.set_child(content);
             this._system.buttons.push({button, icon, content, expand: button.x_expand});
             button.x_expand = true;
@@ -491,6 +508,8 @@ export class Quick {
             button.x_expand = expand;
             button.remove_style_class_name('amethystora-quick-action');
         }
+        this._logOut.destroy();
+        this._logOut = null;
         // GNOME's own order: the battery, a spacer, Screenshot, Settings, a spacer, Lock, Power
         system.children.forEach((child, i) => {
             if (child.get_parent() !== system.box)
