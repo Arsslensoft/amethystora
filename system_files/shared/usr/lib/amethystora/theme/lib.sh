@@ -888,7 +888,7 @@ render_templates() {
     [[ -n ${values[accent_fg]:-} ]] || { echo "The theme in ${dest##*/} is refused: its palette could not be worked out." >&2; return 1; }
     # A palette too close to its own ground has colours that no lightness brings to the ratio WCAG asks: it is applied as it is,
     # and says which
-    if [[ -n ${values[unmet]:-} ]]; then
+    if [[ -n ${values[unmet]:-} && -z ${AMETHYSTORA_THEME_QUIET:-} ]]; then
         echo "The palette of ${THEME_SHOWN:-${dest##*/}} cannot give every colour the contrast WCAG asks (${values[unmet]}); it is applied as it is." >&2
     fi
     values[mono_font]="$(mono_font "${dest}")"
