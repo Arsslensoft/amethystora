@@ -1,1 +1,24 @@
-{}
+{
+  "A file deleted outright and a setting as it was need the hourly snapshots, which are off. Security turns them on.": "A file deleted outright and a setting as it was need the hourly snapshots, which are off. Security turns them on.",
+  "Also in a terminal:": "Also in a terminal:",
+  "Amethystora Help": "Amethystora Help",
+  "Done. It looked again:": "Done. It looked again:",
+  "Help": "Help",
+  "In the manual": "In the manual",
+  "Looking…": "Looking…",
+  "No internet is the one exception: unless NetworkManager's own check says the internet works, it sends your router one test message, and once that check has failed it looks up the one name the check uses, never while the check is off.": "No internet is the one exception: unless NetworkManager's own check says the internet works, it sends your router one test message, and once that check has failed it looks up the one name the check uses, never while the check is off.",
+  "Nothing this computer keeps a record of has changed in the last month.": "Nothing this computer keeps a record of has changed in the last month.",
+  "Open Security": "Open Security",
+  "Pick what is wrong. This looks, says what it found, and offers one thing to press. Until you press, it only reads this computer.": "Pick what is wrong. This looks, says what it found, and offers one thing to press. Until you press, it only reads this computer.",
+  "Reading what the computer kept…": "Reading what the computer kept…",
+  "Say what is wrong and have it looked at, or see what changed on this computer and undo it": "Say what is wrong and have it looked at, or see what changed on this computer and undo it",
+  "Something's Wrong": "Something's Wrong",
+  "Something's wrong": "Something's wrong",
+  "That could not be looked at.": "That could not be looked at.",
+  "That could not be read.": "That could not be read.",
+  "That did not work.": "That did not work.",
+  "What Changed": "What Changed",
+  "What changed": "What changed",
+  "What changed on this computer over the last month, in one list. Undo adds back and never deletes.": "What changed on this computer over the last month, in one list. Undo adds back and never deletes.",
+  "help;wrong;broken;problem;fix;no sound;no internet;printer;slow;undo;changed;": "help;wrong;broken;problem;fix;no sound;no internet;printer;slow;undo;changed;"
+}
