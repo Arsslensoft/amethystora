@@ -45,6 +45,27 @@ theme *ARGS:
         done < <(palette_checks "${dir}")
         rm -rf "${dir}"
     }
+    # A palette from Control's theme maker that fails a check is not kept: the reason, and a failure
+    refuses() {
+        local dir name ratio nearest need good=0
+        dir="$(mktemp -d)"
+        printf '%s\n' "$1" >"${dir}/colors.toml"
+        if "${helper}" light <<<"$1" 2>/dev/null; then : >"${dir}/light.mode"; fi
+        while read -r name ratio nearest; do
+            case "${name}" in
+                text) name="$(gettext "Text on the surfaces")" need=4.5 ;;
+                label) name="$(gettext "A label on the accent")" need=4.5 ;;
+                outline) name="$(gettext "Outlines")" need=3 ;;
+                *) continue ;;
+            esac
+            if ! awk -v r="${ratio}" -v n="${need}" 'BEGIN { exit !(r >= n) }'; then
+                echo "$(eval_gettext "Not saved, too little contrast. \${name}: \${ratio}:1, needs \${need}:1. \${nearest} would pass.")" >&2
+                good=1
+            fi
+        done < <(palette_checks "${dir}")
+        rm -rf "${dir}"
+        return "${good}"
+    }
     # A name of the account's own for a theme: one a shipped theme has gets a number
     own_name() {
         local name="$1" n=2
@@ -65,7 +86,9 @@ theme *ARGS:
         save)
             # The palette Control's theme maker made, on stdin; the helper takes it only whole
             [[ $# == 2 ]] || { echo "usage: ame desktop theme save NAME"; exit 64; }
-            slug="$("${helper}" save "$2")"
+            palette="$(cat)"
+            refuses "${palette}" || exit 3
+            slug="$("${helper}" save "$2" <<<"${palette}")"
             AMETHYSTORA_THEME_QUIET=1 amethystora-theme set "${slug}" >/dev/null
             name="$2"
             echo "$(eval_gettext "Theme saved as \${name}, and applied.")"

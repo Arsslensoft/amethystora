@@ -8433,6 +8433,11 @@ msgstr ""
 
 #: usr/share/amethystora/just/desktop.just
 #, sh-format
+msgid "Not saved, too little contrast. ${name}: ${ratio}:1, needs ${need}:1. ${nearest} would pass."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+#, sh-format
 msgid "You have a theme called ${shown}. Replace it?"
 msgstr ""
 
