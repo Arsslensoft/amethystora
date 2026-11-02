@@ -23,7 +23,7 @@ const HELPER = '/usr/libexec/amethystora-letters';
 // The home row first: the letters easiest to reach go on the first controls
 const ALPHABET = 'asdfjklghqweruiopzxcvbnmty';
 // The program has this long to say where the controls are
-const ANSWER_MS = 3000;
+const ANSWER_MS = 8000;
 const MOST_LINE = 256 * 1024;
 
 // The labels for n controls: one letter each while they suffice, two otherwise (never a label that starts another)
@@ -83,7 +83,8 @@ export class Letters {
         }, this);
         this._answerId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, ANSWER_MS, () => {
             this._answerId = 0;
-            this.hide();
+            // The same words as a window with nothing to say: nothing came up, and the key is not left looking dead
+            this._answered('{"error": "none"}');
             return GLib.SOURCE_REMOVE;
         });
         const stdout = this._stdout;
