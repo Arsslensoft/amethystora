@@ -4170,7 +4170,7 @@ tidy-downloads ACTION="":
             /usr/libexec/amethystora-tidy-downloads undo
             ;;
         now)
-            /usr/libexec/amethystora-tidy-downloads run
+            /usr/libexec/amethystora-tidy-downloads now
             ;;
         "")
             if systemctl --user is-enabled --quiet "${timer}" 2>/dev/null; then echo on; else echo off; fi

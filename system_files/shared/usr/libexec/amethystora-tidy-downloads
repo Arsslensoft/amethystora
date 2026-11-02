@@ -2,6 +2,7 @@
 """Downloads keeps itself tidy (offered, off): `ame desktop tidy-downloads`, amethystora-tidy-downloads.timer.
 
     amethystora-tidy-downloads run          once: tidy the Downloads folder, and say what moved, with Undo
+    amethystora-tidy-downloads now          the same asked for by hand: returns at once, the notice stays behind
     amethystora-tidy-downloads undo         put back what the last run moved, where it still can
     amethystora-tidy-downloads status --json
 
@@ -213,6 +214,9 @@ def undo():
     return 0
 
 
+AWAY = False
+
+
 def tell(trashed, filed):
     # Said once, with Undo, for as long as somebody might answer; the run then ends whatever happens
     notify = os.environ.get("AMETHYSTORA_TIDY_NOTIFY", "notify-send")
@@ -225,6 +229,14 @@ def tell(trashed, filed):
     if filed:
         words.append(ngettext("{count} file older than a month went into a folder for its month.",
                               "{count} files older than a month went into folders for their month.", filed).format(count=filed))
+    # Asked for by hand (now), the command has done its work: the notice and its Undo stay behind on their own
+    if AWAY and os.fork():
+        return
+    if AWAY:
+        os.setsid()
+        null = os.open(os.devnull, os.O_RDWR)
+        for stream in range(3):
+            os.dup2(null, stream)
     try:
         answer = subprocess.run([notify, "--app-name=Amethystora", "--icon=folder-download", "--wait",
                                  f"--action=undo={_('Undo')}", _("Downloads tidied"), " ".join(words)],
@@ -244,11 +256,15 @@ def status():
 def main(argv):
     if argv == ["run"]:
         return run()
+    if argv == ["now"]:
+        global AWAY
+        AWAY = True
+        return run()
     if argv == ["undo"]:
         return undo()
     if argv == ["status", "--json"]:
         return status()
-    print("usage: amethystora-tidy-downloads run | undo | status --json", file=sys.stderr)
+    print("usage: amethystora-tidy-downloads run | now | undo | status --json", file=sys.stderr)
     return 64
 
 
