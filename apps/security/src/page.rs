@@ -342,6 +342,31 @@ fn empty(text: &str) -> gtk::Box {
     card
 }
 
+/// A long list's rows are made at the first frames they can be shown, a few at a time: made and laid out at once, they stop
+/// the window
+const ROWS_AT_ONCE: usize = 4;
+const ROWS_PER_FRAME: usize = 2;
+
+fn list_card_filling<T: 'static>(values: Vec<T>, row: impl Fn(&T) -> Option<gtk::Widget> + 'static) -> gtk::Box {
+    let card = list_card(Vec::new());
+    let row = Rc::new(row);
+    let mut steps: std::collections::VecDeque<Box<dyn FnOnce()>> = Default::default();
+    for (index, value) in values.into_iter().enumerate() {
+        if index < ROWS_AT_ONCE {
+            card.append(&row(&value).unwrap_or_else(|| ui::hbox(0, &[]).upcast()));
+        } else {
+            let (card, row) = (card.clone(), row.clone());
+            steps.push_back(Box::new(move || {
+                if let Some(row) = row(&value) {
+                    card.append(&row);
+                }
+            }));
+        }
+    }
+    ui::in_frames(&card, ROWS_PER_FRAME, steps);
+    card
+}
+
 fn list_card(rows: Vec<gtk::Widget>) -> gtk::Box {
     let card = ui::vbox(0, &["list", "card"]);
     card.set_overflow(gtk::Overflow::Hidden);
@@ -1024,8 +1049,13 @@ impl Security {
         self.frame.view.append(&built);
         self.frame.shown.replace(self.state.borrow().page.clone());
         adjustment.set_value(keep);
-        // ...and once the new page has been measured
-        glib::idle_add_local_once(move || adjustment.set_value(keep));
+        // ...and once the new page has been measured, and is long enough again, its lists filling in
+        let frames = std::cell::Cell::new(0);
+        self.frame.scroller.add_tick_callback(move |_, _| {
+            adjustment.set_value(keep);
+            frames.set(frames.get() + 1);
+            if (adjustment.value() - keep).abs() < 0.5 || frames.get() > 120 { glib::ControlFlow::Break } else { glib::ControlFlow::Continue }
+        });
     }
 
     fn build(&self) -> gtk::Widget {
@@ -2403,7 +2433,11 @@ impl Security {
             Some(data) if data.error.is_some() => empty(data.error.as_deref().unwrap_or("")),
             Some(_) if apps.is_empty() => empty(&t!("No Flatpak apps are installed.")),
             Some(_) if reaching.is_empty() => empty(&t!("No app reaches anything beyond its sandbox without asking.")),
-            Some(_) => list_card(reaching.iter().map(|app| self.app_row(app).upcast()).collect()),
+            Some(_) => {
+                let me = self.me.clone();
+                let values: Vec<backend::App> = reaching.iter().map(|app| (*app).clone()).collect();
+                list_card_filling(values, move |app| Some(me.upgrade()?.app_row(app).upcast()))
+            }
         };
         let mut children: Vec<gtk::Widget> = vec![page_head(
             &t!("Apps"),
@@ -2674,7 +2708,12 @@ impl Security {
                 command = "ame security events"
             )),
             Some(data) if data.events.is_empty() => empty(&t!("Nothing yet. Whatever the watcher finds from now on is listed here.")),
-            Some(data) => list_card(data.events.iter().take(shown).map(|event| self.event_row(event, data.triage).upcast()).collect()),
+            Some(data) => {
+                let me = self.me.clone();
+                let triage = data.triage;
+                let values: Vec<Event> = data.events.iter().take(shown).cloned().collect();
+                list_card_filling(values, move |event| Some(me.upgrade()?.event_row(event, triage).upcast()))
+            }
         };
         let count = data.as_ref().filter(|d| !d.events.is_empty()).map(|d| t!("{count, plural, one {# event} other {# events}}", count = d.events.len()));
         let mut children: Vec<gtk::Widget> = vec![
