@@ -18,6 +18,7 @@ mod columns;
 use std::cell::{Cell, RefCell};
 use std::path::{Path, PathBuf};
 use std::rc::{Rc, Weak};
+use std::time::{Duration, Instant};
 
 use amethystora_ui::app::{self, App, Shell, Spec};
 use amethystora_ui::frame;
@@ -97,6 +98,12 @@ fn margins(block: Block) -> (i32, i32) {
     }
 }
 
+/// How much of a page is drawn at once, and how much each frame after that, or while on the way to a section
+const BLOCKS_AT_ONCE: usize = 12;
+const BLOCKS_PER_FRAME: usize = 6;
+const BLOCKS_HURRYING: usize = 40;
+const BLOCKS_A_SCREEN: usize = 30;
+
 /// A hit of the search: where it goes, what it is called and the words around the first one searched for
 struct Hit {
     route: String,
@@ -125,6 +132,10 @@ pub struct Manual {
     selected: Cell<usize>,
     search: gtk::Entry,
     search_pause: ui::Pause,
+    /// The page while it fills in, which turn of filling is the current one, and a section to go to once it is there
+    filling: RefCell<Option<markdown::Filling>>,
+    fill_turn: Cell<u64>,
+    wanted: RefCell<Option<(String, bool)>>,
     article: gtk::Box,
     pager: gtk::Box,
     main: gtk::ScrolledWindow,
@@ -295,6 +306,9 @@ impl Manual {
             results_scroller,
             hits: RefCell::new(Vec::new()),
             search_pause: ui::Pause::default(),
+            filling: RefCell::new(None),
+            fill_turn: Cell::new(0),
+            wanted: RefCell::new(None),
             selected: Cell::new(0),
             search,
             article,
@@ -538,7 +552,19 @@ impl Manual {
             self.in_english.set(in_english);
             self.render(index);
         }
+        self.wanted.take();
+        if let Some(anchor) = anchor.as_ref() {
+            // The page is still filling in: it goes there when the section has arrived
+            if self.filling.borrow().is_some() && !self.headings.borrow().iter().any(|(id, _)| id == anchor) {
+                self.wanted.replace(Some((anchor.clone(), same)));
+                return;
+            }
+        }
         let target = anchor.and_then(|anchor| self.headings.borrow().iter().find(|(id, _)| *id == anchor).map(|(_, widget)| widget.clone()));
+        self.land_on(target, same);
+    }
+
+    fn land_on(&self, target: Option<gtk::Widget>, same: bool) {
         let this = self.rc();
         // Once the new page has been laid out: a section's place means nothing before that, and an idle callback can come first
         self.main.add_tick_callback(move |_, _| {
@@ -609,12 +635,14 @@ impl Manual {
         // The moving cards: the manual's own clips only, side by side when a paragraph holds several
         options.image_rows = true;
         options.image = Some(Rc::new(cards::card));
-        let rendered = markdown::render(english.map_or(&page.markdown, |english| &english.markdown), &options);
-        if english.is_some() || page.in_english {
-            left_to_right(rendered.root.upcast_ref());
-        }
-        self.article.append(&rendered.root);
-        self.headings.replace(rendered.headings);
+        let mut filling = markdown::Filling::new(english.map_or(&page.markdown, |english| &english.markdown), options);
+        self.article.append(&filling.root());
+        filling.advance(BLOCKS_AT_ONCE);
+        self.headings.replace(filling.headings().to_vec());
+        let reads_ltr = english.is_some() || page.in_english;
+        self.filling.replace(Some(filling));
+        self.pager.set_visible(false);
+        self.fill_in(reads_ltr);
 
         ui::clear(&self.pager);
         let neighbour = |other: Option<&Page>, label: String, class: &str| -> gtk::Widget {
@@ -657,6 +685,59 @@ impl Manual {
             object.insert("page".into(), Value::String(page.id.clone()));
         }
         store::save("manual", &saved);
+    }
+
+    /// The rest of the page, a few blocks each frame: a long one laid out at once stops the window for two seconds. A
+    /// link to a section further down hurries it there.
+    fn fill_in(&self, reads_ltr: bool) {
+        let turn = self.fill_turn.get() + 1;
+        self.fill_turn.set(turn);
+        let me = self.me.clone();
+        self.article.add_tick_callback(move |_, _| {
+            let Some(this) = me.upgrade() else { return glib::ControlFlow::Break };
+            if this.fill_turn.get() != turn {
+                return glib::ControlFlow::Break;
+            }
+            let hurry = this.wanted.borrow().is_some();
+            let most = if hurry { BLOCKS_HURRYING } else { BLOCKS_PER_FRAME };
+            let began = Instant::now();
+            let mut more = true;
+            {
+                let mut filling = this.filling.borrow_mut();
+                let Some(filling) = filling.as_mut() else { return glib::ControlFlow::Break };
+                for _ in 0..most {
+                    more = filling.advance(1);
+                    if !more || (!hurry && began.elapsed() > Duration::from_millis(5)) {
+                        break;
+                    }
+                }
+                this.headings.replace(filling.headings().to_vec());
+            }
+            let wanted = this.wanted.borrow().clone();
+            if let Some((anchor, same)) = wanted {
+                let target = this.headings.borrow().iter().find(|(id, _)| *id == anchor).map(|(_, widget)| widget.clone());
+                if target.is_some() || !more {
+                    // A screenful below it first: a page that ends under the section could not bring it to the top
+                    if let Some(filling) = this.filling.borrow_mut().as_mut() {
+                        more = filling.advance(BLOCKS_A_SCREEN);
+                        this.headings.replace(filling.headings().to_vec());
+                    }
+                    this.wanted.take();
+                    this.land_on(target, same);
+                }
+            }
+            if more {
+                return glib::ControlFlow::Continue;
+            }
+            if let Some(filling) = this.filling.take() {
+                let rendered = filling.finish();
+                if reads_ltr {
+                    left_to_right(rendered.root.upcast_ref());
+                }
+            }
+            this.pager.set_visible(true);
+            glib::ControlFlow::Break
+        });
     }
 
     /// A link was followed: within the manual, or a web address in the browser
