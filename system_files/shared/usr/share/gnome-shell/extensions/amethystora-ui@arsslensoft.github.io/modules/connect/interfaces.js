@@ -46,6 +46,9 @@ const ROOT = `
       <arg name="device_id" type="s"/>
       <arg name="action" type="s"/>
     </signal>
+    <signal name="Code">
+      <arg name="code" type="s"/>
+    </signal>
   </interface>
 </node>`;
 

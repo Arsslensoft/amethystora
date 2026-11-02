@@ -14,6 +14,7 @@ import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js'
 import {EventEmitter} from 'resource:///org/gnome/shell/misc/signals.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
+import {PARTIAL, reportMoving} from '../pill/movinglist.js';
 import {Popover} from './popover.js';
 import {EASE, scaleFactor} from './util.js';
 
@@ -28,7 +29,6 @@ const GAP = 12;
 const POP = {from: 16, scale: 0.94, open: 260, close: 160, openMode: EASE.quart, closeMode: EASE.quart};
 // The stack that counts what arrives, and the names a browser gives a download until it is whole
 const COUNTED = 'xdg:DOWNLOAD';
-const PARTIAL = /\.(part|crdownload|download|partial|tmp)$/i;
 // Names remembered, so that a download made in two steps (an empty file, then the whole one renamed onto it) counts once
 const MOST_NAMES = 200;
 const ATTRIBUTES = 'standard::name,standard::display-name,standard::icon,standard::content-type,' +
@@ -140,6 +140,7 @@ export class Stacks extends EventEmitter {
     // A whole file under a name of its own: made there, moved in, or a download's partial name turned into its own
     _changed(place, file, other, event) {
         const E = Gio.FileMonitorEvent;
+        this._moving(file, event);
         let name = null;
         if (event === E.CREATED || event === E.MOVED_IN)
             name = file?.get_basename();
@@ -152,6 +153,18 @@ export class Stacks extends EventEmitter {
         place.names.add(name);
         place.arrived++;
         this.emit('arrived', place);
+    }
+
+    // A download on its way, for the live pill's moving (pill/movinglist.js): only ever its name, there
+    _moving(file, event) {
+        const E = Gio.FileMonitorEvent;
+        const name = file?.get_basename() ?? '';
+        if (!PARTIAL.test(name))
+            return;
+        if (event === E.CREATED || event === E.CHANGED || event === E.MOVED_IN)
+            reportMoving('download', name, {path: file.get_path()});
+        else if (event === E.DELETED || event === E.RENAMED || event === E.MOVED_OUT)
+            reportMoving('download', name, null);
     }
 
     // Opened: the count is gone

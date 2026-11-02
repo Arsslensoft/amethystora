@@ -23,6 +23,8 @@ const MESSAGES_PER_PACKET: usize = 5_000;
 pub const THREAD_SIGNALS: usize = 64;
 const ADDRESSES_PER_MESSAGE: usize = 16;
 const ADDRESS_LENGTH: usize = 64;
+/// How old a text may be, by its date, to be fresh: two minutes either way, since the phone's clock is its own
+pub const FRESH_MS: i64 = 2 * 60 * 1000;
 /// All the texts of a phone together: the oldest conversations go first when they pass it
 const BYTES_KEPT: usize = 32 * 1024 * 1024;
 
@@ -81,6 +83,9 @@ pub struct Changes {
     pub threads: Vec<i64>,
     /// Whether the list of conversations changed (a thread came, went, or got a newer message)
     pub conversations: bool,
+    /// The bodies of the texts that came in just now and were not here before, unread: filled only when the caller
+    /// asked (a code from your phone), and kept for no other purpose
+    pub fresh: Vec<String>,
 }
 
 fn message_of(value: &Value) -> Option<Message> {
@@ -128,6 +133,13 @@ impl Sms {
 
     /// A `kdeconnect.sms.messages` body
     pub fn apply(&mut self, body: &Map<String, Value>) -> Changes {
+        self.apply_looking(body, None)
+    }
+
+    /// The same, and with `near` (the time in milliseconds) the bodies of the incoming, unread texts that were not here
+    /// before and are dated within `FRESH_MS` of it come back in `Changes::fresh`. A digest, a reply to a request for older
+    /// messages and a text already known are none of them fresh, by the date and the id.
+    pub fn apply_looking(&mut self, body: &Map<String, Value>, near: Option<i64>) -> Changes {
         let mut changes = Changes::default();
         let Some(list) = body.get("messages").and_then(Value::as_array).filter(|l| !l.is_empty()) else { return changes };
         let incoming: Vec<Message> = list.iter().take(MESSAGES_PER_PACKET).filter_map(message_of).collect();
@@ -172,7 +184,12 @@ impl Sms {
                     removed += cost(existing);
                     *existing = message;
                 }
-                None => messages.push(message),
+                None => {
+                    if near.is_some_and(|now| message.kind == 1 && !message.read && (now - message.date).abs() <= FRESH_MS) {
+                        changes.fresh.push(message.body.clone());
+                    }
+                    messages.push(message);
+                }
             }
             messages.sort_by_key(|m| (m.date, m.id));
             if messages.len() > limits::MESSAGES_PER_THREAD {
@@ -453,6 +470,26 @@ mod tests {
         let addresses = sms.participants(1).unwrap();
         assert_eq!(addresses.len(), ADDRESSES_PER_MESSAGE);
         assert!(addresses.iter().all(|a| a.chars().count() <= ADDRESS_LENGTH));
+    }
+
+    #[test]
+    fn only_a_text_that_came_in_just_now_is_fresh() {
+        let now = 1761253100000i64;
+        let text = |id: i64, date: i64, kind: i32, read: i32, body: &str| json!({ "_id": id, "thread_id": 42, "addresses": [ { "address": "+15550100" } ], "body": body, "date": date, "type": kind, "read": read });
+        let mut sms = Sms::default();
+        // Nothing is handed back unless asked
+        assert!(sms.apply(&body(json!({ "messages": [ text(1, now, 1, 0, "code is 482913") ] }))).fresh.is_empty());
+        let mut sms = Sms::default();
+        let fresh = sms.apply_looking(&body(json!({ "messages": [ text(1, now - 30_000, 1, 0, "new") ] })), Some(now)).fresh;
+        assert_eq!(fresh, vec!["new".to_string()]);
+        // The same text again, an old one, one of ours, one read already and one from the future are none
+        let again = body(json!({ "messages": [
+            text(1, now - 30_000, 1, 0, "new"),
+            text(2, now - 10 * 60_000, 1, 0, "old"),
+            text(3, now, 2, 1, "ours"),
+            text(4, now, 1, 1, "read"),
+            text(5, now + 10 * 60_000, 1, 0, "future") ] }));
+        assert!(sms.apply_looking(&again, Some(now)).fresh.is_empty());
     }
 
     #[test]

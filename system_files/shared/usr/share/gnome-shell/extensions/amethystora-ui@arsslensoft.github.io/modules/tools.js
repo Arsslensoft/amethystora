@@ -49,6 +49,11 @@ export class Tools {
         this._ext = ext;
     }
 
+    // Whether Convert in Files' menu is on: the pill's drop target asks
+    get convertOn() {
+        return this._settings?.get_boolean('convert-in-files') ?? false;
+    }
+
     enable() {
         this._settings = this._ext.getSettings(SCHEMA);
         this._bound = new Set();

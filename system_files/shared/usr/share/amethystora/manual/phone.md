@@ -184,6 +184,28 @@ ame desktop phone clicker on
 or **The phone as a slide clicker** on [Control](control.md)'s **Desktop** page. The presenter's pointer does nothing
 here.
 
+## A code from your phone
+
+A one-time code in a text can show in the [live pill](desktop.md#the-live-pill) as **Copy 482913** for 60 seconds. To do
+that the phone link looks at each text your paired phone receives, as it arrives, on this computer, which is why it is
+**off** and you have to say so:
+
+```bash
+ame desktop phone codes on
+```
+
+or **A code from your phone** on [Control](control.md)'s **Desktop** page, which asks in a terminal. Only the phone
+link reads the text: the desktop's shell is told the digits of a code and nothing else, never the text, who sent it or which
+phone, and the text is let go once it has been looked at. The code is held for that minute only, in memory. Nothing is
+written or sent. A code is taken only beside a word that says it is one (code, PIN, OTP and the like, in English, French,
+German, Spanish and Arabic) as four to eight digits standing alone, never a phone number, a date, an amount or an order's
+number. A text in another language, or one that does not say so, is missed on purpose: a wrong code is worse than none.
+
+When you copy it, the code is kept out of Amethystora's [clipboard history](desktop.md#the-clipboard) and is not sent to your
+phones, and it comes off the clipboard a minute later unless you have copied something else. Any other program that reads the
+clipboard can still read it in that minute, as it can read anything you copy. It is hidden while the screen is recorded or
+shared, and while it is locked. Without permission for SMS on the phone, no text ever arrives to look at.
+
 ## Battery and signal
 
 With one phone connected, the top bar shows its battery and its mobile signal in a small capsule, after the

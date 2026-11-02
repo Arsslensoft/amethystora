@@ -187,6 +187,8 @@ export class Link {
      *   ("ringing", "talking", "missed", "ended"), number and name
      * @param {function(Device, string): void} [handlers.url] - a web link a ready phone shared
      * @param {function(Device, string): void} [handlers.clicker] - "next", "previous" or "blank" from a ready phone
+     * @param {function(string): void} [handlers.code] - the digits of a one-time code that has just come in by text (only
+     *   while the key codes is on); the shell never reads a text
      * @param {string} [trustedExe] - the program that may be the phone link, for a test to change
      */
     constructor(handlers, trustedExe = TRUSTED_EXE) {
@@ -313,6 +315,8 @@ export class Link {
                 root.connectSignal('ClipboardReceived', (proxy, sender, [, text]) => this._handlers.received(text)),
                 root.connectSignal('UrlReceived', (proxy, sender, [deviceId, url]) => this._url(deviceId, url)),
                 root.connectSignal('Clicker', (proxy, sender, [deviceId, action]) => this._click(deviceId, action)),
+                // A one-time code, the digits alone: the program looks at texts only while the key codes is on, and never sends one
+                root.connectSignal('Code', (proxy, sender, [code]) => this._handlers.code?.(code)),
             ];
             this._handlers.trust(true);
             for (const path of paths)
@@ -346,6 +350,7 @@ export class Link {
             const device = new Device(proxy, path);
             device.callSignal = proxy.connectSignal('Call', (p, sender, [state, number, name]) =>
                 this._handlers.call?.(device, state, number, name));
+            this._syncTransfers(device);
             this._devices.set(path, device);
             this._handlers.devices();
         } catch (e) {
@@ -372,6 +377,27 @@ export class Link {
         if (device.callSignal)
             device.proxy.disconnectSignal(device.callSignal);
         device.callSignal = 0;
+        if (device.transferSignal)
+            device.proxy.disconnectSignal(device.transferSignal);
+        device.transferSignal = 0;
+    }
+
+    // Hears files on their way to a phone, only while somebody asks: callback(device, id, name, incoming, done, total, state)
+    // (done and total in bytes, total 0 when not said)
+    watchTransfers(callback) {
+        this._onTransfer = callback;
+        for (const device of this._devices.values())
+            this._syncTransfers(device);
+    }
+
+    _syncTransfers(device) {
+        if (this._onTransfer && !device.transferSignal) {
+            device.transferSignal = device.proxy.connectSignal('Transfer', (p, sender, [id, name, incoming, done, total, state]) =>
+                this._onTransfer?.(device, id, name, incoming, done, total, state));
+        } else if (!this._onTransfer && device.transferSignal) {
+            device.proxy.disconnectSignal(device.transferSignal);
+            device.transferSignal = 0;
+        }
     }
 
     // A click of the slide clicker, from a ready phone, one of the three words

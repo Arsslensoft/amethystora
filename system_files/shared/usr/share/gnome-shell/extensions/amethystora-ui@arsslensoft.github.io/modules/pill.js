@@ -18,14 +18,19 @@ import Clutter from 'gi://Clutter';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {Activities} from './pill/activities.js';
+import {Banners} from './pill/banners.js';
 import {Battery, batteryView} from './pill/battery.js';
 import {Capture, Recording} from './pill/capture.js';
 import {Clock, chip, retire} from './pill/clock.js';
+import {Code} from './pill/code.js';
 import {Zone} from './pill/zone.js';
+import {DropTargets} from './pill/drop.js';
 import {Glow} from './pill/glow.js';
+import {Hello} from './pill/hello.js';
 import {Hold} from './pill/hold.js';
 import {Media} from './pill/media.js';
 import {Meetings} from './pill/meeting.js';
+import {Moving, releaseKeeper} from './pill/moving.js';
 import {Osd} from './pill/osd.js';
 import {Phone} from './pill/phone.js';
 import {Privacy} from './pill/privacy.js';
@@ -33,7 +38,7 @@ import {ResumeCard} from './pill/resume.js';
 import {Saving} from './pill/saving.js';
 import {Stacks} from './pill/stacks.js';
 import {disposeSettings} from './pill/text.js';
-import {Timer, armOffRing, disarmOffRing} from './pill/timer.js';
+import {Timer, armOffRing, disarmOffRing, secondRuns} from './pill/timer.js';
 import {Update} from './pill/update.js';
 import {News, writeSeen} from './pill/whatsnew.js';
 
@@ -105,6 +110,19 @@ export class Pill {
             'changed::later', () => this._sync(),
             'changed::meetings', () => this._sync(),
             'changed::saving-data', () => this._sync(),
+            'changed::two-at-once', () => this._clock?.sync(),
+            'changed::moving', () => this._sync(),
+            'changed::music-see', () => this._media?.seeChanged(),
+            'changed::music-bars', () => this._media?.seeChanged(),
+            'changed::hello', () => this._sync(),
+            'changed::drop-targets', () => this._sync(),
+            'changed::stay-awake', () => this._awakeChanged(),
+            'changed::weight', () => this._sync(),
+            'changed::timer-feel', () => {
+                this._timer?.feelChanged();
+                this._timer2?.feelChanged();
+                this._sync();
+            },
             this);
         this._sync();
     }
@@ -112,6 +130,12 @@ export class Pill {
     disable() {
         this._settings?.disconnectObject(this);
         this._stopPart('_saving');
+        this._stopPart('_banners');
+        this._stopPart('_moving');
+        this._stopPart('_hello');
+        this._stopPart('_drop');
+        this._stopPart('_code');
+        this._stopPart('_timer2');
         this._stopLive();
         // Turned off whole (as while the screen is locked): nothing waits; the timer rings at the next enable if it ended
         disarmOffRing();
@@ -155,6 +179,7 @@ export class Pill {
         // Under reduce motion the loops stand still at once
         if (this._reduce())
             this._media?._restBars?.(this._media.playing ? null : 0.35);
+        this._media?._syncLevels?.();
     }
 
     _glass() {
@@ -173,6 +198,35 @@ export class Pill {
         }
         // Saving data on a connection that counts it: a mark of the live pill, as its own key says
         this._toggle('_saving', on('live') && on('saving-data'), () => new Saving(this._activities));
+        // Banners that grow out of the pill; while the pill says it has weight, and only then is GNOME's motion touched
+        this._toggle('_banners', !!this._clock && on('weight'),
+            () => new Banners(() => on('weight') && !this._reduce() && !this._comfort?.lighter && !!this._clock?.actor?.mapped));
+        // Everything moving, one place: reads what the dock and the phone link say, and stays awake for it
+        this._toggle('_moving', !!this._clock && on('moving'), () => new Moving(this._activities, {
+            capture: this._capture,
+            connect: this._ext.modules?.get('connect') ?? null,
+            flatpaks: () => this._ext.modules?.get('dock')?.flatpakUpdating ?? [],
+            awake: () => this._settings?.get_boolean('stay-awake') ?? false,
+        }));
+        // What held on through a lock has nobody to go to when moving is off, and the pill's own part gives it back by itself
+        if (!this._moving)
+            releaseKeeper();
+        // A device arriving, for two seconds
+        this._toggle('_hello', !!this._clock && on('hello'), () => new Hello(this._activities, {
+            connect: this._ext.modules?.get('connect') ?? null,
+            quiet: () => this._glanceQuiet(),
+        }));
+        // What a dragged file can be dropped on
+        this._toggle('_drop', !!this._clock && on('drop-targets'), () => new DropTargets(this._activities, {
+            ext: this._ext,
+            pill: () => this._clock?.actor ?? null,
+            openCard: id => this._clock?.openCard(id),
+            glassChanged: () => this._glass()?.surfacesChanged?.(),
+            capture: this._capture,
+        }));
+        this.codesChanged();
+        // The second timer's place, while timer-feel is on or one still runs in it
+        this._toggle('_timer2', !!this._clock && (on('timer-feel') || secondRuns()), () => this._newTimer(1));
         this._toggle('_privacy', on('privacy-dots'), () => new Privacy(this._capture));
         this._toggle('_glow', on('glow'), () => new Glow(this._capture, () => this._reduce()));
         // The apps that always wait for the digest hold their banners also while the digest itself is off
@@ -189,6 +243,27 @@ export class Pill {
             this._hideGnomeCapture();
         else
             this._showGnomeCapture();
+    }
+
+    // Stay awake went on or off: the part follows, and a hold kept through a lock lets go when it is off
+    _awakeChanged() {
+        if (!this._settings?.get_boolean('stay-awake'))
+            releaseKeeper();
+        this._moving?._syncAwake();
+    }
+
+    // A code from your phone: its switch is the phone link's, which says when it changes
+    codesChanged() {
+        const connect = this._ext.modules?.get('connect');
+        this._toggle('_code', !!this._clock && connect?.codesOn === true,
+            () => new Code(this._activities, {connect, capture: this._capture}));
+    }
+
+    // Whether a glance must keep quiet now: a call, a recording, Present, Focus, quiet hours, or a bar not to be seen
+    _glanceQuiet() {
+        // Not only the first: something may sit before a call or beside it
+        return ['call', 'recording', 'present'].some(id => !!this._activities?.get(id)) || !!this._hold?.reason || !!this._focusRule ||
+            !!this._capture?.active || !this._clock?.actor?.mapped;
     }
 
     // ---- Present mode (modules/present.js) ----
@@ -290,7 +365,11 @@ export class Pill {
             return;
         const notice = (...a) => this.notice(...a);
         const reduce = () => this._reduce();
-        this._clock = new Clock(this._activities, reduce);
+        this._clock = new Clock(this._activities, reduce, {
+            twoAtOnce: () => this._settings?.get_boolean('two-at-once') ?? false,
+            // A slow computer has the plain curve (the light desktop, or power saving)
+            weight: () => (this._settings?.get_boolean('weight') ?? false) && !this._comfort?.lighter,
+        });
         try {
             this._clock.enable();
         } catch (e) {
@@ -301,8 +380,12 @@ export class Pill {
         this._live = [];
         const parts = [
             // The phone's players too, while music from either side is on (the connect module's)
-            ['_media', () => new Media(this._activities, reduce, () => this._ext.modules?.get('connect')?.mediaSource ?? null)],
-            ['_timer', () => new Timer(this._activities, notice)],
+            ['_media', () => new Media(this._activities, reduce, () => this._ext.modules?.get('connect')?.mediaSource ?? null, {
+                colour: () => this._settings?.get_boolean('music-see') ?? false,
+                // The light desktop and power saving have the four beats
+                bars: () => (this._settings?.get_boolean('music-bars') ?? false) && !this._comfort?.lighter,
+            })],
+            ['_timer', () => this._newTimer(0)],
             ['_recording', () => new Recording(this._activities, notice, this._capture, reduce)],
             ['_update', () => new Update(this._activities)],
             ['_news', () => new News(this._activities, this._settings)],
@@ -322,7 +405,35 @@ export class Pill {
         this._clock.sync();
     }
 
+    _newTimer(slot) {
+        return new Timer(this._activities, (...a) => this.notice(...a), {
+            slot,
+            feel: () => this._settings?.get_boolean('timer-feel') ?? false,
+            flash: () => this._clock?.flash(),
+        });
+    }
+
+    // Whether a timer can be started from search now: with timer-feel on, in a place that is free
+    canStartTimer() {
+        return !!this._timer && !!this._settings?.get_boolean('timer-feel') &&
+            (!this._timer.running || !this._timer2?.running);
+    }
+
+    startTimer(name, seconds) {
+        if (!this.canStartTimer())
+            return false;
+        const timer = this._timer.running ? this._timer2 : this._timer;
+        timer.start(seconds, name);
+        return true;
+    }
+
     _stopLive() {
+        this._stopPart('_banners');
+        this._stopPart('_moving');
+        this._stopPart('_hello');
+        this._stopPart('_drop');
+        this._stopPart('_code');
+        this._stopPart('_timer2');
         Main.panel.statusArea.dateMenu?.disconnectObject(this);
         // The clock lets the activities' contents go first, so that each part takes its own away
         if (this._clock) {
@@ -395,7 +506,7 @@ export class Pill {
     // --- For the glass, the suites and the harness ----------------------------------------------------------------
 
     glassSurfaces() {
-        return [...this._battery?.glassSurfaces() ?? [], ...this._hold?.glassSurfaces() ?? []];
+        return [...this._battery?.glassSurfaces() ?? [], ...this._hold?.glassSurfaces() ?? [], ...this._drop?.glassSurfaces() ?? []];
     }
 
     get timer() {
@@ -459,6 +570,22 @@ export class Pill {
         return this._saving;
     }
 
+    get moving() {
+        return this._moving ?? null;
+    }
+
+    get hello() {
+        return this._hello ?? null;
+    }
+
+    get code() {
+        return this._code ?? null;
+    }
+
+    get drop() {
+        return this._drop ?? null;
+    }
+
     // For the suites: the welcome back card started again, as the live pill's start would find it; says whether it shows
     resumeForTest() {
         if (!this._live)
@@ -483,6 +610,7 @@ export class Pill {
             activity: top?.id ?? 'idle',
             text: top ? top.text : dateMenu?._clockDisplay?.text ?? '',
             others: activities?.others.map(a => a.id) ?? [],
+            bubble: this._clock?.bubbleId ?? null,
             card: this._clock?.cardId ?? null,
             dots: this._privacy?.state ?? {microphone: false, camera: false, screen: false, location: false, visible: false},
             glow: this._glow?.monitors ?? 0,
@@ -494,6 +622,8 @@ export class Pill {
             saving: this._saving?.shown ?? false,
             osd: this._osd?.state ?? null,
             timer: {running: this._timer?.running ?? false, paused: this._timer?.paused ?? false, left: Math.round(this._timer?.left ?? 0)},
+            timer2: {running: this._timer2?.running ?? false, left: Math.round(this._timer2?.left ?? 0)},
+            moving: this._moving?.state() ?? null,
             paused: this._media?.paused === true,
             meeting: this._meetings?.state() ?? null,
             relayouts: this._clock?.relayouts ?? 0,

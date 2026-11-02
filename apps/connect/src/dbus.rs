@@ -126,7 +126,7 @@ fn note_client(service: &Service, sender: Option<&str>, role: Role) {
 pub fn audience(role: Role, signal: &str, args: Option<&glib::Variant>) -> bool {
     match role {
         // The clipboard is the shell's to set, and a shared link the shell's to show (the live pill)
-        Role::App => !matches!(signal, "ClipboardReceived" | "UrlReceived" | "Clicker"),
+        Role::App => !matches!(signal, "ClipboardReceived" | "UrlReceived" | "Clicker" | "Code"),
         Role::Module => match signal {
             "DeviceAdded" | "DeviceRemoved" | "PropertiesChanged" | "ClipboardReceived" => true,
             // The live pill: a phone ringing, and a link shared from one
@@ -134,6 +134,9 @@ pub fn audience(role: Role, signal: &str, args: Option<&glib::Variant>) -> bool 
             "UrlReceived" => true,
             // The phone as a slide clicker, which only the shell turns into a key
             "Clicker" => true,
+            // A one-time code, the digits alone (R7-23): never the text, who sent it or which phone. The module never reads
+            // texts: ListMessages and MessagesChanged stay the app's
+            "Code" => true,
             // (transfer_id, name, incoming, done, total, state)
             "Transfer" => args.filter(|a| a.n_children() > 2).and_then(|a| a.child_value(2).get::<bool>()) == Some(false),
             _ => false,

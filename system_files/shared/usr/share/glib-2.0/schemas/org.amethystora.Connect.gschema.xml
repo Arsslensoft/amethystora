@@ -38,6 +38,11 @@
       <summary>Music from either side</summary>
       <description>This computer's players are shown on the paired phones and played from there, and a phone's player is shown in the live pill and played from here. The titles go only to the phones you paired, on the networks named home. Off as the image ships.</description>
     </key>
+    <key name="codes" type="b">
+      <default>false</default>
+      <summary>A code from your phone</summary>
+      <description>A one-time code in a text from a paired phone shows in the live pill for a minute, to copy. It means the phone link looks at each text as it arrives, in memory only, and tells the desktop the digits of a code and nothing else: never written, never in the clipboard's history, hidden while the screen is shared and while locked. Turned on only by ame desktop phone codes on, which says so first.</description>
+    </key>
     <key name="clicker" type="b">
       <default>false</default>
       <summary>The phone as a slide clicker</summary>

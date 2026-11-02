@@ -179,6 +179,7 @@ PILL_KEYS='{
     "meetings": ["b"],
     "digest-through": ["as", "launchers"], "digest-wait": ["as", "launchers"],
     "saving-data": ["b"],
+    "two-at-once": ["b"], "weight": ["b"], "timer-feel": ["b"], "moving": ["b"], "stay-awake": ["b"], "hello": ["b"], "drop-targets": ["b"], "music-see": ["b"], "music-bars": ["b"],
     "second-zone": ["s-zone"]
 }'
 # Quick settings' tiles: the order they come first in and the ones put away, each a tile's short name
@@ -206,7 +207,7 @@ BREAKS_KEYS='{"selected-breaks": ["as", "breaks"]}'
 SEARCH=org.gnome.shell.extensions.amethystora-ui.search
 SEARCH_KEYS='{
     "answers": ["b"], "settings": ["b"], "manual": ["b"], "windows": ["b"], "clipboard": ["b"], "agent": ["b"],
-    "glance": ["b"], "times": ["b"], "reminders": ["b"], "bookmarks": ["b"], "notes": ["b"], "old-words": ["b"],
+    "glance": ["b"], "times": ["b"], "reminders": ["b"], "timers": ["b"], "bookmarks": ["b"], "notes": ["b"], "old-words": ["b"],
     "remembered": ["b"]
 }'
 # The emoji picker's skin tone. Never emoji-picker, its key, which the keybindings part keeps.

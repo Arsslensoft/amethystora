@@ -12,6 +12,8 @@ import {gettext as _, ngettext} from 'resource:///org/gnome/shell/extensions/ext
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 
+import {subscribeUnits} from './pill/subscribe.js';
+
 Gio._promisify(Gio.File.prototype, 'load_contents_async');
 Gio._promisify(Gio.Mount.prototype, 'unmount_with_operation');
 Gio._promisify(Gio.Drive.prototype, 'eject_with_operation');
@@ -217,9 +219,8 @@ export class BackupDisk {
         const path = await this._unitPath();
         if (!this._settings || !job)
             return;
-        try {
-            await this._manager('Subscribe', null, null);
-        } catch {}
+        // The manager's change signals are the connection's to have, shared with the pill's list of what moves
+        this._unsubscribe ??= subscribeUnits();
         this._watching = Gio.DBus.session.signal_subscribe(SYSTEMD, 'org.freedesktop.DBus.Properties', 'PropertiesChanged',
             path, null, Gio.DBusSignalFlags.NONE, () => this._check(path));
         this._check(path);
@@ -229,6 +230,8 @@ export class BackupDisk {
         if (this._watching)
             Gio.DBus.session.signal_unsubscribe(this._watching);
         this._watching = 0;
+        this._unsubscribe?.();
+        this._unsubscribe = null;
     }
 
     async _check(path) {

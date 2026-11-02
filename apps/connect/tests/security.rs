@@ -705,3 +705,16 @@ fn the_live_pill_hears_calls_and_links() {
     assert!(!audience(Role::App, "UrlReceived", Some(&url)));
     assert!(!audience(Role::Other, "UrlReceived", Some(&url)));
 }
+
+#[test]
+fn a_code_reaches_the_module_alone_and_the_texts_never_do() {
+    use dbus::{Role, audience, method_allowed};
+    let code = ("482913",).to_variant();
+    // The digits of a one-time code are the module's alone; no one else hears them
+    assert!(audience(Role::Module, "Code", Some(&code)));
+    assert!(!audience(Role::App, "Code", Some(&code)));
+    assert!(!audience(Role::Other, "Code", Some(&code)));
+    // And the shell still reads no text: neither the call nor the signal that a text came
+    assert!(!method_allowed(Role::Module, "ListMessages") && !method_allowed(Role::Module, "ListConversations"));
+    assert!(!audience(Role::Module, "MessagesChanged", None) && !audience(Role::Module, "ConversationsChanged", None));
+}

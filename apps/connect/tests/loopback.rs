@@ -385,6 +385,23 @@ async fn scenario(root: &Path) {
     assert_eq!(conversations[0]["unread"].get::<bool>(), Some(true));
     assert!(emitted(&computer, "ConversationsChanged") > 0 && emitted(&computer, "MessagesChanged") > 0);
     assert_eq!(computer.service.list_messages(&pid, 42, 10).unwrap().len(), 1);
+    // A code from your phone (R7-23): nothing is looked at while the switch is off, even for a text that came just now
+    let now = packet::now_ms();
+    let text = |id: i64, date: i64, body: &str| json!({ "version": 2, "messages": [ { "_id": id, "thread_id": 42, "addresses": [ { "address": "+15550100" } ], "body": body, "date": date, "type": 1, "read": 0 } ] });
+    phone.service.send_to(&seen_by_phone, "kdeconnect.sms.messages", text(901, now, "Your code is 111222"));
+    until("the text", || computer.service.list_messages(&pid, 42, 10).map(|l| l.len()).unwrap_or(0) == 2).await;
+    assert_eq!(emitted(&computer, "Code"), 0, "off: no text is looked at");
+    computer.service.codes.set(true);
+    phone.service.send_to(&seen_by_phone, "kdeconnect.sms.messages", text(902, now, "Your code is 482913"));
+    until("the code", || emitted(&computer, "Code") == 1).await;
+    assert_eq!(signals(&computer, "Code")[0].child_value(0).str(), Some("482913"), "the digits and nothing else");
+    // An old text, a text without a code, and the same text again say nothing
+    phone.service.send_to(&seen_by_phone, "kdeconnect.sms.messages", text(903, now - 10 * 60_000, "Your code is 333444"));
+    phone.service.send_to(&seen_by_phone, "kdeconnect.sms.messages", text(904, now, "Order 555666 has shipped"));
+    phone.service.send_to(&seen_by_phone, "kdeconnect.sms.messages", text(902, now, "Your code is 482913"));
+    until("the texts", || computer.service.list_messages(&pid, 42, 10).map(|l| l.len()).unwrap_or(0) == 5).await;
+    assert_eq!(emitted(&computer, "Code"), 1);
+    computer.service.codes.set(false);
     computer.service.request_messages(&pid, 42, 0, 0).unwrap();
     computer.service.send_message(&pid, &[], "Running late, start without me.", 42).unwrap();
     until("the text to go", || !phone.saw("kdeconnect.sms.request").is_empty()).await;

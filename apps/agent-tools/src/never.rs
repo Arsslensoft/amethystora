@@ -90,6 +90,11 @@ pub fn refusal(argv: &[String]) -> Option<String> {
     if program == "dconf" && dconf_reaches(&argv[1..], TYPING_KEYS) {
         return Some("text shortcuts look at what is typed: the user turns them on, in Control".into());
     }
+    // A code from your phone reads each text as it arrives: turning it on is the user's, by whichever spelling (turning it
+    // off, or back to its default, is not refused)
+    if codes_on(program, argv, &lower) {
+        return Some("a code from your phone reads the phone's texts as they arrive: the user turns it on, with ame desktop phone codes on".into());
+    }
     // The live pill's list of what the agent changes, and the desktop's other ways in to the agent: the person's view
     // of the agent, which the agent may not turn off or move, however the command spells it
     if lower.iter().any(|arg| AGENT_UI.iter().any(|name| arg.contains(name)))
@@ -113,6 +118,29 @@ const TYPING: &[&str] = &["amethystora-ui.typing", "amethystora-ui/typing", "ame
 fn dconf_reaches(args: &[String], keys: &str) -> bool {
     matches!(args.first().map(String::as_str), Some("write" | "load" | "reset" | "compile" | "update"))
         && args[1..].iter().any(|arg| arg.starts_with('/') && arg.ends_with('/') && keys.starts_with(arg.as_str()))
+}
+
+/// The phone link's own keys (org.amethystora.Connect), where `codes` is
+const CONNECT_KEYS: &str = "/org/amethystora/Connect/";
+
+/// Whether a gsettings or dconf command turns the phone link's `codes` on (R7-23): the key by its schema, by its path, or
+/// a load that reaches the folder it is in. A value of false, and a reset, turn it off and pass
+fn codes_on(program: &str, argv: &[String], lower: &[String]) -> bool {
+    let off = lower.last().is_some_and(|last| matches!(last.as_str(), "false" | "'false'"));
+    match program {
+        "gsettings" => {
+            lower.iter().any(|arg| arg == "set")
+                && lower.iter().any(|arg| arg.starts_with("org.amethystora.connect"))
+                && lower.iter().any(|arg| arg == "codes")
+                && !off
+        }
+        "dconf" => {
+            (lower.get(1).map(String::as_str) == Some("write") && lower.get(2).is_some_and(|key| key.ends_with("/org/amethystora/connect/codes")) && !off)
+                || (matches!(argv.get(1).map(String::as_str), Some("load" | "compile" | "update"))
+                    && argv[2..].iter().any(|arg| arg.starts_with('/') && arg.ends_with('/') && CONNECT_KEYS.starts_with(arg.as_str())))
+        }
+        _ => false,
+    }
 }
 
 const TYPING_KEYS: &str = "/org/gnome/shell/extensions/amethystora-ui/typing/";
@@ -183,6 +211,9 @@ fn ame_refusal(args: &[String]) -> Option<String> {
         ["apps", "aur", ..] => Some("turning the AUR on is the user's choice alone".into()),
         // External screens' brightness gives the person at the machine the displays' i2c buses, which reach other chips
         // of the graphics card too: an access grant only the machine's owner makes (taking it back is fine)
+        ["desktop", "phone", "codes"] | ["desktop", "phone", "codes", "on", ..] => {
+            Some("a person turns this on themselves: it reads the phone's texts".into())
+        }
         ["desktop", "screen-brightness"] | ["desktop", "screen-brightness", "on", ..] => {
             Some("giving the displays' i2c buses to the person at the machine is the owner's choice: the user turns it on".into())
         }
@@ -254,6 +285,15 @@ mod tests {
             "ame agent root each",
             "ame agent tools on",
             "ame apps aur on",
+            "ame desktop phone codes on",
+            "ame desktop phone codes",
+            "gsettings set org.amethystora.Connect codes true",
+            "gsettings set org.amethystora.Connect:/org/amethystora/Connect/ codes true",
+            "gsettings --schemadir /usr/share/glib-2.0/schemas set org.amethystora.Connect codes true",
+            "dconf write /org/amethystora/Connect/codes true",
+            "dconf load /org/amethystora/Connect/",
+            "dconf load /org/amethystora/",
+            "dconf load /",
             "ame desktop screen-brightness on",
             "ame desktop screen-brightness",
             "ame -q desktop::screen-brightness on",
@@ -389,6 +429,13 @@ mod tests {
             "ame security dns quad9",
             "ame system raid status",
             "ame desktop text-shortcuts off",
+            "ame desktop phone codes off",
+            "gsettings set org.amethystora.Connect codes false",
+            "gsettings reset org.amethystora.Connect codes",
+            "gsettings get org.amethystora.Connect codes",
+            "gsettings set org.amethystora.Connect clipboard-send true",
+            "dconf write /org/amethystora/Connect/codes false",
+            "dconf read /org/amethystora/Connect/codes",
             "ame desktop screen-brightness off",
             "ame desktop clear-voice on",
             "ame desktop sound-preset bass",

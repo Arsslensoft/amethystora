@@ -193,8 +193,7 @@ gently when a break begins. The times are in Settings, under **Wellbeing**.
 ## The live pill
 
 While something is happening, the clock in the middle of the top bar shows it, on a small round pill.
-When nothing is, it is the clock again, exactly as before. Only one thing shows at a time, the first of
-these that is happening: a call ringing on your phone, a recording of the screen, a link from your phone,
+When nothing is, it is the clock again, exactly as before. The first of these that is happening shows in it, and the second [beside it](#two-at-once): a call ringing on your phone, a recording of the screen, a link from your phone,
 a meeting about to start, the battery's question at 20%, a word that something just finished, a timer, what is playing, an update
 ready, and quiet. Click the pill for its card, with its buttons and, below them, whatever else is
 happening; the card's last row is the date and time, which opens the calendar. A right-click on the
@@ -226,6 +225,61 @@ pill, or `Super+V`, always opens the calendar.
   it is full. At 20%, the pill turns amber and offers power saving, once: it never turns it on by itself.
 
 `ame desktop pill off` gives you GNOME's clock alone; `ame desktop pill on` brings the pill back.
+
+### Two at once
+
+When two things are happening, the second sits as a small bubble beside the pill, with its icon and a few characters,
+so music stays in sight during a timer. A click on either opens its own card. A call, a recording and Present keep the
+place alone, and whatever else is happening waits in the card. `ame desktop pill two-at-once off`, or Control's **Two
+at once**, shows only the first, as before.
+
+### The pill's weight
+
+The pill overshoots a little and settles, gives a little when pressed, and banners grow out of it and go back in.
+Reduce motion and the animation speed still rule, and the [light desktop](themes.md#the-light-desktop) and power saving have the
+plain motion. `ame desktop pill weight off` keeps the plain motion always.
+
+### A timer you can feel
+
+The ring drains round the pill itself, a second timer sits beside the first, and the end comes with a gentle glow as well
+as the sound. Type `tea 4 min` in search and press Enter for a timer called Tea (`5 min` for one with no name; `ame desktop
+search timers off` takes the answer away). Its name is kept in memory only. `ame desktop pill timer off` goes back to one
+timer with its small ring.
+
+### Everything moving
+
+Downloads, Flatpak updates, copies in Files, backups and the files you send to your phone show as one thing in the pill,
+with one ring, and its card lists each. The ring shows how far it has got where something says so, and is whole where nothing does.
+What a terminal copies with `cp` says nothing to anybody and is not shown. File names stay in memory, and are not in the
+pill or its card while the screen is recorded or shared. What stops saying anything, or has gone on for hours, drops out by
+itself, and the computer is kept awake for twelve hours in a stretch at most. `ame desktop pill moving off` turns it off.
+
+While something moves the computer does not go to sleep by itself: the screen can still go dark, closing the lid still
+sleeps, and on battery it gives way below 15% (and takes hold again when you plug in). Choosing Suspend yourself still
+suspends it, with no password. When nothing moves any more it sleeps as usual. `ame desktop pill stay-awake off` lets it sleep.
+
+### Hello, headphones
+
+Headphones, a speaker, a game controller, a phone or a dock arriving grow the pill for two seconds, with the device's
+name and battery. It asks nothing, and says nothing during a call, a recording, [Focus](#focus) or quiet hours. `ame
+desktop pill hello off` turns it off.
+
+### Drop things on the pill
+
+Drag a file up to the pill and it opens into targets: **Send to phone**, **Shelf**, **Convert**, **Copy without hidden
+data** and **Ask the agent**. A target that is off or not installed is not there, and nothing happens until you let go on
+one. `ame desktop pill drop off` turns it off.
+
+### Music you can see
+
+The pill and its card take the album's colour, where the text still reads on it, and you can drag the position in the card
+where the player can seek. A cover is read once per track, only from a file on this computer. `ame desktop pill music off`
+turns that off.
+
+The bars can follow the real sound of the player's own stream while they are on the screen, but that is **off** until it is
+shown not to cost the computer more than 1% of a processor: `ame desktop pill music-bars on`, or **Bars that follow the
+sound** in [Control](control.md). The level is read and thrown away, never recorded. Reduce motion, power saving, the light
+desktop, a blank screen, the battery and a player whose stream cannot be told have the four beats, as they do with it off.
 
 ### Meetings in the pill
 
@@ -642,7 +696,7 @@ Each can be turned on or off in Control's **Search** group or in a terminal:
 
 ```bash
 ame desktop search                     # each, and whether it is on
-ame desktop search answers off         # answers, times, reminders, settings, manual, windows, clipboard, agent,
+ame desktop search answers off         # answers, times, reminders, timers, settings, manual, windows, clipboard, agent,
                                        # glance, old-words, remembered, bookmarks, notes or meaning
 ```
 

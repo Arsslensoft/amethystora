@@ -473,6 +473,7 @@ gsettings_read phone-photos org.amethystora.Connect photo-folder
 gsettings_read phone-computers org.amethystora.Connect computers
 gsettings_read phone-music org.amethystora.Connect music
 gsettings_read phone-clicker org.amethystora.Connect clicker
+gsettings_read phone-codes org.amethystora.Connect codes
 gsettings_read captions org.gnome.shell.extensions.amethystora-ui.captions
 read_in_background waydroid-enabled systemctl is-enabled waydroid-container.service
 read_in_background waydroid-active systemctl is-active waydroid-container.service
@@ -1665,6 +1666,8 @@ search_item times "${ gettext "Time in other places"; }" \
     "${ gettext "Answers “time in Tokyo” and “15:00 Paris in Tokyo” as you type, from this computer's own places and time zones."; }"
 search_item reminders "${ gettext "Reminders into Notes"; }" \
     "${ gettext "“remind me at 17:00 to call the garage” becomes a task in Notes with a reminder, when you press Enter."; }"
+search_item timers "${ gettext "Timers"; }" \
+    "${ gettext "“tea 4 min” starts a timer called Tea in the live pill, when you press Enter."; }"
 search_item settings "${ gettext "Settings from Control"; }" "${ gettext "Finds Control's settings, and changes one with Enter."; }"
 search_item manual "${ gettext "The manual"; }" "${ gettext "Finds the pages of this manual that answer what you typed."; }"
 search_item windows "${ gettext "Open windows"; }" "${ gettext "Finds an open window by its title, on any workspace."; }"
@@ -1886,6 +1889,33 @@ PILLKEY=glow pill_item glow "${ gettext "Recording glow"; }" \
 PILLKEY=meetings pill_item pill-meetings "${ gettext "Meetings in the pill"; }" \
     "${ gettext "Five minutes before an event of today's calendar that has a video-call link, the live pill shows it with a countdown and Join. The link opens only when you click Join."; }" \
     desktop#meetings-in-the-pill ame desktop pill meetings
+PILLKEY=two-at-once pill_item pill-two "${ gettext "Two at once"; }" \
+    "${ gettext "A second thing happening sits as a small bubble beside the pill, and a click on it opens its own card."; }" \
+    desktop#two-at-once ame desktop pill two-at-once
+PILLKEY=weight pill_item pill-weight "${ gettext "The pill's weight"; }" \
+    "${ gettext "It overshoots a little and settles, gives when pressed, and banners grow out of it. Reduce motion and the animation speed still rule."; }" \
+    desktop#the-pills-weight ame desktop pill weight
+PILLKEY=timer-feel pill_item pill-timer "${ gettext "A timer you can feel"; }" \
+    "${ gettext "The ring drains round the pill, two timers sit side by side, and the end glows as well as sounds."; }" \
+    desktop#a-timer-you-can-feel ame desktop pill timer
+PILLKEY=moving pill_item pill-moving "${ gettext "Everything moving"; }" \
+    "${ gettext "Downloads, Flatpak updates, copies in Files, backups and the phone's transfers as one thing in the pill, with a card listing each."; }" \
+    desktop#everything-moving ame desktop pill moving
+PILLKEY=stay-awake pill_item pill-stay-awake "${ gettext "Stay awake for what is moving"; }" \
+    "${ gettext "The computer does not sleep by itself on a copy or download. Closing the lid still sleeps, and on battery it gives way below 15%."; }" \
+    desktop#everything-moving ame desktop pill stay-awake
+PILLKEY=hello pill_item pill-hello "${ gettext "Hello, headphones"; }" \
+    "${ gettext "A device arriving grows the pill for two seconds, with its name and battery. Quiet during a call, a recording, Focus and quiet hours."; }" \
+    desktop#hello-headphones ame desktop pill hello
+PILLKEY=drop-targets pill_item pill-drop "${ gettext "Drop things on the pill"; }" \
+    "${ gettext "Drag a file up to the pill and it opens into targets: Send to phone, Shelf, Convert, Copy without hidden data, Ask the agent."; }" \
+    desktop#drop-things-on-the-pill ame desktop pill drop
+PILLKEY=music-see pill_item pill-music "${ gettext "Music you can see"; }" \
+    "${ gettext "The pill takes the album's colour, and the position in its card can be dragged."; }" \
+    desktop#music-you-can-see ame desktop pill music
+PILLKEY=music-bars pill_item pill-music-bars "${ gettext "Bars that follow the sound"; }" \
+    "${ gettext "The pill's bars follow the real sound of the player, read by a small program that runs only while they show. Off, they play four beats."; }" \
+    desktop#music-you-can-see ame desktop pill music-bars
 
 # A top bar on every screen, the bar over fullscreen, Today's tasks and the weather
 # (org.gnome.shell.extensions.amethystora-ui.bars and .today)
@@ -2574,6 +2604,13 @@ for key in music clicker; do
             "${ gettext "Only while Present mode presents: Next, Previous and Blank from your phone, and nothing else."; }" "${CHOSEN}" phone#the-phone-as-a-slide-clicker
     fi
 done
+
+# A code from a text in the pill, off as shipped (R7-23): it reads the phone's texts, so the command asks first, in a terminal
+if [[ "${ ended phone-codes; }" == 0 && "${ said phone-codes; }" == true ]]; then CHOSEN=on; else CHOSEN=off; fi
+switch_choices true ame desktop phone codes
+USAGE="ame desktop phone codes on|off"
+item desktop phone-codes switch "${ gettext "A code from your phone"; }" \
+    "${ gettext "A one-time code in a text shows in the clock's pill for 60 seconds, to copy. The phone link looks at each text as it arrives, on this computer, and only the code goes on; nothing is kept."; }" "${CHOSEN}" phone#a-code-from-your-phone
 
 # The clipboard goes between this computer and a phone only when chosen, one way at a time: a phone that can paste
 # into a password field is a risk the person takes on knowingly

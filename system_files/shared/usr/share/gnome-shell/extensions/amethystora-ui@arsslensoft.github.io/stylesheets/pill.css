@@ -70,6 +70,72 @@
   background-color: #f2566a;
 }
 
+/* Two at once: the second thing, beside the plate, on the plate's height (the pill allocates it) */
+.amethystora-pill-bubble {
+  border-radius: 999px;
+  border-width: 1px;
+  background-color: rgba(10, 6, 18, 0.62);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+.amethystora-pill-bubble-box {
+  padding: 0 10px;
+  spacing: 5px;
+  font-size: 12.5px;
+  font-weight: 700;
+  font-feature-settings: "tnum";
+  color: #efe4ff;
+}
+/* Everything moving: the name in the pill, and each thing in the card */
+.amethystora-pill-moving-text { max-width: 170px; }
+.amethystora-pill-moving-awake { font-size: 12px; font-weight: 600; }
+.amethystora-pill-moving-rows { spacing: 10px; }
+.amethystora-pill-moving-row { spacing: 1px; }
+.amethystora-pill-moving-name { font-size: 13.5px; font-weight: 700; }
+
+/* The position in the music's card, where it can be dragged */
+.amethystora-pill-scrub {
+  height: 16px;
+  -barlevel-height: 6px;
+  -barlevel-border-width: 0;
+  -slider-handle-radius: 7px;
+}
+
+/* A device arriving */
+.amethystora-pill-hello-text { max-width: 220px; }
+
+/* What a dragged file can be dropped on: a row of tiles under the pill */
+.amethystora-pill-drop {
+  padding: 10px;
+  spacing: 8px;
+  border-radius: 24px;
+  border-width: 1px;
+  background-color: rgba(10, 6, 18, 0.82);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+.amethystora-pill-drop-tile {
+  width: 88px;
+  padding: 12px 4px;
+  spacing: 6px;
+  border-radius: 14px;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-align: center;
+  color: #efe4ff;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+.amethystora-pill-drop-tile:hover { background-color: rgba(255, 255, 255, 0.2); }
+
+/* The ring round the plate or the bubble, and the glow when something ends */
+.amethystora-pill-round-ring {
+  color: #dcbcff;
+  -amethystora-pill-track: rgba(255, 255, 255, 0.14);
+}
+.amethystora-pill-flash {
+  border-radius: 999px;
+  border: 2px solid #dcbcff;
+  box-shadow: 0 0 14px 2px #dcbcff;
+}
+
 /* Chips and small buttons in the pill: parts of it, which its own click finds */
 .amethystora-pill-chip {
   height: 26px;

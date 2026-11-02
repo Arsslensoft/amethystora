@@ -1654,7 +1654,8 @@ missing-command ACTION="":
 # `phone photos [pictures|downloads]` says where pictures a phone sends go, Pictures/Phone as the image ships;
 # `phone computers [on|off]` lets other computers with the phone link pair too, for files and the clipboard, off;
 # `phone ring` rings the paired phones, even on silent; `phone music [on|off]` shows the music of either side on the
-# other, and `phone clicker [on|off]` lets a phone go to the next or previous slide while Present mode presents, both off
+# other, and `phone clicker [on|off]` lets a phone go to the next or previous slide while Present mode presents, both off;
+# `phone codes [on|off]` shows a one-time code from a text in the pill for a minute, off, and it says first that it reads texts
 [positional-arguments]
 phone *ARGS:
     #!/usr/bin/bash
@@ -1719,6 +1720,27 @@ phone *ARGS:
         # The Phone app rings them without its window, and shows it only to say why it could not
         [[ $# -eq 1 ]] || { echo "usage: ame desktop phone ring"; exit 64; }
         exec /usr/bin/amethystora-phone ring
+    fi
+    # A code from a text in the pill: it reads the phone's texts, so it says so and asks before it turns on
+    if [[ "${1:-}" == codes ]]; then
+        case "$(flip "${2:-}" "$(gsettings get org.amethystora.Connect codes)")" in
+            on)
+                echo "$(gettext "This has the phone link look at each text your paired phone receives, on this computer, for a one-time code. Only the digits of a code go on to the desktop, never the text or who sent it, and they show in the clock's pill for 60 seconds, to copy. Nothing is written or sent, the copied code is kept out of the clipboard's history, and it is hidden while the screen is shared and while locked.")"
+                [[ -t 0 ]] || { echo "$(gettext "Run this in a terminal: it asks first.")"; exit 1; }
+                gum confirm "$(gettext "Turn it on?")" || exit 0
+                gsettings set org.amethystora.Connect codes true
+                echo "$(gettext "A one-time code from a text now shows in the clock's pill for 60 seconds.")"
+                ;;
+            off)
+                gsettings set org.amethystora.Connect codes false
+                echo "$(gettext "The desktop no longer looks at your phone's texts.")"
+                ;;
+            *)
+                echo "usage: ame desktop phone codes [on|off]"
+                exit 64
+                ;;
+        esac
+        exit 0
     fi
     if [[ "${1:-}" == music || "${1:-}" == clicker ]]; then
         key="$1"
@@ -1925,7 +1947,9 @@ dictation ACTION="":
 
 # The live pill: the clock shows what is happening now (ame desktop pill [on|off]); the privacy dots and the
 # recording glow beside it (ame desktop pill dots|glow [on|off]); a meeting about to start, with Join (ame desktop pill
-# meetings [on|off]). Without on or off, it asks
+# meetings [on|off]); a second thing beside it, the way it moves, a timer's ring, what is moving and staying awake for it,
+# a device arriving, what a file can be dropped on, the album's colour and the real sound (ame desktop pill
+# two-at-once|weight|timer|moving|stay-awake|hello|drop|music [on|off]). Without on or off, it asks
 [positional-arguments]
 pill *ARGS:
     #!/usr/bin/bash
@@ -1934,7 +1958,7 @@ pill *ARGS:
     source gettext.sh
     schema=org.gnome.shell.extensions.amethystora-ui.pill
     usage() {
-        echo "usage: ame desktop pill [dots|glow|meetings] [on|off]"
+        echo "usage: ame desktop pill [dots|glow|meetings|two-at-once|weight|timer|moving|stay-awake|hello|drop|music|music-bars] [on|off]"
         exit 64
     }
     what=live
@@ -1942,6 +1966,15 @@ pill *ARGS:
         dots) what=privacy-dots; shift ;;
         glow) what=glow; shift ;;
         meetings) what=meetings; shift ;;
+        two-at-once) what=two-at-once; shift ;;
+        weight) what=weight; shift ;;
+        timer) what=timer-feel; shift ;;
+        moving) what=moving; shift ;;
+        stay-awake) what=stay-awake; shift ;;
+        hello) what=hello; shift ;;
+        drop) what=drop-targets; shift ;;
+        music) what=music-see; shift ;;
+        music-bars) what=music-bars; shift ;;
     esac
     [[ $# -le 1 ]] || usage
     state="${1:-}"
@@ -1958,6 +1991,24 @@ pill *ARGS:
         glow:off) echo "$(gettext "The recording glow is off.")" ;;
         meetings:on) echo "$(gettext "Meetings in the pill are on: five minutes before an event with a video-call link, the pill shows it with Join, while the live pill is on.")" ;;
         meetings:off) echo "$(gettext "Meetings in the pill are off.")" ;;
+        two-at-once:on) echo "$(gettext "A second thing happening now sits as a small bubble beside the pill.")" ;;
+        two-at-once:off) echo "$(gettext "Only the first thing happening shows in the pill; the others wait in its card.")" ;;
+        weight:on) echo "$(gettext "The pill now moves as a thing with weight. Reduce motion and the animation speed still rule.")" ;;
+        weight:off) echo "$(gettext "The pill keeps to its plain motion.")" ;;
+        timer-feel:on) echo "$(gettext "A timer's ring now drains round the pill, two can run side by side, and its end glows as well as sounds.")" ;;
+        timer-feel:off) echo "$(gettext "One timer at a time, with its small ring.")" ;;
+        moving:on) echo "$(gettext "Downloads, Flatpak updates, copies in Files, backups and the phone's transfers now show as one thing in the pill.")" ;;
+        moving:off) echo "$(gettext "The pill says nothing of what is moving.")" ;;
+        stay-awake:on) echo "$(gettext "The computer does not go to sleep by itself while the pill has something moving. Closing the lid still sleeps, and on battery it gives way below 15%.")" ;;
+        stay-awake:off) echo "$(gettext "The computer sleeps as usual, also with something moving.")" ;;
+        hello:on) echo "$(gettext "A device arriving now shows in the pill for two seconds.")" ;;
+        hello:off) echo "$(gettext "The pill says nothing of a device arriving.")" ;;
+        drop-targets:on) echo "$(gettext "Drag a file up to the pill and it opens into what the file can be dropped on.")" ;;
+        drop-targets:off) echo "$(gettext "The pill is no place to drop a file.")" ;;
+        music-see:on) echo "$(gettext "The pill takes the album's colour, and the position in its card can be dragged.")" ;;
+        music-see:off) echo "$(gettext "The pill keeps the theme's colours and the position in its card is a line.")" ;;
+        music-bars:on) echo "$(gettext "The pill's bars follow the real sound of the player, read by a small program that runs only while they show.")" ;;
+        music-bars:off) echo "$(gettext "The pill's bars play four beats as before, and nothing reads the sound.")" ;;
         *) usage ;;
     esac
     if [[ "${state}" == on ]]; then gsettings set "${schema}" "${what}" true; else gsettings set "${schema}" "${what}" false; fi
@@ -3378,9 +3429,9 @@ dock *ARGS:
 # What the search (Super+Space, and the overview's) finds besides GNOME's own: sums and units, the time in other places,
 # reminders into Notes, Control's settings, the manual, open windows, the clipboard after clip:, the agent row, Glance
 # on a file, the words people already know, files by what is remembered of them, and, offered and off, Firefox's
-# bookmarks, Notes while it is unlocked and files by meaning (WHAT: answers, times, reminders, settings, manual, windows,
+# bookmarks, Notes while it is unlocked and files by meaning (WHAT: answers, times, reminders, timers, settings, manual, windows,
 # clipboard, agent, glance, old-words, remembered, bookmarks, notes or meaning; STATE: on or off).
-# Without STATE it says what WHAT is; without WHAT, all fourteen
+# Without STATE it says what WHAT is; without WHAT, all fifteen
 [positional-arguments]
 search WHAT="" STATE="":
     #!/usr/bin/bash
@@ -3388,9 +3439,9 @@ search WHAT="" STATE="":
     # shellcheck source=/dev/null
     source gettext.sh
     schema=org.gnome.shell.extensions.amethystora-ui.search
-    parts=(answers times reminders settings manual windows clipboard agent glance old-words remembered bookmarks notes meaning)
+    parts=(answers times reminders timers settings manual windows clipboard agent glance old-words remembered bookmarks notes meaning)
     usage() {
-        echo "usage: ame desktop search [answers|times|reminders|settings|manual|windows|clipboard|agent|glance|old-words|remembered|bookmarks|notes|meaning] [on|off]"
+        echo "usage: ame desktop search [answers|times|reminders|timers|settings|manual|windows|clipboard|agent|glance|old-words|remembered|bookmarks|notes|meaning] [on|off]"
         exit 2
     }
     state_of() {

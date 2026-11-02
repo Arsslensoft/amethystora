@@ -110,6 +110,7 @@ fn main() -> ExitCode {
             computers: s.boolean("computers"),
             music: s.boolean("music"),
             clicker: s.boolean("clicker"),
+            codes: s.boolean("codes"),
         },
         None => Settings::default(),
     };
@@ -138,6 +139,7 @@ fn main() -> ExitCode {
                 service.set_photo_folder(PhotoFolder::from_key(&s.string("photo-folder")));
                 service.set_computers(s.boolean("computers"));
                 service.set_media_switches(s.boolean("music"), s.boolean("clicker"));
+                service.codes.set(s.boolean("codes"));
                 service.set_name(&s.string("device-name"), pretty_host().as_deref());
             }
         };

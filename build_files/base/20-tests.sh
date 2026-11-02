@@ -608,10 +608,10 @@ rm -rf "${UI_RENDER}"
 # The search box is on Super+Space alone, which GNOME's input-source switch must not take (zz0 moves it to
 # Shift+Super+Space): on a base without that line the box never opened
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys org.gnome.shell.extensions.amethystora-ui.search | sort | paste -sd ' ')" == \
-    "agent answers bookmarks clipboard glance manual meaning notes old-words open remembered reminders settings times windows" ]]
+    "agent answers bookmarks clipboard glance manual meaning notes old-words open remembered reminders settings times timers windows" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.search open)" == "['<Super>space']" ]]
 # Search that answers (plans/beyond/spec-search.md): each part on, the emoji picker on Super+. in the yellow tone
-for key in answers times reminders settings manual windows clipboard agent glance old-words remembered; do
+for key in answers times reminders timers settings manual windows clipboard agent glance old-words remembered; do
     [[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.search "${key}")" == true ]]
 done
 EMOJI=org.gnome.shell.extensions.amethystora-ui.emoji
@@ -773,7 +773,7 @@ grep -q "shouldShowApp" "${UI_EXTENSION}/modules/fuzzy.js"
 # apps, its three recipes, and quiet holding banners in memory only: nothing of it writes GNOME's show-banners
 PILL=org.gnome.shell.extensions.amethystora-ui.pill
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${PILL}" | sort | paste -sd ' ')" == \
-    "digest digest-through digest-times digest-wait glow later later-times live meetings privacy-dots quiet quiet-night saving-data second-zone whats-new" ]]
+    "digest digest-through digest-times digest-wait drop-targets glow hello later later-times live meetings moving music-bars music-see privacy-dots quiet quiet-night saving-data second-zone stay-awake timer-feel two-at-once weight whats-new" ]]
 for key in live privacy-dots glow quiet later whats-new meetings; do
     [[ "$(GSETTINGS_BACKEND=memory gsettings get "${PILL}" "${key}")" == true ]]
 done
@@ -792,6 +792,47 @@ test -s /usr/share/amethystora/themed/shell-pill.css.tpl
 [[ "$(grep -oE "^    \['(connect|pill|dock)'," "${UI_EXTENSION}/extension.js" | paste -sd ' ')" == \
     "    ['connect',     ['pill',     ['dock'," ]]
 test -x /usr/bin/pw-dump
+# Round 7's pill (plans/ui-ideas/r7/spec-pill.md): its keys, on and offered; its sums, under the apps stage's Node; no blocking call in its
+# files; its sound meter neither writes nor takes the microphone; a code from the phone is never written or logged, and off as shipped
+for key in two-at-once weight timer-feel moving stay-awake hello drop-targets music-see; do
+    [[ "$(GSETTINGS_BACKEND=memory gsettings get "${PILL}" "${key}")" == true ]]
+done
+[[ "$(GSETTINGS_BACKEND=memory gsettings get org.amethystora.Connect codes)" == false ]]
+# The live bars are off until a GPU shows they cost under 1% of a core (R7-PILL-41); only the maintainer turns them on
+[[ "$(GSETTINGS_BACKEND=memory gsettings get "${PILL}" music-bars)" == false ]]
+env LD_LIBRARY_PATH=/apps-stage/usr/lib64 NODE_ICU_DATA="$(echo /apps-stage/usr/share/node-*/icudata)" /apps-stage/usr/bin/node /ctx/build_files/shared/test-pill-logic.mjs
+PILL_R7=(spring ring banners moving movinglist subscribe hello drop tint levels code)
+for file in "${PILL_R7[@]}"; do
+    test -s "${UI_EXTENSION}/modules/pill/${file}.js"
+    if grep -nE "[a-z]_sync\(|file_get_contents|file_test|query_exists|communicate_utf8\(|\.spawn_sync|wait_check\(" "${UI_EXTENSION}/modules/pill/${file}.js"; then
+        echo "the pill's ${file}.js blocks the shell"
+        exit 1
+    fi
+done
+test -x /usr/bin/pw-record
+test -x /usr/bin/systemd-run
+grep -q "application.id=org.gnome.VolumeControl" "${UI_EXTENSION}/modules/pill/levels.js"
+# ...and it takes no stream but the one it is given: without dont-fallback a stream that is gone links to the microphone
+grep -q "node.dont-fallback=true" "${UI_EXTENSION}/modules/pill/levels.js"
+bash /ctx/build_files/shared/test-levels.sh "${UI_EXTENSION}/modules/pill/levels.js"
+# The shell never reads a text: a code comes as the digits alone, from the phone link's own program
+if grep -rnE "ListMessages|MessagesChanged|ListConversations|lastMessages|watchMessages" "${UI_EXTENSION}/modules"; then
+    echo "the shell's modules read the phone's texts"
+    exit 1
+fi
+if grep -nE "replace_contents|file_set_contents|create_readwrite|\.replace\(null|filesink|\.append_to" "${UI_EXTENSION}/modules/pill/levels.js" "${UI_EXTENSION}/modules/pill/code.js"; then
+    echo "the pill's sound meter or its code writes something"
+    exit 1
+fi
+if grep -nE "console\.[a-z]+\(.*(code|body|message\.)" "${UI_EXTENSION}/modules/pill/code.js"; then
+    echo "the pill's code reaches a log"
+    exit 1
+fi
+# ...and the clipboard's history and the phone link's sending both refuse the code the pill copies
+for file in "${UI_EXTENSION}/modules/pill/code.js" "${UI_EXTENSION}/modules/connect/clipboard.js" \
+    /usr/share/gnome-shell/extensions/amethystora-clipboard@arsslensoft.github.io/extension.js; do
+    grep -q "Symbol.for('amethystora.clipboard.secret')" "${file}"
+done
 for recipe in pill quiet digest; do
     grep -q "^${recipe} \*ARGS:" /usr/share/amethystora/just/desktop.just
 done

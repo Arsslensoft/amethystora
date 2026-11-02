@@ -127,6 +127,16 @@ export class Agent {
         this._card.open();
     }
 
+    // The card for text handed over by something else: the pill's Ask the agent target, with the paths dropped on it
+    askAbout(text) {
+        if (!this.on || this._card || !text)
+            return;
+        this._card = new AskCard(text, this.agentName, this._gicon, () => {
+            this._card = null;
+        });
+        this._card.open();
+    }
+
     get card() {
         return this._card ?? null;
     }

@@ -17,6 +17,42 @@
 }
 #uiGroup .amethystora-pill-plate-saver .amethystora-pill-piece { background-color: rgba({{ success_bg_rgb }}, 0.22); }
 
+/* Two at once, the ring round the plate, and the glow when something ends */
+#uiGroup .amethystora-pill-bubble {
+  background-color: rgba({{ background_rgb }}, 0.62);
+  border-color: rgba({{ foreground_rgb }}, 0.14);
+}
+#uiGroup .amethystora-pill-bubble-box { color: {{ foreground }}; }
+#uiGroup .amethystora-pill-plate-hello .amethystora-pill-piece { background-color: rgba({{ accent_bg_rgb }}, 0.55); }
+#uiGroup .amethystora-pill-plate-code .amethystora-pill-piece { background-color: rgba({{ accent_bg_rgb }}, 0.55); }
+#uiGroup .amethystora-pill-drop {
+  background-color: rgba({{ background_rgb }}, 0.82);
+  border-color: rgba({{ foreground_rgb }}, 0.14);
+}
+#uiGroup .amethystora-pill-drop-tile {
+  color: {{ foreground }};
+  background-color: rgba({{ foreground_rgb }}, 0.08);
+}
+#uiGroup .amethystora-pill-drop-tile:hover {
+  background-color: {{ accent_bg }};
+  color: {{ accent_fg }};
+}
+#uiGroup .amethystora-pill-moving-awake { color: rgba({{ foreground_rgb }}, 0.8); }
+#uiGroup .amethystora-pill-card .amethystora-pill-scrub {
+  color: {{ foreground }};
+  -barlevel-background-color: rgba({{ foreground_rgb }}, 0.2);
+  -barlevel-active-background-color: {{ foreground }};
+}
+#uiGroup .amethystora-pill-card .amethystora-pill-moving-name { color: {{ foreground }}; }
+#uiGroup .amethystora-pill-round-ring {
+  color: {{ accent_text }};
+  -amethystora-pill-track: rgba({{ foreground_rgb }}, 0.14);
+}
+#uiGroup .amethystora-pill-flash {
+  border-color: {{ accent_text }};
+  box-shadow: 0 0 14px 2px rgba({{ accent_bg_rgb }}, 0.9);
+}
+
 #uiGroup .amethystora-pill-content { color: {{ foreground }}; }
 #uiGroup .amethystora-pill-battery { color: {{ warning_fg }}; }
 #uiGroup .amethystora-pill-bar { background-color: {{ accent_text }}; }

@@ -124,6 +124,11 @@ export class FlatpakUpdates {
             this._onChange(`${app}.desktop`);
     }
 
+    // The launcher IDs of the apps being updated now
+    get launchers() {
+        return [...this._apps()].map(app => `${app}.desktop`);
+    }
+
     // Whether the app with this launcher ID is being updated
     has(id) {
         if (!this._pulls || !id?.endsWith('.desktop'))

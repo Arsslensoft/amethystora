@@ -3,8 +3,16 @@
 // go on. A player that is paused stays for ten minutes, then goes. The meter moves for four beats when a track starts
 // and while the pointer is on the pill, and rests otherwise: a bar moving all afternoon would redraw the top bar all
 // afternoon.
+//
+// Music you can see (R7-21, the key music-see): the pill and its card take the album's colour, read once per track from
+// a cover the player gives as a local file; and, only with the key music-bars (off as the image ships, until a GPU shows the
+// cost is under 1% of a core), the bars follow the real sound of the player's one stream (levels.js), only
+// while they are on the screen, the music plays, and neither reduce motion nor the light desktop or power saving says
+// otherwise; and the position in the card can be dragged, where the player says it can seek. A player whose stream
+// cannot be told has the four beats as before.
 
 import Clutter from 'gi://Clutter';
+import GdkPixbuf from 'gi://GdkPixbuf';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
@@ -15,9 +23,12 @@ import St from 'gi://St';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as Mpris from 'resource:///org/gnome/shell/ui/mpris.js';
+import * as Slider from 'resource:///org/gnome/shell/ui/slider.js';
 import {getMixerControl} from 'resource:///org/gnome/shell/ui/status/volume.js';
 
 import {buttonRow, cardButton, retire} from './clock.js';
+import {Levels} from './levels.js';
+import {albumColour, plateTint} from './tint.js';
 import {plain} from './text.js';
 
 // A paused player stays this long (seconds) after it last played
@@ -31,6 +42,11 @@ const BEAT = 900;
 const BEATS = 4;
 // CSS's ease-in-out, which the board's meter moves with
 const EASE_IN_OUT = [new Graphene.Point({x: 0.42, y: 0}), new Graphene.Point({x: 0.58, y: 1})];
+// The smallest change of height a bar following the sound shows
+const LEVEL_STEP = 0.08;
+// How small a copy of the cover its colour is read from, and the largest file read
+const TINY = 16;
+const LARGEST_COVER = 8 << 20;
 
 // One list of players for the shell's life when GNOME's own is not where it is looked for, so that turning the
 // module off and on does not make another
@@ -98,10 +114,13 @@ function position(micro) {
 
 export class Media {
     // phoneSource: the phone's players (modules/connect/players.js), or null
-    constructor(activities, reduceMotion, phoneSource = () => null) {
+    // see: whether music-see is on now, and the live bars may run
+    constructor(activities, reduceMotion, phoneSource = () => null, see = {colour: () => false, bars: () => false}) {
         this._activities = activities;
         this._reduce = reduceMotion;
         this._phoneSource = phoneSource;
+        this._see = see;
+        this.tint = null;
         this.id = 'media';
         this.row = {icon: 'audio-x-generic-symbolic', text: ''};
     }
@@ -131,6 +150,14 @@ export class Media {
         this._players = null;
         this._stopPausedTimer();
         this._end();
+    }
+
+    // music-see or what the bars may do changed
+    seeChanged() {
+        this._tintCover = undefined;
+        this._readTint();
+        this._syncLevels();
+        this._card?.update();
     }
 
     _add(player) {
@@ -230,6 +257,11 @@ export class Media {
         return this.artist ? `${this.title} · ${this.artist}` : this.title;
     }
 
+    // Beside something else, in the bubble: the title's first characters
+    get short() {
+        return this.title;
+    }
+
     get accessible() {
         return this.artist
             ? _('Now playing: %s by %s').format(this.title, this.artist)
@@ -249,6 +281,10 @@ export class Media {
         this._label = new St.Label({style_class: 'amethystora-pill-media-title', y_align: Clutter.ActorAlign.CENTER});
         this._label.clutter_text.ellipsize = Pango.EllipsizeMode.END;
         this._bars = new St.BoxLayout({style_class: 'amethystora-pill-bars', y_align: Clutter.ActorAlign.CENTER});
+        this._bars.connect('notify::mapped', () => {
+            this._styleBars();
+            this._syncLevels();
+        });
         for (let i = 0; i < 4; i++) {
             this._bars.add_child(new St.Widget({
                 style_class: 'amethystora-pill-bar',
@@ -272,6 +308,7 @@ export class Media {
         if (cover !== this._cover || !this._art.child) {
             this._cover = cover;
             this._art.set_child(artwork(player, 18, 'amethystora-pill-art'));
+            this._readTint();
         }
         this._label.text = this.text;
         const playing = this.playing;
@@ -283,7 +320,10 @@ export class Media {
         if (!first)
             this._activities.update('media');
         // The meter moves once its content is in the pill: an actor not shown would end its beats at once
-        if (moveBars && playing)
+        this._syncLevels();
+        if (this._levels?.serial) {
+            // The real sound moves it
+        } else if (moveBars && playing)
             this.moveBars();
         else if (!playing)
             this._restBars(BAR_LOW);
@@ -292,7 +332,225 @@ export class Media {
         this._card?.update();
     }
 
+    // --- Music you can see ------------------------------------------------------------------------------------------
+
+    // The album's colour, read once per track and off the main thread; nothing for a cover that is not a plain small file
+    _readTint() {
+        const path = this._see.colour() ? coverPath(read(this._current, 'trackCoverUrl', '')) : null;
+        if (path === this._tintCover)
+            return;
+        this._tintCover = path;
+        this._tintCancellable?.cancel();
+        this._tintCancellable = null;
+        this._setTint(null);
+        if (!path)
+            return;
+        const cancellable = new Gio.Cancellable();
+        this._tintCancellable = cancellable;
+        const file = Gio.File.new_for_path(path);
+        file.query_info_async('standard::type,standard::size', Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_LOW, cancellable, (f, result) => {
+            let info;
+            try {
+                info = f.query_info_finish(result);
+            } catch {
+                return;
+            }
+            if (info.get_file_type() !== Gio.FileType.REGULAR || info.get_size() > LARGEST_COVER)
+                return;
+            f.read_async(GLib.PRIORITY_LOW, cancellable, (g, opened) => {
+                let stream;
+                try {
+                    stream = g.read_finish(opened);
+                } catch {
+                    return;
+                }
+                GdkPixbuf.Pixbuf.new_from_stream_at_scale_async(stream, TINY, TINY, false, cancellable, (s, decoded) => {
+                    let colour = null;
+                    try {
+                        const pixbuf = GdkPixbuf.Pixbuf.new_from_stream_finish(decoded);
+                        colour = albumColour(pixbuf.get_pixels(), pixbuf.width, pixbuf.height, pixbuf.rowstride, pixbuf.n_channels);
+                    } catch {}
+                    stream.close_async(GLib.PRIORITY_LOW, null, null);
+                    if (!cancellable.is_cancelled())
+                        this._setTint(colour);
+                });
+            });
+        });
+    }
+
+    _setTint(colour) {
+        this.tint = colour;
+        this._styleBars();
+        if (this._activities.get('media') === this)
+            this._activities.update('media');
+    }
+
+    // The accent's bars may not read on the album's colour: they take the text's while it is tinted
+    _styleBars() {
+        if (!this._bars?.get_stage())
+            return;
+        const text = this._label.get_theme_node().get_foreground_color();
+        const bar = plateTint(this.tint, [text.red, text.green, text.blue])
+            ? `background-color: rgb(${text.red}, ${text.green}, ${text.blue});` : null;
+        this._bars.get_children().forEach(child => child.set_style(bar));
+    }
+
+    // The bars follow the sound while they are on the screen and the music plays, and only then
+    _syncLevels() {
+        const shown = !!this._bars?.mapped && this.playing && this._see.bars() && !this._reduce();
+        // The screen blanked and the computer on its battery are followed only while the bars could show, and the bars do not
+        // move for either: the colour of the album and the position in the card stay
+        if (shown)
+            this._watchPower();
+        else
+            this._unwatchPower();
+        const wanted = shown && !this._blanked && !this._onBattery;
+        if (!wanted) {
+            if (this._levels?.serial)
+                this._stopLevels();
+            return;
+        }
+        const serial = this._streamOf(this._current);
+        if (serial === null) {
+            if (this._levels?.serial)
+                this._stopLevels();
+            return;
+        }
+        if (this._levels?.serial === serial)
+            return;
+        // A meter that ends at once (a stream that was already gone) is not started again for half a minute, whatever the mixer
+        // says meanwhile: the four beats stand in
+        const now = GLib.get_monotonic_time();
+        if (now < (this._levelsHold ?? 0))
+            return;
+        this._levels ??= new Levels(bars => this._follow(bars), () => {
+            if (GLib.get_monotonic_time() - this._levelsAt < 5e6)
+                this._levelsHold = GLib.get_monotonic_time() + 30e6;
+            this._restBars();
+        });
+        this._levelsAt = now;
+        this._levels.start(serial);
+        this._mixerWatch?.disconnectObject(this);
+        this._mixerWatch = getMixerControl();
+        // The player's stream comes and goes between tracks
+        this._mixerWatch?.connectObject('stream-added', () => this._syncLevels(), 'stream-removed', () => this._syncLevels(), this);
+    }
+
+    _watchPower() {
+        if (this._power)
+            return;
+        const cancellable = new Gio.Cancellable();
+        this._power = cancellable;
+        try {
+            global.backend.get_monitor_manager().connectObject('power-save-mode-changed', () => this._askBlanked(), this);
+        } catch (e) {
+            console.debug(`Amethystora UI: the pill cannot hear the screen blank: ${e.message}`);
+        }
+        this._askBlanked();
+        Gio.DBusProxy.new(Gio.DBus.system, Gio.DBusProxyFlags.DO_NOT_AUTO_START, null, 'org.freedesktop.UPower',
+            '/org/freedesktop/UPower', 'org.freedesktop.UPower', cancellable, (source, result) => {
+                let proxy;
+                try {
+                    proxy = Gio.DBusProxy.new_finish(result);
+                } catch {
+                    return;
+                }
+                if (cancellable.is_cancelled())
+                    return;
+                this._upower = proxy;
+                proxy.connectObject('g-properties-changed', () => this._askBattery(), this);
+                this._askBattery();
+            });
+    }
+
+    _unwatchPower() {
+        if (!this._power)
+            return;
+        this._power.cancel();
+        this._power = null;
+        try {
+            global.backend.get_monitor_manager().disconnectObject(this);
+        } catch {}
+        this._upower?.disconnectObject(this);
+        this._upower = null;
+        this._blanked = this._onBattery = false;
+    }
+
+    _askBattery() {
+        const on = this._upower?.get_cached_property('OnBattery')?.deepUnpack() === true;
+        if (on !== this._onBattery) {
+            this._onBattery = on;
+            this._syncLevels();
+        }
+    }
+
+    // Mutter's own word for the screens: 0 is on, the rest are standby, suspended and off
+    _askBlanked() {
+        const cancellable = this._power;
+        Gio.DBus.session.call('org.gnome.Mutter.DisplayConfig', '/org/gnome/Mutter/DisplayConfig', 'org.freedesktop.DBus.Properties',
+            'Get', new GLib.Variant('(ss)', ['org.gnome.Mutter.DisplayConfig', 'PowerSaveMode']), new GLib.VariantType('(v)'),
+            Gio.DBusCallFlags.NO_AUTO_START, 1000, cancellable, (connection, result) => {
+                let mode;
+                try {
+                    mode = connection.call_finish(result).deepUnpack()[0].deepUnpack();
+                } catch {
+                    return;
+                }
+                if (cancellable.is_cancelled())
+                    return;
+                const blanked = mode > 0;
+                if (blanked !== !!this._blanked) {
+                    this._blanked = blanked;
+                    this._syncLevels();
+                }
+            });
+    }
+
+    _stopLevels() {
+        this._levels?.stop();
+        this._mixerWatch?.disconnectObject(this);
+        this._mixerWatch = null;
+        if (this._bars)
+            this._restBars(this.playing ? null : BAR_LOW);
+    }
+
+    // The serial number of the one stream that is this player's, by the app it names. A player that cannot be told has none.
+    _streamOf(player) {
+        const mixer = getMixerControl();
+        if (!mixer || !player)
+            return null;
+        // A phone's player plays on the phone
+        if (typeof player._busName !== 'string')
+            return null;
+        const inputs = mixer.get_sink_inputs().filter(stream => !stream.is_event_stream);
+        const entry = player._mprisProxy?.DesktopEntry ?? '';
+        const identity = String(player._mprisProxy?.Identity ?? '').toLowerCase();
+        const found = inputs.filter(stream => {
+            const id = stream.get_application_id() ?? '';
+            const name = (stream.get_name() ?? '').toLowerCase();
+            return (entry && id === entry) || (identity && name === identity);
+        });
+        // Only the player's own: with none that is surely its, or with two, the four beats, never somebody else's sound
+        return found.length === 1 ? found[0].get_index() : null;
+    }
+
+    // Set, never eased: under seven frames a second, where an ease would ask for every frame the screen has, and a change
+    // too small to see asks for none
+    _follow(bars) {
+        this._bars?.get_children().forEach((bar, i) => {
+            if (Math.abs(bar.scale_y - bars[i]) >= LEVEL_STEP)
+                bar.scale_y = bars[i];
+        });
+    }
+
     _end() {
+        this._stopLevels();
+        this._unwatchPower();
+        this._levels = null;
+        this._tintCancellable?.cancel();
+        this._tintCancellable = null;
+        this._tintCover = undefined;
+        this.tint = null;
         this._current = null;
         this._card = null;
         if (this._activities.get('media') === this)
@@ -305,7 +563,7 @@ export class Media {
     }
 
     hovered(hover) {
-        if (hover && this.playing)
+        if (hover && this.playing && !this._levels?.serial)
             this.moveBars();
     }
 
@@ -319,7 +577,7 @@ export class Media {
 
     // Four beats of the meter, then rest
     moveBars() {
-        if (!this._bars || this._barsMoving())
+        if (!this._bars || this._barsMoving() || this._levels?.serial)
             return;
         if (this._reduce()) {
             this._restBars();
@@ -365,6 +623,15 @@ export class Media {
     get player() {
         return this._current;
     }
+
+    get seeIsOn() {
+        return this._see.colour();
+    }
+
+    // For the harness
+    get levelsOn() {
+        return !!this._levels?.serial;
+    }
 }
 
 // The card of what plays: cover, title, artist and app, where it is in the track, and the three buttons
@@ -402,12 +669,27 @@ class AmethystoraPillMediaCard extends St.BoxLayout {
         this._fill = new St.Widget({style_class: 'amethystora-pill-progress-fill'});
         this._track.add_child(this._fill);
         this._track.connect('notify::width', () => this._drawProgress());
+        // Where the player can seek and music-see is on, the position can be dragged: GNOME's own slider in place of the line
+        this._slider = new Slider.Slider(0);
+        this._slider.add_style_class_name('amethystora-pill-scrub');
+        this._slider.accessible_name = _('Position in the track');
+        this._slider.x_expand = true;
+        this._slider.connect('drag-begin', () => (this._scrubbing = true));
+        this._slider.connect('drag-end', () => {
+            this._scrubbing = false;
+            this._seek(this._slider.value);
+        });
+        this._slider.connect('notify::value', () => {
+            if (this._scrubbing)
+                this._at.text = position(this._slider.value * this._lengthMicro);
+        });
         const times = new St.BoxLayout({style_class: 'amethystora-pill-progress-times'});
         this._at = new St.Label({style_class: 'amethystora-pill-card-small', x_expand: true});
         this._lengthLabel = new St.Label({style_class: 'amethystora-pill-card-small'});
         times.add_child(this._at);
         times.add_child(this._lengthLabel);
         this._progress.add_child(this._track);
+        this._progress.add_child(this._slider);
         this._progress.add_child(times);
         this.add_child(this._progress);
 
@@ -455,6 +737,39 @@ class AmethystoraPillMediaCard extends St.BoxLayout {
             });
     }
 
+    // Whether this player's position can be dragged: a player of this computer that says it can seek
+    _canSeek() {
+        const proxy = this._media.player?._playerProxy;
+        if (!this._media.seeIsOn || typeof this._media.player?._busName !== 'string' || !proxy)
+            return false;
+        return proxy.get_cached_property?.('CanSeek')?.deepUnpack() === true && !!this._trackId();
+    }
+
+    _trackId() {
+        try {
+            const id = this._media.player._playerProxy.Metadata?.['mpris:trackid']?.deepUnpack?.();
+            return typeof id === 'string' && GLib.Variant.is_object_path(id) ? id : null;
+        } catch {
+            return null;
+        }
+    }
+
+    // The player is told, and says where it went with its own Seeked
+    _seek(fraction) {
+        const bus = this._media.player?._busName;
+        const id = this._trackId();
+        if (typeof bus !== 'string' || !id || !this._lengthMicro)
+            return;
+        const micro = Math.round(fraction * this._lengthMicro);
+        Gio.DBus.session.call(bus, '/org/mpris/MediaPlayer2', 'org.mpris.MediaPlayer2.Player', 'SetPosition',
+            new GLib.Variant('(ox)', [id, micro]), null, Gio.DBusCallFlags.NO_AUTO_START, 2000, this._cancellable, (connection, result) => {
+                try {
+                    connection.call_finish(result);
+                } catch {}
+            });
+        this._setPosition(micro);
+    }
+
     _setPosition(micro) {
         this._position = micro;
         this._since = GLib.get_monotonic_time();
@@ -493,6 +808,9 @@ class AmethystoraPillMediaCard extends St.BoxLayout {
         } catch {}
         this._lengthMicro = Number.isFinite(length) && length > 0 ? length : 0;
         this._progress.visible = this._lengthMicro > 0;
+        const scrub = this._lengthMicro > 0 && this._canSeek();
+        this._slider.visible = scrub;
+        this._track.visible = !scrub;
         this._lengthLabel.text = this._lengthMicro > 0 ? position(this._lengthMicro) : '';
 
         const playing = media.playing;
@@ -549,7 +867,11 @@ class AmethystoraPillMediaCard extends St.BoxLayout {
         if (!this._lengthMicro)
             return;
         const at = Math.min(this._currentPosition(), this._lengthMicro);
+        if (this._scrubbing)
+            return;
         this._at.text = position(at);
+        if (this._slider.visible)
+            this._slider.value = at / this._lengthMicro;
         if (!this._track.get_stage())
             return;
         const width = this._track.width;

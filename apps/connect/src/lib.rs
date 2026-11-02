@@ -2,6 +2,7 @@
 
 pub mod battery;
 pub mod clipboard;
+pub mod codes;
 pub mod connectivity;
 pub mod contacts;
 pub mod dbus;

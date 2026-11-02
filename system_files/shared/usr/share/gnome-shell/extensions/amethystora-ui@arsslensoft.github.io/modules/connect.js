@@ -46,6 +46,8 @@ const SYSTEM_ROLES = ['screenRecording', 'screenSharing', 'dwellClick', 'a11y', 
 const MAX_ADDRESS = 8192;
 // The phone as a slide clicker, off as the image ships (plans/ui-ideas/spec-phone.md 4)
 const KEY_CLICKER = 'clicker';
+// A code from your phone, off as the image ships (R7-23): only then does the shell hear of texts at all
+const KEY_CODES = 'codes';
 
 // The clipboard's text (or a link a phone shared) if it is one web address and nothing else, otherwise null
 export function address(text) {
@@ -89,6 +91,8 @@ export class Connect {
             `changed::${KEY_RECEIVE}`, () => this._switchesChanged(), this);
         if (this._settings?.settings_schema.has_key(KEY_CLICKER))
             this._settings.connectObject(`changed::${KEY_CLICKER}`, () => this._syncPresenting(), this);
+        if (this._settings?.settings_schema.has_key(KEY_CODES))
+            this._settings.connectObject(`changed::${KEY_CODES}`, () => this._ext.modules?.get('pill')?.codesChanged?.(), this);
         this._link = new Link({
             devices: () => this._devicesChanged(),
             trust: trusted => {
@@ -108,6 +112,7 @@ export class Connect {
             call: (device, state, number, name) => this._tell('call', device, state, number, name),
             url: (device, url) => this._url(device, url),
             clicker: (device, action) => this._clicked(device, action),
+            code: code => this._tell('code', code),
         });
         this._link.start();
     }
@@ -247,6 +252,16 @@ export class Connect {
         return this._ready().map(device => ({name: device.name, level: device.level, charging: device.charging}));
     }
 
+    // Whether a code from your phone is on
+    get codesOn() {
+        return this._settings?.settings_schema.has_key(KEY_CODES) === true && this._settings.get_boolean(KEY_CODES);
+    }
+
+    // The phones a file can be sent to now, as the dock's drops and the pill's reach them
+    get sendable() {
+        return this._trusted && this._link ? this._ready().filter(device => device.launchable) : [];
+    }
+
     // Whether the phone link program is there and is the image's own. Walk-away lock (modules/privacy/away.js) tells a
     // phone that left from the program that stopped: the link says the program went before it lets the phones go.
     get linked() {
@@ -312,13 +327,20 @@ export class Connect {
 
     // --- For the live pill ----------------------------------------------------------------------------------------
 
-    // listener: {call(device, state, number, name), url(device, url)}; url returns true when it took the link
+    // listener: {call(device, state, number, name), url(device, url), code(digits)}; url returns true when it took the link
     addListener(listener) {
         this._listeners?.add(listener);
     }
 
     removeListener(listener) {
         this._listeners?.delete(listener);
+    }
+
+    // Hears files on their way to the phones, for as long as what this returns is not called, and not connected to any phone
+    // before: callback(device, id, name, incoming, done, total, state)
+    watchTransfers(callback) {
+        this._link?.watchTransfers(callback);
+        return () => this._link?.watchTransfers(null);
     }
 
     // The Phone app's texts with this phone

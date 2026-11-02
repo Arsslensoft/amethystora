@@ -13,7 +13,7 @@
 #      and keep-history set to restart, as Control does.
 #   2. After a restart: only the pinned item from before. keep-history set to always.
 #   3. After another restart: everything kept, and nothing the extension threw in the three boots.
-# vmlab-paths: @sf/usr/share/gnome-shell/extensions/amethystora-clipboard@* apps/clipboard-seal/*
+# vmlab-paths: @ui/modules/pill/code.js @sf/usr/share/gnome-shell/extensions/amethystora-clipboard@* apps/clipboard-seal/*
 source "$(dirname "$0")/lib.sh"
 
 UUID=amethystora-clipboard@arsslensoft.github.io

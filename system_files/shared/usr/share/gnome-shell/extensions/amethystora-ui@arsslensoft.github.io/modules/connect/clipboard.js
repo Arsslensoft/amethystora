@@ -128,6 +128,9 @@ export class Bridge {
             // Nothing for an image or files, which have no text
             if (read !== this._reads || !this._sending || locked() || !text || !fits(text))
                 return;
+            // A one-time code the pill copied (pill/code.js) is no text to send anywhere
+            if (text === globalThis[Symbol.for('amethystora.clipboard.secret')])
+                return;
             if (this._isEcho(text))
                 return;
             this._push(text);

@@ -15,6 +15,7 @@ use glib::variant::ToVariant;
 use serde_json::json;
 
 use crate::battery::Alert;
+use crate::codes;
 use crate::connectivity;
 use crate::device::Device;
 use crate::limits;
@@ -425,7 +426,13 @@ impl Service {
     }
 
     fn on_sms(self: &Rc<Self>, dev: &Rc<Device>, p: &Packet) {
-        let changes = dev.st.borrow_mut().sms.apply(&p.body);
+        // A code from your phone (the key codes): only while it is on is any text looked at here, and only the digits of a
+        // code leave, as one signal for the module; the body, the sender and the thread stay in this program
+        let looking = self.codes.get().then(packet::now_ms);
+        let changes = dev.st.borrow_mut().sms.apply_looking(&p.body, looking);
+        if let Some(code) = changes.fresh.iter().find_map(|body| codes::find_code(body)) {
+            dbus::emit(self, None, "Code", Some((code,).to_variant()));
+        }
         for thread in &changes.threads {
             dbus::emit(self, Some(dev), "MessagesChanged", Some((*thread,).to_variant()));
         }

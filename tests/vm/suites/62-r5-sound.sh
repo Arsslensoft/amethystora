@@ -16,7 +16,7 @@
 #      ddcutil gives one screen, which gets its slider, and moving it sets the screen;
 #   7  every device's battery: a stand-in mouse at 40% in the battery menu, one notice at 15%, not two;
 #   8  ten disables and enables leave nothing behind; Control and the setup file.
-# vmlab-paths: @ui/extension.js @ui/*audio* @ui/*brightness* @ui/modules/power.js @ui/modules/power/* @ui/modules/quick.js @ui/modules/quick/* @sf/usr/libexec/amethystora-sound @sf/usr/lib/systemd/user/amethystora-clear-voice.service @sf/usr/lib/systemd/user/amethystora-sound-presets.service @sf/usr/share/amethystora/sound/* @sf/usr/share/amethystora/ddc/* @sf/usr/share/sounds/* @sf/usr/libexec/amethystora-security-status @sf/usr/libexec/amethystora-security-watch @sf/usr/libexec/amethystora-control-list @sf/usr/libexec/amethystora-setup* @sf/*just/desktop.just branding/sounds.mjs build_files/base/08-hardening.sh
+# vmlab-paths: @ui/modules/pill/hello.js @ui/modules/pill/levels.js @ui/modules/pill/media.js @ui/extension.js @ui/*audio* @ui/*brightness* @ui/modules/power.js @ui/modules/power/* @ui/modules/quick.js @ui/modules/quick/* @sf/usr/libexec/amethystora-sound @sf/usr/lib/systemd/user/amethystora-clear-voice.service @sf/usr/lib/systemd/user/amethystora-sound-presets.service @sf/usr/share/amethystora/sound/* @sf/usr/share/amethystora/ddc/* @sf/usr/share/sounds/* @sf/usr/libexec/amethystora-security-status @sf/usr/libexec/amethystora-security-watch @sf/usr/libexec/amethystora-control-list @sf/usr/libexec/amethystora-setup* @sf/*just/desktop.just branding/sounds.mjs build_files/base/08-hardening.sh
 source "$(dirname "$0")/lib.sh"
 
 UUID=amethystora-ui@arsslensoft.github.io

@@ -76,7 +76,7 @@ if ! wait_for 300 has_session; then
     not_ok "no session for ${TEST_USER}"
     finish
 fi
-for key in answers settings manual windows clipboard agent glance old-words remembered; do gs reset "${SEARCH}" "${key}"; done
+for key in answers settings manual windows clipboard agent glance timers old-words remembered; do gs reset "${SEARCH}" "${key}"; done
 
 install -d -o "${TEST_USER}" -g "${TEST_USER}" "${HOME_DIR}/.local/share/gnome-shell/extensions/vmlab-eval@lab"
 cat >"${HOME_DIR}/.local/share/gnome-shell/extensions/vmlab-eval@lab/metadata.json" <<'EOF'
@@ -190,9 +190,9 @@ gs set org.gnome.desktop.search-providers disabled "['org.mozilla.firefox.deskto
 # --- 1: the providers, in order -------------------------------------------------------------------------------------
 same "1 the search is not degraded" "$(q .degraded)" false
 # Times anywhere and Remind me (the time group) are on as the image ships; bookmarks, notes and meaning are off
-same "1 the overview's controller holds Amethystora's ten, in their places" \
+same "1 the overview's controller holds Amethystora's eleven, in their places" \
     "$(ev "Main.overview.searchController._searchResults._providers.map(p => p.id).filter(id => id.startsWith('amethystora-')).join(' ')")" \
-    "amethystora-clipboard amethystora-answers amethystora-times amethystora-remind amethystora-words amethystora-settings amethystora-windows amethystora-remembered amethystora-manual amethystora-agent"
+    "amethystora-clipboard amethystora-answers amethystora-times amethystora-remind amethystora-words amethystora-timer amethystora-settings amethystora-windows amethystora-remembered amethystora-manual amethystora-agent"
 
 # --- 2: place and width, at scale 1 and 2 ---------------------------------------------------------------------------
 place_ok() {

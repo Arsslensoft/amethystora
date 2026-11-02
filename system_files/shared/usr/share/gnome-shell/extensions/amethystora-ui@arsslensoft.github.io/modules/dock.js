@@ -27,6 +27,7 @@ import {Folders} from './dock/folders.js';
 import {Launch, ringOpacity} from './dock/launch.js';
 import {FlatpakUpdates} from './dock/flatpak.js';
 import {LauncherEntries} from './dock/launcher.js';
+import {reportMoving} from './pill/movinglist.js';
 import {AppMenus} from './dock/menus.js';
 import {Places} from './dock/places.js';
 import {Recent} from './dock/recent.js';
@@ -47,6 +48,11 @@ export class Dock {
 
     get ext() {
         return this._ext;
+    }
+
+    // The launcher IDs of the apps Flatpak is updating now
+    get flatpakUpdating() {
+        return this.launcher?.updates?.launchers ?? [];
     }
 
     _syncUpdates() {
@@ -71,7 +77,11 @@ export class Dock {
         this.places.start();
         this.launcher = new LauncherEntries();
         this.launcher.start();
-        this.launcher.updates = new FlatpakUpdates(id => this.launcher.emit('changed', id));
+        this.launcher.updates = new FlatpakUpdates(id => {
+            this.launcher.emit('changed', id);
+            // And to the live pill's moving, which reads it from here
+            reportMoving('flatpak', id, this.launcher.updates?.has(id) ? {} : null);
+        });
         this._syncUpdates();
         this.badges = new Badges(this.launcher);
         this.badges.start();

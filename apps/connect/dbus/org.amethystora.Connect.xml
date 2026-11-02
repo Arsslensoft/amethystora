@@ -90,6 +90,12 @@
       <arg name="device_id" type="s"/>
       <arg name="action" type="s"/>
     </signal>
+    <!-- A one-time code in a text that has just come in from a paired phone: the digits alone (4 to 8 of them), no text, no
+         sender, no phone. Sent to the module only, and only while the GSettings key codes is on; with it off nothing is looked
+         at and nothing is sent. The module still cannot call ListMessages or hear MessagesChanged: it never reads a text -->
+    <signal name="Code">
+      <arg name="code" type="s"/>
+    </signal>
   </interface>
 
   <!-- One phone (or tablet, or other computer that speaks the protocol): /org/amethystora/Connect/Device/ID -->

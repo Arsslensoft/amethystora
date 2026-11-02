@@ -74,6 +74,51 @@
       <summary>Saving data on a connection that counts it</summary>
       <description>On a connection NetworkManager calls metered (a phone's hotspot, mobile broadband, or one marked so), the pill says "Saving data", lists what waits for another network and offers Update anyway. It only shows: the waiting is the updaters' own, by the connection's metered flag. ame desktop saving-data and Control write it.</description>
     </key>
+    <key name="two-at-once" type="b">
+      <default>true</default>
+      <summary>Two at once</summary>
+      <description>A second thing happening sits as a small bubble beside the pill, and a click on it opens its own card. A call, a recording and Present keep the place alone. Off, only the first shows and the rest wait in its card.</description>
+    </key>
+    <key name="weight" type="b">
+      <default>true</default>
+      <summary>The pill's weight</summary>
+      <description>The pill moves as a thing with mass: it overshoots a little and settles, gives when pressed, and banners grow out of it. Reduce motion and the animation speed still rule, and the light desktop has the plain motion. Off, the plain motion always.</description>
+    </key>
+    <key name="timer-feel" type="b">
+      <default>true</default>
+      <summary>A timer you can feel</summary>
+      <description>A timer's ring drains round the pill itself, a second timer sits beside the first, a timer can have a name ("tea 4 min" in search), and its end gives a gentle glow as well as the sound. Off, one timer with its small ring, as before.</description>
+    </key>
+    <key name="moving" type="b">
+      <default>true</default>
+      <summary>Everything moving, one place</summary>
+      <description>Downloads, Flatpak updates, Files' copies, backups and the phone's transfers as one thing in the pill with one ring, and a card listing each. Off, the pill says nothing of them.</description>
+    </key>
+    <key name="stay-awake" type="b">
+      <default>true</default>
+      <summary>Stay awake while something moves</summary>
+      <description>While the pill has something moving the computer does not go to sleep by itself. The screen can still go dark, closing the lid still sleeps, and on battery it gives way below 15%.</description>
+    </key>
+    <key name="hello" type="b">
+      <default>true</default>
+      <summary>Hello, headphones</summary>
+      <description>A device arriving (headphones, a speaker, a controller, a phone, a dock) grows the pill for two seconds with its icon, name and battery. It stays quiet during a call, a recording, Focus and quiet hours.</description>
+    </key>
+    <key name="drop-targets" type="b">
+      <default>true</default>
+      <summary>Drop things on the pill</summary>
+      <description>Drag a file up to the pill and it opens into targets: Send to phone, Shelf, Convert, Copy without hidden data, Ask the agent. A target that is off or not installed is not offered, and nothing happens until a file is dropped on one.</description>
+    </key>
+    <key name="music-see" type="b">
+      <default>true</default>
+      <summary>Music you can see</summary>
+      <description>The pill and its card take the album's colour, and the position in the card can be dragged where the player can seek. The bars are music-bars's.</description>
+    </key>
+    <key name="music-bars" type="b">
+      <default>false</default>
+      <summary>Bars that follow the sound</summary>
+      <description>The pill's bars follow the real sound of the player's one stream while they show, read by a small program that runs only then. A level is never recorded. Off as the image ships, until it is shown to cost under 1% of a core: the bars then play four beats as before. Reduce motion, power saving, the light desktop, a blanked screen and the battery have the four beats as well.</description>
+    </key>
     <key name="second-zone" type="s">
       <default>''</default>
       <summary>A second time zone beside the clock</summary>

@@ -2188,6 +2188,9 @@ const ClipboardIndicator = GObject.registerClass({
             if (!offered.includes(type)) continue;
             const data = await this.#read(type);
             let result = null;
+            // A one-time code Amethystora UI's pill copied (its modules/pill/code.js) is never recorded
+            const secret = globalThis[Symbol.for('amethystora.clipboard.secret')];
+            if (secret && new TextDecoder().decode(data) === secret) return null;
             if (data.length > 0) {
                 // HACK: workaround for GNOME 2nd+ copy mangling mimetypes https://gitlab.gnome.org/GNOME/gnome-shell/-/issues/8233
                 // In theory GNOME or XWayland should auto-convert this back to UTF8_STRING for legacy apps when it's needed https://gitlab.gnome.org/GNOME/gtk/-/merge_requests/5300

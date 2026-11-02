@@ -2,8 +2,13 @@
 // ring. When it rings: a sound, an urgent notification (which quiet and the digest let through) and "Timer done" in
 // the pill. The end is kept here, outside the module, so that a timer runs on while the screen is locked (GNOME turns
 // the extension off then): one that ended meanwhile rings as soon as the screen is unlocked, and says when it ended.
+//
+// A timer you can feel (R7-22, the key timer-feel): the ring drains round the pill itself, a second timer sits beside the
+// first in the bubble, a timer can have a name ("tea 4 min" in search), and its end gives a gentle glow as well as the
+// sound. While it cannot be seen it is one wait to its end, not a tick a second. A name is in memory only.
 
 import Clutter from 'gi://Clutter';
+import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import St from 'gi://St';
@@ -19,9 +24,10 @@ import {clock, spoken, timeOfDay} from './text.js';
 const MINUTES = [1, 5, 10, 25];
 const LONGEST = 99 * 60;
 
-// The timer that runs, across the module being turned off and on: when it ends (ms since the epoch), how long it was
-// set for (s), when it was started (ms), and how much was left when it was paused (s, or null)
-let running = null;
+// The timers that run, across the module being turned off and on: when each ends (ms since the epoch), how long it was
+// set for (s), when it was started (ms), how much was left when it was paused (s, or null), and its name ('' for none).
+// The second place is only used while timer-feel is on.
+const slots = [null, null];
 
 // The ring: a track and the part left, from the top, clockwise. The board draws it in a 20 px box with a radius of 8.
 const RingArea = GObject.registerClass(
@@ -61,26 +67,55 @@ class AmethystoraPillRing extends St.DrawingArea {
 
 // While the live pill is off, a timer that runs still rings: one timeout to its end, which only rings. The pill module
 // arms it when its key goes off and takes it away when it stops (a lock) or when the pill is on again.
-let offRing = 0;
+const offRings = [0, 0];
+let offWake = null;
+
+// A wait is on the monotonic clock, which a suspend does not count: on waking the end is looked at again by the wall clock.
+// Only while a wait is armed does anything listen; returns what stops it
+function onWake(callback) {
+    const bus = Gio.DBus.system;
+    const id = bus.signal_subscribe('org.freedesktop.login1', 'org.freedesktop.login1.Manager', 'PrepareForSleep',
+        '/org/freedesktop/login1', null, Gio.DBusSignalFlags.NONE, (c, s, p, i, n, params) => {
+            if (params.deepUnpack()[0] === false)
+                callback();
+        });
+    return () => bus.signal_unsubscribe(id);
+}
 
 export function armOffRing() {
     disarmOffRing();
-    if (!running || running.pausedLeft !== null)
-        return;
-    const seconds = Math.max(1, Math.ceil((running.end - Date.now()) / 1000));
-    offRing = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, seconds, () => {
-        offRing = 0;
-        const timer = running;
-        running = null;
-        ring(timer, false);
-        return GLib.SOURCE_REMOVE;
+    slots.forEach((timer, slot) => {
+        if (!timer || timer.pausedLeft !== null)
+            return;
+        offWake ??= onWake(() => armOffRing());
+        const seconds = Math.max(1, Math.ceil((timer.end - Date.now()) / 1000));
+        offRings[slot] = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, seconds, () => {
+            offRings[slot] = 0;
+            const ended = slots[slot];
+            slots[slot] = null;
+            ring(ended, false);
+            if (!offRings.some(Boolean)) {
+                offWake?.();
+                offWake = null;
+            }
+            return GLib.SOURCE_REMOVE;
+        });
     });
 }
 
 export function disarmOffRing() {
-    if (offRing)
-        GLib.source_remove(offRing);
-    offRing = 0;
+    offWake?.();
+    offWake = null;
+    offRings.forEach((id, slot) => {
+        if (id)
+            GLib.source_remove(id);
+        offRings[slot] = 0;
+    });
+}
+
+// Whether the second place holds a timer: its part stays while it does, whatever the key says
+export function secondRuns() {
+    return slots[1] !== null;
 }
 
 // The sound and the urgent notification (which quiet and the digest let through) of a timer that ended
@@ -92,12 +127,13 @@ function ring(timer, late) {
     const body = late
         ? _('%s, ended at %s').format(length, timeOfDay(new Date(timer.end)))
         : _('%s, started at %s').format(length, timeOfDay(new Date(timer.started)));
-    global.display.get_sound_player().play_from_theme('alarm-clock-elapsed', _('The timer is done'), null);
+    const title = timer.name ? _('%s is done').format(timer.name) : _('The timer is done');
+    global.display.get_sound_player().play_from_theme('alarm-clock-elapsed', title, null);
     const source = new MessageTray.Source({title: _('Timer'), iconName: 'alarm-symbolic'});
     Main.messageTray.add(source);
     source.addNotification(new MessageTray.Notification({
         source,
-        title: _('The timer is done'),
+        title,
         body,
         iconName: 'alarm-symbolic',
         urgency: MessageTray.Urgency.CRITICAL,
@@ -105,19 +141,27 @@ function ring(timer, late) {
 }
 
 export class Timer {
-    constructor(activities, notice) {
+    // slot: the first timer, with the quick buttons in the calendar, or the second; feel: whether timer-feel is on now;
+    // flash: the pill's gentle glow
+    constructor(activities, notice, {slot = 0, feel = () => false, flash = () => {}} = {}) {
         this._activities = activities;
         this._notice = notice;
-        this.id = 'timer';
+        this._slot = slot;
+        this._feel = feel;
+        this._flash = flash;
+        this.id = slot ? 'timer2' : 'timer';
         this.plate = '';
+        this._seen = false;
     }
 
     enable() {
+        this._gone = false;
         disarmOffRing();
-        this._addRow();
-        if (!running)
+        if (this._slot === 0)
+            this._addRow();
+        if (!slots[this._slot])
             return;
-        if (running.pausedLeft !== null || running.end > Date.now())
+        if (slots[this._slot].pausedLeft !== null || slots[this._slot].end > Date.now())
             this._run();
         else
             this._ring(true);
@@ -125,129 +169,192 @@ export class Timer {
 
     // The timer itself goes on: only what shows it goes
     disable() {
+        // Ending what shows it tells the pill that it is not seen any more, which must not start a wait on a part that is
+        // gone: that one would ring beside the next, or end the timer that is started in its place
+        this._gone = true;
         this._stopTick();
+        Main.panel.statusArea.dateMenu?.menu.disconnectObject(this);
         this._row?.destroy();
         this._row = null;
         this._end();
+        this._stopTick();
     }
 
     // Seconds left, from the end or from where it was paused
     get left() {
-        if (!running)
+        if (!slots[this._slot])
             return 0;
-        if (running.pausedLeft !== null)
-            return running.pausedLeft;
-        return Math.max(0, (running.end - Date.now()) / 1000);
+        if (slots[this._slot].pausedLeft !== null)
+            return slots[this._slot].pausedLeft;
+        return Math.max(0, (slots[this._slot].end - Date.now()) / 1000);
     }
 
     get running() {
-        return running !== null;
+        return slots[this._slot] !== null;
     }
 
     get paused() {
-        return running?.pausedLeft !== null && running !== null;
+        return slots[this._slot]?.pausedLeft !== null && slots[this._slot] !== null;
     }
 
-    start(seconds) {
+    start(seconds, name = '') {
         seconds = Math.min(Math.max(1, Math.round(seconds)), LONGEST);
-        running = {end: Date.now() + seconds * 1000, total: seconds, started: Date.now(), pausedLeft: null};
+        slots[this._slot] = {end: Date.now() + seconds * 1000, total: seconds, started: Date.now(), pausedLeft: null, name};
         this._run();
     }
 
     add(seconds) {
-        if (!running) {
+        if (!slots[this._slot]) {
             this.start(seconds);
             return;
         }
         const left = Math.min(this.left + seconds, LONGEST);
-        running.total += left - this.left;
-        if (running.pausedLeft !== null)
-            running.pausedLeft = left;
+        slots[this._slot].total += left - this.left;
+        if (slots[this._slot].pausedLeft !== null)
+            slots[this._slot].pausedLeft = left;
         else
-            running.end = Date.now() + left * 1000;
-        this._show();
+            slots[this._slot].end = Date.now() + left * 1000;
+        // The wait to the end, where there is no tick, moves with it
+        this._run();
     }
 
     pause() {
-        if (!running || running.pausedLeft !== null)
+        if (!slots[this._slot] || slots[this._slot].pausedLeft !== null)
             return;
-        running.pausedLeft = this.left;
+        slots[this._slot].pausedLeft = this.left;
         this._stopTick();
         this._show();
     }
 
     resume() {
-        if (!running || running.pausedLeft === null)
+        if (!slots[this._slot] || slots[this._slot].pausedLeft === null)
             return;
-        running.end = Date.now() + running.pausedLeft * 1000;
-        running.pausedLeft = null;
+        slots[this._slot].end = Date.now() + slots[this._slot].pausedLeft * 1000;
+        slots[this._slot].pausedLeft = null;
         this._run();
     }
 
     cancel() {
-        running = null;
+        slots[this._slot] = null;
         this._stopTick();
         this._end();
         this._updateRow();
     }
 
     _run() {
-        this._stopTick();
-        if (running?.pausedLeft === null) {
-            this._tick = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 1, () => {
-                if (this.left <= 0) {
-                    this._tick = 0;
-                    this._ring(false);
-                    return GLib.SOURCE_REMOVE;
-                }
-                this._show();
-                return GLib.SOURCE_CONTINUE;
-            });
-        }
+        this._schedule();
         this._show();
+    }
+
+    // A tick a second while it can be seen; with timer-feel on and nothing to see, one wait to its end
+    _schedule() {
+        this._stopTick();
+        if (this._gone || slots[this._slot]?.pausedLeft !== null)
+            return;
+        if (this._feel() && !this._seen && !this._card) {
+            this._unwake = onWake(() => this._schedule());
+            this._tick = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, Math.max(1, Math.ceil(this.left)), () => {
+                this._tick = 0;
+                // Time was added, or the wait was short of it: wait again for what is left
+                if (this.left > 1)
+                    this._schedule();
+                else
+                    this._ring(false);
+                return GLib.SOURCE_REMOVE;
+            });
+            return;
+        }
+        this._tick = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 1, () => {
+            if (this.left <= 0) {
+                this._tick = 0;
+                this._ring(false);
+                return GLib.SOURCE_REMOVE;
+            }
+            this._show();
+            return GLib.SOURCE_CONTINUE;
+        });
+    }
+
+    // Told by the pill whether it can be seen now
+    showing(seen) {
+        if (this._seen === seen)
+            return;
+        this._seen = seen;
+        if (slots[this._slot] && this._feel())
+            this._schedule();
+    }
+
+    // timer-feel was turned on or off: the pill's content is the other one now
+    feelChanged() {
+        retire(this._content);
+        this._content = null;
+        if (slots[this._slot])
+            this._run();
     }
 
     _stopTick() {
         if (this._tick)
             GLib.source_remove(this._tick);
         this._tick = 0;
+        this._unwake?.();
+        this._unwake = null;
     }
 
     // It rings: a sound, a notification that passes quiet, and a word in the pill
     _ring(late) {
-        const timer = running;
-        running = null;
+        const timer = slots[this._slot];
+        slots[this._slot] = null;
         this._stopTick();
         this._end();
         this._updateRow();
         if (!timer)
             return;
         ring(timer, late);
-        this._notice?.(_('Timer done'), 'alarm-symbolic', 4);
+        this._notice?.(timer.name ? _('%s done').format(timer.name) : _('Timer done'), 'alarm-symbolic', 4);
+        if (this._feel())
+            this._flash();
     }
 
     // --- In the pill and the card ---------------------------------------------------------------------------------
 
-    get text() {
+    get name() {
+        return slots[this._slot]?.name ?? '';
+    }
+
+    // The time left alone
+    get short() {
         return clock(this.left);
     }
 
+    get text() {
+        return this.name ? `${this.name} · ${this.short}` : this.short;
+    }
+
     get accessible() {
-        return _('Timer: %s left').format(spoken(this.left));
+        return this.name
+            ? _('Timer %s: %s left').format(this.name, spoken(this.left))
+            : _('Timer: %s left').format(spoken(this.left));
     }
 
     get row() {
-        return {icon: 'alarm-symbolic', text: _('Timer · %s').format(this.text)};
+        return {icon: 'alarm-symbolic', text: this.name ? this.text : _('Timer · %s').format(this.text)};
+    }
+
+    // The ring round the pill, with timer-feel on
+    get progress() {
+        return this._feel() && slots[this._slot] ? this._fraction() : null;
     }
 
     _fraction() {
-        return running ? this.left / Math.max(1, running.total) : 0;
+        return slots[this._slot] ? this.left / Math.max(1, slots[this._slot].total) : 0;
     }
 
     pill() {
         if (!this._content) {
             this._content = new St.BoxLayout({style_class: 'amethystora-pill-content amethystora-pill-timer'});
-            this._ring18 = new RingArea('amethystora-pill-ring', 3);
+            this._ring18 = this._feel()
+                ? new St.Icon({icon_name: 'alarm-symbolic', icon_size: 14, y_align: Clutter.ActorAlign.CENTER})
+                : new RingArea('amethystora-pill-ring', 3);
             this._label = new St.Label({style_class: 'amethystora-pill-time', y_align: Clutter.ActorAlign.CENTER});
             this._content.add_child(this._ring18);
             this._content.add_child(this._label);
@@ -256,26 +363,28 @@ export class Timer {
     }
 
     _show() {
-        if (!running) {
+        if (!slots[this._slot]) {
             this._end();
             return;
         }
         this.pill();
-        const paused = running.pausedLeft !== null;
+        const paused = slots[this._slot].pausedLeft !== null;
         this._label.text = this.text;
-        this._ring18.fraction = this._fraction();
-        this._ring18.queue_repaint();
+        if (this._ring18 instanceof RingArea) {
+            this._ring18.fraction = this._fraction();
+            this._ring18.queue_repaint();
+        }
         this._ring18.opacity = this._label.opacity = paused ? 153 : 255;
-        this._activities.set('timer', this);
-        this._activities.update('timer');
+        this._activities.set(this.id, this);
+        this._activities.update(this.id);
         this._card?.update();
         this._updateRow();
     }
 
     _end() {
         this._card = null;
-        if (this._activities.get('timer') === this)
-            this._activities.set('timer', null);
+        if (this._activities.get(this.id) === this)
+            this._activities.set(this.id, null);
         retire(this._content);
         this._content = null;
     }
@@ -283,19 +392,24 @@ export class Timer {
     card(api) {
         const card = new TimerCard(this, api);
         this._card = card;
+        if (this._feel() && slots[this._slot] && !this._seen)
+            this._schedule();
         card.connect('destroy', () => {
-            if (this._card === card)
+            if (this._card === card) {
                 this._card = null;
+                if (this._feel() && slots[this._slot] && !this._seen)
+                    this._schedule();
+            }
         });
         return card;
     }
 
     get total() {
-        return running?.total ?? 0;
+        return slots[this._slot]?.total ?? 0;
     }
 
     get end() {
-        return running ? new Date(running.pausedLeft !== null ? Date.now() + running.pausedLeft * 1000 : running.end) : null;
+        return slots[this._slot] ? new Date(slots[this._slot].pausedLeft !== null ? Date.now() + slots[this._slot].pausedLeft * 1000 : slots[this._slot].end) : null;
     }
 
     // --- In the calendar ------------------------------------------------------------------------------------------
@@ -322,7 +436,7 @@ export class Timer {
                 can_focus: true,
             });
             button.connect('clicked', () => {
-                if (running)
+                if (slots[this._slot])
                     this.add(minutes * 60);
                 else
                     this.start(minutes * 60);
@@ -337,15 +451,17 @@ export class Timer {
         this._row.add_child(buttons);
         box.add_child(this._row);
         this._updateRow();
+        // Its words are brought up to date as the calendar opens, since no tick may be running
+        Main.panel.statusArea.dateMenu.menu.connectObject('open-state-changed', () => this._updateRow(), this);
     }
 
     _updateRow() {
         if (!this._row)
             return;
-        this._title.text = running ? _('Timer running: %s').format(this.text) : _('Start a timer');
+        this._title.text = slots[this._slot] ? _('Timer running: %s').format(this.short) : _('Start a timer');
         for (const button of this._buttons) {
             const minutes = button._minutes;
-            button.accessible_name = running
+            button.accessible_name = slots[this._slot]
                 ? ngettext('Add %d minute', 'Add %d minutes', minutes).format(minutes)
                 : ngettext('Start a %d minute timer', 'Start a %d minute timer', minutes).format(minutes);
         }
@@ -363,6 +479,8 @@ class AmethystoraPillTimerCard extends St.BoxLayout {
         const words = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, y_align: Clutter.ActorAlign.CENTER, style_class: 'amethystora-pill-timer-words'});
         this._time = new St.Label({style_class: 'amethystora-pill-timer-big'});
         this._sub = new St.Label({style_class: 'amethystora-pill-card-text'});
+        if (timer.name)
+            words.add_child(new St.Label({style_class: 'amethystora-pill-card-title', text: timer.name}));
         words.add_child(this._time);
         words.add_child(this._sub);
         head.add_child(this._ring);
@@ -382,7 +500,7 @@ class AmethystoraPillTimerCard extends St.BoxLayout {
 
     update() {
         const timer = this._timer;
-        this._time.text = timer.text;
+        this._time.text = timer.short;
         const minutes = Math.max(1, Math.round(timer.total / 60));
         const end = timer.end;
         this._sub.text = end

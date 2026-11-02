@@ -16,7 +16,7 @@
 #     kept; the recipe's rename and forget, Control; a damaged file read from its copy, both damaged; ten cycles with a
 #     card and a toast up; the setup file.
 # A second real screen is not plugged in here: the desks a test needs are stood in for through the module's _readDesk.
-# vmlab-paths: @ui/extension.js @ui/*shelf* @ui/*desks* @ui/*dock/drops* @ui/*dock/dash* @ui/*pointer* @sf/*themed/shell-shelf* @sf/*themed/shell-desks* @sf/usr/bin/amethystora-shelf @sf/usr/lib/amethystora-shelf/* @sf/usr/share/applications/amethystora-shelf.desktop apps/* @sf/usr/libexec/amethystora-control-list @sf/*just/desktop.just
+# vmlab-paths: @ui/modules/pill/drop.js @ui/extension.js @ui/*shelf* @ui/*desks* @ui/*dock/drops* @ui/*dock/dash* @ui/*pointer* @sf/*themed/shell-shelf* @sf/*themed/shell-desks* @sf/usr/bin/amethystora-shelf @sf/usr/lib/amethystora-shelf/* @sf/usr/share/applications/amethystora-shelf.desktop apps/* @sf/usr/libexec/amethystora-control-list @sf/*just/desktop.just
 source "$(dirname "$0")/lib.sh"
 
 UUID=amethystora-ui@arsslensoft.github.io

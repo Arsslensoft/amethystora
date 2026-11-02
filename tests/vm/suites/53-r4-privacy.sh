@@ -15,7 +15,7 @@
 #   - walk-away lock: a stand-in phone paired and connected, then gone for a minute while nobody touches the machine:
 #     the card and the lock; switch off, or the phone link turned off with the phone there: never;
 #   - ten disables and enables in the middle of a share with the shield's menu open; Control and the setup file.
-# vmlab-paths: @ui/extension.js @ui/*privacy* @ui/modules/meters.js @ui/modules/connect.js @ui/modules/quick.js @sf/*themed/shell-privacy* @sf/usr/libexec/amethystora-clean-copy @sf/usr/libexec/amethystora-security-config @sf/usr/libexec/amethystora-security-watch @sf/usr/libexec/amethystora-control-list @sf/usr/libexec/amethystora-setup* @sf/*just/desktop.just @sf/*just/security.just @sf/*24-files-menu.sh apps/security/* apps/agent-tools/src/never.rs
+# vmlab-paths: @ui/modules/pill/code.js @ui/modules/pill/levels.js @ui/extension.js @ui/*privacy* @ui/modules/meters.js @ui/modules/connect.js @ui/modules/quick.js @sf/*themed/shell-privacy* @sf/usr/libexec/amethystora-clean-copy @sf/usr/libexec/amethystora-security-config @sf/usr/libexec/amethystora-security-watch @sf/usr/libexec/amethystora-control-list @sf/usr/libexec/amethystora-setup* @sf/*just/desktop.just @sf/*just/security.just @sf/*24-files-menu.sh apps/security/* apps/agent-tools/src/never.rs
 source "$(dirname "$0")/lib.sh"
 
 UUID=amethystora-ui@arsslensoft.github.io

@@ -12,6 +12,16 @@
 //   plate         '' or the plate's own look: 'link', 'battery', 'saver', 'quiet', 'focus', 'agent', 'agent-ask',
 //                 'agent-done'
 //   activate()    optional: what a click on the pill's body does instead of opening the card
+//   short         optional: a few characters for the bubble ("4:12"), beside its row's icon
+//   progress      optional: 0 to 1, or null: a ring round its place, drawn by the pill
+//   beside        optional: false keeps it out of the bubble
+//   showing(on)   optional: told when it comes into or leaves what can be seen (the pill or the bubble, on a mapped bar)
+//
+// Two at once (R7-16): the first is in the pill, and `second`, the next that is no mark of how the desktop is set, sits
+// as a small bubble beside it; the others stay rows of the card. A call and a recording come before everything else and
+// keep the place alone, as they always did: nothing added after them (a plugin's, a flat battery's pill/flat.js, which
+// goes right after them) ever comes before them. Present keeps the place alone when it is the first; behind a flat
+// battery, which is no ALONE, it may be the bubble beside it.
 //
 // Present mode's mark (modules/present.js) follows a recording: it says what the screen is for now.
 // The agent's changes (modules/agent/changes.js) come after the battery's question: the agent may be waiting for the
@@ -21,12 +31,20 @@
 // the person, at a time the person set.
 // Reopening the apps after an update's restart (pill/resume.js) asks the person, so it comes before what the update
 // brought; saving data (pill/saving.js) only says how the connection is, after an update ready.
+// A code from the phone (pill/code.js) lives a minute and waits for the person, as a link does. What a drag can be dropped
+// on (pill/drop.js) and a device arriving (pill/hello.js) are the person's own moment, for as long as it lasts. A second
+// timer comes after the first. What is moving (pill/moving.js) runs by itself, after music: the music stays in the pill
+// and it sits beside it.
 
-export const ORDER = ['call', 'recording', 'present', 'meeting', 'link', 'battery', 'agent', 'waiting', 'reading', 'timer',
-    'resume', 'news', 'media', 'update', 'saving', 'quiet', 'focus'];
+export const ORDER = ['call', 'recording', 'present', 'meeting', 'link', 'code', 'battery', 'agent', 'waiting', 'drop', 'hello',
+    'reading', 'timer', 'timer2', 'resume', 'news', 'media', 'moving', 'update', 'saving', 'quiet', 'focus'];
 
 // At most this many others are listed in a card
 const OTHERS = 3;
+// These keep the place alone
+const ALONE = new Set(['call', 'recording', 'present']);
+// These say how the desktop is set, not what is happening: never the bubble
+const MARKS = new Set(['saving', 'quiet', 'focus']);
 
 export class Activities {
     constructor(changed) {
@@ -67,6 +85,14 @@ export class Activities {
 
     get others() {
         return this.list.slice(1, 1 + OTHERS);
+    }
+
+    // What sits beside the first, or null
+    get second() {
+        const [top, ...rest] = this.list;
+        if (!top || ALONE.has(top.id))
+            return null;
+        return rest.find(activity => !MARKS.has(activity.id) && activity.beside !== false) ?? null;
     }
 
     clear() {

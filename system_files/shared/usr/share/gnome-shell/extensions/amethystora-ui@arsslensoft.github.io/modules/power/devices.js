@@ -102,7 +102,7 @@ function kindIcon(kind) {
 
 // A device worth a row: one with a battery that is not the computer's own (those are the tile's), present, with a
 // percentage it reports
-function reading(path, d) {
+export function reading(path, d) {
     const kind = d.Type;
     if (!Number.isInteger(kind) || kind === UPower.DeviceKind.LINE_POWER || kind === UPower.DeviceKind.UNKNOWN)
         return null;

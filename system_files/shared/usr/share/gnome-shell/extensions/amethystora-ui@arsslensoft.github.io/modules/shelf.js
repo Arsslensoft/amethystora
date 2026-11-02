@@ -497,7 +497,24 @@ export class Shelf {
             window.move_frame(true, x, y);
     }
 
-    // ---- For the dock, the suites and the harness ----
+    // ---- For the dock, the pill, the suites and the harness ----
+
+    // Whether the shelf is on at all
+    get on() {
+        return !!this._mode && this._mode !== 'off';
+    }
+
+    // Files dropped on the pill's Shelf target, as if the shelf's own first drop
+    async takeFiles(uris) {
+        if (!this.on || !uris.length)
+            return;
+        const pid = await handOff({files: uris}, 'column');
+        if (pid > 0) {
+            started.add(pid);
+            if (started.size > 8)
+                started.delete(started.values().next().value);
+        }
+    }
 
     // The dock leaves the shelf out of its running apps
     owns(window) {

@@ -112,6 +112,8 @@ pub struct Settings {
     /// Music from either side and the phone as a slide clicker (the keys music and clicker), off as the image ships
     pub music: bool,
     pub clicker: bool,
+    /// A code from your phone (the key codes): each new text is looked at for one, off as the image ships
+    pub codes: bool,
 }
 
 /// Where pictures from a phone go (the GSettings key photo-folder)
@@ -179,6 +181,8 @@ pub struct Service {
     /// Music from either side, and the phone as a slide clicker (plans/ui-ideas/spec-phone.md)
     pub music: Cell<bool>,
     pub clicker: Cell<bool>,
+    /// Whether a new text is looked at for a one-time code (R7-23); only its digits are ever sent to the module
+    pub codes: Cell<bool>,
     /// This computer's players while a phone is shown them (players.rs)
     pub players: RefCell<Option<crate::players::Watcher>>,
     /// The module's connections that said they are presenting (Presenting): the clicker's keys reach the module only
@@ -265,6 +269,7 @@ impl Service {
             computers: Cell::new(settings.computers),
             music: Cell::new(settings.music),
             clicker: Cell::new(settings.clicker),
+            codes: Cell::new(settings.codes),
             players: RefCell::default(),
             presenters: RefCell::default(),
             home,

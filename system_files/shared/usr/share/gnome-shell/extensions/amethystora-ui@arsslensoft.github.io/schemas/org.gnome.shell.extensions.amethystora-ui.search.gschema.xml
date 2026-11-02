@@ -24,6 +24,11 @@
       <summary>Reminders into Notes</summary>
       <description>"remind me at 17:00 to call the garage" becomes a task in Notes' inbox with a reminder, with Enter.</description>
     </key>
+    <key name="timers" type="b">
+      <default>true</default>
+      <summary>Timers from search</summary>
+      <description>"tea 4 min" starts a timer called Tea in the live pill, with Enter.</description>
+    </key>
     <key name="settings" type="b">
       <default>true</default>
       <summary>Settings from Control</summary>
