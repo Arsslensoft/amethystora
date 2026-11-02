@@ -180,6 +180,7 @@ PILL_KEYS='{
     "digest-through": ["as", "launchers"], "digest-wait": ["as", "launchers"],
     "saving-data": ["b"],
     "two-at-once": ["b"], "weight": ["b"], "timer-feel": ["b"], "moving": ["b"], "stay-awake": ["b"], "hello": ["b"], "drop-targets": ["b"], "music-see": ["b"], "music-bars": ["b"],
+    "removable-writes": ["b"],
     "second-zone": ["s-zone"]
 }'
 # Quick settings' tiles: the order they come first in and the ones put away, each a tile's short name
@@ -265,7 +266,7 @@ BACKUPDISK=org.gnome.shell.extensions.amethystora-ui.backupdisk
 BACKUPDISK_KEYS='{"ask": ["b"]}'
 # The battery explained and the busy app's chip (Power you can see)
 POWER=org.gnome.shell.extensions.amethystora-ui.power
-POWER_KEYS='{"battery-details": ["b"], "busy-app": ["b"], "device-batteries": ["b"], "flat-battery": ["b"]}'
+POWER_KEYS='{"battery-details": ["b"], "busy-app": ["b"], "device-batteries": ["b"], "flat-battery": ["b"], "sleep-report": ["b"]}'
 # The shelf, by how it opens; never what it holds, which is never written anywhere
 SHELF=org.gnome.shell.extensions.amethystora-ui.shelf
 SHELF_KEYS='{"shelf": ["s", ["off", "edge", "shake"]]}'
@@ -322,7 +323,7 @@ PRIVACY_KEYS='{
 # The tools module: Convert and Earlier versions in Files' Scripts menu, the card for a file nothing opens, Uninstall taking an
 # app's data to the trash, and the offer to clear space
 TOOLS=org.gnome.shell.extensions.amethystora-ui.tools
-TOOLS_KEYS='{"convert-in-files": ["b"], "earlier-versions": ["b"], "offer-room": ["b"], "open-anything": ["b"], "uninstall-takes-data": ["b"]}'
+TOOLS_KEYS='{"convert-in-files": ["b"], "earlier-versions": ["b"], "network-reach": ["b"], "offer-room": ["b"], "open-anything": ["b"], "uninstall-takes-data": ["b"]}'
 # The keyboard settings GNOME keeps out of sight (Control's Keyboard page): each window's own layout and the xkb options
 # (Caps Lock, Compose, and whatever else the account chose there, each group:option), Num Lock at start and the repeat
 # delay, middle-click paste, and what Super alone opens. One schema each; never the input sources themselves, which

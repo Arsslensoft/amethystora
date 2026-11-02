@@ -1,0 +1,240 @@
+#!/usr/bin/bash
+# A warning before the disk dies (R7-53). amethystora-disk-health.timer runs `check` hourly, as root: the disks the system
+# is on have their SMART read (a disk asleep is left asleep, and keeps what it said last), and what it says goes in
+# /var/lib/amethystora/disk-health.json, which holds the state of each disk and no name of anything on it. A new reading
+# worse than the last tells whoever is logged in, once, with the one button that matters.
+#
+#   amethystora-disk-health check            as root: read, record, tell what changed
+#   amethystora-disk-health status [--json]  what the last check found, for anyone
+#   amethystora-disk-health notify STATE MODEL   as root: the notice, in a unit of its own that waits for its answers
+#
+# `ame system disk-warning on|off` enables or disables the timer: off, nothing here runs. Nothing is read from a disk but
+# its SMART data. SMART can be wrong, and a disk can die without warning, so the notice says "may".
+#
+# Three things keep it from saying what it does not know. A disk is told of once, and a disk already counting bad sectors
+# when it is first seen is not "starting to fail": that count is where it starts, and only a rise is news. The disks of a
+# pool that amethystora-raid check reads (a btrfs over several disks, or a pool of the machine's) are told of by that check
+# when they say they are failing, and when btrfs counts errors for them: this says only what that check cannot, so that
+# one disk is not the subject of two notices. And a disk is recognised by a checksum of its serial number, never by the
+# path, which two NVMe disks swap between starts; the file holds the checksum, not the serial.
+
+set -uo pipefail
+
+ROOT="${AMETHYSTORA_DISK_ROOT:-}"
+STATE="${ROOT}/var/lib/amethystora/disk-health.json"
+RAID=/usr/libexec/amethystora-raid
+TEXT_TOOL=/usr/libexec/amethystora-security-text
+# The stand-ins of the test, which has a machine of its own to look at
+if [[ -n "${ROOT}" ]]; then
+    RAID="${AMETHYSTORA_DISK_RAID:-${RAID}}"
+    TEXT_TOOL="${AMETHYSTORA_SECURITY_TEXT:-${TEXT_TOOL}}"
+fi
+
+export TEXTDOMAIN=amethystora
+# Marks a message for po/amethystora.pot; amethystora-notify-users translates it for each account
+N_() { printf '%s' "$1"; }
+
+usage() {
+    echo "usage: amethystora-disk-health check | status [--json] | notify STATE MODEL" >&2
+    exit 64
+}
+
+# A name a disk gives itself, as one plain line: no control characters, nothing that acts in a terminal, and nothing that
+# GNOME would make a link of in a notice (a slash, or www and a dot)
+clean_text() {
+    "${TEXT_TOOL}" --max 48 -- "$1" 2>/dev/null | sed -E 's#[/\\]# #g; s/[Ww][Ww][Ww][0-9]{0,3}\./www /g'
+}
+
+# The whole disks under whatever holds the running system: through LUKS, and every member of a btrfs over several disks
+system_disks() {
+    local source fstype uuid member raw disk model serial out="[]"
+    read -r source fstype uuid < <(findmnt -nro SOURCE,FSTYPE,UUID --target "${ROOT}/sysroot" 2>/dev/null || findmnt -nro SOURCE,FSTYPE,UUID /)
+    source="${source%%\[*}"
+    raw="$({
+        if [[ "${fstype}" == btrfs && -n "${uuid}" && -d "${ROOT}/sys/fs/btrfs/${uuid}/devices" ]]; then
+            for member in "${ROOT}/sys/fs/btrfs/${uuid}/devices"/*; do
+                [[ -e "${member}" ]] && echo "/dev/${member##*/}"
+            done
+        fi
+        [[ -n "${source}" ]] && echo "${source}"
+    } | sort -u | while read -r member; do
+        lsblk -Jpso PATH,TYPE,MODEL,SERIAL "${member}" 2>/dev/null
+    done | jq -c 'def walk_nodes: ., (.children[]? | walk_nodes);
+        .blockdevices[] | walk_nodes | select(.type == "disk") | {path, model: (.model // ""), serial: (.serial // "")}' | jq -sc 'unique_by(.path)')"
+    while read -r disk; do
+        model="$(clean_text "$(jq -r '.model' <<<"${disk}")")"
+        serial="$(jq -r '.serial' <<<"${disk}")"
+        [[ -n "${serial}" ]] && serial="$(printf '%s' "${serial}" | sha256sum | cut -c1-32)"
+        out="$(jq -c --argjson d "${disk}" --arg model "${model}" --arg serial "${serial}" '. + [$d + {model: $model, serial: $serial}]' <<<"${out}")"
+    done < <(jq -c '.[]' <<<"${raw:-[]}")
+    printf '%s\n' "${out}"
+}
+
+# The disks amethystora-raid check tells of, with the errors btrfs counted for each: those of a mounted pool, when that
+# check runs at all (its condition is `present`). Anything else, LVM or md over two disks included, it knows nothing of.
+pooled_disks() {
+    local pooled
+    "${RAID}" present 2>/dev/null || { echo '[]'; return; }
+    pooled="$("${RAID}" status --json 2>/dev/null |
+        jq -c '[.pools[]? | select(.mounted) | .devices[]? | select(.disk != null) | {path: .disk.path, errors: (.error_count // 0)}]' 2>/dev/null)"
+    echo "${pooled:-[]}"
+}
+
+# One disk's reading, as {state, errors}: failed when it says it is failing, errors when it counts bad sectors or media
+# errors; nothing when it cannot say or is asleep. ATA's 5, 197 and 198, and NVMe's media errors and critical warning. A raw
+# value of those three above 65535 is no plain count on every make (some pack several numbers in it): it says nothing.
+read_disk() {
+    smartctl -H -A -j -n standby "$1" 2>/dev/null | jq -c '
+        if .smart_status.passed == null and .nvme_smart_health_information_log == null then empty else
+        ([.ata_smart_attributes.table[]? | select(.id == 5 or .id == 197 or .id == 198) | (.raw.value // 0) | select(. <= 65535)] | add // 0) as $ata
+        | (.nvme_smart_health_information_log // {}) as $nvme
+        | ($ata + ($nvme.media_errors // 0)) as $errors
+        | {state: (if .smart_status.passed == false or (($nvme.critical_warning // 0) != 0) then "failed"
+                   elif $errors > 0 then "errors" else "passed" end), errors: $errors} end' 2>/dev/null
+}
+
+cmd_check() {
+    [[ ${EUID} -eq 0 || -n "${ROOT}" ]] || { echo "This is amethystora-disk-health.service's: ame system disk-warning status says the same." >&2; exit 77; }
+    local disks last disk path reading known now news pooled
+    disks="$(system_disks)"
+    [[ -n "${disks}" && "${disks}" != "[]" ]] || exit 0
+    last="$(jq -c 'select(type == "object") | .disks // []' "${STATE}" 2>/dev/null)"
+    pooled="$(pooled_disks)"
+    now="[]"
+    while read -r disk; do
+        path="$(jq -r '.path' <<<"${disk}")"
+        reading="$(read_disk "${path}")"
+        # The same disk by its serial (as a checksum), else by its path when it has none
+        known="$(jq -c --argjson d "${disk}" '[.[] | select(if $d.serial != "" then .serial == $d.serial else (.serial == "" and .path == $d.path) end)] | first // empty' <<<"${last:-[]}")"
+        # Told is what was said last; a disk asleep or that cannot say keeps what it said. A disk first seen with bad sectors
+        # has them as its baseline: it is told of when they rise
+        now="$(jq -c --argjson d "${disk}" --argjson r "${reading:-null}" --argjson k "${known:-null}" '
+            . + [$d + {state: ($r.state // $k.state // null), errors: ($r.errors // $k.errors // 0),
+                told: (if ($k == null or $k.state == null) and $r.state == "errors" then {state: "errors", errors: $r.errors}
+                       else ($k.told // null) end)}]' <<<"${now}")"
+    done < <(jq -c '.[]' <<<"${disks}")
+    # Worse than what was told: a disk newly failing, or counting more errors. A disk of a pool hears of its failing, and of
+    # the errors btrfs counts, from the pools' check (amethystora-raid), which also knows what to do about it.
+    news="$(jq -c --argjson pooled "${pooled}" '[.[] | . as $d | ([$pooled[] | select(.path == $d.path)] | first) as $pool
+        | select(
+            ($d.state == "failed" and $pool == null and ($d.told.state != "failed"))
+            or ($d.state == "errors" and ($d.told.state != "failed") and ($d.errors > ($d.told.errors // 0))
+                and ($pool == null or $pool.errors == 0)))] | first // empty' <<<"${now}")"
+    # Nobody to tell: not written down as told, so the first run after somebody logs in tells them
+    if [[ -n "${news}" ]] && compgen -G "${ROOT}/run/user/[1-9][0-9][0-9][0-9]*/bus" >/dev/null; then
+        now="$(jq -c --argjson n "${news}" 'map(if .serial == $n.serial and .path == $n.path then .told = {state, errors} else . end)' <<<"${now}")"
+        if [[ -z "${ROOT}" ]]; then
+            systemd-run --collect --quiet -p TimeoutStartSec=infinity --description="Tell about the system's disk" \
+                /usr/libexec/amethystora-disk-health notify "$(jq -r '.state' <<<"${news}")" "$(jq -r 'if .model == "" then .path else .model end' <<<"${news}")"
+        else
+            printf 'told %s\n' "$(jq -r '.path + " " + .state' <<<"${news}")"
+        fi
+    fi
+    install -d -m 0755 "${STATE%/*}"
+    jq -c '{time: (now | floor), disks: .}' <<<"${now}" >"${STATE}.new" && chmod 0644 "${STATE}.new" && mv -f "${STATE}.new" "${STATE}"
+}
+
+cmd_status() {
+    if [[ "${1:-}" == --json ]]; then
+        jq -c 'select(type == "object") | {time, disks: [.disks[] | {model, state, errors}]}' "${STATE}" 2>/dev/null || echo '{"time":null,"disks":[]}'
+        return 0
+    fi
+    # shellcheck source=/dev/null
+    source gettext.sh
+    if ! jq -e '.disks | length > 0' "${STATE}" >/dev/null 2>&1; then
+        echo "$(gettext "The system's disk has not been read yet.")"
+        return 0
+    fi
+    local model state errors
+    # shellcheck disable=SC2034 # eval_gettext reads them by name
+    while IFS=$'\t' read -r model state errors; do
+        # The file is root's to write but a person's to read: a name in it goes through the same cleaning before a terminal
+        model="$(clean_text "${model}")"
+        [[ -n "${model}" ]] || model="$(gettext "A disk")"
+        case "${state}" in
+            failed) echo "$(eval_gettext "\${model}: says it is failing.")" ;;
+            errors) echo "$(eval_gettext "\${model}: has reported errors (\${errors}).")" ;;
+            passed) echo "$(eval_gettext "\${model}: reports nothing wrong.")" ;;
+            *) echo "$(eval_gettext "\${model}: does not say how it is.")" ;;
+        esac
+    done < <(jq -r '.disks[] | [.model, (.state // ""), .errors] | @tsv' "${STATE}")
+}
+
+# Days since an account's last good backup, as that account reads it: never through a link of its own as root. 0: said in
+# DAYS; 1: it has never made one; 2: it could not be read, which says nothing about whether there is one
+backup_days() { # USER
+    local stamp home file found
+    home="$(getent passwd "$1" | cut -d: -f6)"
+    [[ -n "${home}" ]] || return 2
+    file="${home}/.local/state/amethystora/backup-last-success"
+    timeout 5 runuser -u "$1" -- test -e "${file}"
+    found=$?
+    [[ ${found} -eq 0 ]] || { [[ ${found} -eq 1 ]] && return 1 || return 2; }
+    stamp="$(timeout 5 runuser -u "$1" -- head -c 32 "${file}" 2>/dev/null)" || return 2
+    stamp="${stamp//[[:space:]]/}"
+    [[ "${stamp}" =~ ^[0-9]+$ ]] || return 2
+    DAYS="$((($(date +%s) - stamp) / 86400))"
+}
+
+in_session() { # USER UID COMMAND...
+    local user="$1" uid="$2"
+    shift 2
+    runuser -u "${user}" -- env "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/${uid}/bus" "XDG_RUNTIME_DIR=/run/user/${uid}" \
+        systemd-run --user --collect --quiet -- "$@" || true
+}
+
+tell_one() { # USER UID SUMMARY BODY
+    local user="$1" uid="$2" summary="$3" body="$4" footer=() answers answer DAYS=0 found
+    backup_days "${user}"
+    found=$?
+    if [[ ${found} -eq 0 ]]; then
+        export DISK_BACKUP_DAYS="${DAYS}"
+        # shellcheck disable=SC2016 # the value is filled in for each account's language
+        footer=(--footer "$(N_ 'Days since your last backup: ${DISK_BACKUP_DAYS}.')")
+    elif [[ ${found} -eq 1 ]]; then
+        footer=(--footer "$(N_ 'You have no backup yet.')")
+    fi
+    answers="$(/usr/libexec/amethystora-notify-users --user "${user}" --msgid "${footer[@]}" \
+        --action "more=$(N_ 'Tell me more')" --action "backup=$(N_ 'Back up now')" "${summary}" "${body}" critical)" || return 0
+    read -r _ answer <<<"${answers}"
+    case "${answer}" in
+        more) in_session "${user}" "${uid}" /usr/bin/amethystora-manual hardware#when-a-disk-may-be-failing ;;
+        # Backups shows the run, or offers to set one up
+        backup)
+            in_session "${user}" "${uid}" /usr/bin/systemctl --user start --no-block amethystora-backup.service
+            in_session "${user}" "${uid}" /usr/bin/amethystora-backups
+            ;;
+    esac
+}
+
+cmd_notify() {
+    [[ ${EUID} -eq 0 && $# -eq 2 ]] || usage
+    local summary body bus uid user
+    export DISK_MODEL
+    DISK_MODEL="$(clean_text "$2")"
+    [[ -n "${DISK_MODEL}" ]] || DISK_MODEL="The disk"
+    # shellcheck disable=SC2016 # the value is filled in for each account's language
+    if [[ "$1" == failed ]]; then
+        summary="$(N_ 'Your disk says it is failing')"
+        body="$(N_ '${DISK_MODEL} says it is failing. It may stop working soon, or it may be wrong, but copy what matters now.')"
+    else
+        summary="$(N_ 'Your disk is starting to fail')"
+        body="$(N_ '${DISK_MODEL} still works, and it may for months, but it has begun to report errors. Copy what matters while you can.')"
+    fi
+    for bus in /run/user/*/bus; do
+        [[ -S "${bus}" ]] || continue
+        uid="${bus#/run/user/}"
+        uid="${uid%/bus}"
+        [[ "${uid}" =~ ^[0-9]+$ && "${uid}" -ge 1000 && "${uid}" -ne 65534 ]] || continue
+        user="$(id -nu "${uid}" 2>/dev/null)" || continue
+        tell_one "${user}" "${uid}" "${summary}" "${body}" &
+    done
+    wait
+}
+
+case "${1:-}" in
+    check) cmd_check ;;
+    status) shift && cmd_status "$@" ;;
+    notify) shift && cmd_notify "$@" ;;
+    *) usage ;;
+esac

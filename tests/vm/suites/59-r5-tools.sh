@@ -15,7 +15,7 @@
 #   - the clipboard's text actions and the QR code, hidden while the screen is shared;
 #   - Share this Wi-Fi: the WIFI: text escaped, and the row only where there is Wi-Fi;
 #   - ten disables and enables leaving nothing behind.
-# vmlab-paths: @ui/extension.js @ui/*tools* @ui/modules/pill/privacy.js @ui/modules/search/clipboard.js @ui/modules/dock/places.js @sf/*themed/shell-tools* @sf/usr/libexec/amethystora-what-uses @sf/usr/libexec/amethystora-convert @sf/*24-files-menu.sh @sf/*just/desktop.just @sf/usr/libexec/amethystora-control-list @sf/usr/libexec/amethystora-setup* @sf/usr/share/gnome-shell/extensions/amethystora-clipboard@*
+# vmlab-paths: @ui/extension.js @ui/*tools* @ui/modules/pill/privacy.js @ui/modules/search/clipboard.js @ui/modules/dock/places.js @sf/*themed/shell-tools* @sf/usr/libexec/amethystora-what-uses @sf/usr/libexec/amethystora-convert @sf/*24-files-menu.sh @sf/*just/desktop.just @sf/usr/libexec/amethystora-control-list @sf/usr/libexec/amethystora-setup* @sf/usr/share/gnome-shell/extensions/amethystora-clipboard@* @ui/modules/pill/stick*
 source "$(dirname "$0")/lib.sh"
 
 UUID=amethystora-ui@arsslensoft.github.io

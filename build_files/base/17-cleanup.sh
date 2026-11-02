@@ -49,6 +49,8 @@ systemctl enable amethystora-driver-check.timer
 # and no btrfs over several disks; `ame system raid scrub off` turns the scrub off.
 systemctl enable amethystora-raid-check.timer
 systemctl enable amethystora-raid-scrub.timer
+# The warning before the system's disk fails: an hourly read of its health, `ame system disk-warning off` turns it off
+systemctl enable amethystora-disk-health.timer
 # The system over several disks, at every start: a mirror onto a new disk finished after its restart, and the
 # boot menu entry that starts the system with a disk missing kept current. Skipped on a system on one disk.
 systemctl enable amethystora-raid-boot.service

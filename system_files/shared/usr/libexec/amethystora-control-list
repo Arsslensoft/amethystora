@@ -388,6 +388,8 @@ read_in_background bling amethystora-bling status
 read_in_background backgrounds amethystora-theme bg list
 read_in_background raid /usr/libexec/amethystora-raid status --json
 read_in_background start-times /usr/libexec/amethystora-start-times status --fields
+# Devices kept from waking the computer: only a machine that kept one has the rules file, and only that one asks the helper
+[[ -s /etc/udev/rules.d/90-amethystora-wake.rules ]] && read_in_background wake-devices /usr/libexec/amethystora-sleep-report list --names
 # The quick ones too, which one after another took a fifth of a second in a VM
 gsettings_read transitions org.gnome.shell.extensions.amethystora-transitions
 gsettings_read clipboard org.gnome.shell.extensions.amethystora-clipboard keep-history
@@ -437,6 +439,7 @@ gsettings_read quit org.gnome.shell.extensions.amethystora-ui.quit
 gsettings_read ui-privacy org.gnome.shell.extensions.amethystora-ui.privacy
 gsettings_read ui-tools org.gnome.shell.extensions.amethystora-ui.tools convert-in-files
 gsettings_read ui-tools-all org.gnome.shell.extensions.amethystora-ui.tools
+gsettings_read ui-reach org.gnome.shell.extensions.amethystora-ui.tools network-reach
 gsettings_read breaks org.gnome.desktop.break-reminders selected-breaks
 gsettings_read search org.gnome.shell.extensions.amethystora-ui.search
 gsettings_read emoji org.gnome.shell.extensions.amethystora-ui.emoji skin-tone
@@ -2151,6 +2154,9 @@ PILLKEY=whats-new pill_item whats-new "${ gettext "What's new after an update"; 
 PILLKEY=saving-data pill_item saving-data "${ gettext "Saving data"; }" \
     "${ gettext "On a connection that counts data, such as a phone's hotspot, the pill says what waits for another network, with Update anyway."; }" \
     updates#saving-data ame desktop saving-data
+PILLKEY=removable-writes pill_item removable-writes "${ gettext "What a removable disk is writing"; }" \
+    "${ gettext "While a stick is still being written to, the pill says how far it has got and when everything is on it."; }" \
+    desktop#a-usb-stick-that-tells-the-truth ame desktop usb-writes
 GROUP=""
 
 
@@ -2178,6 +2184,9 @@ power_item device-batteries device-batteries "${ gettext "Your devices' batterie
 power_item flat-battery flat-battery "${ gettext "A flat battery loses nothing"; }" \
     "${ gettext "At 3% a card asks you to save, where your apps were is kept, and the computer closes cleanly 60 seconds later."; }" \
     ame desktop power flat
+power_item sleep-report sleep-report "${ gettext "What happened while it slept"; }" \
+    "${ gettext "When the battery loses an unusual amount in sleep, a notice says what woke the computer, once, and offers to stop it."; }" \
+    ame desktop power sleep
 GROUP=""
 
 # Focus profiles (org.gnome.shell.extensions.amethystora-ui.focus): the profile picked by hand, the two triggers, and
@@ -2540,6 +2549,17 @@ tools_switch earlier-versions desktop earlier-versions "${ gettext "Earlier vers
 tools_switch open-anything desktop open-anything "${ gettext "A file nothing opens says what it is"; }" \
     "${ gettext "Opening a kind of file nothing here opens says what it is and offers the app on Flathub that does, from the list already on this computer. Off, GNOME says there is no app."; }" \
     desktop#a-file-nothing-opens ame desktop open-anything
+GROUP=""
+
+# Where a connection breaks (the tools module)
+GROUP="${ gettext "Network"; }"
+[[ "${ ended ui-reach; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
+switch_choices false ame desktop network-check
+USAGE="ame desktop network-check on|off"
+if [[ "${ said ui-reach; }" == true* ]]; then value=on; else value=off; fi
+item desktop network-check switch "${ gettext "Where a connection breaks"; }" \
+    "${ gettext "The Wi-Fi and wired menus draw you, the router and the internet: one ping to the router and one name lookup each time they open."; }" \
+    "${value}" desktop#is-it-me-or-the-internet
 GROUP=""
 
 if [[ -e "${CONFIG_DIR}/no-greeting" ]]; then GREETING=off; else GREETING=on; fi
@@ -3388,6 +3408,32 @@ if [[ "${ ended raid; }" == 0 ]] && jq -e '.version == 1' <<<"${RAID}" >/dev/nul
             "${ gettext "The same check, now, in the background. After a power cut, do it for a pool with parity."; }" \
             "" hardware#pools-of-disks-raid
     fi
+fi
+
+# The warning before the system's disk fails: its timer is the switch, which a link says without asking systemd
+if [[ -L /etc/systemd/system/timers.target.wants/amethystora-disk-health.timer ]]; then DISK_WARNING=on; else DISK_WARNING=off; fi
+switch_choices true ame system disk-warning
+GROUP="${ gettext "Disks"; }"
+USAGE="ame system disk-warning on|off"
+item system disk-warning switch "${ gettext "A warning before the disk fails"; }" \
+    "${ gettext "Reads the health of the system's disk each hour, leaving it asleep if it sleeps, and says once if it begins to fail."; }" \
+    "${DISK_WARNING}" hardware#when-a-disk-may-be-failing
+GROUP=""
+
+# What the notice after a night's battery kept from waking the computer, with the way back here: that notice is said once,
+# and a dismissed one is gone. The helper's names are plain text; a device with no name shows its ID
+if [[ "${ ended wake-devices; }" == 0 ]]; then
+    while IFS=$'\t' read -r wake_id wake_name; do
+        [[ -n "${wake_id}" ]] || continue
+        COMMAND=(ame system wake-device on "${wake_id}")
+        BUTTON="${ gettext "Let it wake…"; }"
+        GROUP="${ gettext "Sleep"; }"
+        USAGE="ame system wake-device on ID"
+        item system "wake-device-${wake_id//:/-}" action "${ eval_gettext "Let \${wake_name} wake the computer again"; }" \
+            "${ eval_gettext "It was kept from waking the computer (\${wake_id}). This asks for an administrator's password and puts it back."; }" \
+            "" desktop#power-you-can-see
+    done <<<"${ said wake-devices; }"
+    GROUP=""
 fi
 
 # Settings back as the image ships them, files and accounts kept: the step before starting over

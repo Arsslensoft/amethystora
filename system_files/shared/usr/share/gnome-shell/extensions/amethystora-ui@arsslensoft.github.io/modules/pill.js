@@ -37,6 +37,7 @@ import {Privacy} from './pill/privacy.js';
 import {ResumeCard} from './pill/resume.js';
 import {Saving} from './pill/saving.js';
 import {Stacks} from './pill/stacks.js';
+import {Stick} from './pill/stick.js';
 import {disposeSettings} from './pill/text.js';
 import {Timer, armOffRing, disarmOffRing, secondRuns} from './pill/timer.js';
 import {Update} from './pill/update.js';
@@ -123,6 +124,7 @@ export class Pill {
                 this._timer2?.feelChanged();
                 this._sync();
             },
+            'changed::removable-writes', () => this._sync(),
             this);
         this._sync();
     }
@@ -136,6 +138,7 @@ export class Pill {
         this._stopPart('_drop');
         this._stopPart('_code');
         this._stopPart('_timer2');
+        this._stopPart('_stick');
         this._stopLive();
         // Turned off whole (as while the screen is locked): nothing waits; the timer rings at the next enable if it ended
         disarmOffRing();
@@ -227,6 +230,8 @@ export class Pill {
         this.codesChanged();
         // The second timer's place, while timer-feel is on or one still runs in it
         this._toggle('_timer2', !!this._clock && (on('timer-feel') || secondRuns()), () => this._newTimer(1));
+        // A removable disk still being written to: a part of the live pill, as its own key says
+        this._toggle('_stick', !!this._clock && on('removable-writes'), () => new Stick(this._activities, (...a) => this.notice(...a)));
         this._toggle('_privacy', on('privacy-dots'), () => new Privacy(this._capture));
         this._toggle('_glow', on('glow'), () => new Glow(this._capture, () => this._reduce()));
         // The apps that always wait for the digest hold their banners also while the digest itself is off
@@ -594,6 +599,10 @@ export class Pill {
 
     get drop() {
         return this._drop ?? null;
+    }
+
+    get stick() {
+        return this._stick ?? null;
     }
 
     // For the suites: the welcome back card started again, as the live pill's start would find it; says whether it shows

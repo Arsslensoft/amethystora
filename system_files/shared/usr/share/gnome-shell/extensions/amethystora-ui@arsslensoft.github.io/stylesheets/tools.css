@@ -160,3 +160,37 @@
 .amethystora-tools-wifi-code {
   padding: 8px 0;
 }
+
+/* Is it me or the internet? The drawing's colours are the theme's (shell-tools.css.tpl), with stand-ins for a theme not
+   yet applied */
+.amethystora-tools-reach {
+  padding: 8px 12px 10px;
+}
+
+.amethystora-tools-reach-drawing {
+  spacing: 6px;
+  padding-bottom: 8px;
+}
+
+.amethystora-tools-reach-node {
+  spacing: 4px;
+}
+
+.amethystora-tools-reach-name {
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.amethystora-tools-reach-line {
+  height: 3px;
+  border-radius: 2px;
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.amethystora-tools-reach-ok { background-color: #5fd38d; }
+.amethystora-tools-reach-warn { background-color: #e0b44e; }
+.amethystora-tools-reach-bad { background-color: #e0566a; }
+
+.amethystora-tools-reach-sentence {
+  font-size: 12.5px;
+}

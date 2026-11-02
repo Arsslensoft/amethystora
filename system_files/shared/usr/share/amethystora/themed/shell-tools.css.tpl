@@ -40,3 +40,24 @@
 #uiGroup .amethystora-tools-qr-detail {
   color: rgba({{ foreground_rgb }}, 0.8);
 }
+
+#uiGroup .amethystora-tools-reach-wait,
+#uiGroup .amethystora-tools-reach-off {
+  background-color: rgba({{ foreground_rgb }}, 0.2);
+}
+
+#uiGroup .amethystora-tools-reach-ok {
+  background-color: {{ success_text }};
+}
+
+#uiGroup .amethystora-tools-reach-warn {
+  background-color: {{ warning_text }};
+}
+
+#uiGroup .amethystora-tools-reach-bad {
+  background-color: {{ error_text }};
+}
+
+#uiGroup .amethystora-tools-reach-sentence {
+  color: rgba({{ foreground_rgb }}, 0.8);
+}

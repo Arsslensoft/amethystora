@@ -119,6 +119,11 @@
       <summary>Bars that follow the sound</summary>
       <description>The pill's bars follow the real sound of the player's one stream while they show, read by a small program that runs only then. A level is never recorded. Off as the image ships, until it is shown to cost under 1% of a core: the bars then play four beats as before. Reduce motion, power saving, the light desktop, a blanked screen and the battery have the four beats as well.</description>
     </key>
+    <key name="removable-writes" type="b">
+      <default>true</default>
+      <summary>Say when a removable disk is still being written to</summary>
+      <description>While a removable disk is being written to, the pill says so with how far it has got, then that everything is on it, and its card names what holds the disk and puts it away. `ame desktop usb-writes on|off` and Control write it.</description>
+    </key>
     <key name="second-zone" type="s">
       <default>''</default>
       <summary>A second time zone beside the clock</summary>

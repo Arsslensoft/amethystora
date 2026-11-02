@@ -1,0 +1,330 @@
+#!/usr/bin/python3 -I
+"""amethystora-sleep-report: what woke the computer while it slept, and which devices may not (R7-39). The desktop runs
+`why` once when the battery lost an unusual amount during sleep; `ame system wake-device` and the desktop's notice run the rest.
+
+    amethystora-sleep-report why --json --after-ms MS --since SECONDS   the wakes since SECONDS and the sources that fired after MS
+    amethystora-sleep-report list [--names]                             the devices kept from waking the computer, as JSON
+    amethystora-sleep-report stop ID | allow ID                         as root: keeps ID from waking it, or lets it again
+
+`why` reads as the caller: the journal's records of leaving sleep (only administrators' journals hold them, which it says
+as "readable", also false when the journal could not be read) and the kernel's wakeup sources in /sys/class/wakeup. The last
+wake is the person's own (a key, the mouse, the lid), and a source keeps only its last fire, so a source that fired at or
+shortly before the last wake is left out: what is named fired earlier, or nothing is named. It says nothing else and keeps
+nothing. `list --names` prints one device a line, its ID, a tab and the name of the one plugged in now (else the ID again), for Control. An ID is
+usb:VVVV:PPPP or pci:VVVV:DDDD. Its setting is a udev rule, so that it holds after a restart or being plugged in again:
+one line for each ID in /etc/udev/rules.d/90-amethystora-wake.rules, whose exact shape the security watcher accepts."""
+
+import grp
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+import time
+
+ROOT = os.environ.get("AMETHYSTORA_SLEEP_ROOT", "")
+RULES = f"{ROOT}/etc/udev/rules.d/90-amethystora-wake.rules"
+WAKEUP = f"{ROOT}/sys/class/wakeup"
+USB = f"{ROOT}/sys/bus/usb/devices"
+PCI = f"{ROOT}/sys/bus/pci/devices"
+# The record systemd writes each time the system leaves a sleep state
+LEFT_SLEEP = "8811e6df2a8e40f58a94cea26f8ebf14"
+# Who reads the whole journal on this system
+JOURNAL_GROUPS = {"wheel", "adm", "systemd-journal"}
+ID = re.compile(r"^(usb|pci):([0-9a-f]{4}):([0-9a-f]{4})$")
+LONGEST_NAME = 48
+MOST_SOURCES = 8
+# The wake that opened the lid fires its source a moment before the journal says the system left sleep (ms)
+SLACK_MS = 10000
+# Linux Foundation's vendor ID: the root hubs of every USB bus, which stand for every device on them
+ROOT_HUBS = "1d6b"
+# Kinds a person can recognise come before the rest
+NAMED_KINDS = {"usb", "bluetooth", "network", "timer"}
+
+
+def usage():
+    print("usage: amethystora-sleep-report why --json --after-ms MS --since SECONDS | list [--names] | stop ID | allow ID", file=sys.stderr)
+    sys.exit(64)
+
+
+def read(path):
+    try:
+        with open(path, encoding="utf-8", errors="replace") as f:
+            return f.read(256).strip()
+    except OSError:
+        return ""
+
+
+def clean(text):
+    """A name a device gives itself, as a line of text that cannot read as a link: GNOME makes a link of scheme://, www. and
+    name.xx/ in a notice, so no slash and no dot after www survives"""
+    line = "".join(c if c.isprintable() else " " for c in text)
+    line = re.sub(r"[/\\]", " ", line)
+    line = re.sub(r"(?i)\bwww\d{0,3}\.", "www ", line)
+    return " ".join(line.split())[:LONGEST_NAME]
+
+
+def readable_journal():
+    groups = set()
+    for gid in os.getgroups() + [os.getgid()]:
+        try:
+            groups.add(grp.getgrgid(gid).gr_name)
+        except KeyError:
+            pass
+    return bool(groups & JOURNAL_GROUPS) or os.getuid() == 0
+
+
+def wakes_since(since):
+    """(whether the journal could be read, [(epoch seconds, CLOCK_MONOTONIC milliseconds)] of each wake, in order). A journal
+    that cannot be read says nothing: that is not the same as a journal that says nothing woke the computer"""
+    try:
+        done = subprocess.run(["journalctl", "-b", "--no-pager", "-o", "json",
+                               "--output-fields=__REALTIME_TIMESTAMP,__MONOTONIC_TIMESTAMP",
+                               f"--since=@{since}", f"MESSAGE_ID={LEFT_SLEEP}"],
+                              capture_output=True, text=True, timeout=10, check=False)
+    except (OSError, subprocess.SubprocessError):
+        return False, []
+    if done.returncode != 0:
+        return False, []
+    wakes = []
+    for line in done.stdout.splitlines():
+        try:
+            record = json.loads(line)
+            wakes.append((int(record["__REALTIME_TIMESTAMP"]) // 1000000, int(record["__MONOTONIC_TIMESTAMP"]) // 1000))
+        except (ValueError, KeyError, TypeError):
+            continue
+    return True, sorted(wakes)
+
+
+def now_ms():
+    """CLOCK_MONOTONIC in milliseconds, which is what the kernel's wakeup sources and the journal's monotonic stamps use"""
+    if ROOT and os.environ.get("AMETHYSTORA_SLEEP_NOW_MS", "").isdigit():
+        return int(os.environ["AMETHYSTORA_SLEEP_NOW_MS"])
+    return int(time.monotonic() * 1000)
+
+
+def about_usb(device):
+    vendor = read(f"{device}/idVendor")
+    product = read(f"{device}/idProduct")
+    if not ID.match(f"usb:{vendor}:{product}"):
+        return None
+    interfaces = {read(os.path.join(device, entry, "bInterfaceClass")) for entry in os.listdir(device) if ":" in entry}
+    bluetooth = read(f"{device}/bDeviceClass") == "e0" or "e0" in interfaces
+    # A hub or the root of a bus stands for every device on it
+    hub = read(f"{device}/bDeviceClass") == "09" or vendor == ROOT_HUBS
+    name = clean(read(f"{device}/product")) or f"{vendor}:{product}"
+    kind = "hub" if hub else "bluetooth" if bluetooth else "usb"
+    return {"id": f"usb:{vendor}:{product}", "kind": kind, "name": name, "can_stop": not hub}
+
+
+def about_pci(device):
+    vendor = read(f"{device}/vendor").removeprefix("0x")
+    model = read(f"{device}/device").removeprefix("0x")
+    if not ID.match(f"pci:{vendor}:{model}"):
+        return None
+    klass = read(f"{device}/class").removeprefix("0x")
+    network = klass.startswith("02") or klass.startswith("0d")
+    # A USB controller stands for every device on it: stopping it would stop the keyboard too
+    kind = "network" if network else "controller" if klass.startswith("0c03") else "device"
+    return {"id": f"pci:{vendor}:{model}", "kind": kind, "name": f"PCI {vendor}:{model}", "can_stop": network}
+
+
+def about(source):
+    """What a wakeup source is, from the device it points at"""
+    name = read(f"{source}/name")
+    device = os.path.realpath(f"{source}/device")
+    subsystem = os.path.basename(os.path.realpath(f"{device}/subsystem"))
+    if subsystem == "usb" and os.path.exists(f"{device}/idVendor"):
+        return about_usb(device)
+    if subsystem == "pci":
+        return about_pci(device)
+    if name.startswith("PNP0C0D"):
+        return {"id": "lid", "kind": "lid", "name": name, "can_stop": False}
+    if name.startswith(("PNP0C0C", "LNXPWRBN")):
+        return {"id": "button", "kind": "button", "name": name, "can_stop": False}
+    if name.startswith("ACPI0003"):
+        return {"id": "power", "kind": "power", "name": name, "can_stop": False}
+    if name.startswith("alarmtimer") or name.startswith("rtc"):
+        return {"id": "timer", "kind": "timer", "name": name, "can_stop": False}
+    return None
+
+
+def sources_after(after_ms, until_ms):
+    """The sources that fired after the computer went away (AFTER_MS) and before the last wake, less a moment (UNTIL_MS):
+    the last wake is the person's, and a source keeps only its last fire, so one that fired at or just before it may be
+    the key or the mouse that woke it, and is not named"""
+    found = {}
+    try:
+        entries = sorted(os.listdir(WAKEUP))
+    except OSError:
+        return []
+    for entry in entries:
+        source = os.path.join(WAKEUP, entry)
+        try:
+            changed = int(read(f"{source}/last_change_ms") or "0")
+            events = int(read(f"{source}/event_count") or "0")
+        except ValueError:
+            continue
+        if events <= 0 or changed < after_ms or changed >= until_ms - SLACK_MS:
+            continue
+        what = about(source)
+        if what:
+            # Two sources of one device: the later fire
+            if what["id"] not in found or found[what["id"]]["at"] < changed:
+                found[what["id"]] = {**what, "at": changed}
+    # Devices a person can recognise first, then the one that fired last first
+    ordered = sorted(found.values(), key=lambda item: (item["kind"] not in NAMED_KINDS, -item["at"]))
+    for item in ordered:
+        del item["at"]
+    return ordered[:MOST_SOURCES]
+
+
+def why(after_ms, since):
+    readable = readable_journal()
+    ok, wakes = wakes_since(since) if readable else (False, [])
+    readable = readable and ok
+    if not readable or not wakes:
+        # Nothing is known, so nothing is named
+        return {"readable": readable, "wakes": [at for at, _ in wakes], "last_wake_ago_s": None, "sources": []}
+    last = wakes[-1][1]
+    return {"readable": True, "wakes": [at for at, _ in wakes], "last_wake_ago_s": max(0, (now_ms() - last) // 1000),
+            "sources": sources_after(after_ms, last)}
+
+
+def rule_line(device_id):
+    bus, vendor, model = ID.match(device_id).groups()
+    if bus == "usb":
+        return (f'ACTION=="add", SUBSYSTEM=="usb", ATTR{{idVendor}}=="{vendor}", ATTR{{idProduct}}=="{model}", '
+                'ATTR{power/wakeup}="disabled"')
+    return (f'ACTION=="add", SUBSYSTEM=="pci", ATTR{{vendor}}=="0x{vendor}", ATTR{{device}}=="0x{model}", '
+            'ATTR{power/wakeup}="disabled"')
+
+
+def rule_lines():
+    try:
+        with open(RULES, encoding="utf-8") as f:
+            return [line.rstrip("\n") for line in f if line.startswith("ACTION==")]
+    except OSError:
+        return []
+
+
+def stopped():
+    found = []
+    for line in rule_lines():
+        usb = re.search(r'ATTR\{idVendor\}=="([0-9a-f]{4})", ATTR\{idProduct\}=="([0-9a-f]{4})"', line)
+        pci = re.search(r'ATTR\{vendor\}=="0x([0-9a-f]{4})", ATTR\{device\}=="0x([0-9a-f]{4})"', line)
+        if usb:
+            found.append(f"usb:{usb.group(1)}:{usb.group(2)}")
+        elif pci:
+            found.append(f"pci:{pci.group(1)}:{pci.group(2)}")
+    return found
+
+
+def write_rules(lines):
+    os.makedirs(os.path.dirname(RULES), exist_ok=True)
+    if not lines:
+        try:
+            os.unlink(RULES)
+        except FileNotFoundError:
+            pass
+        return
+    handle, name = tempfile.mkstemp(dir=os.path.dirname(RULES), prefix=".amethystora-wake")
+    with os.fdopen(handle, "w", encoding="utf-8") as f:
+        f.write("# Devices kept from waking the computer: ame system wake-device\n")
+        f.write("\n".join(lines) + "\n")
+    os.chmod(name, 0o644)
+    os.replace(name, RULES)
+
+
+def matching(device_id):
+    """The folders of the devices plugged in now that this ID names"""
+    bus, vendor, model = ID.match(device_id).groups()
+    folder = USB if bus == "usb" else PCI
+    names = ("idVendor", "idProduct") if bus == "usb" else ("vendor", "device")
+    prefix = "" if bus == "usb" else "0x"
+    try:
+        entries = sorted(os.listdir(folder))
+    except OSError:
+        return
+    for entry in entries:
+        device = os.path.join(folder, entry)
+        if read(f"{device}/{names[0]}") == prefix + vendor and read(f"{device}/{names[1]}") == prefix + model:
+            yield device
+
+
+def apply_now(device_id, value):
+    """The setting of every such device plugged in now, as the rule will set it the next time"""
+    for device in matching(device_id):
+        try:
+            with open(f"{device}/power/wakeup", "w", encoding="ascii") as f:
+                f.write(value)
+        except OSError:
+            pass
+
+
+def protected(device_id):
+    """Whether stopping this ID would stop more than one device: a hub, the root of a bus, or a USB controller stands for
+    every keyboard and mouse behind it, so it is never stopped, whoever asks"""
+    bus, vendor, _model = ID.match(device_id).groups()
+    if bus == "usb":
+        return vendor == ROOT_HUBS or any(read(f"{device}/bDeviceClass") == "09" for device in matching(device_id))
+    return any(read(f"{device}/class").removeprefix("0x").startswith("0c03") for device in matching(device_id))
+
+
+def named():
+    """The devices kept from waking the computer, each with the name of the one plugged in now, else its ID"""
+    found = []
+    for device_id in stopped():
+        name = ""
+        for device in matching(device_id):
+            name = clean(read(f"{device}/product")) if device_id.startswith("usb:") else ""
+            if name:
+                break
+        found.append({"id": device_id, "name": name or device_id})
+    return found
+
+
+def change(word, device_id):
+    if not ID.match(device_id):
+        usage()
+    if os.getuid() != 0 and not ROOT:
+        print("This changes the machine: run it through pkexec, or use ame system wake-device.", file=sys.stderr)
+        return 77
+    if word == "stop" and protected(device_id):
+        print("That stands for every device behind it, so it is not stopped.", file=sys.stderr)
+        return 78
+    line = rule_line(device_id)
+    lines = rule_lines()
+    if word == "allow":
+        lines = [each for each in lines if each != line]
+    elif line not in lines:
+        lines.append(line)
+    write_rules(lines)
+    apply_now(device_id, "disabled" if word == "stop" else "enabled")
+    return 0
+
+
+def main(argv):
+    if len(argv) == 6 and argv[:2] == ["why", "--json"] and argv[2] == "--after-ms" and argv[4] == "--since":
+        if not argv[3].isdigit() or not argv[5].isdigit():
+            usage()
+        json.dump(why(int(argv[3]), int(argv[5])), sys.stdout, ensure_ascii=False)
+        sys.stdout.write("\n")
+        return 0
+    if argv == ["list"]:
+        json.dump(stopped(), sys.stdout)
+        sys.stdout.write("\n")
+        return 0
+    if argv == ["list", "--names"]:
+        for found in named():
+            sys.stdout.write(f"{found['id']}\t{found['name']}\n")
+        return 0
+    if len(argv) == 2 and argv[0] in ("stop", "allow"):
+        return change(argv[0], argv[1])
+    usage()
+    return 64
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

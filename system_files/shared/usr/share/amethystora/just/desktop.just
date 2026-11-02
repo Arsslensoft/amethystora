@@ -2360,11 +2360,74 @@ getting-set *ARGS:
             ;;
     esac
 
+# Is it me or the internet? The Wi-Fi and wired menus draw you, the router and the internet, each time they open: one ping to
+# the router and one name lookup to the name server this machine uses (STATE: on or off; without it, it says which)
+[positional-arguments]
+network-check STATE="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.tools
+    case "${1:-}" in
+        "")
+            if [[ "$(gsettings get "${schema}" network-reach)" == true ]]; then
+                echo "$(gettext "Where a connection breaks: on.")"
+            else
+                echo "$(gettext "Where a connection breaks: off.")"
+            fi
+            ;;
+        on)
+            gsettings set "${schema}" network-reach true
+            echo "$(gettext "The network menus draw where a connection breaks, each time they open.")"
+            ;;
+        off)
+            gsettings set "${schema}" network-reach false
+            echo "$(gettext "The network menus are GNOME's own again, and nothing is checked.")"
+            ;;
+        *)
+            echo "usage: ame desktop network-check on|off"
+            exit 64
+            ;;
+    esac
+
+# A USB stick that tells the truth: the pill says when a removable disk is still being written to, and when everything is
+# on it (STATE: on or off; without it, it says which)
+[positional-arguments]
+usb-writes STATE="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.pill
+    case "${1:-}" in
+        "")
+            if [[ "$(gsettings get "${schema}" removable-writes)" == true ]]; then
+                echo "$(gettext "What a removable disk is writing: on.")"
+            else
+                echo "$(gettext "What a removable disk is writing: off.")"
+            fi
+            ;;
+        on)
+            gsettings set "${schema}" removable-writes true
+            echo "$(gettext "The pill says when a removable disk is still being written to, and when everything is on it.")"
+            ;;
+        off)
+            gsettings set "${schema}" removable-writes false
+            echo "$(gettext "The pill says nothing of a removable disk. Put one away in Files before you unplug it.")"
+            ;;
+        *)
+            echo "usage: ame desktop usb-writes on|off"
+            exit 64
+            ;;
+    esac
+
 # Power you can see: the battery's menu says when it runs out, the watts, what used the most and its health (ame desktop
 # power battery [on|off]); a chip names an app that keeps the processor busy for two minutes (ame desktop power busy
 # [on|off]); the same menu lists every device's battery, with a notice once at 15% (ame desktop power devices [on|off]);
-# at 3% the computer asks you to save, keeps where the apps were and closes cleanly (ame desktop power flat [on|off]).
-# Without on or off, it asks
+# at 3% the computer asks you to save, keeps where the apps were and closes cleanly (ame desktop power flat [on|off]);
+# a notice says what woke the computer when the battery went much further than it should in sleep (ame desktop power
+# sleep [on|off]). Without on or off, it asks
 [positional-arguments]
 power *ARGS:
     #!/usr/bin/bash
@@ -2373,7 +2436,7 @@ power *ARGS:
     source gettext.sh
     schema=org.gnome.shell.extensions.amethystora-ui.power
     usage() {
-        echo "usage: ame desktop power battery|busy|devices|flat [on|off]"
+        echo "usage: ame desktop power battery|busy|devices|flat|sleep [on|off]"
         exit 64
     }
     [[ $# -ge 1 && $# -le 2 ]] || usage
@@ -2382,6 +2445,7 @@ power *ARGS:
         busy) key=busy-app ;;
         devices) key=device-batteries ;;
         flat) key=flat-battery ;;
+        sleep) key=sleep-report ;;
         *) usage ;;
     esac
     state="${2:-}"
@@ -2393,6 +2457,8 @@ power *ARGS:
             header="$(eval_gettext "Your devices' batteries (current: \${current})")"
         elif [[ "${key}" == flat-battery ]]; then
             header="$(eval_gettext "A flat battery loses nothing (current: \${current})")"
+        elif [[ "${key}" == sleep-report ]]; then
+            header="$(eval_gettext "What happened while it slept (current: \${current})")"
         else
             header="$(eval_gettext "Say when an app is busy (current: \${current})")"
         fi
@@ -2412,6 +2478,8 @@ power *ARGS:
         device-batteries:off) echo "$(gettext "The battery's menu no longer lists other devices' batteries.")" ;;
         flat-battery:on) echo "$(gettext "At 3% a card asks you to save, where your apps were is kept, and the computer closes cleanly 60 seconds later.")" ;;
         flat-battery:off) echo "$(gettext "A flat battery is left to the system's own closing at 2%, and nothing is kept of the open apps.")" ;;
+        sleep-report:on) echo "$(gettext "When the battery loses an unusual amount while the computer sleeps, a notice says what woke it, once.")" ;;
+        sleep-report:off) echo "$(gettext "Nothing is said of what the battery lost while the computer slept.")" ;;
     esac
 
 # The shelf: put files, text or a picture down while moving between apps, then drag them out (STATE: off, edge for the

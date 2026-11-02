@@ -1,0 +1,10 @@
+[Unit]
+Description=Read the health of the system's disk every hour
+
+[Timer]
+# `ame system disk-warning off` disables this, and then nothing is read
+OnBootSec=10min
+OnUnitActiveSec=1h
+
+[Install]
+WantedBy=timers.target

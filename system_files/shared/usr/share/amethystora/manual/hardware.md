@@ -112,6 +112,25 @@ made it slower. Performance mode in the quick settings swaps less (a swappiness 
 - **ZFS** is available on the `stable` stream.
 - **Apple's USB SuperDrive** is woken up as it is plugged in, as a Mac would, so that it reads discs.
 
+### When a disk may be failing
+
+Disks usually say they are failing long before they do. Every hour the disks the system is on are asked for their health
+(SMART), and a disk asleep is left asleep. If one says it is failing, or starts counting bad sectors or media errors, a
+notice says so once, or again if the count rises, with **Back up now** and how long it has been since your last backup.
+A disk that already had some bad sectors when it was first read is not said to be starting to fail: only a rise is news.
+
+It may be wrong either way: a disk that reports errors can run for months, and a disk can die without a word. So take
+it as the moment to copy what matters, and [Backups](security.md#backups) is the quickest way. Then replace the disk.
+A disk that belongs to [a pool](#pools-of-disks-raid), the system's own included when it is on several disks, is told of
+by the pools' check when it says it is failing and when btrfs counts errors on it, with what to do about it; this says only
+what that check cannot, so that one disk is not the subject of two notices.
+
+`ame system disk-warning` says what each disk said last. `ame system disk-warning off` stops reading them, and nothing
+then warns you; `on` starts again, both also in [Control](control.md). What is kept, in
+`/var/lib/amethystora/disk-health.json`, which any account can read: for each disk its model, a checksum of its serial
+number (to tell it from another when their names swap), its name as the system has it now, what it said (its health and
+its count of errors) and what was told of it.
+
 ## Pools of disks (RAID)
 
 Two disks or more can hold the same files, so that one can fail without taking a file with it. That is

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+
+  <vendor>Amethystora</vendor>
+  <vendor_url>https://github.com/arsslensoft/amethystora</vendor_url>
+
+  <action id="org.amethystora.wake-device">
+    <description>Change which devices may wake the computer</description>
+    <message>Authentication is required to change which devices may wake the computer</message>
+    <icon_name>battery-caution</icon_name>
+    <!-- An administrator's password, at the machine only: the helper takes one device's ID and writes one udev line -->
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/amethystora-sleep-report</annotate>
+  </action>
+
+</policyconfig>

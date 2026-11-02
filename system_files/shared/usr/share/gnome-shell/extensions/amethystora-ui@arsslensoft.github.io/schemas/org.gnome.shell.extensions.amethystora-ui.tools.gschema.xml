@@ -40,5 +40,10 @@
       <summary>Offer to clear space when the disk runs low</summary>
       <description>When GNOME's low-space notice fires, it is replaced by one that says how much can be cleared and that none of it is the person's work. Off, GNOME's notice shows as before.</description>
     </key>
+    <key name="network-reach" type="b">
+      <default>true</default>
+      <summary>Where a connection breaks</summary>
+      <description>The Wi-Fi and wired menus draw you, the router and the internet, with the line that broke. Each time the menu opens, one ping goes to the router and one name lookup to your name server. `ame desktop network-check on|off` and Control write it.</description>
+    </key>
   </schema>
 </schemalist>

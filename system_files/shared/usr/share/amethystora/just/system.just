@@ -372,6 +372,56 @@ free-space:
 raid *ARGS:
     @/usr/libexec/amethystora-raid "$@"
 
+# A warning before the disk dies: the disks the system is on have their health read hourly, and a notice says once when
+# one begins to fail, with Back up now. Off, nothing is read (STATE: on, off or status; without it, it says what they said)
+[positional-arguments]
+disk-warning STATE="status":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    case "${1:-status}" in
+        status)
+            if systemctl is-enabled --quiet amethystora-disk-health.timer 2>/dev/null; then
+                echo "$(gettext "The disk warning is on.")"
+            else
+                echo "$(gettext "The disk warning is off.")"
+            fi
+            /usr/libexec/amethystora-disk-health status
+            ;;
+        on)
+            sudo systemctl enable --now amethystora-disk-health.timer
+            echo "$(gettext "The system's disk is read hourly, and a notice says once if it begins to fail. A disk asleep is left asleep.")"
+            ;;
+        off)
+            sudo systemctl disable --now amethystora-disk-health.timer
+            echo "$(gettext "The system's disk is no longer read. Nothing will warn you before it fails.")"
+            ;;
+        *)
+            echo "usage: ame system disk-warning on|off|status"
+            exit 64
+            ;;
+    esac
+
+# Which devices may wake the computer: list (the ones kept from it, by ID), off ID, on ID. An ID is what the notice about
+# a night's battery acts on, usb:VVVV:PPPP or pci:VVVV:DDDD: lsusb and lspci print the two numbers
+[positional-arguments]
+wake-device *ARGS:
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    helper=/usr/libexec/amethystora-sleep-report
+    case "${1:-list}:${2:-}" in
+        list:) "${helper}" list --names | awk -F'\t' '{ print ($2 != "" && $2 != $1) ? $1 "  " $2 : $1 }' ;;
+        off:?*) pkexec "${helper}" stop "$2" && echo "$(gettext "It will not wake the computer now.")" ;;
+        on:?*) pkexec "${helper}" allow "$2" && echo "$(gettext "It may wake the computer again.")" ;;
+        *)
+            echo "usage: ame system wake-device list | off ID | on ID"
+            exit 64
+            ;;
+    esac
+
 # Show all messages from this boot
 logs-this-boot:
     sudo journalctl --no-hostname -b 0

@@ -13,7 +13,7 @@
 #   - the battery's view, live off and on, and ten disables and enables that leave nothing behind.
 # The lab draws without a GPU, where GNOME turns animations off by itself: the motion steps force them on
 # (global.force_animations) and put the switch back.
-# vmlab-paths: @ui/extension.js @ui/*pill* @sf/*themed/shell-pill* @sf/*just/desktop.just
+# vmlab-paths: @ui/extension.js @ui/*pill* @sf/*themed/shell-pill* @sf/*just/desktop.just @ui/modules/power/slept*
 source "$(dirname "$0")/lib.sh"
 
 UUID=amethystora-ui@arsslensoft.github.io

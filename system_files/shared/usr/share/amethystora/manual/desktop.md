@@ -155,8 +155,21 @@ always did, and while the screen is locked that is what closes it; a lock on bat
 takes it away. Only app names and window places are kept, never a title, a file or a page. A call or a recording in the pill
 keeps its place there; this one is listed in its card.
 
-`ame desktop power battery on|off`, `ame desktop power busy on|off`, `ame desktop power devices on|off` and
-`ame desktop power flat on|off`, also in [Control](control.md).
+**What happened while it slept.** Open the lid to a much emptier battery and a notice says how much went, and what it
+can find out about why: how many times the computer woke by itself and when, and what fired before the wake that was
+yours, which is what it looks like and may not be the whole story. It never names the key or the mouse that woke it for
+you, a USB hub or a controller, and when it cannot tell, it says it did not say why rather than that nothing woke it.
+Times need an administrator's account, since only those can read the system's journal. **Stop it waking the computer**,
+offered for a USB or Bluetooth device or a network card, keeps that device from waking it, after an administrator's
+password, and **Undo**, or `ame system wake-device on ID`, or the entry in [Control](control.md) under System, puts it
+back (`ame system wake-device` lists them). A mouse or keyboard kept from waking it needs the power button or the lid.
+
+It counts as unusual from 10 points gone, faster than 1.5 points an hour, over at least half an hour's sleep, and
+nothing is read unless it is. Each device is said once, and a loss with nothing to name once a day. What is kept is a
+salted checksum of what was said, in `~/.local/state/amethystora/sleep-report.json`: no name, ID or address of anything.
+
+`ame desktop power battery on|off`, `ame desktop power busy on|off`, `ame desktop power devices on|off`,
+`ame desktop power flat on|off` and `ame desktop power sleep on|off`, also in [Control](control.md).
 
 ## Today
 
@@ -234,6 +247,7 @@ pill, or `Super+V`, always opens the calendar.
 - **A meeting about to start**: see [Meetings in the pill](#meetings-in-the-pill).
 - **The battery.** Rest the pointer on the battery in the top bar for the time left, or the time until
   it is full. At 20%, the pill turns amber and offers power saving, once: it never turns it on by itself.
+- **A disk still being written to.** See [A USB stick that tells the truth](#a-usb-stick-that-tells-the-truth).
 
 `ame desktop pill off` gives you GNOME's clock alone; `ame desktop pill on` brings the pill back.
 
@@ -305,6 +319,30 @@ or in Calendar. The link is read from the event itself, as the calendar keeps it
 location, its link or its description, and only a link that looks like a call counts. Nothing is sent
 anywhere. `ame desktop pill meetings off` turns it off, and `on` back on; Control has it as **Meetings in
 the pill**.
+
+### A USB stick that tells the truth
+
+A copy can say it is done while most of it is still in memory, on its way to the stick. While a removable disk is being
+written to, the pill says **Still writing to “Photos”**, with about how far it has got, and once everything is there,
+**All on “Photos”**. Its card says about how much is still waiting, names what of yours is holding the disk, with
+**Quit**, and has **Put it away**. If putting it away is refused, the list says why. It says the disk is safe to unplug
+only when the whole drive is put away, and not just one of its partitions.
+
+The percentage and the amount are estimates, and say "about": Linux tells an account how much the whole computer has
+waiting to be written, not how much of it is for this disk, so the number can include other writes, and it never goes
+down while one copy goes on. "All on" is said only when all of this holds: the disk's file system was asked to finish
+(`sync -f`) and wrote nothing more while it did, so that a sync that wrote something is followed by another; the
+computer's waiting data did not rise during it or since; and none of your programs holds the disk (the pill then says
+**Something is still using** it). It can still miss another account's program that writes, and a copy of a few megabytes
+may finish before the pill notices. For a disk whose file system cannot be asked to finish from here, such as an NTFS
+stick mounted through `ntfs-3g`, the pill never says "All on": it stays on **Still writing** until you put the disk
+away. A stick is asked to start writing as soon as the computer's waiting data rises, instead of half a minute later, at
+most once a minute; a disk that may be asleep is left to the kernel.
+
+While such a disk is mounted and you are at the computer, it reads one small number every 15 seconds (30 after a
+minute of calm), the disk's own numbers only when the computer's waiting data has risen or the disk's top folder has
+changed, each second while the disk is busy, and nothing at all with no such disk, a disk mounted read-only, or after a
+minute with no input. Nothing is written down. `ame desktop usb-writes on|off`, also in [Control](control.md).
 
 ## Privacy dots
 
@@ -1732,6 +1770,21 @@ password alone. Click it and the menu shows a QR code: a guest's phone camera jo
 aloud or typed. The password is read only then, may need yours to read, and goes when the menu closes. It is not
 offered for a network that needs a user name (802.1X) or for the hotspot this computer makes, and not shown while the
 screen is shared or recorded.
+
+### Is it me or the internet?
+
+In quick settings, the Wi-Fi and wired menus draw you, the router and the internet while you are on that connection,
+with the line that broke in red, and say in a sentence what it means and what to try. A network that wants you to sign
+in shows amber.
+
+Each time the menu opens, one ping goes to your router, and, while the
+[network connectivity check](security.md#what-this-machine-sends) is on, one lookup of the name that check already asks
+goes to the name server this machine already uses, encrypted if you chose [encrypted DNS](security.md#encrypted-dns).
+With that check off, no name is looked up and the drawing says less. That is all it contacts, and nothing runs while the
+menu is closed. A router may simply not answer pings, so a silent router is not blamed by itself, and a name server can
+fail alone while the internet answers, which it says, so the sentences say "may". For a connection that is not the one
+your internet goes through, only the router is asked. It is listed in `ame security sends`.
+`ame desktop network-check on|off`, also in [Control](control.md).
 
 ## Files
 

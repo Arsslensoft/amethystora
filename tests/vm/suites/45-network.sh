@@ -19,7 +19,7 @@
 #   buttons offer no AT-SPI action. Pressed with the lab's mouse, vm_mouse, it opens the command in a terminal.)
 # - Firefox looks names up through the system's resolver as Fedora builds it, and with its own DNS-over-HTTPS
 #   turned on asks its provider instead, without either breaking the other.
-# vmlab-paths: @sf/usr/libexec/amethystora-dns* @sf/usr/libexec/amethystora-mac @sf/usr/share/amethystora/network/* @sf/usr/lib/systemd/user/amethystora-dns*
+# vmlab-paths: @sf/usr/libexec/amethystora-dns* @sf/usr/libexec/amethystora-mac @sf/usr/share/amethystora/network/* @sf/usr/lib/systemd/user/amethystora-dns* @ui/modules/tools/reach*
 source "$(dirname "$0")/lib.sh"
 
 NS=vmlab-net

@@ -501,3 +501,11 @@
   height: 44px;
   padding-top: 10px;
 }
+
+/* A removable disk being written to: the pill's fill grows from its start edge */
+.amethystora-pill-stick-fill {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+}
+.amethystora-pill-stick-row { spacing: 6px; }
+.amethystora-pill-stick-card { spacing: 8px; min-width: 280px; }

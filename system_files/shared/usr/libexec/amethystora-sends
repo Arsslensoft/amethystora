@@ -59,6 +59,16 @@ row connectivity-check "${CONNECTIVITY}" "$(gettext "Network connectivity check"
     "ame security connectivity-check" \
     "$(gettext "Without it, the login page of a hotel or train network is not offered by itself, and GNOME does not warn when a network has no internet.")"
 
+# --- Where a connection breaks (Amethystora UI's tools module, on, and only ever while a network menu is open) -------
+
+REACH="$(gsettings get org.gnome.shell.extensions.amethystora-ui.tools network-reach 2>/dev/null || true)"
+if [[ "${REACH}" == true || "${REACH}" == false ]]; then
+    row network-reach "$([[ "${REACH}" == true ]] && echo on || echo off)" "$(gettext "Where a connection breaks")" \
+        "$(gettext "Each time you open the Wi-Fi or wired menu, one ping goes to your router. While the network connectivity check above is on, and for the connection the internet goes through, one lookup of the name that check already asks goes to the name server this machine already uses; with that check off, no name is looked up. Nothing else is contacted, and nothing runs while the menu is closed.")" \
+        "ame desktop network-check" \
+        "$(gettext "Without it, the menus do not draw where the connection breaks.")"
+fi
+
 # --- Location ---------------------------------------------------------------------------------------------
 
 LOCATION="$(gsettings get org.gnome.system.location enabled 2>/dev/null || true)"

@@ -10,7 +10,7 @@
 #   - quiet at night between Night Light's times;
 #   - the digest at the next minute, with a row for each app, Show all and Clear;
 #   - "· 3" on a folded stack; the volume pill's size and place, and GNOME's OSD back after a disable.
-# vmlab-paths: @ui/extension.js @ui/*pill* @sf/*themed/shell-pill* @sf/*just/desktop.just @ui/modules/tools/room.js @sf/usr/libexec/amethystora-free-space
+# vmlab-paths: @ui/extension.js @ui/*pill* @sf/*themed/shell-pill* @sf/*just/desktop.just @ui/modules/tools/room.js @sf/usr/libexec/amethystora-free-space @sf/usr/libexec/amethystora-disk-health @ui/modules/power/slept*
 source "$(dirname "$0")/lib.sh"
 
 UUID=amethystora-ui@arsslensoft.github.io

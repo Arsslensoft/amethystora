@@ -339,6 +339,7 @@ const SHELL = ['usr/libexec/amethystora-security-status', 'usr/libexec/amethysto
     // The callers of amethystora-notify-users --msgid, which mark their messages with N_
     'usr/libexec/amethystora-scan-alert', 'usr/libexec/amethystora-clamav-onaccess', 'usr/libexec/amethystora-lynis-audit',
     'usr/libexec/amethystora-driver-status', 'usr/libexec/amethystora-gpu-check', 'usr/libexec/amethystora-raid',
+    'usr/libexec/amethystora-disk-health',
     'usr/libexec/amethystora-security-watch', 'usr/libexec/amethystora-sends',
     // The text shortcuts' helper, in Python, whose _("...") is read as an extension's is
     ...PYTHON,

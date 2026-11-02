@@ -773,7 +773,7 @@ grep -q "shouldShowApp" "${UI_EXTENSION}/modules/fuzzy.js"
 # apps, its three recipes, and quiet holding banners in memory only: nothing of it writes GNOME's show-banners
 PILL=org.gnome.shell.extensions.amethystora-ui.pill
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${PILL}" | sort | paste -sd ' ')" == \
-    "digest digest-through digest-times digest-wait drop-targets glow hello later later-times live meetings moving music-bars music-see privacy-dots quiet quiet-night saving-data second-zone stay-awake timer-feel two-at-once weight whats-new" ]]
+    "digest digest-through digest-times digest-wait drop-targets glow hello later later-times live meetings moving music-bars music-see privacy-dots quiet quiet-night removable-writes saving-data second-zone stay-awake timer-feel two-at-once weight whats-new" ]]
 for key in live privacy-dots glow quiet later whats-new meetings; do
     [[ "$(GSETTINGS_BACKEND=memory gsettings get "${PILL}" "${key}")" == true ]]
 done
@@ -872,10 +872,10 @@ fi
 # them), the module between today's and the dock, its recipe; it quits an app only by asking it (request_quit), and runs
 # nothing. The flat battery's own files block nothing (its rule is checked by node, with the saved sets, below).
 POWER=org.gnome.shell.extensions.amethystora-ui.power
-[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${POWER}" | sort | paste -sd ' ')" == "battery-details busy-app device-batteries flat-battery flat-hold" ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${POWER}" | sort | paste -sd ' ')" == "battery-details busy-app device-batteries flat-battery flat-hold sleep-report" ]]
 # Not yet from the keyboard, bound only while the flat battery's card shows: a key nobody else binds
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${POWER}" flat-hold)" == "['<Super><Shift>n']" ]]
-for key in battery-details busy-app device-batteries flat-battery; do
+for key in battery-details busy-app device-batteries flat-battery sleep-report; do
     [[ "$(GSETTINGS_BACKEND=memory gsettings get "${POWER}" "${key}")" == true ]]
 done
 for file in modules/power.js modules/power/apps.js modules/power/battery.js modules/power/busy.js modules/power/devices.js     modules/power/flat.js modules/power/flatdata.js modules/pill/flat.js stylesheets/power.css; do
@@ -887,7 +887,7 @@ test -s /usr/share/amethystora/themed/shell-power.css.tpl
 [[ "$(grep -oE "^    \['(today|power|dock)'," "${UI_EXTENSION}/extension.js" | paste -sd ' ')" == \
     "    ['today',     ['power',     ['dock'," ]]
 grep -q '^power \*ARGS:' /usr/share/amethystora/just/desktop.just
-[[ -z "$(grep -rnE 'Subprocess|Util\.spawn|spawn_command_line|GLib\.spawn|kill\(|SIGKILL|force_exit' \
+[[ -z "$(grep -rnE --exclude=slept.js 'Subprocess|Util\.spawn|spawn_command_line|GLib\.spawn|kill\(|SIGKILL|force_exit' \
     "${UI_EXTENSION}/modules/power.js" "${UI_EXTENSION}/modules/power")" ]]
 grep -q "request_quit()" "${UI_EXTENSION}/modules/power/busy.js"
 [[ -z "$(grep -rnE 'use_markup = true|use_markup: true|set_markup\(' "${UI_EXTENSION}/modules/power.js" \
@@ -1362,7 +1362,7 @@ done
 # the module or the clipboard's text actions; Convert offered and off; What is using this? in Files' Scripts menu
 TOOLS=org.gnome.shell.extensions.amethystora-ui.tools
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-recursively "${TOOLS}" | cut -d' ' -f2- | LC_ALL=C sort | paste -sd ';')" == \
-    "colour-picker ['<Super><Alt>c'];convert-in-files false;mute-microphone ['<Super><Alt>m']" ]] ||
+    "colour-picker ['<Super><Alt>c'];convert-in-files false;mute-microphone ['<Super><Alt>m'];network-reach true" ]] ||
     { echo "the tools module's keys or defaults are not the spec's"; exit 1; }
 TOOLS_ORDER="$(grep -oE "^    \['[a-z]+'," "${UI_EXTENSION}/extension.js" | tr -d " [',")"
 tools_at() { grep -nx "$1" <<<"${TOOLS_ORDER}" | cut -d: -f1; }
@@ -1861,6 +1861,38 @@ ame --show system::raid >/dev/null
 jq -e '.version == 1 and (.spare | type) == "array" and ([.pools[] | select(.managed)] == [])' \
     <<<"$(/usr/libexec/amethystora-raid status --json)" >/dev/null
 bash /ctx/build_files/shared/test-raid.sh
+# It tells you the truth (plans/ui-ideas/r7/spec-truth.md): where a connection breaks, a removable disk still being written
+# to, what woke the computer, and the warning before the system's disk fails. The new shell files block nothing and hold no
+# markup; the check contacts only the router and resolved, and resolved never from its cache; a failing disk says "may";
+# the wake setting is one udev line of a fixed shape, which the watcher accepts and nothing more
+TRUTH_FILES=(modules/tools/reach.js modules/tools/reachlogic.js modules/pill/stick.js modules/pill/stickmodel.js
+    modules/power/slept.js modules/power/sleptlogic.js)
+for file in "${TRUTH_FILES[@]}"; do
+    test -s "${UI_EXTENSION}/${file}"
+    if grep -nE '_sync\b|file_get_contents|use_markup = true|use_markup: true|set_markup\(' "${UI_EXTENSION}/${file}"; then
+        echo "${file} blocks the shell or takes markup"
+        exit 1
+    fi
+done
+env LD_LIBRARY_PATH=/apps-stage/usr/lib64 NODE_ICU_DATA="$(echo /apps-stage/usr/share/node-*/icudata)" /apps-stage/usr/bin/node /ctx/build_files/shared/test-truth.mjs
+bash /ctx/build_files/shared/test-sleep-report.sh
+bash /ctx/build_files/shared/test-disk-health.sh
+# The name looked up is the one NetworkManager's own connectivity check asks, read from its address, and none while that check is off
+grep -q 'connectivity_check_enabled' "${UI_EXTENSION}/modules/tools/reach.js"
+grep -q 'connectivity_check_uri' "${UI_EXTENSION}/modules/tools/reach.js"
+[[ -z "$(grep -n 'fedoraproject' "${UI_EXTENSION}/modules/tools/reach.js" "${UI_EXTENSION}/modules/tools/reachlogic.js")" ]]
+grep -q "row network-reach " /usr/libexec/amethystora-sends
+[[ "$(grep -c "'stick'" "${UI_EXTENSION}/modules/pill/activities.js")" == 1 ]]
+systemd-analyze verify --man=no --recursive-errors=no /usr/lib/systemd/system/amethystora-disk-health.{service,timer}
+grep -q "may" <<<"$(sed -n '/^cmd_notify/,/^}/p' /usr/libexec/amethystora-disk-health)"
+# What woke the computer is the one thing the power module runs: its own helper, and pkexec of it
+[[ "$(grep -oE "Subprocess\.new\(\[[A-Za-z']+" "${UI_EXTENSION}/modules/power/slept.js" | LC_ALL=C sort -u | paste -sd ' ')" == \
+    "Subprocess.new([HELPER Subprocess.new([PKEXEC" ]]
+grep -q "^const PKEXEC = '/usr/bin/pkexec';" "${UI_EXTENSION}/modules/power/slept.js"
+[[ -z "$(grep -nE 'Util\.spawn|spawn_command_line|GLib\.spawn|kill\(|SIGKILL|force_exit' "${UI_EXTENSION}/modules/power/slept.js")" ]]
+# No ProtectClock on the disk reading: it may shut smartctl out of the disks it reads, and nothing would say so
+[[ -z "$(grep '^ProtectClock' /usr/lib/systemd/system/amethystora-disk-health.service)" ]]
+grep -q 'udev/rules.d/90-amethystora-wake.rules' /usr/libexec/amethystora-security-watch
 for unit in amethystora-raid-check amethystora-raid-scrub; do
     grep -q "^ExecCondition=/usr/libexec/amethystora-raid present$" "/usr/lib/systemd/system/${unit}.service"
 done
@@ -5138,6 +5170,7 @@ IMPORTANT_UNITS=(
     amethystora-driver-check.timer
     amethystora-raid-check.timer
     amethystora-raid-scrub.timer
+    amethystora-disk-health.timer
     amethystora-raid-boot.service
     amethystora-boot-guard.service
     amethystora-boot-guard-good.service

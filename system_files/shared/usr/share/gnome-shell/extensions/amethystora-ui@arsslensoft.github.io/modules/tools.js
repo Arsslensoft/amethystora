@@ -11,9 +11,10 @@
 //   - Anything opens, the card for a file nothing here opens (tools/opener.js): the key open-anything hides or shows the
 //     launcher that asks for it, for this account
 //   - Never out of room, in place of GNOME's low-space notice (tools/room.js): the key offer-room
+//   - Is it me or the internet? in the network menus: where the connection breaks (tools/reach.js)
 //
 // Keys of org.gnome.shell.extensions.amethystora-ui.tools, read live: colour-picker and mute-microphone (keybindings; an
-// empty list leaves one unbound), convert-in-files, earlier-versions, open-anything, offer-room, and uninstall-takes-data,
+// empty list leaves one unbound), convert-in-files, earlier-versions, network-reach, open-anything, offer-room, and uninstall-takes-data,
 // which modules/bazaar.js reads.
 
 import GLib from 'gi://GLib';
@@ -27,6 +28,7 @@ import {ColourPicker, pickedColours, remember} from './tools/picker.js';
 import {Microphone} from './tools/microphone.js';
 import {Users} from './tools/users.js';
 import {QrDialog, QR_LONGEST} from './tools/qr.js';
+import {Reach} from './tools/reach.js';
 import {WifiShare} from './tools/wifi.js';
 import {Opener} from './tools/opener.js';
 import {Room} from './tools/room.js';
@@ -63,6 +65,7 @@ export class Tools {
             'changed::convert-in-files', () => this._convertMenu(),
             'changed::earlier-versions', () => this._helperSwitch(BACK_IN_TIME, 'menu', 'earlier-versions'),
             'changed::open-anything', () => this._helperSwitch(OPEN_ANYTHING, 'switch', 'open-anything'),
+            'changed::network-reach', () => this._syncReach(),
             this);
         this._bind('colour-picker', () => this.pickColour());
         this._bind('mute-microphone', () => this.toggleMicrophone());
@@ -77,6 +80,7 @@ export class Tools {
         this._opener.enable();
         this._room = new Room(this._settings);
         this._room.enable();
+        this._syncReach();
 
         // The menu as the key says, if it is not already
         const shown = GLib.file_test(CONVERT_STATE, GLib.FileTest.EXISTS);
@@ -102,6 +106,8 @@ export class Tools {
         this._room = null;
         this._opener?.disable();
         this._opener = null;
+        this._reach?.disable();
+        this._reach = null;
         this._wifi?.disable();
         this._wifi = null;
         this._users?.disable();
@@ -127,6 +133,18 @@ export class Tools {
         if (id === Meta.KeyBindingAction.NONE)
             console.warn(`Amethystora UI: the key of ${key} could not be set`);
         this._bound.add(key);
+    }
+
+    // The network menus' drawing, while its key is on; off, the menus are GNOME's own
+    _syncReach() {
+        const wanted = this._settings.get_boolean('network-reach');
+        if (wanted && !this._reach) {
+            this._reach = new Reach();
+            this._reach.enable();
+        } else if (!wanted && this._reach) {
+            this._reach.disable();
+            this._reach = null;
+        }
     }
 
     // The key as a person reads it, "Super+Alt+M", or ''
@@ -232,6 +250,7 @@ export class Tools {
             users: this._users?.state ?? null,
             qr: this._qr ? {shown: this._qr.card.shown, covered: this._qr.card.covered} : null,
             wifi: this._wifi?.state ?? null,
+            reach: this._reach?.state ?? null,
         };
     }
 
@@ -245,5 +264,9 @@ export class Tools {
 
     get users() {
         return this._users ?? null;
+    }
+
+    get reach() {
+        return this._reach ?? null;
     }
 }

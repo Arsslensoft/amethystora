@@ -1300,6 +1300,11 @@ SHADOWED=(sysctl.d:/usr/lib/sysctl.d modprobe.d:/usr/lib/modprobe.d modules-load
 # ...and for systemd, only the units the security of the machine rests on
 SECURITY_UNITS='^(auditd|fail2ban|firewalld|clamd@.*|clamav-.*|amethystora-.*|uupd.*|usbguard(-dbus)?|rpm-ostreed.*|bootc-.*|polkit|systemd-journald)\.(service|timer|socket)$'
 
+# Whether every line of FILE is a comment amethystora-sleep-report writes or a line taking one device's wake away
+wake_rules_as_written() {
+    ! grep -qvE '^(# Devices kept from waking the computer: ame system wake-device|ACTION=="add", SUBSYSTEM=="usb", ATTR\{idVendor\}=="[0-9a-f]{4}", ATTR\{idProduct\}=="[0-9a-f]{4}", ATTR\{power/wakeup\}="disabled"|ACTION=="add", SUBSYSTEM=="pci", ATTR\{vendor\}=="0x[0-9a-f]{4}", ATTR\{device\}=="0x[0-9a-f]{4}", ATTR\{power/wakeup\}="disabled")$' "$1"
+}
+
 # One "change<TAB>path<TAB>detail" a line: added, changed, removed, replaces, overrides or masks
 drift() {
     local pair dir lib etc name rel usr unit kind domain=false duress=false
@@ -1372,6 +1377,8 @@ drift() {
             cmp -s "${etc}" <(/usr/libexec/amethystora-hardening expected "${rel}") && continue
         # The Xbox wireless adapter's blacklist of mt76x2u, exactly as ame apps xbox-adapter copies it
         [[ "${rel}" == modprobe.d/xone.conf ]] && cmp -s "${etc}" /usr/share/amethystora/xone/xone.conf && continue
+        # Devices kept from waking the computer, each line exactly as amethystora-sleep-report writes it
+        [[ "${rel}" == udev/rules.d/90-amethystora-wake.rules ]] && wake_rules_as_written "${etc}" && continue
         # External screens' brightness, exactly as ame desktop screen-brightness on copies it (the report says it is on)
         [[ "${rel}" == udev/rules.d/60-amethystora-ddc.rules ]] &&
             cmp -s "${etc}" /usr/share/amethystora/ddc/60-amethystora-ddc.rules && continue

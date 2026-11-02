@@ -21,7 +21,7 @@
 #  11. data did not open, and the boot did not wait; opened with the disk gone, written to; the disk plugged in.
 #  12. It is back and its copies put back; data forgotten, leaving nothing behind.
 # The script asks sudo for each step that needs root, so tester's sudo asks no password while this suite runs.
-# vmlab-paths: @sf/usr/libexec/amethystora-raid* @sf/usr/lib/systemd/system/amethystora-raid*
+# vmlab-paths: @sf/usr/libexec/amethystora-raid* @sf/usr/lib/systemd/system/amethystora-raid* @sf/usr/libexec/amethystora-disk-health @sf/usr/lib/systemd/system/amethystora-disk-health*
 source "$(dirname "$0")/lib.sh"
 
 RAID=/usr/libexec/amethystora-raid

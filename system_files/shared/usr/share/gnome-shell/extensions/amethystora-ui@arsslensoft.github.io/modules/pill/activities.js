@@ -28,7 +28,8 @@
 // person. Reading aloud (modules/access/speech.js) comes after what waits for the person and before what runs by
 // itself: the person has just asked for it. A focus profile's mark (modules/focus/mark.js) comes last: it says what the
 // desktop is set to, not what happens. A meeting about to start (pill/meeting.js) comes before a link: it waits for
-// the person, at a time the person set.
+// the person, at a time the person set. A disk still being written to (pill/stick.js) comes after what waits for the
+// person: unplugging it now would lose what is on its way.
 // Reopening the apps after an update's restart (pill/resume.js) asks the person, so it comes before what the update
 // brought; saving data (pill/saving.js) only says how the connection is, after an update ready. A flat battery about to
 // close the computer (pill/flat.js) comes after a call and a recording, whose controls (Mute ringer, Stop) are only in the
@@ -38,7 +39,7 @@
 // timer comes after the first. What is moving (pill/moving.js) runs by itself, after music: the music stays in the pill
 // and it sits beside it.
 
-export const ORDER = ['call', 'recording', 'flat', 'present', 'meeting', 'link', 'code', 'battery', 'agent', 'waiting', 'drop', 'hello',
+export const ORDER = ['call', 'recording', 'flat', 'present', 'meeting', 'link', 'code', 'battery', 'agent', 'waiting', 'drop', 'hello', 'stick',
     'reading', 'timer', 'timer2', 'resume', 'news', 'media', 'moving', 'update', 'saving', 'quiet', 'focus'];
 
 // At most this many others are listed in a card

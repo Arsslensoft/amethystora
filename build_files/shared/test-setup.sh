@@ -415,7 +415,7 @@ saved="$(sed -n 's/^PRIVACY_KEYS=(\(.*\))$/\1/p' "$(dirname "${SETUP}")/amethyst
     { echo "the manifest saves other privacy keys than amethystora-setup reads:"; diff <(echo "${saved}") <(echo "${listed}"); false; }
 # The tools module: its switches, every key of the schema besides its two keybindings (the keybindings part keeps those),
 # and the manifest saves the same keys
-TOOLS_SWITCHES="convert-in-files earlier-versions offer-room open-anything uninstall-takes-data"
+TOOLS_SWITCHES="convert-in-files earlier-versions network-reach offer-room open-anything uninstall-takes-data"
 [[ "$(sed -n "s/^TOOLS_KEYS='\(.*\)'\$/\1/p" "${SETUP}" | jq -r 'keys | join(" ")')" == "${TOOLS_SWITCHES}" ]]
 [[ "$(sed -n "s/^TOOLS_KEYS='\(.*\)'\$/\1/p" "${SETUP}" | jq -c '[.[]] | unique')" == '[["b"]]' ]]
 [[ "$(GSETTINGS_BACKEND=memory /usr/bin/gsettings list-keys org.gnome.shell.extensions.amethystora-ui.tools |

@@ -53,7 +53,7 @@ same('a mark is passed over for what happens', list('timer', 'focus', 'media').s
 }
 same('the others stay what they were', list('timer', 'media', 'update', 'focus', 'quiet').others.map(a => a.id), ['media', 'update', 'quiet']);
 for (const [first, then] of [['call', 'recording'], ['recording', 'present'], ['present', 'meeting'], ['meeting', 'link'],
-    ['link', 'code'], ['code', 'battery'], ['waiting', 'drop'], ['drop', 'hello'], ['hello', 'reading'], ['timer', 'timer2'],
+    ['link', 'code'], ['code', 'battery'], ['waiting', 'drop'], ['drop', 'hello'], ['hello', 'stick'], ['stick', 'reading'], ['timer', 'timer2'],
     ['media', 'moving'], ['moving', 'update'], ['focus', null]]) {
     // What the sturdy group adds (a flat battery's 'flat', right after a call and a recording) is not in these pairs
     const order = ORDER.filter(id => id !== 'flat');

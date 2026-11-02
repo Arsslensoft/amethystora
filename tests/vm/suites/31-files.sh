@@ -3,7 +3,7 @@
 # Back in time as user-setup.hooks.d/24-files-menu.sh writes them, run as Files runs a script (the folder shown as
 # the current folder, the selection as arguments), on names Files allows and a shell would not, the coloured folder in
 # an open Files window, the icon packs' coloured folders, and a script of the person's own that the hook leaves alone.
-# vmlab-paths: @ui/modules/pill/moving.js @sf/usr/libexec/amethystora-folder-colour @sf/usr/libexec/amethystora-back-in-time @sf/usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh @sf/usr/share/icons/*/places/* @sf/usr/libexec/amethystora-open-anything @sf/usr/share/applications/zz-amethystora-open-anything.desktop build_files/shared/open-anything-types.py @ui/modules/tools/opener.js @sf/usr/libexec/amethystora-flatpak-ask
+# vmlab-paths: @ui/modules/pill/moving.js @sf/usr/libexec/amethystora-folder-colour @sf/usr/libexec/amethystora-back-in-time @sf/usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh @sf/usr/share/icons/*/places/* @sf/usr/libexec/amethystora-open-anything @sf/usr/share/applications/zz-amethystora-open-anything.desktop build_files/shared/open-anything-types.py @ui/modules/tools/opener.js @sf/usr/libexec/amethystora-flatpak-ask @ui/modules/pill/stick*
 source "$(dirname "$0")/lib.sh"
 
 HOME_DIR="/var/home/${TEST_USER}"

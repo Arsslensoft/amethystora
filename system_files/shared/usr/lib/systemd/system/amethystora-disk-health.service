@@ -1,0 +1,17 @@
+[Unit]
+Description=Read the health of the system's disk
+Documentation=file:///usr/share/amethystora/manual/hardware.md
+
+[Service]
+Type=oneshot
+# Reads SMART on the disks the system is on, a disk asleep left asleep, writes what they say to
+# /var/lib/amethystora/disk-health.json, and tells whoever is logged in what got worse. The notification waits for its
+# answer in a unit of its own, so this one ends at once.
+ExecStart=/usr/libexec/amethystora-disk-health check
+Nice=19
+IOSchedulingClass=idle
+# No ProtectClock=: it may add an allow rule for the real-time clock to the unit's device policy, and a unit with any allow
+# rule may be shut out of every device it does not name, smartctl's disk among them. That could not be tried without a
+# machine, and a warning that silently reads nothing is this feature's worst failure; nothing here sets the clock anyway
+RestrictRealtime=yes
+# The timer is what runs this, so the service itself is never enabled

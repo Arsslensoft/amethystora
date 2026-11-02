@@ -28,5 +28,10 @@
       <summary>Not yet, from the keyboard</summary>
       <description>While the flat-battery card is on the screen, this key says Not yet. It is bound only then, so it takes nothing from your typing the rest of the time.</description>
     </key>
+    <key name="sleep-report" type="b">
+      <default>true</default>
+      <summary>What happened while it slept</summary>
+      <description>When the battery lost an unusual amount while the computer slept, a notice says so once, with what woke it and an offer to stop that device doing it again. Nothing is read unless the loss is large.</description>
+    </key>
   </schema>
 </schemalist>
