@@ -11,9 +11,9 @@ desktop-image-scale-method: "stretch"
 desktop-color: "#16042c"
 terminal-font: "Inter Regular 16"
 terminal-left: "8%"
-terminal-top: "10%"
+terminal-top: "82%"
 terminal-width: "84%"
-terminal-height: "80%"
+terminal-height: "18%"
 terminal-border: "0"
 
 # The wordmark, above the menu
