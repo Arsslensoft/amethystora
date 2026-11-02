@@ -306,6 +306,11 @@ search "transition length"
 same "8 a slider is only offered as Control › …" \
     "$(q '[.sections[] | select(.id == "amethystora-settings")][0].rows // [] | map(select(.title | startswith("Control ›") | not)) | length')" 0
 close_card
+# An app's name that only a setting's sentence shares: Enter is the app's, and no setting comes before it
+search "firefox"
+same "8 a setting's sentence does not come before an app" \
+    "$(q '[.sections[] | select(.id == "amethystora-settings")][0].rows // [] | length')" 0
+close_card
 
 # --- 9-10: open windows, and Ctrl+N -------------------------------------------------------------------------------------
 user_bus systemd-run --user --collect --unit="vmlab-16-a" kitty --title "vmlab-16-a" >/dev/null
