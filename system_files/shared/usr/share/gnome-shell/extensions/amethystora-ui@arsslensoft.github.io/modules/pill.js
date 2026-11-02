@@ -335,6 +335,16 @@ export class Pill {
         this._activities?.update('agent');
     }
 
+    // A flat battery about to close the computer (modules/power/flat.js), or null
+    setFlat(activity) {
+        if (this._activities && this._activities.get('flat') !== activity)
+            this._activities.set('flat', activity);
+    }
+
+    flatChanged() {
+        this._activities?.update('flat');
+    }
+
     _toggle(name, wanted, make) {
         if (wanted && !this[name]) {
             const part = make();

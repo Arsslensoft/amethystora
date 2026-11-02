@@ -30,13 +30,15 @@
 // desktop is set to, not what happens. A meeting about to start (pill/meeting.js) comes before a link: it waits for
 // the person, at a time the person set.
 // Reopening the apps after an update's restart (pill/resume.js) asks the person, so it comes before what the update
-// brought; saving data (pill/saving.js) only says how the connection is, after an update ready.
+// brought; saving data (pill/saving.js) only says how the connection is, after an update ready. A flat battery about to
+// close the computer (pill/flat.js) comes after a call and a recording, whose controls (Mute ringer, Stop) are only in the
+// pill: its card is on the screen whatever the pill says, and it is listed in the card of whoever comes first.
 // A code from the phone (pill/code.js) lives a minute and waits for the person, as a link does. What a drag can be dropped
 // on (pill/drop.js) and a device arriving (pill/hello.js) are the person's own moment, for as long as it lasts. A second
 // timer comes after the first. What is moving (pill/moving.js) runs by itself, after music: the music stays in the pill
 // and it sits beside it.
 
-export const ORDER = ['call', 'recording', 'present', 'meeting', 'link', 'code', 'battery', 'agent', 'waiting', 'drop', 'hello',
+export const ORDER = ['call', 'recording', 'flat', 'present', 'meeting', 'link', 'code', 'battery', 'agent', 'waiting', 'drop', 'hello',
     'reading', 'timer', 'timer2', 'resume', 'news', 'media', 'moving', 'update', 'saving', 'quiet', 'focus'];
 
 // At most this many others are listed in a card

@@ -9,7 +9,7 @@
 #   - on the left edge, only the screen with nothing to its left keeps a strip; the others hide when touched,
 #     without a barrier, which would hold the pointer back from the next screen;
 #   - nothing of Amethystora UI throws meanwhile.
-# vmlab-paths: @ui/extension.js @ui/*dock* @sf/*themed/shell-dock* @sf/*just/desktop.just
+# vmlab-paths: @ui/extension.js @ui/*dock* @sf/*themed/shell-dock* @sf/*just/desktop.just @ui/*desks*
 source "$(dirname "$0")/lib.sh"
 
 UUID=amethystora-ui@arsslensoft.github.io

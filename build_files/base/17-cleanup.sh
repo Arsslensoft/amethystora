@@ -52,6 +52,8 @@ systemctl enable amethystora-raid-scrub.timer
 # The system over several disks, at every start: a mirror onto a new disk finished after its restart, and the
 # boot menu entry that starts the system with a disk missing kept current. Skipped on a system on one disk.
 systemctl enable amethystora-raid-boot.service
+# An update that does not start goes back by itself (ame update boot-guard). Both are skipped until it is turned on.
+systemctl enable amethystora-boot-guard.service amethystora-boot-guard-good.service
 # A mirror's restart from its new disk, before /boot is mounted. Skipped unless a mirror waits for it.
 systemctl enable amethystora-raid-mirror.service
 # The file-watch sensor (amethystora-sensor, plans/done/PLAN-audit-cost.md): it records the files the

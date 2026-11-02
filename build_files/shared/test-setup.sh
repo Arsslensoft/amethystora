@@ -195,7 +195,8 @@ for table in BARS:org.gnome.shell.extensions.amethystora-ui.bars TODAY:org.gnome
     TABLE="$(sed -n "s/^${name}_KEYS='\(.*\)'\$/\1/p" "${SETUP}")"
     listed="$(jq -r 'keys[]' <<<"${TABLE}" | sort)"
     # Never the app grid's names and icons of the account's own: a name is the person's text, a picture this machine's
-    schema="$(GSETTINGS_BACKEND=memory /usr/bin/gsettings list-keys "${id}" | grep -vx weather |
+    # Nor the flat battery's Not yet shortcut: a shortcut, like the tiling's, is never in a file
+    schema="$(GSETTINGS_BACKEND=memory /usr/bin/gsettings list-keys "${id}" | grep -vxE 'weather|flat-hold' |
         { if [[ "${name}" == APPGRID ]]; then grep -vxE 'names|icons'; else cat; fi; } | sort)"
     [[ -n "${listed}" && "${listed}" == "${schema}" ]] ||
         { echo "${name}_KEYS and ${id} differ:"; diff <(echo "${listed}") <(echo "${schema}"); false; }

@@ -2,7 +2,7 @@
 # The machine as it first boots: everything started, Secure Boot and lockdown on, the TPM there, the image's
 # own kernel modules loading under Secure Boot (make-disk.sh enrolls its certificates, as an owner would),
 # and nothing crashed.
-# vmlab-paths: @sf/usr/lib/systemd/* @sf/etc/systemd/* @sf/usr/lib/bootc/* @sf/usr/lib/modprobe.d/* @sf/usr/lib/sysctl.d/* apps/sensor/* @sf/usr/libexec/amethystora-start-times
+# vmlab-paths: @sf/usr/lib/systemd/* @sf/etc/systemd/* @sf/usr/lib/bootc/* @sf/usr/lib/modprobe.d/* @sf/usr/lib/sysctl.d/* apps/sensor/* @sf/usr/libexec/amethystora-start-times @sf/usr/libexec/amethystora-boot-guard
 source "$(dirname "$0")/lib.sh"
 
 state="$(systemctl is-system-running --wait 2>/dev/null)"

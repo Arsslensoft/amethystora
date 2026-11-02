@@ -18,7 +18,7 @@
 #   15.9  dimming: the strengths, the pixels at two thirds, nothing in the overview;
 #   15.10 the cost: nothing runs while nothing happens, ten disables leave nothing behind, frames under 1 ms;
 #   and nothing of Amethystora UI throws meanwhile.
-# vmlab-paths: @ui/extension.js @ui/*windows* @sf/*themed/shell-windows* @sf/*just/desktop.just
+# vmlab-paths: @ui/extension.js @ui/*windows* @sf/*themed/shell-windows* @sf/*just/desktop.just @ui/*desks*
 source "$(dirname "$0")/lib.sh"
 
 UUID=amethystora-ui@arsslensoft.github.io

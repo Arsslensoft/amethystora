@@ -149,7 +149,7 @@ BACKUPDISK=org.gnome.shell.extensions.amethystora-ui.backupdisk
 BACKUPDISK_KEYS=(ask)
 # The battery explained and the busy app's chip, which amethystora-setup's POWER_KEYS takes
 POWER=org.gnome.shell.extensions.amethystora-ui.power
-POWER_KEYS=(battery-details busy-app device-batteries)
+POWER_KEYS=(battery-details busy-app device-batteries flat-battery)
 # Focus profiles: the triggers and what each profile does, which amethystora-setup's FOCUS_KEYS takes; never the profile on
 # now, when it ends, or a saved set a profile names
 FOCUS=org.gnome.shell.extensions.amethystora-ui.focus
@@ -199,7 +199,7 @@ TOUCH_KEYS=(touch-mode pen-ring pen-ring-tools)
 SHELF=org.gnome.shell.extensions.amethystora-ui.shelf
 SHELF_KEYS=(shelf)
 DESKS=org.gnome.shell.extensions.amethystora-ui.desks
-DESKS_KEYS=(desks desks-learn)
+DESKS_KEYS=(desks desks-learn desk-windows)
 
 # The tiling, while it runs, takes a combination out of four GNOME keys that it cannot wrap in memory, and
 # writes down what it took in its state file, to put back when it is turned off: the account's own value is the

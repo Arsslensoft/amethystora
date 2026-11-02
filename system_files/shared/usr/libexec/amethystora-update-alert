@@ -20,6 +20,11 @@ command -v notify-send >/dev/null || exit 0
 
 STATE="${XDG_STATE_HOME:-${HOME}/.local/state}/amethystora"
 
+# In the session's language where there is a translation of it (po/, text domain amethystora)
+export TEXTDOMAIN=amethystora
+# shellcheck source=/dev/null
+source gettext.sh
+
 # GNOME Shell takes the notification name on the bus a little after the session starts
 wait_for_shell() {
     command -v gdbus >/dev/null &&
@@ -51,6 +56,28 @@ previous_version() {
         "This machine started Amethystora ${version}, not the newest. System Updates can keep this version, or restart into the latest."
 }
 
+# The computer went back by itself from an update that did not start (amethystora-boot-guard): said once to each account, and
+# only within a week of it, so that an account made later is not told of what happened months ago. Nothing is started when
+# there is nothing to say: on almost every machine the file is not there.
+went_back() {
+    local record=/var/lib/amethystora/boot-guard/went-back.json said="${STATE}/went-back-said" at action
+    [[ -s "${record}" ]] || return 0
+    at="$(jq -r '.at // ""' "${record}" 2>/dev/null)"
+    [[ "${at}" =~ ^[0-9]+$ ]] || return 0
+    (($(date +%s) - at > 604800)) && return 0
+    [[ "$(cat "${said}" 2>/dev/null)" != "${at}" ]] || return 0
+    mkdir -p "${STATE}" && printf '%s\n' "${at}" >"${said}"
+    wait_for_shell
+    action="$(notify-send --app-name=Amethystora --icon=amethystora-update --urgency=normal --wait \
+        --action=default="$(gettext "What happened?")" --action=open="$(gettext "What happened?")" \
+        --action=update="$(gettext "Open System Updates")" "$(gettext "Back on the system before the update")" \
+        "$(gettext "The update did not start properly, so your computer went back by itself. Your files and apps were not touched. Automatic updates, apps included, wait for a newer system. System Updates can still try this one if you ask.")")"
+    case "${action}" in
+        default | open) exec /usr/bin/amethystora-manual updates#if-an-update-does-not-start ;;
+        update) exec /usr/bin/amethystora-update ;;
+    esac
+}
+
 firmware() {
     local said="${STATE}/firmware-said" updates waiting names
     command -v fwupdmgr >/dev/null || return 0
@@ -69,6 +96,7 @@ firmware() {
         "For ${names}: fixes from its maker, often for security holes. System Updates installs them, and some need a restart."
 }
 
+went_back
 previous_version
 firmware
 exit 0

@@ -5,7 +5,7 @@
 # whose link the firewall counts as home, paired with the program by its pin.
 #
 # 1 and 2 (the crate's tests and the interop run against Fedora's kdeconnectd) are the build's and apps/connect/tests'.
-# vmlab-paths: @ui/*connect* apps/connect/* apps/phone/* @sf/*themed/shell-connect* @sf/*just/desktop.just @sf/*systemd/user/amethystora-connect.service
+# vmlab-paths: @ui/*connect* @ui/*pill* apps/connect/* apps/phone/* @sf/*themed/shell-connect* @sf/*just/desktop.just @sf/*systemd/user/amethystora-connect.service
 source "$(dirname "$0")/lib.sh"
 
 UUID=amethystora-ui@arsslensoft.github.io

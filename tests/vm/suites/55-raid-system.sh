@@ -16,7 +16,7 @@
 #   first-back  the disk that came back has its copies put back, and counts nothing; then SPARE-3 unplugged
 #   second-dead started degraded from the first disk; SPARE-4 in SPARE-3's place, its ESP, /boot half and key
 #   replaced    started by the TPM from the first disk and SPARE-4; nothing of SPARE-3 left
-# vmlab-paths: @sf/usr/libexec/amethystora-raid* @sf/usr/lib/systemd/system/amethystora-raid* @sf/usr/lib/dracut/*
+# vmlab-paths: @sf/usr/libexec/amethystora-raid* @sf/usr/lib/systemd/system/amethystora-raid* @sf/usr/lib/dracut/* @sf/usr/libexec/amethystora-boot-guard @sf/usr/lib/systemd/system/amethystora-boot-guard*
 source "$(dirname "$0")/lib.sh"
 
 RAID=/usr/libexec/amethystora-raid

@@ -1596,8 +1596,18 @@ system_spread() {
 }
 
 # custom.cfg with the entry when the system is over several disks, and without it when it is not, the rest of
-# what is there kept as it is
+# what is there kept as it is. amethystora-boot-guard keeps an entry of its own in the same file, and takes the same lock
+# (its file is made by the guard when it is turned on, so without one this is as it was).
 write_boot_entry() {
+    local lock=/run/amethystora/boot-cfg.lock
+    if [[ -r "${lock}" ]]; then
+        ( flock -w 60 9 || exit 1; write_boot_entry_locked ) 9<"${lock}"
+    else
+        write_boot_entry_locked
+    fi
+}
+
+write_boot_entry_locked() {
     local cfg="${BOOT}/grub2/custom.cfg" current="" block="" new
     [[ -d "${BOOT}/grub2" ]] || return 0
     [[ -f "${cfg}" ]] && current="$(cat "${cfg}")"
@@ -1607,11 +1617,20 @@ write_boot_entry() {
     new="$(awk -v b="${BOOT_ENTRY_BEGIN}" -v e="${BOOT_ENTRY_END}" '$0 == b { skip = 1 } !skip { print } $0 == e { skip = 0 }' <<<"${current}")"
     [[ -n "${block}" ]] && new="${new:+${new}$'\n'}${block}"
     [[ "${new}" == "${current}" ]] && return 0
+    local code
     if [[ -z "${new}" ]]; then
         with_boot_rw as_root rm -f "${cfg}"
     else
-        with_boot_rw as_root bash -c 'printf "%s\n" "$2" >"$1.new" && sync "$1.new" && mv -f "$1.new" "$1"' _ "${cfg}" "${new}"
+        with_boot_rw as_root bash -c 'printf "%s\n" "$2" >"$1.new.$$" && sync "$1.new.$$" && mv -f "$1.new.$$" "$1"' _ "${cfg}" "${new}"
     fi
+    code=$?
+    # With the boot guard on (and only then: with it off this is as it was), what was written reaches the disk itself, since
+    # GRUB reads ext4 without replaying its journal. The guard's own writes do the same. Never left frozen.
+    if [[ -e /var/lib/amethystora/boot-guard/on ]] && command -v fsfreeze >/dev/null; then
+        as_root fsfreeze -f /boot 2>/dev/null && { as_root fsfreeze -u /boot 2>/dev/null || as_root fsfreeze -u /boot 2>/dev/null; }
+    fi
+    # (Were a `die` ever put in this function, it would leave only the subshell above, as write_boot_entry runs it.)
+    return "${code}"
 }
 
 # Every disk of a mounted btrfs that is missing now, written down with when it was first seen so (root's)

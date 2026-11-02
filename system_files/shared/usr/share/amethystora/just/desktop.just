@@ -2362,7 +2362,8 @@ getting-set *ARGS:
 
 # Power you can see: the battery's menu says when it runs out, the watts, what used the most and its health (ame desktop
 # power battery [on|off]); a chip names an app that keeps the processor busy for two minutes (ame desktop power busy
-# [on|off]); the same menu lists every device's battery, with a notice once at 15% (ame desktop power devices [on|off]).
+# [on|off]); the same menu lists every device's battery, with a notice once at 15% (ame desktop power devices [on|off]);
+# at 3% the computer asks you to save, keeps where the apps were and closes cleanly (ame desktop power flat [on|off]).
 # Without on or off, it asks
 [positional-arguments]
 power *ARGS:
@@ -2372,7 +2373,7 @@ power *ARGS:
     source gettext.sh
     schema=org.gnome.shell.extensions.amethystora-ui.power
     usage() {
-        echo "usage: ame desktop power battery|busy|devices [on|off]"
+        echo "usage: ame desktop power battery|busy|devices|flat [on|off]"
         exit 64
     }
     [[ $# -ge 1 && $# -le 2 ]] || usage
@@ -2380,6 +2381,7 @@ power *ARGS:
         battery) key=battery-details ;;
         busy) key=busy-app ;;
         devices) key=device-batteries ;;
+        flat) key=flat-battery ;;
         *) usage ;;
     esac
     state="${2:-}"
@@ -2389,6 +2391,8 @@ power *ARGS:
             header="$(eval_gettext "Battery details (current: \${current})")"
         elif [[ "${key}" == device-batteries ]]; then
             header="$(eval_gettext "Your devices' batteries (current: \${current})")"
+        elif [[ "${key}" == flat-battery ]]; then
+            header="$(eval_gettext "A flat battery loses nothing (current: \${current})")"
         else
             header="$(eval_gettext "Say when an app is busy (current: \${current})")"
         fi
@@ -2406,6 +2410,8 @@ power *ARGS:
         busy-app:off) echo "$(gettext "No chip names a busy app.")" ;;
         device-batteries:on) echo "$(gettext "The battery's menu lists the battery of the mouse, the keyboard, the headphones and the rest, and says once when one is at 15%.")" ;;
         device-batteries:off) echo "$(gettext "The battery's menu no longer lists other devices' batteries.")" ;;
+        flat-battery:on) echo "$(gettext "At 3% a card asks you to save, where your apps were is kept, and the computer closes cleanly 60 seconds later.")" ;;
+        flat-battery:off) echo "$(gettext "A flat battery is left to the system's own closing at 2%, and nothing is kept of the open apps.")" ;;
     esac
 
 # The shelf: put files, text or a picture down while moving between apps, then drag them out (STATE: off, edge for the
@@ -2443,6 +2449,7 @@ shelf STATE="":
             ;;
     esac
 
+# Every window goes back when a set of screens comes back, desks on or not (ame desktop desks windows on|off).
 # Desks: a set of screens brings back the sound output, the dock's place, a Focus profile and the power mode (ame
 # desktop desks on|off, learn on|off, list, rename ID NAME..., saved ID NAME|none, forget ID, ask). Without anything it
 # says whether they are on and lists them. The desks are in ~/.config/amethystora/desks.json, which the shell keeps.
@@ -2459,6 +2466,7 @@ desks *ARGS:
         {
             echo "usage: ame desktop desks [on|off|list]"
             echo "       ame desktop desks learn on|off"
+            echo "       ame desktop desks windows on|off"
             echo "       ame desktop desks rename ID NAME..."
             echo "       ame desktop desks saved ID NAME|none"
             echo "       ame desktop desks forget ID"
@@ -2538,7 +2546,7 @@ desks *ARGS:
         ((count > 0)) || echo "$(gettext "No desk is set up yet: the first time the computer is at one, a card asks.")"
     }
     case "${1:-}" in
-        rename | saved | forget | ask)
+        rename | saved | forget | ask | windows)
             mkdir -p "${folder}"
             chmod 700 "${folder}"
             exec 9>"${folder}/.desks.lock"
@@ -2574,6 +2582,17 @@ desks *ARGS:
                 *) usage ;;
             esac
             ;;
+        windows)
+            case "${2:-}" in
+                on) gsettings set "${schema}" desk-windows true
+                    echo "$(gettext "When a set of screens comes back, every window goes back to its screen, place and size.")" ;;
+                # Nothing more is written, and what was held goes
+                off) gsettings set "${schema}" desk-windows false
+                    write "$(current | jq -c 'del(.layouts)')"
+                    echo "$(gettext "Windows are left where the screens' change puts them, and where they were is forgotten.")" ;;
+                *) usage ;;
+            esac
+            ;;
         rename)
             id="${2:-}"
             shift 2 2>/dev/null || usage
@@ -2599,7 +2618,8 @@ desks *ARGS:
         forget)
             id="${2:-}"
             known "${id}" && [[ $# -eq 2 ]] || usage
-            write "$(current | jq -c --arg id "${id}" 'del(.desks[] | select(.id == $id)) | if .current.desk == $id then del(.current) else . end')"
+            write "$(current | jq -c --arg id "${id}" '(.desks[] | select(.id == $id) | .base // .id) as $base | del(.layouts[$base])
+                | del(.desks[] | select(.id == $id)) | if .current.desk == $id then del(.current) else . end')"
             echo "$(gettext "The desk is forgotten. What it set stays as it is.")"
             ;;
         ask)

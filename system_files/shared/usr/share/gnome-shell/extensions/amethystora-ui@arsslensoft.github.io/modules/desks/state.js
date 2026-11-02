@@ -14,15 +14,18 @@
 //         "saved": "Writing"}, every part optional
 //
 // `declined` are the desks Not now was said to: the card does not ask there again until `ame desktop desks ask`.
+// `layouts` are where the windows were at each set of screens (desks/layouts.js writes them, layoutsdata.js has the shape).
 // The recipe and this module each write the file whole; before changing it, this reads it again if somebody else wrote
 // it since, so that neither loses the other's change (the recipe also holds a lock while it writes).
 
 import GLib from 'gi://GLib';
 
+import {cleanLayouts} from './layoutsdata.js';
+
 const DIR = GLib.build_filenamev([GLib.get_user_config_dir(), 'amethystora']);
 export const FILE = GLib.build_filenamev([DIR, 'desks.json']);
 const COPY = `${FILE}.bak`;
-const MOST_BYTES = 64 * 1024;
+export const MOST_BYTES = 128 * 1024;
 export const MOST_DESKS = 24;
 // A desk's name, in characters (as the recipe counts them)
 export const MOST_NAME = 40;
@@ -109,6 +112,9 @@ export function clean(data) {
     const current = data?.current;
     if (isObject(current) && isId(current.desk))
         result.current = {desk: current.desk, before: cleanSet(current.before), wrote: cleanSet(current.wrote)};
+    const layouts = cleanLayouts(data?.layouts);
+    if (Object.keys(layouts).length)
+        result.layouts = layouts;
     return result;
 }
 

@@ -41,10 +41,11 @@ function thunderbolt() {
     return ids.sort();
 }
 
-// The desk the computer is at now: {id, base, screens, thunderbolt, builtin, lidShut}. The screens make the desk
-// (base); the Thunderbolt devices only tell apart two desks with the same screens (id), so that a Thunderbolt drive
-// plugged in at a desk does not make it another one (DesksState.find)
-export function readDesk() {
+const hash = key => GLib.compute_checksum_for_string(GLib.ChecksumType.SHA256, `amethystora-desk\n${key}`, -1)
+    .slice(0, 12);
+
+// The screens other than the computer's own, each with what tells it apart from the others
+function monitorsNow() {
     const manager = global.backend.get_monitor_manager();
     const monitors = manager.get_monitors().filter(m => !m.is_virtual());
     const own = monitors.filter(m => m.is_builtin());
@@ -56,13 +57,30 @@ export function readDesk() {
         name: text(m.get_display_name()),
     }));
     const base = s => `${s.vendor}|${s.product}|${s.serial}`;
-    const keys = others.map(s => {
+    const keyOf = s => {
         const twins = others.filter(o => base(o) === base(s)).length;
         return !s.serial || twins > 1 ? `${base(s)}|${s.connector}` : base(s);
-    });
+    };
+    return {own, others, keyOf};
+}
+
+// The same desk as readDesk's `base`, with a hash of each screen by its connector (the computer's own among them): what
+// windows are kept under (desks/layouts.js). Reads no file.
+export function screenSet() {
+    const {own, others, keyOf} = monitorsNow();
+    const keys = new Map(own.map(m => [text(m.get_connector()), hash('builtin')]));
+    for (const screen of others)
+        keys.set(screen.connector, hash(keyOf(screen)));
+    return {base: hash(others.map(keyOf).sort().join('\n')), keys, external: others.length};
+}
+
+// The desk the computer is at now: {id, base, screens, thunderbolt, builtin, lidShut}. The screens make the desk
+// (base); the Thunderbolt devices only tell apart two desks with the same screens (id), so that a Thunderbolt drive
+// plugged in at a desk does not make it another one (DesksState.find)
+export function readDesk() {
+    const {own, others, keyOf} = monitorsNow();
+    const keys = others.map(keyOf);
     const devices = thunderbolt();
-    const hash = key => GLib.compute_checksum_for_string(GLib.ChecksumType.SHA256, `amethystora-desk\n${key}`, -1)
-        .slice(0, 12);
     keys.sort();
     others.sort((a, b) => a.connector.localeCompare(b.connector));
     return {

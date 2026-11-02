@@ -307,6 +307,48 @@ if [[ ${EUID} -eq 0 ]]; then
     "${RAID}" boot
     [[ "$(cat "${B}/grub2/custom.cfg")" == 'menuentry "Mine" { true }' ]]
     "${RAID}" present-system && false
+    # The boot guard writes this file too and takes /run/amethystora/boot-cfg.lock (it makes the lock when it is on): with the
+    # lock there the entry is written as before, and waits while another holds it
+    if [[ ! -e /run/amethystora/boot-cfg.lock ]] && mkdir -p /run/amethystora && : >/run/amethystora/boot-cfg.lock; then
+        devinfo "${ROOT}" 2 0 0 0 0 0 0
+        "${RAID}" present-system
+        "${RAID}" boot
+        [[ "$(grep -c amethystora-degraded "${B}/grub2/custom.cfg")" == 1 ]]
+        rm -r "${S}/fs/btrfs/${ROOT}/devinfo/2"
+        flock /run/amethystora/boot-cfg.lock /usr/bin/sleep 2 &
+        /usr/bin/sleep 0.5
+        started=${SECONDS}
+        "${RAID}" boot
+        ((SECONDS - started >= 1))
+        wait
+        [[ "$(cat "${B}/grub2/custom.cfg")" == 'menuentry "Mine" { true }' ]]
+        compgen -G "${B}/grub2/custom.cfg.new*" && false
+        rm -f /run/amethystora/boot-cfg.lock
+        rmdir /run/amethystora 2>/dev/null || true
+    fi
+    # With the boot guard on (its mark) what is written to /boot is flushed to the disk, GRUB reading ext4 without its
+    # journal; with it off nothing is frozen and raid does exactly what it did
+    mkdir -p "${T}/fz"
+    printf '#!/bin/sh\necho "$*" >>%s\n' "${T}/fz/log" >"${T}/fz/fsfreeze"
+    chmod +x "${T}/fz/fsfreeze"
+    : >"${T}/fz/log"
+    guard_dir=/var/lib/amethystora/boot-guard
+    if [[ ! -e "${guard_dir}/on" ]]; then
+        devinfo "${ROOT}" 2 0 0 0 0 0 0
+        PATH="${T}/fz:${PATH}" "${RAID}" present-system
+        PATH="${T}/fz:${PATH}" "${RAID}" boot
+        [[ ! -s "${T}/fz/log" ]]
+        made=false
+        [[ -d "${guard_dir}" ]] || { mkdir -p "${guard_dir}" && made=true; }
+        : >"${guard_dir}/on"
+        rm -r "${S}/fs/btrfs/${ROOT}/devinfo/2"
+        PATH="${T}/fz:${PATH}" "${RAID}" present-system
+        PATH="${T}/fz:${PATH}" "${RAID}" boot
+        rm -f "${guard_dir}/on"
+        ${made} && rmdir "${guard_dir}"
+        [[ "$(cat "${T}/fz/log")" == "$(printf -- '-f /boot\n-u /boot')" ]]
+        [[ "$(cat "${B}/grub2/custom.cfg")" == 'menuentry "Mine" { true }' ]]
+    fi
 fi
 
 # Nothing above touched a disk, and without a terminal create refuses before it asks anything

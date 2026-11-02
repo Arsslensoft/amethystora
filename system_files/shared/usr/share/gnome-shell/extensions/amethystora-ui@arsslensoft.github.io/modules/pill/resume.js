@@ -63,7 +63,8 @@ export class ResumeCard {
     }
 
     get accessible() {
-        return _('Reopen the apps that were open before the restart');
+        return this._offer?.why === 'update' ? _('Reopen the apps that were open before the restart')
+            : _('Reopen the apps that were open');
     }
 
     get row() {
@@ -93,6 +94,14 @@ export class ResumeCard {
     _summary() {
         const offer = this._offer;
         const apps = offer.apps.length;
+        if (offer.why === 'battery') {
+            return ngettext('The computer closed itself when the battery ran low. %d app was open.',
+                'The computer closed itself when the battery ran low. %d apps were open.', apps).format(apps);
+        }
+        if (offer.why === 'asleep') {
+            return ngettext('The computer went off while it was locked. %d app was open.',
+                'The computer went off while it was locked. %d apps were open.', apps).format(apps);
+        }
         if (offer.workspaces > 1) {
             return ngettext('The update is in. %d app was open on %d workspaces before the restart.',
                 'The update is in. %d apps were open on %d workspaces before the restart.', apps)
@@ -121,7 +130,7 @@ export class ResumeCard {
         body.add_child(new St.Label({
             style_class: 'amethystora-pill-news-versions',
             // Translators: the time the session after the update began
-            text: _('Updated · %s').format(timeOfDay(new Date(offer.at))),
+            text: (offer.why === 'update' ? _('Updated · %s') : _('Back · %s')).format(timeOfDay(new Date(offer.at))),
         }));
         body.add_child(new St.Label({style_class: 'amethystora-pill-news-title', text: _('Welcome back')}));
         const summary = new St.Label({style_class: 'amethystora-pill-card-text', text: this._summary()});

@@ -93,12 +93,16 @@ export function clean(data) {
 
 // The apps open before an update's restart (workspaces/resume.js), as resume.json may hold them: each workspace's
 // windows in a saved set's shape, by the workspace's place, at most MAX_SETS workspaces; `from` is the system that wrote
-// it (IMAGE_VERSION and BUILD_ID), `kind` who asked ('restart', or 'locked' for the snapshot a lock takes), `active` the
-// workspace that was in front. null when nothing fits.
+// it (IMAGE_VERSION and BUILD_ID), `kind` who asked ('restart', 'locked' for the snapshot a lock takes, 'battery' for a flat
+// battery's closing, 'asleep' for the snapshot a lock takes on battery; power/flat.js), `active` the workspace that was in
+// front. null when nothing fits.
 const VERSION_ID = /^[A-Za-z0-9._:+-]{1,96}$/;
+// What a flat battery left is offered on the system that wrote it too: nothing else explains the apps being gone
+export const OFF_THE_BATTERY = ['battery', 'asleep'];
 export function cleanResume(data) {
     if (!isObject(data) || data.version !== 1 || !Number.isFinite(data.saved) || typeof data.from !== 'string' ||
-        !VERSION_ID.test(data.from) || !['restart', 'locked'].includes(data.kind) || !Array.isArray(data.workspaces))
+        !VERSION_ID.test(data.from) || !['restart', 'locked', ...OFF_THE_BATTERY].includes(data.kind) ||
+        !Array.isArray(data.workspaces))
         return null;
     const seen = new Set();
     const workspaces = [];

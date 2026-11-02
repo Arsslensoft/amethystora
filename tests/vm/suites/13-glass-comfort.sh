@@ -13,7 +13,7 @@
 # The lab draws without a GPU, where GNOME turns animations off by itself: the suite forces them on
 # (global.force_animations) and puts the switch back. It leaves the account as it found it: Prism, not solid, Reduced
 # Motion and High Contrast GNOME's defaults, theme amethystora, the image's wallpaper, the profile balanced.
-# vmlab-paths: @ui/modules/pill/banners.js @ui/modules/pill/drop.js @ui/extension.js @ui/*glass* @ui/*comfort* @ui/*style* @sf/*themed/shell-glass* @sf/*themed/shell-styles* @sf/*just/desktop.just
+# vmlab-paths: @ui/modules/pill/banners.js @ui/modules/pill/drop.js @ui/extension.js @ui/*glass* @ui/*comfort* @ui/*style* @sf/*themed/shell-glass* @sf/*themed/shell-styles* @sf/*just/desktop.just @ui/*pill*
 source "$(dirname "$0")/lib.sh"
 
 UUID=amethystora-ui@arsslensoft.github.io

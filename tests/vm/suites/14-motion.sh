@@ -20,7 +20,7 @@
 # Not covered here (spec 7): 6 (a strip of three, the neighbours' places), 15 (frame intervals against shrink), 21 (four
 # screens), 23's tie-break (a Text Editor window), 27 (GNOME's thumbnails), 30 (the power saver), 31 (Control).
 # It leaves the account as it found it, however it ends: every key reset, animations as GNOME has them.
-# vmlab-paths: @ui/modules/pill/spring.js @ui/modules/pill/clock.js @ui/extension.js @ui/*motion* @ui/*workspaces* @sf/*themed/shell-workspaces* @sf/*just/desktop.just
+# vmlab-paths: @ui/modules/pill/spring.js @ui/modules/pill/clock.js @ui/extension.js @ui/*motion* @ui/*workspaces* @sf/*themed/shell-workspaces* @sf/*just/desktop.just @ui/*pill*
 source "$(dirname "$0")/lib.sh"
 
 UUID=amethystora-ui@arsslensoft.github.io

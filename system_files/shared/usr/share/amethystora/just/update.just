@@ -1,5 +1,6 @@
 # vim: set ft=make :
 
+# boot-guard on|off: an update that does not start goes back by itself.
 # Update system, flatpaks and homebrew packages all at once; restart to finish, in seconds when the kernel stays.
 # night-restart off|02:00..05:00 chooses when Restart while you're away restarts, and tonight [off] sets it for tonight.
 [positional-arguments]
@@ -43,8 +44,31 @@ update ACTION="" VALUE="":
         esac
         echo "Usage: ame update tonight [off]" >&2
         exit 2
+    elif [[ "$1" == boot-guard ]]; then
+        # An update that does not start goes back by itself (amethystora-boot-guard): it writes to the boot partition
+        case "$2" in
+            "")
+                exec /usr/libexec/amethystora-boot-guard status
+                ;;
+            on)
+                if [[ -e /usr/share/amethystora/sealed ]]; then
+                    echo "$(gettext "A sealed image starts through another boot loader, and this has not been proved on it.")" >&2
+                    exit 1
+                fi
+                sudo /usr/libexec/amethystora-boot-guard set on || exit $?
+                echo "$(gettext "If a new system does not start after a few tries, the computer goes back by itself to the one before, and says so. A start counts as good once the desktop is up.")"
+                exit 0
+                ;;
+            off)
+                sudo /usr/libexec/amethystora-boot-guard set off || exit $?
+                echo "$(gettext "An update that does not start is left to the boot menu, whose second entry is the system before it.")"
+                exit 0
+                ;;
+        esac
+        echo "Usage: ame update boot-guard [on|off]" >&2
+        exit 2
     elif [[ -n "$1" ]]; then
-        echo "Usage: ame update [restart|night-restart off|HH:MM|tonight [off]]" >&2
+        echo "Usage: ame update [restart|night-restart off|HH:MM|tonight [off]|boot-guard [on|off]]" >&2
         exit 2
     fi
     if systemctl cat -- uupd.timer &> /dev/null; then

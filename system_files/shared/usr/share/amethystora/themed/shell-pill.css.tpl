@@ -15,6 +15,10 @@
   background-color: {{ warning_bg }};
   border-color: {{ warning_bg }};
 }
+#uiGroup .amethystora-pill-plate-flat .amethystora-pill-piece {
+  background-color: {{ error_bg }};
+  border-color: {{ error_bg }};
+}
 #uiGroup .amethystora-pill-plate-saver .amethystora-pill-piece { background-color: rgba({{ success_bg_rgb }}, 0.22); }
 
 /* Two at once, the ring round the plate, and the glow when something ends */
@@ -55,6 +59,7 @@
 
 #uiGroup .amethystora-pill-content { color: {{ foreground }}; }
 #uiGroup .amethystora-pill-battery { color: {{ warning_fg }}; }
+#uiGroup .amethystora-pill-flat { color: {{ error_fg }}; }
 #uiGroup .amethystora-pill-bar { background-color: {{ accent_text }}; }
 #uiGroup .amethystora-pill-ring {
   color: {{ accent_text }};

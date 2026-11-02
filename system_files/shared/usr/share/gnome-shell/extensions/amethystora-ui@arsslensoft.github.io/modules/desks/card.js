@@ -29,8 +29,9 @@ export function fadeIn(actor) {
     actor.ease({opacity: 255, duration: FADE, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
 }
 
-// title, has: words; rows: [[name, value]]; buttons: [[words, primary, callback]]; note: words or null
-export function makeCard({title, has, rows, buttons, note}) {
+// title, has: words; text: words under the title, or nothing; rows: [[name, value]]; buttons: [[words, primary, callback]];
+// note: words or null. setTitle() says something else (a flat battery's countdown, power/flat.js).
+export function makeCard({title, has, text = null, rows, buttons, note}) {
     const card = new St.BoxLayout({
         style_class: 'amethystora-desks-card',
         orientation: Clutter.Orientation.VERTICAL,
@@ -46,6 +47,15 @@ export function makeCard({title, has, rows, buttons, note}) {
     head.add_child(name);
     head.add_child(what);
     card.add_child(head);
+    card.setTitle = words => {
+        name.text = words;
+        card.accessible_name = words;
+    };
+    if (text) {
+        const words = label(text, 'amethystora-desks-note');
+        words.clutter_text.line_wrap = true;
+        card.add_child(words);
+    }
     for (const [key, value] of rows) {
         const row = new St.BoxLayout({style_class: 'amethystora-desks-row', x_expand: true});
         const left = label(key, 'amethystora-desks-row-name');

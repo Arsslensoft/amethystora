@@ -212,6 +212,17 @@ export class Screens extends EventEmitter {
         this._changed();
     }
 
+    // Asked from outside the screens' own ways to a workspace: a set of screens coming back (Engine.arrange, showOn)
+    show(workspace, monitor) {
+        this._place(workspace, monitor);
+    }
+
+    setHome(workspace, monitor) {
+        const connector = this._connector(monitor);
+        if (connector)
+            this._homes.set(workspace, connector);
+    }
+
     _moveStrip(workspace, monitor) {
         const engine = this._engine;
         const strip = engine.strip(workspace, monitor);

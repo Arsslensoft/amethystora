@@ -187,6 +187,29 @@ Updates, or [hold on to the build](#holding-on-to-one-build) you are on. Then
 [report the problem](troubleshooting.md#reporting-a-problem), and follow the stream again when a fixed
 image is out.
 
+## If an update does not start
+
+The computer can go back by itself when a new system does not start, so that nobody has to find the boot menu at the worst
+moment. It is off until you turn it on, in Control's **If an update does not start, go back**, or with
+`ame update boot-guard on|off`, since it writes to the boot partition and has not been out long.
+
+After an update, the boot menu counts the tries of the new system: three, or five on an encrypted disk, since powering off
+at the passphrase counts as one. A start is good once the desktop is up, with a login screen or a session on the screen, and
+then the count is gone, so a computer that started fine has nothing left that could send it back. Switching the computer off
+before the desktop is up counts as a failed try, on purpose or not. With no tries left, it starts the system it ran before
+and makes that the default one. A notification says so at login.
+
+**While it waits, the apps wait too.** The automatic update waits for a newer image than the one that did not start, and it
+is one update for the system, Flatpak apps and Homebrew, so their updates wait with it, for days at most, until a newer
+image is out. To go on at once, press **Update now** in System Updates (the notification has **Open System Updates**) or run
+`ame update`: they update the apps, and try the image that did not start again, if it is still the newest. Turning this off
+(`ame update boot-guard off`) also lets the automatic update go on.
+
+Only the system is swapped. The folders of your home, your apps and your settings are not touched, and the update that
+failed stays behind as the second entry of the boot menu until the next one replaces it. It does not run on a machine whose
+`/boot` is mirrored or on btrfs, where the boot menu cannot write its count, nor on a [sealed image](#sealed-images). A system
+that starts but misbehaves after the login is not seen as failed: [roll back](#rolling-back) by hand then.
+
 ## Streams
 
 | Tag | What you get |

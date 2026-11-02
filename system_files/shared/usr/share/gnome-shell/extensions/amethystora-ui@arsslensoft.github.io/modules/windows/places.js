@@ -145,6 +145,9 @@ export class Places {
         this._soonId = 0;
         this._grabbed = null;
         this._quietUntil = 0;
+        this._heldKey = null;
+        if (this._ext.modules?.get('desks')?.layouts)
+            this.hold();
         if (copy)
             this._write();
         global.display.connectObject('window-created', (d, window) => this._created(window),
@@ -189,6 +192,18 @@ export class Places {
     // For tests
     get data() {
         return this._data;
+    }
+
+    // Where an app's window was in the arrangement last settled, which the windows themselves no longer say when the
+    // screens have just changed (desks/layouts.js)
+    leftPlace(id, rank) {
+        return this._data?.arrangements[this._heldKey]?.apps[id]?.places[rank] ?? null;
+    }
+
+    // The arrangement now is the one leftPlace speaks of, until the screens change. Asked only while desks keep the
+    // windows' places (key `desk-windows`): with it off nothing here looks at the arrangement for it.
+    hold() {
+        this._heldKey = this._arrangement().key;
     }
 
     // --- the arrangement ------------------------------------------------------------------------------------------
@@ -425,6 +440,11 @@ export class Places {
     // The screens changed: once their work areas are known, each window with a place in the new arrangement goes
     // there
     _screensChanged() {
+        // What is held for the arrangement being left, before anything is put back (desks/layouts.js)
+        const layouts = this._ext.modules?.get('desks')?.layouts;
+        layouts?.leaving();
+        if (layouts)
+            this.hold();
         this._quietUntil = GLib.get_monotonic_time() + QUIET * 1000;
         // Hotplug says so more than once: only the last one waits
         if (this._settleId)

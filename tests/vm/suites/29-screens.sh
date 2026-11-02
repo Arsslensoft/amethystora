@@ -12,7 +12,7 @@
 #   - a window on a screen without the keyboard is drawn on glass, and the top bar is solid while a window of the
 #     workspace its screen shows reaches it;
 #   - nothing of Amethystora UI throws meanwhile.
-# vmlab-paths: @ui/extension.js @ui/*tiling* @ui/*glass* @ui/*bars* @ui/*workspaces*
+# vmlab-paths: @ui/extension.js @ui/*tiling* @ui/*glass* @ui/*bars* @ui/*workspaces* @ui/*desks*
 source "$(dirname "$0")/lib.sh"
 
 UUID=amethystora-ui@arsslensoft.github.io

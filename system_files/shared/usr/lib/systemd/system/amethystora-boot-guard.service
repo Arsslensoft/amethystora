@@ -1,0 +1,26 @@
+[Unit]
+Description=Let an update that does not start go back by itself
+Documentation=file:///usr/share/amethystora/manual/updates.md
+# Off until ame update boot-guard on, and never on a sealed image. The second mark is what turning it off leaves when /boot
+# would not take the change at that moment: the next start finishes it
+ConditionPathExists=|/var/lib/amethystora/boot-guard/on
+ConditionPathExists=|/var/lib/amethystora/boot-guard/cleanup
+ConditionPathExists=!/usr/share/amethystora/sealed
+# Ordered after /boot's mount, not requiring it: a unit that is skipped must pull in nothing (a sealed image mounts /boot
+# only on demand)
+After=local-fs.target boot.mount
+After=bootloader-update.service
+# The disks' unit writes custom.cfg too: at shutdown this stops first, then that one, never both at once
+After=amethystora-raid-boot.service
+# Stopped after ostree-finalize-staged.service at shutdown, so that it reads the boot entries an update has just written
+Before=ostree-finalize-staged.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/libexec/amethystora-boot-guard begin
+ExecStop=/usr/libexec/amethystora-boot-guard arm
+RestrictRealtime=yes
+
+[Install]
+WantedBy=multi-user.target

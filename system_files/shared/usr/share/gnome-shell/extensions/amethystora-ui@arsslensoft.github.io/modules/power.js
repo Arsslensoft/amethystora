@@ -3,16 +3,19 @@
 // app that has kept the processor busy for two minutes (modules/power/busy.js). The same menu lists the batteries of the
 // mouse, the keyboard, the headphones and the rest, with a notice once at 15 % (modules/power/devices.js).
 //
-// Three keys of org.gnome.shell.extensions.amethystora-ui.power (ame desktop power battery|busy|devices, Control), read
+// At 3% a flat battery closes the computer cleanly and keeps where the apps were (modules/power/flat.js).
+//
+// Four keys of org.gnome.shell.extensions.amethystora-ui.power (ame desktop power battery|busy|devices|flat, Control), read
 // live; a part that is off has nothing connected and nothing made. Nothing new runs on a timer: the battery looks at the
 // processes when it is plugged in or out and when its menu opens, and the busy chip rides the meters' own reading
 // (without the meters there is no chip).
 //
-// For the suites: battery, busy and devices are the three parts, with their state() and test helpers.
+// For the suites: battery, busy, devices and flat are the parts, with their state() and test helpers.
 
 import {BatteryDetails} from './power/battery.js';
 import {Busy} from './power/busy.js';
 import {DeviceBatteries} from './power/devices.js';
+import {FlatBattery} from './power/flat.js';
 
 const SCHEMA = 'org.gnome.shell.extensions.amethystora-ui.power';
 
@@ -27,12 +30,14 @@ export class Power {
             'changed::battery-details', () => this._sync(),
             'changed::busy-app', () => this._sync(),
             'changed::device-batteries', () => this._sync(),
+            'changed::flat-battery', () => this._sync(),
             this);
         this._sync();
     }
 
     disable() {
         this._settings?.disconnectObject(this);
+        this._stop('_flat');
         this._stop('_devices');
         this._stop('_battery');
         this._stop('_busy');
@@ -49,6 +54,7 @@ export class Power {
             () => new Busy(modules?.get('meters'), () => modules?.get('glass') ?? null));
         this._toggle('_devices', this._settings.get_boolean('device-batteries'),
             () => new DeviceBatteries(modules?.get('quick'), modules?.get('connect')));
+        this._toggle('_flat', this._settings.get_boolean('flat-battery'), () => new FlatBattery(this._ext, this._settings));
     }
 
     _toggle(name, wanted, make) {
@@ -85,5 +91,13 @@ export class Power {
 
     get devices() {
         return this._devices;
+    }
+
+    get flat() {
+        return this._flat;
+    }
+
+    glassSurfaces() {
+        return this._flat?.glassSurfaces() ?? [];
     }
 }

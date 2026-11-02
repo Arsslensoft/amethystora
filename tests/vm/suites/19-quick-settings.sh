@@ -18,7 +18,7 @@
 # The lab draws without a GPU, where GNOME turns animations off: arrange mode's shrinking and making room are run with
 # animations forced on (global.force_animations), put back however the suite ends.
 # The Wi-Fi strength and a Bluetooth device's battery need hardware the lab has not.
-# vmlab-paths: @ui/extension.js @ui/*quick* @sf/*themed/shell-quick* @sf/*just/desktop.just
+# vmlab-paths: @ui/extension.js @ui/*quick* @sf/*themed/shell-quick* @sf/*just/desktop.just @ui/*power*
 source "$(dirname "$0")/lib.sh"
 
 UUID=amethystora-ui@arsslensoft.github.io

@@ -144,8 +144,19 @@ under **This computer**. A row says **charge it soon** under 20%, and a notice s
 while such a device is there, naming the emptiest. It is what UPower already knows, followed as UPower says it changes:
 nothing is asked on a timer.
 
-`ame desktop power battery on|off`, `ame desktop power busy on|off` and `ame desktop power devices on|off`, also in
-[Control](control.md).
+**A flat battery.** At 3% the laptop does not simply die. A card says **Closing safely in 60 seconds**, and the pill shows
+the charge in red. Save what you need: it cannot save an app's work for you, so the 60 seconds are yours. Which apps were
+open and where is kept at once, and the computer powers off when the time is up or at **Close now**. **Not yet**
+holds it until the charge falls further (the card takes no typing, so `Super+Shift+N` says it from the keyboard while the
+card shows), and plugging in ends it. At the next start the pill offers **Reopen your apps**. It closes rather than
+hibernates, since [kernel lockdown](security.md) refuses hibernation. If an app holds the logout, GNOME's own dialog names
+it and asks; if you then go on, what was kept stays only until you plug in. Below 2% the system closes by itself, as it
+always did, and while the screen is locked that is what closes it; a lock on battery keeps the same list, and the unlock
+takes it away. Only app names and window places are kept, never a title, a file or a page. A call or a recording in the pill
+keeps its place there; this one is listed in its card.
+
+`ame desktop power battery on|off`, `ame desktop power busy on|off`, `ame desktop power devices on|off` and
+`ame desktop power flat on|off`, also in [Control](control.md).
 
 ## Today
 
@@ -541,6 +552,20 @@ never changes a security setting and never starts an app by itself.
 (until then a desk is named after what it has, like "2 screens"), and `ame desktop desks forget ID` forgets it. The
 desks are kept in `~/.config/amethystora/desks.json`, which only your account can read. The screens' serial numbers
 stay there: they are never in [your setup file](setup.md), which carries only whether Desks are on.
+
+### Screens come back as you left them
+
+Plug the dock back in, and every window goes back to its screen, place and size, instead of a pile on one display to deal
+back out by hand. It needs no desk set up, and it is on (Control's **Screens come back as you left them**, or
+`ame desktop desks windows on|off`). In the tiling, each workspace's windows go back to their columns, in their order and
+at their widths, on the screen that showed them; in the classic layout, each window goes back to its place, which needs
+[windows that go back to their places](#windows-in-the-classic-layout). A set of screens is known by maker, model and serial number, so a dock
+that names its ports differently today changes nothing.
+
+Windows are only moved: nothing is started or closed, and a window you opened since stays where it is. A floating window
+under the tiling, and the heights in a stacked column, are not kept. Only which app it was, its place and a hash of the
+screen are kept, in `desks.json`, for the six sets of screens seen last: never a window's title, a file or a page.
+Turning it off forgets them.
 
 ## Sounds
 

@@ -126,6 +126,8 @@ const resume = {version: 1, saved: 1761900000, from: 'latest-45.20261031:abc1234
     workspaces: [{index: 2, layout: 'tiling', windows: good.windows}, {index: 0, layout: 'classic', windows: [good.windows[0]]}]};
 expect('resume kept, by place', cleanResume(resume)?.workspaces.map(w => [w.index, w.windows.length]), [[0, 1], [2, 3]]);
 expect('resume: the workspace in front', cleanResume(resume)?.active, 2);
+expect('resume: what a flat battery left', ['battery', 'asleep'].map(kind => cleanResume({...resume, kind})?.kind),
+    ['battery', 'asleep']);
 for (const [what, bad] of [['version', {...resume, version: 2}], ['kind', {...resume, kind: 'x'}],
     ['from', {...resume, from: 'a b'}], ['saved', {...resume, saved: 'now'}], ['not an object', []],
     ['nothing left', {...resume, workspaces: [{index: 1, layout: 'classic', windows: [{app: 'bad', rank: 0}]}]}]])

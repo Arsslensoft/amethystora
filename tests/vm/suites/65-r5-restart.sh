@@ -16,7 +16,7 @@
 #     zone's words, never twice;
 #   - ten disables and enables leaving nothing and the D-Bus object back, Control's entries and the setup file.
 # A staged update is stood in for by /run/ostree/staged-deployment, made only when there is none, and taken away again.
-# vmlab-paths: @ui/extension.js @ui/*workspaces* @ui/*pill* @ui/*privacy* @sf/usr/libexec/amethystora-soft-reboot @sf/usr/libexec/amethystora-night-restart @sf/usr/libexec/amethystora-metered @sf/usr/lib/systemd/*uupd* @sf/usr/lib/systemd/user/amethystora-backup.service @sf/usr/lib/systemd/user/amethystora-pkg-upgrade.service @sf/*just/desktop.just @sf/*just/update.just @sf/usr/libexec/amethystora-control-list @sf/usr/libexec/amethystora-setup apps/update/*
+# vmlab-paths: @ui/extension.js @ui/*workspaces* @ui/*pill* @ui/*privacy* @sf/usr/libexec/amethystora-soft-reboot @sf/usr/libexec/amethystora-night-restart @sf/usr/libexec/amethystora-metered @sf/usr/lib/systemd/*uupd* @sf/usr/lib/systemd/user/amethystora-backup.service @sf/usr/lib/systemd/user/amethystora-pkg-upgrade.service @sf/*just/desktop.just @sf/*just/update.just @sf/usr/libexec/amethystora-control-list @sf/usr/libexec/amethystora-setup apps/update/* @ui/*power* @ui/*desks* @sf/usr/libexec/amethystora-boot-guard
 source "$(dirname "$0")/lib.sh"
 
 UUID=amethystora-ui@arsslensoft.github.io

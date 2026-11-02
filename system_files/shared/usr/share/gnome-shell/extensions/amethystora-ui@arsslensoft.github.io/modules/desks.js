@@ -11,7 +11,10 @@
 // manager's monitors-changed, a monitor of desks.json, and with learning the mixer's output and the dock's two keys; one
 // timeout of 2 s after the screens change, none otherwise.
 //
-// For the suites and the harness: state(), evaluate(), card, toast.
+// Apart from that, and on by default: every window goes back when a set of screens comes back (`desk-windows`,
+// desks/layouts.js), kept in the same file.
+//
+// For the suites and the harness: state(), evaluate(), card, toast, layouts.
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
@@ -24,6 +27,7 @@ import * as Volume from 'resource:///org/gnome/shell/ui/status/volume.js';
 import {Applier} from './desks/apply.js';
 import {makeCard, makeToast} from './desks/card.js';
 import {defaultName, hasWords, readDesk} from './desks/identity.js';
+import {Layouts, forgetLayouts} from './desks/layouts.js';
 import {DesksState, FILE} from './desks/state.js';
 
 const SCHEMA = 'org.gnome.shell.extensions.amethystora-ui.desks';
@@ -53,17 +57,55 @@ export class Desks {
         this._settings = this._ext.getSettings(SCHEMA);
         this._settings.connectObject(
             'changed::desks', () => this._sync(),
-            'changed::desks-learn', () => this._syncLearning(), this);
+            'changed::desks-learn', () => this._syncLearning(),
+            'changed::desk-windows', () => this._syncWindows(), this);
         this._on = false;
         this._sync();
+        this._syncWindows();
     }
 
     disable() {
+        this._stopWindows();
         this._stop({turnedOff: false});
         this._settings?.disconnectObject(this);
         // Disposed now rather than by the collector (dock.js says why)
         this._settings?.run_dispose();
         this._settings = null;
+    }
+
+    // Where the windows were at each set of screens, whether or not desks are on
+    _syncWindows() {
+        const on = this._settings.get_boolean('desk-windows');
+        if (on && !this.layouts) {
+            this.layouts = new Layouts(this._ext);
+            try {
+                this.layouts.enable();
+            } catch (e) {
+                console.error(`Amethystora UI: the desks' windows did not start: ${e.message}\n${e.stack}`);
+                this._stopWindows();
+            }
+        } else if (!on) {
+            this._stopWindows();
+            // However it was turned off (the recipe, the setup file, a setting by hand, or before this GNOME Shell started),
+            // what was kept goes: a read of the file, and a write only when it holds layouts
+            forgetLayouts();
+        }
+    }
+
+    _stopWindows() {
+        const layouts = this.layouts;
+        this.layouts = null;
+        try {
+            layouts?.disable();
+        } catch (e) {
+            console.error(`Amethystora UI: the desks' windows did not stop cleanly: ${e.message}`);
+        }
+    }
+
+    // A screen lock, while the tiling still runs
+    beforeDisable() {
+        if (Main.sessionMode.isLocked)
+            this.layouts?.beforeLock();
     }
 
     _sync() {
@@ -476,6 +518,7 @@ export class Desks {
             surfaces.push({actor: this._card, material: 'glass', radius: 22});
         if (this._toast)
             surfaces.push({actor: this._toast, material: 'glass', radius: null});
+        surfaces.push(...this.layouts?.glassSurfaces() ?? []);
         return surfaces;
     }
 

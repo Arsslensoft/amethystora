@@ -265,13 +265,13 @@ BACKUPDISK=org.gnome.shell.extensions.amethystora-ui.backupdisk
 BACKUPDISK_KEYS='{"ask": ["b"]}'
 # The battery explained and the busy app's chip (Power you can see)
 POWER=org.gnome.shell.extensions.amethystora-ui.power
-POWER_KEYS='{"battery-details": ["b"], "busy-app": ["b"], "device-batteries": ["b"]}'
+POWER_KEYS='{"battery-details": ["b"], "busy-app": ["b"], "device-batteries": ["b"], "flat-battery": ["b"]}'
 # The shelf, by how it opens; never what it holds, which is never written anywhere
 SHELF=org.gnome.shell.extensions.amethystora-ui.shelf
 SHELF_KEYS='{"shelf": ["s", ["off", "edge", "shake"]]}'
 # Desks, on or off and whether they learn; never the desks themselves, which name this machine's screens by serial number
 DESKS=org.gnome.shell.extensions.amethystora-ui.desks
-DESKS_KEYS='{"desks": ["b"], "desks-learn": ["b"]}'
+DESKS_KEYS='{"desks": ["b"], "desks-learn": ["b"], "desk-windows": ["b"]}'
 # Focus profiles: the two triggers and what each of Work, Games and Sleep does. Never profile, ends and off-at (what is on
 # now) or a profile's set (a saved set is this machine's state). The apps let through are launchers by their ID.
 FOCUS=org.gnome.shell.extensions.amethystora-ui.focus

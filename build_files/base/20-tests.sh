@@ -868,16 +868,21 @@ if compgen -G "/usr/share/amethystora/manual/*/whats-new.md" >/dev/null; then
     echo "whats-new.md is made by the build and must not be translated"
     exit 1
 fi
-# Power you can see: three switches, all on (the devices' batteries, round 6's R6-26, among them), the module between
-# today's and the dock, its recipe; it quits an app only by asking it (request_quit), and runs nothing
+# Power you can see: four switches, all on (the devices' batteries, round 6's R6-26, and the flat battery, R7-54, among
+# them), the module between today's and the dock, its recipe; it quits an app only by asking it (request_quit), and runs
+# nothing. The flat battery's own files block nothing (its rule is checked by node, with the saved sets, below).
 POWER=org.gnome.shell.extensions.amethystora-ui.power
-[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${POWER}" | sort | paste -sd ' ')" == "battery-details busy-app device-batteries" ]]
-for key in battery-details busy-app device-batteries; do
+[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${POWER}" | sort | paste -sd ' ')" == "battery-details busy-app device-batteries flat-battery flat-hold" ]]
+# Not yet from the keyboard, bound only while the flat battery's card shows: a key nobody else binds
+[[ "$(GSETTINGS_BACKEND=memory gsettings get "${POWER}" flat-hold)" == "['<Super><Shift>n']" ]]
+for key in battery-details busy-app device-batteries flat-battery; do
     [[ "$(GSETTINGS_BACKEND=memory gsettings get "${POWER}" "${key}")" == true ]]
 done
-for file in modules/power.js modules/power/apps.js modules/power/battery.js modules/power/busy.js modules/power/devices.js     stylesheets/power.css; do
+for file in modules/power.js modules/power/apps.js modules/power/battery.js modules/power/busy.js modules/power/devices.js     modules/power/flat.js modules/power/flatdata.js modules/pill/flat.js stylesheets/power.css; do
     test -s "${UI_EXTENSION}/${file}"
 done
+grep -qE "gi://|resource://" "${UI_EXTENSION}/modules/power/flatdata.js" && false
+[[ -z "$(grep -nE '_sync\(|file_get_contents' "${UI_EXTENSION}/modules/power/flat.js" "${UI_EXTENSION}/modules/pill/flat.js")" ]]
 test -s /usr/share/amethystora/themed/shell-power.css.tpl
 [[ "$(grep -oE "^    \['(today|power|dock)'," "${UI_EXTENSION}/extension.js" | paste -sd ' ')" == \
     "    ['today',     ['power',     ['dock'," ]]
@@ -1860,6 +1865,44 @@ for unit in amethystora-raid-check amethystora-raid-scrub; do
     grep -q "^ExecCondition=/usr/libexec/amethystora-raid present$" "/usr/lib/systemd/system/${unit}.service"
 done
 grep -q "^ExecCondition=/usr/libexec/amethystora-raid present-system$" /usr/lib/systemd/system/amethystora-raid-boot.service
+# An update that does not start goes back by itself (R7-52; manual: updates.md#if-an-update-does-not-start): off as the
+# image ships, both units conditional on the owner's mark and never on a sealed image; the helper against stand-ins, GRUB's
+# script checked; the automatic update asks and Update now does not; it names no home folder, and its way back is by
+# id: by position the second entry can be the firmware settings
+test -x /usr/libexec/amethystora-boot-guard
+test ! -e /var/lib/amethystora/boot-guard/on
+for unit in amethystora-boot-guard amethystora-boot-guard-good; do
+    # The owner's mark, or the one a turn-off leaves when /boot would not take it (either); never on a sealed image. A
+    # skipped unit must pull in nothing: ordered after /boot's mount, never requiring it, and no ProtectClock, which
+    # closes the device list grub2-editenv needs for the partition under /boot
+    grep -qxF 'ConditionPathExists=|/var/lib/amethystora/boot-guard/on' "/usr/lib/systemd/system/${unit}.service"
+    grep -qxF 'ConditionPathExists=|/var/lib/amethystora/boot-guard/cleanup' "/usr/lib/systemd/system/${unit}.service"
+    grep -qxF 'ConditionPathExists=!/usr/share/amethystora/sealed' "/usr/lib/systemd/system/${unit}.service"
+    grep -q '^After=local-fs.target boot.mount$' "/usr/lib/systemd/system/${unit}.service"
+    grep -qE '^(RequiresMountsFor|ProtectClock)=' "/usr/lib/systemd/system/${unit}.service" && false
+done
+grep -q '^Before=ostree-finalize-staged.service$' /usr/lib/systemd/system/amethystora-boot-guard.service
+# The disks' unit and the guard both write custom.cfg: one stops before the other, and a command typed meanwhile takes the
+# same lock
+grep -q '^After=amethystora-raid-boot.service$' /usr/lib/systemd/system/amethystora-boot-guard.service
+# A good start is the display manager and a session on the seat, not graphical.target: a stray oneshot that never ends holds
+# that target for good, and a slow greeter is waited for as long as the start lasts
+grep -qE '^After=.*graphical.target' /usr/lib/systemd/system/amethystora-boot-guard-good.service && false
+grep -q '^After=display-manager.service ' /usr/lib/systemd/system/amethystora-boot-guard-good.service
+grep -q '^TimeoutStartSec=infinity$' /usr/lib/systemd/system/amethystora-boot-guard-good.service
+# What the guard writes to /boot is flushed to the disk (GRUB reads ext4 without its journal); the disks' unit does the same
+# only while the guard is on, and is as it was otherwise
+grep -qF 'fsfreeze -f /boot' /usr/libexec/amethystora-boot-guard
+grep -qF '[[ -e /var/lib/amethystora/boot-guard/on ]] && command -v fsfreeze' /usr/libexec/amethystora-raid
+grep -qF '/run/amethystora/boot-cfg.lock' /usr/libexec/amethystora-raid
+grep -qF 'LOCK="${R}/run/amethystora/boot-cfg.lock"' /usr/libexec/amethystora-boot-guard
+grep -q '^ExecCondition=/usr/libexec/amethystora-boot-guard update-ok$' /usr/lib/systemd/system/uupd.service.d/51-amethystora-boot-guard.conf
+systemctl cat uupd-manual.service 2>/dev/null | grep -q boot-guard && false
+grep -qE '/var/home|\$\{?HOME|/home/|default=1' /usr/libexec/amethystora-boot-guard && false
+# bootupd's static configuration must still read custom.cfg after its entries, which is the only way in
+grep -qF 'custom.cfg' /usr/lib/bootupd/grub2-static/configs.d/41_custom.cfg
+bash /ctx/build_files/shared/test-boot-guard.sh
+systemd-analyze verify --man=no --recursive-errors=no /usr/lib/systemd/system/amethystora-boot-guard{,-good}.service
 systemd-analyze verify --man=no --recursive-errors=no /usr/lib/systemd/system/amethystora-raid-{check,scrub}.{service,timer} \
     /usr/lib/systemd/system/amethystora-raid-{boot,mirror}.service
 # A mirror's first disk's /boot joins it while nothing holds /boot: before boot.mount, and only when one waits
@@ -3072,14 +3115,31 @@ GSETTINGS_BACKEND=memory ame desktop shelf edge >/dev/null
 # Desks (R4-09; manual: desktop.md#desks): off for a new account and learning once on; the module, its files and recipe;
 # it starts nothing, shows nothing as markup, and keeps its desks in the account's own folder
 DESKS=org.gnome.shell.extensions.amethystora-ui.desks
-[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${DESKS}" | sort | paste -sd ' ')" == "desks desks-learn" ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${DESKS}" | sort | paste -sd ' ')" == "desk-windows desks desks-learn" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${DESKS}" desks)" == false ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${DESKS}" desks-learn)" == true ]]
 grep -q "\['desks', Desks\]" "${UI_EXTENSION}/extension.js"
 for file in modules/desks.js modules/desks/apply.js modules/desks/card.js modules/desks/identity.js \
-    modules/desks/state.js stylesheets/desks.css; do
+    modules/desks/state.js modules/desks/layouts.js modules/desks/layoutsdata.js stylesheets/desks.css; do
     test -s "${UI_EXTENSION}/${file}"
 done
+# Screens come back as you left them (R7-46; manual: desktop.md#screens-come-back-as-you-left-them): on; what it keeps has
+# no GNOME in it, so node checks it (test-desk-layouts.mjs, with the saved sets); it blocks nothing, and it never reads a
+# window's title, starts an app or closes one
+[[ "$(GSETTINGS_BACKEND=memory gsettings get "${DESKS}" desk-windows)" == true ]]
+grep -qE "gi://|resource://" "${UI_EXTENSION}/modules/desks/layoutsdata.js" && false
+[[ -z "$(grep -nE '_sync\(|file_get_contents|get_title|\.launch\(|open_new_window|\.delete\(|\.kill\(' \
+    "${UI_EXTENSION}/modules/desks/layouts.js")" ]]
+grep -qF "get('desks')?.layouts?.leaving()" "${UI_EXTENSION}/modules/tiling/engine.js"
+grep -qF "layouts?.leaving();" "${UI_EXTENSION}/modules/windows/places.js"
+# Turned off by any route, the windows' places go from the file; a write is refused by the file's etag when the recipe
+# wrote it meanwhile
+grep -qF 'forgetLayouts();' "${UI_EXTENSION}/modules/desks.js"
+grep -qF 'WRONG_ETAG' "${UI_EXTENSION}/modules/desks/layouts.js"
+# The flat battery's Not yet has a key of its own, bound only while its card shows; the card is after a call and a
+# recording in the pill, whose controls are only there
+grep -qF "Main.wm.addKeybinding(HOLD_KEY" "${UI_EXTENSION}/modules/power/flat.js"
+grep -q "^export const ORDER = \['call', 'recording', 'flat'," "${UI_EXTENSION}/modules/pill/activities.js"
 test -s /usr/share/amethystora/themed/shell-desks.css.tpl
 [[ -z "$(grep -rnE "Subprocess|Util\.spawn|spawn_command_line|GLib\.spawn|use_markup = true|use_markup: true|set_markup\(" \
     "${UI_EXTENSION}/modules/desks.js" "${UI_EXTENSION}/modules/desks")" ]]
@@ -3267,6 +3327,8 @@ grep -qF "get('workspaces')?.claim?.(window)" "${UI_EXTENSION}/modules/tiling/en
 grep -qF "get('workspaces')?.claimed?.(window)" "${UI_EXTENSION}/modules/windows/places.js"
 grep -qF "get('workspaces')?.arriving?.(window)" "${UI_EXTENSION}/modules/motion.js"
 "${NODE[@]}" /ctx/build_files/shared/test-sets.mjs
+"${NODE[@]}" /ctx/build_files/shared/test-flat-battery.mjs
+"${NODE[@]}" /ctx/build_files/shared/test-desk-layouts.mjs
 test -s /usr/share/amethystora/themed/shell-motion.css.tpl
 # The droplet's frames are the design board's at twice its size (plans/beyond/spec-motion.md, H1): path.js has no
 # GNOME in it, so node works them out
@@ -5077,6 +5139,8 @@ IMPORTANT_UNITS=(
     amethystora-raid-check.timer
     amethystora-raid-scrub.timer
     amethystora-raid-boot.service
+    amethystora-boot-guard.service
+    amethystora-boot-guard-good.service
     amethystora-raid-mirror.service
     amethystora-zram-recompress.timer
   )

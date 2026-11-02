@@ -15,7 +15,7 @@
 #   soft reboot: the same kernel (boot id), SoftRebootsCount one higher, the update running, a file put in /etc
 #   after it was staged still there, the account signed in again;
 # - a full restart afterwards starts the update too, and the machine is put back on its own image.
-# vmlab-paths: @sf/usr/libexec/amethystora-soft-reboot apps/update/*
+# vmlab-paths: @sf/usr/libexec/amethystora-soft-reboot apps/update/* @sf/usr/libexec/amethystora-boot-guard @sf/usr/lib/systemd/system/amethystora-boot-guard*
 source "$(dirname "$0")/lib.sh"
 
 HERE="$(dirname "$0")"

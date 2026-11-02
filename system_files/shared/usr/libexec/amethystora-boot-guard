@@ -1,0 +1,609 @@
+#!/usr/bin/bash
+# An update can't stop it starting (R7-52, plans/ui-ideas/r7/spec-sturdy.md 3). If a new system does not start, the computer
+# goes back by itself to the one it was running. Off until `ame update boot-guard on`: it has been proved against stand-ins
+# only until the lab has broken an image on purpose.
+#
+# bootupd's static GRUB configuration has neither of Fedora's counting snippets, and reads only $prefix/custom.cfg after its
+# entries, so that is where this works, between its own markers, as amethystora-raid does. Nothing there runs unless a new
+# system has just been put in place:
+#
+#   arm     ExecStop of amethystora-boot-guard.service, at shutdown after ostree finalized an update. Only when this start
+#           was good, the default deployment is new and has this guard in it, the entry behind it is the very system
+#           running now, and the two entries differ in more than ostree's numbering (else ostree would swap them without
+#           a new boot version, and the entry would start the failed one): writes a menu entry for that system, with the
+#           arguments ostree wrote, and a count of tries in grubenv. A block left from an update that is no longer there
+#           is taken away first. Every write of /boot is flushed to the disk (fsfreeze), GRUB not replaying the journal.
+#   (GRUB)  counts each try down in grubenv. With none left it starts the entry above, but only while the entry is still
+#           real: ostree deletes the boot loader's /loader.N when it writes the deployments again, and with it the
+#           /ostree/boot.N link the entry names, and the kernel has to be there. If it cannot write grubenv the count never
+#           falls, and the new system simply keeps starting, as without this. At 0 it takes the entry and saves 0b, at 0b
+#           the default and saves 0: no entry can hold the computer for good.
+#   good    amethystora-boot-guard-good.service, once the display manager is up and the seat has a session (waited for as
+#           long as the start lasts, not after graphical.target). On the new system: its checksum is written in /var, then the entry and the count taken away, so a
+#           computer that started fine has nothing left that could send it back.
+#           On the old system with no tries left (0 or 0b): a record in /var, `bootc rollback` (and rpm-ostree's only if the
+#           default is still the failed system after it), which only swaps the two deployments (the new one is kept); only
+#           if the old system is the default now, the record becomes went-back.json and the entry and the count go; if not,
+#           nothing is taken away. Cut off between any two of these, the computer still starts the old system by itself or
+#           takes its turn at the default: until the rollback the entry is real, after it GRUB finds /loader.N gone (when
+#           ostree flips the boot version) and the default is the old system. If /var says the new system did start, /boot
+#           just could not be written then: nothing is rolled back, and the count is cleared.
+#   begin   ExecStart of the same unit: what the last start knew goes (a soft reboot keeps /run)
+#
+#   status [--json]   {on, can, why, armed, tries, went_back}; an account may not be able to read /boot's half of it
+#   set on|off        root's; off takes away what arm wrote, or leaves a mark for the next start to do it
+#   update-ok         ExecCondition of uupd.service: 1 while the newest image is the one that did not start
+#   would             what arm would do now, in words, for the lab
+#
+# It touches /boot, and a file of its own in /var/lib/amethystora/boot-guard: never a home folder. A sealed image is left
+# alone: its boot chain is another bootloader's, and nothing here has been proved on it.
+
+set -uo pipefail
+
+R="${AMETHYSTORA_BOOT_GUARD_ROOT:-}"
+BOOT="${R}/boot"
+CFG="${BOOT}/grub2/custom.cfg"
+STATE="${R}/var/lib/amethystora/boot-guard"
+ON="${STATE}/on"
+# Left by `set off` when /boot would not take the change: the units run for it, and take the block away
+CLEANUP="${STATE}/cleanup"
+GOOD_RECORD="${STATE}/good"
+WENT_BACK="${STATE}/went-back.json"
+# What went-back.json will say, written before the rollback so that a power cut between the two is still understood
+ROLLING="${STATE}/rolling-back.json"
+RUN="${R}/run/amethystora/boot-guard"
+GOOD_NOW="${RUN}/good"
+# One writer of custom.cfg at a time with amethystora-raid, which keeps its own entry in the same file
+LOCK="${R}/run/amethystora/boot-cfg.lock"
+LOCK_WAIT="${AMETHYSTORA_BOOT_GUARD_LOCK_WAIT:-60}"
+SEALED="${R}/usr/share/amethystora/sealed"
+ENV_KEY=ame_boot_tries
+ENTRY_ID=amethystora-previous
+BEGIN='### BEGIN amethystora-boot-guard ###'
+END='### END amethystora-boot-guard ###'
+IDS_KEY='# amethystora-boot-guard for '
+# Tries of the new system before going back, and more where a person may power off at the disk's passphrase
+TRIES=3
+TRIES_LUKS=5
+# How long, in seconds, a session may take to appear on the seat; 0 is as long as the start lasts (the test sets a limit)
+SESSION_WAIT="${AMETHYSTORA_BOOT_GUARD_WAIT:-0}"
+
+say() { echo "amethystora-boot-guard: $*" >&2; }
+is_on() { [[ -e "${ON}" ]]; }
+sealed() { [[ -e "${SEALED}" ]]; }
+
+# FILE, its content on standard input, written whole beside it and moved into place
+put() {
+    local file="$1" tmp="$1.new.$$"
+    if cat >"${tmp}" && chmod 0644 "${tmp}" && sync "${tmp}" && mv -f "${tmp}" "${file}"; then
+        return 0
+    fi
+    rm -f "${tmp}"
+    return 1
+}
+
+# The deployments, newest default first, as `ostree admin status` lists them: "BOOTED CHECKSUM.SERIAL FLAG STATEROOT" per
+# line (BOOTED is 1 or 0, FLAG staged, pending or -). No daemon: this is asked at shutdown too.
+deployments() {
+    ostree admin status 2>/dev/null | awk '
+        /^[* ] [^ ]+ [0-9a-f]{64}\.[0-9]+/ {
+            booted = ($1 == "*")
+            print (booted ? 1 : 0), (booted ? $3 : $2), ($0 ~ /\(staged\)/ ? "staged" : ($0 ~ /\(pending\)/ ? "pending" : "-")), (booted ? $2 : $1)
+        }'
+}
+
+# The mount of /boot itself, not the automount systemd may keep over it: "source fstype options"
+boot_mount() {
+    findmnt -rn -o SOURCE,FSTYPE,OPTIONS --mountpoint /boot 2>/dev/null | awk '$2 != "autofs" { print; exit }'
+}
+
+# Why tries cannot be counted here, or nothing. GRUB writes grubenv only on a plain filesystem, in place: not through
+# RAID, and not on btrfs, where a mirrored /boot or a /boot that is a folder of the system's disk would never count.
+why_not() {
+    local source fstype options
+    if sealed; then
+        echo sealed
+        return
+    fi
+    command -v grub2-editenv >/dev/null || {
+        echo "no-grub"
+        return
+    }
+    read -r source fstype options <<<"$(boot_mount)"
+    case "${fstype}" in
+        ext2 | ext3 | ext4) ;;
+        *)
+            echo "boot-filesystem"
+            return
+            ;;
+    esac
+    case "${source}" in
+        /dev/md* | *\[*)
+            echo "boot-mirrored"
+            return
+            ;;
+    esac
+    [[ -d "${BOOT}/grub2" ]] || echo "no-grub"
+}
+
+# COMMAND... with /boot writable, as ostree makes it for its own changes, read-only again after when it was
+with_boot_rw() {
+    local source fstype options code
+    read -r source fstype options <<<"$(boot_mount)"
+    if [[ ",${options}," == *,ro,* ]]; then
+        mount -o remount,rw /boot || return 1
+        "$@"
+        code=$?
+        mount -o remount,ro /boot
+        return "${code}"
+    fi
+    "$@"
+}
+
+# COMMAND... alone with custom.cfg and /boot's mount: amethystora-raid takes the same lock (the guard stops before the disks'
+# unit at shutdown, so this is for a command typed while a start is running)
+with_cfg_lock() {
+    local fd code
+    mkdir -p "${LOCK%/*}" 2>/dev/null
+    # The group keeps the silence to the open itself: `exec ... 2>/dev/null` would silence this shell for good
+    if ! { exec {fd}>>"${LOCK}"; } 2>/dev/null; then
+        "$@"
+        return
+    fi
+    if ! flock -w "${LOCK_WAIT}" "${fd}"; then
+        say "custom.cfg is being written by another command, so nothing was changed"
+        exec {fd}>&-
+        return 1
+    fi
+    "$@"
+    code=$?
+    exec {fd}>&-
+    return "${code}"
+}
+
+# What was written reaches the disk itself, not only the journal: GRUB reads ext4 without replaying it, and a /boot left
+# read-write is not flushed by a remount. ostree freezes and thaws /boot around its own swap for the same reason.
+flush_boot() {
+    command -v fsfreeze >/dev/null || return 0
+    fsfreeze -f /boot 2>/dev/null || return 0
+    # Never left frozen: whatever else happens, the thaw is tried twice
+    fsfreeze -u /boot 2>/dev/null || fsfreeze -u /boot 2>/dev/null
+}
+
+# COMMAND... then flush; its status
+write_and_flush() {
+    local code
+    "$@"
+    code=$?
+    flush_boot
+    return "${code}"
+}
+
+boot_write() { with_cfg_lock with_boot_rw write_and_flush "$@"; }
+
+editenv() {
+    grub2-editenv "${BOOT}/grub2/grubenv" "$@"
+}
+
+tries_left() {
+    [[ -s "${BOOT}/grub2/grubenv" ]] || return 0
+    editenv list 2>/dev/null | awk -F= -v key="${ENV_KEY}" '$1 == key { print $2; exit }'
+}
+
+# No tries left: GRUB counts 0 and 0b by turns once they are (0 takes the entry, 0b the default), and either means it
+tries_none() {
+    local left
+    left="$(tries_left)"
+    [[ "${left}" == 0 || "${left}" == 0b ]]
+}
+
+armed() {
+    grep -qxF "${BEGIN}" "${CFG}" 2>/dev/null
+}
+
+# The two deployments the block was written for, "NEW OLD", by checksum and serial
+armed_ids() {
+    sed -n "s/^${IDS_KEY}//p" "${CFG}" 2>/dev/null | head -n 1
+}
+
+# custom.cfg with the block given (or none), the rest kept as it is, written whole through a file beside it
+write_block() {
+    local block="$1" current="" new tmp="${CFG}.new.$$"
+    [[ -f "${CFG}" ]] && current="$(cat "${CFG}")"
+    new="$(awk -v b="${BEGIN}" -v e="${END}" '$0 == b { skip = 1 } !skip { print } $0 == e { skip = 0 }' <<<"${current}")"
+    [[ -n "${block}" ]] && new="${new:+${new}$'\n'}${block}"
+    [[ "${new}" == "${current}" ]] && return 0
+    # A file a power cut left, under this name or the older one: nobody else writes it, the lock is ours
+    rm -f "${CFG}.new" "${CFG}".new.*
+    if [[ -z "${new}" ]]; then
+        rm -f "${CFG}"
+    else
+        # tee, so that the write is one tool the test can cut in half
+        printf '%s\n' "${new}" | tee "${tmp}" >/dev/null && sync "${tmp}" && mv -f "${tmp}" "${CFG}" || {
+            rm -f "${tmp}"
+            return 1
+        }
+    fi
+}
+
+# The boot entry ostree titled "(ostree:N)": N 0 is the default, 1 the one behind it
+entry_of() {
+    grep -lsF "(ostree:$1)" "${BOOT}"/loader/entries/*.conf | head -n 1
+}
+
+# Whether the deployment holds this guard and has it enabled: a system without it would never say its start was good, and
+# the computer would be sent back from a start that was fine. ROOT SUM.SERIAL, as `ostree admin status` gives them.
+has_guard() {
+    local dir="${R}/ostree/deploy/$1/deploy/$2" unit=amethystora-boot-guard-good.service wants=systemd/system/graphical.target.wants
+    [[ -x "${dir}/usr/libexec/amethystora-boot-guard" ]] || return 1
+    [[ -L "${dir}/etc/${wants}/${unit}" || -e "${dir}/etc/${wants}/${unit}" || -L "${dir}/usr/lib/${wants}/${unit}" ||
+        -e "${dir}/usr/lib/${wants}/${unit}" ]]
+}
+
+# What an entry says apart from what ostree numbers: the same words in both mean the same kernel, initramfs, arguments and
+# version, so that ostree does not change its boot version for a swap of the two (deployment_bootconfigs_equal), and the
+# links an entry names (ostree=/ostree/boot.N/default/BOOTCSUM/SERIAL) then change meaning without any name changing.
+# The `version` line is ostree's own count of entries, and the title's (ostree:N) its place.
+boot_shape() {
+    sed -e '/^version /d' -e 's/ (ostree:[0-9][0-9]*)$//' -e '/^options /s/ ostree=[^ ]*//' "$1"
+}
+
+# What custom.cfg holds while armed: GRUB counts down from what arm set, a value at a time, since a stock GRUB may lack
+# `increment`; with none left it starts the system that was running when the new one was put in place, if that is still
+# there: /loader.N is the boot version the entry was written for, which ostree deletes at its next write (not at every
+# write: see boot_shape). At 0 it takes the entry and saves 0b, at 0b it takes the default and saves 0, so that no entry,
+# however wrong, can hold the computer: every other start is what ostree says is the default.
+# ENTRY NEW OLD
+guard_block() {
+    local entry="$1" new="$2" old="$3" linux initrd options version
+    linux="$(awk '$1 == "linux" { print $2; exit }' "${entry}")"
+    initrd="$(awk '$1 == "initrd" { $1 = ""; sub(/^ +/, ""); print; exit }' "${entry}")"
+    options="$(awk '$1 == "options" { $1 = ""; sub(/^ +/, ""); print; exit }' "${entry}")"
+    [[ -n "${linux}" && -n "${initrd}" && "${options}" == *ostree=* ]] || return 1
+    version="$(sed -n 's|.*ostree=/ostree/boot\.\([0-9][0-9]*\)/.*|\1|p' <<<"${options}")"
+    [[ -n "${version}" ]] || return 1
+    printf '%s\n' "${BEGIN}" \
+        "# amethystora-boot-guard arm wrote this for the first starts of a new system; a good start takes it away (updates.md)" \
+        "${IDS_KEY}${new} ${old}" \
+        "if [ \"\${${ENV_KEY}}\" = \"0\" ]; then" \
+        "    set ${ENV_KEY}=0b" \
+        "    save_env ${ENV_KEY}" \
+        "    if [ -d /loader.${version} ]; then" \
+        "        if [ -f ${linux} ]; then" \
+        "            set default=${ENTRY_ID}" \
+        "        fi" \
+        "    fi" \
+        "elif [ \"\${${ENV_KEY}}\" = \"0b\" ]; then" \
+        "    set ${ENV_KEY}=0" \
+        "    save_env ${ENV_KEY}"
+    local n
+    for ((n = TRIES_LUKS; n >= 1; n--)); do
+        printf '%s\n' "elif [ \"\${${ENV_KEY}}\" = \"${n}\" ]; then" \
+            "    set ${ENV_KEY}=$((n - 1))" \
+            "    save_env ${ENV_KEY}"
+    done
+    printf '%s\n' "fi" \
+        "menuentry 'The system before this update' --unrestricted --id ${ENTRY_ID} {" \
+        "    load_video" "    set gfxpayload=keep" "    insmod gzio" \
+        "    linux ${linux} ${options}" "    initrd ${initrd}" "}" "${END}"
+}
+
+# What arm would do. 0 when it would arm, with PLAN_ENTRY (the boot entry behind the default), PLAN_NEW and PLAN_OLD (the
+# deployments, by checksum and serial) set; 1 and the reason on stderr when it would not
+arm_plan() {
+    local why first second booted0 sum0 flag0 root0 booted1 sum1
+    why="$(why_not)"
+    if [[ -n "${why}" ]]; then
+        echo "${why}" >&2
+        return 1
+    fi
+    if [[ ! -e "${GOOD_NOW}" ]]; then
+        echo "this-start-not-good" >&2
+        return 1
+    fi
+    first="$(deployments | sed -n 1p)"
+    second="$(deployments | sed -n 2p)"
+    read -r booted0 sum0 flag0 root0 <<<"${first}"
+    read -r booted1 sum1 _ _ <<<"${second}"
+    if [[ "${booted0:-}" != 0 || "${booted1:-}" != 1 ]]; then
+        echo "nothing-new" >&2
+        return 1
+    fi
+    if [[ "${flag0}" == staged ]]; then
+        echo "not-finalized" >&2
+        return 1
+    fi
+    # Not known is not armed: a false rollback costs more than an update that goes unguarded
+    if ! has_guard "${root0}" "${sum0}"; then
+        echo "new-system-without-guard" >&2
+        return 1
+    fi
+    PLAN_ENTRY="$(entry_of 1)"
+    if [[ -z "${PLAN_ENTRY}" || -z "$(entry_of 0)" ]]; then
+        echo "no-boot-entry" >&2
+        return 1
+    fi
+    # The same kernel, initramfs, arguments and version in both: ostree swaps them without a new boot version, so what the
+    # entry names would start the other one after a rollback (a rebuild of one image, a base and a developer image built the
+    # same day). Not armed for that.
+    if [[ "$(boot_shape "$(entry_of 0)")" == "$(boot_shape "${PLAN_ENTRY}")" ]]; then
+        echo "same-boot-configuration" >&2
+        return 1
+    fi
+    PLAN_NEW="${sum0}"
+    PLAN_OLD="${sum1}"
+}
+
+cmd_begin() {
+    mkdir -p "${RUN}"
+    rm -f "${GOOD_NOW}"
+}
+
+# Taken away in this order: the entry is what acts, so once it has gone nothing can send the computer back
+disarm_write() {
+    write_block "" || return 1
+    [[ -s "${BOOT}/grub2/grubenv" ]] || return 0
+    editenv unset "${ENV_KEY}"
+}
+
+disarm() {
+    armed || [[ -n "$(tries_left)" ]] || return 0
+    boot_write disarm_write
+}
+
+# An off that /boot would not take, finished
+cmd_cleanup() {
+    disarm || {
+        say "/boot could not be changed; the next start tries again"
+        return 0
+    }
+    rm -f "${CLEANUP}"
+}
+
+cmd_arm() {
+    if ! is_on; then
+        [[ -e "${CLEANUP}" ]] && cmd_cleanup
+        return 0
+    fi
+    local block tries=${TRIES} deps def
+    # What the deployments are now: a block written for others, an update since put in place, is no way back any more
+    if armed; then
+        deps="$(deployments)"
+        def="$(awk '$3 != "staged" { print $2; exit }' <<<"${deps}")"
+        local new old
+        read -r new old <<<"$(armed_ids)"
+        if [[ -z "${new}" || "${new}" != "${def}" ]] || ! awk -v o="${old}" '$2 == o { found = 1 } END { exit !found }' <<<"${deps}"; then
+            say "the entry written for an update that is no longer there was taken away"
+            disarm || say "/boot could not be changed; the next start tries again"
+        fi
+    fi
+    arm_plan 2>/dev/null || return 0
+    block="$(guard_block "${PLAN_ENTRY}" "${PLAN_NEW}" "${PLAN_OLD}")" || {
+        say "the boot entry of the running system could not be read, so nothing was armed"
+        return 0
+    }
+    grep -q 'rd\.luks' "${PLAN_ENTRY}" && tries=${TRIES_LUKS}
+    arm_write() {
+        [[ -s "${BOOT}/grub2/grubenv" ]] || editenv create || return 1
+        # Without the count the entry does nothing, so no count first: a cut after the block is inert, never a count
+        # of 0 against a system that was not tried
+        editenv unset "${ENV_KEY}" || return 1
+        write_block "${block}" || return 1
+        editenv set "${ENV_KEY}=${tries}"
+    }
+    boot_write arm_write || say "could not write the count, so nothing will go back by itself"
+    return 0
+}
+
+# The desktop is up: graphical.target brought this here, and now the display manager and a session on the seat
+desktop_up() {
+    local waited=0
+    # SESSION_WAIT 0 is for as long as this start lasts: a slow greeter must not make a working machine count as failed
+    while ((SESSION_WAIT == 0 || waited <= SESSION_WAIT)); do
+        if systemctl is-active --quiet display-manager.service &&
+            [[ -n "$(loginctl show-seat seat0 -p ActiveSession --value 2>/dev/null)" ]]; then
+            return 0
+        fi
+        sleep 2
+        waited=$((waited + 2))
+    done
+    return 1
+}
+
+# The rollback has been done: what was written before it becomes went-back.json (a rename), if the system running is the one
+# it went back to, and is thrown away if it is not. SUM is the running system.
+finish_rollback() {
+    [[ -s "${ROLLING}" ]] || return 0
+    if [[ "$(jq -r '.system // ""' "${ROLLING}" 2>/dev/null)" == "$1" ]]; then
+        mv -f "${ROLLING}" "${WENT_BACK}"
+    else
+        rm -f "${ROLLING}"
+    fi
+}
+
+# The old system started with no tries left. RUN is it, NEW the default that did not start.
+roll_back() {
+    local run="$1" new="$2" status digest from to now default
+    if [[ "$(cat "${GOOD_RECORD}" 2>/dev/null)" == "${new}" ]]; then
+        # The new system did start: only /boot could not be written then. Nothing is rolled back.
+        say "this start came from the older system though the new one had started fine; nothing is rolled back"
+        disarm || say "/boot could not be changed; the next start tries again"
+        return 0
+    fi
+    status="$(bootc status --json 2>/dev/null)" || status='{}'
+    digest="$(jq -r '.status.rollback.image.imageDigest // ""' <<<"${status}" 2>/dev/null)"
+    from="$(jq -r '.status.rollback.image.version // ""' <<<"${status}" 2>/dev/null)"
+    to="$(jq -r '.status.booted.image.version // ""' <<<"${status}" 2>/dev/null)"
+    now="$(date +%s)"
+    # 1. what it will say, in /var, before anything is changed
+    jq -n --argjson at "${now}" --arg from "${from}" --arg to "${to}" --arg digest "${digest}" --arg sum "${new}" --arg system "${run}" \
+        '{at: $at, from: $from, to: $to, digest: $digest, deployment: $sum, system: $system}' | put "${ROLLING}" || {
+        say "the record could not be written, so nothing is rolled back"
+        return 0
+    }
+    # 2. the swap. The entry in custom.cfg is real until it has happened and inert after (/loader.N is gone), and the
+    # record says what happened: a cut here, or anywhere below, leaves a computer that starts the old system by itself.
+    # What counts is where the default is afterwards, not what the commands said: bootc can fail after its swap, and
+    # rpm-ostree, run on top of one that took, would swap straight back. So the second is tried only if the first left the
+    # default as it was.
+    bootc rollback >/dev/null 2>&1
+    default="$(deployments | awk '$3 != "staged" { print $2; exit }')"
+    if [[ "${default}" != "${run}" ]]; then
+        rpm-ostree rollback >/dev/null 2>&1
+        default="$(deployments | awk '$3 != "staged" { print $2; exit }')"
+    fi
+    if [[ "${default}" != "${run}" ]]; then
+        # Nothing is taken away: the entry and the count stay, the next start comes here again
+        rm -f "${ROLLING}"
+        say "the system that started could not be made the default one, so nothing was changed"
+        return 0
+    fi
+    # 3. the record is the notice, once the old system is the default
+    finish_rollback "${run}"
+    # 4. the entry and the count
+    disarm || say "/boot could not be changed; the next start takes it away"
+    : >"${GOOD_NOW}"
+    say "the system ${from:-${new}} did not start, and the computer went back to ${to:-the one before}"
+}
+
+cmd_good() {
+    if ! is_on; then
+        [[ -e "${CLEANUP}" ]] && cmd_cleanup
+        return 0
+    fi
+    sealed && return 0
+    desktop_up || {
+        say "the desktop did not come up, so this start does not count as good"
+        return 0
+    }
+    local deps run def new old
+    deps="$(deployments)"
+    # The one running, and the one the computer starts by default: a deployment staged for the next restart is neither
+    run="$(awk '$1 == 1 { print $2; exit }' <<<"${deps}")"
+    def="$(awk '$3 != "staged" { print $2; exit }' <<<"${deps}")"
+    mkdir -p "${RUN}" "${STATE}"
+    if [[ -z "${run}" || -z "${def}" ]]; then
+        say "the deployments could not be read, so nothing is changed"
+        return 0
+    fi
+    if [[ "${run}" == "${def}" ]]; then
+        # /var first: should /boot not take the change, the start that follows still knows this one was good
+        printf '%s\n' "${run}" | put "${GOOD_RECORD}"
+        # A rollback this start is the result of
+        finish_rollback "${run}"
+        disarm || say "/boot could not be changed; the next start tries again"
+        : >"${GOOD_NOW}"
+        # What went wrong before is over once another system runs
+        if [[ -s "${WENT_BACK}" && "$(jq -r '.system // ""' "${WENT_BACK}" 2>/dev/null)" != "${run}" ]]; then
+            rm -f "${WENT_BACK}"
+        fi
+    elif armed; then
+        read -r new old <<<"$(armed_ids)"
+        if [[ "${new}" == "${def}" && "${old}" == "${run}" ]]; then
+            # The old system, with the entry written for it. Picked by hand with tries left: left alone.
+            tries_none && roll_back "${run}" "${def}"
+        else
+            say "the entry written for an update that is no longer there was taken away"
+            disarm || say "/boot could not be changed; the next start tries again"
+        fi
+    fi
+    return 0
+}
+
+cmd_set() {
+    case "${1:-}" in
+        on)
+            if sealed; then
+                say "a sealed image starts through another boot loader, and this has not been proved on it"
+                return 1
+            fi
+            mkdir -p "${STATE}"
+            chmod 0755 "${STATE}"
+            rm -f "${CLEANUP}"
+            : >"${ON}"
+            # This start counts as soon as the units have looked: no need to wait for the next
+            systemctl start --no-block amethystora-boot-guard.service amethystora-boot-guard-good.service >/dev/null 2>&1 || true
+            ;;
+        off)
+            # What it said about the past goes with it, so that nobody is told of it months later
+            rm -f "${ON}" "${WENT_BACK}" "${ROLLING}"
+            mkdir -p "${STATE}"
+            # If /boot would not take it, the mark is what lets the next start do it: the units run for either
+            if disarm; then
+                rm -f "${CLEANUP}"
+            else
+                : >"${CLEANUP}"
+                say "/boot could not be changed; what was written is taken away at the next start"
+            fi
+            systemctl stop amethystora-boot-guard.service >/dev/null 2>&1 || true
+            ;;
+        *)
+            echo "usage: amethystora-boot-guard set on|off" >&2
+            return 64
+            ;;
+    esac
+}
+
+cmd_status() {
+    local on=false is_armed=false why tries back=null readable=true
+    is_on && on=true
+    why="$(why_not)"
+    # /boot/grub2 is root's: an account sees the rest
+    [[ -r "${BOOT}/grub2" ]] || readable=false
+    if [[ "${readable}" == true ]]; then
+        armed && is_armed=true
+        tries="$(tries_left 2>/dev/null || true)"
+    else
+        tries=""
+    fi
+    [[ -s "${WENT_BACK}" ]] && back="$(jq -c '.' "${WENT_BACK}" 2>/dev/null || echo null)"
+    if [[ "${1:-}" == --json ]]; then
+        jq -cn --argjson on "${on}" --arg why "${why}" --argjson armed "${is_armed}" --argjson readable "${readable}" --arg tries "${tries%b}" \
+            --argjson back "${back}" \
+            '{on: $on, can: ($why == ""), why: $why, armed: (if $readable then $armed else null end), tries: (if $tries == "" then null else ($tries | tonumber) end), went_back: $back}'
+    else
+        printf 'on: %s\ncan count here: %s\n' "${on}" "$([[ -z "${why}" ]] && echo yes || echo "no (${why})")"
+        if [[ "${readable}" == true ]]; then
+            printf 'armed: %s\ntries left: %s\n' "${is_armed}" "${tries:-none}"
+        else
+            printf 'armed, tries left: ask with sudo\n'
+        fi
+    fi
+}
+
+# 1 while what the registry has is the image that did not start: the automatic update waits for a newer one. A failed
+# check, or anything else, lets it run. Update now is uupd-manual.service, which never asks.
+cmd_update_ok() {
+    is_on || return 0
+    [[ -s "${WENT_BACK}" ]] || return 0
+    local digest out
+    digest="$(jq -r '.digest // ""' "${WENT_BACK}" 2>/dev/null)"
+    [[ -n "${digest}" ]] || return 0
+    # All of it first: grep -q leaves at the first match, and bootc still writing after it would make the pipeline fail
+    out="$(timeout 120 bootc upgrade --check 2>/dev/null)"
+    if grep -F -- "${digest}" <<<"${out}" >/dev/null; then
+        say "the newest image is the one that did not start; the automatic update waits for a newer one"
+        return 1
+    fi
+    return 0
+}
+
+cmd_would() {
+    if arm_plan; then
+        echo "would arm: the entry behind the default is ${PLAN_ENTRY}"
+    fi
+}
+
+case "${1:-}" in
+    begin) cmd_begin ;;
+    arm) cmd_arm ;;
+    good) cmd_good ;;
+    set) shift && cmd_set "$@" ;;
+    status) shift && cmd_status "$@" ;;
+    update-ok) cmd_update_ok ;;
+    would) cmd_would ;;
+    *)
+        echo "usage: amethystora-boot-guard begin|arm|good|set on|off|status [--json]|update-ok|would" >&2
+        exit 64
+        ;;
+esac

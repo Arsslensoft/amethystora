@@ -1481,7 +1481,48 @@ export class Engine {
 
     // ---- Monitors and workspaces ----
 
+    // The strip of a workspace on a screen as it was when a set of screens was last left (desks/layouts.js): each of
+    // `windows` ({window, width, column, row}, in their order) at its place, from wherever it is now, and the strip's other
+    // windows after them. Says how many moved.
+    arrange(workspace, monitor, windows) {
+        const strip = this.strip(workspace, monitor);
+        let moved = 0;
+        if (strip.monitor !== monitor) {
+            this.moveStrip(strip, monitor);
+            moved = strip.windows.length;
+        }
+        this.screens?.setHome(workspace, monitor);
+        const selected = strip.selected;
+        for (const {window, width, column, row} of windows) {
+            if (!this.tileable(window) || window.minimized || this.floating.has(window))
+                continue;
+            const info = this._track(window);
+            const wanted = Math.min(width, Layout.available(this.area(monitor)));
+            const at = strip.find(window);
+            if (at && at[0] === column && at[1] === row && info.width === wanted)
+                continue;
+            info.width = wanted;
+            this.insert(window, strip, {place: row > 0 ? {column, row} : {column}});
+            moved++;
+        }
+        if (selected && strip.find(selected))
+            strip.selected = selected;
+        if (strip.selected)
+            this.ensureVisible(strip, strip.selected);
+        else
+            this.layout(strip);
+        return moved;
+    }
+
+    // The screen shows this workspace, when each screen shows its own
+    showOn(workspace, monitor) {
+        if (this.screens?.separate && this.screens.monitorShowing(workspace) !== monitor)
+            this.screens.show(workspace, monitor);
+    }
+
     _monitorsChanged() {
+        // What the strips still hold of the screens as they were (desks/layouts.js)
+        this.tiling._ext.modules?.get('desks')?.layouts?.leaving();
         // A navigation is on a strip that is about to be merged or renumbered: it ends first, and quietly
         const released = this.tiling.sessions?.end({quiet: true}) ?? [];
         const count = Main.layoutManager.monitors.length;

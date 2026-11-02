@@ -14,5 +14,10 @@
       <summary>Learn from what I change at a desk</summary>
       <description>Picking another sound output or moving the dock at a desk asks whether the desk should remember it.</description>
     </key>
+    <key name="desk-windows" type="b">
+      <default>true</default>
+      <summary>Screens come back as you left them</summary>
+      <description>When a set of screens comes back, every window goes back to its screen, place and size, in the tiling and the classic layout alike. Which app, its place and a hash of the screen are kept in the account's desks.json, never a title. It needs no desk set up.</description>
+    </key>
   </schema>
 </schemalist>

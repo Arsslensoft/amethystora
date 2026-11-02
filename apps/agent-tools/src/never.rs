@@ -31,7 +31,10 @@ const INTERPRETERS: &[&str] = &["python", "python3", "perl", "ruby", "node", "lu
 /// feature's files, and the notes
 const PATHS: &[&str] = &[
     "/etc/sudoers", "/etc/polkit-1", "/usr/share/polkit-1", "/etc/amethystora/agent.conf", "/etc/pam.d", "/etc/authselect",
-    "/etc/security", "amethystora-notes", "/etc/shadow", "/etc/gshadow", "text-shortcuts.json",
+    "/etc/security", "amethystora-notes", "/etc/shadow", "/etc/gshadow", "text-shortcuts.json", "amethystora-boot-guard",
+    "/var/lib/amethystora/boot-guard",
+    // The guard's two levers in /boot, which reach the same place without its name: its count and the file it writes
+    "ame_boot_tries", "/boot/grub2/custom.cfg", "/boot/grub2/grubenv",
 ];
 
 fn base(path: &str) -> &str {
@@ -239,6 +242,8 @@ fn ame_refusal(args: &[String]) -> Option<String> {
         ["system", "raid", rest @ ..] if rest.first() != Some(&"status") => {
             Some("pools of disks are made, changed and erased only by the user, in a terminal".into())
         }
+        // It decides what the computer starts, by writing to the boot partition
+        ["update", "boot-guard", _, ..] => Some("going back from an update that does not start is the user's to switch".into()),
         ["security", rest @ ..] => security_refusal(rest),
         _ => None,
     }
@@ -294,6 +299,12 @@ mod tests {
             "dconf load /org/amethystora/Connect/",
             "dconf load /org/amethystora/",
             "dconf load /",
+            "ame update boot-guard on",
+            "ame update boot-guard off",
+            "/usr/libexec/amethystora-boot-guard set off",
+            "grub2-editenv /boot/grub2/grubenv set ame_boot_tries=0",
+            "grub2-editenv - set ame_boot_tries=0",
+            "tee /boot/grub2/custom.cfg",
             "ame desktop screen-brightness on",
             "ame desktop screen-brightness",
             "ame -q desktop::screen-brightness on",
@@ -447,6 +458,7 @@ mod tests {
             "ame -q system raid status",
             "ame desktop greeting on",
             "ame update",
+            "ame update boot-guard",
             "ame",
             "just build amethystora latest main",
             "just --list",

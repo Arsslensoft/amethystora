@@ -324,6 +324,8 @@ const PYTHON = ['usr/libexec/amethystora-text-shortcuts',
 const SHELL = ['usr/libexec/amethystora-security-status', 'usr/libexec/amethystora-app-permissions', 'usr/libexec/amethystora-layout-offer',
     'usr/libexec/amethystora-control-list', 'usr/libexec/amethystora-security-config', 'usr/libexec/amethystora-hardening',
     'usr/libexec/amethystora-phone-link-notice', 'usr/libexec/amethystora-deja-dup-notice',
+    // The notice that the computer went back by itself from an update that did not start (R7-52)
+    'usr/libexec/amethystora-update-alert',
     'usr/libexec/amethystora-agentic-off-notice', 'usr/libexec/amethystora-private-folder', 'usr/libexec/amethystora-windows-program',
     // Files' scripts menu: its entries' names, and what the three scripts say
     'usr/libexec/amethystora-folder-colour', 'usr/libexec/amethystora-back-in-time', 'usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh',

@@ -18,5 +18,15 @@
       <summary>Your devices' batteries</summary>
       <description>The battery's menu in quick settings lists the battery of every device that reports one (a mouse, a keyboard, headphones, a controller, the paired phone), and a notice says once when one is at 15% or less.</description>
     </key>
+    <key name="flat-battery" type="b">
+      <default>true</default>
+      <summary>A flat battery loses nothing</summary>
+      <description>At 3% a card asks you to save and the computer closes cleanly 60 seconds later, unless you plug in or say Not yet. Where your apps were is kept, and they are offered back at the next start.</description>
+    </key>
+    <key name="flat-hold" type="as">
+      <default><![CDATA[['<Super><Shift>n']]]></default>
+      <summary>Not yet, from the keyboard</summary>
+      <description>While the flat-battery card is on the screen, this key says Not yet. It is bound only then, so it takes nothing from your typing the rest of the time.</description>
+    </key>
   </schema>
 </schemalist>

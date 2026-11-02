@@ -2175,6 +2175,9 @@ power_item busy-app busy-app "${ gettext "Say when an app is busy"; }" \
 power_item device-batteries device-batteries "${ gettext "Your devices' batteries"; }" \
     "${ gettext "The battery's menu lists the mouse, the keyboard, headphones and the phone, and says once when one is at 15%."; }" \
     ame desktop power devices
+power_item flat-battery flat-battery "${ gettext "A flat battery loses nothing"; }" \
+    "${ gettext "At 3% a card asks you to save, where your apps were is kept, and the computer closes cleanly 60 seconds later."; }" \
+    ame desktop power flat
 GROUP=""
 
 # Focus profiles (org.gnome.shell.extensions.amethystora-ui.focus): the profile picked by hand, the two triggers, and
@@ -2375,6 +2378,12 @@ USAGE="ame desktop desks on|off"
 item desktop desks switch "${ gettext "Desks"; }" \
     "${ gettext "At a set of screens you know, the sound output, the dock, Focus and the power mode come back, with a toast to undo it. The first time, a card asks."; }" \
     "${ desks_onoff desks; }" desktop#desks
+desks_reason
+switch_choices false ame desktop desks windows
+USAGE="ame desktop desks windows on|off"
+item desktop desk-windows switch "${ gettext "Screens come back as you left them"; }" \
+    "${ gettext "When a set of screens comes back, every window goes back to its screen, place and size. It needs no desk set up."; }" \
+    "${ desks_onoff desk-windows; }" desktop#screens-come-back-as-you-left-them
 if [[ "${ desks_onoff desks; }" == on ]]; then
     desks_reason
     switch_choices false ame desktop desks learn
@@ -3049,6 +3058,15 @@ USAGE="ame update night-restart off|HH:MM"
 item system night-restart choice "${ gettext "Restart while you're away"; }" \
     "${ gettext "Updates offers Tonight beside Restart now: the computer restarts at this time only if the screen is locked, no app holds the logout and it is on mains power."; }" \
     "${NIGHT}" updates#restarting-while-youre-away
+
+# An update that does not start goes back by itself (amethystora-boot-guard), off until its owner asks: it writes to the
+# boot partition, so it asks for a password in a terminal
+[[ -e /usr/share/amethystora/sealed ]] && REASON="${ gettext "A sealed image starts through another boot loader."; }"
+switch_choices true ame update boot-guard
+USAGE="ame update boot-guard on|off"
+item system boot-guard switch "${ gettext "If an update does not start, go back"; }" \
+    "${ gettext "After a few tries the computer goes back by itself to the system before the update, and says so. Your files and apps are not touched."; }" \
+    "${ [[ -e /var/lib/amethystora/boot-guard/on ]] && echo on || echo off; }" updates#if-an-update-does-not-start
 
 # amethystora-dx and amethystora-dx-nvidia-open are the developer images
 if grep -qE -e "-dx(-|$)" <<<"${IMAGE_NAME}"; then DEVMODE=on; else DEVMODE=off; fi

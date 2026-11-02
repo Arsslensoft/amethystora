@@ -1,0 +1,20 @@
+[Unit]
+Description=Mark this start as good, once the desktop is up
+Documentation=file:///usr/share/amethystora/manual/updates.md
+ConditionPathExists=|/var/lib/amethystora/boot-guard/on
+ConditionPathExists=|/var/lib/amethystora/boot-guard/cleanup
+ConditionPathExists=!/usr/share/amethystora/sealed
+After=local-fs.target boot.mount
+# Not after graphical.target: a stray oneshot that never ends holds that target (and multi-user.target) for good, while the
+# person logs in and works, and a good start must not wait for it. What it tests is the display manager and the seat.
+After=display-manager.service amethystora-boot-guard.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/amethystora-boot-guard good
+# As long as the start lasts: a greeter that is slow must not make a working machine count as failed
+TimeoutStartSec=infinity
+RestrictRealtime=yes
+
+[Install]
+WantedBy=graphical.target

@@ -103,6 +103,7 @@ Flatpak: `flatpak update` in a terminal names the app at fault; `flatpak repair 
 ## Undo
 
 - A new image that misbehaves: the boot menu's second entry, then `bootc rollback` (root) (restart).
+- A new image that did not start, with `ame update boot-guard` on (the owner's switch, off as shipped, never the agent's): the computer went back by itself, `/var/lib/amethystora/boot-guard/went-back.json` says from which, and the automatic update waits for a newer image.
 - A staged update not wanted: `rpm-ostree cleanup -p` (root).
 - Packages taken off: `rpm-ostree install PACKAGE` (root) (restart).
 - A rebase: `ame system rebase` to the image and stream before.

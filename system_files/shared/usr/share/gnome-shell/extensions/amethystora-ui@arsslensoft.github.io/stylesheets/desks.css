@@ -86,3 +86,10 @@
 .amethystora-desks-button.amethystora-desks-undo {
   min-height: 26px;
 }
+
+/* Back at your desk (desks/layouts.js), on the toast's colours */
+.amethystora-desks-toast.amethystora-desks-note-card {
+  padding: 12px 18px;
+  border-radius: 18px;
+  spacing: 2px;
+}

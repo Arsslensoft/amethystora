@@ -55,7 +55,7 @@ const SHORT = 10;
 // The plate's curve: a quick start and a slight overshoot before it rests
 const CURVE = [new Graphene.Point({x: 0.2, y: 0.8}), new Graphene.Point({x: 0.2, y: 1.08})];
 
-const PLATES = ['link', 'battery', 'saver', 'quiet', 'focus', 'news', 'hello', 'code', 'agent', 'agent-ask', 'agent-done'];
+const PLATES = ['link', 'battery', 'flat', 'saver', 'quiet', 'focus', 'news', 'hello', 'code', 'agent', 'agent-ask', 'agent-done'];
 // The padding inside the plate at its start and its end (logical px): the link's and the battery's buttons sit close
 // to the end
 const PADDING = {link: [8, 6], battery: [12, 6]};
