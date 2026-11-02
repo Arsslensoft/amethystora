@@ -124,6 +124,7 @@ pub struct Manual {
     hits: RefCell<Vec<(String, gtk::Button)>>,
     selected: Cell<usize>,
     search: gtk::Entry,
+    search_pause: ui::Pause,
     article: gtk::Box,
     pager: gtk::Box,
     main: gtk::ScrolledWindow,
@@ -293,6 +294,7 @@ impl Manual {
             results,
             results_scroller,
             hits: RefCell::new(Vec::new()),
+            search_pause: ui::Pause::default(),
             selected: Cell::new(0),
             search,
             article,
@@ -351,9 +353,14 @@ impl Manual {
         self.pager.update_property(&[gtk::accessible::Property::Label(&t!("Previous and next page"))]);
 
         let weak = self.me.clone();
-        self.search.connect_changed(move |_| {
-            if let Some(this) = weak.upgrade() {
+        self.search.connect_changed(move |search| {
+            let Some(this) = weak.upgrade() else { return };
+            if search.text().trim().is_empty() {
+                this.search_pause.cancel();
                 this.show_results();
+            } else {
+                let again = this.clone();
+                this.search_pause.after_typing(move || again.show_results());
             }
         });
         let keys = gtk::EventControllerKey::new();
@@ -362,6 +369,7 @@ impl Manual {
             let Some(this) = weak.upgrade() else { return glib::Propagation::Proceed };
             match key {
                 gdk::Key::Down | gdk::Key::Up => {
+                    this.flush_search();
                     this.move_selection(if key == gdk::Key::Down { 1 } else { -1 });
                     glib::Propagation::Stop
                 }
@@ -377,6 +385,7 @@ impl Manual {
         let weak = self.me.clone();
         self.search.connect_activate(move |_| {
             let Some(this) = weak.upgrade() else { return };
+            this.flush_search();
             let hit = this.hits.borrow().get(this.selected.get()).map(|(route, _)| route.clone());
             if let Some(route) = hit {
                 this.navigate(&route);
@@ -690,6 +699,13 @@ impl Manual {
                 text: snippet(&section.text.split_whitespace().collect::<Vec<_>>().join(" "), words.first().map(String::as_str).unwrap_or("")),
             })
             .collect()
+    }
+
+    /// A key that acts on the results acts on what has been typed
+    fn flush_search(&self) {
+        if self.search_pause.cancel() {
+            self.show_results();
+        }
     }
 
     fn show_results(&self) {

@@ -26,9 +26,6 @@ use backend::{List, Outcome};
 use icons::icon;
 use layout::{Overflow, Tight};
 
-/// How long the typing has to pause before the results are drawn
-const SEARCH_PAUSE: std::time::Duration = std::time::Duration::from_millis(180);
-
 pub fn main() -> glib::ExitCode {
     app::run(
         Spec {
@@ -193,8 +190,7 @@ pub struct Control {
     preview_css: gtk::CssProvider,
     /// The search field is being emptied by the page itself
     clearing: Cell<bool>,
-    /// The drawing of the results, waiting for the typing to pause
-    search_wait: Cell<Option<glib::SourceId>>,
+    search_pause: ui::Pause,
     /// The welcome page's preview, kept from one drawing of the page to the next
     welcome_preview: RefCell<Option<Rc<welcome::Preview>>>,
     /// The window was closed while a command ran: it goes once the last one has finished
@@ -269,7 +265,7 @@ impl Control {
             color_css,
             preview_css,
             clearing: Cell::new(false),
-            search_wait: Cell::new(None),
+            search_pause: ui::Pause::default(),
             welcome_preview: RefCell::new(None),
             closing: Cell::new(false),
         });
@@ -494,21 +490,14 @@ impl Control {
             return;
         }
         self.state.borrow_mut().search = text.trim().to_string();
-        if let Some(waiting) = self.search_wait.take() {
-            waiting.remove();
-        }
+        self.search_pause.cancel();
         if self.state.borrow().search.is_empty() {
             self.render();
             self.read_diff();
             return;
         }
-        // Drawn once the typing pauses: a page of results takes longer to lay out than a key takes to press
         let this = self.clone();
-        let waiting = glib::timeout_add_local_once(SEARCH_PAUSE, move || {
-            this.search_wait.set(None);
-            this.render();
-        });
-        self.search_wait.set(Some(waiting));
+        self.search_pause.after_typing(move || this.render());
     }
 
     // --- The list -------------------------------------------------------------------------------------

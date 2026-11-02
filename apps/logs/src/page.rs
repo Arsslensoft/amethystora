@@ -1732,7 +1732,8 @@ impl Logs {
             filter.connect_changed(move |filter| {
                 if let Some(this) = weak.upgrade() {
                     this.state.borrow_mut().source_filter = filter.text().to_string();
-                    this.fill_sources(&list);
+                    let (again, list) = (this.clone(), list.clone());
+                    this.filter_pause.after_typing(move || again.fill_sources(&list));
                 }
             });
             page.append(&results);
