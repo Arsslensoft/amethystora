@@ -1,0 +1,6 @@
+shell_start_ms 1978
+shell_rss_mb 428
+shell_wakeups_per_min 189
+shell_ticks_per_min 143
+shell_frames_per_min 8
+shell_rss_after_idle_mb 431
