@@ -2665,6 +2665,8 @@ impl Security {
 
     fn events_page(&self) -> gtk::Widget {
         let data = self.state.borrow().events.clone();
+        // Each row is a good many widgets: the 500 the watcher keeps, drawn at once, stop the window for a second
+        let shown = self.state.borrow().events_shown;
         let list = match &data {
             None => empty(&t!("Reading…")),
             Some(data) if !data.readable => empty(&t!(
@@ -2672,16 +2674,26 @@ impl Security {
                 command = "ame security events"
             )),
             Some(data) if data.events.is_empty() => empty(&t!("Nothing yet. Whatever the watcher finds from now on is listed here.")),
-            Some(data) => list_card(data.events.iter().take(200).map(|event| self.event_row(event, data.triage).upcast()).collect()),
+            Some(data) => list_card(data.events.iter().take(shown).map(|event| self.event_row(event, data.triage).upcast()).collect()),
         };
         let count = data.as_ref().filter(|d| !d.events.is_empty()).map(|d| t!("{count, plural, one {# event} other {# events}}", count = d.events.len()));
-        let children: Vec<gtk::Widget> = vec![
+        let mut children: Vec<gtk::Widget> = vec![
             page_head(
                 &t!("Events"),
                 &t!("What the security watcher found, newest first: changes to accounts, to who may become root, to what starts by itself and to the security settings, programs that read the keyboard or listen on the network, and checks that turned bad. Each says which account it is about and which part of the watcher found it. If you made the change, or installed something that did, there is nothing to do."),
             )
             .upcast(),
             section(&t!("Found"), &list, count.as_deref()).upcast(),
+        ];
+        if data.as_ref().is_some_and(|data| data.events.len() > shown) {
+            children.push(actions(vec![self.button(&t!("Show more"), Opts::default(), |this| {
+                this.state.borrow_mut().events_shown += crate::EVENTS_AT_ONCE;
+                this.render();
+            })
+            .upcast()])
+            .upcast());
+        }
+        children.push(
             actions(vec![
                 // Seeing them in a terminal marks them read, after the administrator's password
                 self.button(&t!("Mark them read, in a terminal"), Opts { icon: Some("terminal"), ..Default::default() }, |_| {
@@ -2691,7 +2703,7 @@ impl Security {
                 self.manual_link(&t!("The security watcher in the manual"), "security#the-security-watcher").upcast(),
             ])
             .upcast(),
-        ];
+        );
         Self::page(children)
     }
 

@@ -92,9 +92,13 @@ pub(crate) enum Begun {
 }
 
 /// What the page keeps between drawings, as security.js's `state`
+/// The events the Events page draws at first, and each time it is asked for more
+pub(crate) const EVENTS_AT_ONCE: usize = 50;
+
 #[derive(Default)]
 pub(crate) struct PageState {
     pub page: String,
+    pub events_shown: usize,
     pub report: Option<Report>,
     pub scanner: Option<Scanner>,
     /// The scan in progress, as the window last heard of it
@@ -185,7 +189,7 @@ impl Security {
             history: RefCell::new(Vec::new()),
             scan: RefCell::new(None),
             permissions: RefCell::new(Vec::new()),
-            state: RefCell::new(PageState { page: "overview".into(), ..Default::default() }),
+            state: RefCell::new(PageState { page: "overview".into(), events_shown: EVENTS_AT_ONCE, ..Default::default() }),
             live: RefCell::new(page::Live::default()),
             reloading: Cell::new(false),
             machine_timer: RefCell::new(None),
