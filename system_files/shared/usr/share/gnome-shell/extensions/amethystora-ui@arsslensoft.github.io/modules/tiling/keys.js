@@ -337,7 +337,7 @@ export class Keys {
                 }
                 if (this._canWrap(id, key, real.length === shared.length)) {
                     this._giveBack(id, key);
-                    wanted.set(key, shared.map(s => [s.combo, s.owner.name]));
+                    wanted.set(key, shared);
                     for (const s of shared)
                         handedOver.add(`${s.owner.name}\n${s.owner.accelerator}`);
                 } else if (TAKE_OUT.has(key)) {
@@ -349,6 +349,14 @@ export class Keys {
                         yielded.add(`${s.owner.name}\n${s.owner.accelerator}`);
                 }
             }
+        }
+        // A combination given up is given up everywhere: a Mutter key that shares it (Super+Left's half tile) leaves it too
+        for (const [key, shared] of wanted) {
+            const kept = shared.filter(s => !yielded.has(`${s.owner.name}\n${s.owner.accelerator}`));
+            if (kept.length)
+                wanted.set(key, kept.map(s => [s.combo, s.owner.name]));
+            else
+                wanted.delete(key);
         }
         for (const name of [...this._wrapped.keys()]) {
             if (!wanted.has(name))
