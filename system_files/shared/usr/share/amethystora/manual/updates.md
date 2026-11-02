@@ -10,6 +10,8 @@ the machine in a state that does not start.
 
 ## Updating now
 
+[Show me](guide:update-now)
+
 Open **System Updates** from the app grid (or **Check for updates** under **System** in the
 Amethystora menu, or `amethystora-update`) and press **Update now**. It updates the system, the Flatpak
 apps of the machine and of every account signed in, and your Homebrew tools in one go and shows each of

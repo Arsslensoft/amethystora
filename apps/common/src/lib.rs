@@ -17,6 +17,7 @@ pub mod rich;
 pub mod shape;
 pub mod store;
 pub mod ui;
+pub mod where_is;
 mod units;
 
 // The toolkit, as every app uses it, so that they all build against the same one

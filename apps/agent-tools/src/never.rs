@@ -62,6 +62,10 @@ pub fn refusal(argv: &[String]) -> Option<String> {
     if program.starts_with("amethystora-agent") {
         return Some("the agent may not run its own tools or change its own lock or root mode".into());
     }
+    // What changed's Undo is the person's button: it rolls back by an id they cannot read, and may roll the system back
+    if program == "amethystora-changes" && argv.get(1).map(String::as_str) != Some("list") {
+        return Some("Undo in the Help window is the user's own button; the agent undoes its changes with the undo tool".into());
+    }
     if RUNNERS.contains(&program) {
         return Some(format!("{program} would run other commands out of sight; run each command on its own"));
     }
@@ -392,6 +396,8 @@ mod tests {
             "dconf reset -f /org/gnome/shell/extensions/amethystora-ui/agent/",
             "amethystora-agent stop",
             "amethystora-agent undo ab12cd34",
+            "amethystora-changes undo trash:x.trashinfo",
+            "/usr/libexec/amethystora-changes undo app:org.example.App",
             "ame desktop pill off",
             "gnome-extensions disable amethystora-ui@arsslensoft.github.io",
             // A group's own justfile, and -- anywhere, for every rule
@@ -471,6 +477,7 @@ mod tests {
             "flatpak override --user --socket=x11 com.example.App",
             "ame agent pill on",
             "ame agent history",
+            "amethystora-changes list --json",
             "just -f /usr/share/amethystora/just/security.just status",
             "just -f /usr/share/amethystora/just/agent.just history",
             "ame desktop pill on",

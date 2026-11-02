@@ -1,0 +1,21 @@
+[Desktop Entry]
+Type=Application
+Name=Help
+GenericName=Something's Wrong
+Comment=Say what is wrong and have it looked at, or see what changed on this computer and undo it
+Exec=amethystora-help
+Icon=amethystora-manual
+Terminal=false
+Categories=System;Utility;
+Keywords=help;wrong;broken;problem;fix;no sound;no internet;printer;slow;undo;changed;
+StartupNotify=true
+StartupWMClass=org.amethystora.Help
+Actions=wrong;changed;
+
+[Desktop Action wrong]
+Name=Something's Wrong
+Exec=amethystora-help wrong
+
+[Desktop Action changed]
+Name=What Changed
+Exec=amethystora-help changed

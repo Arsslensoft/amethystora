@@ -6,13 +6,13 @@
 #      hiding its entry and nothing installing it; back and leftmost after the screen lock. Then the account
 #      given the list of extensions an account kept from before the swap, for the next login.
 #   2. After a restart and that login: the new extension turned on by the image's own hook, and leftmost.
-# vmlab-paths: @sf/usr/share/gnome-shell/extensions/amethystora-logo-menu@*
+# vmlab-paths: @sf/usr/share/gnome-shell/extensions/amethystora-logo-menu@* @sf/usr/share/applications/amethystora-help.desktop
 source "$(dirname "$0")/lib.sh"
 
 UUID=amethystora-logo-menu@arsslensoft.github.io
 OWN=/run/vmlab-26
 HOME_DIR="/var/home/${TEST_USER}"
-ENTRIES='About this computer|Manual|-|Settings|Software centre|-|Extensions|System monitor|Terminal|-|Containers'
+ENTRIES='About this computer|Manual|Something’s wrong|What changed|-|Settings|Software centre|-|Extensions|System monitor|Terminal|-|Containers'
 
 if ! wait_for 300 has_session; then
     skip "no session for ${TEST_USER} (10-account.sh)"
@@ -191,12 +191,12 @@ case "${SUITE_PHASE}" in
     check "the logo menu is the leftmost item in the top bar" leftmost
     echo "# panel: $(tree panel 2>&1 | head -n 6 | paste -sd ';')"
 
-    # 3. The eight entries in their four groups, each opening its app
+    # 3. The entries in their four groups, each opening its app
     if open_menu; then
         sleep 2
         items="$(menu_items)"
-        [[ "${items}" == "${ENTRIES}" ]] && ok "the menu shows its eight entries in order" ||
-            not_ok "the menu's entries are not the eight in order" "shows: ${items}" "wants: ${ENTRIES}"
+        [[ "${items}" == "${ENTRIES}" ]] && ok "the menu shows its entries in order" ||
+            not_ok "the menu's entries are not the ones in order" "shows: ${items}" "wants: ${ENTRIES}"
         close_menu
     else
         not_ok "a click on the logo did not open its menu" "$(tree panel 2>&1 | head -n 5)"
@@ -236,6 +236,7 @@ case "${SUITE_PHASE}" in
     done <<'EOF'
 About this computer|-|gnome-control-center
 Manual|-|amethystora-manual
+Something’s wrong|-|amethystora-help
 Settings|-|gnome-control-center
 Software centre|io.github.kolunmi.Bazaar|
 Extensions|-|gnome-extensions-app

@@ -16,7 +16,7 @@
       <description>While the whole screen is shared, the windows of the apps in share-guard-apps (and Files windows in the Private folder) are covered: blurred, or with a solid card. Covered as soon as a share starts; uncovered once every stream is known to be a single window.</description>
     </key>
     <key name="share-guard-apps" type="as">
-      <default>['amethystora-notes.desktop', 'amethystora-security.desktop', 'amethystora-backups.desktop', 'org.keepassxc.KeePassXC.desktop', 'com.bitwarden.desktop.desktop', 'org.gnome.World.Secrets.desktop', 'org.gnome.seahorse.Application.desktop', 'me.proton.Pass.desktop', '1password.desktop', 'com.belmoussaoui.Authenticator.desktop']</default>
+      <default>['amethystora-notes.desktop', 'amethystora-security.desktop', 'amethystora-backups.desktop', 'amethystora-help.desktop', 'org.keepassxc.KeePassXC.desktop', 'com.bitwarden.desktop.desktop', 'org.gnome.World.Secrets.desktop', 'org.gnome.seahorse.Application.desktop', 'me.proton.Pass.desktop', '1password.desktop', 'com.belmoussaoui.Authenticator.desktop']</default>
       <summary>Apps covered while the screen is shared</summary>
       <description>Launchers by their ID.</description>
     </key>

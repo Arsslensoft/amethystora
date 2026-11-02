@@ -185,6 +185,7 @@ REST_KEYS=(enabled after)
 # The greeting at a new account's first login, amethystora-setup's HELLO_KEYS
 HELLO=org.gnome.shell.extensions.amethystora-ui.hello
 HELLO_KEYS=(greet)
+GUIDE=org.gnome.shell.extensions.amethystora-ui.guide
 LIVING=org.gnome.shell.extensions.amethystora-ui.living
 LIVING_KEYS=(wallpaper)
 FOCUS_KEYS=(trigger-games trigger-sleep work-banners work-apps work-sounds work-dock work-lighter work-night-light work-power work-accent work-wallpaper work-grey games-banners games-apps games-sounds games-dock games-lighter games-night-light games-power games-accent games-wallpaper games-grey sleep-banners sleep-apps sleep-sounds sleep-dock sleep-lighter sleep-night-light sleep-power sleep-accent sleep-wallpaper sleep-grey)
@@ -340,7 +341,7 @@ SETTINGS="$(settings | jq -sc --arg layout "${LAYOUT}" --arg tiling "${TILING}" 
     --arg present "${PRESENT}" --arg screenshot "${SCREENSHOT}" --arg deskwidgets "${DESKWIDGETS}" \
     --arg shelf "${SHELF}" --arg desks "${DESKS}" --arg quit "${QUIT}" --arg privacy "${PRIVACY}" --arg tools "${TOOLS}" \
     --arg input "${INPUT}" --arg keyboard "${KEYBOARD}" --arg paste "${PASTE}" --arg keys "${KEYS}" \
-    --arg rest "${REST}" --arg hello "${HELLO}" --arg living "${LIVING}" \
+    --arg rest "${REST}" --arg hello "${HELLO}" --arg guide "${GUIDE}" --arg living "${LIVING}" \
     --arg backupdisk "${BACKUPDISK}" \
     --arg interface "${INTERFACE}" --arg calendar "${CALENDAR}" \
     --arg pastekeys "${PASTE_KEYS[*]}" --arg interfacekeys "${INTERFACE_KEYS[*]}" '
@@ -356,7 +357,7 @@ SETTINGS="$(settings | jq -sc --arg layout "${LAYOUT}" --arg tiling "${TILING}" 
             else .schema | IN("org.gnome.shell", $tiling, $pointer, $glass, $motion, $workspaces, $dock, $pill, $quick, $bars,
                 $today, $breaks, $bezel, $audio, $sound, $wm, $mutter, $transitions, $hints, $appgrid, $focus, $power,
                 $access, $touch, $present, $screenshot,
-                $deskwidgets, $shelf, $desks, $privacy, $input, $keyboard, $paste, $rest, $hello, $living, $backupdisk, $interface, $calendar) | not end))
+                $deskwidgets, $shelf, $desks, $privacy, $input, $keyboard, $paste, $rest, $hello, $guide, $living, $backupdisk, $interface, $calendar) | not end))
         as $e ({}; .[$e.schema][$e.key] = $e.value))}
     + ([$all[] | select(.schema == $windows
             and (.key | IN("snap-chooser", "drop-down-key", "keep-on-top-key", "reopen-key") | not))]
@@ -410,6 +411,7 @@ SETTINGS="$(settings | jq -sc --arg layout "${LAYOUT}" --arg tiling "${TILING}" 
         | if length > 0 then {keys: (map({(.key): .value}) | add)} else {} end)
     + ([$all[] | select(.schema == $rest)] | if length > 0 then {rest: (map({(.key): .value}) | add)} else {} end)
     + ([$all[] | select(.schema == $hello)] | if length > 0 then {hello: (map({(.key): .value}) | add)} else {} end)
+    + ([$all[] | select(.schema == $guide)] | if length > 0 then {guide: (map({(.key): .value}) | add)} else {} end)
     + ([$all[] | select(.schema == $living)] | if length > 0 then {living: (map({(.key): .value}) | add)} else {} end)
     + ([$all[] | select(.schema == $backupdisk)] | if length > 0 then {backupdisk: (map({(.key): .value}) | add)} else {} end)')"
 

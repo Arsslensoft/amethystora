@@ -30,7 +30,7 @@ This document provides essential information for coding agents working with the 
   - `shared/` - Every image: configurations, fonts, themes, the manual, the `ame` commands
   - `dx/` - `amethystora-dx` only, copied in by `build_files/shared/build-dx.sh`
   - `sealed/` - the sealed images only, copied in by `build_files/sealed/00-sealed.sh`
-- `apps/` - The Amethystora apps (Manual, Security, Updates, Notes, Logs, Backups, Control): one Rust
+- `apps/` - The Amethystora apps (Manual, Security, Updates, Notes, Logs, Backups, Control, Help): one Rust
   program, a Cargo workspace built in the Containerfile's `apps` stage (see The Amethystora apps); the same
   workspace builds `amethystora-sensor` and the AI agent's tools (`agent-tools`, see Agentic features)
 - `build_files/` - Build scripts organized as base/, dx/, shared/
@@ -459,7 +459,7 @@ matched both as given and with the group in front.
 
 ### The Amethystora apps
 
-The Manual, Security, Updates, Notes, Logs, Backups and Control are one program, written in Rust with
+The Manual, Security, Updates, Notes, Logs, Backups, Control and Help are one program, written in Rust with
 GTK 4 and libadwaita: the Cargo workspace in `apps/`, one crate for each app beside `common` (the
 crate `amethystora-ui`, which they share) and `launcher`, which picks the app by the name it was started
 as. The Containerfile's `apps` stage builds it on the same pinned base with Fedora's Rust
@@ -528,7 +528,7 @@ it describes, and add to it when you add something a user would look for there.
 
 ### Translations
 
-The Manual, Security, Updates, Logs, Notes, Control and Backups follow the session's language, through
+The Manual, Security, Updates, Logs, Notes, Control, Backups and Help follow the session's language, through
 `apps/common/src/i18n.rs`. The English text in the code is the key: `t!("Update now")`,
 `t!("Last updated {when}", when = ...)`, and plurals and variants in ICU MessageFormat
 (`{count, plural, one {# file} other {# files}}`).
@@ -1008,6 +1008,9 @@ report's `backup-runs` check reads `status`. Never work out a point, a path or a
   and a way to put back one of
   `keep-both`, `replace` and `skip`; each is an argument of its own. The helper refuses a path that
   leaves the home or starts with `-`, and puts back only inside the home.
+- **Back in time** (`past.rs`, a button on Browse, no key): the same list in front of earlier points as windows receding, read by `ls`
+  when a walk settles, put back keeping both. Put back and Look stay off until the list of the point shown has been read, and a
+  folder is asked about first; leaving the view stops a walk.
 - **Nothing deletes.** Neither the helper nor the window runs `restic forget`, `prune`, `rewrite` or
   `key`, restore's `--delete`, or `btrfs subvolume delete`; `20-tests.sh` greps for them. Putting back
   adds what is missing and keeps a file that changed beside the old one (`name (2026-10-04 14.00).ext`)
@@ -1026,6 +1029,37 @@ report's `backup-runs` check reads `status`. Never work out a point, a path or a
   no retire hook: a machine that kept Déjà Dup keeps backing up with it.
 
 Its manual section is `security.md#backups`. The sidebar draws the same wordmark as Security; the app grid's icon is the icon packs' (`amethystora-backups`), with the tile `generate.mjs` draws (`amethystora-backups.svg`) for other themes.
+
+### The Help window
+
+Amethystora Help (`amethystora-help [wrong|changed]`, two entries in the Amethystora menu, `plans/ui-ideas/r7/spec-help.md`) is two
+pages over two helpers, run as the user. What it shows is theirs, kept in memory while the window is open and never written; it
+runs only what they gave. Never work a finding, a fix or a change out in the window (`apps/help`). **The rule for this window: it
+says only what it has established, and a fix must not make things worse; where it cannot know, it says less.** The Manual's icon
+stays on its launcher until a glyph is picked on a board. R7-36, R7-32 and R7-28 have **no key**: they wrap nothing and cost nothing
+closed (two menu entries, a launcher, and on Browse a button); R7-61 is `show-me`.
+
+- **Something's wrong** (`/usr/libexec/amethystora-wrong`, `topics`, `look TOPIC`, `--json`) reads until pressed, says what it found
+  in a sentence and names at most one thing to press: a fix that is always an `ame` command it shows (`ame system sound`, `network`,
+  `printer`, `power-mode`, `clean`...), never `ame security`, or **Open Security** on a page, which changes nothing.
+  `test-wrong.sh` holds each topic to that. A fix that can end what is running (`ame system network reconnect`, `sound restart`) opens
+  in a terminal, says what it ends first, and is never offered when nothing is wrong. **No internet** decides from NetworkManager's own
+  connectivity first; only when that does not say the internet works it sends the router one ping, and only once that check has failed
+  and is on it looks up the name NetworkManager's check fetches (`ConnectivityCheckUri`, `--cache=no`), never `amethystora.org` and
+  never while the check is off. A silent router, a route with no gateway and an IPv6-only network are not causes. "Busy" is measured
+  over a second from `/proc`, not `ps`'s lifetime average. The window and the manual say the ping and the lookup.
+- **What changed** (`/usr/libexec/amethystora-changes`, `list`, `undo ID`, `--json`) has no record of its own: it reads the trash, the
+  snapshots through `amethystora-restore` (and each one's dconf file, for the settings in its `SETTINGS` table, none of them a security
+  setting or able to hold a command), Flatpak's history (the machine's: "was removed", not "You removed", unless the account's own trash
+  says so), `amethystora-uninstall removed`, the deployments, what a reset saved and, while the agent's features and its tools that
+  change things are both on, its records, each time. `undo` reads the list again, for the one source of that id, and refuses an id not
+  on it. Undo only adds back: nothing replaced (`mv -n -T`), a file only to a place inside the home that is not one that starts
+  programs or holds keys (`NOT_PUT_BACK_HERE`; a trash entry's `Path=` is text anyone could write), an app only through
+  `amethystora-uninstall undo` (a plain `flatpak install` brings it back empty), an installed app has no Undo, and neither has an app
+  the agent installed, whose way back removes. A setting or theme whose value an older point also held is not offered again after
+  its Undo. The agent's undoings are records with `of` (`act.rs`) and are not listed. A security line only opens Security, and nothing
+  naming the duress feature is listed (`test-changes.sh`). Ids carry file names as percent-encoded bytes. `never.rs` refuses
+  `amethystora-changes undo` (a button of the person's, by an id they cannot read); `list` passes.
 
 ### Pools of disks
 
@@ -1320,8 +1354,17 @@ The modules, and what each replaced:
   with a card the first time and Undo after. `~/.config/amethystora/desks.json` (0600, with `.bak`) never reaches the setup
   file, which carries only the two switches.
 - `agent` and `quit` (on): see Agentic features.
+- `guide` (`show-me`, on; `ame desktop show-me`): the Manual's `[Show me](guide:ID)` calls `Start(id)` on `/org/amethystora/Guide`, and a
+  ring and a card walk the steps of `modules/guide/guides.js`: a name in `guide/targets.js`, or a button of an app by its English
+  message, which the app itself looks for on `/org/amethystora/Where` (`apps/common/src/where_is.rs`) in the session's language, from
+  the window's corner: GTK's accessibility tree leaves every padding out of its positions, so it cannot say. Any program of the account
+  can ask, so the app answers only a name in its own `locale/en.json`, only for a label on a button, and only the part in view.
+  The shell asks again every few seconds while a step shows, draws nothing while the app has lost the focus, and brings the Manual (which
+  minimizes itself when a guide starts) back whichever way the guide ends. It presses nothing, and a step it cannot find says its words
+  and leads back to the page. `check-guides.mjs` holds every guide at build time as `check-manual.js` does links: add a guide with its
+  link in the page.
 - `privacy`, after the modules it reads (`connect`, `pill`, `quick`, `meters`): the **share guard** (`share-guard`, `blur`
-  by default, or `card`) covers the windows of `share-guard-apps` (Notes, Security, Backups, the password managers) and Files
+  by default, or `card`) covers the windows of `share-guard-apps` (Notes, Security, Backups, Help, the password managers) and Files
   in the Private folder while the whole screen is shared, from Mutter's first handle, and uncovers only once Mutter's
   screen cast service says every stream is a window's; the **shield** (`shield`, a tile by default) is described under
   The Security app; **network by app** (`network-apps`, off) lists in the network meter's menu, only while it is open, the

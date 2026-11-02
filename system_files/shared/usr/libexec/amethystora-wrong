@@ -1,0 +1,518 @@
+#!/usr/bin/python3 -I
+"""amethystora-wrong: what the Help window's Something's wrong page looks at (R7-36). A person picks what is wrong in plain
+words; this looks, says what it found in one sentence, and names one thing to press. It only reads, as the account, and
+writes nothing; what it read is gone when it exits.
+
+    amethystora-wrong topics --json        what can be picked: [{id, label}]
+    amethystora-wrong look TOPIC --json    {topic, state: found|fine, words, fix, security}
+
+fix is {label, command, terminal}: an `ame` command as an argument vector, which the window shows and runs only when
+pressed. security is {label, page}: anything to do with a security feature only ever opens Security, on that page, and
+never changes it. Either may be null, and there is never both. The same checks the agent's playbooks name, and the doctor's."""
+
+import gettext
+import json
+import os
+import re
+import subprocess
+import sys
+import time
+import unicodedata
+
+_translation = gettext.translation("amethystora", fallback=True)
+_ = _translation.gettext
+ngettext = _translation.ngettext
+
+# Stand-ins for /proc, /etc and the image's own helpers, for build_files/shared/test-wrong.sh
+ROOT = os.environ.get("AMETHYSTORA_WRONG_ROOT", "")
+SECONDS = 5
+# A printer's name as `ame system printer resume` takes it: it never starts with a dash, which a command would read as an option
+PRINTER_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
+# The name NetworkManager's connectivity check fetches: the only name this ever asks about
+CHECK_HOST = re.compile(r"^https?://([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+)(?::\d{1,5})?(?:[/?#]|$)")
+SCREEN_OUTPUT = re.compile(r"hdmi|displayport|\bdp\b|\btv\b", re.I)
+# What runs by itself for a while and ends by itself, with what it is called
+BACKGROUND_SYSTEM = (("uupd.service", "update"), ("uupd-manual.service", "update"), ("amethystora-integrity.service", "integrity"),
+                     ("amethystora-clamav-scan.service", "scan"), ("flatpak-preinstall.service", "apps"))
+BACKGROUND_USER = (("amethystora-backup.service", "backup"), ("amethystora-pkg-upgrade.service", "containers"))
+# The programs of what Security switches: never a fix here, only Security's own page
+SECURITY_PROGRAMS = {"falco": "settings/detection", "suricata": "settings/network", "Suricata-Main": "settings/network",
+                     "clamd": "settings/scans", "clamscan": "settings/scans", "auditd": "settings/audit"}
+
+
+def run(*argv, seconds=SECONDS, anyway=False):
+    """What a program printed, or None when it could not run or failed (anyway: what it printed whatever it returned).
+    Always in the C locale: only ever parsed."""
+    try:
+        done = subprocess.run(argv, stdin=subprocess.DEVNULL, capture_output=True, timeout=seconds, text=True, errors="replace",
+                              env={**os.environ, "LC_ALL": "C.UTF-8", "LANGUAGE": ""}, check=False)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return done.stdout if done.returncode == 0 or anyway else None
+
+
+def read(path):
+    try:
+        with open(ROOT + path, encoding="utf-8", errors="replace") as file:
+            return file.read()
+    except OSError:
+        return ""
+
+
+def plain(text, longest=60):
+    """A name somebody else gave (a sound card, a printer, a program): one line, with the characters amethystora-security-text
+    takes out: control and format ones (the marks that turn text around among them); a byte that is not text becomes U+FFFD,
+    as jq reads it; every kind of line end becomes a space"""
+    kept = []
+    for character in str(text):
+        kind = unicodedata.category(character)
+        if character in "\t\n\r\x0b\x0c\x85" or kind in ("Zl", "Zp"):
+            kept.append(" ")
+        elif kind == "Cs":
+            kept.append("�")
+        elif kind not in ("Cc", "Cf"):
+            kept.append(character)
+    return "".join(kept).strip()[:longest]
+
+
+def command(words, *values):
+    """An `ame` command, written in plain words so that the build's check for commands that do not exist reads it"""
+    return words.split() + [str(value) for value in values]
+
+
+def answer(state, words, fix=None, security=None):
+    return {"state": state, "words": words, "fix": fix, "security": security}
+
+
+def fix(label, argv, terminal=False):
+    return {"label": label, "command": argv, "terminal": terminal}
+
+
+def opens(page):
+    return {"label": _("Open Security"), "page": page}
+
+
+def hardening_on():
+    return read("/etc/amethystora/hardening-on").split()
+
+
+def space_full():
+    """How full the disk with the home folders is, in percent, and what is free; None when it could not be read"""
+    out = run("df", "-h", "--output=pcent,avail", "/var/home") or ""
+    lines = out.strip().splitlines()
+    if len(lines) < 2:
+        return None
+    parts = lines[-1].split()
+    try:
+        return (int(parts[0].rstrip("%")), parts[1]) if len(parts) > 1 else None
+    except ValueError:
+        return None
+
+
+# --- No sound -----------------------------------------------------------------------------------------------------------
+
+
+def outputs(status):
+    """The audio outputs in `wpctl status`: (id, name, is the default)"""
+    found = []
+    audio = inside = False
+    for line in status.splitlines():
+        if not line.strip():
+            continue
+        if not line[0].isspace():
+            audio = line.strip() == "Audio"
+            inside = False
+            continue
+        if not audio:
+            continue
+        if re.search(r"[A-Za-z ]+:\s*$", line):
+            inside = line.strip(" ├└─│:").strip() == "Sinks"
+            continue
+        match = re.match(r"^[\s│]*(\*)?\s*(\d+)\.\s+(.+?)(?:\s+\[vol:.*\])?\s*$", line)
+        if inside and match:
+            found.append((match[2], plain(match[3]), match[1] == "*"))
+    return found
+
+
+def look_sound():
+    states = (run("systemctl", "--user", "is-active", "wireplumber.service", "pipewire.service") or "").split()
+    if states.count("active") < 2:
+        return answer("found", _("The program that plays sound has stopped."), fix(_("Start it again"), command("ame system sound restart"), terminal=True))
+    all_outputs = [output for output in outputs(run("wpctl", "status") or "") if "dummy" not in output[1].lower()]
+    if not all_outputs:
+        if "block-bluetooth" in hardening_on():
+            return answer("found", _("This computer has no sound output, and Bluetooth is blocked in Security, so headphones cannot connect."),
+                          security=opens("settings/devices"))
+        if not read("/proc/asound/cards").strip() or "no soundcards" in read("/proc/asound/cards"):
+            return answer("found", _("This computer finds no sound card at all. If it began with an update, go back to the version before."))
+        return answer("found", _("Nothing to play sound on was found. Starting the sound program again may find it."),
+                      fix(_("Start it again"), command("ame system sound restart"), terminal=True))
+    default = next((output for output in all_outputs if output[2]), None)
+    volume = run("wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@") or ""
+    level = re.search(r"Volume:\s*([\d.]+)", volume)
+    silent = bool(level) and float(level[1]) == 0
+    if "MUTED" in volume:
+        if silent:
+            return answer("found", _("Sound is muted, and the volume is at zero."), fix(_("Turn sound on, at half volume"), command("ame system sound unmute")))
+        return answer("found", _("Sound is muted."), fix(_("Turn sound on"), command("ame system sound unmute")))
+    if silent:
+        return answer("found", _("The volume is at zero."), fix(_("Turn sound up, to half volume"), command("ame system sound unmute")))
+    if default and SCREEN_OUTPUT.search(default[1]):
+        other = next((output for output in all_outputs if not SCREEN_OUTPUT.search(output[1])), None)
+        if other:
+            return answer("found", _("Sound is going to “{screen}”, which may be off or turned down.").format(screen=default[1]),
+                          fix(_("Use “{name}”").format(name=other[1]), command("ame system sound use", other[0])))
+    inspect = run("wpctl", "inspect", "@DEFAULT_AUDIO_SINK@") or ""
+    if re.search(r'api\.bluez5\.profile = "headset-head-unit"', inspect):
+        return answer("found", _("Your headset is in its call mode, which sounds thin. Choose High Fidelity Playback for it in Settings, Sound."))
+    if default:
+        # Starting the sound program again would stop whatever is playing, a call included: not offered while nothing is wrong
+        return answer("fine", _("Sound is on and going to “{name}”. Nothing here explains why you hear nothing: check that the speakers or headphones are on and plugged in.").format(name=default[1]))
+    return answer("fine", _("Sound looks fine here."))
+
+
+# --- No internet --------------------------------------------------------------------------------------------------------
+
+
+def split_terse(line):
+    """A line of nmcli -t, whose separators inside a value are escaped"""
+    return [part.replace("\\:", ":") for part in re.split(r"(?<!\\):", line)]
+
+
+def default_routes(version):
+    """The default routes of one IP version, one per line"""
+    return [line for line in (run("ip", f"-{version}", "route", "show", "default") or "").splitlines() if line.startswith("default")]
+
+
+def router(routes):
+    """The router's address, when a default route names one: a route that goes straight out of an interface (a modem, a
+    tunnel) has none, and is still a way out"""
+    for line in routes:
+        match = re.search(r"\bvia\s+(\S+)", line)
+        if match:
+            return match[1]
+    return None
+
+
+def check_host():
+    """Whether NetworkManager's own connectivity check is on, and the name it fetches from, the only name this ever asks about.
+    (None, None) when that cannot be read."""
+    def prop(name):
+        return (run("busctl", "--system", "get-property", "org.freedesktop.NetworkManager", "/org/freedesktop/NetworkManager",
+                    "org.freedesktop.NetworkManager", name) or "").strip()
+    enabled = prop("ConnectivityCheckEnabled")
+    if enabled not in ("b true", "b false"):
+        return None, None
+    if enabled == "b false":
+        return False, None
+    uri = re.match(r'^s "(.*)"$', prop("ConnectivityCheckUri"))
+    found = CHECK_HOST.match(uri[1]) if uri else None
+    if not found or len(found[1]) > 253 or re.match(r"^[0-9.]+$", found[1]):
+        return True, None
+    return True, found[1].lower()
+
+
+def security_value(key):
+    return (run(ROOT + "/usr/libexec/amethystora-security-config", key) or "").strip()
+
+
+def dns_on():
+    return (run(ROOT + "/usr/libexec/amethystora-dns", "status") or "").strip() == "on"
+
+
+def look_internet():
+    general = run("nmcli", "-t", "-f", "STATE,CONNECTIVITY,WIFI", "general", "status")
+    if general is None:
+        return answer("found", _("The program that looks after networks is not running."),
+                      fix(_("Start it again"), command("ame system network restart"), terminal=True))
+    state, connectivity, wifi = (split_terse(general.strip()) + ["", "", ""])[:3]
+    if (run("nmcli", "networking") or "").strip() == "disabled":
+        return answer("found", _("Networking is turned off on this computer."), fix(_("Turn it on"), command("ame system network on")))
+    if state.startswith("connecting"):
+        return answer("found", _("This computer is still connecting to a network. Give it a moment."))
+    if not state.startswith("connected"):
+        if wifi == "disabled":
+            return answer("found", _("Wi-Fi is turned off, and nothing else is connected."), fix(_("Turn Wi-Fi on"), command("ame system network on")))
+        return answer("found", _("This computer is not connected to a network. Pick one in the menu at the top right, or try once more."),
+                      fix(_("Try to connect again"), command("ame system network reconnect"), terminal=True))
+    if connectivity == "portal":
+        if dns_on():
+            return answer("found", _("This network wants you to log in first, and encrypted DNS keeps its page from opening. Security can pause it for ten minutes."),
+                          security=opens("settings/network"))
+        return answer("found", _("This network wants you to log in first. Its page should open by itself, or open any site in a browser."))
+    # NetworkManager's own check comes first: when it says the internet works, nothing here asks anything of the network
+    if connectivity == "full":
+        if security_value("NETWORK") == "block":
+            return answer("fine", _("NetworkManager says the internet works. If one site or app will not connect, network protection may have blocked it, which Security shows."),
+                          security=opens("settings/network"))
+        return answer("fine", _("NetworkManager says the internet works from this computer. If one site fails, the fault may be that site's."))
+    routes4, routes6 = default_routes(4), default_routes(6)
+    if not routes4 and not routes6:
+        return answer("found", _("This computer is connected, but the network gave it no way out. Connecting again often helps. It turns every connection off for a moment, a VPN, a remote session or a call included."),
+                      fix(_("Try to connect again"), command("ame system network reconnect"), terminal=True))
+    # From here on the network is asked one test message to the router and, once NetworkManager's check has failed, one lookup of
+    # the name that check fetches from: nothing else, and no name at all while that check is off
+    checking, host = check_host()
+    failed = connectivity in ("limited", "none")
+    gateway = router(routes4)
+    pinged = None if gateway is None else run("ping", "-n", "-c", "1", "-W", "2", gateway) is not None
+    names = None
+    if failed and host:
+        names = run("resolvectl", "query", "--legend=no", "--cache=no", host) is not None
+    if names is False and dns_on():
+        return answer("found", _("A site's name could not be found, and encrypted DNS is on, which some networks block. Security can pause it or turn it off."),
+                      security=opens("settings/network"))
+    if failed and (run(ROOT + "/usr/libexec/amethystora-mac", "status") or "").strip() in ("on", "away"):
+        return answer("found", _("NetworkManager's check did not get through. This computer shows each network a different address, which some networks refuse. Security can change that."),
+                      security=opens("settings/network"))
+    seen = ""
+    if pinged is True:
+        seen += " " + _("The router answered a test message.")
+    elif pinged is False:
+        seen += " " + _("The router did not answer a test message, which some routers never do.")
+    if names is True:
+        seen += " " + _("A site's name could be found.")
+    elif names is False:
+        seen += " " + _("A site's name could not be found.")
+    if failed:
+        return answer("found", _("NetworkManager's check did not get through, though the network gave this computer a way out.") + seen + " " +
+                      _("The fault may be in the router or the line behind it, and restarting the router may help."))
+    if checking is False:
+        return answer("fine" if pinged is not False else "found",
+                      _("NetworkManager's check of the internet is off, so this cannot tell whether it works.") + seen + " " + _("If one site fails, the fault may be that site's."))
+    return answer("found", _("NetworkManager could not say whether the internet works.") + seen)
+
+
+# --- The printer --------------------------------------------------------------------------------------------------------
+
+
+def look_printer():
+    printers = run("lpstat", "-p")
+    if printers is None or not printers.strip():
+        if "firewall-away" in hardening_on():
+            return answer("found", _("No printer is set up, and the away firewall is on, which hides printers on networks you have not named as home. Security can change that."),
+                          security=opens("settings/network"))
+        return answer("found", _("No printer is set up yet. Settings finds the ones on your network."),
+                      fix(_("Open printer settings"), command("ame system printer settings")))
+    default = (run("lpstat", "-d") or "").partition(":")[2].strip()
+    stopped = re.findall(r"^printer (\S+) disabled\b", printers, re.M)
+    named = default if default in stopped else (stopped[0] if stopped else None)
+    if named and PRINTER_NAME.match(named):
+        return answer("found", _("“{name}” is paused, so what you print waits.").format(name=plain(named)),
+                      fix(_("Resume printing"), command("ame system printer resume", named), terminal=True))
+    if named:
+        return answer("found", _("“{name}” is paused, so what you print waits. Resume it in Settings, Printers.").format(name=plain(named)))
+    waiting = len((run("lpstat", "-o") or "").strip().splitlines())
+    if waiting:
+        words = ngettext("{count} job is waiting to print. Check that the printer is on, has paper and is on the same network.", "{count} jobs are waiting to print. Check that the printer is on, has paper and is on the same network.", waiting)
+        return answer("found", words.format(count=waiting))
+    return answer("fine", _("Your printer is ready and nothing is waiting."))
+
+
+# --- It feels slow ------------------------------------------------------------------------------------------------------
+
+
+def process_times(proc):
+    """Every process in a /proc: {pid: (name, processor time used so far in ticks, resident pages, owner)}"""
+    found = {}
+    try:
+        pids = os.listdir(proc)
+    except OSError:
+        return found
+    for pid in pids:
+        if not pid.isdigit():
+            continue
+        try:
+            with open(f"{proc}/{pid}/stat", encoding="utf-8", errors="replace") as file:
+                stat = file.read()
+            owner = os.stat(f"{proc}/{pid}").st_uid
+            # The name is in brackets and may hold any character, brackets included
+            start, end = stat.find("("), stat.rfind(")")
+            rest = stat[end + 2:].split()
+            found[pid] = (stat[start + 1:end], int(rest[11]) + int(rest[12]), int(rest[21]), owner)
+        except (OSError, ValueError, IndexError):
+            continue
+    return found
+
+
+def busy_programs():
+    """Every program by its share of the processor over about a second (what it uses now, not over its whole life), the busiest
+    first: (name, cpu, memory, is the account's). The stand-ins give the second reading as proc.later."""
+    first = process_times(ROOT + "/proc")
+    started = time.monotonic()
+    if not ROOT:
+        time.sleep(1)
+    second = process_times(ROOT + "/proc.later" if ROOT else "/proc")
+    elapsed = 1.0 if ROOT else max(time.monotonic() - started, 0.1)
+    ticks, page = os.sysconf("SC_CLK_TCK"), os.sysconf("SC_PAGE_SIZE")
+    total = int(dict(re.findall(r"^(\w+):\s+(\d+)", read("/proc/meminfo"), re.M)).get("MemTotal", 0)) * 1024
+    found = []
+    for pid, (name, used, pages, owner) in second.items():
+        # Only a program there for both readings, and not this one
+        if pid not in first or pid == str(os.getpid()):
+            continue
+        found.append((plain(name, 40), (used - first[pid][1]) / ticks / elapsed * 100, pages * page * 100 / total if total else 0.0, owner == os.getuid()))
+    return sorted(found, key=lambda program: -program[1])
+
+
+def memory_short():
+    pressure = re.search(r"^some .*?\bavg60=([\d.]+)", read("/proc/pressure/memory"), re.M)
+    if pressure and float(pressure[1]) > 10:
+        return True
+    meminfo = dict(re.findall(r"^(\w+):\s+(\d+)", read("/proc/meminfo"), re.M))
+    total, free = int(meminfo.get("SwapTotal", 0)), int(meminfo.get("SwapFree", 0))
+    return total > 0 and (total - free) * 100 / total >= 80
+
+
+def background():
+    """What runs by itself now, by what it is called: the first of them"""
+    units = [unit for unit, _kind in BACKGROUND_SYSTEM]
+    states = (run("systemctl", "is-active", *units) or "").split()
+    for (_unit, kind), state in zip(BACKGROUND_SYSTEM, states):
+        if state in ("active", "activating"):
+            return kind
+    units = [unit for unit, _kind in BACKGROUND_USER]
+    states = (run("systemctl", "--user", "is-active", *units) or "").split()
+    for (_unit, kind), state in zip(BACKGROUND_USER, states):
+        if state in ("active", "activating"):
+            return kind
+    return None
+
+
+def look_slow():
+    room = space_full()
+    if room and room[0] >= 95:
+        return answer("found", _("Your disk is {full}% full, and a full disk slows everything.").format(full=room[0]),
+                      fix(_("Free disk space"), command("ame system clean"), terminal=True))
+    programs = busy_programs()
+    top = programs[0] if programs else None
+    if top and top[0] in SECURITY_PROGRAMS and top[1] >= 50:
+        return answer("found", _("A security feature, {name}, is keeping the processor busy. Security says what it does and can make it lighter.").format(name=top[0]),
+                      security=opens(SECURITY_PROGRAMS[top[0]]))
+    kind = background()
+    words = {"update": _("An update is being installed. It ends by itself, and the computer is quicker after it."),
+             "integrity": _("The check of your apps' files is running. It ends by itself."),
+             "scan": _("The weekly virus scan is reading your files. It ends by itself."),
+             "apps": _("The first apps are being installed. It ends by itself."),
+             "backup": _("Your backup is running. It ends by itself."),
+             "containers": _("Your containers are being upgraded. It ends by itself.")}
+    if kind:
+        return answer("found", words[kind])
+    if top and top[1] >= 70:
+        if top[3]:
+            return answer("found", _("{name} is keeping the processor busy. Close it if you are not using it.").format(name=top[0]))
+        return answer("found", _("A system program, {name}, is keeping the processor busy. It usually ends by itself.").format(name=top[0]))
+    if memory_short():
+        heaviest = max(programs, key=lambda program: program[2], default=None)
+        if heaviest:
+            return answer("found", _("Memory is short, and {name} is using the most. Closing what you do not need helps.").format(name=heaviest[0]))
+        return answer("found", _("Memory is short. Closing what you do not need helps."))
+    if (run("powerprofilesctl", "get") or "").strip() == "power-saver":
+        return answer("found", _("Power Saver is on, which makes the computer slower to save the battery."),
+                      fix(_("Use the balanced mode"), command("ame system power-mode balanced")))
+    return answer("fine", _("No program was using much of the processor in the last second, and memory is not short. If it is slow again, look here while it is."))
+
+
+# --- Running out of room ------------------------------------------------------------------------------------------------
+
+
+def look_space():
+    room = space_full()
+    if room is None:
+        return answer("fine", _("This could not read how full the disk is."))
+    full, free = room
+    if full >= 85:
+        return answer("found", _("Your disk is {full}% full, with {free} free.").format(full=full, free=free),
+                      fix(_("Free disk space"), command("ame system clean"), terminal=True))
+    return answer("fine", _("There is room: your disk is {full}% full, with {free} free.").format(full=full, free=free))
+
+
+# --- A device does nothing ----------------------------------------------------------------------------------------------
+
+
+def look_device():
+    try:
+        findings = json.loads(read("/var/lib/amethystora/drivers/status.json") or "{}").get("findings") or []
+    except ValueError:
+        findings = []
+    for finding in findings:
+        text = plain(finding.get("text", ""), 240)
+        device = plain(finding.get("device", ""))
+        if not text:
+            continue
+        said = f"{device}: {text}" if device else text
+        action = str(finding.get("fix") or "").split()
+        if action[:1] == ["ame"] and action[1:2] == ["security"]:
+            return answer("found", said, security=opens("settings/devices"))
+        if action[:1] == ["ame"] and all(re.match(r"^[A-Za-z0-9_.:-]+$", word) for word in action):
+            return answer("found", said, fix(_("Fix it"), action, terminal=True))
+        return answer("found", said)
+    if (run("systemctl", "is-enabled", "usbguard.service") or "").strip() == "enabled":
+        # In its locked-screen mode its D-Bus service is not masked, and new devices come in while the screen is unlocked
+        if (run("systemctl", "is-enabled", "usbguard-dbus.service", anyway=True) or "").strip() != "masked":
+            return answer("found", _("USB protection is set to the locked screen, which keeps out a device plugged in while the screen is locked. If this one was, plug it in again with the screen unlocked."),
+                          security=opens("settings/devices"))
+        return answer("found", _("USB protection is on, and it may be keeping this device out until it is allowed. Security can allow it."),
+                      security=opens("settings/devices"))
+    on = hardening_on()
+    if "block-webcam" in on:
+        return answer("found", _("The webcam is blocked in Security."), security=opens("settings/devices"))
+    if "block-bluetooth" in on:
+        return answer("found", _("Bluetooth is blocked in Security, so Bluetooth devices cannot connect."), security=opens("settings/devices"))
+    if "block-automount" in on:
+        return answer("found", _("USB sticks do not open by themselves here, by a setting in Security. Open the stick in Files."), security=opens("settings/devices"))
+    return answer("fine", _("Nothing here is keeping a device out. Plug it in again, into another port if you can."))
+
+
+# --- Something else: the doctor's checks ---------------------------------------------------------------------------------
+
+
+def look_other():
+    out = run(ROOT + "/usr/libexec/amethystora-doctor", "--json", seconds=20)
+    try:
+        findings = json.loads(out or "{}").get("findings") or []
+    except ValueError:
+        findings = []
+    order = {"problem": 0, "warning": 1}
+    for finding in sorted(findings, key=lambda finding: order.get(finding.get("level"), 2)):
+        kind = finding.get("id")
+        if finding.get("level") not in order:
+            continue
+        if kind == "update-failed":
+            return answer("found", _("The last update did not finish. Trying again usually works."), fix(_("Update now"), command("ame update"), terminal=True))
+        if kind == "disk-space":
+            return look_space()
+        if kind == "memory":
+            return look_slow()
+        if kind == "security":
+            return answer("found", _("The security watcher found something serious in the last day. Security says what."), security=opens("events"))
+        if kind == "older-deployment":
+            return answer("found", _("This computer started from an older version than its newest. System Updates can keep this one, and the next restart goes back to the newest."))
+        return answer("found", plain(finding.get("evidence", ""), 300))
+    return answer("fine", _("The usual checks find nothing wrong."))
+
+
+LOOKS = {"sound": look_sound, "internet": look_internet, "printer": look_printer, "slow": look_slow,
+         "space": look_space, "device": look_device, "other": look_other}
+
+
+def topics():
+    return [{"id": "sound", "label": _("No sound")}, {"id": "internet", "label": _("No internet")},
+            {"id": "printer", "label": _("The printer")}, {"id": "slow", "label": _("It feels slow")},
+            {"id": "space", "label": _("Running out of room")}, {"id": "device", "label": _("A device does nothing")},
+            {"id": "other", "label": _("Something else")}]
+
+
+def main():
+    args = [arg for arg in sys.argv[1:] if arg != "--json"]
+    if args == ["topics"]:
+        print(json.dumps(topics(), ensure_ascii=False))
+    elif len(args) == 2 and args[0] == "look" and args[1] in LOOKS:
+        print(json.dumps({"version": 1, "topic": args[1], **LOOKS[args[1]]()}, ensure_ascii=False))
+    else:
+        print("usage: amethystora-wrong topics --json | look TOPIC --json", file=sys.stderr)
+        sys.exit(64)
+
+
+if __name__ == "__main__":
+    main()

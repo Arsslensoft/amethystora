@@ -533,7 +533,7 @@ for command in $(grep -oE "argv: \['[^']+'" "${LOGO_MENU_EXTENSION}/extension.js
     command -v "${command}" >/dev/null
 done
 mapfile -t LOGO_MENU_LABELS < <(grep -oE "_\('[^']+'\)" "${LOGO_MENU_EXTENSION}/extension.js" | cut -d "'" -f 2)
-[[ "${#LOGO_MENU_LABELS[@]}" == 9 ]]
+[[ "${#LOGO_MENU_LABELS[@]}" == 11 ]]
 for po in /ctx/po/*.po; do
     mo="/usr/share/locale/$(basename "${po}" .po)/LC_MESSAGES/amethystora.mo"
     python3 -c 'import gettext, sys
@@ -1191,7 +1191,7 @@ PRIVACY=org.gnome.shell.extensions.amethystora-ui.privacy
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${PRIVACY}" shield)" == "'tile'" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${PRIVACY}" share-guard-private)" == true ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${PRIVACY}" network-apps)" == false ]]
-for app in amethystora-notes amethystora-security amethystora-backups; do
+for app in amethystora-notes amethystora-security amethystora-backups amethystora-help; do
     GSETTINGS_BACKEND=memory gsettings get "${PRIVACY}" share-guard-apps | grep -qF "'${app}.desktop'"
     test -f "/usr/share/applications/${app}.desktop"
 done
@@ -1464,6 +1464,19 @@ find /usr/share/gnome-shell/extensions/amethystora-*@arsslensoft.github.io -name
                 test -f "$(dirname "${js}")/${rel}" || { echo "${js} imports ${rel}, which is missing" >&2; exit 1; }
             done || exit 1
     done
+# Round 7's help (plans/ui-ideas/r7/spec-help.md): Show me's key and its guides, each step held to what exists (R7-61); what
+# the Help window's helpers do, against stand-ins (R7-36, R7-32); nothing of theirs blocks the shell or keeps a record
+GUIDE_SCHEMA=org.gnome.shell.extensions.amethystora-ui.guide
+[[ "$(GSETTINGS_BACKEND=memory gsettings list-recursively "${GUIDE_SCHEMA}" | cut -d' ' -f2-)" == "show-me true" ]]
+test -s /usr/share/amethystora/themed/shell-guide.css.tpl
+[[ -z "$(grep -lE '_sync\(|file_get_contents' "${UI_EXTENSION}/modules/guide.js" "${UI_EXTENSION}"/modules/guide/*.js)" ]]
+grep -q '^show-me STATE="":' /usr/share/amethystora/just/desktop.just
+env LD_LIBRARY_PATH=/apps-stage/usr/lib64 NODE_ICU_DATA="$(echo /apps-stage/usr/share/node-*/icudata)" /apps-stage/usr/bin/node \
+    /ctx/build_files/shared/check-guides.mjs "${UI_EXTENSION}" /usr/share/amethystora/manual /usr/lib /usr/share/applications
+bash /ctx/build_files/shared/test-wrong.sh
+bash /ctx/build_files/shared/test-changes.sh
+# What changed with the real helper it hands an app's Undo to (R7-41's amethystora-uninstall, of the files group)
+bash /ctx/build_files/shared/test-changes-uninstall.sh
 # Every Gio.Settings the shell code of our extensions makes is kept and run_dispose()d on the main thread at disable,
 # never left to the collector: GJS sweeping one while dconf's worker dispatches a change to it deadlocks the shell
 env LD_LIBRARY_PATH=/apps-stage/usr/lib64 NODE_ICU_DATA="$(echo /apps-stage/usr/share/node-*/icudata)" /apps-stage/usr/bin/node /ctx/build_files/shared/test-settings-disposed.mjs \
@@ -1975,7 +1988,7 @@ grep -q "paperwm@paperwm.github.com" /usr/share/amethystora/user-setup.hooks.d/1
 # wordmarks, which the program carries, is the logo's own, cropped the way branding/generate.mjs crops it.
 APPS_PROGRAM=/usr/lib/amethystora-apps/amethystora-apps
 test -x "${APPS_PROGRAM}"
-for app in manual security update notes logs backups phone control shelf trim; do
+for app in manual security update notes logs backups phone control shelf trim help; do
     test -x "/usr/bin/amethystora-${app}"
     [[ "/usr/lib/amethystora-${app}/amethystora-${app}" -ef "${APPS_PROGRAM}" ]]
     [[ "$(env -u DISPLAY -u WAYLAND_DISPLAY "/usr/lib/amethystora-${app}/amethystora-${app}" --version)" == "amethystora-${app} "* ]]

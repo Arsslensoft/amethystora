@@ -365,7 +365,7 @@ out.
 ### Share guard
 
 While your whole screen is shared, in a video call or a remote desktop, the windows of Notes, Security,
-Backups and the password managers (KeePassXC, Bitwarden, Secrets, Passwords and Keys, Proton Pass, 1Password,
+Backups, Help (which lists what you deleted and removed) and the password managers (KeePassXC, Bitwarden, Secrets, Passwords and Keys, Proton Pass, 1Password,
 Authenticator), and Files windows showing your [private folder](security.md#a-private-folder-that-locks-with-the-screen),
 are covered: blurred so that no word can be read, and labelled **Hidden while you share**. A window that opens
 during the share is covered before it is first drawn, and the live pill says once what is covered.
@@ -1025,6 +1025,14 @@ the keys you type in apps, keeps nothing of them but the letter held, and never 
 works in apps that tell GNOME's input method their text (GNOME's apps, Amethystora's, Firefox and most
 others), and not in terminals, fullscreen windows such as games, or apps that run through X11. It is not part
 of your setup file.
+
+## Show me, on my screen
+
+Where the manual has **Show me**, it puts a ring round the real button on your screen and walks you through it, a step at a
+time: **Next** when you are ready, and a step moves on by itself when you do what it says. It presses nothing for you. A
+step it cannot find says its words and leads back to the page. The manual steps aside while a guide runs and comes back
+when it ends, however it ends. Turn it off in Control (**Desktop**, **Help**), or with `ame desktop show-me off`, and the
+manual's words stay.
 
 ## A resting screen
 

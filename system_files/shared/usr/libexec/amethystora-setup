@@ -25,7 +25,7 @@
 #                bars, today, breaks, search, emoji, bezel, audio, sound, wm, mutter, look, transitions, hints, appgrid,
 #                focus, power,
 #                access, touch, present, screenshot, deskwidgets, shelf, desks,
-#                quit, privacy, tools, input, keyboard, paste, keys, rest, hello, living, backupdisk, interface, calendar}: the window
+#                quit, privacy, tools, input, keyboard, paste, keys, rest, hello, guide, living, backupdisk, interface, calendar}: the window
 #                layout, the dock's apps, the keys of
 #                keybindings (the image's custom keybindings by their id, never a command), the tiling's
 #                settings by their key in its schema (TILING_KEYS: numbers, switches and lists, never its
@@ -64,7 +64,7 @@
 #                the microphone's keys are keybindings), the keyboard GNOME keeps out of sight: each window's own layout and
 #                the xkb options (INPUT_KEYS), Num Lock at start and the repeat delay (KEYBOARD_KEYS), middle-click paste
 #                (PASTE_KEYS) and what Super alone opens (KEYS_KEYS; never accents, which look at what is typed), the
-#                resting screen and when it comes (REST_KEYS), the first login's greeting (HELLO_KEYS), the living wallpaper (LIVING_KEYS), and no other GNOME
+#                resting screen and when it comes (REST_KEYS), the first login's greeting (HELLO_KEYS), the Manual's Show me (GUIDE_KEYS), the living wallpaper (LIVING_KEYS), and no other GNOME
 #                setting (Reduce motion and High Contrast are GNOME's accessibility keys, left out). A file
 #                from before the tiling replaced PaperWM may still hold its gaps under paperwm, which are read
 #                as the tiling's when the file has no tiling of its own (a gap the tiling cannot take is left
@@ -342,6 +342,9 @@ REST_KEYS='{"enabled": ["b"], "after": ["i", 60, 1800]}'
 # The greeting at a new account's first login (R7-24)
 HELLO=org.gnome.shell.extensions.amethystora-ui.hello
 HELLO_KEYS='{"greet": ["b"]}'
+# The Manual's Show me
+GUIDE=org.gnome.shell.extensions.amethystora-ui.guide
+GUIDE_KEYS='{"show-me": ["b"]}'
 LIVING=org.gnome.shell.extensions.amethystora-ui.living
 LIVING_KEYS='{"wallpaper": ["s", ["off", "aurora", "facets", "rain", "dusk"]]}'
 # What a value of each kind has to be, for the check and for reading an old file's gaps
@@ -488,7 +491,7 @@ if type != "object" then "it is not a JSON object" else
             "windows", "dock", "pill", "quick", "bars", "today", "breaks", "search", "emoji", "bezel", "audio", "sound",
             "wm", "mutter", "look", "transitions",
             "hints", "appgrid", "focus", "power", "access", "touch", "present",
-            "screenshot", "deskwidgets", "shelf", "desks", "quit", "privacy", "tools", "input", "keyboard", "paste", "keys", "rest", "hello", "living", "backupdisk", "interface", "calendar"]; "settings."),
+            "screenshot", "deskwidgets", "shelf", "desks", "quit", "privacy", "tools", "input", "keyboard", "paste", "keys", "rest", "hello", "guide", "living", "backupdisk", "interface", "calendar"]; "settings."),
         (if type == "object" then
             at("layout"; if IN("tiling", "classic") then empty else "settings.layout is tiling or classic" end),
             at("favorites"; each("settings.favorites";
@@ -669,6 +672,10 @@ if type != "object" then "it is not a JSON object" else
                 (if type == "object" then to_entries[] | select(.key | IN($hello | keys[])) | $hello[.key] as $spec
                     | if .value | valid($spec) then empty else "settings.hello.\(.key) is \(wanted($spec))" end
                  else empty end)),
+            at("guide"; only($guide | keys; "settings.guide."),
+                (if type == "object" then to_entries[] | select(.key | IN($guide | keys[])) | $guide[.key] as $spec
+                    | if .value | valid($spec) then empty else "settings.guide.\(.key) is \(wanted($spec))" end
+                 else empty end)),
             at("living"; only($living | keys; "settings.living."),
                 (if type == "object" then to_entries[] | select(.key | IN($living | keys[])) | $living[.key] as $spec
                     | if .value | valid($spec) then empty else "settings.living.\(.key) is \(wanted($spec))" end
@@ -712,7 +719,7 @@ check() {
         --argjson privacy "${PRIVACY_KEYS}" --argjson tools "${TOOLS_KEYS}" \
         --argjson input "${INPUT_KEYS}" --argjson keyboard "${KEYBOARD_KEYS}" --argjson paste "${PASTE_KEYS}" \
         --argjson superkeys "${KEYS_KEYS}" \
-        --argjson rest "${REST_KEYS}" --argjson hello "${HELLO_KEYS}" --argjson living "${LIVING_KEYS}" \
+        --argjson rest "${REST_KEYS}" --argjson hello "${HELLO_KEYS}" --argjson guide "${GUIDE_KEYS}" --argjson living "${LIVING_KEYS}" \
         --argjson backupdisk "${BACKUPDISK_KEYS}" \
         --argjson interface "${INTERFACE_KEYS}" --argjson calendar "${CALENDAR_KEYS}" \
         "${TILING_JQ} ${CHECK}" 2>&1)" ||
@@ -857,7 +864,7 @@ current() {
             jq -nc --arg k "${key}" --argjson v "${value:-null}" '{pill: {($k): $v}}'
         done < <(jq -r '.settings.pill // {} | keys[]' <<<"$1")
         for area in quick bars today breaks search emoji bezel audio sound wm mutter transitions hints appgrid focus power \
-            access touch present screenshot deskwidgets shelf desks quit privacy tools input keyboard paste keys rest hello living \
+            access touch present screenshot deskwidgets shelf desks quit privacy tools input keyboard paste keys rest hello guide living \
             backupdisk interface calendar; do
             case "${area}" in
                 input) schema="${INPUT}" ;;
@@ -892,6 +899,7 @@ current() {
                 tools) schema="${TOOLS}" ;;
                 rest) schema="${REST}" ;;
                 hello) schema="${HELLO}" ;;
+                guide) schema="${GUIDE}" ;;
                 living) schema="${LIVING}" ;;
                 backupdisk) schema="${BACKUPDISK}" ;;
                 interface) schema="${INTERFACE}" ;;
@@ -913,7 +921,7 @@ current() {
         power: {}, access: {},
         touch: {}, present: {},
         screenshot: {}, deskwidgets: {}, shelf: {}, desks: {},
-        quit: {}, privacy: {}, tools: {}, input: {}, keyboard: {}, paste: {}, keys: {}, rest: {}, hello: {}, living: {},
+        quit: {}, privacy: {}, tools: {}, input: {}, keyboard: {}, paste: {}, keys: {}, rest: {}, hello: {}, guide: {}, living: {},
         backupdisk: {}, interface: {}, calendar: {}};
         . * $x)'
 }
@@ -1058,7 +1066,7 @@ def brew($x; $k): $x.brew[$k] // [];
     (("quick", "bars", "today", "breaks", "search", "emoji", "bezel", "audio", "sound", "wm", "mutter", "transitions",
         "hints", "appgrid", "focus", "power",
         "access", "touch", "present",
-        "screenshot", "deskwidgets", "shelf", "desks", "quit", "privacy", "tools", "input", "keyboard", "paste", "keys", "rest", "hello", "living", "backupdisk", "interface", "calendar") as $a
+        "screenshot", "deskwidgets", "shelf", "desks", "quit", "privacy", "tools", "input", "keyboard", "paste", "keys", "rest", "hello", "guide", "living", "backupdisk", "interface", "calendar") as $a
     | ($fs[$a] // {} | to_entries[] | .key as $k | $now[$a][$k] as $v
         | select(.value != $v) | {area: $a, action: "set", key: $k, to: .value, from: $v}
         + if $v == null then {ok: false, why: "this machine has no such \({quick: "quick settings", bezel: "screen corners",
@@ -1140,7 +1148,7 @@ def text:
         or .area == "present" or .area == "screenshot" or .area == "deskwidgets"
         or .area == "shelf" or .area == "desks" or .area == "quit" or .area == "privacy" or .area == "tools"
         or .area == "input" or .area == "keyboard" or .area == "paste" or .area == "keys"
-        or .area == "rest" or .area == "hello" or .area == "living"
+        or .area == "rest" or .area == "hello" or .area == "guide" or .area == "living"
         or .area == "backupdisk"
         or .area == "interface" or .area == "calendar" then
         {quick: "quick settings'", bars: "the top bar's", today: "the calendar's", breaks: "the rest reminders'",
@@ -1154,7 +1162,7 @@ def text:
             privacy: "the privacy settings'", tools: "the tools'",
             input: "the input sources'", keyboard: "the keyboard's",
             paste: "middle-click paste's", keys: "the Super key's",
-            rest: "the resting screen's", hello: "the greeting's", living: "the living wallpaper's",
+            rest: "the resting screen's", hello: "the greeting's", guide: "Show me's", living: "the living wallpaper's",
             backupdisk: "the backup disk's",
             interface: "the clock's and the text's", calendar: "the calendar's"}[.area]
         + " \(.key)"
@@ -1400,7 +1408,7 @@ add_all() {
         gsettings set "${PILL}" "${name}" "$(jq -c .to <<<"${change}")" || FAILED+=("the live pill's ${name}")
     done
     for area in quick bars today breaks search emoji bezel audio sound wm mutter transitions hints appgrid focus power \
-        access touch present screenshot deskwidgets shelf desks quit privacy tools input keyboard paste keys rest hello living \
+        access touch present screenshot deskwidgets shelf desks quit privacy tools input keyboard paste keys rest hello guide living \
         backupdisk interface calendar; do
         case "${area}" in
             input) schema="${INPUT}" label="the input sources'" ;;
@@ -1435,6 +1443,7 @@ add_all() {
             tools) schema="${TOOLS}" label="the tools'" ;;
             rest) schema="${REST}" label="the resting screen's" ;;
             hello) schema="${HELLO}" label="the greeting's" ;;
+            guide) schema="${GUIDE}" label="Show me's" ;;
             living) schema="${LIVING}" label="the living wallpaper's" ;;
             backupdisk) schema="${BACKUPDISK}" label="the backup disk's" ;;
             interface) schema="${INTERFACE}" label="the clock's and the text's" ;;
@@ -1542,7 +1551,7 @@ remove_all() {
         gsettings reset "${PILL}" "${name}" || FAILED+=("the live pill's ${name}")
     done
     for area in quick bars today breaks search emoji bezel audio sound wm mutter transitions hints appgrid focus power \
-        access touch present screenshot deskwidgets shelf desks quit privacy tools input keyboard paste keys rest hello living \
+        access touch present screenshot deskwidgets shelf desks quit privacy tools input keyboard paste keys rest hello guide living \
         backupdisk interface calendar; do
         case "${area}" in
             input) schema="${INPUT}" label="the input sources'" ;;
@@ -1577,6 +1586,7 @@ remove_all() {
             tools) schema="${TOOLS}" label="the tools'" ;;
             rest) schema="${REST}" label="the resting screen's" ;;
             hello) schema="${HELLO}" label="the greeting's" ;;
+            guide) schema="${GUIDE}" label="Show me's" ;;
             living) schema="${LIVING}" label="the living wallpaper's" ;;
             backupdisk) schema="${BACKUPDISK}" label="the backup disk's" ;;
             interface) schema="${INTERFACE}" label="the clock's and the text's" ;;
@@ -1709,6 +1719,7 @@ bake() {
           section("org.gnome.shell.extensions.amethystora-ui.keys"; ($s.keys // {})),
           section("org.gnome.shell.extensions.amethystora-ui.rest"; ($s.rest // {})),
           section("org.gnome.shell.extensions.amethystora-ui.hello"; ($s.hello // {})),
+          section("org.gnome.shell.extensions.amethystora-ui.guide"; ($s.guide // {})),
           section("org.gnome.shell.extensions.amethystora-ui.living"; ($s.living // {})),
           section("org.gnome.shell.extensions.amethystora-ui.backupdisk"; ($s.backupdisk // {})),
           section("org.gnome.desktop.calendar"; ($s.calendar // {})),

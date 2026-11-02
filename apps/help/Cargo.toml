@@ -1,0 +1,13 @@
+# Amethystora Help (round 7): Something's wrong (R7-36) and What changed (R7-32), each a page over a helper that says
+# what it found and names what may be pressed. The window works nothing out for itself.
+[package]
+name = "amethystora-help"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+amethystora-ui.workspace = true
+serde.workspace = true
+serde_json.workspace = true

@@ -293,7 +293,13 @@ same chip (the Netgear A6210 and many AC1200 sticks) stops working until `ame ap
 A [sealed image](updates.md#sealed-images) cannot take firmware from outside the image, so there the
 adapter cannot be set up; controllers still work over Bluetooth or a cable.
 
+## Turn off Bluetooth
+
+The menu at the top right has a Bluetooth button. [Show me](guide:turn-off-bluetooth)
+
 ## Wi-Fi
+
+To join a network, open the menu at the top right and press the arrow beside Wi-Fi. [Show me](guide:join-wifi)
 
 Nearly every Wi-Fi card works without anything to install. A few of Broadcom's (the BCM4360, 4352
 and 43142, in older MacBooks and some laptops) have no driver on Amethystora: the only one there is,

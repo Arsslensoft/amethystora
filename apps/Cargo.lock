@@ -70,6 +70,7 @@ version = "1.0.0"
 dependencies = [
  "amethystora-backups",
  "amethystora-control",
+ "amethystora-help",
  "amethystora-logs",
  "amethystora-manual",
  "amethystora-notes",
@@ -137,6 +138,15 @@ name = "amethystora-control-core"
 version = "1.0.0"
 dependencies = [
  "regex",
+ "serde_json",
+]
+
+[[package]]
+name = "amethystora-help"
+version = "1.0.0"
+dependencies = [
+ "amethystora-ui",
+ "serde",
  "serde_json",
 ]
 

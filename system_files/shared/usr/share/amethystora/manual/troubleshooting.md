@@ -64,6 +64,40 @@ The same in a terminal:
 | `ame system logs-last-boot` | Everything from the previous boot |
 | `ame system local-overrides` | The files in `/etc` you, or something you ran, have changed |
 
+## When something is wrong
+
+Open the Amethystora menu at the left of the top bar and press **Something's wrong** (`amethystora-help`). Pick what it
+is in plain words: no sound, no internet, the printer, it feels slow, running out of room, a device that does nothing, or
+something else. It looks, says what it found in a sentence, and offers one thing to press, with the `ame` command it runs
+written under it. Until you press, it only reads this computer, with one exception: for **No internet**, unless
+NetworkManager's own check of the internet says it works, it sends your router one test message, and once that check has
+failed it looks up the one name the check uses (never while the check is off, and never a name of Amethystora's own). It
+says what it saw, not more: a router that does not answer a test message is not called broken. Anything to do with a
+security feature only opens Security, where it is switched. A fix that asks something, needs a password, or would end what
+is running (every connection, or every sound, a call included) opens in a terminal and says so first, and is never offered
+when nothing is wrong. [Show me](guide:something-wrong)
+
+### What changed
+
+**What changed**, in the same menu and window (`amethystora-help changed`), is one list of what changed on this computer in
+the last month, in plain words: a file you deleted, an app you removed, a setting, an update. Nothing keeps a record for
+it: the list is worked out from what the computer has already when you open it, and is gone when you close it.
+
+**Undo** adds back and never deletes:
+
+- A file comes out of the trash to where it was, or beside what now has its name, when that is in your own files and not a
+  place that starts programs or holds keys; Files puts it back from anywhere else. A file that is gone from your usual
+  folders and is not in the trash comes back from an hourly snapshot, if the snapshots are on and one held it.
+- An app is installed again from where it came from, in a terminal, and finds what it had saved. An app you installed is
+  listed with no Undo: remove it as any app.
+- A setting has its old value again, from the snapshot from before it changed. Only the settings a person would miss are
+  listed.
+- An update goes back to the version before it, at the next restart, in a terminal and with an administrator's password.
+- A reset of the settings, and a change the AI agent made while its tools may make changes, are undone as each is
+  anywhere else. An app the agent installed has no Undo here: removing is not adding back, so remove it as any app.
+
+A security setting's line has no Undo: it opens Security.
+
 ## An update broke something
 
 Pick the previous system at the boot menu to confirm it was the update. System Updates then offers to

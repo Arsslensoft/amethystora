@@ -57,6 +57,8 @@ pub struct Parts {
     pub points_scroller: gtk::ScrolledWindow,
     pub sticky: Shift,
     pub sticky_label: gtk::Label,
+    /// Back in time, visibly: made once, and in the window only while it is chosen (past.rs)
+    pub past: crate::past::Receding,
 }
 
 fn upgrade(me: &Weak<Backups>) -> Option<Rc<Backups>> {
@@ -125,6 +127,11 @@ pub fn ago(seconds: f64) -> String {
     } else {
         i18n::days(js_round(diff / 86400.0))
     }
+}
+
+/// "Today, 02:00 PM", for the windows of the past
+pub(crate) fn moment_of(seconds: f64) -> String {
+    moment(seconds)
 }
 
 /// "Today, 02:00 PM": the day and the time of a point
@@ -350,6 +357,7 @@ impl Parts {
             points_scroller,
             sticky,
             sticky_label,
+            past: crate::past::Receding::new(me),
         }
     }
 }
@@ -575,9 +583,9 @@ impl Backups {
 
     fn folder_head(&self) -> gtk::Widget {
         let point = self.current_point();
-        let (folder, hidden, has_entries) = {
+        let (folder, hidden, has_entries, past, points) = {
             let state = self.state.borrow();
-            (state.folder.clone(), state.hidden, matches!(&state.listing, Folder::Read(_)))
+            (state.folder.clone(), state.hidden, matches!(&state.listing, Folder::Read(_)), state.past, state.timeline.as_ref().map_or(0, |timeline| timeline.points.len()))
         };
         let folder_name = if folder.is_empty() { t!("Your home folder") } else { folder.rsplit('/').next().unwrap_or("").to_string() };
         let head = ui::vbox(10, &["folder-head"]);
@@ -608,9 +616,20 @@ impl Backups {
         });
         tools.append(&hidden_files.button);
         tools.append_with(&ui::hbox(0, &[]), GROW);
-        if has_entries {
+        // Back in time, visibly (R7-28), which is only ever offered here: the window opens as it always did
+        if past {
+            tools.append(&self.button(&t!("Back to the list"), Look { small: true, ..Default::default() }, |this| this.set_past(false)));
+        } else if points > 1 {
+            tools.append(&self.button(&t!("Back in time"), Look { small: true, icon: Some("history"), ..Default::default() }, |this| this.set_past(true)));
+        }
+        // Never one click for the whole home folder, which has the question below
+        if has_entries && past && !folder.is_empty() {
+            // Keeps both, as a file brought back always does: nothing that is there now goes. It asks first, as the list's own
+            // button does, since every file that differs gains a copy beside it
+            tools.append(&self.button(&t!("Put this back…"), Look { small: true, primary: true, icon: Some("restore"), disabled: self.past_pending.get() }, |this| this.ask(Dialog::Past)));
+        } else if has_entries {
             let label = if folder.is_empty() { t!("Put your whole home folder back…") } else { t!("Put the whole folder back…") };
-            tools.append(&self.button(&label, Look { small: true, icon: Some("restore"), ..Default::default() }, |this| this.ask(Dialog::Folder)));
+            tools.append(&self.button(&label, Look { small: true, icon: Some("restore"), disabled: self.past_pending.get(), ..Default::default() }, |this| this.ask(Dialog::Folder)));
         }
         head.append(&tools);
         head.upcast()
@@ -732,9 +751,9 @@ impl Backups {
             let file = backend::join(&folder, &one.name);
             let (versions_of, look_at) = (file.clone(), file);
             bar.append(&self.button(&t!("Versions"), Look { icon: Some("layers"), small: true, ..Default::default() }, move |this| this.show_versions(&versions_of)));
-            bar.append(&self.button(&t!("Look"), Look { icon: Some("eye"), small: true, ..Default::default() }, move |this| this.look_at(&look_at, None)));
+            bar.append(&self.button(&t!("Look"), Look { icon: Some("eye"), small: true, disabled: self.past_pending.get(), ..Default::default() }, move |this| this.look_at(&look_at, None)));
         }
-        bar.append(&self.button(&t!("Put back"), Look { icon: Some("restore"), small: true, primary: true, ..Default::default() }, move |this| {
+        bar.append(&self.button(&t!("Put back"), Look { icon: Some("restore"), small: true, primary: true, disabled: self.past_pending.get() }, move |this| {
             let names = this.state.borrow().selected.clone();
             this.start_put_back(names);
         }));
@@ -770,6 +789,19 @@ impl Backups {
         set_slot(&self.parts.unreachable, self.unreachable_callout());
         set_slot(&self.parts.head, Some(self.folder_head()));
         let body = self.files_body();
+        // Back in time, visibly: the same body, in front of the windows behind it
+        let body = if self.state.borrow().past {
+            if let Some(holder) = body.parent().filter(|holder| holder != self.parts.past.upcast_ref::<gtk::Widget>()).and_downcast::<gtk::Box>() {
+                holder.remove(&body);
+            }
+            self.parts.past.set_front(Some(&body));
+            let point = self.state.borrow().point.clone();
+            self.show_behind(&point);
+            self.parts.points.show(&point);
+            self.parts.past.clone().upcast::<gtk::Widget>()
+        } else {
+            body
+        };
         if self.parts.body.first_child().as_ref() != Some(&body) {
             if self.parts.body.first_child().as_ref() == Some(self.parts.list_card.upcast_ref()) {
                 self.parts.body.remove(&self.parts.list_card);
@@ -958,6 +990,19 @@ impl Backups {
                 let whole = folder.clone();
                 primary = self.button(&t!("Put the folder back"), Look { primary: true, icon: Some("restore"), ..Default::default() }, move |this| {
                     this.put_back(vec![whole.clone()], "replace");
+                });
+                body.append(&Self::dialog_actions(vec![self.button(&t!("Cancel"), Look::default(), close), primary.clone()]));
+            }
+            Dialog::Past => {
+                let name = folder.rsplit('/').next().unwrap_or("").to_string();
+                body.append(&heading(&t!("Put {folder} back as it was then?", folder = bdi(&name)), "h2"));
+                body.append(&ui::label(
+                    &t!("What it had then comes back. A file that is different now stays, and the earlier version comes back beside it with its date in its name. Nothing is deleted or replaced."),
+                    &["soft"],
+                ));
+                let whole = folder.clone();
+                primary = self.button(&t!("Put the folder back"), Look { primary: true, icon: Some("restore"), ..Default::default() }, move |this| {
+                    this.put_back(vec![whole.clone()], "keep-both");
                 });
                 body.append(&Self::dialog_actions(vec![self.button(&t!("Cancel"), Look::default(), close), primary.clone()]));
             }

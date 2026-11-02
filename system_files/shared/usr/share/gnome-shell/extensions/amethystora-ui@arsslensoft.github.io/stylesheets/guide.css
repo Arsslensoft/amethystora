@@ -1,0 +1,46 @@
+/* Show me, on my screen (modules/guide.js): the board's ring and card (R7Find.dc.html, R7-61) at scale 1. The colours are in
+   /usr/share/amethystora/themed/shell-guide.css.tpl; the plain ones here stand in until a theme is applied. */
+
+.amethystora-guide-ring {
+  border: 3px solid #b48cff;
+  border-radius: 12px;
+  box-shadow: 0 0 18px rgba(180, 140, 255, 0.55);
+}
+
+.amethystora-guide-card {
+  width: 320px;
+  padding: 16px;
+  spacing: 8px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background-color: rgba(26, 18, 46, 0.96);
+  color: #efe4ff;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.45);
+}
+
+.amethystora-guide-title {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.amethystora-guide-step {
+  font-size: 13.5px;
+}
+
+.amethystora-guide-buttons {
+  spacing: 8px;
+  padding-top: 6px;
+}
+
+.amethystora-guide-button {
+  padding: 6px 12px;
+  border-radius: 9px;
+  font-weight: 600;
+  font-size: 12.5px;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.amethystora-guide-button.primary {
+  background-color: #8f5bff;
+  color: #ffffff;
+}

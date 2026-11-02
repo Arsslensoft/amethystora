@@ -24,7 +24,7 @@ use amethystora_ui::app::{self, App, Shell, Spec};
 use amethystora_ui::frame;
 use amethystora_ui::i18n;
 use amethystora_ui::markdown::{self, Block, Section};
-use amethystora_ui::{adw, gdk, glib, gtk, process, store, t, ui};
+use amethystora_ui::{adw, gdk, gio, glib, gtk, process, store, t, ui};
 use adw::prelude::*;
 use serde_json::Value;
 
@@ -120,6 +120,8 @@ pub struct Manual {
     in_english: Cell<bool>,
     /// Says so, over the page
     note: gtk::Box,
+    /// Show me could not start: said over the page, since the Amethystora windows have no title bar to put it in
+    show_me_note: gtk::Box,
     /// The routes visited, and where in them the window is, for Alt+Left and Alt+Right
     history: RefCell<Vec<String>>,
     at: Cell<usize>,
@@ -247,11 +249,16 @@ fn inside_share(path: &Path) -> Option<PathBuf> {
     out.starts_with(SHARE).then_some(out).filter(|p| p != Path::new(SHARE))
 }
 
+/// A guide's id, as guides.js writes them
+fn valid_guide(id: &str) -> bool {
+    !id.is_empty() && id.len() <= 64 && !id.starts_with('-') && id.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+}
+
 /// "#updates/rolling-back" for a link written `updates.md#rolling-back`, within the page `#page/x` for `#x`,
 /// and a web address as it is
 fn route(href: &str, page: &str) -> String {
     let lower = href.to_lowercase();
-    if lower.starts_with("http:") || lower.starts_with("https:") || lower.starts_with("mailto:") {
+    if lower.starts_with("http:") || lower.starts_with("https:") || lower.starts_with("mailto:") || lower.starts_with("guide:") {
         return href.to_string();
     }
     if let Some(local) = href.strip_prefix('#').filter(|l| !l.is_empty()) {
@@ -297,6 +304,7 @@ impl Manual {
             shown: Cell::new(None),
             in_english: Cell::new(false),
             note: ui::vbox(4, &["not-translated"]),
+            show_me_note: ui::vbox(4, &["not-translated"]),
             history: RefCell::new(Vec::new()),
             at: Cell::new(0),
             toc,
@@ -420,8 +428,21 @@ impl Manual {
         });
         back.set_halign(gtk::Align::Start);
         self.note.append(&back);
+        self.show_me_note.set_halign(gtk::Align::Center);
+        self.show_me_note.set_valign(gtk::Align::Start);
+        self.show_me_note.set_visible(false);
+        self.show_me_note.append(&ui::label(&t!("Show me is off here: ame desktop show-me on"), &[]));
+        let weak = self.me.clone();
+        let close = ui::button(&t!("Close"), None, &["plain", "not-translated-back"], move || {
+            if let Some(this) = weak.upgrade() {
+                this.show_me_note.set_visible(false);
+            }
+        });
+        close.set_halign(gtk::Align::Start);
+        self.show_me_note.append(&close);
         let page_side = gtk::Overlay::builder().child(&self.main).build();
         page_side.add_overlay(&self.note);
+        page_side.add_overlay(&self.show_me_note);
         let layout = columns::Columns::new(&sidebar, &page_side);
         let overlay = gtk::Overlay::new();
         overlay.set_child(Some(&layout));
@@ -604,6 +625,7 @@ impl Manual {
 
     fn render(&self, index: usize) {
         let page = &self.pages[index];
+        self.show_me_note.set_visible(false);
         ui::clear(&self.article);
         let eyebrow = ui::label(&page.section.to_uppercase(), &["eyebrow"]);
         self.article.append(&eyebrow);
@@ -750,6 +772,33 @@ impl Manual {
         if lower.starts_with("http:") || lower.starts_with("https:") || lower.starts_with("mailto:") {
             process::open_uri(Some(&self.shell.gtk_window()), uri);
         }
+        // Show me (R7-61): only ever a guide's id, which the shell looks up in the image's own guides
+        if let Some(id) = uri.strip_prefix("guide:").filter(|id| valid_guide(id)) {
+            self.show_me(id.to_string());
+        }
+    }
+
+    /// The desktop walks the guide, with this window out of the way. With Show me off, or no Amethystora UI, the page's words
+    /// are what there is, and a link that does nothing would say less than that
+    fn show_me(&self, id: String) {
+        let weak = self.me.clone();
+        glib::spawn_future_local(async move {
+            let started = match gio::bus_get_future(gio::BusType::Session).await {
+                Ok(bus) => bus
+                    .call_future(Some("org.gnome.Shell"), "/org/amethystora/Guide", "org.amethystora.Guide", "Start", Some(&(id,).to_variant()), Some(glib::VariantTy::new("(b)").expect("a valid type")), gio::DBusCallFlags::NONE, 5000)
+                    .await
+                    .ok()
+                    .and_then(|answer| answer.get::<(bool,)>())
+                    .is_some_and(|(started,)| started),
+                Err(_) => false,
+            };
+            let Some(this) = weak.upgrade() else { return };
+            if started {
+                this.shell.window.minimize();
+            } else {
+                this.show_me_note.set_visible(true);
+            }
+        });
     }
 
     // --- Search -----------------------------------------------------------------------------------------
@@ -910,6 +959,15 @@ mod tests {
         assert_eq!(inside_share(Path::new("/usr/share/amethystora/manual/../keybindings.md")), Some(PathBuf::from("/usr/share/amethystora/keybindings.md")));
         assert_eq!(inside_share(Path::new("/usr/share/amethystora/manual/../../x.md")), None);
         assert_eq!(inside_share(Path::new("/usr/share/amethystora/manual/./faq.md")), Some(PathBuf::from("/usr/share/amethystora/manual/faq.md")));
+    }
+
+    #[test]
+    fn show_me_takes_only_a_guides_id() {
+        assert_eq!(route("guide:turn-off-bluetooth", "hardware"), "guide:turn-off-bluetooth");
+        assert!(valid_guide("turn-off-bluetooth"));
+        for id in ["", "-x", "a b", "A", "a/b", "../x", &"a".repeat(65)] {
+            assert!(!valid_guide(id), "{id}");
+        }
     }
 
     #[test]

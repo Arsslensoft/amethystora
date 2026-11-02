@@ -56,6 +56,7 @@ import {Agent} from './modules/agent.js';
 import {Quit} from './modules/quit.js';
 import {Privacy} from './modules/privacy.js';
 import {Tools} from './modules/tools.js';
+import {Guide} from './modules/guide.js';
 import {Rest} from './modules/rest.js';
 import {Living} from './modules/living.js';
 import {Focus} from './modules/focus.js';
@@ -113,6 +114,7 @@ const MODULES = [
     ['quit', Quit],
     ['privacy', Privacy],
     ['tools', Tools],
+    ['guide', Guide],
     ['rest', Rest],
     ['living', Living],
     ['focus', Focus],

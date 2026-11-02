@@ -491,6 +491,7 @@ gsettings_read kb-super org.gnome.shell.extensions.amethystora-ui.keys super-alo
 gsettings_read kb-accents org.gnome.shell.extensions.amethystora-ui.typing accents
 # The resting screen and the living wallpaper (R6-06, R6-07)
 gsettings_read rest org.gnome.shell.extensions.amethystora-ui.rest
+gsettings_read guide org.gnome.shell.extensions.amethystora-ui.guide
 gsettings_read living org.gnome.shell.extensions.amethystora-ui.living wallpaper
 # The greeting at a new account's first login (R7-24)
 gsettings_read hello org.gnome.shell.extensions.amethystora-ui.hello greet
@@ -1847,6 +1848,15 @@ COMMAND=(ame desktop hello show)
 BUTTON="${ gettext "Show it"; }"
 USAGE="ame desktop hello show"
 item desktop hello-show action "${ gettext "See the greeting again"; }" "${ gettext "Any key or click ends it."; }" "" desktop#the-first-login
+# The Manual's Show me (R7-61, on)
+GUIDE="${ said guide; }"
+[[ "${ ended guide; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
+GROUP="${ gettext "Help"; }"
+switch_choices false ame desktop show-me
+USAGE="ame desktop show-me on|off"
+item desktop show-me switch "${ gettext "Show me, on my screen"; }" \
+    "${ gettext "The Manual's Show me puts a ring round the real button and walks you through. It presses nothing."; }" \
+    "${ [[ "${ value_of "${GUIDE}" show-me "(.*)$"; }" == true ]] && echo on || echo off; }" desktop#show-me-on-my-screen
 GROUP=""
 
 # Quick settings as live tiles: the theme block, and every tile back (org.gnome.shell.extensions.amethystora-ui.quick)
@@ -2491,7 +2501,7 @@ COMMAND=(ame desktop share-guard apps)
 BUTTON="${ gettext "Choose"; }"
 USAGE="ame desktop share-guard apps [APP.desktop...]"
 item desktop share-guard-apps action "${ gettext "Apps covered while sharing"; }" \
-    "${ gettext "Notes, Security, Backups and the password managers, as the image ships."; }" "" desktop#share-guard
+    "${ gettext "Notes, Security, Backups, Help and the password managers, as the image ships."; }" "" desktop#share-guard
 privacy_reason
 switch_choices false ame desktop share-guard private
 USAGE="ame desktop share-guard private on|off"

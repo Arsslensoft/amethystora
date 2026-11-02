@@ -1,0 +1,354 @@
+/* Amethystora Help, at the sizes of Backups' page and cards (rounds 5 and 6): the board's card is a window's here, in the
+   theme's colours (palette.rs). */
+
+:root {
+    --sidebar: color-mix(in oklab, var(--bg) 94%, var(--fg));
+    --card: color-mix(in oklab, var(--surface) 40%, var(--bg));
+    --control: color-mix(in oklab, var(--fg) 5%, transparent);
+    --line: color-mix(in oklab, var(--fg) 10%, transparent);
+    --line-strong: color-mix(in oklab, var(--fg) 15%, transparent);
+    --hairline: color-mix(in oklab, var(--fg) 7%, transparent);
+    --soft: color-mix(in oklab, var(--fg) 64%, var(--bg));
+    --faint: color-mix(in oklab, var(--fg) 56%, var(--bg));
+    --link: color-mix(in oklab, var(--accent) 72%, var(--fg));
+    --tint: color-mix(in oklab, var(--accent) 16%, transparent);
+    --code-bg: color-mix(in oklab, var(--surface) 55%, var(--bg));
+    --hover: color-mix(in oklab, var(--fg) 5%, transparent);
+    --shadow: none;
+    --radius: 16px;
+}
+
+/* On a light theme a card stands out by being lighter than the window, not darker */
+window.light {
+    --card: color-mix(in oklab, var(--bg) 20%, #ffffff);
+    --control: color-mix(in oklab, var(--bg) 20%, #ffffff);
+    --faint: color-mix(in oklab, var(--fg) 72%, var(--bg));
+    --shadow: 0 1px 2px color-mix(in oklab, var(--fg) 6%, transparent);
+}
+
+window.amethystora {
+    font-family: Inter, "Adwaita Sans", Cantarell, sans-serif;
+    font-size: 14px;
+    line-height: 21px;
+    font-feature-settings: "cv11", "ss01";
+}
+
+.code {
+    font-family: "JetBrains Mono", "Adwaita Mono", monospace;
+}
+
+/* A disabled control is dimmed by the page's own opacity below, and not by libadwaita's as well */
+window.amethystora *:disabled {
+    filter: none;
+}
+
+.soft {
+    color: var(--soft);
+}
+
+.faint {
+    color: var(--faint);
+}
+
+/* Not ".small label": a Clamp gives its child the class small, and every label of the page would be small */
+label.small {
+    font-size: 12.5px;
+    line-height: 18.75px;
+}
+
+.strong {
+    font-weight: 700;
+}
+
+/* The page's ::-webkit-scrollbar: 10 pixels wide, beside what scrolls rather than over it, a rounded thumb
+   inside a 3-pixel transparent border, and no track */
+scrolledwindow.page-scroll > scrollbar,
+scrolledwindow.page-scroll > scrollbar.vertical {
+    min-width: 10px;
+    padding: 0;
+    border: none;
+    background: none;
+    box-shadow: none;
+    opacity: 1;
+}
+
+scrolledwindow.page-scroll > scrollbar range,
+scrolledwindow.page-scroll > scrollbar trough {
+    min-width: 10px;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: none;
+}
+
+scrolledwindow.page-scroll > scrollbar slider {
+    min-width: 4px;
+    min-height: 34px;
+    margin: 3px;
+    border: none;
+    border-radius: 10px;
+    background-color: color-mix(in oklab, var(--fg) 22%, transparent);
+}
+
+scrolledwindow.page-scroll > scrollbar slider:hover {
+    background-color: color-mix(in oklab, var(--fg) 38%, transparent);
+}
+
+/* --- Sidebar ------------------------------------------------------------------------------------ */
+
+/* 264 pixels wide, and 220 in a narrow window, border and padding included: min-width is the box inside them */
+.sidebar {
+    min-width: 235px;
+    padding: 22px 14px 20px;
+    background: var(--sidebar);
+    border-right: 1px solid var(--line);
+}
+
+.sidebar:dir(rtl) {
+    border-right: none;
+    border-left: 1px solid var(--line);
+}
+
+window.narrow .sidebar {
+    min-width: 191px;
+}
+
+/* The window's buttons over the top of the sidebar, where the desktop puts them at the start of the title
+   bar: the wordmark moves down out of their way */
+window.controls-start .sidebar {
+    padding-top: 34px;
+}
+
+/* The wordmark of the boot splash and the login screen, as logoHtml in branding/generate.mjs sets it: the
+   stone as the "a" of "methystora" in Quicksand Bold, glowing in the three shades the splash lights it
+   with, and white. Every size is the generator's, in em, so it is the same mark at any size; the glow
+   is the login screen's, 10px on its 93px lettering. A light theme gets the generator's dark ink. The gap
+   between the mark and the window's name is layout.rs's, which puts the name under it when it is long. */
+.brand {
+    padding: 4px 6px;
+    font-family: Quicksand, Inter, sans-serif;
+    font-weight: 700;
+    font-size: 21px;
+    line-height: 21px;
+    letter-spacing: -0.015em;
+}
+
+.brand .product:dir(ltr),
+.brand .product:dir(rtl) {
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.wordmark {
+    color: #ffffff;
+}
+
+window.light .wordmark {
+    color: #241f31;
+}
+
+.brand .product {
+    color: var(--soft);
+    font-weight: 600;
+}
+
+.nav-label {
+    padding: 0 12px 4px;
+    color: var(--faint);
+    font-size: 11.5px;
+    line-height: 17.25px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+}
+
+button.nav-button {
+    min-height: 40px;
+    padding: 0 12px;
+    border-radius: 10px;
+    color: var(--fg);
+    font-size: 14.5px;
+    line-height: 21.75px;
+    font-weight: 500;
+}
+
+button.nav-button:hover {
+    background: color-mix(in oklab, var(--fg) 6%, transparent);
+}
+
+button.nav-button.current {
+    background: var(--tint);
+    color: var(--link);
+    font-weight: 600;
+}
+
+.elsewhere button.nav-button {
+    min-height: 36px;
+    font-size: 13.5px;
+    line-height: 20.25px;
+}
+
+.nav icon.faint {
+    color: var(--faint);
+}
+
+.nav-dot {
+    min-width: 8px;
+    min-height: 8px;
+    border-radius: 4px;
+    background: var(--warn);
+}
+
+.sidebar-foot {
+    padding: 0 8px;
+}
+
+.terminal {
+    color: var(--faint);
+    font-size: 12.5px;
+    line-height: 18.75px;
+}
+
+.terminal .code {
+    color: var(--soft);
+    font-size: 12px;
+    line-height: 18.75px;
+}
+
+
+/* --- The page --- */
+
+
+.topbar {
+    min-height: 28px;
+    padding: 14px 28px 6px;
+}
+
+.page {
+    padding: 8px 28px 28px;
+    color: var(--fg);
+}
+
+.h1 {
+    font-size: 26px;
+    font-weight: 800;
+}
+
+.day {
+    margin-top: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--soft);
+}
+
+.code {
+    font-size: 12.5px;
+    color: var(--soft);
+}
+
+.card {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--card);
+    box-shadow: var(--shadow);
+}
+
+button.topic {
+    min-height: 46px;
+    padding: 0 16px;
+    border-radius: 0;
+    font-size: 14.5px;
+    font-weight: 600;
+}
+
+button.topic label {
+    margin: 0;
+}
+
+button.topic:hover {
+    background: color-mix(in oklab, var(--fg) 7%, transparent);
+}
+
+button.topic.current {
+    background: color-mix(in oklab, var(--accent) 16%, transparent);
+    color: var(--accent-text);
+}
+
+.found {
+    padding: 18px;
+}
+
+.found.problem {
+    border-color: color-mix(in oklab, var(--accent) 45%, transparent);
+}
+
+.found-words {
+    font-size: 16px;
+    line-height: 24px;
+}
+
+.said {
+    font-weight: 600;
+    color: var(--accent-text);
+}
+
+.said.failed {
+    color: var(--warn);
+}
+
+.working {
+    padding: 14px 4px;
+    color: var(--soft);
+}
+
+.change {
+    padding: 12px 16px;
+}
+
+.change + .change {
+    border-top: 1px solid var(--line);
+}
+
+.callout {
+    padding: 12px 14px;
+    border: 1px solid color-mix(in oklab, var(--accent) 30%, transparent);
+    border-radius: 12px;
+    background: color-mix(in oklab, var(--accent) 9%, transparent);
+    font-size: 13px;
+}
+
+button.btn {
+    min-height: 34px;
+    padding: 0 14px;
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    background: var(--control);
+    color: inherit;
+    font-size: 13.5px;
+    font-weight: 600;
+}
+
+button.btn:hover {
+    filter: brightness(1.15);
+}
+
+window.light button.btn:hover {
+    filter: brightness(0.96);
+}
+
+button.btn.primary {
+    border-color: transparent;
+    background: var(--accent);
+    color: var(--on-accent);
+}
+
+button.btn.small {
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 9px;
+    font-size: 12.5px;
+}
+
+button.btn:disabled {
+    opacity: 0.5;
+    filter: none;
+}

@@ -23,6 +23,8 @@ const LOGO = '/usr/share/icons/hicolor/scalable/apps/amethystora-logo.svg';
 const entries = () => [
     {label: _('About this computer'), argv: ['gnome-control-center', 'system', 'about']},
     {label: _('Manual'), app: 'amethystora-manual.desktop'},
+    {label: _('Something’s wrong'), argv: ['amethystora-help', 'wrong']},
+    {label: _('What changed'), argv: ['amethystora-help', 'changed']},
     null,
     {label: _('Settings'), app: 'org.gnome.Settings.desktop'},
     {label: _('Software centre'), app: 'io.github.kolunmi.Bazaar.desktop'},

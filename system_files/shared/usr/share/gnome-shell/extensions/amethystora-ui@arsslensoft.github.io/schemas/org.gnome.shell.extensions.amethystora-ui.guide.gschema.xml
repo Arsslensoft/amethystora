@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Show me, on my screen (modules/guide.js, R7-61): the Manual's Show me walks a guide with a ring round the real button.
+     Written by ame desktop show-me, Control and the setup file. -->
+<schemalist>
+  <schema id="org.gnome.shell.extensions.amethystora-ui.guide" path="/org/gnome/shell/extensions/amethystora-ui/guide/">
+    <key name="show-me" type="b">
+      <default>true</default>
+      <summary>Show me, on my screen</summary>
+      <description>The Manual's Show me puts a ring round the real button and walks you through. It presses nothing. Off, the Manual's words stay.</description>
+    </key>
+  </schema>
+</schemalist>

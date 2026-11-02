@@ -659,6 +659,21 @@ button.check-label {
 }
 
 /* The card the folder's entries scroll in */
+/* Back in time, visibly (R7-28): the windows behind the folder, at the board's corners */
+.past-window {
+    padding: 4px 16px;
+    border: 1px solid var(--line-strong);
+    border-radius: 12px;
+    background: var(--card);
+    box-shadow: var(--shadow);
+}
+
+.past-title {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--soft);
+}
+
 .file-list {
     border: 1px solid var(--line);
     border-radius: 12px;

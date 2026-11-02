@@ -364,6 +364,7 @@ for table in 'ACCESS:org.gnome.shell.extensions.amethystora-ui.access:filter-on|
     DESKWIDGETS:org.gnome.shell.extensions.amethystora-ui.deskwidgets:- \
     REST:org.gnome.shell.extensions.amethystora-ui.rest:- \
     HELLO:org.gnome.shell.extensions.amethystora-ui.hello:- \
+    GUIDE:org.gnome.shell.extensions.amethystora-ui.guide:- \
     LIVING:org.gnome.shell.extensions.amethystora-ui.living:-; do
     IFS=: read -r name id left_out <<<"${table}"
     TABLE="$(sed -n "s/^${name}_KEYS='\(.*\)'\$/\1/p" "${SETUP}")"

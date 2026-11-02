@@ -235,7 +235,7 @@ copy of each file picked without it ([what it takes out](desktop.md#copy-without
 app grid and add the files before you send or publish them.
 
 While your screen is shared, the [share guard](desktop.md#share-guard) covers the windows of Notes,
-Security, Backups and the password managers, and the [shield](desktop.md#the-shield) in quick settings
+Security, Backups, Help and the password managers, and the [shield](desktop.md#the-shield) in quick settings
 says how all of this stands and opens this app.
 
 ## Scanning for viruses
@@ -703,6 +703,8 @@ or **Guest login** on Security's **Settings** page, under Logins. It says what i
 ame backup
 ```
 
+[Show me](guide:set-up-a-backup)
+
 A daily restic backup to a repository that ransomware on this machine cannot delete from. The
 backup only ever adds to the repository and never deletes old snapshots, so an append-only
 repository at the other end keeps everything backed up before an attack. The command explains how to
@@ -718,7 +720,9 @@ folder, select what you want and press **Put back**. Nothing is deleted: a file 
 has simply comes back, and one that changed since comes back beside it, with its date in its name
 (`report (2026-10-04 14.00).pdf`), unless you choose **Replace** or **Skip** when it asks. **Look**
 opens a read-only copy, **Versions** lists each time a file changed, and **Put the whole folder back**
-returns a folder as it was, replacing what has the same name. In Files, **Open With** on a folder
+returns a folder as it was, replacing what has the same name. **Back in time** shows the folder's past as windows
+receding, the earlier points behind it: scroll through them, with the wheel or Page Up and Page Down, and press **Put this
+back** to bring the folder there back beside what you have. In Files, **Open With** on a folder
 offers Backups too, and `amethystora-backups ~/Documents` opens it there;
 `amethystora-backups --at=2026-10-04_1400 ~/Documents` opens it at that time, by a snapshot's name or a
 backup's id as `ame backup snapshots` lists them.

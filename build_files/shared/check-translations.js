@@ -32,7 +32,7 @@ const appsDir = appsAt >= 0 ? args[appsAt + 1] : path.join(__dirname, '..', '..'
 const root = args.find((arg, at) => !arg.startsWith('--') && (poAt < 0 || at !== poAt + 1) && (appsAt < 0 || at !== appsAt + 1)) || '/';
 
 const APPS = ['amethystora-manual', 'amethystora-security', 'amethystora-update', 'amethystora-logs', 'amethystora-notes', 'amethystora-control',
-    'amethystora-backups', 'amethystora-phone', 'amethystora-shelf', 'amethystora-trim'];
+    'amethystora-backups', 'amethystora-phone', 'amethystora-shelf', 'amethystora-trim', 'amethystora-help'];
 
 // --- Messages, as common/src/i18n.rs reads them ------------------------------------------------------
 //
@@ -158,6 +158,7 @@ const DATA = {
     'amethystora-phone': () => [...launcher('amethystora-phone'), ...launcher('amethystora-phone-send')],
     'amethystora-shelf': () => launcher('amethystora-shelf'),
     'amethystora-trim': () => launcher('amethystora-trim'),
+    'amethystora-help': () => launcher('amethystora-help'),
 };
 
 // The title of every page of the manual that some language has no manual/<language>/<page>.md of
@@ -320,7 +321,9 @@ const PYTHON = ['usr/libexec/amethystora-text-shortcuts',
     // A missing command, found (plans/ui-ideas/spec-time.md)
     'usr/libexec/amethystora-missing-command',
     // Downloads tidied (plans/ui-ideas/spec-apps.md)
-    'usr/libexec/amethystora-tidy-downloads'];
+    'usr/libexec/amethystora-tidy-downloads',
+    // The Help window's helpers (plans/ui-ideas/r7/spec-help.md), and how it finds what Show me points at
+    'usr/libexec/amethystora-wrong', 'usr/libexec/amethystora-changes'];
 const SHELL = ['usr/libexec/amethystora-security-status', 'usr/libexec/amethystora-app-permissions', 'usr/libexec/amethystora-layout-offer',
     'usr/libexec/amethystora-control-list', 'usr/libexec/amethystora-security-config', 'usr/libexec/amethystora-hardening',
     'usr/libexec/amethystora-phone-link-notice', 'usr/libexec/amethystora-deja-dup-notice',

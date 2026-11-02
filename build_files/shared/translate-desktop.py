@@ -18,7 +18,7 @@ import sys
 ROOT = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else "/")
 APPS = ["amethystora-manual", "amethystora-security", "amethystora-update", "amethystora-logs", "amethystora-notes",
         "amethystora-control", "amethystora-backups", "amethystora-phone", "amethystora-shelf",
-        "amethystora-trim"]
+        "amethystora-trim", "amethystora-help"]
 # Launchers of no app of their own, with the app whose catalogs hold their words
 OTHERS = {"amethystora-private-folder": "amethystora-security", "amethystora-phone-send": "amethystora-phone",
           "zz-amethystora-open-anything": "amethystora-control"}

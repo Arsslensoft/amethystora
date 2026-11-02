@@ -4762,6 +4762,37 @@ hello CHOICE="":
         *) echo "usage: ame desktop hello on|off|show" >&2; exit 64 ;;
     esac
 
+# The Manual's Show me (R7-61, on): a ring round the real button, and a card that walks you through. It presses nothing
+# (ame desktop show-me on|off). Without either it says how it stands
+[positional-arguments]
+show-me STATE="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.guide
+    case "${1:-}" in
+        "")
+            if [[ "$(gsettings get "${schema}" show-me)" == true ]]; then
+                echo "$(gettext "Show me: on.")"
+            else
+                echo "$(gettext "Show me: off.")"
+            fi
+            ;;
+        on)
+            gsettings set "${schema}" show-me true
+            echo "$(gettext "Show me: on.")"
+            ;;
+        off)
+            gsettings set "${schema}" show-me false
+            echo "$(gettext "Show me: off.")"
+            ;;
+        *)
+            echo "usage: ame desktop show-me [on|off]"
+            exit 64
+            ;;
+    esac
+
 # The resting screen (R6-06, offered, off): left alone, a large clock over the drifting wallpaper, the windows hidden,
 # until a key or the pointer; the lock comes when it would anyway (ame desktop resting-screen on|off; after MINUTES,
 # 1 to 30, how long alone first). Without anything it says how it stands

@@ -347,6 +347,7 @@ fn open_window<A: App>(app: &adw::Application, spec: Spec, build: &Rc<impl Fn(Rc
         });
     }
     let own_app = build(shell.clone());
+    crate::where_is::offer(app, shell.window.upcast_ref(), i18n::catalogs(shell.spec.name));
     crate::frame::start_controls(&window);
 
     // With no theme applied, the system's colour scheme decides

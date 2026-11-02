@@ -612,6 +612,16 @@ impl Points {
         }
     }
 
+    /// The timeline scrolled to a point, which a walk through the past may have gone beyond
+    pub fn show(&self, id: &str) {
+        let at = (0..self.store.n_items()).find(|at| {
+            self.store.item(*at).and_downcast::<glib::BoxedAnyObject>().is_some_and(|boxed| matches!(&*boxed.borrow::<Slot>(), Slot::Moment { point, .. } if point.id == id))
+        });
+        if let Some(at) = at {
+            self.view.scroll_to(at, gtk::ListScrollFlags::NONE, None);
+        }
+    }
+
     /// The row at a height in the list's own view, from its top
     pub fn row_at(&self, y: f64) -> Option<TimelineRow> {
         let x = self.view.width() as f64 / 2.0;

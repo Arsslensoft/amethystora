@@ -7,7 +7,7 @@
 #      from the card in a terminal.
 #   2. Started after it: nothing failed that had not before, the session is back, and what was reset stays so.
 #      Then undone, everything as it was, and reset again to leave the machine as the image ships it.
-# vmlab-paths: @sf/usr/libexec/amethystora-reset-settings
+# vmlab-paths: @sf/usr/libexec/amethystora-reset-settings @sf/usr/libexec/amethystora-changes
 source "$(dirname "$0")/lib.sh"
 
 HELPER=/usr/libexec/amethystora-reset-settings

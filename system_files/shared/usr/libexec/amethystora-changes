@@ -1,0 +1,697 @@
+#!/usr/bin/python3 -I
+"""amethystora-changes: one list of what changed on this computer, in plain words, each with Undo (R7-32). The Help window's
+What changed page shows it. Nothing here keeps a record of its own: the list is worked out from what the machine has
+already, each time it is asked, and is gone when this exits. It runs as the account.
+
+    amethystora-changes list --json     {items: [{id, kind, what, detail, time, undo, security}], snapshots}
+    amethystora-changes undo ID [--json]   takes that change back, if the list still has it
+
+Where it reads from: the account's trash; the hourly snapshots of the home, through amethystora-restore, for what is
+gone from the usual folders and for a setting as it was (dconf's own file in each snapshot); Flatpak's history; the
+apps whose folders R7-41's uninstall put in the trash (amethystora-uninstall removed); the system's deployments; what a reset of the settings saved; what the agent's tools recorded with its way back; the security
+watcher's own lines, which only open Security.
+
+Undo adds back and never deletes: a file comes out of the trash, or back from a snapshot beside whatever now has its name
+(amethystora-restore put-back --keep-both), an app is installed again with its folder back from the trash (amethystora-uninstall undo), a setting has its old value. An ID is only ever one
+this listed: undo reads the list again and refuses any other. Anything to do with security has no Undo here, only a way
+into Security. A window passes back only an item's ID, and starts undo in a terminal when the item says so."""
+
+import concurrent.futures
+import datetime
+import gettext
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+import time
+import unicodedata
+import urllib.parse
+
+_ = gettext.translation("amethystora", fallback=True).gettext
+
+HOME = os.path.expanduser("~")
+CONFIG = os.environ.get("XDG_CONFIG_HOME") or os.path.join(HOME, ".config")
+DATA = os.environ.get("XDG_DATA_HOME") or os.path.join(HOME, ".local/share")
+STATE = os.environ.get("XDG_STATE_HOME") or os.path.join(HOME, ".local/state")
+# A stand-in for /, for build_files/shared/test-changes.sh
+ROOT = os.environ.get("AMETHYSTORA_CHANGES_ROOT", "")
+RESTORE = ROOT + "/usr/libexec/amethystora-restore"
+RESET = ROOT + "/usr/libexec/amethystora-reset-settings"
+AGENT = ROOT + "/usr/bin/amethystora-agent"
+UNINSTALL = ROOT + "/usr/libexec/amethystora-uninstall"
+DATA_STAYS = "data-stays-in-trash"
+APP_ID = re.compile(r"^[A-Za-z_][A-Za-z0-9_-]*(\.[A-Za-z_][A-Za-z0-9_-]*)+$")
+DEPLOYMENTS = ROOT + "/usr/libexec/amethystora-deployments"
+HOMES = ROOT + "/var/home/"
+SNAPSHOTS = HOMES + ".snapshots"
+OWN_DAYS = 30
+MOST_ITEMS = 200
+SECONDS = 15
+# Where a file comes back to only from Files: places that start programs or hold keys, which a line planted in the trash's
+# list must never write to, relative to the home
+NOT_PUT_BACK_HERE = (".config/autostart", ".config/systemd", ".config/environment.d", ".config/fish", ".local/bin", ".local/share/applications",
+                     ".local/share/gnome-shell", ".ssh", ".gnupg", ".bashrc", ".bash_profile", ".bash_login", ".profile", ".zshrc", ".zshenv",
+                     ".zprofile", ".zlogin", ".pam_environment", ".xprofile", ".xinitrc", ".xsessionrc")
+
+# The settings a person would miss, by dconf's path, with what to say when one changed. Nothing here is a security
+# setting, and none of them can hold a command.
+SETTINGS = (
+    ("/org/gnome/shell/extensions/amethystora-ui/dock/edge", "The dock moved"),
+    ("/org/gnome/shell/extensions/amethystora-ui/dock/icon-size", "The dock's size changed"),
+    ("/org/gnome/shell/favorite-apps", "The apps in the dock changed"),
+    ("/org/gnome/shell/extensions/amethystora-ui/tiling/enabled", "The window layout changed"),
+    ("/org/gnome/shell/extensions/amethystora-ui/style/style", "The desktop style changed"),
+    ("/org/gnome/desktop/background/picture-uri", "The wallpaper changed"),
+    ("/org/gnome/desktop/background/picture-uri-dark", "The dark wallpaper changed"),
+    ("/org/gnome/desktop/interface/color-scheme", "Dark style changed"),
+    ("/org/gnome/desktop/interface/text-scaling-factor", "The text size changed"),
+    ("/org/gnome/desktop/interface/font-name", "The font changed"),
+    ("/org/gnome/desktop/interface/icon-theme", "The icons changed"),
+    ("/org/gnome/desktop/interface/cursor-theme", "The pointer changed"),
+    ("/org/gnome/desktop/interface/clock-format", "The clock changed"),
+    ("/org/gnome/desktop/wm/preferences/button-layout", "The window buttons moved"),
+    ("/org/gnome/desktop/wm/preferences/focus-mode", "How windows take the focus changed"),
+    ("/org/gnome/desktop/input-sources/sources", "The keyboard layouts changed"),
+    ("/org/gnome/desktop/notifications/show-banners", "Do Not Disturb changed"),
+    ("/org/gnome/desktop/peripherals/touchpad/natural-scroll", "The touchpad's scrolling changed"),
+    ("/org/gnome/desktop/peripherals/touchpad/tap-to-click", "Tap to click changed"),
+    ("/org/gnome/desktop/sound/event-sounds", "Alert sounds changed"),
+    ("/org/gnome/settings-daemon/plugins/color/night-light-enabled", "Night Light changed"),
+)
+
+
+def setting_words(words):
+    """The sentences above, each as a message of its own, for the catalogs"""
+    return {
+        "The dock moved": _("The dock moved"),
+        "The dock's size changed": _("The dock's size changed"),
+        "The apps in the dock changed": _("The apps in the dock changed"),
+        "The window layout changed": _("The window layout changed"),
+        "The desktop style changed": _("The desktop style changed"),
+        "The wallpaper changed": _("The wallpaper changed"),
+        "The dark wallpaper changed": _("The dark wallpaper changed"),
+        "Dark style changed": _("Dark style changed"),
+        "The text size changed": _("The text size changed"),
+        "The font changed": _("The font changed"),
+        "The icons changed": _("The icons changed"),
+        "The pointer changed": _("The pointer changed"),
+        "The clock changed": _("The clock changed"),
+        "The window buttons moved": _("The window buttons moved"),
+        "How windows take the focus changed": _("How windows take the focus changed"),
+        "The keyboard layouts changed": _("The keyboard layouts changed"),
+        "Do Not Disturb changed": _("Do Not Disturb changed"),
+        "The touchpad's scrolling changed": _("The touchpad's scrolling changed"),
+        "Tap to click changed": _("Tap to click changed"),
+        "Alert sounds changed": _("Alert sounds changed"),
+        "Night Light changed": _("Night Light changed"),
+    }[words]
+
+
+def plain(text, longest=120):
+    """A name somebody else gave: one line, with the characters amethystora-security-text takes out: control and format ones (the
+    marks that turn text around among them); a byte that is not text becomes U+FFFD, as jq reads it; every kind of line end
+    becomes a space"""
+    kept = []
+    for character in str(text):
+        kind = unicodedata.category(character)
+        if character in "\t\n\r\x0b\x0c\x85" or kind in ("Zl", "Zp"):
+            kept.append(" ")
+        elif kind == "Cs":
+            kept.append("�")
+        elif kind not in ("Cc", "Cf"):
+            kept.append(character)
+    return "".join(kept).strip()[:longest]
+
+
+def quote_name(name):
+    """A file's name as it travels in an id: ASCII whatever its bytes, so that no locale or JSON reader changes it"""
+    return urllib.parse.quote(os.fsencode(name))
+
+
+def unquote_name(text):
+    return os.fsdecode(urllib.parse.unquote_to_bytes(text))
+
+
+def run(*argv, seconds=SECONDS, env=None):
+    try:
+        done = subprocess.run(argv, stdin=subprocess.DEVNULL, capture_output=True, timeout=seconds, text=True, errors="surrogateescape",
+                              env={**os.environ, "LC_ALL": "C.UTF-8", "LANGUAGE": "", **(env or {})}, check=False)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return done.stdout if done.returncode == 0 else None
+
+
+def run_json(*argv, seconds=SECONDS):
+    try:
+        return json.loads(run(*argv, seconds=seconds) or "")
+    except ValueError:
+        return None
+
+
+def item(key, kind, what, detail, when, undo=None, terminal=False, security=None):
+    return {"id": key, "kind": kind, "what": what, "detail": detail, "time": int(when),
+            "undo": {"label": undo, "terminal": terminal} if undo else None,
+            "security": {"label": _("Open Security"), "page": security} if security else None}
+
+
+# --- The trash ----------------------------------------------------------------------------------------------------------
+
+
+def trash_folder():
+    return os.path.join(DATA, "Trash")
+
+
+def trashed():
+    """What the trash holds: (info file's name, the path it came from, when it was trashed). The path is the info file's
+    word, which anyone could have written: see restorable()."""
+    folder = os.path.join(trash_folder(), "info")
+    found = []
+    try:
+        names = os.listdir(folder)
+    except OSError:
+        return found
+    for name in names:
+        # With no name before it, it would name the whole of Trash/files
+        if not name.endswith(".trashinfo") or name == ".trashinfo":
+            continue
+        try:
+            with open(os.path.join(folder, name), encoding="utf-8", errors="surrogateescape") as file:
+                info = file.read()
+        except OSError:
+            continue
+        path = re.search(r"^Path=(.*)$", info, re.M)
+        date = re.search(r"^DeletionDate=(.*)$", info, re.M)
+        if not path:
+            continue
+        original = urllib.parse.unquote(path[1], errors="surrogateescape")
+        # Relative to the folder the trash is on, by the specification: the home's trash, the home's own files. Written out
+        # to the place it names, so that ../ cannot hide where that is.
+        found_at = os.path.normpath(original if original.startswith("/") else os.path.join(HOME, original))
+        try:
+            when = datetime.datetime.fromisoformat(date[1]).timestamp() if date else os.stat(os.path.join(folder, name)).st_mtime
+        except (ValueError, OSError):
+            continue
+        found.append((name, found_at, when))
+    return found
+
+
+def restorable(target):
+    """Whether a file may be put back at that path: inside the home, going through no link out of it, and not in a place
+    that starts programs or holds keys. A trash entry's Path= is text, and the trash could have held only what was in the
+    account's own files; what it names elsewhere is left to Files."""
+    home = os.path.realpath(HOME)
+    parent = os.path.realpath(os.path.dirname(target))
+    relative = os.path.relpath(os.path.join(parent, os.path.basename(target)), home)
+    if relative == "." or relative == ".." or relative.startswith("../") or os.path.isabs(relative):
+        return False
+    return not any(relative == place or relative.startswith(place + "/") for place in NOT_PUT_BACK_HERE)
+
+
+def trash_items(apps=()):
+    items = []
+    # An app's folder that went with it is the app's line, whose Undo brings both back
+    held = {os.path.join(home, ".var/app", app_id) for app_id in apps for home in (HOME, os.path.realpath(HOME))}
+    for name, original, when in trashed():
+        # An info file whose file is gone has nothing to put back
+        if original in held or not os.path.lexists(os.path.join(trash_folder(), "files", name[: -len(".trashinfo")])):
+            continue
+        shown = plain(os.path.basename(original))
+        if restorable(original):
+            folder = plain(os.path.basename(os.path.dirname(original)) or original)
+            items.append(item(f"trash:{quote_name(name)}", "file", _("You deleted “{name}”").format(name=shown), _("From {folder}, now in the trash").format(folder=folder),
+                              when, _("Undo")))
+        else:
+            # Said with the whole place, and no Undo: Files puts it back
+            items.append(item(f"trash:{quote_name(name)}", "file", _("You deleted “{name}”").format(name=shown),
+                              _("From {folder}, now in the trash. Files can put it back.").format(folder=plain(os.path.dirname(original), 200)), when))
+    return items
+
+
+def undo_trash(name):
+    """Out of the trash, to where it was, never over what now has that name: beside it, with "(restored)" in its name"""
+    for info, original, _when in trashed():
+        if info != name:
+            continue
+        source = os.path.join(trash_folder(), "files", name[: -len(".trashinfo")])
+        if not os.path.lexists(source):
+            return False, _("It is not in the trash any more.")
+        if not restorable(original):
+            return False, _("That place is not one this puts a file back to. Files can put it back.")
+        target = original
+        stem, extension = os.path.splitext(original)
+        number = 1
+        while os.path.lexists(target):
+            target = f"{stem} ({_('restored')}{'' if number == 1 else f' {number}'}){extension}"
+            number += 1
+        try:
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+        except OSError:
+            return False, _("It could not be put back.")
+        # mv -n never replaces, whatever appeared at that name since the line above, and -T never puts it inside a folder
+        # that appeared there
+        if subprocess.run(["mv", "-n", "-T", "--", source, target], check=False).returncode != 0 or os.path.lexists(source):
+            return False, _("It could not be put back.")
+        try:
+            os.unlink(os.path.join(trash_folder(), "info", name))
+        except OSError:
+            pass
+        return True, _("“{name}” is back in {folder}.").format(name=plain(os.path.basename(target)), folder=plain(os.path.basename(os.path.dirname(target))))
+    return False, _("That is not in the trash any more.")
+
+
+# --- The hourly snapshots: what is gone, and settings as they were --------------------------------------------------------
+
+
+def chosen_points():
+    """Up to three points on this machine, newest first: the latest, one at least a day older and one at least a week older.
+    Every process they cost is here, so it is bounded."""
+    answer = run_json(RESTORE, "points", "--local", "--json") or {}
+    points = [point for point in answer.get("points") or [] if point.get("source") == "local"]
+    if not points:
+        return []
+    chosen = [points[0]]
+    for gap in (86400, 7 * 86400):
+        older = next((point for point in points if point["time"] <= points[0]["time"] - gap), None)
+        if older and older not in chosen:
+            chosen.append(older)
+    return chosen
+
+
+def usual_folders():
+    """The home and its usual folders, relative to it, by the names this account has for them"""
+    folders = [""]
+    try:
+        with open(os.path.join(CONFIG, "user-dirs.dirs"), encoding="utf-8", errors="surrogateescape") as file:
+            text = file.read()
+    except OSError:
+        text = ""
+    for name, default in (("DESKTOP", "Desktop"), ("DOCUMENTS", "Documents"), ("DOWNLOAD", "Downloads"), ("MUSIC", "Music"), ("PICTURES", "Pictures"), ("VIDEOS", "Videos")):
+        match = re.search(rf'^XDG_{name}_DIR="\$HOME/([^"]+)"$', text, re.M)
+        folders.append(match[1] if match else default)
+    return list(dict.fromkeys(folders))
+
+
+def gone_items(points, only=None):
+    """What the usual folders held at a point and do not hold now, that the trash does not account for (only: the one path
+    that an Undo asks about, so that it asks about its own folder at its own point and nothing else)"""
+    if not points:
+        return []
+    in_trash = {original for _name, original, _when in trashed()}
+    folders = usual_folders()
+    if only:
+        folders = [folder for folder in folders if os.path.dirname(only[1]) == folder]
+        points = [point for point in points if point["id"] == only[0]]
+    asks = [(point, folder) for point in points for folder in folders]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+        answers = list(pool.map(lambda ask: run_json(RESTORE, "ls", ask[0]["id"], ask[1], "--json"), asks))
+    seen = set()
+    items = []
+    for (point, folder), listing in zip(asks, answers):
+        for entry in (listing or {}).get("entries") or []:
+            name = entry.get("name", "")
+            relative = f"{folder}/{name}" if folder else name
+            # The newest point that has it is where it is brought back from: points come newest first
+            if entry.get("now") != "missing" or name.startswith((".", "-")) or relative in seen or os.path.join(HOME, relative) in in_trash:
+                continue
+            seen.add(relative)
+            where = plain(folder) if folder else _("your home folder")
+            items.append(item(f"gone:{point['id']}:{relative}", "file", _("“{name}” is gone from {folder}").format(name=plain(name), folder=where),
+                              _("It was there at the time shown, in a snapshot"), point["time"], _("Undo")))
+    return items
+
+
+def undo_gone(point, relative):
+    answer = run_json(RESTORE, "put-back", point, relative, "--keep-both", "--json", seconds=86400)
+    if answer is None or answer.get("error") or answer.get("missing"):
+        return False, _("It could not be put back from that snapshot.")
+    return True, _("“{name}” is back.").format(name=plain(os.path.basename(relative)))
+
+
+def dump_settings(config_home):
+    """Every setting dconf's own file holds in that folder, as {path: value}, the image's defaults not among them: read
+    through a profile of the account's database alone, kept only while this runs"""
+    with tempfile.TemporaryDirectory(dir=os.environ.get("XDG_RUNTIME_DIR") or None) as folder:
+        profile = os.path.join(folder, "profile")
+        with open(profile, "w", encoding="utf-8") as file:
+            file.write("user-db:user\n")
+        out = run("dconf", "dump", "/", env={"DCONF_PROFILE": profile, "XDG_CONFIG_HOME": config_home})
+    values = {}
+    section = ""
+    for line in (out or "").splitlines():
+        if line.startswith("[") and line.endswith("]"):
+            section = "/" + line[1:-1].strip("/")
+            if section == "/":
+                section = ""
+        elif "=" in line:
+            key, _sep, value = line.partition("=")
+            values[f"{section}/{key}"] = value
+    return values
+
+
+def own_home_in(point):
+    real = os.path.realpath(HOME)
+    if not real.startswith(HOMES):
+        return None
+    return os.path.join(SNAPSHOTS, point["id"], real[len(HOMES):])
+
+
+def theme_name(home):
+    try:
+        with open(os.path.join(home, ".config/amethystora/current/theme.name"), encoding="utf-8") as file:
+            return file.read().strip()
+    except OSError:
+        return ""
+
+
+def setting_items(points):
+    """A setting of the table whose value differs from the newest point at which it was different: when it changed lies
+    after that point, and the value to go back to is that point's"""
+    if not points:
+        return []
+    now = dump_settings(CONFIG)
+    items = []
+    past = [(point, dump_settings(os.path.join(own_home_in(point) or "/nonexistent", ".config"))) for point in points if own_home_in(point)]
+    for path, words in SETTINGS:
+        for index, (point, values) in enumerate(past):
+            # A snapshot with no settings at all says nothing, rather than that everything changed
+            if values and values.get(path) != now.get(path):
+                # A value the setting also had at an older point is one that was put back, not one to put back again: Undo
+                # writes the old value, and the snapshot after it would otherwise offer the value it undid
+                if not any(older and older.get(path) == now.get(path) for _point, older in past[index + 1:]):
+                    items.append(item(f"setting:{point['id']}:{path}", "setting", setting_words(words), _("Since the time shown"), point["time"], _("Undo")))
+                break
+    current = theme_name(os.path.dirname(CONFIG))
+    names = [theme_name(own_home_in(point) or "/nonexistent") for point in points]
+    for index, point in enumerate(points):
+        old = names[index]
+        if old and current and old != current and re.match(r"^[A-Za-z0-9][A-Za-z0-9_ .-]{0,59}$", old):
+            # The same as the settings: a theme an older point had too is the one Undo put back
+            if current not in names[index + 1:]:
+                items.append(item(f"theme:{point['id']}:{old}", "setting", _("The theme changed"), _("It was {theme}").format(theme=plain(old)), point["time"], _("Undo")))
+            break
+    return items
+
+
+def undo_setting(point, path):
+    if path not in [known for known, _words in SETTINGS]:
+        return False, _("That setting cannot be put back from here.")
+    home = own_home_in({"id": point})
+    if not home:
+        return False, _("That setting cannot be put back from here.")
+    value = dump_settings(os.path.join(home, ".config")).get(path)
+    done = run("dconf", "reset", path) if value is None else run("dconf", "write", path, value)
+    return (done is not None), (_("Put back as it was.") if done is not None else _("It could not be put back."))
+
+
+# --- Apps ----------------------------------------------------------------------------------------------------------------
+
+
+def app_time(text):
+    """Flatpak's history gives "Oct 10 12:34:56", with no year: the latest such time that is not in the future"""
+    now = datetime.datetime.now()
+    try:
+        when = datetime.datetime.strptime(f"{now.year} {' '.join(text.split())}", "%Y %b %d %H:%M:%S")
+    except ValueError:
+        return None
+    if when > now + datetime.timedelta(days=1):
+        when = when.replace(year=now.year - 1)
+    return when.timestamp()
+
+
+def app_changes():
+    """The last install or uninstall of each app in Flatpak's history over the month: {id: (change, when)}"""
+    since = (datetime.date.today() - datetime.timedelta(days=OWN_DAYS)).isoformat()
+    out = run("flatpak", "history", f"--since={since}", "--columns=time,change,ref", seconds=20) or ""
+    last = {}
+    for line in out.splitlines():
+        parts = line.split("\t")
+        # Its change reads "deploy install", "deploy update" or "uninstall"
+        change = parts[1].split()[-1] if len(parts) >= 3 and parts[1].split() else ""
+        if change not in ("install", "uninstall") or not parts[2].startswith("app/"):
+            continue
+        when = app_time(parts[0])
+        if when is not None:
+            last[parts[2].split("/")[1]] = (change, when)
+    return last
+
+
+def app_name(app_id):
+    return plain(app_id.rsplit(".", 1)[-1])
+
+
+def removed_with_data():
+    """The apps whose folders the uninstall put in the trash: {id: when}, the newest of each"""
+    found = {}
+    for entry in run_json(UNINSTALL, "removed", "--json") or []:
+        app_id = str(entry.get("id", ""))
+        if APP_ID.match(app_id):
+            found[app_id] = max(found.get(app_id, 0), entry.get("removed") or 0)
+    return found
+
+
+def app_items():
+    """What is listed of the apps, and the ids of those whose folder in the trash is part of their line. An app removed comes
+    from the trash, which says so for as long as its folder is there, and from Flatpak's history, which an account that may
+    not read the system's journal does not have"""
+    listed = run("flatpak", "list", "--app", "--columns=application")
+    # When the list of what is installed could not be read, nothing is called removed: it might be there
+    if listed is None:
+        return [], set()
+    installed = set(listed.split())
+    changes = app_changes()
+    with_folder = removed_with_data()
+    removed = {app_id: when for app_id, when in with_folder.items() if app_id not in installed}
+    for app_id, (change, when) in changes.items():
+        if change == "uninstall" and app_id not in installed and APP_ID.match(app_id):
+            removed[app_id] = max(removed.get(app_id, 0), when)
+    # Flatpak's history is the machine's, not the account's: it says what happened, not who did it. What the uninstall put
+    # in this account's trash was this account's.
+    items = []
+    for app_id, when in removed.items():
+        if app_id in with_folder:
+            items.append(item(f"app:{app_id}", "app", _("You removed {name}").format(name=app_name(app_id)), _("Undo installs it again, with what it had saved"), when, _("Undo"), terminal=True))
+        else:
+            items.append(item(f"app:{app_id}", "app", _("{name} was removed").format(name=app_name(app_id)), _("Undo installs it again from where it came from"), when, _("Undo"), terminal=True))
+    items += [item(f"app-new:{app_id}", "app", _("{name} was installed").format(name=app_name(app_id)), "", when)
+              for app_id, (change, when) in changes.items() if change == "install" and app_id in installed]
+    return items, set(removed)
+
+
+def undo_app(app_id):
+    print(_("Installing {name} again, with what it had saved…").format(name=app_name(app_id)), file=sys.stderr, flush=True)
+    try:
+        done = subprocess.run([UNINSTALL, "undo", app_id], stdin=subprocess.DEVNULL, capture_output=True, text=True, errors="replace", check=False)
+    except OSError:
+        return False, _("It could not be brought back.")
+    if done.returncode != 0:
+        return False, _("It could not be brought back.")
+    # Its one word for a folder the app already has again: what was removed stays in the trash, for Files to restore
+    if DATA_STAYS in done.stdout:
+        return True, _("{name} is back. It already has a folder of its own, so what it had saved stays in the trash.").format(name=app_name(app_id))
+    return True, _("{name} is back.").format(name=app_name(app_id))
+
+
+# --- The system's update, resets, the agent, and Security's own lines -----------------------------------------------------
+
+
+def update_items():
+    answer = run_json(DEPLOYMENTS) or {}
+    deployments = [one for one in answer.get("deployments") or [] if not one.get("staged")]
+    if len(deployments) < 2 or not deployments[0].get("booted"):
+        return []
+    now, before = deployments[0], deployments[1]
+    # After a rollback the one behind is the newer: nothing was updated, and Undo would go forward
+    if (before.get("timestamp") or 0) >= (now.get("timestamp") or 0):
+        return []
+    version = plain(now.get("version") or "")
+    previous = plain(before.get("version") or "")
+    return [item(f"update:{version}", "update", _("The system updated"),
+                 _("To {version}. Undo goes back to {previous} at the next restart.").format(version=version, previous=previous),
+                 now.get("timestamp") or 0, _("Undo"), terminal=True)]
+
+
+def undo_update():
+    print(_("This makes the version before the one that starts next. Your files stay as they are. It asks for an administrator's password."))
+    os.execvp("pkexec", ["pkexec", "/usr/bin/bootc", "rollback"])
+    return False, ""
+
+
+def reset_items():
+    items = []
+    for part, words in (("account", _("Your settings were reset")), ("machine", _("The computer's settings were reset"))):
+        saved = (run(RESET, "saved", part) or "").strip()
+        if not saved:
+            continue
+        match = re.search(r"(\d{4})-(\d\d)-(\d\d)T(\d\d)-(\d\d)-(\d\d)$", saved)
+        if not match:
+            continue
+        when = time.mktime(tuple(int(number) for number in match.groups()) + (0, 0, -1))
+        items.append(item(f"reset:{part}", "setting", words, _("What the reset replaced was saved"), when, _("Undo"), terminal=True))
+    return items
+
+
+def agent_records():
+    path = os.path.join(STATE, "amethystora/agent-tools/actions.jsonl")
+    records = []
+    try:
+        with open(path, encoding="utf-8", errors="replace") as file:
+            for line in file:
+                try:
+                    record = json.loads(line)
+                except ValueError:
+                    continue
+                if isinstance(record, dict):
+                    records.append(record)
+    except OSError:
+        pass
+    return records
+
+
+def agent_items():
+    """The agent's changes that can still be put back. Its tools write each undoing as a record of its own, with the id of the
+    change it undid in `of`; a change undone is not listed, and neither is the undoing, whose Undo would do the change again.
+    Only while the features and the tools that change things are on: the tools refuse any change otherwise."""
+    records = agent_records()
+    if not any(isinstance(record.get("undo"), dict) for record in records):
+        return []
+    if not (run(AGENT, "status") or "").startswith("Agentic features: on") or not (run(AGENT, "tools", "status") or "").startswith("Changes by the agent: on"):
+        return []
+    undone = {record.get("of") for record in records if record.get("of") and record.get("result") == "ok"}
+    items = []
+    for record in records[-100:]:
+        identity = str(record.get("id", ""))
+        back = record.get("undo")
+        if record.get("of") or not isinstance(back, dict) or record.get("result") != "ok" or identity in undone or not re.match(r"^[0-9a-f]{8}$", identity):
+            continue
+        # Undo only ever adds back: the way back of an app the agent installed is to remove it, which is for the person to do
+        # as they remove any app
+        if back.get("tool") == "software" and back.get("action") != "install":
+            continue
+        subject = record.get("entry") or record.get("name") or record.get("tool") or ""
+        items.append(item(f"agent:{identity}", "agent", _("The AI agent changed {what}").format(what=plain(subject, 60)), "", record.get("time") or 0, _("Undo")))
+    return items
+
+
+def undo_agent(identity):
+    done = run(AGENT, "undo", identity, seconds=120)
+    return (done is not None), (_("Put back as it was.") if done is not None else _("It could not be put back."))
+
+
+def security_items():
+    """What the security watcher wrote about its settings, for an account that may read it. Each only opens Security, and
+    nothing about the feature the report itself is silent on is said."""
+    try:
+        with open(ROOT + "/var/lib/amethystora/security/events.json", encoding="utf-8", errors="replace") as file:
+            events = json.load(file)
+    except (OSError, ValueError):
+        return []
+    items = []
+    events = events.get("events") if isinstance(events, dict) else events
+    for event in events or []:
+        if not isinstance(event, dict) or event.get("key") != "settings":
+            continue
+        text = plain(event.get("text", ""), 200)
+        if not text or re.search("duress", text, re.I):
+            continue
+        items.append(item(f"security:{event.get('id', '')}", "security", _("A security setting changed"), text, event.get("time") or 0, security="settings"))
+    return items
+
+
+# --- The list ------------------------------------------------------------------------------------------------------------
+
+
+def snapshots_on():
+    answer = run_json(RESTORE, "status", "--json") or {}
+    return bool((answer.get("snapshots") or {}).get("on"))
+
+
+# Which source an id's kind comes from
+SOURCE_OF = {"trash": "trash", "gone": "gone", "setting": "setting", "theme": "setting", "app": "app", "app-new": "app", "update": "update",
+             "reset": "reset", "agent": "agent", "security": "security"}
+
+
+def everything(kind=None, rest=""):
+    """Every change on the list, or, for an Undo, only those of the source that kind comes from (a slow snapshot listing is
+    asked only by the Undo of a file from a snapshot, and only about its own folder)"""
+    wanted = SOURCE_OF.get(kind) if kind else None
+
+    def has(name):
+        return kind is None or wanted == name
+    points = chosen_points() if has("gone") or has("setting") else []
+    # Each source apart, so that one that is slow or broken costs only itself
+    apps, apps_held = [], set()
+    if has("trash") or has("app"):
+        try:
+            apps, apps_held = app_items()
+        except Exception:  # pylint: disable=broad-except
+            pass
+    point, _sep, relative = rest.partition(":")
+    only = (point, relative) if kind == "gone" else None
+    sources = [source for name, source in (("trash", lambda: trash_items(apps_held)), ("gone", lambda: gone_items(points, only)), ("setting", lambda: setting_items(points)),
+                                           ("app", lambda: apps), ("update", update_items), ("reset", reset_items), ("agent", agent_items), ("security", security_items))
+               if has(name)]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max(len(sources), 1)) as pool:
+        futures = [pool.submit(source) for source in sources]
+    items = []
+    for future in futures:
+        try:
+            items.extend(future.result())
+        except Exception:  # pylint: disable=broad-except
+            continue
+    oldest = time.time() - OWN_DAYS * 86400
+    items = [one for one in items if one["time"] >= oldest]
+    items.sort(key=lambda one: -one["time"])
+    return items[:MOST_ITEMS]
+
+
+def undo(key):
+    kind, _sep, rest = key.partition(":")
+    known = {one["id"]: one for one in everything(kind, rest)}
+    if key not in known or not known[key]["undo"]:
+        return False, _("That is no longer on the list.")
+    if kind == "trash":
+        return undo_trash(unquote_name(rest))
+    if kind == "gone":
+        point, _sep, relative = rest.partition(":")
+        return undo_gone(point, relative)
+    if kind == "setting":
+        point, _sep, path = rest.partition(":")
+        return undo_setting(point, path)
+    if kind == "theme":
+        _point, _sep, name = rest.partition(":")
+        done = run(ROOT + "/usr/bin/amethystora-theme", "set", name, seconds=60)
+        return (done is not None), (_("Put back as it was.") if done is not None else _("It could not be put back."))
+    if kind == "app":
+        return undo_app(rest)
+    if kind == "update":
+        return undo_update()
+    if kind == "reset":
+        os.execv(RESET, [RESET, "ask", "undo", rest])
+    if kind == "agent":
+        return undo_agent(rest)
+    return False, _("That is no longer on the list.")
+
+
+def main():
+    # Names that are not text travel as U+FFFD, never as a byte the reader would refuse
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    as_json = "--json" in sys.argv
+    args = [arg for arg in sys.argv[1:] if arg != "--json"]
+    if args == ["list"]:
+        print(json.dumps({"version": 1, "items": everything(), "snapshots": snapshots_on()}, ensure_ascii=False, default=str))
+    elif len(args) == 2 and args[0] == "undo":
+        ok, words = undo(args[1])
+        if as_json:
+            print(json.dumps({"ok": ok, "words": words}, ensure_ascii=False))
+        else:
+            print(words)
+        sys.exit(0 if ok else 1)
+    else:
+        print("usage: amethystora-changes list --json | undo ID [--json]", file=sys.stderr)
+        sys.exit(64)
+
+
+if __name__ == "__main__":
+    main()

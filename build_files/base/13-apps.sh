@@ -21,7 +21,7 @@ APPS_DIR=/usr/lib/amethystora-apps
 LICENSE_DIR=/usr/share/licenses/amethystora-apps
 
 install -Dpm0755 /apps-stage/out/amethystora-apps "${APPS_DIR}/amethystora-apps"
-for app in manual security update notes logs backups control phone shelf trim; do
+for app in manual security update notes logs backups control phone shelf trim help; do
     install -d "/usr/lib/amethystora-${app}"
     ln -f "${APPS_DIR}/amethystora-apps" "/usr/lib/amethystora-${app}/amethystora-${app}"
 done

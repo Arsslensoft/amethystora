@@ -52,6 +52,10 @@ function checkLinks(file, text) {
         if (/^(https?|mailto):/.test(href)) {
             continue;
         }
+        // Show me (R7-61): check-guides.mjs holds each to a guide that exists
+        if (href.startsWith('guide:')) {
+            continue;
+        }
         // A moving card (apps/manual/src/cards.rs): one of the manual's own clips, with its poster beside it
         if (href.startsWith('media/')) {
             const card = /^media\/([a-z0-9-]+)\.webm$/.exec(href);

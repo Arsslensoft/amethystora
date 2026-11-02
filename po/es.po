@@ -1983,6 +1983,14 @@ msgid "Manual"
 msgstr "Manual"
 
 #: usr/share/gnome-shell/extensions/amethystora-logo-menu@arsslensoft.github.io/extension.js
+msgid "Something’s wrong"
+msgstr "Algo va mal"
+
+#: usr/share/gnome-shell/extensions/amethystora-logo-menu@arsslensoft.github.io/extension.js
+msgid "What changed"
+msgstr "Qué ha cambiado"
+
+#: usr/share/gnome-shell/extensions/amethystora-logo-menu@arsslensoft.github.io/extension.js
 msgid "Settings"
 msgstr "Configuración"
 

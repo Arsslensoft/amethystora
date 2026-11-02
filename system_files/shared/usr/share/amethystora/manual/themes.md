@@ -10,6 +10,8 @@ that reads: see [Colours in applications](#colours-in-applications).
 
 ## Switching
 
+[Show me](guide:change-the-look)
+
 | Key | Does |
 | --- | --- |
 | `Super+Ctrl+Shift+Space` | Pick a theme |

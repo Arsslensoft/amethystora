@@ -304,6 +304,96 @@ bios-info:
     echo "Release Date: $(dmidecode -s bios-release-date)"
     EOF
 
+# Sound put right, which the Help window's Something's wrong offers: an output as the default, by its number in `wpctl
+# status` (use ID), sound on and audible (unmute), or the sound programs started again (restart)
+[positional-arguments]
+sound *ARGS:
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    case "${1:-}" in
+        use)
+            [[ "${2:-}" =~ ^[0-9]+$ ]] || { echo "usage: ame system sound use ID"; exit 64; }
+            wpctl set-default "$2"
+            ;;
+        unmute)
+            wpctl set-mute @DEFAULT_AUDIO_SINK@ 0
+            # At zero, unmuted is still silent: half way, which the volume keys take from there
+            if wpctl get-volume @DEFAULT_AUDIO_SINK@ | grep -qE 'Volume: 0(\.00)?$'; then
+                wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.5
+            fi
+            ;;
+        restart)
+            # It stops every sound for a moment, a call's microphone included: said first, and asked in a terminal
+            if [[ -t 0 ]]; then
+                echo "$(gettext "This stops all sound for a moment, a call included.")"
+                read -r -p "$(gettext "Press Enter to go on, or Ctrl+C to stop.") " _
+            fi
+            systemctl --user restart wireplumber.service pipewire.service pipewire-pulse.service
+            ;;
+        *) echo "usage: ame system sound use ID|unmute|restart"; exit 64 ;;
+    esac
+    echo "$(gettext "Done.")"
+
+# The network put right, which Something's wrong offers: networking and Wi-Fi on (on), every connection made again
+# (reconnect), or NetworkManager started again, with an administrator's password (restart)
+[positional-arguments]
+network *ARGS:
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    case "${1:-}" in
+        on)
+            nmcli networking on
+            nmcli radio wifi on
+            ;;
+        reconnect)
+            # It turns every connection off for a moment, a VPN, a remote session and a call included: said first, and asked in a terminal
+            if [[ -t 0 ]]; then
+                echo "$(gettext "This turns every connection off for a moment: a VPN, a remote session or a call would end.")"
+                read -r -p "$(gettext "Press Enter to go on, or Ctrl+C to stop.") " _
+            fi
+            nmcli networking off
+            sleep 1
+            nmcli networking on
+            ;;
+        restart) sudo systemctl restart NetworkManager.service ;;
+        *) echo "usage: ame system network on|reconnect|restart"; exit 64 ;;
+    esac
+    echo "$(gettext "Done.")"
+
+# The printer put right, which Something's wrong offers: a paused printer resumed (resume NAME, which may ask for an
+# administrator's password), or Settings' page of printers (settings)
+[positional-arguments]
+printer *ARGS:
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    case "${1:-}" in
+        resume)
+            [[ "${2:-}" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$ ]] || { echo "usage: ame system printer resume NAME"; exit 64; }
+            cupsenable "$2" || sudo cupsenable "$2"
+            cupsaccept "$2" || sudo cupsaccept "$2"
+            echo "$(gettext "Done.")"
+            ;;
+        # Cut loose from the pipes of whatever started this, which would otherwise be held until Settings closes
+        settings) gnome-control-center printers </dev/null >/dev/null 2>&1 & disown ;;
+        *) echo "usage: ame system printer resume NAME|settings"; exit 64 ;;
+    esac
+
+# The power mode, GNOME's own: power-saver, balanced or performance where the machine has it
+[positional-arguments]
+power-mode MODE:
+    #!/usr/bin/bash
+    set -euo pipefail
+    case "$1" in
+        power-saver | balanced | performance) powerprofilesctl set "$1" ;;
+        *) echo "usage: ame system power-mode power-saver|balanced|performance"; exit 64 ;;
+    esac
+
 # Free disk space: unused container images and volumes, Flatpak runtimes, rpm-ostree's caches, Homebrew's cache
 clean:
     #!/usr/bin/bash

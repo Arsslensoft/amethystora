@@ -11,6 +11,7 @@ mod icons;
 mod layout;
 mod list;
 mod page;
+mod past;
 mod relative;
 
 use std::cell::{Cell, RefCell};
@@ -63,6 +64,8 @@ pub enum VersionsState {
 pub enum Dialog {
     /// The whole folder shown, put back as it was
     Folder,
+    /// The folder as it was at the point the past view shows, put back beside what is there now
+    Past,
     /// These names, some of which are in the folder now
     Conflict(Vec<String>),
 }
@@ -97,6 +100,8 @@ pub struct PageState {
     /// The names ticked, in the order they were
     pub selected: Vec<String>,
     pub hidden: bool,
+    /// Back in time, visibly: the folder's past as windows receding (past.rs)
+    pub past: bool,
     /// The versions of one file: the file, and what was found
     pub versions: Option<(String, VersionsState)>,
     pub dialog: Option<Dialog>,
@@ -125,6 +130,7 @@ impl Default for PageState {
             listing: Folder::None,
             selected: Vec::new(),
             hidden: false,
+            past: false,
             versions: None,
             dialog: None,
             mode: "keep-both",
@@ -163,6 +169,12 @@ pub struct Backups {
     dialog_layer: RefCell<Option<gtk::Widget>>,
     /// The log of the backup running, changed in place as its lines come
     live_log: RefCell<Option<gtk::Label>>,
+    /// Where a walk through the past has got to, before the folder there is read, and what reads it once it settles
+    past_target: RefCell<Option<String>>,
+    past_timer: RefCell<Option<glib::SourceId>>,
+    /// The point the past view shows is chosen, and the folder there has not been read yet: the list on the screen is still
+    /// the one of the point before, so nothing is put back or looked at from it meanwhile
+    past_pending: Cell<bool>,
 }
 
 impl App for Backups {
@@ -262,6 +274,9 @@ impl Backups {
             scroll_to_top: Cell::new(false),
             dialog_layer: RefCell::new(None),
             live_log: RefCell::new(None),
+            past_target: RefCell::new(None),
+            past_timer: RefCell::new(None),
+            past_pending: Cell::new(false),
         });
         shell.window.set_title(Some(&t!("Amethystora Backups")));
         shell.window.set_content(Some(&this.parts.root));
@@ -311,10 +326,24 @@ impl Backups {
             let Some(this) = me.upgrade() else { return glib::Propagation::Proceed };
             let ctrl = modifiers.contains(gdk::ModifierType::CONTROL_MASK);
             let alt = modifiers.contains(gdk::ModifierType::ALT_MASK);
-            let (dialog, versions, browsing, folder, listed) = {
+            let (dialog, versions, browsing, folder, listed, past) = {
                 let state = this.state.borrow();
-                (state.dialog.is_some(), state.versions.is_some(), state.page == "browse", state.folder.clone(), matches!(state.listing, Folder::Read(_)))
+                (state.dialog.is_some(), state.versions.is_some(), state.page == "browse", state.folder.clone(), matches!(state.listing, Folder::Read(_)), state.past)
             };
+            if past && !dialog && browsing && !versions {
+                if key == gdk::Key::Page_Down {
+                    this.walk_past(1);
+                    return glib::Propagation::Stop;
+                }
+                if key == gdk::Key::Page_Up {
+                    this.walk_past(-1);
+                    return glib::Propagation::Stop;
+                }
+                if key == gdk::Key::Escape {
+                    this.set_past(false);
+                    return glib::Propagation::Stop;
+                }
+            }
             if key == gdk::Key::Escape && dialog {
                 this.state.borrow_mut().dialog = None;
                 this.render_dialog();
@@ -438,6 +467,8 @@ impl Backups {
     }
 
     async fn choose_point_now(self: &Rc<Self>, id: &str, keep: bool) {
+        // A listing read in the foreground takes over from a quiet one still out
+        self.past_pending.set(false);
         {
             let mut state = self.state.borrow_mut();
             if !keep {
@@ -449,12 +480,32 @@ impl Backups {
         self.load_folder(false).await;
     }
 
+    /// A point the walk through the past settled on: the windows have moved already, so the folder there takes over from the
+    /// one shown when it has been read, with no moment of nothing
+    pub(crate) async fn choose_point_quietly(self: &Rc<Self>, id: &str) {
+        {
+            let mut state = self.state.borrow_mut();
+            state.selected.clear();
+            state.point = id.to_string();
+            state.banner = None;
+        }
+        // The point is the new one, the list still the old: nothing acts on it until the folder there has been read
+        self.past_pending.set(true);
+        self.render();
+        self.load_folder(true).await;
+        if self.state.borrow().point == id {
+            self.past_pending.set(false);
+            self.render();
+        }
+    }
+
     fn choose_point(&self, id: &str) {
         let (this, id) = (self.rc(), id.to_string());
         glib::spawn_future_local(async move { this.choose_point_now(&id, false).await });
     }
 
     async fn open_folder_now(self: &Rc<Self>, folder: &str) {
+        self.past_pending.set(false);
         {
             let mut state = self.state.borrow_mut();
             state.folder = folder.to_string();
@@ -474,6 +525,10 @@ impl Backups {
     pub(crate) fn show(&self, page: &'static str) {
         if !backend::PAGES.contains(&page) {
             return;
+        }
+        // The past is left as soon as the person leaves the list
+        if page != "browse" && self.state.borrow().past {
+            self.set_past(false);
         }
         {
             let mut state = self.state.borrow_mut();
@@ -589,6 +644,9 @@ impl Backups {
     /// Only a file that is still there and differs, or a folder still there, can meet something of the same
     /// name: then the question is asked, once for all of them
     pub(crate) fn start_put_back(&self, names: Vec<String>) {
+        if self.past_pending.get() {
+            return;
+        }
         let (conflict, folder) = {
             let state = self.state.borrow();
             let conflict = match &state.listing {
@@ -605,6 +663,9 @@ impl Backups {
     }
 
     pub(crate) fn put_back(&self, files: Vec<String>, mode: &'static str) {
+        if self.past_pending.get() {
+            return;
+        }
         let point = self.current_point();
         self.state.borrow_mut().dialog = None;
         self.render_dialog();
@@ -632,6 +693,9 @@ impl Backups {
     }
 
     pub(crate) fn look_at(&self, file: &str, id: Option<&str>) {
+        if id.is_none() && self.past_pending.get() {
+            return;
+        }
         let id = id.map(str::to_string).unwrap_or_else(|| self.state.borrow().point.clone());
         let backup = self.state.borrow().timeline.as_ref().and_then(|timeline| timeline.points.iter().find(|p| p.id == id).map(|p| p.source == "backup")).unwrap_or(false);
         {

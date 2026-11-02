@@ -10,7 +10,7 @@
 #     then the minutes, each and terminal modes once each
 #   - the lock (know, off, one account's own), an agent started with its own checks off, the health check on a
 #     unit broken on purpose, the watcher quiet about the tools' own entry, and everything off again
-# vmlab-paths: apps/agent-tools/* @sf/usr/bin/amethystora-agent @sf/usr/libexec/amethystora-agent* @sf/usr/share/amethystora/agents/* @sf/usr/libexec/amethystora-doctor
+# vmlab-paths: apps/agent-tools/* @sf/usr/bin/amethystora-agent @sf/usr/libexec/amethystora-agent* @sf/usr/share/amethystora/agents/* @sf/usr/libexec/amethystora-doctor @sf/usr/libexec/amethystora-changes
 source "$(dirname "$0")/lib.sh"
 
 if ! wait_for 300 has_session; then

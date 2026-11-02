@@ -2067,6 +2067,14 @@ msgid "Manual"
 msgstr "الدليل"
 
 #: usr/share/gnome-shell/extensions/amethystora-logo-menu@arsslensoft.github.io/extension.js
+msgid "Something’s wrong"
+msgstr "هناك مشكلة"
+
+#: usr/share/gnome-shell/extensions/amethystora-logo-menu@arsslensoft.github.io/extension.js
+msgid "What changed"
+msgstr "ما الذي تغيّر"
+
+#: usr/share/gnome-shell/extensions/amethystora-logo-menu@arsslensoft.github.io/extension.js
 msgid "Settings"
 msgstr "الإعدادات"
 
