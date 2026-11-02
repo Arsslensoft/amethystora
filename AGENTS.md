@@ -399,7 +399,7 @@ agent cleaned and marked as data. Off costs nothing: no daemon, timer or service
 - **The never list** (`apps/agent-tools/src/never.rs`) is refused by the tools and again by the root helper:
   the duress feature, a security command that loosens protection or sends something away (only reads and
   turning protection on pass), deleting from a backup or a snapshot, erasing disks, the AUR, sudoers, polkit,
-  PAM, the agent's own lock and root mode, the Notes data, and shells or wrappers that would run commands out
+  PAM, the agent's own lock and root mode, the update boot guard and the lost-computer line, the Notes data, and shells or wrappers that would run commands out
   of sight. The tools that change things refuse while the agent runs with its own checks off (a flag from
   `agent-cli-flags` on the agent above the server, or a setting the security reader reports).
 - **`/etc/amethystora/agent.conf`** is the administrator's: `ALLOW=act|know|off` (the most any account may
@@ -613,7 +613,8 @@ files and closes, over the session bus so that it needs no shell, each Files tab
 never reloads a folder that was unmounted, even as a `GMount`, and a tab's number is its place in the row, which the
 order Files publishes follows only until a tab is moved); closed, `~/Private` is 0500 (fusermount3 mounts only where its owner can write, so it is 0700 for the
 moment of mounting). `test-private-folder.sh` checks it against stand-ins, `tests/vm/suites/86-locked-session.sh`
-on a machine.
+on a machine. The folder is also out of the file index (`Private` in localsearch's `ignored-directories`, in zz1), which Fedora 45 otherwise fills from the whole home
+with the mount's names and text.
 
 The security watcher (`amethystora-security-watch`, on a 15-minute timer, or on each audit event when
 `REALTIME_WATCH=on`) reads the audit log per key, the journal, `/etc` against `/usr/etc`, setuid files
@@ -905,7 +906,24 @@ shared file must not schedule another machine's restarts. **Saving data**: `uupd
 `amethystora-pkg-upgrade.service` and `amethystora-backup.service`, ask `/usr/libexec/amethystora-metered wait WHAT` in
 `ExecCondition=`: a run its timer started waits on a metered connection (NetworkManager's 1 or 3), at most a week by the
 stamp of its first wait, and a backup to a local disk never; `uupd-manual.service` (Update now, the pill's Update anyway)
-has no condition. Keep both: the waiting must never stop an update a person asked for, nor last longer than a week.
+has no condition. Keep both: the waiting must never stop an update a person asked for, nor last longer than a week. **Get me through** (`amethystora-metered through on|off`) makes the account's timed backup and containers' upgrade wait on battery too: its mark holds
+the shell's process number and counts only while that is still `gnome-shell`, it shares the week's stamp, and a person's own run and a backup to a local
+disk never wait. The system update has no mark: root must not take a file an account writes as a reason to delay updates, and uupd's own 20% battery check does it.
+
+**An update that does not start goes back** (R7-52, `plans/ui-ideas/r7/spec-sturdy.md` 3; `ame update boot-guard on|off`,
+`/usr/libexec/amethystora-boot-guard`, `amethystora-boot-guard.service` and `-good.service`) is **built and off** (`/var/lib/amethystora/boot-guard/on`
+is absent), and stays off until the lab and a real machine have proved it: that is the maintainer's. It is never in the setup file, and sealed images
+are left alone. **Its bar: a machine that started fine is never sent back, and no sequence of power cuts leaves one unable to start by itself**
+(`test-boot-guard.sh` cuts the power after every step it takes, against a model of ostree's boot version and GRUB's script). GRUB's own counter
+cannot be used: bootupd's static configuration drops `08_fallback_counting` and `10_reset_boot_success`, and greenboot is not in the image, so it
+counts in `grubenv` from `custom.cfg`, the one hook, which `amethystora-raid` writes too (both under `/run/amethystora/boot-cfg.lock`). `set
+default=1` would be UEFI Firmware Settings. A good start is the display manager up and a session on seat0, not a login. It arms at an update's
+shutdown only after a good start, when the new default carries the guard, and when the two entries differ by more than ostree's numbering. At the
+new system's good start `good` removes the entry before anything else; the rollback goes by where the default is, never by what a command said.
+While it holds an update back (`update-ok`, an `ExecCondition` of `uupd.service` alone; Update now never asks) Flatpak and Homebrew updates wait
+too, which the notice and the manual say. The agent's never list holds its switch, helper, state and `grubenv`. Between it and on: a lab run that
+breaks an image on purpose, a real boot (`save_env` under Secure Boot, GRUB's `/loader.N` and kernel tests, `fsfreeze` on `/boot`), and the maintainer
+weighing that anyone at the power button can hold a machine on the old system with automatic updates paused.
 
 ### The Logs app
 
@@ -1011,6 +1029,12 @@ report's `backup-runs` check reads `status`. Never work out a point, a path or a
 - **Back in time** (`past.rs`, a button on Browse, no key): the same list in front of earlier points as windows receding, read by `ls`
   when a walk settles, put back keeping both. Put back and Look stay off until the list of the point shown has been read, and a
   folder is asked about first; leaving the view stops a walk.
+- **Earlier versions** (R7-33, Files' scripts menu at version 4, key `earlier-versions`): `amethystora-back-in-time --versions -- FILE` opens
+  the versions view on the file; the local snapshots are listed first and the whole answer follows, since restic's `find` over every snapshot held
+  the page for minutes. **Keep this one too** is `put-back --keep-both`: it never touches the file. A Look at a version from a backup keeps a read-only
+  copy in `~/.cache/amethystora-restore/look`, which `usr/share/user-tmpfiles.d/amethystora-restore.conf` ages out after a day through the account's
+  own `systemd-tmpfiles-clean.timer` (`20-tests.sh` holds both; the folders stay writable so that tmpfiles can remove it), and the hourly snapshots
+  keep it up to 14 days longer: the manual says so.
 - **Nothing deletes.** Neither the helper nor the window runs `restic forget`, `prune`, `rewrite` or
   `key`, restore's `--delete`, or `btrfs subvolume delete`; `20-tests.sh` greps for them. Putting back
   adds what is missing and keeps a file that changed beside the old one (`name (2026-10-04 14.00).ext`)
@@ -1089,6 +1113,12 @@ replaces, adds, opens and forgets them. Its plan, done and tested in the VM lab 
   somebody was logged in to tell. `amethystora-raid-scrub.timer` scrubs monthly on mains power and
   resumes a scrub a suspend cut short. Both are enabled in every image and skip a machine with nothing to
   watch (`ExecCondition=... present`).
+- **The system's own disk** (R7-53, `amethystora-disk-health` and its hourly timer as root, `ame system disk-warning on|off`) reads SMART (`smartctl -n
+  standby`) and says once per change that the disk is starting to fail, with the days since the account's last backup. Its switch is the timer: the
+  read is the machine's, so there is no key and no line in the setup file. A disk of a mounted pool is left to `amethystora-raid check`, so that no
+  disk is two notices' subject; a disk first read with bad sectors has them as its baseline; its serial is kept as a checksum. **It has no
+  `ProtectClock=`**: a unit with any device allow rule may be shut out of the disks it does not name, which would leave the warning silently dead, and
+  that could not be tried without a machine. `amethystora-raid-check.service` still has it and its `smartctl` is run in the lab by hand, not under the unit: look.
 - **The system's disks:** `ame system raid mirror` converts an installer-made multi-disk `single`
   system to raid1 (2a). `mirror DISK` copies a system on one disk, laid out as the installer does it,
   onto a new disk at least as large (2b): an ESP of its own and a firmware entry for its shim, `/boot`
@@ -1205,7 +1235,7 @@ exactly so), each holding only which of a few modules comes first, so a module g
 `desks`, `agent`, `quit`, `privacy`, and `power` between `today` and `dock`. `firstlook` comes right after `hints`.
 Rounds 5 and 6 add `backupdisk` after `connect`, `bars` after `quick`, `audio` and `brightness` after `power`, `appgrid`
 after `dock`, `typing` and `keys` after `emoji`, `windows` and `motion` after `tiling`, and `tools`, `rest` and `living`
-after `privacy`.
+after `privacy`; round 7 adds `guide` after `tools` and `found` right before `focus`.
 
 **What keeps the shell up.** A screen lock disables the extension and the unlock enables it again: what must outlive a
 lock (Later's and Mute's notifications, pinned captures, walk-away lock's count) is kept at module scope, outside the
@@ -1225,7 +1255,7 @@ between paints and shows a stale one after a partial redraw (Focus's desaturate 
 context's redraw-clip region from GJS (`get_extents()`, `get_rectangle()`: the shell dies on signal 11); testing it for null
 is safe. `Clutter.Event.add_filter` never sees a press on a Wayland window: Mutter's filter takes it first. A new
 `themed/shell-<module>.css.tpl` reaches an existing account only when its theme is applied again: raise `11-theme.sh`'s
-version (17 for round 4, 23 for rounds 5 and 6). GNOME 51 dropped `St.BoxLayout`'s `vertical`: write `orientation`.
+version (17 for round 4, 23 for rounds 5 and 6, 25 with round 7). GNOME 51 dropped `St.BoxLayout`'s `vertical`: write `orientation`.
 
 The modules, and what each replaced:
 
@@ -1393,6 +1423,90 @@ The modules, and what each replaced:
   dialog taking the key focus from under it ends it, and `Show()` does nothing while a modal other than the overview is up.
 **Round 7's pill** (`plans/ui-ideas/r7/spec-pill.md`; `tests/real/checklist/60-r7-pill.md`; `build_files/shared/test-pill-logic.mjs`). Two at once: `activities.second` sits beside the first as a bubble, a child of the pill since `PanelMenu.Button` lays out only its first child; a call and a recording come first in `ORDER` and keep the place alone (Present too when it is first; something the system puts right after them, like a flat battery, is no `ALONE`) and `MARKS` are never the bubble. An activity may give `short`, `progress` (a ring round its place), `beside: false` and `showing(seen)`: a new activity adds one line to `ORDER` and needs none of them. Every plate motion is two edges from the pill's middle, so that one activity travels as it always did; `pill/spring.js` carries the speed across a change of mind. `pill/moving.js` keeps a suspend inhibitor through a lock in a keeper at module scope, since walking away is the point; every item ages out (`agedOut`) and the hold is given up after twelve hours, so nothing keeps the machine awake for good, and the inhibitor reaches logind as `block-weak`, which the user's own Suspend ignores. `pill/levels.js` (the key `music-bars`, off until a GPU shows it costs under 1% of a core) is `pw-record` on the player's own stream (never another's) in a scope, read from a 150 ms timer, only while the bars are mapped and the screen is not blanked nor the computer on its battery, with `node.dont-fallback` (`test-levels.sh`) and calling itself GNOME's level meter so that it is no microphone. `pill/code.js` copies with `St.Clipboard`, and `Symbol.for('amethystora.clipboard.secret')` names that text for Amethystora Clipboard and the phone link's sending, which refuse it: GJS cannot subclass `Meta.SelectionSource` (it stops the whole extension at import), and `Meta.SelectionSourceMemory` used from JS brought the shell down. The shell reads no text: the phone link's program finds the code (`apps/connect/src/codes.rs`) while `org.amethystora.Connect` `codes` is on and sends the signal `Code` with the digits alone. That key is never in the setup file and is on the never list in every spelling (`ame`, `gsettings`, `dconf`). A bar that moves with sound is set, never eased: an ease asks for every frame.
 
+**Round 7's other groups** (`plans/ui-ideas/r7/spec-<group>.md`, the checks in `tests/real/checklist/60-r7-<group>.md`; where a spec and the
+code differ, the code is right). What must outlive a screen lock is at module scope, as above. **Not built:** R7-04 (a command's progress in the
+pill) moved to later, because the terminal offers no documented way to pass a command's progress on; R7-47 (reading the screen in another
+language, with Bergamot) is held whole as `plans/ui-ideas/r7/work/r7-47.patch`, with what its audit asked at the top, and is kept out by the maintainer's decision of 2026-11-02: its build stage costs about
+20 minutes on a cold build, and it misses Chinese, Japanese and Korean. None of it is in the tree.
+- **Find** (`modules/search/`, `/usr/libexec/amethystora-file-find`). *Old words* (R7-49, `old-words`) matches a table of word lists, each one
+  gettext message with alternatives split by `|`, to a thing here, and **no string names another maker's product**: of other systems' names only
+  `task manager`, `control panel`, `recycle bin` and `print screen` stay, and `test-search-words.mjs` (which reads the four catalogs too) and
+  `20-tests.sh` fail on more. It never installs a missing app. *Files by what you remember* (R7-60, `remembered`) sends what its rules read
+  (kind, period, size, name) to the helper, a Python process on Tsparql, as JSON on **standard input, never an argument** (an audit log keeps
+  command lines); the SPARQL has nothing typed in it. A word alone, more than 16 words, or a date read two ways is no question and the search
+  goes on as usual; an installed app whose name starts with what was typed keeps Enter from both providers. **`~/Private` is out of the index**:
+  Fedora 45 indexes the whole home, mount included, so `Private` is in localsearch's `ignored-directories` in zz1 (`20-tests.sh`), the query
+  leaves it out and the answer refuses it again. No file name goes to a log: a failed open logs an error number only. R7-62 is round 4's
+  `windows/hold.js`; only the Emoji row and the board's words were added.
+- **Files** (`tools/opener.js`, `tools/room.js`, `bazaar.js`). **`amethystora-flatpak-ask`** installs and removes through a libflatpak
+  transaction because `flatpak install -y` and `--noninteractive` both have the system helper ask polkit with interaction off (seen on the bus):
+  no password prompt can ever appear. `amethystora-open-anything`, `-uninstall` and `-free-space` use it, and so must any new helper that installs.
+  *Anything opens* (R7-40, `open-anything`): `build.sh` runs `open-anything-types.py` after dx, which writes the kinds nothing here opens into
+  `zz-amethystora-open-anything.desktop` and runs `update-desktop-database`. **The launcher's `zz-` is load-bearing**: that command sorts a kind's
+  list by launcher name and GIO takes the first, so an app added later (a layered package, a derived image) must sort before it; Flatpak's exports
+  come first anyway. Off is a hidden entry of the same name in `~/.local/share/applications`, and the card's object leaves the bus. A row says
+  whether Flathub verified its maker before the click, and never calls an app free. *Uninstall means gone* (R7-41, `uninstall-takes-data`): the
+  data goes to the trash (`Gio.File.trash` of `~/.var/app/ID` and nothing else; never `rmtree` or `--delete-data`, `20-tests.sh`), the app's
+  permissions are reset, and `amethystora-uninstall undo` brings the data back (a plain install brings an app back empty; permissions are asked
+  again). *Never out of room* (R7-58, `offer-room`) replaces GNOME's low-space notice, found by urgency, transience and its drive icon, only when
+  `amethystora-free-space` says a disk is low and 200 MB can go. One click clears only what lies on a low disk: runtimes (the machine's only on a
+  machine with one account: one account's `flatpak uninstall --unused` takes a runtime another's own app needs), Homebrew's cache, `podman image
+  prune -f` (never `-a`, never volumes), closed Flatpak apps' caches, thumbnails, and trash older than the account's own `old-files-age`, never
+  under 30 days and none with housekeeping off. The home part stays in the hourly snapshots for 14 days, so the result is what `statvfs` gained,
+  never the estimate. *Earlier versions* (R7-33) is Backups' versions view (see there). R7-29 builds nothing: GNOME's previewer is on the Flatpak
+  list and sees the home only, so a file on a USB stick does not preview; widening that is the maintainer's, and `20-tests.sh` keeps the app listed.
+- **Sturdy** (`power/flat.js`, `desks/layouts.js`). *A flat battery loses nothing* (R7-54, `flat-battery`) fires only on a fall through 3% during
+  this shell's run (a gauge that always reads 0 never closes a working laptop; a UPS is left alone), keeps the open apps and closes through logind.
+  **Close now does not save an app's work and must never say it does**; **Not yet** has `flat-hold` (`Super+Shift+N`), bound only while the card
+  shows. `flat` comes right after `call` and `recording` in `ORDER` (their controls are only in the pill; `20-tests.sh`, `test-pill-logic.mjs`).
+  *Screens come back as you left them* (R7-46, `desk-windows`) keeps in `desks.json` `layouts` app IDs and numbers only, never a title (`20-tests.sh`
+  greps `get_title`); `seen` is a counter of visits, not a time, so no habit is on disk; writes go through one queue guarded by the file's etag, and
+  the key off by any route deletes the layouts. The update that does not start is R7-52, under The Updates app.
+- **Truth** (`tools/reach.js`, `pill/stick.js`, `power/slept.js`, `/usr/libexec/amethystora-sleep-report`): **say less where the machine cannot know**.
+  *Is it me or the internet?* (R7-37, `network-reach`) runs only while a Wi-Fi or Wired menu is open: one ping to the router, and the name lookup is
+  NetworkManager's own connectivity-check address, read from it and only while that check is on (`20-tests.sh` fails on a host written into
+  `reach.js`); a router that drops pings is not blamed, and a connection that is not NetworkManager's primary is asked about the router alone.
+  *A USB stick that tells the truth* (R7-38, `removable-writes`, `stick` in `ORDER` after `hello` and before `reading`, held by `test-pill-logic.mjs`):
+  per-device dirty data is not readable without root, so **"All on" is said only when a `sync -f` moved no sector of the disk, the machine's dirty
+  data has not risen across it, and `amethystora-what-uses` finds nothing holding it; never on a FUSE file system (ntfs-3g's `syncfs` does not
+  flush the device), and a sync that hangs or an unreadable input says "Still writing"**. Percentages say "about" and never fall; one `sync` per
+  disk, 60 s at most. Its `timeout_add_seconds` ticks (15 s, 30 s when calm, only with a writable removable disk mounted and someone at the
+  computer) are the accepted exception to "no timers while idle". *What happened while it slept* (R7-39, `sleep-report`): the module subscribes to
+  `PrepareForSleep` at module scope (a lock stops the extension) and reads the battery before and after; the helper runs only on a large loss.
+  **It never names the key or mouse the person woke it with**: a wakeup source that fired at or within 10 s of the last wake is left out and no Stop
+  is offered for it; with no readable journal it says nothing is known, never "nothing woke it"; USB hubs, controllers, the lid and the power button
+  are never named, and the helper itself refuses to stop them. Stopping a device (pkexec, `org.amethystora.wake.policy`) writes
+  `/etc/udev/rules.d/90-amethystora-wake.rules`, which the watcher accepts only in the helper's exact line shape; the way back (`ame system
+  wake-device`, Control's System page lists each stopped device) never depends on the notice. What was said is salted checksums in `~/.local/state/amethystora/sleep-report.json`.
+  The disk warning (R7-53) is under Pools of disks.
+- **Devices** (`pill/printing.js`, `pill/through.js`, `quick/sounding.js`, `quick/tv.js`). *Playing now* (R7-57, `sounding-apps`) learns which
+  streams are paused from `pactl`, not Gvc (it reports every sink input as invalid), and never listens to a stream's level, so there is no
+  "loudest"; a portal's app id is a program's own say-so. *Printing that talks* (R7-59, `printing`; `printing`, then `printing-stuck` after `update`
+  in `ORDER`): `com.redhat.PrinterSpooler` signals count only when the bus says root sent them (any account can send them), at most 16 jobs are
+  followed, one `ipptool` asks for all of a printer's jobs, polling stops after 10 minutes unchanged, and `jobs-state.test` asks for no job name or
+  owner (`20-tests.sh`), so a document's name never reaches the shell; a printer name starting with `-` is refused. `connecting-to-device` is normal,
+  not "offline". *Get me through* (R7-45, `get-through`): it **gives everything back whatever happens**: the brightness before and after goes in
+  `~/.local/state/amethystora/get-through.json` (plain), put back at the next start if the shell died, UPower's `OnBattery` and the power saver's
+  `ProfileReleased` are followed through a lock, and the screen is not dimmed during a call, a recording, a share, or while a microphone or camera is
+  in use. *Send to the TV* (R7-43, `send-to-tv`) is offered and off: it installs GNOME Network Displays from Flathub after a click (`tv.js` never
+  names flatpak, `20-tests.sh`), and `ame desktop send-to-tv setup` says first what the app reaches (firewalld's configuration, readable without a
+  password, NetworkManager, Avahi) and that nothing was seen working with a real TV. **The firewall zone Miracast wants (`P2P-WiFi-Display`) stays
+  out of the image**: a new firewall path is Security's, the maintainer's; the tile never says "Sending your screen", which it cannot know.
+- **People** (`windows/handover.js`, `windows/simple.js`, `screenshot/cover.js`, `found.js`, `today/year.js`, `/usr/libexec/amethystora-*`).
+  *Hand it over* (R7-64, `hand-over`) **is a courtesy, not a lock, and says so**: Mutter's `filter-keybinding` sends keys to the app, Super+L
+  (by letter, keycode or the real binding) is the ordinary lock, a lock that does not happen within 3 s gives the window back, and the dialog says that
+  an app taking the keyboard can stop the lock key. *Hide what's private* (R7-67, `hide-private`) draws **solid black boxes burnt into the picture,
+  never a blur** (`test-cover-private.sh` greps): the picture goes to `amethystora-cover-private` on standard input and to Tesseract through a pipe,
+  no file; English only; a street address has no pattern and is not found, which the card says. *A desktop for your parents* (R7-65, `simple-desktop`,
+  off) saves each value it sets first in `~/.local/state/amethystora/simple.json` (0600) and a state it cannot write sets nothing; its tiles are
+  the default apps or the launchers `simple-tiles` names. *If it's lost* (R7-71, `ame system if-found`, module `found` right before `focus`) writes the line to dconf for the login banner and
+  the lock screen: **no code of ours runs on the lock screen** (a plain label is left in `screenShieldGroup`), the label reads the key's default value
+  and at most 120 characters, it is never in the setup file and is on the agent's never list, and it is not a security feature. *How do I look and
+  sound?* (R7-44) is `amethystora-mirror`, a GTK process with its own scope, never the shell, that writes no frame and ends on close, lock, a share
+  or 3 minutes; a camera blocked in Security stays blocked. *Your year* (R7-30, `your-year`) counts days from the birth of `/var` (not
+  `/etc/machine-id`, which each deployment copies), claims no "updates that worked" (uupd logs success after any run) and no "threats stopped"
+  (the watcher reports), and keeps only the number `your-year-seen`.
+
 **Rounds 5 and 6** (`plans/ui-ideas/`, the boards and a `spec-<group>.md` per group; VM suites 51 to 69, one per group).
 Every rule above holds for each, and each part is off unless its spec says otherwise:
 - **Look** (51): themes made, saved, shared and imported as files (`/usr/libexec/amethystora-theme-file`, `ame desktop
@@ -1410,7 +1524,7 @@ Every rule above holds for each, and each part is off unless its spec says other
 - **Keys** (58): `/usr/libexec/amethystora-keybindings` (`ame desktop keybindings`, Control's shortcuts page), accents by
   holding a key (`typing`), plain paste (`Super+Alt+V`, `keys`) and shortcuts kept from an app per window.
 - **Tools** (59): the colour picker (`colour:` in search), `Super+Alt+M` (the microphone), What is using this?
-  (`/usr/libexec/amethystora-what-uses`, Files' menu at version 3, the bus `/org/amethystora/Tools`), conversions in Files
+  (`/usr/libexec/amethystora-what-uses`, Files' menu at version 4, the bus `/org/amethystora/Tools`), conversions in Files
   (`/usr/libexec/amethystora-convert`, GdkPixbuf's glycin), clipboard text actions and QR codes (`qrencode`), hidden while
   the screen is shared.
 - **Apps** (61): the app grid's order, hidden apps, names and pictures as `appgrid` keys, never a launcher
@@ -2007,7 +2121,7 @@ staying in place.
 8. `11-gtk-theme.sh` - Installs the Amethystora GTK theme: EliverLara's Sweet, with every cool colour in it rotated onto the amethyst palette by `build_files/shared/recolor.py` (its stylesheets and drawings) and ImageMagick (the bitmaps named in the script, where the build fails on any still drawn in a cool colour: `recolor.py --check-bitmaps`). It ships under Amethystora's own name because the palette is no longer Sweet's. Only the `amethystora` and `amethystora-light` themes name it in their `gtk.theme`, for GTK 3; the rest stay on adw-gtk3. libadwaita ignores `gtk-theme` and a Flatpak cannot see `/usr/share/themes` at all, so the theme reaches them through `theme-set.hooks.d/20-gtk-apps.sh`: it mirrors the active theme into `~/.themes`, which `/etc/flatpak/overrides/global` grants every sandbox read-only, and writes the `~/.config/gtk-4.0/gtk.css` with the palette layer (see Colours in applications)
 9. `12-login-screen.sh` - Patches the login screen background into GNOME Shell's own stylesheet. GNOME reads it from the `#lockDialogGroup` rule inside `gnome-shell-theme.gresource` and from nowhere else, so the bundle is unpacked, the rule appended and the bundle rebuilt. The picture is the crown the boot splash ends on, as sharp as the splash draws it and without the gem, drawn by `branding/generate.mjs`
 10. `12-tour.sh` - Swaps the picture on GNOME Tour's first page, which Fedora builds with Fedora's logo on it, for Amethystora's, in the resource bundle the Tour reads its pictures from (`/usr/share/gnome-tour/resources.gresource`), unpacked and rebuilt as `12-login-screen.sh` does. The picture is the boot splash at the top of its glow, drawn by `branding/generate.mjs` into `/usr/share/amethystora/tour/welcome.svg`
-11. `13-apps.sh` - Installs the Amethystora apps (the Manual, `Super+F1`; Security; Updates; Notes; Logs; Backups; Control): the one program the Containerfile's `apps` stage built from `apps/` (`build_files/shared/build-apps.sh`, see The Amethystora apps), hard-linked to each app's own path in `/usr/lib/amethystora-<app>`, Quicksand for the wordmark from `branding/fonts`, which the `ctx` stage copies in, and the licences of the crates built into it. It also writes the apps' launchers in the languages the apps are translated into (`translate-desktop.py`). Each app's translations stay in `system_files/shared/usr/lib/amethystora-<app>/resources/app/locale`
+11. `13-apps.sh` - Installs the Amethystora apps (the Manual, `Super+F1`; Security; Updates; Notes; Logs; Backups; Control; Help): the one program the Containerfile's `apps` stage built from `apps/` (`build_files/shared/build-apps.sh`, see The Amethystora apps), hard-linked to each app's own path in `/usr/lib/amethystora-<app>`, Quicksand for the wordmark from `branding/fonts`, which the `ctx` stage copies in, and the licences of the crates built into it. It also writes the apps' launchers in the languages the apps are translated into (`translate-desktop.py`). Each app's translations stay in `system_files/shared/usr/lib/amethystora-<app>/resources/app/locale`
 12. `14-security.sh` - What Amethystora Security reports on, beside its window: derives network protection's Suricata configuration (`/usr/share/amethystora/ips/suricata.yaml`) from the one the suricata package ships, with `build_files/shared/ips-config.py`, so that it fits Suricata 7 and 8 alike, and compiles `po/*.po`, the report's and the app permissions' translations, into `/usr/share/locale/<language>/LC_MESSAGES/amethystora.mo` with `msgfmt --check`
 13. `07-debrand.sh` - Renames every remaining Universal Blue file, command, service and reference to Amethystora (logic in `build_files/shared/debrand.py`; `20-tests.sh` fails the build if any is left). Licence files, copyright lines and the comments that credit an author keep upstream's names
 14. `08-hardening.sh` - Signature-verified updates, firewall default zone, account lockout, Parental Controls' allowed hours at the text consoles and over SSH (see Logins), kernel lockdown, and the sudo PATH that `ublue-os/main` leaves open. The polkit and udev fixes are made in the files themselves (`org.amethystora.privileged.user.setup.policy`; `50-zsa.rules`, `60-arduino-mbed.rules`, `88-neutron_hifi_dac.rules` and `92-viia.rules`, which give their devices to the user at the seat with `uaccess` instead of to every account: a keyboard's hidraw device carries every key typed on it, and `20-tests.sh` fails on a rule the image adds that gives a hidraw device or a vendor's devices to everyone). Lockdown is skipped on the NVIDIA images, whose driver is an akmods build signed with the machine owner key: forcing lockdown on a machine with Secure Boot off would leave it without a graphics driver. With Secure Boot on, Fedora's kernel locks itself down whatever the arguments say (`20-tests.sh` checks its config), so the argument only matters without; `ame security lockdown` adds or takes it off per machine. It takes setuid root off what a desktop never runs (`chfn`, `chage`, `gpasswd`, `newgrp`, `ksu`, `mount.davfs`), masks systemd's SSH-over-vsock generator in `/etc` (`ame security ssh-settings off` unmasks it) and sets BlueZ's privacy and 30-second visibility in its own `main.conf`, which reads no drop-ins (`ame security bluetooth-privacy`). The settings that are plain files live in `system_files/shared` (`usr/lib/sysctl.d`, `usr/lib/modprobe.d`, `usr/lib/bootc/kargs.d`, `etc/ssh/sshd_config.d`, `etc/security/faillock.conf`, `etc/flatpak/overrides/global`, `etc/audit/rules.d`)
@@ -2015,7 +2129,8 @@ staying in place.
 16. `18-workarounds.sh` - Temporary fixes/workarounds
 17. `19-initramfs.sh` - Regenerates initramfs, adding dracut's `tpm2-tss` module where dracut has it so that `ame security disk-unlock` can hand the disk key to the TPM, and without what changes with every build, so that two builds of the same packages make the same initramfs and an update between them can finish with a soft reboot (see The Updates app)
 18. `build_files/shared/build-dx.sh` - dx only: copies `system_files/dx`, runs `build_files/dx/00-dx.sh` and then `01-tests-dx.sh`
-18a. `build_files/shared/build-agent-index.sh` - The AI agent's index (`amethystora-agent-tools index --write`), once every name is final and every unit enabled or not, of the image as it then is, dx's files included (see Agentic features)
+18a. `build_files/shared/open-anything-types.py` - Run by `build.sh` after dx, once every package and launcher is in place: writes the kinds of file nothing in the image opens into `zz-amethystora-open-anything.desktop` and has the launchers' index made again (see Round 7's other groups)
+18b. `build_files/shared/build-agent-index.sh` - The AI agent's index (`amethystora-agent-tools index --write`), once every name is final and every unit enabled or not, of the image as it then is, dx's files included (see Agentic features)
 19. `build_files/shared/source-manifest.sh` - Writes `/usr/share/licenses/amethystora/SOURCES`: every package with its licence, source package and where that source is, which the GPL asks for and the written offer in `NOTICE` points to. Fedora keeps its own in Koji. RPM Fusion, negativo17 and Copr publish only their current builds, so the script fetches the source packages of theirs that are under a licence asking for the source into `/usr/src/amethystora`, and the build fails when one cannot be fetched; a Copr project the image starts installing from goes in its `COPR_PROJECTS`. NVIDIA's own repository, which the NVIDIA images take the container toolkit from, publishes no source packages at all, so its packages are listed with the address of their source instead (`NO_SOURCE_PACKAGES`); a GPL package from any other maker the script does not know still fails the build. `20-tests.sh` fails if a package is missing from the list or a source package from the image
 20. `20-tests.sh` - Runs last, after the repositories are validated and the build cleaned up; fails the build on anything missing or left behind, including a GNOME Shell extension shipped without its licence
 
