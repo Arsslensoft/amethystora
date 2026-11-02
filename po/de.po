@@ -6194,3 +6194,343 @@ msgstr "Das Telefon ist nicht verbunden."
 #: apps/connect/src/transfers.rs
 msgid "The file cannot be read."
 msgstr "Die Datei kann nicht gelesen werden."
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "task manager|process list|running programs|what is running|stop a program|end a program"
+msgstr "task-manager|taskmanager|prozessliste|laufende programme|programm beenden"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "What is running, and what it uses"
+msgstr "Was läuft und was es verbraucht"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "control panel|computer settings"
+msgstr "systemsteuerung|computereinstellungen"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "And Control for the rest"
+msgstr "Und Control für den Rest"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Trash"
+msgstr "Papierkorb"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "recycle bin|rubbish bin|waste basket|wastebasket|garbage can|deleted files"
+msgstr "papierkorb|mülleimer|gelöschte dateien"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "In Files"
+msgstr "In Dateien"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "file manager|file browser|my files"
+msgstr "dateimanager|meine dateien"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Your folders and files"
+msgstr "Ihre Ordner und Dateien"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "software store|install a program|install programs|uninstall a program|uninstall programs|remove a program|remove programs"
+msgstr "programm installieren|programme installieren|programm deinstallieren|programme deinstallieren|programm entfernen"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Get apps, and remove them"
+msgstr "Apps holen und entfernen"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "check for updates|system update|install updates"
+msgstr "nach updates suchen|systemaktualisierung|updates installieren"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Keeps the system up to date"
+msgstr "Hält das System aktuell"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "disk space|free up space|what takes up space"
+msgstr "speicherplatz|speicherplatz freigeben"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "What takes up the space"
+msgstr "Was den Platz belegt"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "format a disk|format a drive|partition a disk|partitions"
+msgstr "festplatte formatieren|partitionen"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Format and look after your disks"
+msgstr "Ihre Datenträger formatieren und pflegen"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "command line|command window|console"
+msgstr "kommandozeile"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Type commands"
+msgstr "Befehle eingeben"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "to do list|to-do list|todo list"
+msgstr "aufgabenliste|to-do-liste"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Notes and tasks, on this computer"
+msgstr "Notizen und Aufgaben, auf diesem Computer"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Take a screenshot"
+msgstr "Ein Bildschirmfoto aufnehmen"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "print screen|screen capture|screen grab"
+msgstr "bildschirmfoto|bildschirmaufnahme|druck-taste"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "The Print key does this too"
+msgstr "Die Druck-Taste kann das auch"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "startup programs|startup apps|programs at startup|apps at startup"
+msgstr "autostart|autostart-programme|programme beim start"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "In Control"
+msgstr "In Control"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "What starts with you"
+msgstr "Was mit Ihnen startet"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Drivers"
+msgstr "Treiber"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "drivers|hardware drivers"
+msgstr "treiber"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "What each device runs on, in a terminal"
+msgstr "Womit jedes Gerät läuft, in einem Terminal"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "restore files|restore my files|recover files|back up my files"
+msgstr "dateien wiederherstellen|meine dateien sichern"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Your home folder at any hour"
+msgstr "Ihr persönlicher Ordner zu jeder Stunde"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Rolling back"
+msgstr "Zurückgehen"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "undo an update"
+msgstr "update rückgängig machen"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "In the manual"
+msgstr "Im Handbuch"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "antivirus|anti-virus|virus scan|virus scanner|malware|firewall"
+msgstr "antivirus|virenscanner|virensuche|schadsoftware|firewall"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "What protects this computer"
+msgstr "Was diesen Computer schützt"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "pdf reader|pdf viewer|read a pdf"
+msgstr "pdf-leser|pdf-betrachter"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Reads PDFs"
+msgstr "Liest PDFs"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "photo viewer|picture viewer"
+msgstr "bildbetrachter|fotoanzeige"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Shows pictures"
+msgstr "Zeigt Bilder"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "video player|movie player|media player"
+msgstr "videoplayer|mediaplayer"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Plays videos"
+msgstr "Spielt Videos ab"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "music player|audio player"
+msgstr "musikplayer|audioplayer"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Plays sound files"
+msgstr "Spielt Audiodateien ab"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "drawing program|draw a picture|image editor"
+msgstr "zeichenprogramm|bildbearbeitung"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Draw and edit pictures"
+msgstr "Bilder zeichnen und bearbeiten"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "unzip|zip files|compress files|extract files"
+msgstr "entpacken|dateien komprimieren|zip-dateien"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Opens and makes archives"
+msgstr "Öffnet und erstellt Archive"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "document|documents|letter|letters"
+msgstr "dokument|dokumente|brief|briefe"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "spreadsheet|spreadsheets"
+msgstr "tabelle|tabellen"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "presentation|presentations|slides"
+msgstr "präsentation|präsentationen|folien"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "photo|photos|picture|pictures|image|images|screenshot|screenshots"
+msgstr "foto|fotos|bild|bilder|bildschirmfoto|bildschirmfotos"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "video|videos|movie|movies|film|films"
+msgstr "video|videos|film|filme"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "music|song|songs|audio|recording|recordings"
+msgstr "musik|lied|lieder|audio|aufnahme|aufnahmen"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "archive|archives"
+msgstr "archiv|archive"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "text file|text files"
+msgstr "textdatei|textdateien"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "this week"
+msgstr "diese woche|dieser woche"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "last week|past week|a week ago"
+msgstr "letzte woche|letzter woche|letzten woche|vergangene woche|vergangener woche|vorige woche|voriger woche"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "this month"
+msgstr "diesen monat|diesem monat"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "last month|past month|a month ago"
+msgstr "letzten monat|letztem monat|letzter monat|vergangenen monat|vergangenem monat|vergangener monat"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "this year"
+msgstr "dieses jahr|diesem jahr"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "last year|past year|a year ago"
+msgstr "letztes jahr|letzten jahr|letztem jahr|vergangenes jahr|vergangenen jahr|vergangenem jahr"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "{n} days ago|{n} day ago"
+msgstr "vor {n} tagen|vor {n} tag"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "{n} weeks ago|{n} week ago"
+msgstr "vor {n} wochen|vor {n} woche"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "{n} months ago|{n} month ago"
+msgstr "vor {n} monaten|vor {n} monat"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "last"
+msgstr "letzte|letzten|letzter|letztes|letztem"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "big|large|huge"
+msgstr "groß|große|großen|riesig"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "small|tiny"
+msgstr "klein|kleine|kleinen"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "over|bigger than|larger than|more than"
+msgstr "über|größer als|mehr als"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "under|smaller than|less than"
+msgstr "unter|kleiner als|weniger als"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "kb|mb|gb|tb"
+msgstr "kb|mb|gb|tb"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "since"
+msgstr "seit"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "from|of|in|on|at|the|my|a|an|some|any|file|files|that|which|around|about|with|and"
+msgstr "von|vom|aus|im|in|am|an|die|der|das|den|dem|ein|eine|meine|meinen|datei|dateien|und|mit"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/providers.js
+msgid "Here it is"
+msgstr "Hier ist es"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/providers.js
+msgid "By what you remember"
+msgstr "Nach dem, was Sie noch wissen"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/providers.js
+msgid "Also understood: kinds of file, dates and sizes."
+msgstr "Auch verstanden: Dateiarten, Daten und Größen."
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/rememberProvider.js
+msgid "Home"
+msgstr "Persönlicher Ordner"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/windows/hold.js
+msgid "Holding Super"
+msgstr "Super gedrückt halten"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/windows/hold.js
+msgid "Let go and it disappears. Control has every shortcut."
+msgstr "Loslassen, und es verschwindet. In Control stehen alle Tastenkürzel."
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/windows/hold.js
+msgid "Emoji"
+msgstr "Emoji"
+
+#: usr/libexec/amethystora-control-list
+msgid "Words you already know"
+msgstr "Wörter, die Sie schon kennen"
+
+#: usr/libexec/amethystora-control-list
+msgid "Files by what you remember"
+msgstr "Dateien nach dem, was Sie noch wissen"
+
+#: usr/libexec/amethystora-control-list
+msgid "Everyday words such as “recycle bin” or “task manager” lead to the thing that does that here."
+msgstr "Alltägliche Wörter wie „Papierkorb“ oder „Task-Manager“ führen zu dem, was das hier tut."
+
+#: usr/libexec/amethystora-control-list
+msgid "“pdf from last week” or “big videos” finds files by their kind, date and size, from GNOME's own file index."
+msgstr "„pdf letzte woche“ oder „große videos“ findet Dateien nach Art, Datum und Größe, aus GNOMEs eigenem Dateiindex."

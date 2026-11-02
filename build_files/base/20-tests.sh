@@ -608,10 +608,10 @@ rm -rf "${UI_RENDER}"
 # The search box is on Super+Space alone, which GNOME's input-source switch must not take (zz0 moves it to
 # Shift+Super+Space): on a base without that line the box never opened
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys org.gnome.shell.extensions.amethystora-ui.search | sort | paste -sd ' ')" == \
-    "agent answers bookmarks clipboard glance manual meaning notes open reminders settings times windows" ]]
+    "agent answers bookmarks clipboard glance manual meaning notes old-words open remembered reminders settings times windows" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.search open)" == "['<Super>space']" ]]
 # Search that answers (plans/beyond/spec-search.md): each part on, the emoji picker on Super+. in the yellow tone
-for key in answers times reminders settings manual windows clipboard agent glance; do
+for key in answers times reminders settings manual windows clipboard agent glance old-words remembered; do
     [[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.search "${key}")" == true ]]
 done
 EMOJI=org.gnome.shell.extensions.amethystora-ui.emoji
@@ -638,6 +638,29 @@ if grep -rnE '\beval\(|new Function|(^|[^.a-zA-Z_])Function\(|\bimport\(' "${UI_
 fi
 # The sums and conversions, on the apps stage's Node (gjs runs the same file)
 env LD_LIBRARY_PATH=/apps-stage/usr/lib64 NODE_ICU_DATA="$(echo /apps-stage/usr/share/node-*/icudata)" /apps-stage/usr/bin/node /ctx/build_files/shared/test-search-calc.mjs
+# Old words and what is remembered (plans/ui-ideas/r7/spec-find.md): the table names no other maker's product, every app it
+# names ships in the image or comes with every machine, the rules read what they should, and the index is asked only
+# through bound values, with the words on standard input
+env LD_LIBRARY_PATH=/apps-stage/usr/lib64 NODE_ICU_DATA="$(echo /apps-stage/usr/share/node-*/icudata)" /apps-stage/usr/bin/node /ctx/build_files/shared/test-search-words.mjs
+for app in $(grep -oE "'[A-Za-z0-9._-]+\.desktop'" "${UI_EXTENSION}/modules/search/words.js" | tr -d "'"); do
+    test -f "/usr/share/applications/${app}" ||
+        grep -qxF "[Flatpak Preinstall ${app%.desktop}]" /usr/share/flatpak/preinstall.d/*.preinstall ||
+        { echo "The old words open ${app}, which no machine has"; exit 1; }
+done
+test -x /usr/libexec/amethystora-file-find
+bash /ctx/build_files/shared/test-file-find.sh
+# GNOME's file index never reads the Private folder (zz1): its names and text would sit in the index's plain database
+[[ "$(GSETTINGS_BACKEND=memory gsettings get org.freedesktop.Tracker3.Miner.Files ignored-directories)" == *"'Private'"* ]]
+# Opening a file or a place from the search does not wait on the compositor's thread, and logs no file name
+for file in wordsProvider rememberProvider meaning; do
+    grep -q "launch_default_for_uri_async" "${UI_EXTENSION}/modules/search/${file}.js"
+    [[ -z "$(grep -n 'launch_default_for_uri(' "${UI_EXTENSION}/modules/search/${file}.js")" ]]
+done
+[[ -z "$(grep -n 'e\.message' "${UI_EXTENSION}/modules/search/rememberProvider.js" "${UI_EXTENSION}/modules/search/meaning.js")" ]]
+for file in words wordsProvider remember rememberProvider; do
+    [[ -z "$(grep -nE '_sync\(|file_get_contents' "${UI_EXTENSION}/modules/search/${file}.js")" ]]
+done
+grep -q "output(\[HELPER\], cancellable, JSON.stringify(question))" "${UI_EXTENSION}/modules/search/rememberProvider.js"
 # Text shortcuts (plans/beyond/spec-phase7.md, part B): off as the image ships, since they look at what is typed, the
 # module after the emoji picker, the helper the only writer of the file, its rules and the shell's one list of cases (the
 # installed helper, on the apps stage's Node), its two commands, and neither the switch nor a text in the setup file

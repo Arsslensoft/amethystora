@@ -1,0 +1,202 @@
+#!/usr/bin/python3 -I
+# Find it by what you remember (plans/ui-ideas/r7/spec-find.md, R7-60), run as the account by the search box for one
+# question and gone: which of the account's files GNOME's own indexer, localsearch, knows as this kind, from this time,
+# of this size. The question comes on standard input, never on the command line, since an audit log may keep a command
+# line and these are a person's search words. What it answers goes to standard output. Nothing is written anywhere.
+#
+#   amethystora-file-find < {"kinds": ["pdf"], "after": "2026-10-26T00:00:00.000Z", "before": "...", "min": 0, "max": 0,
+#                            "order": "modified|size|small", "words": ["lease"]}
+#   > [{"path": "/var/home/me/Downloads/Lease.pdf", "modified": 1793000000, "size": 12345}, ...]
+#
+# Every value reaches the query as a bound value or after a strict check here. Only plain files under the home that are
+# still there are answered, reached through no link, and never one in the Private folder.
+
+import json
+import os
+import re
+import stat
+import sys
+
+# The names localsearch has answered under (the newer first)
+SERVICES = ('org.freedesktop.LocalSearch3', 'org.freedesktop.Tracker3.Miner.Files')
+# Each kind as MIME types, whole or by their start
+KINDS = {
+    'pdf': ['application/pdf'],
+    'document': [
+        'application/pdf', 'application/msword', 'application/rtf', 'text/rtf',
+        'application/vnd.oasis.opendocument.text',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ],
+    'spreadsheet': [
+        'application/vnd.ms-excel', 'application/vnd.oasis.opendocument.spreadsheet',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/csv',
+    ],
+    'presentation': [
+        'application/vnd.ms-powerpoint', 'application/vnd.oasis.opendocument.presentation',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    ],
+    'image': ['image/'],
+    'video': ['video/'],
+    'audio': ['audio/'],
+    'archive': [
+        'application/zip', 'application/x-tar', 'application/gzip', 'application/x-gzip', 'application/x-7z-compressed',
+        'application/x-rar', 'application/vnd.rar', 'application/x-compressed-tar', 'application/x-bzip2',
+        'application/x-xz',
+    ],
+    'text': ['text/plain', 'text/markdown'],
+}
+ORDERS = {'modified': 'DESC(?modified)', 'size': 'DESC(?size)', 'small': 'ASC(?size)'}
+WHEN = re.compile(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z')
+MOST_WORDS = 4
+LONGEST_WORD = 64
+# What the index is asked for, and what is answered of it once the files that have gone are left out
+ASKED = 24
+ANSWERED = 5
+
+
+def checked(question):
+    """The question, or None when it is not one this program asks"""
+    if not isinstance(question, dict) or set(question) - {'kinds', 'after', 'before', 'min', 'max', 'order', 'words'}:
+        return None
+    kinds = question.get('kinds', [])
+    if not isinstance(kinds, list) or any(not isinstance(kind, str) or kind not in KINDS for kind in kinds):
+        return None
+    order = question.get('order', 'modified')
+    if not isinstance(order, str) or order not in ORDERS:
+        return None
+    for key in ('after', 'before'):
+        if key in question and not (isinstance(question[key], str) and WHEN.fullmatch(question[key])):
+            return None
+    for key in ('min', 'max'):
+        if key in question and not (type(question[key]) is int and question[key] >= 0):
+            return None
+    words = question.get('words', [])
+    if (not isinstance(words, list) or len(words) > MOST_WORDS or
+            any(not isinstance(word, str) or not word or len(word) > LONGEST_WORD for word in words)):
+        return None
+    return question
+
+
+def query_text(question):
+    """The SPARQL: nothing of what was typed is in it, only ~names bound afterwards and values checked above"""
+    # The Private folder is left out here too, so that its files cannot use up the rows asked for
+    filters = ['(STRSTARTS(?url, ~home) || STRSTARTS(?url, ~real))', '!STRSTARTS(?url, ~private)',
+               '!STRSTARTS(?url, ~privateReal)', "?mime != 'inode/directory'"]
+    types = []
+    for kind in question.get('kinds', []):
+        for mime in KINDS[kind]:
+            types.append(f"STRSTARTS(?mime, '{mime}')" if mime.endswith('/') else f"?mime = '{mime}'")
+    if types:
+        filters.append('(' + ' || '.join(types) + ')')
+    if 'after' in question:
+        filters.append(f'?modified >= "{question["after"]}"^^xsd:dateTime')
+    if 'before' in question:
+        filters.append(f'?modified < "{question["before"]}"^^xsd:dateTime')
+    if 'min' in question:
+        filters.append(f'?size >= {question["min"]}')
+    if 'max' in question:
+        filters.append(f'?size <= {question["max"]}')
+    for index in range(len(question.get('words', []))):
+        filters.append(f'CONTAINS(tracker:unaccent(tracker:case-fold(?name)), ~word{index})')
+    return ('SELECT DISTINCT ?url WHERE { '
+            '?file a nfo:FileDataObject ; nie:url ?url ; nfo:fileName ?name ; '
+            'nfo:fileLastModified ?modified ; nfo:fileSize ?size . '
+            '?content nie:isStoredAs ?file ; nie:mimeType ?mime . '
+            + ' '.join(f'FILTER ({one})' for one in filters) +
+            f' }} ORDER BY {ORDERS[question.get("order", "modified")]} LIMIT {ASKED}')
+
+
+def ask(connection, question, home):
+    """The addresses localsearch holds for the question"""
+    from gi.repository import Gio
+    statement = connection.query_statement(query_text(question), None)
+    statement.bind_string('home', Gio.File.new_for_path(home).get_uri().rstrip('/') + '/')
+    statement.bind_string('real', Gio.File.new_for_path(os.path.realpath(home)).get_uri().rstrip('/') + '/')
+    statement.bind_string('private', Gio.File.new_for_path(os.path.join(home, 'Private')).get_uri().rstrip('/') + '/')
+    statement.bind_string('privateReal', Gio.File.new_for_path(
+        os.path.join(os.path.realpath(home), 'Private')).get_uri().rstrip('/') + '/')
+    for index, word in enumerate(question.get('words', [])):
+        statement.bind_string(f'word{index}', word)
+    cursor = statement.execute(None)
+    found = []
+    try:
+        while cursor.next(None):
+            found.append(cursor.get_string(0)[0] or '')
+    finally:
+        cursor.close()
+    return found
+
+
+def answer(urls, home):
+    """Each address that is still a plain file of the account's, as its path under the home as the account knows it, when
+    it changed and its size"""
+    from gi.repository import Gio
+    real_home = os.path.realpath(home)
+    private = os.path.join(real_home, 'Private') + os.sep
+    found = []
+    for url in urls:
+        file = Gio.File.new_for_uri(url)
+        path = file.get_path() if file.get_uri_scheme() == 'file' else None
+        if not path:
+            continue
+        # A name that is not UTF-8 cannot be said in JSON: that file is left out, and the others stay
+        try:
+            os.fsencode(path).decode('utf-8')
+        except UnicodeError:
+            continue
+        # The same file through the home's own name, whichever of the two names the index has it under
+        for start in (real_home, home):
+            if path.startswith(start + os.sep):
+                inside = path[len(start) + 1:]
+                break
+        else:
+            continue
+        real = os.path.join(real_home, inside)
+        # No link on the way, and never the Private folder
+        if os.path.realpath(real) != real or real.startswith(private):
+            continue
+        try:
+            info = os.lstat(real)
+        except OSError:
+            continue
+        if not stat.S_ISREG(info.st_mode):
+            continue
+        found.append({'path': os.path.join(home, inside), 'modified': int(info.st_mtime), 'size': info.st_size})
+        if len(found) == ANSWERED:
+            break
+    return found
+
+
+def connect():
+    try:
+        import gi
+        gi.require_version('Tsparql', '3.0')
+        from gi.repository import Tsparql
+    except (ImportError, ValueError):
+        return None
+    for service in SERVICES:
+        try:
+            return Tsparql.SparqlConnection.bus_new(service, None, None)
+        except Exception:
+            continue
+    return None
+
+
+def main():
+    try:
+        question = checked(json.load(sys.stdin))
+    except ValueError:
+        question = None
+    if question is None:
+        print('amethystora-file-find: that is not a question', file=sys.stderr)
+        return 64
+    connection = connect()
+    # No index on this machine (or none yet) finds nothing, which is not a fault
+    home = os.path.expanduser('~')
+    urls = ask(connection, question, home) if connection else []
+    json.dump(answer(urls, home) if urls else [], sys.stdout, ensure_ascii=False)
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

@@ -894,6 +894,10 @@ folder, while it is closed, does not.
   with it, and a window with no other tab, so that no file's name stays on the screen. Other
   windows and tabs stay. A folder you went back out of can still be in that window's back button,
   by name.
+- **Search:** GNOME's file index, which remembers the names of your files and the words in them, skips every
+  folder named **Private**, wherever it is in your home, so this folder's files are never in it and the search
+  never shows them. On a machine that had indexed the folder before, the index forgets it within a minute of the
+  update.
 - **A new password:** `ame security private-folder password`, with the old password or with the
   recovery key. Nothing is copied: only the password that opens the files changes.
 - **Taking it away:** `ame security private-folder remove` takes away an empty folder, once you

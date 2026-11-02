@@ -1,5 +1,5 @@
-// Hold Super: after Super has been held alone for a second (hold-super-delay), a glass card shows the main shortcuts as
-// they are set on this machine, and the dock numbers its apps. Letting go fades them in a sixth of a second, and does
+// Hold Super: after Super has been held alone for a second (hold-super-delay), a glass card shows the common shortcuts as
+// they are set on this machine, and the dock numbers its apps; Control's Keyboard page has the rest. Letting go fades them in a sixth of a second, and does
 // not open the overview; a quick tap of Super still does. A shortcut typed quickly never shows them.
 //
 // GNOME hears Super only when it is let go, and the press goes to the focused app, so nothing in the shell sees it
@@ -71,6 +71,7 @@ export class Hold {
         // What the card reads, so that a key someone changes shows at the next hold
         this._sources = [
             ['search', this._own('org.gnome.shell.extensions.amethystora-ui.search')],
+            ['emoji', this._own('org.gnome.shell.extensions.amethystora-ui.emoji')],
             ['terminal', settingsFor('org.gnome.settings-daemon.plugins.media-keys.custom-keybinding', `${CUSTOM}custom20/`)],
             ['manual', settingsFor('org.gnome.settings-daemon.plugins.media-keys.custom-keybinding', `${CUSTOM}custom28/`)],
             ['clipboard', settingsFor('org.gnome.shell.extensions.amethystora-clipboard', null, CLIPBOARD)],
@@ -311,6 +312,7 @@ export class Hold {
             [_('Search'), accelerator(get('search'), 'open')],
             [_('Terminal'), accelerator(get('terminal'), 'binding')],
             [_('Manual'), accelerator(get('manual'), 'binding')],
+            [_('Emoji'), accelerator(get('emoji'), 'emoji-picker')],
             [_('Clipboard'), accelerator(get('clipboard'), 'toggle-menu')],
             [_('Window layouts'), classic ? accelerator(this._module.settings, 'snap-chooser') : null],
             [_('Screenshot'), accelerator(get('shell'), 'show-screenshot-ui')],
@@ -343,7 +345,7 @@ export class Hold {
             pivot_point: new Graphene.Point({x: 0.5, y: 0.5}),
         });
         const lang = (GLib.get_language_names()[0] ?? 'en').split(/[._@]/)[0].replace('_', '-');
-        let heading = _('With Super');
+        let heading = _('Holding Super');
         try {
             heading = heading.toLocaleUpperCase(lang === 'C' ? 'en' : lang);
         } catch {
@@ -384,6 +386,9 @@ export class Hold {
             }
             this._card.add_child(line);
         }
+        const gone = label(_('Let go and it disappears. Control has every shortcut.'), 'amethystora-windows-card-footer-text');
+        gone.add_style_class_name('amethystora-windows-card-footer');
+        this._card.add_child(gone);
         Main.layoutManager.uiGroup.add_child(this._card);
         this._module.surfacesChanged();
     }

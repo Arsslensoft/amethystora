@@ -4,19 +4,21 @@
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 
-// What argv printed on its standard output, or null when it failed, was stopped or could not start
-export function output(argv, cancellable = null) {
+// What argv printed on its standard output, or null when it failed, was stopped or could not start; input, when given,
+// is what it reads on its standard input
+export function output(argv, cancellable = null, input = null) {
     return new Promise(resolve => {
         let process;
+        const stdin = input === null ? Gio.SubprocessFlags.NONE : Gio.SubprocessFlags.STDIN_PIPE;
         try {
-            process = Gio.Subprocess.new(argv, Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_SILENCE);
+            process = Gio.Subprocess.new(argv, stdin | Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_SILENCE);
         } catch (e) {
             console.warn(`Amethystora UI: the search could not run ${argv[0]}: ${e.message}`);
             resolve(null);
             return;
         }
         const stop = cancellable?.connect(() => process.force_exit()) ?? 0;
-        process.communicate_utf8_async(null, null, (source, result) => {
+        process.communicate_utf8_async(input, null, (source, result) => {
             if (stop)
                 cancellable.disconnect(stop);
             try {

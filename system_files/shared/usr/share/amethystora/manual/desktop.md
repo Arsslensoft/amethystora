@@ -590,6 +590,15 @@ anywhere:
   *Phone pairing: On* changes the setting at once; one that asks something or needs a password opens a
   terminal. *Control › …* opens it in Control.
 - **Open windows**, by title or app, on any workspace: `Enter` switches to it.
+- **The words you already know**: type what you would have called it, such as `recycle bin`, `task manager`,
+  `control panel` or `print screen`, and a row takes you to the thing that does that here. It is a short table of
+  everyday words, in your language and in English: `ame desktop search old-words off` turns it off.
+- **Files by what you remember**: `pdf from last week`, `big videos`, `photos yesterday`, `lease from march`,
+  `invoice over 2 mb`. A small set of rules reads kinds of file, dates and sizes from what you type, in your language
+  or in English, and asks the file index GNOME already keeps; other words have to be in the file's name. It takes two
+  words or more, so that a word alone is left to the apps. There is no model and no agent, it reads no file, and it
+  keeps nothing. Words it cannot read just search as usual:
+  `ame desktop search remembered off` turns it off.
 - **The manual**: the pages of this manual that answer what you typed, by meaning as well as by words.
 - **Clipboard history**, only when you type `clip:` first, and words after it to narrow it down:
   `clip: ssh`. `Enter` pastes the item where you were typing. It is the history
@@ -620,7 +629,7 @@ Each can be turned on or off in Control's **Search** group or in a terminal:
 ```bash
 ame desktop search                     # each, and whether it is on
 ame desktop search answers off         # answers, times, reminders, settings, manual, windows, clipboard, agent,
-                                       # glance, bookmarks, notes or meaning
+                                       # glance, old-words, remembered, bookmarks, notes or meaning
 ```
 
 ## The app grid
@@ -1364,9 +1373,10 @@ tiling layout the keys switch as GNOME does. `ame desktop windows switcher off` 
 
 ![Hold Super](media/hold-super.webm)
 
-Hold `Super` for a second, without another key, and a card shows the main shortcuts, as they are set on
-this machine, with numbers on the dock: `Alt` and a number opens the app in that place. Let go and they
-fade. A quick press of `Super` still opens the overview. `ame desktop windows hold-super 1500` waits a
+Hold `Super` for a second, without another key, and a card shows the common shortcuts, as they are set on
+this machine, your own changes included, with numbers on the dock: `Alt` and a number opens the app in that place.
+Let go and they fade. A quick press of `Super` still opens the overview. [Control](control.md)'s Keyboard page has
+every shortcut. `ame desktop windows hold-super 1500` waits a
 second and a half; `off` turns it off. This works in both layouts.
 
 ### Hot corners

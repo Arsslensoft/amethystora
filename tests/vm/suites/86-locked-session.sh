@@ -16,7 +16,7 @@
 #   7-8. A new password with the old one and with the recovery key, the old one's file gone; a backup holds the
 #        encrypted copy, not the open folder; logging out closes it; removing refuses a folder with a file in
 #        it, then takes an empty one away.
-# vmlab-paths: @sf/usr/libexec/amethystora-private-folder* @sf/usr/lib/systemd/user/amethystora-private-folder* @sf/usr/share/polkit-1/rules.d/*usb*
+# vmlab-paths: @sf/usr/libexec/amethystora-private-folder* @sf/usr/lib/systemd/user/amethystora-private-folder* @sf/usr/share/polkit-1/rules.d/*usb* @sf/usr/share/glib-2.0/schemas/zz1*
 source "$(dirname "$0")/lib.sh"
 
 STATE=/var/lib/vmlab-tests/86-locked-session

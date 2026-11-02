@@ -109,7 +109,7 @@ BREAKS_KEYS=(selected-breaks)
 # The search's switches and the emoji picker's skin tone, which amethystora-setup's SEARCH_KEYS and EMOJI_KEYS take;
 # their keybindings (open, emoji-picker) are kept with the other keybindings
 SEARCH=org.gnome.shell.extensions.amethystora-ui.search
-SEARCH_KEYS=(answers settings manual windows clipboard agent glance times reminders bookmarks notes)
+SEARCH_KEYS=(answers settings manual windows clipboard agent glance times reminders bookmarks notes old-words remembered)
 EMOJI=org.gnome.shell.extensions.amethystora-ui.emoji
 EMOJI_KEYS=(skin-tone)
 # The not-responding question's look, which amethystora-setup's QUIT_KEYS takes; force quit's key (force-quit) is kept

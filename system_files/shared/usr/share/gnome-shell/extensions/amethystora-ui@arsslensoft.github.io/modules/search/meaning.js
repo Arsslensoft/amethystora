@@ -101,10 +101,14 @@ export class MeaningProvider {
         const documents = this._documents();
         if (!path || !documents || !path.startsWith(`${documents}/`))
             return;
-        try {
-            Gio.AppInfo.launch_default_for_uri(Gio.File.new_for_path(path).get_uri(), global.create_app_launch_context(0, -1));
-        } catch (e) {
-            console.warn(`Amethystora UI: the file did not open: ${e.message}`);
-        }
+        // Not on the compositor's thread (a slow mount), and the error is not logged: its text names the file
+        Gio.AppInfo.launch_default_for_uri_async(Gio.File.new_for_path(path).get_uri(), global.create_app_launch_context(0, -1), null,
+            (_source, result) => {
+                try {
+                    Gio.AppInfo.launch_default_for_uri_finish(result);
+                } catch (e) {
+                    console.warn(`Amethystora UI: the file did not open (error ${e.code ?? 'unknown'})`);
+                }
+            });
     }
 }

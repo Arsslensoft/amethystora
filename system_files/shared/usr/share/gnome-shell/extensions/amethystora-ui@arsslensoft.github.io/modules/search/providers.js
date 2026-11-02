@@ -1,9 +1,11 @@
 // Amethystora's own search providers, in GNOME's own search: the clipboard (clip:), sums and units, the time in other
-// places, reminders into Notes, Control's settings, open windows, the manual and the agent row. They are added to the overview's search controller, so the
+// places, reminders into Notes, the words people already know, Control's settings, open windows, files by what is
+// remembered of them, the manual and the agent row. They are added to the overview's search controller, so the
 // overview and the search box show the same sections in the same order, each drawn by section.js. Each is there while
 // its key is on and taken away when it is turned off, at once.
 //
-// The order: the clipboard, the answer, Do it and the open windows first, then GNOME's apps and its other providers
+// The order: the clipboard, the answer, the old words, Do it, the open windows and what is remembered first, then
+// GNOME's apps and its other providers
 // (Files, Settings, the calculator...) in GNOME's own order, then the manual and last the agent. GNOME's view gives the
 // Enter key to the first section with a result in its list of providers and draws the sections in the order of its
 // content box, so both are kept in that order: after each provider added here, and whenever GNOME adds its own again
@@ -30,6 +32,8 @@ import {RemindProvider} from './remindProvider.js';
 import {BookmarksProvider} from './bookmarks.js';
 import {NotesProvider} from './notes.js';
 import {MeaningProvider} from './meaning.js';
+import {WordsProvider} from './wordsProvider.js';
+import {RememberedProvider} from './rememberProvider.js';
 
 // The key that turns each on, its place, and how many rows it shows at most; GNOME's own come between 4 and 6
 const PROVIDERS = [
@@ -37,8 +41,12 @@ const PROVIDERS = [
     {key: 'answers', rank: 1, max: 1},
     {key: 'times', rank: 1, max: 2},
     {key: 'reminders', rank: 1, max: 2},
+    {key: 'old-words', rank: 1, max: 3},
     {key: 'settings', rank: 2, max: 5},
     {key: 'windows', rank: 3, max: 5},
+    // Before GNOME's own, whose forgiving app search finds something in almost any few words and would take Enter. It
+    // answers only two words or more that a rule read
+    {key: 'remembered', rank: 3, max: 5},
     {key: 'manual', rank: 6, max: 3},
     // Offered and off (plans/ui-ideas/spec-later.md): after GNOME's own, before the manual's place in the list
     {key: 'notes', rank: 5, max: 5},
@@ -116,6 +124,8 @@ export class Providers {
         case 'bookmarks': return new BookmarksProvider();
         case 'notes': return new NotesProvider();
         case 'meaning': return new MeaningProvider();
+        case 'old-words': return new WordsProvider();
+        case 'remembered': return new RememberedProvider();
         }
         return null;
     }
@@ -130,6 +140,8 @@ export class Providers {
             times: {},
             reminders: {title: _('Remind me')},
             settings: {title: _('Do it')},
+            'old-words': {title: _('Here it is')},
+            remembered: {title: _('By what you remember'), note: _('Also understood: kinds of file, dates and sizes.')},
             windows: {title: _('Open windows')},
             manual: {title: _('Manual')},
             bookmarks: {title: _('Bookmarks'), note: _('From a copy of Firefox’s bookmarks, never its history.')},

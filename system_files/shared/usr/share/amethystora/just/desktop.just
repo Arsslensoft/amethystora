@@ -3377,9 +3377,10 @@ dock *ARGS:
 
 # What the search (Super+Space, and the overview's) finds besides GNOME's own: sums and units, the time in other places,
 # reminders into Notes, Control's settings, the manual, open windows, the clipboard after clip:, the agent row, Glance
-# on a file, and, offered and off, Firefox's bookmarks, Notes while it is unlocked and files by meaning (WHAT: answers,
-# times, reminders, settings, manual, windows, clipboard, agent, glance, bookmarks, notes or meaning; STATE: on or off).
-# Without STATE it says what WHAT is; without WHAT, all twelve
+# on a file, the words people already know, files by what is remembered of them, and, offered and off, Firefox's
+# bookmarks, Notes while it is unlocked and files by meaning (WHAT: answers, times, reminders, settings, manual, windows,
+# clipboard, agent, glance, old-words, remembered, bookmarks, notes or meaning; STATE: on or off).
+# Without STATE it says what WHAT is; without WHAT, all fourteen
 [positional-arguments]
 search WHAT="" STATE="":
     #!/usr/bin/bash
@@ -3387,9 +3388,9 @@ search WHAT="" STATE="":
     # shellcheck source=/dev/null
     source gettext.sh
     schema=org.gnome.shell.extensions.amethystora-ui.search
-    parts=(answers times reminders settings manual windows clipboard agent glance bookmarks notes meaning)
+    parts=(answers times reminders settings manual windows clipboard agent glance old-words remembered bookmarks notes meaning)
     usage() {
-        echo "usage: ame desktop search [answers|times|reminders|settings|manual|windows|clipboard|agent|glance|bookmarks|notes|meaning] [on|off]"
+        echo "usage: ame desktop search [answers|times|reminders|settings|manual|windows|clipboard|agent|glance|old-words|remembered|bookmarks|notes|meaning] [on|off]"
         exit 2
     }
     state_of() {
@@ -3414,6 +3415,8 @@ search WHAT="" STATE="":
         clipboard) title="$(gettext "Clipboard history")" ;;
         agent) title="$(gettext "Ask the agent")" ;;
         glance) title="$(gettext "Glance at files")" ;;
+        old-words) title="$(gettext "Words you already know")" ;;
+        remembered) title="$(gettext "Files by what you remember")" ;;
         bookmarks) title="$(gettext "Bookmarks")" ;;
         notes) title="$(gettext "Notes")" ;;
         meaning) title="$(gettext "Files by meaning")" ;;

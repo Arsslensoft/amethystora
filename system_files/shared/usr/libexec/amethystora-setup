@@ -206,7 +206,8 @@ BREAKS_KEYS='{"selected-breaks": ["as", "breaks"]}'
 SEARCH=org.gnome.shell.extensions.amethystora-ui.search
 SEARCH_KEYS='{
     "answers": ["b"], "settings": ["b"], "manual": ["b"], "windows": ["b"], "clipboard": ["b"], "agent": ["b"],
-    "glance": ["b"], "times": ["b"], "reminders": ["b"], "bookmarks": ["b"], "notes": ["b"]
+    "glance": ["b"], "times": ["b"], "reminders": ["b"], "bookmarks": ["b"], "notes": ["b"], "old-words": ["b"],
+    "remembered": ["b"]
 }'
 # The emoji picker's skin tone. Never emoji-picker, its key, which the keybindings part keeps.
 EMOJI=org.gnome.shell.extensions.amethystora-ui.emoji

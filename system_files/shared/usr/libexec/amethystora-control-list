@@ -1670,6 +1670,10 @@ search_item agent "${ gettext "Ask the agent"; }" \
     "${ gettext "The last row asks the AI agent, while the agentic features are on."; }"
 search_item glance "${ gettext "Glance at files"; }" \
     "${ gettext "Space shows a file found by the search without opening it."; }"
+search_item old-words "${ gettext "Words you already know"; }" \
+    "${ gettext "Everyday words such as “recycle bin” or “task manager” lead to the thing that does that here."; }"
+search_item remembered "${ gettext "Files by what you remember"; }" \
+    "${ gettext "“pdf from last week” or “big videos” finds files by their kind, date and size, from GNOME's own file index."; }"
 # Offered and off (plans/ui-ideas/spec-later.md): bookmarks, Notes while unlocked, and files by meaning
 search_item bookmarks "${ gettext "Bookmarks"; }" \
     "${ gettext "Firefox's bookmarks, never its history, read from a copy of its bookmarks file. Firefox is left as it is."; }"

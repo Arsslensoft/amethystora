@@ -132,3 +132,11 @@ hotkey=@as []
 
 [org.gnome.shell]
 always-show-log-out=true
+
+# GNOME's file index (localsearch) keeps every file name, and the text it reads from the files, in a plain database in the
+# home, and Fedora indexes the whole home: the Private folder (ame security private-folder), while it is open, would be in it,
+# and GNOME's own Files search would show its files. The index skips a directory of this name, at any depth, so the folder is
+# never read for it; the other four are Fedora's own defaults. Files by what you remember (amethystora-file-find) leaves the
+# folder out again itself.
+[org.freedesktop.Tracker3.Miner.Files]
+ignored-directories=['po', 'CVS', 'core-dumps', 'lost+found', 'Private']

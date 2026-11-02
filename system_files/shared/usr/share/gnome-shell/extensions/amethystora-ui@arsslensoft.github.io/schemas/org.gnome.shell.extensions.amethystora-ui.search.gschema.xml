@@ -34,6 +34,16 @@
       <summary>The manual</summary>
       <description>Finds the pages of the manual that answer what was typed.</description>
     </key>
+    <key name="old-words" type="b">
+      <default>true</default>
+      <summary>Words you already know</summary>
+      <description>Everyday words such as "recycle bin" or "task manager" lead to the thing that does that here.</description>
+    </key>
+    <key name="remembered" type="b">
+      <default>true</default>
+      <summary>Files by what you remember</summary>
+      <description>"pdf from last week" or "big videos" finds files by their kind, date and size, from GNOME's file index, only as they are typed.</description>
+    </key>
     <key name="windows" type="b">
       <default>true</default>
       <summary>Open windows</summary>

@@ -6332,3 +6332,343 @@ msgstr "الهاتف غير متصل."
 #: apps/connect/src/transfers.rs
 msgid "The file cannot be read."
 msgstr "تعذّرت قراءة الملف."
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "task manager|process list|running programs|what is running|stop a program|end a program"
+msgstr "مدير المهام|قائمة العمليات|البرامج قيد التشغيل|إنهاء برنامج"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "What is running, and what it uses"
+msgstr "ما يعمل الآن وما يستهلكه"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "control panel|computer settings"
+msgstr "لوحة التحكم|إعدادات الحاسوب"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "And Control for the rest"
+msgstr "وControl لما تبقى"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Trash"
+msgstr "سلة المحذوفات"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "recycle bin|rubbish bin|waste basket|wastebasket|garbage can|deleted files"
+msgstr "سلة المحذوفات|سلة المهملات|الملفات المحذوفة"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "In Files"
+msgstr "في الملفات"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "file manager|file browser|my files"
+msgstr "مدير الملفات|ملفاتي"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Your folders and files"
+msgstr "مجلداتك وملفاتك"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "software store|install a program|install programs|uninstall a program|uninstall programs|remove a program|remove programs"
+msgstr "متجر البرامج|تثبيت برنامج|إزالة برنامج|إلغاء تثبيت برنامج"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Get apps, and remove them"
+msgstr "احصل على التطبيقات وأزلها"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "check for updates|system update|install updates"
+msgstr "البحث عن تحديثات|تحديث النظام|تثبيت التحديثات"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Keeps the system up to date"
+msgstr "يبقي النظام محدّثًا"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "disk space|free up space|what takes up space"
+msgstr "مساحة القرص|تحرير مساحة"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "What takes up the space"
+msgstr "ما يشغل المساحة"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "format a disk|format a drive|partition a disk|partitions"
+msgstr "تهيئة قرص|الأقسام"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Format and look after your disks"
+msgstr "هيّئ أقراصك واعتنِ بها"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "command line|command window|console"
+msgstr "سطر الأوامر|وحدة التحكم"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Type commands"
+msgstr "اكتب الأوامر"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "to do list|to-do list|todo list"
+msgstr "قائمة المهام"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Notes and tasks, on this computer"
+msgstr "ملاحظات ومهام، على هذا الحاسوب"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Take a screenshot"
+msgstr "التقط لقطة شاشة"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "print screen|screen capture|screen grab"
+msgstr "لقطة شاشة|التقاط الشاشة"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "The Print key does this too"
+msgstr "مفتاح Print يفعل هذا أيضًا"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "startup programs|startup apps|programs at startup|apps at startup"
+msgstr "برامج بدء التشغيل|تطبيقات بدء التشغيل"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "In Control"
+msgstr "في Control"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "What starts with you"
+msgstr "ما يبدأ معك"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Drivers"
+msgstr "برامج التشغيل"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "drivers|hardware drivers"
+msgstr "برامج التشغيل|التعريفات"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "What each device runs on, in a terminal"
+msgstr "ما يشغّل كل جهاز، في طرفية"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "restore files|restore my files|recover files|back up my files"
+msgstr "استعادة الملفات|النسخ الاحتياطي لملفاتي"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Your home folder at any hour"
+msgstr "مجلدك الشخصي في أي ساعة"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Rolling back"
+msgstr "الرجوع إلى إصدار سابق"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "undo an update"
+msgstr "التراجع عن تحديث"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "In the manual"
+msgstr "في الدليل"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "antivirus|anti-virus|virus scan|virus scanner|malware|firewall"
+msgstr "مكافح الفيروسات|فحص الفيروسات|برامج ضارة|جدار الحماية"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "What protects this computer"
+msgstr "ما يحمي هذا الحاسوب"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "pdf reader|pdf viewer|read a pdf"
+msgstr "قارئ pdf|عارض pdf"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Reads PDFs"
+msgstr "يقرأ ملفات PDF"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "photo viewer|picture viewer"
+msgstr "عارض الصور"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Shows pictures"
+msgstr "يعرض الصور"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "video player|movie player|media player"
+msgstr "مشغل الفيديو|مشغل الوسائط"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Plays videos"
+msgstr "يشغّل الفيديو"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "music player|audio player"
+msgstr "مشغل الموسيقى|مشغل الصوت"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Plays sound files"
+msgstr "يشغّل ملفات الصوت"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "drawing program|draw a picture|image editor"
+msgstr "برنامج رسم|محرر الصور"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Draw and edit pictures"
+msgstr "ارسم الصور وحرّرها"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "unzip|zip files|compress files|extract files"
+msgstr "فك الضغط|ضغط الملفات|ملفات zip"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
+msgid "Opens and makes archives"
+msgstr "يفتح الأرشيفات وينشئها"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "document|documents|letter|letters"
+msgstr "مستند|مستندات|رسالة|رسائل"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "spreadsheet|spreadsheets"
+msgstr "جدول بيانات|جداول بيانات"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "presentation|presentations|slides"
+msgstr "عرض تقديمي|عروض تقديمية|شرائح"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "photo|photos|picture|pictures|image|images|screenshot|screenshots"
+msgstr "صورة|صور|لقطة شاشة"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "video|videos|movie|movies|film|films"
+msgstr "فيديو|فيديوهات|فيلم|أفلام"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "music|song|songs|audio|recording|recordings"
+msgstr "موسيقى|أغنية|أغاني|صوت|تسجيل|تسجيلات"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "archive|archives"
+msgstr "أرشيف|ملف مضغوط"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "text file|text files"
+msgstr "ملف نصي|ملفات نصية"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "this week"
+msgstr "هذا الأسبوع"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "last week|past week|a week ago"
+msgstr "الأسبوع الماضي"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "this month"
+msgstr "هذا الشهر"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "last month|past month|a month ago"
+msgstr "الشهر الماضي"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "this year"
+msgstr "هذا العام|هذه السنة"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "last year|past year|a year ago"
+msgstr "العام الماضي|السنة الماضية"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "{n} days ago|{n} day ago"
+msgstr "قبل {n} أيام|قبل {n} يوم"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "{n} weeks ago|{n} week ago"
+msgstr "قبل {n} أسابيع|قبل {n} أسبوع"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "{n} months ago|{n} month ago"
+msgstr "قبل {n} أشهر|قبل {n} شهر"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "last"
+msgstr "الماضي|الماضية"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "big|large|huge"
+msgstr "كبير|كبيرة|ضخم"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "small|tiny"
+msgstr "صغير|صغيرة"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "over|bigger than|larger than|more than"
+msgstr "أكبر من|أكثر من"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "under|smaller than|less than"
+msgstr "أصغر من|أقل من"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "kb|mb|gb|tb"
+msgstr "kb|mb|gb|tb"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "since"
+msgstr "منذ"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
+msgid "from|of|in|on|at|the|my|a|an|some|any|file|files|that|which|around|about|with|and"
+msgstr "من|في|على|ملف|ملفات|و|مع"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/providers.js
+msgid "Here it is"
+msgstr "ها هو"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/providers.js
+msgid "By what you remember"
+msgstr "بحسب ما تتذكره"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/providers.js
+msgid "Also understood: kinds of file, dates and sizes."
+msgstr "ويفهم أيضًا: أنواع الملفات والتواريخ والأحجام."
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/rememberProvider.js
+msgid "Home"
+msgstr "المجلد الشخصي"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/windows/hold.js
+msgid "Holding Super"
+msgstr "عند الضغط المطوّل على Super"
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/windows/hold.js
+msgid "Let go and it disappears. Control has every shortcut."
+msgstr "اترك المفتاح فيختفي. جميع الاختصارات في Control."
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/windows/hold.js
+msgid "Emoji"
+msgstr "الرموز التعبيرية"
+
+#: usr/libexec/amethystora-control-list
+msgid "Words you already know"
+msgstr "كلمات تعرفها من قبل"
+
+#: usr/libexec/amethystora-control-list
+msgid "Files by what you remember"
+msgstr "الملفات بحسب ما تتذكره"
+
+#: usr/libexec/amethystora-control-list
+msgid "Everyday words such as “recycle bin” or “task manager” lead to the thing that does that here."
+msgstr "كلمات يومية مثل «سلة المحذوفات» أو «مدير المهام» تقود إلى ما يؤدي ذلك هنا."
+
+#: usr/libexec/amethystora-control-list
+msgid "“pdf from last week” or “big videos” finds files by their kind, date and size, from GNOME's own file index."
+msgstr "«pdf من الأسبوع الماضي» أو «فيديوهات كبيرة» يجد الملفات بحسب نوعها وتاريخها وحجمها، من فهرس الملفات في GNOME."
