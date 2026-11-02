@@ -2,7 +2,7 @@
 # image ships (launcher), which every app's path is a hard link to. plans/done/PLAN-rust-apps.md says why.
 [workspace]
 resolver = "3"
-members = ["common", "launcher", "update", "security", "control-core", "control", "backups", "logs", "manual", "notes", "sensor", "agent-tools", "clipboard-seal", "connect", "phone", "shelf", "trim"]
+members = ["common", "launcher", "update", "security", "control-core", "control", "backups", "logs", "manual", "notes", "sensor", "agent-tools", "clipboard-seal", "connect", "phone", "shelf", "trim", "vault-core", "vault-service", "vault-client", "vault"]
 
 [workspace.package]
 version = "1.0.0"
@@ -29,6 +29,9 @@ sha2 = "0.11"
 getrandom = "0.4"
 base64 = "0.23"
 flate2 = "1"
+# The Vault (plans/PLAN-vault.md): key generation, X.509 and PKCS#12 from Fedora's libcrypto, and memory that wipes itself
+openssl = "0.10"
+zeroize = "1"
 amethystora-ui = { path = "common" }
 amethystora-update = { path = "update" }
 amethystora-security = { path = "security" }
@@ -41,6 +44,9 @@ amethystora-notes = { path = "notes" }
 amethystora-phone = { path = "phone" }
 amethystora-shelf = { path = "shelf" }
 amethystora-trim = { path = "trim" }
+amethystora-vault-core = { path = "vault-core" }
+amethystora-vault = { path = "vault" }
+amethystora-vault-client = { path = "vault-client" }
 
 [profile.release]
 lto = "fat"

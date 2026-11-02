@@ -1,0 +1,22 @@
+# The service that holds the Vault's keys, under a user of its own and with no network, and the command line that
+# talks to it. Neither has GTK. 13-apps.sh installs both in /usr/libexec.
+[package]
+name = "amethystora-vault-service"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "amethystora-vault-service"
+path = "src/main.rs"
+
+[[bin]]
+name = "amethystora-vault-cli"
+path = "src/cli.rs"
+
+[dependencies]
+amethystora-vault-core.workspace = true
+serde_json.workspace = true
+libc.workspace = true
+zeroize.workspace = true

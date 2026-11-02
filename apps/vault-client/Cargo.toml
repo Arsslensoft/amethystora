@@ -1,0 +1,11 @@
+# What other programs use to keep data under a key of their own in the Vault, without ever holding that key. No GTK.
+[package]
+name = "amethystora-vault-client"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde_json.workspace = true
+base64.workspace = true

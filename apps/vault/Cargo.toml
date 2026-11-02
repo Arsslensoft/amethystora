@@ -1,0 +1,11 @@
+# The Vault's window, one of the Amethystora apps. It holds a secret only while showing it: the keys are the service's.
+[package]
+name = "amethystora-vault"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+amethystora-ui.workspace = true
+amethystora-vault-core.workspace = true
