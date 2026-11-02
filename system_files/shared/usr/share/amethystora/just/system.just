@@ -446,6 +446,27 @@ benchmark:
     cd "${work}"
     stress-ng --matrix 0 -t 1m --times
 
+# How long this computer takes to start, by date, kept here and never sent: on or off to go on measuring, nothing to see it, why for what changed once it got slower
+[positional-arguments]
+start-times CHOICE="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    case "${1:-}" in
+        "") /usr/libexec/amethystora-start-times status ;;
+        why) /usr/libexec/amethystora-start-times status && /usr/libexec/amethystora-start-times why ;;
+        on)
+            sudo systemctl enable amethystora-start-times.service
+            echo "$(gettext "Each start is measured, from the next one on.")"
+            ;;
+        off)
+            sudo systemctl disable --now amethystora-start-times.service
+            echo "$(gettext "Starts are no longer measured. What was measured is kept.")"
+            ;;
+        *) echo "usage: ame system start-times [why|on|off]" >&2; exit 64 ;;
+    esac
+
 # Pick the CPU scheduler: the kernel's own, or a sched-ext one for games (lavd), a busy desktop (bpfland) or audio work (flash)
 [positional-arguments]
 scheduler NAME="":

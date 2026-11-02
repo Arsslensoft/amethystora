@@ -4591,6 +4591,38 @@ desktop-widgets STATE="":
             ;;
     esac
 
+# Whether a new account's first login says hello in every language Amethystora speaks: on, off, or show to see it again
+[positional-arguments]
+hello CHOICE="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.hello
+    case "${1:-}" in
+        "")
+            if [[ "$(gsettings get "${schema}" greet)" == true ]]; then
+                echo "$(gettext "A new account is greeted at its first login.")"
+            else
+                echo "$(gettext "The greeting is off.")"
+            fi
+            ;;
+        on)
+            gsettings set "${schema}" greet true
+            echo "$(gettext "A new account is greeted at its first login, once. An account that has logged in before is not.")"
+            ;;
+        off)
+            gsettings set "${schema}" greet false
+            echo "$(gettext "The greeting is off.")"
+            ;;
+        show)
+            gdbus call --session --dest org.gnome.Shell --object-path /org/amethystora/UI/Hello \
+                --method org.amethystora.UI.Hello.Show >/dev/null 2>&1 ||
+                { echo "$(gettext "It cannot be shown: the greeting is off, or Amethystora UI is not running.")" >&2; exit 1; }
+            ;;
+        *) echo "usage: ame desktop hello on|off|show" >&2; exit 64 ;;
+    esac
+
 # The resting screen (R6-06, offered, off): left alone, a large clock over the drifting wallpaper, the windows hidden,
 # until a key or the pointer; the lock comes when it would anyway (ame desktop resting-screen on|off; after MINUTES,
 # 1 to 30, how long alone first). Without anything it says how it stands

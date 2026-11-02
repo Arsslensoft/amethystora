@@ -2429,6 +2429,46 @@ impl Control {
         self.card_frame(item, None, below, false, Vec::new())
     }
 
+    /// A card with a line of what was measured under its words: the helper's numbers, from nought up, as they are
+    fn graph_card(&self, item: &Item) -> gtk::Box {
+        let below: Vec<gtk::Widget> = if item.points.len() < 2 {
+            Vec::new()
+        } else {
+            let area = gtk::DrawingArea::builder().hexpand(true).content_height(86).build();
+            area.add_css_class("setting-graph");
+            area.set_accessible_role(gtk::AccessibleRole::Img);
+            area.update_property(&[gtk::accessible::Property::Label(&item.text.clone().unwrap_or_else(|| item.title.clone()))]);
+            let points = item.points.clone();
+            area.set_draw_func(move |area, cr, width, height| {
+                let (color, width, height) = (area.color(), width as f64, height as f64);
+                let (red, green, blue) = (color.red() as f64, color.green() as f64, color.blue() as f64);
+                let (bottom, top) = (height - 2.0, 6.0);
+                let last = points.iter().map(|point| point.0).fold(0.0, f64::max).max(1.0);
+                let most = points.iter().map(|point| point.1).fold(0.0, f64::max).max(1.0);
+                cr.set_source_rgba(red, green, blue, 0.25);
+                cr.set_line_width(1.0);
+                cr.move_to(0.0, bottom + 0.5);
+                cr.line_to(width, bottom + 0.5);
+                let _ = cr.stroke();
+                cr.set_source_rgb(red, green, blue);
+                cr.set_line_width(2.5);
+                cr.set_line_cap(gtk::cairo::LineCap::Round);
+                cr.set_line_join(gtk::cairo::LineJoin::Round);
+                for (index, (along, value)) in points.iter().enumerate() {
+                    let (x, y) = (2.0 + along / last * (width - 4.0), bottom - value / most * (bottom - top));
+                    if index == 0 {
+                        cr.move_to(x, y);
+                    } else {
+                        cr.line_to(x, y);
+                    }
+                }
+                let _ = cr.stroke();
+            });
+            vec![area.upcast()]
+        };
+        self.card_frame(item, None, below, false, Vec::new())
+    }
+
     fn card(&self, item: &Item) -> gtk::Box {
         match item.kind.as_str() {
             "switch" => self.switch_card(item),
@@ -2446,6 +2486,7 @@ impl Control {
             "setup" => self.setup_card(item),
             "disks" => self.disks_card(item),
             "rows" => self.rows_card(item),
+            "graph" => self.graph_card(item),
             "bar" => self.bar_card(item),
             _ => self.action_card(item),
         }

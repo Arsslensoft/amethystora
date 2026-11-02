@@ -297,6 +297,10 @@ window.narrow .page {
     line-height: 18.75px;
 }
 
+.setting-graph {
+    color: var(--accent);
+}
+
 .setting-detail.check {
     color: var(--warn);
     font-weight: 500;

@@ -1337,6 +1337,17 @@ The modules, and what each replaced:
   person chose, an app launched from the overview, or the Tour. It is armed only where the hook opens the page (a home
   under a day old with no `first-look.json`), and it knows the page by the hook's command line, which `20-tests.sh` holds.
 
+- `hello` (`greet`, on; `plans/ui-ideas/r7/spec-first.md`), after `firstlook`: a new account's first login says hello in each language Amethystora
+  speaks, then goes on. A layer of the shell in `uiGroup`, never a window, so that it changes nothing the first look relies on: it holds the
+  keyboard with `pushModal` as a modal dialog does (`SYSTEM_MODAL`), which firstlook's `_free()` already waits for, over GNOME's welcome dialog, and any key,
+  click or touch gives it back at once. Who is greeted is the hook's own rule (a home under a day old, no `first-look.json`) with its plain mark `hello.json`.
+  The words are pen strokes written in `branding/hello.mjs` (`node branding/hello.mjs`), each a picture of three measures, when the pen gets here, ink and
+  glow, read by one small shader whose one uniform a frame sets; add a language there and in the module's `WORDS`, and `test-hello.mjs` holds them to `po/`.
+  Reduced motion stands the words still together (loaded small, at 405x189: five pictures stay under the 2 MB a module may hold; each effect lets go of its picture
+  with its word). The Soft set's chord is the `sounds` module's, as at every login. The layer is named `amethystoraHello`: the transitions' `_freeze` declines
+  while it is up (a theme set under it shows at once, a frozen picture never covers it), it waits for the gem flight's sky (`amethystoraRevealCover`) before it opens, a
+  dialog taking the key focus from under it ends it, and `Show()` does nothing while a modal other than the overview is up.
+
 **Rounds 5 and 6** (`plans/ui-ideas/`, the boards and a `spec-<group>.md` per group; VM suites 51 to 69, one per group).
 Every rule above holds for each, and each part is off unless its spec says otherwise:
 - **Look** (51): themes made, saved, shared and imported as files (`/usr/libexec/amethystora-theme-file`, `ame desktop
@@ -1581,6 +1592,16 @@ and the like share the PE type and are said not to be programs.
 
 ### New machines
 
+- **How long it takes to start** (`/usr/libexec/amethystora-start-times`, `ame system start-times`, Control's System page; R7-51). `amethystora-start-times.service`
+  is `Type=exec` and waits for the start to finish with `systemctl is-system-running --wait`: no timer and no polling. It records `FinishTimestampMonotonic` less each
+  disk's unlock (the journal's start and finish of `systemd-cryptsetup@*`), and nothing on a soft reboot, into `/var/lib/amethystora/start-times/seconds.tsv`: a date and
+  seconds, never a time of day, and keep it to that. The file is `root:wheel 0640` in a 0750 folder (a calendar of a machine's use is the administrators' alone; an account outside
+  wheel gets no card, and an unreadable file never says "nothing measured"), the first line and the rest of its week are kept when it is trimmed (1000 lines at most), a write that does not
+  complete keeps the file as it was, and a stamp in `/run` keeps a restart of the unit from measuring a boot twice. The unlock is found by the journal's two message ids, an index
+  lookup, never a unit pattern. It reports what it measured, also when it looks bad: "Still as fast as day one" only where the oldest home folder shows measuring began in the machine's first
+  week (a machine updated into this says "as fast as when it began to be measured" and since when), "a little more slowly" past 10 % and 1 s, "more slowly" (the doctor's `slow-start`,
+  so Something's wrong too) past a quarter and 3 s. What changed (the update it came with, what took longest, the disk's unlock and the splash left out) is worked out only when asked
+  (`start-times why`, Control's button, the doctor when slower), never in `--fields`, which the Control list waits on, and never stored.
 - `user-setup.hooks.d/17-welcome.sh` opens `amethystora-manual welcome` once per account, through
   `systemd-run --user`, because the setup service kills what it leaves behind. The Manual itself
   spawns nothing. Ninety seconds later, `/usr/libexec/amethystora-layout-offer` offers classic windows

@@ -6,6 +6,7 @@ slows down at certain times (an hour after start, at night, once a week).
 
 ## Look
 - `state overview`: memory and swap, free disk space, failed units.
+- `ame system start-times`: how long each start took by date (administrators only); `ame system start-times why` when it got slower: what changed.
 - `state security-settings`: the detection profile and every switch, and the enforced ones changed.
 - `state security`: the `stricter` check names stricter settings that are on.
 - `state units` with a unit's name, and `logs` with unit `systemd-oomd.service` for programs killed for

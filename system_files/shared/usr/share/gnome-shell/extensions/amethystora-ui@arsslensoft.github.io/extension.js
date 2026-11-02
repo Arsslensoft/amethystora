@@ -37,6 +37,7 @@ import {Dock} from './modules/dock.js';
 import {Glass} from './modules/glass.js';
 import {Hints} from './modules/hints.js';
 import {FirstLook} from './modules/firstlook.js';
+import {Hello} from './modules/hello.js';
 import {AppGrid} from './modules/appgrid.js';
 import {Pointer} from './modules/pointer.js';
 import {Tiling} from './modules/tiling.js';
@@ -94,6 +95,7 @@ const MODULES = [
     ['glass', Glass],
     ['hints', Hints],
     ['firstlook', FirstLook],
+    ['hello', Hello],
     ['pointer', Pointer],
     ['tiling', Tiling],
     ['windows', Windows],

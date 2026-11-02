@@ -326,7 +326,7 @@ const SHELL = ['usr/libexec/amethystora-security-status', 'usr/libexec/amethysto
     'usr/libexec/amethystora-agentic-off-notice', 'usr/libexec/amethystora-private-folder', 'usr/libexec/amethystora-windows-program',
     // Files' scripts menu: its entries' names, and what the three scripts say
     'usr/libexec/amethystora-folder-colour', 'usr/libexec/amethystora-back-in-time', 'usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh',
-    'usr/libexec/amethystora-clean-copy',
+    'usr/libexec/amethystora-clean-copy', 'usr/libexec/amethystora-start-times',
     // Restart while you are away: its notice of a night that did not restart
     'usr/libexec/amethystora-night-restart',
     // Files' New Document menu: the templates' names

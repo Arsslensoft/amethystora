@@ -178,6 +178,10 @@ these commands in the agent's own shell, as the user. Read before writing, chang
 - The reveal at login (the boot splash's gem flying into the top bar) is `reveal` in
   `org.gnome.shell.extensions.amethystora-transitions`: `ame desktop transition reveal on|off`. It runs only while
   GNOME is starting, with animations on; nothing of it is left after the first second.
+- The greeting at a new account's first login, before Pick a look, is Amethystora UI's hello module: `greet` in
+  `org.gnome.shell.extensions.amethystora-ui.hello` (`ame desktop hello on|off`, `ame desktop hello show`). A layer of the
+  shell, not a window, holding the keyboard as a modal dialog does until any key or click; it marks
+  `~/.local/state/amethystora/hello.json`, once.
 - Pick a look is a page of Control, `amethystora-control welcome`, opened once for a new account by
   `/usr/share/amethystora/user-setup.hooks.d/25-first-look.sh`; it writes `~/.local/state/amethystora/first-look.json`,
   and while that file exists the offer of classic windows (`/usr/libexec/amethystora-layout-offer`) is not made.

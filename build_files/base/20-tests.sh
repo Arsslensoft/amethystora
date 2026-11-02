@@ -3109,6 +3109,24 @@ grep -qF 'pub const WELCOME: &str = "welcome";' /ctx/apps/control/src/backend.rs
 grep -qx "const PAGE = 'welcome';" "${UI_EXTENSION}/modules/firstlook.js"
 grep -qx "const CONTROL = 'org.amethystora.Control';" "${UI_EXTENSION}/modules/firstlook.js"
 grep -qx "    \['firstlook', FirstLook\]," "${UI_EXTENSION}/extension.js"
+# ...and before it the greeting (R7-24): on, one key, a layer of the shell that takes no window and moves no focus, a word for every
+# language Amethystora speaks, and after firstlook in the order, whose page waits for it as for any modal dialog
+HELLO_SCHEMA=org.gnome.shell.extensions.amethystora-ui.hello
+[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${HELLO_SCHEMA}")" == greet ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings get "${HELLO_SCHEMA}" greet)" == true ]]
+[[ "$(grep -oE "^    \['(comfort|firstlook|hello)'," "${UI_EXTENSION}/extension.js" | tr -d " [',")" == "$(printf '%s\n' comfort firstlook hello)" ]]
+grep -q '^hello CHOICE="":' /usr/share/amethystora/just/desktop.just
+env LD_LIBRARY_PATH=/apps-stage/usr/lib64 NODE_ICU_DATA="$(echo /apps-stage/usr/share/node-*/icudata)" /apps-stage/usr/bin/node /ctx/build_files/shared/test-hello.mjs \
+    "${UI_EXTENSION}" /ctx/po
+# How long it takes to start (R7-51): no timer and no always-on program, a date and a number and nothing else, each start at most once
+bash /ctx/build_files/shared/test-start-times.sh
+[[ "$(systemctl is-enabled amethystora-start-times.service)" == enabled ]]
+grep -qx 'Type=exec' /usr/lib/systemd/system/amethystora-start-times.service
+grep -qx 'RemainAfterExit=yes' /usr/lib/systemd/system/amethystora-start-times.service
+grep -qx 'PrivateNetwork=yes' /usr/lib/systemd/system/amethystora-start-times.service
+grep -qx 'RuntimeDirectoryPreserve=yes' /usr/lib/systemd/system/amethystora-start-times.service
+test ! -e /usr/lib/systemd/system/amethystora-start-times.timer
+grep -q '^start-times CHOICE="":' /usr/share/amethystora/just/system.just
 # The Manual's moving cards: each clip a page shows is a WebM of at most 300 KB with its PNG poster of at most 40 KB,
 # both ours (branding/cards.mjs)
 MEDIA=/usr/share/amethystora/manual/media

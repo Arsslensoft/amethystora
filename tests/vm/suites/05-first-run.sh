@@ -2,7 +2,7 @@
 # A machine with no account yet, as an installer leaves one that did not make it: GNOME's first-run setup
 # starts on its own account, and none of Amethystora's per-account setup runs in it (the Manual's welcome page
 # once opened behind it).
-# vmlab-paths: @sf/usr/libexec/amethystora-layout-offer @sf/usr/share/amethystora/user-setup.hooks.d/* @sf/etc/xdg/autostart/*
+# vmlab-paths: @sf/usr/libexec/amethystora-layout-offer @sf/usr/share/amethystora/user-setup.hooks.d/* @sf/etc/xdg/autostart/* @ui/*hello*
 source "$(dirname "$0")/lib.sh"
 
 if getent passwd "${TEST_USER}" >/dev/null; then

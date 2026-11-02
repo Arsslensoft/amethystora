@@ -39,6 +39,8 @@ systemctl --global enable amethystora-clear-voice.service amethystora-sound-pres
 # Offers the image whose NVIDIA driver drives the machine's card, or the one without it on a machine whose
 # card none drives, once, to whoever logs in first
 systemctl enable amethystora-gpu-check.timer
+# One number a start, how long it took, for Control's System page (ame system start-times): nothing runs but for a moment
+systemctl enable amethystora-start-times.service
 # Finds devices whose driver is missing, refused or without its firmware, for ame system drivers, and says each
 # once with what fixes it
 systemctl enable amethystora-driver-check.timer

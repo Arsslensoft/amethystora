@@ -1,0 +1,17 @@
+/* The greeting (modules/hello.js): the gem's colours on a dim layer whatever the theme, as the login screen's are */
+.amethystora-hello {
+  background-color: rgba(10, 6, 20, 0.62);
+}
+
+.amethystora-hello-start {
+  padding: 8px 28px;
+  border-radius: 999px;
+  font-weight: 700;
+  color: #ffffff;
+  background-color: #9148f0;
+}
+
+.amethystora-hello-start:hover,
+.amethystora-hello-start:focus {
+  background-color: #a361f5;
+}

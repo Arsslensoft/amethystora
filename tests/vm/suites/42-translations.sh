@@ -6,7 +6,7 @@
 # stays English; and an `ame` command's prompt in a terminal. The catalog is one this suite writes in French for the
 # messages it uses (the shipped ones are still machine translations or none): it tests the mechanism, not the words.
 # A stand-in notify-send logs what each account would have been shown.
-# vmlab-paths: po/* @sf/usr/libexec/amethystora-notify-users @sf/usr/share/amethystora/just/* @sf/usr/lib/amethystora-*/resources/app/locale/* apps/manual/src/*
+# vmlab-paths: po/* @sf/usr/libexec/amethystora-notify-users @sf/usr/share/amethystora/just/* @sf/usr/lib/amethystora-*/resources/app/locale/* apps/manual/src/* @ui/*hello* @sf/usr/libexec/amethystora-start-times
 source "$(dirname "$0")/lib.sh"
 
 # World-readable: the stand-in notify-send runs as the account

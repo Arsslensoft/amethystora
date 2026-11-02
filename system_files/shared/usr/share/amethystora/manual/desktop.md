@@ -538,6 +538,20 @@ Notifications** in **Settings**, **Notifications**. The lock screen runs no exte
 colours whatever the theme. With **High Contrast** on (Settings, Accessibility), it is GNOME's own high-contrast lock
 screen instead, with GNOME's clock and plain cards, which are easier to read.
 
+## The first login
+
+A new account's first login says hello in every language Amethystora speaks, the word written as if by hand in the gem's
+light, your own language first, and then goes on to [Pick a look](welcome.md). It happens once. Any key or click goes
+straight on. With reduced motion, or with animations off, the words stand still together and nothing is written. An
+account that has logged in before is never greeted by itself. A dialog that opens over it, a password prompt for example, ends it.
+
+```bash
+ame desktop hello show      # see it again (not over a dialog that is open)
+ame desktop hello off       # a new account of this setup is not greeted
+```
+
+Only a small mark that it has been shown is kept, `~/.local/state/amethystora/hello.json`.
+
 ## The reveal at login
 
 When a session starts, the screen begins where the boot splash ended: its dark sky, and the gem in the middle. The gem

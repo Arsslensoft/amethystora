@@ -1,0 +1,282 @@
+#!/usr/bin/bash
+# How long this computer takes to start, one number a start, by date: Control's System page, `ame system start-times` and
+# the doctor read it here. It reports what it measured, on the days it looks bad as well, and it is never sent anywhere.
+#
+#   amethystora-start-times record           as root, once a start (amethystora-start-times.service)
+#   amethystora-start-times status [--json]  what was measured, and its words in the session's language
+#   amethystora-start-times status --fields  the same for Control's list, one line each: title, text, points, slower
+#   amethystora-start-times why              when it got slower, what changed: only read when asked, it can take a few seconds
+#
+# A start is from the kernel starting to the system's start finishing, which the login screen is part of, without the
+# time spent unlocking the disk (somebody typing a password is not the computer being slow), without the firmware and the
+# boot menu (a menu left open is not either). A soft reboot starts no kernel and is not a start. The file holds only
+# DATE<TAB>SECONDS, no time of day: the first line stays for good, with the rest of its week and the latest starts, at
+# most 1000 lines. It is root's and its administrators' (wheel): a calendar of a machine's use is nobody else's to read.
+
+set -uo pipefail
+
+FILE="${AMETHYSTORA_START_TIMES:-/var/lib/amethystora/start-times/seconds.tsv}"
+STAMP="${AMETHYSTORA_START_STAMP:-/run/amethystora-start-times/recorded}"
+WANTS="${AMETHYSTORA_START_WANTS:-/etc/systemd/system/multi-user.target.wants/amethystora-start-times.service}"
+HOMES="${AMETHYSTORA_HOMES:-/var/home}"
+DEPLOYMENTS="${AMETHYSTORA_DEPLOYMENTS:-/usr/libexec/amethystora-deployments}"
+SECURITY_TEXT="${AMETHYSTORA_SECURITY_TEXT:-/usr/libexec/amethystora-security-text}"
+LINES=1000
+# Of those, at most this many are the first week's, which the baseline is the median of
+WEEK=100
+# "Still as fast" only within this of the first week; past it, and a second more, it says "a little more slowly"
+SAME_PERCENT=110
+
+# Numbers are written and read with a decimal point, whatever the session's language
+export LC_NUMERIC=C
+export TEXTDOMAIN=amethystora
+# shellcheck source=/dev/null
+source gettext.sh
+
+record() {
+    # Once a boot: a restart of the unit, or an isolate and back, is the same start
+    [[ ! -e "${STAMP}" ]] || return 0
+    # Waits on systemd's own signal, not on a clock; a unit that failed still counts as finished, and a start that
+    # has not finished within the hour is not waited for any longer
+    timeout 3600 systemctl is-system-running --wait >/dev/null 2>&1
+    local soft finish unlock seconds
+    soft="$(systemctl show -p SoftRebootsCount --value 2>/dev/null)"
+    [[ "${soft:-0}" == 0 ]] || return 0
+    finish="$(systemctl show -p FinishTimestampMonotonic --value 2>/dev/null)"
+    [[ "${finish}" =~ ^[1-9][0-9]*$ ]] || return 0
+    # Each disk's unlock, from when its unit began to when it finished, the first time in this start, and where two
+    # overlap only once. What the initramfs did is in this boot's journal too. Asked for by the two messages' ids, which the
+    # journal looks up in its index, and not by a unit name with a * in it, which it matches by listing every unit it has
+    # ever held: on a journal of gigabytes, at the moment somebody logs in.
+    unlock="$(journalctl -b -q --no-pager -o json --output-fields=UNIT,MESSAGE_ID MESSAGE_ID=7d4958e842da4a758f6c1cdc7b36dcc5 MESSAGE_ID=39f53479d3a045ac8e11786248231fbf 2>/dev/null |
+        jq -s '
+        [.[] | select((.UNIT // "") | startswith("systemd-cryptsetup@"))] |
+        [group_by(.UNIT)[] |
+            (map(select(.MESSAGE_ID == "7d4958e842da4a758f6c1cdc7b36dcc5")) | first) as $begun |
+            (map(select(.MESSAGE_ID == "39f53479d3a045ac8e11786248231fbf")) | first) as $done |
+            select($begun and $done) |
+            [($begun.__MONOTONIC_TIMESTAMP | tonumber), ($done.__MONOTONIC_TIMESTAMP | tonumber)]] | sort |
+        reduce .[] as $span ({end: 0, total: 0};
+            if $span[0] >= .end then .total += $span[1] - $span[0] | .end = $span[1]
+            elif $span[1] > .end then .total += $span[1] - .end | .end = $span[1]
+            else . end) | .total' 2>/dev/null)"
+    [[ "${unlock}" =~ ^[0-9]+$ ]] || unlock=0
+    ((unlock < finish)) || unlock=0
+    seconds="$(LC_ALL=C awk -v f="${finish}" -v u="${unlock}" 'BEGIN { printf "%.1f", (f - u) / 1000000 }')"
+
+    # Written beside the file and moved over it only when whole: a full disk keeps the history as it was, and the
+    # measuring is not what fails the start (a failed unit would make the machine "degraded")
+    local folder="${FILE%/*}" new line cutoff
+    install -d -m 0750 "${folder}" 2>/dev/null && chgrp wheel "${folder}" 2>/dev/null
+    new="$(mktemp "${FILE}.XXXXXX" 2>/dev/null)" || return 0
+    line="$(date +%F)"$'\t'"${seconds}"
+    cutoff=""
+    if [[ -s "${FILE}" ]]; then
+        cutoff="$(date -d "$(head -n 1 "${FILE}" | cut -f1) +7 days" +%F 2>/dev/null)"
+    fi
+    {
+        [[ ! -s "${FILE}" ]] || awk -F'\t' -v cutoff="${cutoff}" -v room="$((LINES - 1))" -v week="${WEEK}" '
+            { all[NR] = $0 }
+            END {
+                for (i = 1; i <= NR; i++) {
+                    split(all[i], f, "\t")
+                    if (i == 1 || (cutoff != "" && f[1] < cutoff && kept < week)) { keep[i] = 1; kept++ }
+                }
+                rest = room - kept
+                for (i = NR; i >= 1 && rest > 0; i--) if (!keep[i]) { keep[i] = 1; rest-- }
+                for (i = 1; i <= NR; i++) if (keep[i]) print all[i]
+            }' "${FILE}"
+        printf '%s\n' "${line}"
+    } >"${new}" 2>/dev/null &&
+        [[ "$(tail -n 1 "${new}")" == "${line}" ]] &&
+        chmod 0640 "${new}" && { chgrp wheel "${new}" 2>/dev/null || true; } &&
+        mv -f "${new}" "${FILE}" && install -D -m 0644 /dev/null "${STAMP}" 2>/dev/null
+    rm -f "${new}"
+    return 0
+}
+
+# Whether this account may read the history at all: an unreadable file is not an empty one
+unreadable() {
+    if [[ -e "${FILE}" ]]; then
+        [[ ! -r "${FILE}" ]]
+    else
+        [[ -d "${FILE%/*}" && ! -x "${FILE%/*}" ]]
+    fi
+}
+
+# The numbers, as JSON: every sentence below is made from these. A line that is not a date and a number is left out.
+#   count, first_date, last {date, seconds}, first_week, recent, slower, points [[days since the first, seconds of that date]]
+numbers() {
+    local measured
+    measured="$(jq -Rn '
+        def median: sort | if length == 0 then null else .[(length - 1) / 2 | floor] end;
+        def day: strptime("%Y-%m-%d") | mktime / 86400 | floor;
+        [inputs | split("\t") | select(length == 2 and (.[0] | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}$")) and (.[1] | test("^[0-9]+(\\.[0-9]+)?$")))
+            | {date: .[0], seconds: (.[1] | tonumber)}] as $all |
+        ($all[0].date // null) as $first |
+        (if $first then ($first | day) else 0 end) as $start |
+        [$all[] | select((.date | day) < $start + 7)] as $week |
+        [$all[] | select((.date | day) >= $start + 7)] as $after |
+        ($week | map(.seconds) | median) as $first_week |
+        ($after[-5:] | map(.seconds) | median) as $recent |
+        {
+            count: ($all | length),
+            first_date: $first,
+            last: ($all[-1] // null),
+            first_week: $first_week,
+            recent: $recent,
+            settled: (($after | length) >= 3),
+            slower: (($after | length) >= 3 and $recent > $first_week * 1.25 and $recent - $first_week >= 3),
+            drifted: (($after | length) >= 3 and $recent * 100 > $first_week * '"${SAME_PERCENT}"' and $recent - $first_week >= 1),
+            points: [$all | group_by(.date)[] | [((.[0].date | day) - $start), (map(.seconds) | median)]]
+        }' "${FILE}" 2>/dev/null)" ||
+        measured='{"count":0,"first_date":null,"last":null,"first_week":null,"recent":null,"settled":false,"slower":false,"drifted":false,"points":[]}'
+    printf '%s\n' "${measured}"
+}
+
+# Whether the first line is from the machine's first days, so that "day one" is true: the oldest home folder, which the
+# installer or the first start made, is within a week of it. A machine updated into this, or one whose homes say nothing,
+# is not, and says since when it measured instead.
+day_one() {
+    local first="$1" born began
+    born="$(stat -c %W "${HOMES}"/* 2>/dev/null | awk 'BEGIN { m = 0 } $1 > 0 && (m == 0 || $1 < m) { m = $1 } END { print m }')"
+    began="$(date -d "${first}" +%s 2>/dev/null)" || return 1
+    [[ "${born:-0}" -gt 0 ]] && (( began - born < 8 * 86400 ))
+}
+
+# Text somebody else wrote (an image's version, a unit's name) is only ever read: cleaned, or left out
+clean() {
+    [[ -n "$1" ]] || return 0
+    "${SECURITY_TEXT}" --max "${2:-300}" "$1" 2>/dev/null </dev/null || true
+}
+
+# What it got slower with: the system's own update, if the starts since it are slower than those before it, and the units
+# that took longest this start. Reads, as anyone, and is only ever asked for when it did get slower.
+what_changed() {
+    local deployment version date before since
+    deployment="$(timeout 3 "${DEPLOYMENTS}" 2>/dev/null |
+        jq -r '[.deployments[]? | select(.booted == true)] | first | "\(.timestamp // 0)\t\(.version // "")"' 2>/dev/null)"
+    version="$(clean "${deployment#*$'\t'}" 60)"
+    date="$(date -d "@${deployment%%$'\t'*}" +%F 2>/dev/null || true)"
+    if [[ -n "${date}" && -n "${version}" && "${deployment%%$'\t'*}" != 0 && -e "${FILE}" ]]; then
+        read -r before since < <(awk -F'\t' -v d="${date}" '
+            function median(a, n,    i, j, t) {
+                for (i = 2; i <= n; i++) { t = a[i]; for (j = i - 1; j > 0 && a[j] > t; j--) a[j + 1] = a[j]; a[j + 1] = t }
+                return n ? a[int((n + 1) / 2)] : 0
+            }
+            NF == 2 { if ($1 < d) b[++nb] = $2 + 0; else s[++ns] = $2 + 0 }
+            END { print median(b, nb), median(s, ns) }' "${FILE}")
+        if awk -v b="${before:-0}" -v s="${since:-0}" 'BEGIN { exit !(b > 0 && s > b * 1.25) }'; then
+            echo "$(eval_gettext 'It has been slower since the system updated to ${version} on ${date}.')"
+        fi
+    fi
+    # Not the disk's unlock, which the number leaves out, and not the splash waiting for the rest
+    local longest
+    longest="$(timeout 2 systemd-analyze blame --no-pager 2>/dev/null |
+        awk '$NF !~ /^(systemd-cryptsetup@|plymouth-quit)/ { if (++n > 3) exit; unit = $NF; $NF = ""; sub(/ $/, ""); sub(/^ +/, ""); printf "%s%s (%s)", (n > 1 ? ", " : ""), unit, $0 }')"
+    longest="$(clean "${longest}" 300)"
+    if [[ -n "${longest}" ]]; then
+        echo "$(eval_gettext 'What took longest in this start: ${longest}.')"
+    fi
+}
+
+# "N seconds" sentences, one number each, so that each language gets its own plural forms
+say_last() { # N, whether it is measuring
+    local shown="$1"
+    if [[ "$2" == true ]]; then
+        eval_ngettext 'This start took ${shown} second.' 'This start took ${shown} seconds.' "$1"
+    else
+        eval_ngettext 'The last start measured took ${shown} second.' 'The last start measured took ${shown} seconds.' "$1"
+    fi
+}
+say_week() { # N, whether it is the machine's own first week
+    local shown="$1"
+    if [[ "$2" == true ]]; then
+        eval_ngettext 'In its first week it took ${shown} second.' 'In its first week it took ${shown} seconds.' "$1"
+    else
+        eval_ngettext 'In the first week it was measured it took ${shown} second.' 'In the first week it was measured it took ${shown} seconds.' "$1"
+    fi
+}
+say_lately() { # N
+    local shown="$1"
+    eval_ngettext 'Lately it takes ${shown} second to start.' 'Lately it takes ${shown} seconds to start.' "$1"
+}
+say_in() { # N, whether it is measuring
+    local shown="$1"
+    if [[ "$2" == true ]]; then
+        eval_ngettext 'It starts in ${shown} second' 'It starts in ${shown} seconds' "$1"
+    else
+        eval_ngettext 'The last start measured took ${shown} second' 'The last start measured took ${shown} seconds' "$1"
+    fi
+}
+
+status() {
+    local mode="${1:-}"
+    if unreadable; then
+        case "${mode}" in
+            --json) echo '{"unreadable":true}' ;;
+            --fields) ;;
+            *) echo "$(gettext "How long it takes to start is kept for the computer's administrators.")" ;;
+        esac
+        return
+    fi
+    local numbers count first_date last first_week recent slower drifted settled title text
+    numbers="$(numbers)"
+    IFS=$'\t' read -r count first_date last first_week recent settled slower drifted < <(jq -r '
+        [.count, (.first_date // "-"), (.last.seconds // "-"), (.first_week // "-"), (.recent // "-"), .settled, .slower, .drifted] | @tsv' <<<"${numbers}")
+    # Whole seconds in the sentences: tenths are only the file's. LC_ALL, which beats LC_NUMERIC, so that no language
+    # makes printf refuse a point
+    local shown_last shown_week shown_recent measuring=false day=false
+    shown_last="$(LC_ALL=C printf '%.0f' "${last/#-/0}")"
+    shown_week="$(LC_ALL=C printf '%.0f' "${first_week/#-/0}")"
+    shown_recent="$(LC_ALL=C printf '%.0f' "${recent/#-/0}")"
+    [[ -e "${WANTS}" ]] && measuring=true
+    ((count == 0)) || [[ "${settled}" != true ]] || ! day_one "${first_date}" || day=true
+    if ((count == 0)); then
+        title="$(gettext "How long it takes to start")"
+        text="$(gettext "Nothing has been measured yet. It is measured once each time the computer starts.")"
+    elif [[ "${slower}" == true ]]; then
+        title="$(gettext "It starts more slowly than it did")"
+        text="$(say_lately "${shown_recent}") $(say_week "${shown_week}" "${day}")"
+    elif [[ "${drifted}" == true ]]; then
+        title="$(gettext "It starts a little more slowly than it did")"
+        text="$(say_lately "${shown_recent}") $(say_week "${shown_week}" "${day}")"
+    elif [[ "${settled}" == true && "${day}" == true ]]; then
+        title="$(gettext "Still as fast as day one")"
+        text="$(say_last "${shown_last}" "${measuring}") $(say_week "${shown_week}" true) $(gettext "Every update replaces the system whole, so it cannot wear out.")"
+    elif [[ "${settled}" == true ]]; then
+        title="$(gettext "Still as fast as when it began to be measured")"
+        text="$(say_last "${shown_last}" "${measuring}") $(say_week "${shown_week}" false) $(eval_gettext 'Measured since ${first_date}. Every update replaces the system whole, so it cannot wear out.')"
+    else
+        title="$(say_in "${shown_last}" "${measuring}")"
+        if [[ "${measuring}" == true ]]; then
+            text="$(eval_gettext 'Measured since ${first_date}, once each time the computer starts. Kept here and never sent.')"
+        else
+            text="$(eval_gettext 'Measured since ${first_date}. It is not measured any more; what was kept stays here and is never sent.')"
+        fi
+    fi
+    case "${mode}" in
+        --json)
+            jq -c --arg title "${title}" --arg text "${text}" --argjson measuring "${measuring}" \
+                '. + {$title, $text, $measuring} | del(.settled)' <<<"${numbers}" ;;
+        --fields)
+            printf '%s\n%s\n' "${title}" "${text}"
+            jq -c .points <<<"${numbers}"
+            echo "${slower}" ;;
+        *) printf '%s\n%s\n' "${title}" "${text}" ;;
+    esac
+}
+
+# Only when it got slower, and only when asked: the deployments can take a moment to start
+why() {
+    unreadable && return 0
+    [[ "$(numbers | jq -r .slower)" == true ]] || return 0
+    what_changed
+}
+
+case "${1:-}" in
+    record) record ;;
+    status) status "${2:-}" ;;
+    why) why ;;
+    *) echo "usage: amethystora-start-times record | status [--json|--fields] | why" >&2; exit 64 ;;
+esac

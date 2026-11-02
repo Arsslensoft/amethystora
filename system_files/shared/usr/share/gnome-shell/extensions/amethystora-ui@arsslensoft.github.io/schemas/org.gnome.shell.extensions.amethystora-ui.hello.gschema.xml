@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The greeting at a new account's first login (modules/hello.js, R7-24). Written by ame desktop hello, Control and the
+     setup file. -->
+<schemalist>
+  <schema id="org.gnome.shell.extensions.amethystora-ui.hello" path="/org/gnome/shell/extensions/amethystora-ui/hello/">
+    <key name="greet" type="b">
+      <default>true</default>
+      <summary>The greeting</summary>
+      <description>A new account's first login is greeted in every language Amethystora speaks, once, before Pick a look. An existing account is never greeted by itself.</description>
+    </key>
+  </schema>
+</schemalist>

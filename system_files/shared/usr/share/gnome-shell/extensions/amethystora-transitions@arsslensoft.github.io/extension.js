@@ -286,6 +286,10 @@ export default class TransitionsExtension extends Extension {
     _freeze() {
         if (this._frozen)
             return true;
+        // A new account's greeting (Amethystora UI) is on the screen: a theme set under it shows as it would without this
+        // extension, since a frozen picture drawn over the greeting would hide it for the seconds a freeze lasts
+        if (Main.uiGroup.get_children().some(actor => actor.name === 'amethystoraHello'))
+            return false;
         if (this._settings.get_string('style') === 'none' || !St.Settings.get().enable_animations)
             return false;
 

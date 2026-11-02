@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 # An account for the suites after this one, logged in on the screen as a person would be: an administrator
 # (wheel), signed in by GDM, past GNOME's first-run setup. Its first login runs the per-account setup.
-# vmlab-paths: @sf/usr/share/amethystora/user-setup.hooks.d/* @ui/*hints*
+# vmlab-paths: @sf/usr/share/amethystora/user-setup.hooks.d/* @ui/*hints* @ui/*hello*
 source "$(dirname "$0")/lib.sh"
 
 if ! getent passwd "${TEST_USER}" >/dev/null; then
@@ -10,12 +10,14 @@ if ! getent passwd "${TEST_USER}" >/dev/null; then
     # The lab's account is new, but the suites after this one need neither Pick a look over their windows nor a tip
     # under the pointer: the first-look hook is marked as run, as for an account that existed before it, and every tip
     # is recorded as shown, in the tips' own state file (modules/hints/state.js), so none is offered while the setting
-    # stays the image's (28-first-start.sh has an account of its own for both)
+    # stays the image's, and the greeting as shown, in its own mark (28-first-start.sh has an account of its own for all three)
     install -d -o "${TEST_USER}" -g "${TEST_USER}" "/var/home/${TEST_USER}/.local" "/var/home/${TEST_USER}/.local/share" \
         "/var/home/${TEST_USER}/.local/share/amethystora" "/var/home/${TEST_USER}/.local/state"
     install -d -m 0700 -o "${TEST_USER}" -g "${TEST_USER}" "/var/home/${TEST_USER}/.local/state/amethystora"
     echo '{"version": {"user": {"first-look": "1"}}}' >"/var/home/${TEST_USER}/.local/share/amethystora/setup_versioning.json"
     chown "${TEST_USER}:" "/var/home/${TEST_USER}/.local/share/amethystora/setup_versioning.json"
+    echo '{"version": 1}' >"/var/home/${TEST_USER}/.local/state/amethystora/hello.json"
+    chown "${TEST_USER}:" "/var/home/${TEST_USER}/.local/state/amethystora/hello.json"
     seen="$(date +%s)"
     ids="$(sed -n "s/^export const KNOWN = \[\(.*\)\];\$/\1/p" \
         /usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/hints.js | tr -d "' ")"

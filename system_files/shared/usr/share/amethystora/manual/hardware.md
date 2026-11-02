@@ -290,6 +290,34 @@ firewire off` lets it load, for FireWire sound cards, DV cameras and disks, and 
 ([Switches](security.md#switches)). The Neutron HiFi DAC V1's own settings app reaches it for whoever
 is at the machine.
 
+## How long it takes to start
+
+Computers are expected to slow with age. This one replaces its system whole with every update, so the system itself
+cannot wear out, and it keeps the numbers to show it: one for each start, by date, on **Control › System**, with a graph.
+
+```bash
+ame system start-times      # what it measured
+ame system start-times why  # when it got slower: what changed
+ame system start-times off  # stop measuring; what was measured is kept
+```
+
+The number is what it measured, on the days it looks bad as well. It runs from the kernel starting to the system having
+started, the login screen with it. Unlocking the disk is left out, since the time you take to type a password is not the
+computer being slow, and so are the firmware and the boot menu. A restart that keeps the kernel after an update
+([soft reboot](updates.md#restarting-in-seconds)) is not a start.
+
+It says "Still as fast as day one" only for a computer that has been measured since its first days. One that was updated
+into this says "Still as fast as when it began to be measured", and since when. If lately it takes a tenth longer than in
+the first week and at least a second, it says "a little more slowly", and if it takes a quarter longer and at least three
+seconds, "more slowly", here, in `ame system doctor` and under Something's wrong. **What changed** (a button on the card,
+or `ame system start-times why`) names the update it got slower with, if it did, and what took longest in this start,
+leaving out the disk's unlock. It is looked up when asked, and takes a moment.
+
+The file is `/var/lib/amethystora/start-times/seconds.tsv`: a date and a number on each line, no time of day, kept on this
+computer and never sent. Only administrators can read it, since a calendar of when a computer was started shows when
+somebody was away: other accounts get no card. The first line stays for good, with the rest of the first week, and the
+latest starts; the file never holds more than 1000 lines.
+
 ## When a device does not work
 
 A few minutes after each start, the machine looks for devices whose driver is missing, refused or

@@ -208,6 +208,8 @@ pub struct Item {
     pub shortcuts: Vec<Shortcut>,
     // The theme maker's palettes to start from
     pub starts: Vec<Start>,
+    // A graph entry's points, each [how far along, value], in order
+    pub points: Vec<(f64, f64)>,
     // Every keyboard shortcut, and whether the tiling is on (its shortcuts work only then)
     pub keybindings: Vec<Keybinding>,
     pub tiling: bool,
@@ -351,6 +353,10 @@ fn item(value: &Value) -> Item {
         saved: number(field("saved")),
         disks: array(field("disks")).iter().map(disk).collect(),
         rows: array(field("rows")).iter().map(disk).filter(|row| !row.id.is_empty()).collect(),
+        points: array(field("points"))
+            .iter()
+            .filter_map(|point| Some((number(point.get(0))?, number(point.get(1))?)))
+            .collect(),
         shortcuts: array(field("shortcuts"))
             .iter()
             .map(|shortcut| Shortcut {
@@ -968,6 +974,13 @@ mod tests {
 
     fn argv(run: Result<Run, Refusal>) -> Vec<String> {
         run.expect("allowed").argv
+    }
+
+    #[test]
+    fn a_graph_keeps_only_whole_points() {
+        let list = parse_list(r#"{"items": [{"page": "system", "id": "start-times", "kind": "graph", "title": "Starts", "available": true,
+            "points": [[0, 12.5], [3, 13], ["x", 1], [4], 7]}]}"#).unwrap();
+        assert_eq!(list.items[0].points, vec![(0.0, 12.5), (3.0, 13.0)]);
     }
 
     #[test]

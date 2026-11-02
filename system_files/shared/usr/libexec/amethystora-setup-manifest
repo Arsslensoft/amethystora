@@ -182,6 +182,9 @@ KEYS_KEYS=(super-alone)
 # The resting screen and the living wallpaper, which amethystora-setup's REST_KEYS and LIVING_KEYS take
 REST=org.gnome.shell.extensions.amethystora-ui.rest
 REST_KEYS=(enabled after)
+# The greeting at a new account's first login, amethystora-setup's HELLO_KEYS
+HELLO=org.gnome.shell.extensions.amethystora-ui.hello
+HELLO_KEYS=(greet)
 LIVING=org.gnome.shell.extensions.amethystora-ui.living
 LIVING_KEYS=(wallpaper)
 FOCUS_KEYS=(trigger-games trigger-sleep work-banners work-apps work-sounds work-dock work-lighter work-night-light work-power work-accent work-wallpaper work-grey games-banners games-apps games-sounds games-dock games-lighter games-night-light games-power games-accent games-wallpaper games-grey sleep-banners sleep-apps sleep-sounds sleep-dock sleep-lighter sleep-night-light sleep-power sleep-accent sleep-wallpaper sleep-grey)
@@ -307,6 +310,7 @@ settings() {
         changed "${PASTE}" | awk 'NR == FNR { kept[$1]; next } $2 in kept' <(printf '%s\n' "${PASTE_KEYS[@]}") -
         changed "${KEYS}" | awk 'NR == FNR { kept[$1]; next } $2 in kept' <(printf '%s\n' "${KEYS_KEYS[@]}") -
         changed "${REST}" | awk 'NR == FNR { kept[$1]; next } $2 in kept' <(printf '%s\n' "${REST_KEYS[@]}") -
+        changed "${HELLO}" | awk 'NR == FNR { kept[$1]; next } $2 in kept' <(printf '%s\n' "${HELLO_KEYS[@]}") -
         changed "${LIVING}" | awk 'NR == FNR { kept[$1]; next } $2 in kept' <(printf '%s\n' "${LIVING_KEYS[@]}") -
         changed "${BACKUPDISK}" | awk 'NR == FNR { kept[$1]; next } $2 in kept' <(printf '%s\n' "${BACKUPDISK_KEYS[@]}") -
     } | while read -r schema key value; do
@@ -336,7 +340,7 @@ SETTINGS="$(settings | jq -sc --arg layout "${LAYOUT}" --arg tiling "${TILING}" 
     --arg present "${PRESENT}" --arg screenshot "${SCREENSHOT}" --arg deskwidgets "${DESKWIDGETS}" \
     --arg shelf "${SHELF}" --arg desks "${DESKS}" --arg quit "${QUIT}" --arg privacy "${PRIVACY}" --arg tools "${TOOLS}" \
     --arg input "${INPUT}" --arg keyboard "${KEYBOARD}" --arg paste "${PASTE}" --arg keys "${KEYS}" \
-    --arg rest "${REST}" --arg living "${LIVING}" \
+    --arg rest "${REST}" --arg hello "${HELLO}" --arg living "${LIVING}" \
     --arg backupdisk "${BACKUPDISK}" \
     --arg interface "${INTERFACE}" --arg calendar "${CALENDAR}" \
     --arg pastekeys "${PASTE_KEYS[*]}" --arg interfacekeys "${INTERFACE_KEYS[*]}" '
@@ -352,7 +356,7 @@ SETTINGS="$(settings | jq -sc --arg layout "${LAYOUT}" --arg tiling "${TILING}" 
             else .schema | IN("org.gnome.shell", $tiling, $pointer, $glass, $motion, $workspaces, $dock, $pill, $quick, $bars,
                 $today, $breaks, $bezel, $audio, $sound, $wm, $mutter, $transitions, $hints, $appgrid, $focus, $power,
                 $access, $touch, $present, $screenshot,
-                $deskwidgets, $shelf, $desks, $privacy, $input, $keyboard, $paste, $rest, $living, $backupdisk, $interface, $calendar) | not end))
+                $deskwidgets, $shelf, $desks, $privacy, $input, $keyboard, $paste, $rest, $hello, $living, $backupdisk, $interface, $calendar) | not end))
         as $e ({}; .[$e.schema][$e.key] = $e.value))}
     + ([$all[] | select(.schema == $windows
             and (.key | IN("snap-chooser", "drop-down-key", "keep-on-top-key", "reopen-key") | not))]
@@ -405,6 +409,7 @@ SETTINGS="$(settings | jq -sc --arg layout "${LAYOUT}" --arg tiling "${TILING}" 
     + ([$all[] | select(.schema == $keys and .key != "plain-paste")]
         | if length > 0 then {keys: (map({(.key): .value}) | add)} else {} end)
     + ([$all[] | select(.schema == $rest)] | if length > 0 then {rest: (map({(.key): .value}) | add)} else {} end)
+    + ([$all[] | select(.schema == $hello)] | if length > 0 then {hello: (map({(.key): .value}) | add)} else {} end)
     + ([$all[] | select(.schema == $living)] | if length > 0 then {living: (map({(.key): .value}) | add)} else {} end)
     + ([$all[] | select(.schema == $backupdisk)] | if length > 0 then {backupdisk: (map({(.key): .value}) | add)} else {} end)')"
 

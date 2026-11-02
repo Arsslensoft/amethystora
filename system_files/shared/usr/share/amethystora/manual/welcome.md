@@ -14,7 +14,7 @@ On top of that foundation sits a desktop made to be driven from the keyboard, as
 fast: windows that tile side by side on a strip that scrolls, six workspaces that are always where you left them, a theme
 switch that repaints everything at once, and an AI agent that knows how this system works, for when you turn it on.
 
-Two choices are worth making on the first day. **Pick a look**, which opens once on top of this page at your
+Two choices are worth making on the first day, once the [greeting](desktop.md#the-first-login) has said hello. **Pick a look**, which opens once on top of this page at your
 first login, sets the theme, the style, how the dock grows, the pointer and whether windows tile or float, with a
 preview of each as you pick; `amethystora-control welcome` opens it again, and Control has every one of them
 later. If you would rather have windows that float and overlap, as on Windows and macOS, choose **Classic** there,

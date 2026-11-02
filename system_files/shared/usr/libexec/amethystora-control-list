@@ -387,6 +387,7 @@ read_in_background image /usr/bin/amethystora-rollback-helper --choices
 read_in_background bling amethystora-bling status
 read_in_background backgrounds amethystora-theme bg list
 read_in_background raid /usr/libexec/amethystora-raid status --json
+read_in_background start-times /usr/libexec/amethystora-start-times status --fields
 # The quick ones too, which one after another took a fifth of a second in a VM
 gsettings_read transitions org.gnome.shell.extensions.amethystora-transitions
 gsettings_read clipboard org.gnome.shell.extensions.amethystora-clipboard keep-history
@@ -486,6 +487,8 @@ gsettings_read kb-accents org.gnome.shell.extensions.amethystora-ui.typing accen
 # The resting screen and the living wallpaper (R6-06, R6-07)
 gsettings_read rest org.gnome.shell.extensions.amethystora-ui.rest
 gsettings_read living org.gnome.shell.extensions.amethystora-ui.living wallpaper
+# The greeting at a new account's first login (R7-24)
+gsettings_read hello org.gnome.shell.extensions.amethystora-ui.hello greet
 # Your apps: the grid's order, the apps changed in it, what starts at login, Downloads tidied, the backup disk
 gsettings_read app-grid-order org.gnome.shell.extensions.amethystora-ui.appgrid order
 read_in_background app-looks /usr/libexec/amethystora-app-look list --json
@@ -1821,6 +1824,24 @@ item desktop resting-screen-after choice "${ gettext "When it rests"; }" "${ get
     "${ value_of "${REST}" after "(.*)$"; }" desktop#a-resting-screen
 GROUP=""
 
+# The greeting at a new account's first login: whether a new account gets it, and seeing it again
+hello_reason() { [[ "${ ended hello; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"; }
+GROUP="${ gettext "The first login"; }"
+hello_reason
+switch_choices false ame desktop hello
+USAGE="ame desktop hello on|off"
+item desktop hello switch "${ gettext "A greeting for a new account"; }" \
+    "${ gettext "Its first login says hello in every language Amethystora speaks, once, and then goes on to Pick a look. Any key goes straight on."; }" \
+    "${ [[ "${ said hello; }" == true ]] && echo on || echo off; }" desktop#the-first-login
+hello_reason
+[[ "${ said hello; }" == true ]] || REASON="${REASON:-${ gettext "The greeting is off."; }}"
+TERMINAL=false
+COMMAND=(ame desktop hello show)
+BUTTON="${ gettext "Show it"; }"
+USAGE="ame desktop hello show"
+item desktop hello-show action "${ gettext "See the greeting again"; }" "${ gettext "Any key or click ends it."; }" "" desktop#the-first-login
+GROUP=""
+
 # Quick settings as live tiles: the theme block, and every tile back (org.gnome.shell.extensions.amethystora-ui.quick)
 QUICK_HIDDEN="${ said quick; }"
 if [[ "${ ended quick; }" != 0 ]]; then
@@ -3042,6 +3063,34 @@ USAGE="ame system zram MODE"
 item system zram choice "${ gettext "Swapped-out memory"; }" \
     "${ gettext "How what programs are not using is compressed when RAM runs short. From the next restart."; }" \
     "${ZRAM:-default}" hardware#memory
+
+# How long it takes to start, one number a start: what was measured and its graph, whatever they say, and whether to go
+# on measuring. The words and the numbers are the helper's: title, text, the points of the graph, whether it got slower.
+# What changed is not read here, for the list never waits on the deployments: a button asks for it, once it did get slower.
+# An account that may not read the history (not an administrator) gets no card.
+START_TIMES="${ said start-times; }"
+mapfile -t START_FIELDS <<<"${START_TIMES}"
+if [[ "${ ended start-times; }" == 0 && ${#START_FIELDS[@]} -ge 4 ]]; then
+    GROUP="${ gettext "Starting up"; }"
+    USAGE="ame system start-times"
+    TERMINAL=false
+    EXTRA="{\"points\": ${START_FIELDS[2]}}"
+    item system start-times graph "${START_FIELDS[0]}" "${START_FIELDS[1]}" "" hardware#how-long-it-takes-to-start
+    if [[ "${START_FIELDS[3]}" == true ]]; then
+        COMMAND=(ame system start-times why)
+        BUTTON="${ gettext "What changed"; }"
+        USAGE="ame system start-times why"
+        item system start-times-why action "${ gettext "What it got slower with"; }" \
+            "${ gettext "The update it came with, if there was one, and what took longest in this start."; }" "" hardware#how-long-it-takes-to-start
+    fi
+fi
+switch_choices true ame system start-times
+GROUP="${ gettext "Starting up"; }"
+USAGE="ame system start-times on|off"
+item system start-times-measure switch "${ gettext "Measure each start"; }" \
+    "${ gettext "One number each time the computer starts, kept on this computer and never sent."; }" \
+    "${ [[ -e /etc/systemd/system/multi-user.target.wants/amethystora-start-times.service ]] && echo on || echo off; }" hardware#how-long-it-takes-to-start
+GROUP=""
 
 [[ -d /sys/firmware/efi ]] || REASON="${ gettext "This machine does not start with UEFI."; }"
 COMMAND=(ame system bios)

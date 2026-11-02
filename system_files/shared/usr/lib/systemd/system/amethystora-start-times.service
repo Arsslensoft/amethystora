@@ -1,0 +1,30 @@
+[Unit]
+Description=Measure how long this start took
+Documentation=file:///usr/share/amethystora/manual/hardware.md
+
+[Service]
+# Started as soon as it can be, it does nothing until the start has finished: a start job that stayed open would itself keep
+# the start from finishing, so systemd is told it is running as soon as the program has been executed, and it stays
+# "active" afterwards so that nothing measures the same start twice
+Type=exec
+RemainAfterExit=yes
+ExecStart=/usr/libexec/amethystora-start-times record
+Nice=10
+# What it cost, for `systemctl show -p CPUUsageNSec -p IOReadBytes` once the start is over
+CPUAccounting=yes
+IOAccounting=yes
+IOSchedulingClass=idle
+StateDirectory=amethystora/start-times
+# The stamp that a boot is measured once, kept across a restart of this unit and gone with the boot (/run)
+RuntimeDirectory=amethystora-start-times
+RuntimeDirectoryPreserve=yes
+# It writes its own folder (root's, handed to wheel) and reads the journal: nothing else
+CapabilityBoundingSet=CAP_CHOWN CAP_DAC_READ_SEARCH
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateNetwork=yes
+
+[Install]
+WantedBy=multi-user.target

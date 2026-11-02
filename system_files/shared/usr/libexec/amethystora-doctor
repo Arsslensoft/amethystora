@@ -95,6 +95,16 @@ if wanted memory; then
     fi
 fi
 
+# --- how long it takes to start: what amethystora-start-times measured, and what it says changed ------------------
+# Two reads of five seconds at most, the second only when it did get slower; nothing here if it is not measuring any more
+if wanted slow-start; then
+    start="$(LANGUAGE=C LC_ALL=C.UTF-8 t /usr/libexec/amethystora-start-times status --json)"
+    if jq -e '.slower and .measuring' <<<"${start}" >/dev/null 2>&1; then
+        why="$(LANGUAGE=C LC_ALL=C.UTF-8 t /usr/libexec/amethystora-start-times why | paste -sd ' ')"
+        found slow-start warning playbook/slow-machine "$(jq -r .text <<<"${start}") ${why}"
+    fi
+fi
+
 # --- errors, crashes ----------------------------------------------------------------------------------------
 if wanted errors; then
     noisy="$(t journalctl -b -p err -o json --output-fields=_SYSTEMD_UNIT --no-pager -n 2000 |

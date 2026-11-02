@@ -9,7 +9,7 @@
 #   - the app grid's six folders and the row of the apps used most.
 # The lab renders in software, where GNOME turns animations off: the new account's shell is started with
 # --force-animations (a drop-in of its own user unit), and the lab's Eval extension is its, as in the other suites.
-# vmlab-paths: @ui/*hints* @ui/*appgrid* @sf/usr/share/amethystora/user-setup.hooks.d/* @sf/usr/libexec/amethystora-layout-offer @sf/*just/desktop.just @sf/usr/share/gnome-shell/extensions/amethystora-transitions*
+# vmlab-paths: @ui/*hints* @ui/*hello* @ui/*firstlook* @ui/*appgrid* @sf/usr/share/amethystora/user-setup.hooks.d/* @sf/usr/libexec/amethystora-layout-offer @sf/*just/desktop.just @sf/usr/share/gnome-shell/extensions/amethystora-transitions*
 source "$(dirname "$0")/lib.sh"
 
 UUID=amethystora-ui@arsslensoft.github.io
@@ -114,6 +114,8 @@ same "9 the top bar is whole" "$(ev 'Main.layoutManager.panelBox.opacity')" 255
 same "9 no sky is left in the shell's top group" \
     "$(ev "Main.layoutManager.uiGroup.get_children().filter(c => c.name === 'amethystoraRevealCover').length")" 0
 
+# The greeting (R7-24) holds the keyboard over GNOME's own welcome dialog of a first login, and any key goes straight on: the
+# first Escape below may only end it, which the second then does for the dialog
 # GNOME's own welcome dialog of a first login (it offers the Tour, which the image keeps), closed as a person would,
 # with Escape, as 10-account.sh does for the lab's account: while it is up it is modal, so nothing else has the keyboard
 # and no tip may show
