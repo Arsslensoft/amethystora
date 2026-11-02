@@ -674,6 +674,9 @@ impl Control {
                 }
             } else if ran {
                 this.load_list(true).await;
+                // A list that came back the same draws nothing, and this card still has to lose its spinner and say what
+                // the command said: a command that fails usually changes nothing
+                this.render();
             } else {
                 this.render();
             }
