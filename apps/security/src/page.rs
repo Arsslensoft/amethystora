@@ -2490,7 +2490,11 @@ impl Security {
             children.push(
                 section(
                     &t!("Network"),
-                    &list_card(networked.iter().map(|app| self.app_network_row(app).upcast()).collect()),
+                    &{
+                        let me = self.me.clone();
+                        let values: Vec<backend::App> = networked.iter().map(|app| (*app).clone()).collect();
+                        list_card_filling(values, move |app| Some(me.upgrade()?.app_network_row(app).upcast()))
+                    },
                     Some(&t!("An app without the network cannot send anything it reads. From its next start.")),
                 )
                 .upcast(),
