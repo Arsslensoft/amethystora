@@ -30,6 +30,7 @@ import * as SystemActions from 'resource:///org/gnome/shell/misc/systemActions.j
 import {Arrange} from './quick/arrange.js';
 import {BatteryTile} from './quick/battery.js';
 import {ThemeBlock} from './quick/theme.js';
+import {TvTile} from './quick/tv.js';
 import {ID, PhoneTile, Subtitles, isTile, tileId} from './quick/tiles.js';
 import {VolumeBlock} from './quick/volume.js';
 
@@ -89,7 +90,7 @@ export class Quick {
         this._insert(this._phone.tile, 1, true);
         this._theme = new ThemeBlock();
         this._insert(this._theme.block, 2);
-        this._volume = new VolumeBlock();
+        this._volume = new VolumeBlock(this._settings);
         this._insert(this._volume.block, 2);
         this._buildHint();
         this._buildHiddenRow();
@@ -97,12 +98,17 @@ export class Quick {
         this._settings.connectObject(
             'changed::tile-order', () => this._layout(),
             'changed::tile-hidden', () => this._layout(),
+            'changed::send-to-tv', () => {
+                this._syncTv();
+                this._layout();
+            },
             this);
         this.grid.connectObject(
             'child-added', (grid, child) => this._childAdded(child),
             this);
         this.menu.connectObject('open-state-changed', (menu, open) => this._openChanged(open), this);
 
+        this._syncTv();
         this._layout();
         if (this.menu.isOpen)
             this._openChanged(true);
@@ -133,7 +139,7 @@ export class Quick {
 
         // The tiles put away go back into the grid (their place is set below)
         for (const actor of this._known ?? []) {
-            const ours = actor === this._battery?.tile || actor === this._phone?.tile;
+            const ours = actor === this._battery?.tile || actor === this._phone?.tile || actor === this._tv?.tile;
             if (actor.get_parent() !== this.grid && !ours) {
                 actor.get_parent()?.remove_child(actor);
                 this._insert(actor, 1);
@@ -149,6 +155,8 @@ export class Quick {
         this._battery = null;
         this._phone?.destroy();
         this._phone = null;
+        this._tv?.destroy();
+        this._tv = null;
         this._theme?.destroy();
         this._theme = null;
         this._volume?.destroy();
@@ -633,8 +641,22 @@ export class Quick {
 
     // --- Open and closed -------------------------------------------------------------------------------------------
 
+    // The tile to send the screen to a TV, only while its key is on (offered, and off): off, nothing of it is made
+    _syncTv() {
+        const wanted = this._settings.get_boolean('send-to-tv');
+        if (wanted && !this._tv) {
+            this._tv = new TvTile(() => this._ext.modules?.get('privacy') ?? null);
+            this._insert(this._tv.tile, 1, true);
+        } else if (!wanted && this._tv) {
+            this._forget(this._tv.tile);
+            this._tv.destroy();
+            this._tv = null;
+        }
+    }
+
     _openChanged(open) {
         if (open) {
+            this._tv?.opened();
             this._subtitles.opened();
             this._battery.opened();
             this._theme.opened();

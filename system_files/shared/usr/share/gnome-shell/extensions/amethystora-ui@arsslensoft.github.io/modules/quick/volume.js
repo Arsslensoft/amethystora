@@ -6,8 +6,13 @@
 // it closes; nothing of it runs while quick settings is closed. While it is open, only an app's own stream coming or
 // going changes the rows, and a row that stays is kept as it is, so a slider being dragged or focused is never made
 // again under the pointer.
+//
+// With the key sounding-apps (on), the rows also say which app is really making sound: GNOME's mixer does not tell a
+// paused stream from a playing one, so pactl is asked, while quick settings is open and never otherwise (quick/sounding.js).
 
 import Clutter from 'gi://Clutter';
+import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
 import Gvc from 'gi://Gvc';
 import Meta from 'gi://Meta';
 import Pango from 'gi://Pango';
@@ -19,12 +24,17 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {Slider} from 'resource:///org/gnome/shell/ui/slider.js';
 import * as Volume from 'resource:///org/gnome/shell/ui/status/volume.js';
 
+import {parseSinkInputs, sorted} from './sounding.js';
+
 // The most rows; with more apps a line says how many more there are and opens Sound Settings
 const MOST_ROWS = 6;
 // The output buttons shown at most; with more outputs the last is "More…"
 const MOST_SEGMENTS = 3;
 // The shell itself, and the volume controls GNOME's own input slider also leaves out (they show a level, not sound)
 const SKIPPED = ['org.gnome.Shell', 'org.gnome.VolumeControl', 'org.PulseAudio.pavucontrol'];
+const PACTL = ['/usr/bin/pactl', '-f', 'json', 'list', 'sink-inputs'];
+// A change of the streams is read this long after the last one (ms): a slider being dragged changes one many times
+const ASK_SETTLE_MS = 400;
 
 // An app's name as two letters, for one without an icon of its own
 function monogram(name) {
@@ -60,7 +70,10 @@ function outputLabels(names) {
 }
 
 export class VolumeBlock {
-    constructor() {
+    constructor(settings = null) {
+        this._settings = settings;
+        // What pactl said of each stream, by the sound server's number: {corked, app, binary}. Only while open.
+        this._said = new Map();
         // By the app's key (its id, or its name for a stream without one)
         this._rows = new Map();
         this.block = new St.BoxLayout({
@@ -104,8 +117,10 @@ export class VolumeBlock {
         this._mixer.connectObject(
             // Only an app's own stream changes the rows: event sounds, sources and outputs come and go too
             'stream-added', (mixer, id) => {
-                if (isAppStream(mixer.lookup_stream_id(id)))
+                if (isAppStream(mixer.lookup_stream_id(id))) {
                     this._queue();
+                    this._askSoon();
+                }
             },
             // A stream of a shown row, or any while some apps are only counted in "N more"
             'stream-removed', (mixer, id) => {
@@ -116,12 +131,26 @@ export class VolumeBlock {
             'output-added', () => this._queue(),
             'output-removed', () => this._queue(),
             this);
+        // A stream paused or started: connected only while the key asks (it fires on every volume change)
+        if (this._sounding()) {
+            this._mixer.connectObject('stream-changed', (mixer, id) => {
+                if (this._sounding() && mixer.lookup_stream_id(id) instanceof Gvc.MixerSinkInput)
+                    this._askSoon();
+            }, this);
+        }
         this._update();
+        this._askSoon(0);
     }
 
     closed() {
         this._mixer?.disconnectObject(this);
         this._mixer = null;
+        if (this._askTimer)
+            GLib.source_remove(this._askTimer);
+        this._askTimer = 0;
+        this._asks?.cancel();
+        this._asks = null;
+        this._said.clear();
         if (this._later) {
             global.compositor.get_laters().remove(this._later);
             this._later = 0;
@@ -131,6 +160,51 @@ export class VolumeBlock {
         this._pickerBin.set_child(null);
         this._pickerKey = null;
         this.block.visible = false;
+    }
+
+    _sounding() {
+        return this._settings?.get_boolean('sounding-apps') ?? false;
+    }
+
+    // Asks pactl what each stream is, in a moment, one at a time. It names the streams and says which are paused; the
+    // answer is kept in memory only as those three things, and only until quick settings closes.
+    _askSoon(delay = ASK_SETTLE_MS) {
+        if (!this._sounding() || !this._mixer)
+            return;
+        if (this._askTimer)
+            GLib.source_remove(this._askTimer);
+        this._askTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
+            this._askTimer = 0;
+            this._ask();
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    _ask() {
+        this._asks?.cancel();
+        const asks = new Gio.Cancellable();
+        this._asks = asks;
+        let process;
+        try {
+            process = Gio.Subprocess.new(PACTL, Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_SILENCE);
+        } catch (e) {
+            console.debug(`Amethystora UI: pactl did not start: ${e.message}`);
+            return;
+        }
+        // A newer ask, or the menu closing, ends a pactl that has not answered
+        asks.connect(() => process.force_exit());
+        process.communicate_utf8_async(null, asks, (p, result) => {
+            let stdout = '';
+            try {
+                [, stdout] = p.communicate_utf8_finish(result);
+            } catch {
+                return;
+            }
+            if (this._asks !== asks || !this._mixer)
+                return;
+            this._said = parseSinkInputs(stdout);
+            this._queue();
+        });
     }
 
     // Several changes at once (an app opening two streams) make one update, before the next frame
@@ -152,18 +226,28 @@ export class VolumeBlock {
         for (const stream of this._mixer.get_sink_inputs()) {
             if (!isAppStream(stream))
                 continue;
-            const appId = stream.get_application_id() ?? '';
-            const app = appId ? system.lookup_app(`${appId}.desktop`) : null;
+            const said = this._said.get(stream.index) ?? null;
+            // The id the portal wrote for a sandboxed app (a program outside a sandbox could write any, as it could set its
+            // own id), else the one the stream says, and the launcher of the program that plays when neither is there
+            const appId = said?.app || stream.get_application_id() || '';
+            const app = (appId ? system.lookup_app(`${appId}.desktop`) : null) ??
+                (said?.binary ? system.lookup_desktop_wmclass(said.binary) : null);
             // The mixer calls the app's own name the stream's name, and what it plays its description
             const name = app?.get_name() || stream.name || stream.description || appId;
             if (!name)
                 continue;
             const key = appId ? `id:${appId}` : `name:${name}`;
             if (!apps.has(key))
-                apps.set(key, {key, name, app, streams: []});
-            apps.get(key).streams.push(stream);
+                apps.set(key, {key, name, app, streams: [], corked: 0});
+            const entry = apps.get(key);
+            entry.streams.push(stream);
+            if (said?.corked)
+                entry.corked++;
         }
-        return [...apps.values()].sort((a, b) => a.name.localeCompare(b.name) || a.key.localeCompare(b.key));
+        // Paused: every stream of the app, as far as the sound server has said
+        for (const entry of apps.values())
+            entry.paused = entry.corked === entry.streams.length;
+        return sorted([...apps.values()], this._sounding());
     }
 
     _update() {
@@ -180,6 +264,7 @@ export class VolumeBlock {
                 this._setStreams(row, app.streams);
             else
                 this._rows.set(app.key, this._row(app));
+            this._setPaused(this._rows.get(app.key), app.paused);
             const box = this._rows.get(app.key).box;
             if (this._rowBox.get_child_at_index(i) !== box)
                 this._rowBox.set_child_at_index(box, i);
@@ -217,7 +302,17 @@ export class VolumeBlock {
         const label = new St.Label({style_class: 'amethystora-quick-app-name', text: app.name,
             y_align: Clutter.ActorAlign.CENTER});
         label.clutter_text.ellipsize = Pango.EllipsizeMode.END;
-        named.add_child(label);
+        let said = null;
+        if (this._sounding()) {
+            // Under the name, only while it says something; with the key off the row is what it always was
+            const words = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, y_align: Clutter.ActorAlign.CENTER});
+            said = new St.Label({style_class: 'amethystora-quick-app-said', text: _('Paused'), visible: false});
+            words.add_child(label);
+            words.add_child(said);
+            named.add_child(words);
+        } else {
+            named.add_child(label);
+        }
 
         const slider = new Slider(0);
         slider.add_style_class_name('amethystora-quick-app-slider');
@@ -230,7 +325,7 @@ export class VolumeBlock {
             y_align: Clutter.ActorAlign.CENTER});
         box.add_child(mute);
 
-        const row = {key: app.key, name: app.name, streams: [], box, slider, mute, muteIcon, setting: false};
+        const row = {key: app.key, name: app.name, streams: [], box, slider, mute, muteIcon, setting: false, said};
         const max = () => this._mixer?.get_vol_max_norm() ?? 65536;
         row.sync = () => {
             const [first] = row.streams;
@@ -266,6 +361,13 @@ export class VolumeBlock {
         this._setStreams(row, app.streams);
         this._rowBox.add_child(box);
         return row;
+    }
+
+    _setPaused(row, paused) {
+        if (!row.said || row.said.visible === paused)
+            return;
+        row.said.visible = paused;
+        row.box.opacity = paused ? 153 : 255;
     }
 
     // A row follows the streams of its app now, and no other
@@ -364,6 +466,13 @@ export class VolumeBlock {
 
     rows() {
         return [...this._rows.values()].map(row => row.name);
+    }
+
+    // The rows as they are shown, in order: {name, paused}
+    shownRows() {
+        return [...this._rows.values()]
+            .sort((a, b) => this._rowBox.get_children().indexOf(a.box) - this._rowBox.get_children().indexOf(b.box))
+            .map(row => ({name: row.name, paused: !!row.said?.visible}));
     }
 
     setRowVolume(name, fraction) {

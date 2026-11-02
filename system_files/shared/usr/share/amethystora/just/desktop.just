@@ -1092,6 +1092,104 @@ resume VALUE="":
             ;;
     esac
 
+# Print jobs in the pill: the pages when the printer gives them, what is wrong in words, Cancel and Try again (VALUE: on
+# or off; without it, it flips). Only this account's jobs, and nothing runs until there is one.
+[positional-arguments]
+printing VALUE="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.pill
+    value="${1:-}"
+    if [[ -z "${value}" ]]; then
+        if [[ "$(gsettings get "${schema}" printing)" == true ]]; then value=off; else value=on; fi
+    fi
+    case "${value}" in
+        on)
+            gsettings set "${schema}" printing true
+            echo "$(gettext "While you print, the pill says how far it is and what is wrong.")"
+            ;;
+        off)
+            gsettings set "${schema}" printing false
+            echo "$(gettext "The pill says nothing of printing. GNOME's own notices about the printer stay.")"
+            ;;
+        *)
+            echo "usage: ame desktop printing on|off"
+            exit 64
+            ;;
+    esac
+
+# Get me through: at 20% the pill's question offers one button, and all of it goes back when the machine is plugged in
+# (VALUE: on or off; without it, it flips). Off, the question offers power saving alone.
+[positional-arguments]
+get-through VALUE="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.pill
+    value="${1:-}"
+    if [[ -z "${value}" ]]; then
+        if [[ "$(gsettings get "${schema}" get-through)" == true ]]; then value=off; else value=on; fi
+    fi
+    case "${value}" in
+        on)
+            gsettings set "${schema}" get-through true
+            echo "$(gettext "At 20% the pill offers Get me through: the power saver, a dimmer screen, and backups that wait until you plug in.")"
+            ;;
+        off)
+            gsettings set "${schema}" get-through false
+            echo "$(gettext "At 20% the pill offers power saving alone.")"
+            ;;
+        *)
+            echo "usage: ame desktop get-through on|off"
+            exit 64
+            ;;
+    esac
+
+# Send to the TV: a tile in quick settings that opens GNOME Network Displays (VALUE: on or off; without it, it flips).
+# `setup` says what it fetches and, after a yes, installs that app from Flathub: the tile's Install runs it in a terminal.
+[positional-arguments]
+send-to-tv VALUE="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.quick
+    app=org.gnome.NetworkDisplays
+    value="${1:-}"
+    if [[ -z "${value}" ]]; then
+        if [[ "$(gsettings get "${schema}" send-to-tv)" == true ]]; then value=off; else value=on; fi
+    fi
+    case "${value}" in
+        on)
+            gsettings set "${schema}" send-to-tv true
+            echo "$(gettext "Quick settings has a tile to send your screen to a TV. Nothing runs or is fetched until you press it.")"
+            ;;
+        off)
+            gsettings set "${schema}" send-to-tv false
+            echo "$(gettext "The tile is gone from quick settings. Network Displays, if you installed it, stays until you remove it in Bazaar.")"
+            ;;
+        setup)
+            if flatpak info "${app}" >/dev/null 2>&1; then
+                echo "$(gettext "Network Displays is already installed.")"
+                exit 0
+            fi
+            echo "$(gettext "This installs GNOME Network Displays from Flathub, about 6 MB, and the GNOME runtime it needs if you do not have it, about 1 GB shared with other apps. It finds the TVs and screens nearby and sends your screen to the one you choose.")"
+            echo "$(gettext "It has not been tried with a real TV yet. A TV or stick you can cast to over your network should be found. A TV that needs a direct Wi-Fi link (Miracast) is not expected to work.")"
+            echo "$(gettext "The app is allowed to talk to NetworkManager, Avahi and the firewall on the system bus. It can read the firewall's configuration, and it may ask for a password to change it.")"
+            echo "$(gettext "If a password prompt about the firewall appears and you did not expect it, refuse it: the firewall is set in Security, not by this app.")"
+            gum confirm "$(gettext "Install it?")" || exit 0
+            flatpak install --system -y flathub "${app}"
+            echo "$(gettext "Ready. Press the tile in quick settings to open it.")"
+            ;;
+        *)
+            echo "usage: ame desktop send-to-tv on|off|setup"
+            exit 64
+            ;;
+    esac
+
 # Saving data: on a connection that counts data, the pill says so and lists what waits for another network (VALUE: on
 # or off; without it, it flips). The waiting is the connection's metered flag, which Settings switches per network.
 [positional-arguments]
@@ -2013,7 +2111,8 @@ pill *ARGS:
     esac
     if [[ "${state}" == on ]]; then gsettings set "${schema}" "${what}" true; else gsettings set "${schema}" "${what}" false; fi
 
-# Quick settings: put every tile back where it was and show them all (reset), or show or hide the theme block (theme on|off)
+# Quick settings: put every tile back where it was and show them all (reset), show or hide the theme block (theme on|off),
+# or say which app really makes sound under Playing now (sounding on|off)
 [positional-arguments]
 quick-settings ACTION="" VALUE="":
     #!/usr/bin/bash
@@ -2022,7 +2121,7 @@ quick-settings ACTION="" VALUE="":
     source gettext.sh
     schema=org.gnome.shell.extensions.amethystora-ui.quick
     usage() {
-        echo "usage: ame desktop quick-settings reset|theme [on|off]"
+        echo "usage: ame desktop quick-settings reset|theme|sounding [on|off]"
         exit 64
     }
     # The tiles put away, one id a line (an id is lower-case letters, digits and hyphens)
@@ -2045,6 +2144,19 @@ quick-settings ACTION="" VALUE="":
             gsettings reset "${schema}" tile-order
             gsettings reset "${schema}" tile-hidden
             echo "$(gettext "Quick settings have every tile again, in their first order.")"
+            ;;
+        sounding)
+            case "${2:-}" in
+                on)
+                    gsettings set "${schema}" sounding-apps true
+                    echo "$(gettext "Playing now lists first the apps sending sound, and says Paused of the rest.")"
+                    ;;
+                off)
+                    gsettings set "${schema}" sounding-apps false
+                    echo "$(gettext "Playing now lists every app with sound open, by name.")"
+                    ;;
+                *) usage ;;
+            esac
             ;;
         theme)
             value="${2:-}"

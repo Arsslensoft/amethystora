@@ -33,12 +33,14 @@ import {Meetings} from './pill/meeting.js';
 import {Moving, releaseKeeper} from './pill/moving.js';
 import {Osd} from './pill/osd.js';
 import {Phone} from './pill/phone.js';
+import {Printing} from './pill/printing.js';
 import {Privacy} from './pill/privacy.js';
 import {ResumeCard} from './pill/resume.js';
 import {Saving} from './pill/saving.js';
 import {Stacks} from './pill/stacks.js';
 import {Stick} from './pill/stick.js';
 import {disposeSettings} from './pill/text.js';
+import {Through, settleThrough} from './pill/through.js';
 import {Timer, armOffRing, disarmOffRing, secondRuns} from './pill/timer.js';
 import {Update} from './pill/update.js';
 import {News, writeSeen} from './pill/whatsnew.js';
@@ -125,6 +127,8 @@ export class Pill {
                 this._sync();
             },
             'changed::removable-writes', () => this._sync(),
+            'changed::printing', () => this._sync(),
+            'changed::get-through', () => this._sync(),
             this);
         this._sync();
     }
@@ -139,6 +143,10 @@ export class Pill {
         this._stopPart('_code');
         this._stopPart('_timer2');
         this._stopPart('_stick');
+        this._stopPart('_printing');
+        this._stopPart('_through');
+        // A screen lock keeps what Get me through holds; anything else gives it back
+        settleThrough(true);
         this._stopLive();
         // Turned off whole (as while the screen is locked): nothing waits; the timer rings at the next enable if it ended
         disarmOffRing();
@@ -232,6 +240,13 @@ export class Pill {
         this._toggle('_timer2', !!this._clock && (on('timer-feel') || secondRuns()), () => this._newTimer(1));
         // A removable disk still being written to: a part of the live pill, as its own key says
         this._toggle('_stick', !!this._clock && on('removable-writes'), () => new Stick(this._activities, (...a) => this.notice(...a)));
+        // Print jobs in the pill, and the battery's offer to get through: parts of the live pill, each by its own key
+        this._toggle('_printing', !!this._clock && on('printing'), () => new Printing(this._activities, (...a) => this.notice(...a)));
+        this._toggle('_through', !!this._clock && on('get-through'), () => new Through(this._activities, (...a) => this.notice(...a), this._capture, () => this._privacy ?? null));
+        // Held through a lock, and the key turned off meanwhile: it ends now
+        if (!this._through)
+            settleThrough(false);
+        this._battery?.throughChanged();
         this._toggle('_privacy', on('privacy-dots'), () => new Privacy(this._capture));
         this._toggle('_glow', on('glow'), () => new Glow(this._capture, () => this._reduce()));
         // The apps that always wait for the digest hold their banners also while the digest itself is off
@@ -405,7 +420,7 @@ export class Pill {
             ['_update', () => new Update(this._activities)],
             ['_news', () => new News(this._activities, this._settings)],
             ['_resume', () => new ResumeCard(this._activities, () => this._ext.modules?.get('workspaces')?.resume ?? null)],
-            ['_battery', () => new Battery(this._activities, notice, this._comfort, () => this._glass())],
+            ['_battery', () => new Battery(this._activities, notice, this._comfort, () => this._glass(), () => this._through)],
         ];
         const connect = this._ext.modules?.get('connect');
         if (connect?.addListener)
@@ -603,6 +618,14 @@ export class Pill {
 
     get stick() {
         return this._stick ?? null;
+    }
+
+    get printing() {
+        return this._printing ?? null;
+    }
+
+    get through() {
+        return this._through ?? null;
     }
 
     // For the suites: the welcome back card started again, as the live pill's start would find it; says whether it shows

@@ -176,7 +176,12 @@ schema="$(GSETTINGS_BACKEND=memory /usr/bin/gsettings list-keys "${QUICK}" | sor
     { echo "QUICK_KEYS and quick settings' schema differ:"; diff <(echo "${listed}") <(echo "${schema}"); false; }
 while read -r key; do
     range="$(GSETTINGS_BACKEND=memory /usr/bin/gsettings range "${QUICK}" "${key}" | xargs)"
-    [[ "${range}" == "type as" && "$(jq -c --arg k "${key}" '.[$k]' <<<"${QUICK_TABLE}")" == '["as","ids"]' ]] ||
+    case "${range}" in
+        "type b") want='["b"]' ;;
+        "type as") want='["as","ids"]' ;;
+        *) want="? ${range}" ;;
+    esac
+    [[ "$(jq -c --arg k "${key}" '.[$k]' <<<"${QUICK_TABLE}")" == "${want}" ]] ||
         { echo "QUICK_KEYS has ${key} as $(jq -c --arg k "${key}" '.[$k]' <<<"${QUICK_TABLE}"), the schema as ${range}"; false; }
 done <<<"${listed}"
 saved="$(sed -n 's/^QUICK_KEYS=(\(.*\))$/\1/p' "$(dirname "${SETUP}")/amethystora-setup-manifest" | tr ' ' '\n' | sort)"

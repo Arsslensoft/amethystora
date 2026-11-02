@@ -418,7 +418,7 @@ gsettings_read space-names org.gnome.shell.extensions.amethystora-ui.workspaces 
 gsettings_read sets org.gnome.shell.extensions.amethystora-ui.workspaces sets
 gsettings_read resume org.gnome.shell.extensions.amethystora-ui.workspaces resume
 gsettings_read pill org.gnome.shell.extensions.amethystora-ui.pill
-gsettings_read quick org.gnome.shell.extensions.amethystora-ui.quick tile-hidden
+gsettings_read quick org.gnome.shell.extensions.amethystora-ui.quick
 gsettings_read bars org.gnome.shell.extensions.amethystora-ui.bars
 # The bar's items and where they are, the clock's keys, the calendar's week numbers and the light desktop (the bar group)
 read_in_background bar-layout /usr/libexec/amethystora-bar-layout show --json
@@ -1860,7 +1860,8 @@ item desktop show-me switch "${ gettext "Show me, on my screen"; }" \
 GROUP=""
 
 # Quick settings as live tiles: the theme block, and every tile back (org.gnome.shell.extensions.amethystora-ui.quick)
-QUICK_HIDDEN="${ said quick; }"
+QUICK_KEYS="${ said quick; }"
+QUICK_HIDDEN="${ value_of "${QUICK_KEYS}" tile-hidden "(.*)\$"; }"
 if [[ "${ ended quick; }" != 0 ]]; then
     REASON="${ gettext "Amethystora UI is not installed."; }"
 fi
@@ -1876,6 +1877,19 @@ BUTTON="${ gettext "Put back"; }"
 USAGE="ame desktop quick-settings reset"
 item desktop quick-tiles action "${ gettext "Quick settings tiles"; }" \
     "${ gettext "Hold a tile in quick settings to move or hide it. This puts every tile back."; }" "" desktop#quick-settings
+quick_onoff() { [[ "${ value_of "${QUICK_KEYS}" "$1" "(.*)\$"; }" == true ]] && echo on || echo off; }
+[[ "${ ended quick; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
+switch_choices false ame desktop quick-settings sounding
+USAGE="ame desktop quick-settings sounding on|off"
+item desktop sounding-apps switch "${ gettext "Which app is making sound"; }" \
+    "${ gettext "Playing now in quick settings lists first the apps sending sound, and says Paused of the rest. It never listens to them."; }" \
+    "${ quick_onoff sounding-apps; }" desktop#quick-settings
+[[ "${ ended quick; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
+switch_choices false ame desktop send-to-tv
+USAGE="ame desktop send-to-tv on|off"
+item desktop send-to-tv switch "${ gettext "Send to the TV"; }" \
+    "${ gettext "A tile in quick settings opens Network Displays, an app from Flathub that looks for TVs nearby, fetched only after you say yes. Nothing has been tried with a real TV yet, and a TV that needs a direct Wi-Fi link is not expected to work."; }" \
+    "${ quick_onoff send-to-tv; }" desktop#send-your-screen-to-a-tv
 
 # The live pill, the privacy dots, the glow, quiet and the digest (org.gnome.shell.extensions.amethystora-ui.pill)
 PILL="${ said pill; }"
@@ -2167,6 +2181,12 @@ PILLKEY=saving-data pill_item saving-data "${ gettext "Saving data"; }" \
 PILLKEY=removable-writes pill_item removable-writes "${ gettext "What a removable disk is writing"; }" \
     "${ gettext "While a stick is still being written to, the pill says how far it has got and when everything is on it."; }" \
     desktop#a-usb-stick-that-tells-the-truth ame desktop usb-writes
+PILLKEY=printing pill_item printing "${ gettext "Printing in the pill"; }" \
+    "${ gettext "While you print, the pill says how far it is and what is wrong, in words, with Cancel and Try again."; }" \
+    desktop#printing ame desktop printing
+PILLKEY=get-through pill_item get-through "${ gettext "Get me through on a low battery"; }" \
+    "${ gettext "At 20% the pill offers one button: the power saver, a dimmer screen, and backups that wait. Plugging in brings everything back."; }" \
+    desktop#get-me-through ame desktop get-through
 GROUP=""
 
 

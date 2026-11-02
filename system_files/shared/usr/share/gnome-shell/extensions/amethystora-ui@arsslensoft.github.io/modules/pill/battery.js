@@ -52,13 +52,15 @@ export function batteryView({present, state, percentage, timeToEmpty = 0, timeTo
 }
 
 export class Battery {
-    constructor(activities, notice, comfort, glass) {
+    constructor(activities, notice, comfort, glass, through = () => null) {
         this.id = 'battery';
         this.plate = 'battery';
         this._activities = activities;
         this._notice = notice;
         this._comfort = comfort;
         this._glass = glass;
+        // Get me through this (pill/through.js), while its key is on: its words and its button in place of power saving's
+        this._through = through;
     }
 
     enable() {
@@ -136,7 +138,8 @@ export class Battery {
         if (!reading.present || reading.percentage > LOW || reading.state === UPower.DeviceState.CHARGING)
             this._armed = true;
         // Without the comfort module (which says whether power saving is on) or power-profiles-daemon, no offer
-        const canOffer = !!this._comfort && this._profilesOwned();
+        // Nor while Get me through is on already (kept through a lock): its button would do nothing
+        const canOffer = !!this._comfort && this._profilesOwned() && !this._through()?.on;
         if (view.offer && this._armed && canOffer)
             this._show();
         else if (!view.offer)
@@ -152,11 +155,13 @@ export class Battery {
     // --- The offer ------------------------------------------------------------------------------------------------
 
     get text() {
-        return _('Power saving?');
+        return this._through() ? _('Battery low') : _('Power saving?');
     }
 
     get accessible() {
-        return _('Battery at %d percent: turn on power saving?').format(Math.round(this.reading().percentage));
+        return this._through()
+            ? _('Battery at %d percent: get through until you plug in?').format(Math.round(this.reading().percentage))
+            : _('Battery at %d percent: turn on power saving?').format(Math.round(this.reading().percentage));
     }
 
     get row() {
@@ -167,7 +172,7 @@ export class Battery {
         if (!this._content) {
             this._content = new St.BoxLayout({style_class: 'amethystora-pill-content amethystora-pill-battery'});
             this._content.add_child(new St.Label({text: this.text, y_align: Clutter.ActorAlign.CENTER}));
-            const button = chip(_('Turn on'), () => this.turnOn());
+            const button = chip(this._through() ? _('Get me through') : _('Turn on'), () => this._answer());
             button.add_style_class_name('amethystora-pill-battery-button');
             this._content.add_child(button);
         }
@@ -192,6 +197,30 @@ export class Battery {
         this._end();
     }
 
+    // The key changed while the offer shows: it is said again in the other words
+    throughChanged() {
+        const through = !!this._through();
+        if (through === this._throughWas)
+            return;
+        this._throughWas = through;
+        if (this._activities.get('battery') !== this)
+            return;
+        this._end();
+        this._show();
+    }
+
+    // The pill's button: get through while that is on, else power saving
+    _answer() {
+        const through = this._through();
+        if (!through) {
+            this.turnOn();
+            return;
+        }
+        const left = this.reading().timeToEmpty ?? 0;
+        this._answered();
+        through.start(left);
+    }
+
     turnOn() {
         this._answered();
         Gio.DBus.system.call(PROFILES, PROFILES_PATH, 'org.freedesktop.DBus.Properties', 'Set',
@@ -207,6 +236,15 @@ export class Battery {
     }
 
     card(api) {
+        const through = this._through();
+        if (through) {
+            return through.offerCard(api, this.reading(), yes => {
+                if (yes)
+                    this._answer();
+                else
+                    this._answered();
+            });
+        }
         const body = new St.BoxLayout({style_class: 'amethystora-pill-card-body', orientation: Clutter.Orientation.VERTICAL});
         body.add_child(new St.Label({
             style_class: 'amethystora-pill-card-label',

@@ -69,6 +69,16 @@
       <summary>What's new after an update</summary>
       <description>The first session after an update, the pill says "Updated" for a minute, and a click shows what the update brought and opens the Manual's page for it.</description>
     </key>
+    <key name="printing" type="b">
+      <default>true</default>
+      <summary>Print jobs in the pill</summary>
+      <description>While a print job of this account is in the queue, the pill says Printing, the pages when the printer gives them and what is wrong in words, with Cancel and Try again. ame desktop printing and Control write it.</description>
+    </key>
+    <key name="get-through" type="b">
+      <default>true</default>
+      <summary>Get me through on a low battery</summary>
+      <description>The pill's question at 20% offers Get me through: the power saver held, the screen dimmed (not during a call or a recording), the backup and the containers' upgrade waiting for a week at most, all until the machine is plugged in. Off, it offers power saving alone. ame desktop get-through and Control write it.</description>
+    </key>
     <key name="saving-data" type="b">
       <default>true</default>
       <summary>Saving data on a connection that counts it</summary>

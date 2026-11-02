@@ -13,7 +13,7 @@
 #   - the battery's view, live off and on, and ten disables and enables that leave nothing behind.
 # The lab draws without a GPU, where GNOME turns animations off by itself: the motion steps force them on
 # (global.force_animations) and put the switch back.
-# vmlab-paths: @ui/extension.js @ui/*pill* @sf/*themed/shell-pill* @sf/*just/desktop.just @ui/modules/power/slept*
+# vmlab-paths: @ui/extension.js @ui/*pill* @sf/*themed/shell-pill* @sf/*just/desktop.just @ui/modules/power/slept* @sf/usr/share/amethystora/print/* @sf/usr/libexec/amethystora-metered
 source "$(dirname "$0")/lib.sh"
 
 UUID=amethystora-ui@arsslensoft.github.io
@@ -124,10 +124,10 @@ trap cleanup EXIT
 # --- 1-2: the module, and idle is GNOME's clock ---------------------------------------------------------------------
 check "1 the pill module runs" test "$(ev "${UI}.has('pill')")" == true
 # Seven of the pill's own, Later's two and What's new's (the notify group), the digest's lists (finish), the meetings
-# (time), saving data (restart) and the second zone (bar)
-same "1 the schema has its fifteen keys" \
+# (time), saving data (restart), the second zone (bar), and printing and get-through (devices)
+same "1 the schema has its twenty-seven keys" \
     "$(in_session "gsettings list-keys ${PILL}" | sort | paste -sd ' ')" \
-    "digest digest-through digest-times digest-wait glow later later-times live meetings privacy-dots quiet quiet-night saving-data second-zone whats-new"
+    "digest digest-through digest-times digest-wait drop-targets get-through glow hello later later-times live meetings moving music-bars music-see printing privacy-dots quiet quiet-night removable-writes saving-data second-zone stay-awake timer-feel two-at-once weight whats-new"
 same "2 idle" "$(st .activity)" '"idle"'
 same "2 the date menu's only child is the pill, GNOME's clock box in it and shown" \
     "$(ev "(() => { const d = ${PILL_ACTOR}; const box = d._clockDisplay.get_parent(); return d.get_n_children() + ' ' + d.get_first_child().style_class + ' ' + (box.get_parent() === d.get_first_child()) + ' ' + box.visible; })()")" \

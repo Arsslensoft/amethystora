@@ -38,9 +38,13 @@
 // on (pill/drop.js) and a device arriving (pill/hello.js) are the person's own moment, for as long as it lasts. A second
 // timer comes after the first. What is moving (pill/moving.js) runs by itself, after music: the music stays in the pill
 // and it sits beside it.
+// A print job
+// (pill/printing.js) runs by itself but may wait for paper, so it comes before what only reads; getting through on the
+// battery (pill/through.js) only says how things are, beside saving data. A print job that has stood still for ten minutes
+// steps back behind what plays and what is ready (printing-stuck), still in the card.
 
 export const ORDER = ['call', 'recording', 'flat', 'present', 'meeting', 'link', 'code', 'battery', 'agent', 'waiting', 'drop', 'hello', 'stick',
-    'reading', 'timer', 'timer2', 'resume', 'news', 'media', 'moving', 'update', 'saving', 'quiet', 'focus'];
+    'reading', 'timer', 'timer2', 'printing', 'resume', 'news', 'media', 'moving', 'update', 'printing-stuck', 'through', 'saving', 'quiet', 'focus'];
 
 // At most this many others are listed in a card
 const OTHERS = 3;

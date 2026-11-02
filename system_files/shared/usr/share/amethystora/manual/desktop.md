@@ -114,11 +114,39 @@ theme, and Screenshot, Lock, Log out, Settings and Power.
   that cannot stop charging early has no such switch.
 - **Each app's volume.** While apps play sound, each has its own slider and mute button under the
   volume slider, and the buttons beside "Playing now" send the sound to another output, as the arrow of
-  the volume slider does.
+  the volume slider does. To find what is making a noise, look at the top of the list: the apps sending
+  sound come first, a sandboxed app goes by its own name, and an app that only holds its sound open says
+  **Paused**, dimmed. It asks the sound server what each stream is while the menu is open, and never listens
+  to one, so it cannot tell which is loudest, and an app sending silence counts as sending. `ame desktop
+  quick-settings sounding off` lists them all by name instead, and Control has it as **Which app is making
+  sound**.
 - **The theme.** A tap on a swatch switches to that theme, as `ame desktop theme` does: the desktop and
   Amethystora's apps change at once, other apps the next time they start.
   `ame desktop quick-settings theme off` hides the swatches, and `on` brings them back; you can also
   hide them as you hide a tile.
+
+### Send your screen to a TV
+
+`ame desktop send-to-tv on`, or **Send to the TV** in [Control](control.md), adds a tile to quick settings.
+Pressed the first time, its menu says what it needs: GNOME Network Displays, a free app from Flathub, which a
+terminal fetches after you press **Install** and say yes (`ame desktop send-to-tv setup`). From then on, the tile
+opens that app. Its own window lists the TVs and screens it finds, and you pick one there, and then what to show.
+
+**Nothing here has been seen working with a real TV yet.** It is written to work like this: a screen cast is a screen
+share like any other, so the pill should say so for as long as it lasts, the glow should go round the screen, and the
+[share guard](#share-guard) covers the windows on its list while the whole screen is shared. Nothing runs until you
+press the tile.
+
+A TV or stick you can cast to over your network, as you would from a phone, should be found, if the network lets
+devices find each other. Two switches of yours can stop that: with `ame security firewall-away on`, a network you have
+not named home answers nothing, discovery included, and with `ame security network-daemons on` the program that finds
+devices on the network (Avahi) is stopped, so nothing is found. A TV reached straight over Wi-Fi (Miracast, over
+Wi-Fi Direct) needs a firewall zone of Network Displays' own, which its Flatpak cannot bring and the image does not
+carry or open: it is not expected to work, and Amethystora does not open it. Try your TV before the meeting.
+
+The app is allowed to talk to NetworkManager, Avahi and the firewall on the system bus. It can read the firewall's
+configuration, and it may ask for a password to change it. If a password prompt about the firewall comes up and you did
+not expect it, refuse it: the firewall is set in [Security](security.md), not by this app.
 
 ## Power you can see
 
@@ -170,6 +198,23 @@ salted checksum of what was said, in `~/.local/state/amethystora/sleep-report.js
 
 `ame desktop power battery on|off`, `ame desktop power busy on|off`, `ame desktop power devices on|off`,
 `ame desktop power flat on|off` and `ame desktop power sleep on|off`, also in [Control](control.md).
+
+### Get me through
+
+At 20%, the pill's question offers **Get me through**, and its card says what that changes: the power saver, the
+built-in screen at 60% of what it was, and the backup and the containers' upgrade waiting, for a week at most (a backup
+to a disk in this computer never waits). The system update waits on its own only on a battery under 20%. The pill then says **Lasting until about 17:20**, from the battery's own estimate, so
+it is only that; its card also says how long the battery said when you pressed the button, and that is as much
+as it can say of how long this bought.
+
+The moment you plug in, all of it goes back by itself, or at **Back to normal** in the card: the power mode as it
+was, the screen as it was unless you moved it since, and what waited runs at its next turn. It also ends if you choose
+another power mode by hand, and it ends after a lock if the machine was plugged in meanwhile. If the session ends first
+(the battery runs out), the screen's brightness is put back at the next start: the brightness it had is kept in a small
+file in your home until then. While a call, a recording or a share, the microphone or the camera is on, the screen is not
+dimmed (with the privacy dots off, a call on this computer cannot be told, and the card says so), but the power saver
+is held in any case. An update or a backup you start yourself still runs. It never comes on by itself. `ame desktop get-through off` makes the question offer power saving alone, and **Get me through on a
+low battery** in Control is the same switch.
 
 ## Today
 
@@ -246,8 +291,10 @@ pill, or `Super+V`, always opens the calendar.
   [What's new](updates.md#whats-new) in the Manual.
 - **A meeting about to start**: see [Meetings in the pill](#meetings-in-the-pill).
 - **The battery.** Rest the pointer on the battery in the top bar for the time left, or the time until
-  it is full. At 20%, the pill turns amber and offers power saving, once: it never turns it on by itself.
+  it is full. At 20%, the pill turns amber and offers [Get me through](#get-me-through), once: it never
+  turns it on by itself.
 - **A disk still being written to.** See [A USB stick that tells the truth](#a-usb-stick-that-tells-the-truth).
+- **Printing.** See [Printing](#printing).
 
 `ame desktop pill off` gives you GNOME's clock alone; `ame desktop pill on` brings the pill back.
 
@@ -305,6 +352,21 @@ The bars can follow the real sound of the player's own stream while they are on 
 shown not to cost the computer more than 1% of a processor: `ame desktop pill music-bars on`, or **Bars that follow the
 sound** in [Control](control.md). The level is read and thrown away, never recorded. Reduce motion, power saving, the light
 desktop, a blank screen, the battery and a player whose stream cannot be told have the four beats, as they do with it off.
+
+### Printing
+
+While a job of yours is in the queue the pill says **Printing**, with **3 of 12 pages** or **page 3** when the
+printer gives those, and **Printed** at the end. A printer that reports nothing simply says Printing. When
+something is wrong it says so in words: out of paper, the paper stuck, out of ink or toner, a cover open, the
+printer not answering. Its card has **Cancel**, which clears your job, and, when the job needs a push, **Try
+again**. Starting a printer that has stopped takes an administrator's account; for anyone else the pill offers
+Settings' Printers. Paper added or a cover closed carries on by itself.
+
+A job that has not changed for ten minutes (a printer left off, a job held on purpose) is asked about only now and then
+and steps back in the pill behind music and updates, still in the card. It is yours only: other accounts' jobs are
+left alone, and the document's name is never asked for. GNOME's own
+notices about the printer stay. `ame desktop printing off` turns this off, and Control has it as **Printing in
+the pill**.
 
 ### Meetings in the pill
 

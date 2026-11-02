@@ -8,7 +8,7 @@
 # The purge runs an hour after gsd-housekeeping started and every hour after, so the wait outlasts a phase's 30
 # minutes: each phase waits up to 20, then the next one goes on in the same boot (continue_phase). The hour is of
 # time awake, and an idle session suspends after 15 minutes, so the session is kept from suspending meanwhile.
-# vmlab-paths: @ui/modules/pill/moving.js @sf/usr/libexec/amethystora-reset-settings @sf/usr/share/glib-2.0/schemas/zz* @sf/*just/desktop.just @sf/usr/libexec/amethystora-free-space
+# vmlab-paths: @ui/modules/pill/moving.js @sf/usr/libexec/amethystora-reset-settings @sf/usr/share/glib-2.0/schemas/zz* @sf/*just/desktop.just @sf/usr/libexec/amethystora-free-space @ui/modules/privacy.js @ui/*quick/tv.js
 source "$(dirname "$0")/lib.sh"
 
 STATE=/var/lib/vmlab-tests/93-privacy

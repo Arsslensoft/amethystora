@@ -4,7 +4,7 @@
 # NetworkManager's check really off and on again whoever last set it, the firmware catalogue's timer, the account's
 # location), and then the machine left idle with resolved's monitor listening: every name it looks up is one the
 # list names. That last check is the one that finds the next thing nobody listed.
-# vmlab-paths: @sf/usr/libexec/amethystora-sends @sf/usr/libexec/amethystora-hardening @ui/modules/tools/reach*
+# vmlab-paths: @sf/usr/libexec/amethystora-sends @sf/usr/libexec/amethystora-hardening @ui/modules/tools/reach* @ui/*quick/tv.js
 source "$(dirname "$0")/lib.sh"
 
 H=/usr/libexec/amethystora-hardening

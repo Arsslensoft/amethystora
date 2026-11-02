@@ -15,5 +15,15 @@
       <summary>Tiles put away</summary>
       <description>The ids of the tiles taken out of quick settings; theme puts away the theme block.</description>
     </key>
+    <key name="sounding-apps" type="b">
+      <default>true</default>
+      <summary>Say which app is making sound</summary>
+      <description>While quick settings is open, Playing now lists first the apps sending sound, says Paused of the rest, and names a sandboxed app by its launcher. It asks the sound server what each stream is and never listens to one. ame desktop quick-settings sounding and Control write it.</description>
+    </key>
+    <key name="send-to-tv" type="b">
+      <default>false</default>
+      <summary>A tile to send the screen to a TV</summary>
+      <description>A tile in quick settings opens GNOME Network Displays, which lists the TVs and screens nearby; the first time, it offers to fetch that app from Flathub, after saying what it may reach (the firewall's configuration, NetworkManager and Avahi on the system bus). Nothing runs until the tile is pressed. It has not been tried with a real TV, and a TV that needs a direct Wi-Fi link (Miracast) is not expected to work. ame desktop send-to-tv and Control write it.</description>
+    </key>
   </schema>
 </schemalist>

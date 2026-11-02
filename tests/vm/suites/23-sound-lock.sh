@@ -17,7 +17,7 @@
 # A phone's text message (item 32) needs a phone, which the lab has not: apps/connect/tests/notifications.rs checks its
 # sound-name hint over D-Bus against a stand-in notification server.
 # It leaves the account as it found it: sounds soft, corners off, no notification of its own.
-# vmlab-paths: @ui/extension.js @ui/*sounds* @ui/*bezel* @sf/usr/share/sounds/* @sf/usr/libexec/amethystora-login-background @sf/*just/desktop.just
+# vmlab-paths: @ui/extension.js @ui/*sounds* @ui/*bezel* @sf/usr/share/sounds/* @sf/usr/libexec/amethystora-login-background @ui/*quick/volume.js @ui/*quick/sounding.js @sf/*just/desktop.just
 source "$(dirname "$0")/lib.sh"
 
 UUID=amethystora-ui@arsslensoft.github.io

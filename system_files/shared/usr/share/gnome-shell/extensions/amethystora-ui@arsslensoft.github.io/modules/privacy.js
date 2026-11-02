@@ -92,6 +92,11 @@ ${e.stack}`);
         this._guard.setLook(look);
     }
 
+    // Whether the share guard is on at all (asked by quick settings' tile to send the screen to a TV)
+    get guardOn() {
+        return !!this._guard;
+    }
+
     // Whether the share guard covers the window (asked by the glass)
     covers(window) {
         return this._guard?.covers(window) ?? false;

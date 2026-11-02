@@ -661,6 +661,21 @@ for file in words wordsProvider remember rememberProvider; do
     [[ -z "$(grep -nE '_sync\(|file_get_contents' "${UI_EXTENSION}/modules/search/${file}.js")" ]]
 done
 grep -q "output(\[HELPER\], cancellable, JSON.stringify(question))" "${UI_EXTENSION}/modules/search/rememberProvider.js"
+# Round 7's devices (plans/ui-ideas/r7/spec-devices.md): printing asks CUPS for states and pages and never for a document's
+# name, the sound rows keep no more than three facts of a stream, get-through's mark holds up only the account's own timed
+# runs on battery (never longer than a week, and a local backup never), the programs they run are in the image, and none of their files blocks the shell
+env LD_LIBRARY_PATH=/apps-stage/usr/lib64 NODE_ICU_DATA="$(echo /apps-stage/usr/share/node-*/icudata)" /apps-stage/usr/bin/node /ctx/build_files/shared/test-devices.mjs
+bash /ctx/build_files/shared/test-get-through.sh /usr/libexec/amethystora-metered
+for program in ipptool cancel cupsenable lp pactl flatpak; do command -v "${program}" >/dev/null; done
+grep -qE 'job-name|job-originating|printer-state-message|notify-text' /usr/share/amethystora/print/jobs-state.test && false
+test -s /usr/share/amethystora/print/jobs-state.test
+test ! -e /usr/share/amethystora/print/job-state.test
+for file in pill/printing.js pill/printwords.js pill/through.js quick/sounding.js quick/tv.js; do
+    test -s "${UI_EXTENSION}/modules/${file}"
+    grep -nE '[a-z_]_sync\(|file_get_contents' "${UI_EXTENSION}/modules/${file}" && false
+done
+# The tile only ever opens the app, and only a person's yes in a terminal fetches it
+grep -q 'flatpak' "${UI_EXTENSION}/modules/quick/tv.js" && false
 # Text shortcuts (plans/beyond/spec-phase7.md, part B): off as the image ships, since they look at what is typed, the
 # module after the emoji picker, the helper the only writer of the file, its rules and the shell's one list of cases (the
 # installed helper, on the apps stage's Node), its two commands, and neither the switch nor a text in the setup file
@@ -773,8 +788,8 @@ grep -q "shouldShowApp" "${UI_EXTENSION}/modules/fuzzy.js"
 # apps, its three recipes, and quiet holding banners in memory only: nothing of it writes GNOME's show-banners
 PILL=org.gnome.shell.extensions.amethystora-ui.pill
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${PILL}" | sort | paste -sd ' ')" == \
-    "digest digest-through digest-times digest-wait drop-targets glow hello later later-times live meetings moving music-bars music-see privacy-dots quiet quiet-night removable-writes saving-data second-zone stay-awake timer-feel two-at-once weight whats-new" ]]
-for key in live privacy-dots glow quiet later whats-new meetings; do
+    "digest digest-through digest-times digest-wait drop-targets get-through glow hello later later-times live meetings moving music-bars music-see printing privacy-dots quiet quiet-night removable-writes saving-data second-zone stay-awake timer-feel two-at-once weight whats-new" ]]
+for key in live privacy-dots glow quiet later whats-new meetings printing get-through; do
     [[ "$(GSETTINGS_BACKEND=memory gsettings get "${PILL}" "${key}")" == true ]]
 done
 for key in quiet-night digest; do
@@ -897,7 +912,9 @@ grep -q "request_quit()" "${UI_EXTENSION}/modules/power/busy.js"
 # recipe and Control's two entries. Nothing in it reads text as markup, the theme block runs `ame desktop theme` and
 # nothing else, and the battery's limit is UPower's own method, never a file of the kernel's.
 QUICK=org.gnome.shell.extensions.amethystora-ui.quick
-[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${QUICK}" | sort | paste -sd ' ')" == "tile-hidden tile-order" ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${QUICK}" | sort | paste -sd ' ')" == "send-to-tv sounding-apps tile-hidden tile-order" ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings get "${QUICK}" sounding-apps)" == true ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings get "${QUICK}" send-to-tv)" == false ]]
 for key in tile-order tile-hidden; do
     [[ "$(GSETTINGS_BACKEND=memory gsettings get "${QUICK}" "${key}")" == "@as []" ]]
 done
