@@ -27,6 +27,9 @@ const RING = 3;
 const OFFSET = 26;
 const KEPT = 8;
 
+// How far the hint stays above the screen's bottom, clear of the dock in the frozen picture
+const HINT_ABOVE = 96;
+
 // The last colours picked, newest first, as hex: at module scope, so that a screen lock keeps them
 const picked = [];
 
@@ -244,7 +247,7 @@ export class ColourPicker {
         const [, hintWidth] = this._hint.get_preferred_width(-1);
         const [, hintHeight] = this._hint.get_preferred_height(-1);
         this._hint.set_position(Math.round(monitor.x + (monitor.width - hintWidth) / 2),
-            Math.round(monitor.y + monitor.height - hintHeight - 14));
+            Math.round(monitor.y + monitor.height - hintHeight - HINT_ABOVE * St.ThemeContext.get_for_stage(global.stage).scale_factor));
     }
 
     // The 7 × 7 pixels round the pointer, in a circle, with faint lines between them and the middle one outlined
