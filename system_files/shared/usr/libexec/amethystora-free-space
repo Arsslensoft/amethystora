@@ -1,0 +1,366 @@
+#!/usr/bin/python3 -I
+"""amethystora-free-space: what can be cleared when the disk runs low, in one total, and clearing it (R7-58). Amethystora UI's
+tools module runs it when GNOME's own low-space notice fires, never on a timer; `ame system free-space` runs it in a terminal.
+
+    amethystora-free-space check [--all] --json   how much space is left, whether it is low, what can be cleared
+    amethystora-free-space clear [--all] --json   clears exactly that, and says how much came free
+
+Only what comes back by itself and none of the person's work: runtimes no app uses, Homebrew's old versions and its cache,
+container layers no image names, the caches of Flatpak apps that are not running, thumbnails, and what the trash has been told
+to let go of: with the account's own housekeeping on, what is older than its `old-files-age`, and never younger than 30 days.
+With that housekeeping off the account keeps its trash until it empties it, so none of it counts. Never a container's volume or
+an image with a name, never a document: `ame system clean` asks about the rest, one thing at a time. Without --all, only what
+lies on a disk that is low counts, and only that is cleared.
+
+Nothing is written but what it clears, and the answer holds totals and no name. `check` connects to nothing and asks for no
+password; `clear`, after a person's click, is what may (Homebrew fetches its list of formulae, polkit may ask).
+"""
+
+import json
+import os
+import shutil
+import subprocess
+import sys
+import time
+
+import gi
+
+gi.require_version("Gio", "2.0")
+from gi.repository import Gio, GLib  # noqa: E402
+
+# The trash is never touched sooner than this, whatever the account's own setting
+FEWEST_TRASH_DAYS = 30
+HOUSEKEEPING = "org.gnome.settings-daemon.plugins.housekeeping"
+PRIVACY = "org.gnome.desktop.privacy"
+# Homebrew would otherwise check for news first
+QUIET_BREW = {**os.environ, "HOMEBREW_NO_AUTO_UPDATE": "1", "HOMEBREW_NO_ANALYTICS": "1", "HOMEBREW_NO_INSTALL_CLEANUP": "1"}
+ASK = os.environ.get("AMETHYSTORA_FLATPAK_ASK", "/usr/libexec/amethystora-flatpak-ask")
+
+
+def brew():
+    return os.environ.get("AMETHYSTORA_BREW", "/home/linuxbrew/.linuxbrew/bin/brew")
+
+
+def be_gentle():
+    """Whatever the desktop is doing comes first"""
+    os.nice(10)
+    subprocess.run(["ionice", "-c3", "-p", str(os.getpid())], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def home():
+    return os.path.realpath(os.environ["HOME"])
+
+
+def places():
+    return {"home": home(), "system": "/var/lib/flatpak" if os.path.isdir("/var/lib/flatpak") else home()}
+
+
+def size_of(path):
+    """Bytes on disk under a path, never through a link and never onto another file system"""
+    try:
+        top = os.lstat(path)
+    except OSError:
+        return 0
+    total = top.st_blocks * 512
+    if not os.path.isdir(path) or os.path.islink(path):
+        return total
+    for folder, folders, files in os.walk(path, onerror=lambda _error: None):
+        for name in folders + files:
+            try:
+                stat = os.lstat(os.path.join(folder, name))
+            except OSError:
+                continue
+            if stat.st_dev == top.st_dev:
+                total += stat.st_blocks * 512
+    return total
+
+
+def remove(path):
+    if os.path.isdir(path) and not os.path.islink(path):
+        shutil.rmtree(path, ignore_errors=True)
+    else:
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+
+
+def run(argv, timeout, env=None):
+    try:
+        return subprocess.run(argv, capture_output=True, text=True, timeout=timeout, stdin=subprocess.DEVNULL, check=False, env=env)
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+# --- What is low ---------------------------------------------------------------------------------------------------
+
+def thresholds():
+    """GNOME's own: what makes its notice fire is what counts as low here"""
+    stand_in = os.environ.get("AMETHYSTORA_LOW_SPACE")
+    if stand_in:
+        percent, gigabytes = stand_in.split()
+        return float(percent), float(gigabytes)
+    source = Gio.SettingsSchemaSource.get_default()
+    if source and source.lookup(HOUSEKEEPING, True):
+        settings = Gio.Settings.new(HOUSEKEEPING)
+        return settings.get_double("free-percent-notify"), float(settings.get_int("free-size-gb-no-notify"))
+    return 0.05, 2.0
+
+
+def disks():
+    """A disk for each place: what it is called, what is free on it and how large it is. By the device the mount comes from,
+    since a btrfs subvolume has an st_dev and an f_fsid of its own, and the home and the system are two subvolumes of one disk."""
+    stand_in = os.environ.get("AMETHYSTORA_DISKS")
+    if stand_in:
+        return json.loads(stand_in)
+    mounts = []
+    try:
+        with open("/proc/self/mountinfo", encoding="utf-8", errors="replace") as lines:
+            for line in lines:
+                before, _, after = line.partition(" - ")
+                fields = before.split()
+                parts = after.split()
+                if len(fields) >= 5 and len(parts) >= 2:
+                    mounts.append((fields[4].replace("\\040", " "), parts[1]))
+    except OSError:
+        pass
+    found = {}
+    for name, path in places().items():
+        real = os.path.realpath(path)
+        under = [mount for mount in mounts if real == mount[0] or real.startswith(mount[0].rstrip("/") + "/")]
+        source = max(under, key=lambda mount: len(mount[0]))[1] if under else real
+        stat = os.statvfs(path)
+        found[name] = {"id": source, "free": stat.f_frsize * stat.f_bavail, "size": stat.f_frsize * stat.f_blocks}
+    return found
+
+
+def is_low(disk, percent, gigabytes):
+    return disk["size"] > 0 and disk["free"] / disk["size"] <= percent and disk["free"] <= gigabytes * 1024 ** 3
+
+
+# --- What can be cleared ------------------------------------------------------------------------------------------
+
+def unused_runtimes():
+    """Runtimes and extensions no installed app needs, as `flatpak uninstall --unused` picks them, per installation. The account's
+    own only when it has one: asking would make the folder."""
+    stand_in = os.environ.get("AMETHYSTORA_UNUSED_RUNTIMES")
+    if stand_in:
+        with open(stand_in, encoding="utf-8") as listed:
+            return json.load(listed)
+    found = []
+    try:
+        gi.require_version("Flatpak", "1.0")
+        from gi.repository import Flatpak
+
+        installations = [("system", Flatpak.Installation.new_system(None))]
+        if os.path.isdir(f"{GLib.get_user_data_dir()}/flatpak"):
+            installations.append(("user", Flatpak.Installation.new_user(None)))
+        for name, installation in installations:
+            for ref in installation.list_unused_refs(None, None):
+                found.append({"installation": name, "size": ref.get_installed_size()})
+    except (ImportError, ValueError, GLib.Error):
+        pass
+    return found
+
+
+def others_here():
+    """Whether the machine has another account. Flatpak's list of what is unused knows only this account's own apps (seen: another
+    account's list took the runtime of this one's), so with a second account the machine's runtimes are `ame system clean`'s."""
+    try:
+        names = os.listdir(os.environ.get("AMETHYSTORA_HOMES", "/var/home"))
+    except OSError:
+        return False
+    return any(name != os.path.basename(home()) and not name.startswith(".") for name in names)
+
+
+def running_apps():
+    done = run(["flatpak", "ps", "--columns=application"], 10)
+    return set(done.stdout.split()) if done and done.returncode == 0 else None
+
+
+def app_caches():
+    """The cache folder of each Flatpak app that is not running, and thumbnails, which come back when wanted"""
+    found = []
+    running = running_apps()
+    base = f"{home()}/.var/app"
+    # When it cannot be told what runs, nothing is taken from under an app
+    if running is not None and os.path.isdir(base):
+        for app in sorted(os.listdir(base)):
+            cache = f"{base}/{app}/cache"
+            if app not in running and os.path.isdir(cache) and not os.path.islink(cache) and not os.path.islink(f"{base}/{app}"):
+                found.append(cache)
+    thumbnails = f"{home()}/.cache/thumbnails"
+    if os.path.isdir(thumbnails) and not os.path.islink(thumbnails):
+        found.append(thumbnails)
+    return found
+
+
+def trash_days():
+    """How old a thing in the trash has to be to count here, as the account's own housekeeping has it, or None when it keeps its
+    trash until it empties it. A schema that cannot be read says nothing about what the account wants, so nothing counts."""
+    source = Gio.SettingsSchemaSource.get_default()
+    if not source or not source.lookup(PRIVACY, True):
+        return None
+    settings = Gio.Settings.new(PRIVACY)
+    if not settings.get_boolean("remove-old-trash-files"):
+        return None
+    return max(FEWEST_TRASH_DAYS, settings.get_uint("old-files-age"))
+
+
+def trash_entries(days):
+    """(info file, what it holds, whether it may go) of each thing in the account's trash. An info file with no name before its
+    .trashinfo would name the whole of Trash/files, so it names nothing."""
+    base = f"{GLib.get_user_data_dir()}/Trash"
+    oldest = None if days is None else time.time() - days * 86400
+    found = []
+    try:
+        names = os.listdir(f"{base}/info")
+    except OSError:
+        return found
+    for name in names:
+        stem = name[:-len(".trashinfo")] if name.endswith(".trashinfo") else ""
+        if not stem:
+            continue
+        info = f"{base}/info/{name}"
+        when = None
+        try:
+            with open(info, encoding="utf-8", errors="replace") as lines:
+                for line in lines:
+                    if line.startswith("DeletionDate="):
+                        when = time.mktime(time.strptime(line.split("=", 1)[1].strip()[:19], "%Y-%m-%dT%H:%M:%S"))
+                        break
+        except (OSError, ValueError):
+            continue
+        # A file with no date of its own is never old enough to go
+        found.append((info, f"{base}/files/{stem}", oldest is not None and when is not None and when < oldest))
+    return found
+
+
+def brew_frees():
+    """What Homebrew's old versions take, read off the disk: every version of a formula but the one in use. Never `brew cleanup
+    --dry-run`, which fetches Homebrew's list of formulae (seen: it fails without a network), and checking is nobody's click."""
+    tool = brew()
+    if not (os.access(tool, os.X_OK) and os.access(os.path.dirname(tool), os.W_OK)):
+        return 0
+    prefix = os.path.dirname(os.path.dirname(tool))
+    total = 0
+    try:
+        names = os.listdir(f"{prefix}/Cellar")
+    except OSError:
+        return 0
+    for name in names:
+        try:
+            with os.scandir(f"{prefix}/Cellar/{name}") as entries:
+                versions = [entry for entry in entries if entry.is_dir(follow_symlinks=False)]
+            in_use = os.path.basename(os.path.realpath(f"{prefix}/opt/{name}"))
+            if in_use not in [version.name for version in versions]:
+                in_use = max(versions, key=lambda version: version.stat(follow_symlinks=False).st_mtime).name
+        except (OSError, ValueError):
+            continue
+        total += sum(size_of(version.path) for version in versions if version.name != in_use)
+    return total
+
+
+def podman_here():
+    return os.path.isdir(f"{GLib.get_user_data_dir()}/containers/storage") and shutil.which("podman")
+
+
+def dangling_images():
+    if not podman_here():
+        return 0
+    done = run(["podman", "image", "ls", "--filter", "dangling=true", "--format", "json"], 60)
+    try:
+        return sum(int(image.get("Size", 0)) for image in json.loads(done.stdout)) if done and done.returncode == 0 else 0
+    except (ValueError, AttributeError, TypeError):
+        return 0
+
+
+def check(everything):
+    """The totals, and which of the two places count: `clear` acts on exactly those"""
+    percent, gigabytes = thresholds()
+    found = disks()
+    low = {name: is_low(disk, percent, gigabytes) for name, disk in found.items()}
+    tight = {found[name]["id"] for name in found if low[name]}
+    counts = {name: everything or found[name]["id"] in tight for name in found}
+
+    runtimes = {"system": 0, "user": 0}
+    shared = others_here()
+    for item in unused_runtimes():
+        if counts["system" if item["installation"] == "system" else "home"] and not (shared and item["installation"] == "system"):
+            runtimes[item["installation"]] += int(item["size"])
+    caches = images = old_brew = trash = recent = 0
+    days = trash_days()
+    if counts["home"]:
+        caches = sum(size_of(path) for path in app_caches())
+        images = dangling_images()
+        old_brew = brew_frees()
+        for _info, held, old in trash_entries(days):
+            if old:
+                trash += size_of(held)
+            else:
+                recent += size_of(held)
+    apps = runtimes["system"] + runtimes["user"] + caches + images + old_brew
+    answer = {
+        "version": 1,
+        "low": any(low.values()),
+        "free": min((disk["free"] for name, disk in found.items() if low[name]), default=found["home"]["free"]),
+        "total": apps + trash,
+        "apps": apps,
+        "trash": trash,
+        "trash_recent": recent,
+        "trash_days": days,
+        "home_part": caches + images + trash + runtimes["user"] + old_brew,
+        "snapshots": snapshots_on(),
+    }
+    return answer, {"counts": counts, "runtimes": runtimes, "caches": caches, "images": images, "brew": old_brew, "days": days}
+
+
+def snapshots_on():
+    done = run(["systemctl", "is-enabled", "--quiet", "amethystora-home-snapshot.timer"], 5)
+    return bool(done and done.returncode == 0)
+
+
+def room():
+    """What is free on each disk, once each"""
+    return sum({disk["id"]: disk["free"] for disk in disks().values()}.values())
+
+
+def clear(everything):
+    before, parts = check(everything)
+    was = room()
+    # A person pressed this, and polkit may want an administrator's password here (flatpak-password, or an account that is not one)
+    if parts["runtimes"]["system"]:
+        run([ASK, "uninstall-unused", "--system"], 600)
+    if parts["runtimes"]["user"]:
+        run([ASK, "uninstall-unused", "--user"], 600)
+    if parts["counts"]["home"]:
+        if parts["caches"]:
+            for cache in app_caches():
+                for name in os.listdir(cache):
+                    remove(os.path.join(cache, name))
+        if parts["images"]:
+            run(["podman", "image", "prune", "-f"], 300)
+        if parts["brew"]:
+            run([brew(), "cleanup"], 600, QUIET_BREW)
+        if before["trash"]:
+            for info, held, old in trash_entries(parts["days"]):
+                if old:
+                    remove(held)
+                    if not os.path.lexists(held):
+                        remove(info)
+    gained = max(0, room() - was)
+    return {"version": 1, "cleared": gained, "free": before["free"] + gained, "expected": before["total"],
+            "home_part": before["home_part"], "snapshots": before["snapshots"]}
+
+
+def main(args):
+    if not args or args[0] not in ("check", "clear") or "--json" not in args or set(args[1:]) - {"--all", "--json"}:
+        return 64
+    be_gentle()
+    everything = "--all" in args
+    print(json.dumps(check(everything)[0] if args[0] == "check" else clear(everything)))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

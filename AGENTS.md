@@ -1004,7 +1004,8 @@ snapshots` and `ame security ransomware restore` take their lists from `points` 
 report's `backup-runs` check reads `status`. Never work out a point, a path or a state in the window.
 
 - **The window passes back only what the helper said.** A point is one `points` gave, a path one `ls` listed
-  (or a folder above it, or the folder the window was opened on), and a way to put back one of
+  (or a folder above it, the folder the window was opened on, or the file `--versions=FILE` names, Files' Earlier versions),
+  and a way to put back one of
   `keep-both`, `replace` and `skip`; each is an argument of its own. The helper refuses a path that
   leaves the home or starts with `-`, and puts back only inside the home.
 - **Nothing deletes.** Neither the helper nor the window runs `restic forget`, `prune`, `rewrite` or

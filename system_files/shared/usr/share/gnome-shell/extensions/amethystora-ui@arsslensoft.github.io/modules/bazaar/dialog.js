@@ -3,10 +3,11 @@
 
 import Atk from 'gi://Atk';
 import Clutter from 'gi://Clutter';
+import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import St from 'gi://St';
 
-import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
+import {gettext as _, ngettext} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Dialog from 'resource:///org/gnome/shell/ui/dialog.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as ModalDialog from 'resource:///org/gnome/shell/ui/modalDialog.js';
@@ -37,6 +38,7 @@ class Choice extends St.Button {
         const label = new St.Label({text: detail, style_class: 'amethystora-bazaar-choice-detail'});
         label.clutter_text.line_wrap = true;
         text.add_child(label);
+        this.detail = label;
         box.add_child(text);
         this.set_child(box);
     }
@@ -115,6 +117,87 @@ export function askToUninstall(name, id) {
         dialog.open();
     });
     return {dialog, answer};
+}
+
+// Uninstall means gone (R7-41): what the app leaves behind, with a switch for it, on as it opens. The dialog shows at once, and
+// fill() gives it the size and the dates when the helper has read them, leaving a tick the person has already changed as it is.
+// Its answer: null when the person keeps the app, else whether the data goes with it, and whether it had none.
+export function askToRemove(name, id) {
+    const dialog = new ModalDialog.ModalDialog({styleClass: styleClass()});
+    const content = new Dialog.MessageDialogContent({title: _('Remove %s?').format(name), description: _('Flatpak app ID: %s').format(id)});
+    dialog.contentLayout.add_child(content);
+
+    const list = new St.BoxLayout({
+        style_class: 'amethystora-bazaar-choices',
+        orientation: Clutter.Orientation.VERTICAL,
+        x_align: Clutter.ActorAlign.CENTER,
+    });
+    const app = new Choice(_('The app'), _('Looking…'));
+    // Marked as going, like the data's row; keeping it is the Keep button
+    app.checked = true;
+    app.reactive = false;
+    app.can_focus = false;
+    app.accessible_role = Atk.Role.LABEL;
+    const data = new Choice(_('Its settings and data'), _('Looking…'));
+    data.accessible_role = Atk.Role.CHECK_BOX;
+    data.toggle_mode = true;
+    data.checked = true;
+    list.add_child(app);
+    list.add_child(new St.Widget({style_class: 'amethystora-bazaar-line'}));
+    list.add_child(data);
+    dialog.contentLayout.add_child(list);
+
+    const note = new St.Label({style_class: 'amethystora-bazaar-choice-detail', x_align: Clutter.ActorAlign.CENTER});
+    note.clutter_text.line_wrap = true;
+    note.text = _('Documents saved outside its own folder stay.');
+    dialog.contentLayout.add_child(note);
+
+    let none = false;
+    const answer = new Promise(resolve => {
+        let chosen = null;
+        dialog.addButton({label: _('Keep'), action: () => dialog.close(), key: Clutter.KEY_Escape});
+        const remove = dialog.addButton({
+            label: _('Remove'),
+            action: () => {
+                chosen = {data: data.checked, none};
+                dialog.close();
+            },
+        });
+        remove.add_style_class_name('amethystora-bazaar-uninstall');
+        dialog.setInitialKeyFocus(data);
+        dialog.connect('closed', () => resolve(chosen));
+        dialog.open();
+    });
+
+    const fill = info => {
+        if (!list.get_parent())
+            return;
+        // Nothing could be read: nothing is claimed, and the tick stays what the person left it
+        if (!info) {
+            app.detail.text = _('When it was last opened could not be read');
+            data.detail.text = _('Its size could not be read');
+            return;
+        }
+        const when = Number.isInteger(info.last_opened) ? GLib.DateTime.new_from_unix_local(info.last_opened) : null;
+        app.detail.text = when
+            ? _('Last opened in %s').format(when.format(when.get_year() === GLib.DateTime.new_now_local().get_year() ? '%OB' : '%OB %Y'))
+            : _('Not opened lately');
+        data.detail.text = info.data
+            ? _('%s, what it saved in its own folder').format(GLib.format_size(info.data_bytes ?? 0))
+            : _('It has none');
+        if (info.data === false) {
+            none = true;
+            data.reactive = false;
+            data.checked = false;
+        }
+        if (Number.isInteger(info.trash_days)) {
+            note.text = ngettext('Documents saved outside its own folder stay. You have %d day to change your mind.',
+                'Documents saved outside its own folder stay. You have %d days to change your mind.', info.trash_days).format(info.trash_days);
+        } else {
+            note.text = _('Documents saved outside its own folder stay. Its data stays in the trash until you empty it.');
+        }
+    };
+    return {dialog, answer, fill};
 }
 
 // For an app installed both for the account and for the whole machine: nothing is removed here

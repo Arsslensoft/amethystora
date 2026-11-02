@@ -132,6 +132,15 @@ Docker's; the Flatpak runtimes no app needs; rpm-ostree's temporary files and ca
 Homebrew no longer needs, with its download cache. It removes no container and no deployment: those
 are `podman rm` and [rolling back](updates.md#rolling-back)'s business.
 
+When the disk actually runs low, GNOME's notice says it for you: **Nearly out of room**, how much can be cleared, and that
+none of it is your work, with **Show me first** and **Clear**. That is runtimes no app uses, Homebrew's old versions, container
+layers without a name, the caches of Flatpak apps that are not running, thumbnails, and what your Privacy settings already
+let go from the trash: older than the days you chose there, and never younger than 30. With removing old trash turned off there,
+it takes nothing from the trash. It never takes a document, a container's volume or a named image. `ame system free-space`
+does the same in a terminal, whenever you like. With the hourly snapshots on, what was in your home folder comes free only as
+they expire, within 14 days, and the notice says so. `ame desktop low-space off`, or **Offer to clear space when the disk runs
+low** in [Control](control.md), leaves GNOME's own notice.
+
 ### A disk of a pool failed
 
 The notification names the pool and the disk, and says whether every file is still there. **Open

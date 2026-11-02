@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Open Anything
+GenericName=File Opener
+Comment=Say what a file is, and offer the app that opens it
+Exec=/usr/libexec/amethystora-open-anything %f
+Icon=application-x-generic
+Terminal=false
+NoDisplay=true
+MimeType=application/octet-stream;
+Categories=Utility;

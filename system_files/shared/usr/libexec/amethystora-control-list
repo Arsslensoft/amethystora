@@ -436,6 +436,7 @@ gsettings_read quit org.gnome.shell.extensions.amethystora-ui.quit
 # The UI's privacy apart from GNOME's above: one name each, or both reads write one file and the last wins
 gsettings_read ui-privacy org.gnome.shell.extensions.amethystora-ui.privacy
 gsettings_read ui-tools org.gnome.shell.extensions.amethystora-ui.tools convert-in-files
+gsettings_read ui-tools-all org.gnome.shell.extensions.amethystora-ui.tools
 gsettings_read breaks org.gnome.desktop.break-reminders selected-breaks
 gsettings_read search org.gnome.shell.extensions.amethystora-ui.search
 gsettings_read emoji org.gnome.shell.extensions.amethystora-ui.emoji skin-tone
@@ -2484,6 +2485,22 @@ if [[ "${ said ui-tools; }" == true* ]]; then value=on; else value=off; fi
 item desktop files-convert switch "${ gettext "Convert pictures in Files"; }" \
     "${ gettext "Files' Scripts menu gains Convert: a picture as PNG, JPEG or WebP, smaller, or several in one PDF, each a new file beside it."; }" \
     "${value}" desktop#convert-and-shrink
+# Earlier versions and the card for a file nothing opens (the tools module, plans/ui-ideas/r7/spec-files.md)
+TOOLS_ALL="${ said ui-tools-all; }"
+tools_switch() {
+    local key="$1" page="$2" id="$3" title="$4" text="$5" manual="$6"
+    shift 6
+    [[ "${ ended ui-tools-all; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
+    switch_choices false "$@"
+    USAGE="$* on|off"
+    item "${page}" "${id}" switch "${title}" "${text}" "${ onoff_of "${TOOLS_ALL}" "${key}"; }" "${manual}"
+}
+tools_switch earlier-versions desktop earlier-versions "${ gettext "Earlier versions in Files"; }" \
+    "${ gettext "Files' Scripts menu has Earlier versions: each version the snapshots and the backup keep of a file, to look at or keep beside it."; }" \
+    desktop#earlier-versions ame desktop earlier-versions
+tools_switch open-anything desktop open-anything "${ gettext "A file nothing opens says what it is"; }" \
+    "${ gettext "Opening a kind of file nothing here opens says what it is and offers the app on Flathub that does, from the list already on this computer. Off, GNOME says there is no app."; }" \
+    desktop#a-file-nothing-opens ame desktop open-anything
 GROUP=""
 
 if [[ -e "${CONFIG_DIR}/no-greeting" ]]; then GREETING=off; else GREETING=on; fi
@@ -2737,6 +2754,17 @@ item apps startup rows "${ gettext "What starts with you"; }" \
 # Files: Downloads tidied once a day (offered, off), and the backup's disk recognized when it is plugged in
 GROUP="${ gettext "Files"; }"
 if [[ "${ said tidy-downloads; }" == enabled* ]]; then TIDY=on; else TIDY=off; fi
+# What removing an app leaves behind, and what has not been opened for months (plans/ui-ideas/r7/spec-files.md)
+tools_switch uninstall-takes-data apps uninstall-data "${ gettext "Uninstall takes an app's data too"; }" \
+    "${ gettext "Removing a Flatpak says what it leaves behind and moves that to the trash, where it can be brought back until the trash is emptied. Off, it asks whether to keep or delete its data."; }" \
+    software#removing-an-app ame desktop uninstall-data
+COMMAND=(ame apps unused)
+BUTTON="${ gettext "Show them…"; }"
+USAGE="ame apps unused"
+item apps unused action "${ gettext "Apps you have not opened for months"; }" \
+    "${ gettext "Lists the Flatpak apps not opened for 90 days with what each keeps, and removes those you pick, their data going to the trash."; }" \
+    "" software#removing-an-app
+
 switch_choices false ame desktop tidy-downloads
 USAGE="ame desktop tidy-downloads on|off|undo"
 item apps tidy-downloads switch "${ gettext "Downloads keeps itself tidy"; }" \
@@ -3120,6 +3148,10 @@ USAGE="ame system clean"
 item system clean action "${ gettext "Free disk space"; }" \
     "${ gettext "Removes container images and Flatpak runtimes nothing uses, cached update files, and Homebrew's cache, asking first."; }" \
     "" troubleshooting#the-disk-is-filling-up
+GROUP="${ gettext "Hardware"; }"
+tools_switch offer-room system low-space "${ gettext "Offer to clear space when the disk runs low"; }" \
+    "${ gettext "When GNOME's low-space notice fires, it says instead how much can be cleared and that none of it is your work, with one button."; }" \
+    troubleshooting#the-disk-is-filling-up ame desktop low-space
 
 # The pools of disks, as `amethystora-raid status --json` has them, and the system's disks when it spans
 # several: each with the actions that fit it, every command made here from the status, so that the page

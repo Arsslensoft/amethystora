@@ -1,0 +1,66 @@
+#!/usr/bin/python3 -I
+"""amethystora-flatpak-ask: installs or removes a Flatpak for a person who just pressed the button, without a question from Flatpak
+and with polkit's, when it has one (flatpak-password, an account that is no administrator).
+
+    amethystora-flatpak-ask install INSTALLATION REMOTE REF
+    amethystora-flatpak-ask uninstall INSTALLATION REF
+    amethystora-flatpak-ask uninstall-unused INSTALLATION
+
+INSTALLATION is --user, --system or --installation=NAME. It is not `flatpak install -y`: both -y and --noninteractive call off
+polkit's question (polkit is asked with its flags 0, seen on the bus with Flatpak 1.16), and without them Flatpak answers its own
+questions with no when it has no terminal. A transaction of libflatpak's has neither limit. Exit 0 when it is done, 1 when it is not,
+64 for anything else; it prints nothing. Called by amethystora-open-anything, amethystora-uninstall and amethystora-free-space.
+"""
+
+import re
+import sys
+
+import gi
+
+gi.require_version("Flatpak", "1.0")
+from gi.repository import Flatpak, GLib  # noqa: E402
+
+INSTALLATION = re.compile(r"^(--user|--system|--installation=[A-Za-z0-9_][A-Za-z0-9_.-]*)$")
+REMOTE = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.-]*$")
+REF = re.compile(r"^(app|runtime)/[A-Za-z_][A-Za-z0-9_-]*(\.[A-Za-z_][A-Za-z0-9_-]*)+/[A-Za-z0-9_]+/[A-Za-z0-9_.-]+$")
+
+
+def installation_of(option):
+    if option == "--user":
+        return Flatpak.Installation.new_user(None)
+    if option == "--system":
+        return Flatpak.Installation.new_system(None)
+    return Flatpak.Installation.new_system_with_id(option.split("=", 1)[1], None)
+
+
+def carry_out(installation, add):
+    transaction = Flatpak.Transaction.new_for_installation(installation, None)
+    add(transaction)
+    transaction.run(None)
+
+
+def main(args):
+    if len(args) < 2 or not INSTALLATION.match(args[1]):
+        return 64
+    verb, option, rest = args[0], args[1], args[2:]
+    if not ((verb == "install" and len(rest) == 2 and REMOTE.match(rest[0]) and REF.match(rest[1])) or
+            (verb == "uninstall" and len(rest) == 1 and REF.match(rest[0])) or
+            (verb == "uninstall-unused" and not rest)):
+        return 64
+    try:
+        installation = installation_of(option)
+        if verb == "install":
+            carry_out(installation, lambda transaction: transaction.add_install(rest[0], rest[1], None))
+        elif verb == "uninstall":
+            carry_out(installation, lambda transaction: transaction.add_uninstall(rest[0]))
+        else:
+            unused = [ref.format_ref() for ref in installation.list_unused_refs(None, None)]
+            if unused:
+                carry_out(installation, lambda transaction: [transaction.add_uninstall(ref) for ref in unused])
+    except GLib.Error:
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

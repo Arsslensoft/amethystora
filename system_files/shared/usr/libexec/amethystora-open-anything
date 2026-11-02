@@ -1,0 +1,273 @@
+#!/usr/bin/python3 -I
+"""amethystora-open-anything: what a file opens in when nothing here opens its kind (R7-40). It says what the file is, in
+shared-mime-info's words, and which app on Flathub says it opens that kind, from the list of apps Flatpak already keeps on
+this machine: the file stays here, and only its type is looked up, in that local list.
+
+    amethystora-open-anything FILE                       what Files runs: asks the desktop for the card
+    amethystora-open-anything lookup --json -- FILE      what the card shows, as JSON
+    amethystora-open-anything install-open REF -- FILE   installs that app from Flathub, then opens the file in it
+    amethystora-open-anything open REF -- FILE           opens the file in that app, already installed
+    amethystora-open-anything switch on|off              the launcher for this account (ame desktop open-anything)
+
+/usr/share/applications/zz-amethystora-open-anything.desktop claims the kinds of file nothing in the image opens, which
+build_files/shared/open-anything-types.py lists when the image is built. Flatpak's launchers come first in XDG_DATA_DIRS, and
+its own folder's index sorts each kind's list by name, where its name comes last, so an app installed later takes its kinds
+from it without anything being said. Off is an entry of the account's own that hides the launcher, nothing but
+"[Desktop Entry]" and "Hidden=true", so that GNOME then answers as it did before. Nothing here sends anything: an app is fetched
+only by install-open, after a click.
+"""
+
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+import xml.etree.ElementTree as ET
+
+import gi
+
+gi.require_version("Gio", "2.0")
+from gi.repository import Gio, GLib  # noqa: E402
+
+APP_ID = r"[A-Za-z_][A-Za-z0-9_-]*(\.[A-Za-z_][A-Za-z0-9_-]*)+"
+REF = re.compile(rf"^app/({APP_ID})/[A-Za-z0-9_]+/[A-Za-z0-9_.-]+$")
+# What Flatpak prints for a size: "68.1 MB"
+SIZE = re.compile(r"^[0-9][0-9.,]* ?[kKMGT]?i?B$")
+MOST_APPS = 3
+LAUNCHER = "zz-amethystora-open-anything.desktop"
+HIDDEN = "[Desktop Entry]\nHidden=true\n"
+LANG_KEY = "{http://www.w3.org/XML/1998/namespace}lang"
+DESKTOP_BUS = ("org.gnome.Shell", "/org/amethystora/Tools/Opener", "org.amethystora.Tools.Opener")
+ASK = os.environ.get("AMETHYSTORA_FLATPAK_ASK", "/usr/libexec/amethystora-flatpak-ask")
+
+
+def catalogue():
+    """The list of Flathub's apps Flatpak keeps here, or None before the first time it was fetched"""
+    stand_in = os.environ.get("AMETHYSTORA_CATALOGUE")
+    if stand_in:
+        return stand_in if os.path.exists(stand_in) else None
+    base = f"/var/lib/flatpak/appstream/flathub/{os.uname().machine}/active"
+    for name in ("appstream.xml", "appstream.xml.gz"):
+        if os.path.exists(f"{base}/{name}"):
+            return f"{base}/{name}"
+    return None
+
+
+def open_catalogue(path):
+    if path.endswith(".gz"):
+        import gzip
+
+        return gzip.open(path)
+    return open(path, "rb")
+
+
+def aliases_of(kind):
+    """Every name of a kind of file: the list names a kind by whichever its maker wrote"""
+    names = {kind}
+    try:
+        with open("/usr/share/mime/aliases", encoding="utf-8") as aliases:
+            for line in aliases:
+                parts = line.split()
+                if len(parts) == 2 and parts[1] == kind:
+                    names.add(parts[0])
+    except OSError:
+        pass
+    return names
+
+
+def languages():
+    """The session's languages, most wanted first: pt_BR, then pt"""
+    wanted = []
+    for name in (os.environ.get("LANGUAGE") or os.environ.get("LC_ALL") or os.environ.get("LC_MESSAGES") or
+                 os.environ.get("LANG") or "").split(":"):
+        name = name.split(".")[0].split("@")[0]
+        if name and name not in ("C", "POSIX"):
+            wanted += [name, name.split("_")[0]]
+    return wanted
+
+
+def worded(component, tag, wanted):
+    """A component's name or summary in the session's language, else the one that names no language"""
+    found = {}
+    for element in component.iterfind(tag):
+        found.setdefault(element.get(LANG_KEY) or "", (element.text or "").strip())
+    for language in wanted:
+        if found.get(language):
+            return found[language]
+    return found.get("", "")
+
+
+def components_claiming(path, kinds):
+    """Only the components that name a kind, found as bytes and each parsed alone: parsing the whole list, 48 MB, took 8 s of a
+    processor where this takes under one"""
+    with open_catalogue(path) as stream:
+        data = stream.read()
+    starts = set()
+    for kind in kinds:
+        needle = f"<mediatype>{kind}</mediatype>".encode()
+        at = data.find(needle)
+        while at >= 0:
+            starts.add(data.rfind(b"<component ", 0, at))
+            at = data.find(needle, at + len(needle))
+    found = []
+    for start in sorted(starts - {-1}):
+        end = data.find(b"</component>", start)
+        if end >= 0:
+            try:
+                found.append(ET.fromstring(data[start:end + len(b"</component>")]))
+            except ET.ParseError:
+                pass
+    return found
+
+
+def offers(path, kinds):
+    """The apps the list says open these kinds, those whose makers Flathub checked first, then those that claim the fewest
+    kinds (an app for this before one for everything)"""
+    wanted = languages()
+    apps = []
+    for element in components_claiming(path, kinds):
+        if element.get("type") not in ("desktop-application", "desktop"):
+            continue
+        types = {kind.text for kind in element.iterfind("provides/mediatype")}
+        ref = next((bundle.text for bundle in element.iterfind("bundle") if bundle.text and REF.match(bundle.text)), None)
+        if ref and types & kinds:
+            verified = any(value.get("key") == "flathub::verification::verified" and value.text == "true"
+                           for value in element.iterfind("custom/value"))
+            apps.append({"id": REF.match(ref).group(1), "ref": ref, "name": worded(element, "name", wanted),
+                         "summary": worded(element, "summary", wanted), "verified": verified, "claims": len(types)})
+    apps = [app for app in apps if app["name"]]
+    apps.sort(key=lambda app: (not app["verified"], app["claims"], app["name"].lower()))
+    return apps
+
+
+def sizes():
+    """What each app of the list takes to download, from what Flatpak already has here. --cached asks nobody."""
+    try:
+        listed = subprocess.run(["flatpak", "remote-ls", "--system", "--cached", "--app",
+                                 "--columns=application,download-size", "flathub"],
+                                capture_output=True, text=True, timeout=20, check=True).stdout
+    except (OSError, subprocess.SubprocessError):
+        return {}
+    found = {}
+    for line in listed.splitlines():
+        parts = line.split("\t")
+        if len(parts) == 2:
+            found[parts[0]] = parts[1].strip() if SIZE.match(parts[1].strip()) else ""
+    return found
+
+
+def installed(app_id):
+    return any(os.path.isdir(f"{root}/app/{app_id}/current")
+               for root in ("/var/lib/flatpak", f"{GLib.get_user_data_dir()}/flatpak"))
+
+
+def lookup(path):
+    info = Gio.File.new_for_path(path).query_info("standard::content-type", Gio.FileQueryInfoFlags.NONE, None)
+    kind = info.get_content_type() or "application/octet-stream"
+    answer = {"version": 1, "type": kind, "description": Gio.content_type_get_description(kind),
+              "unknown": bool(Gio.content_type_is_unknown(kind)), "catalogue": True, "apps": []}
+    if answer["unknown"]:
+        return answer
+    listed = catalogue()
+    if listed is None:
+        answer["catalogue"] = False
+        return answer
+    apps = offers(listed, aliases_of(kind))
+    known = sizes()
+    if known:
+        # An app the list still names and the remote no longer offers cannot be installed
+        apps = [app for app in apps if app["id"] in known]
+    for app in apps[:MOST_APPS]:
+        answer["apps"].append({"id": app["id"], "ref": app["ref"], "name": app["name"], "summary": app["summary"],
+                               "verified": app["verified"], "size": known.get(app["id"], ""),
+                               "installed": installed(app["id"])})
+    return answer
+
+
+def run_app(ref, path):
+    """The file handed over through the document portal, so that the app needs no reach of its own to read it"""
+    app_id = REF.match(ref).group(1)
+    subprocess.Popen(["flatpak", "run", "--file-forwarding", app_id, "@@", path, "@@"], stdin=subprocess.DEVNULL,
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+
+
+def show(path):
+    """The card, which only the desktop draws; with Amethystora UI off, a notification naming the kind and never the file"""
+    try:
+        bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+        bus.call_sync(DESKTOP_BUS[0], DESKTOP_BUS[1], DESKTOP_BUS[2], "Show", GLib.Variant("(s)", (path,)), None,
+                      Gio.DBusCallFlags.NONE, 5000, None)
+        return 0
+    except GLib.Error:
+        pass
+    try:
+        kind = Gio.File.new_for_path(path).query_info("standard::content-type", Gio.FileQueryInfoFlags.NONE, None).get_content_type()
+    except GLib.Error:
+        return 1
+    subprocess.run(["notify-send", "--app-name=Files", "--icon=application-x-generic", Gio.content_type_get_description(kind)], check=False)
+    return 0
+
+
+def switch(state):
+    folder = f"{GLib.get_user_data_dir()}/applications"
+    entry = f"{folder}/{LAUNCHER}"
+    try:
+        with open(entry, encoding="utf-8") as current:
+            ours = current.read() == HIDDEN
+    except OSError:
+        ours = not os.path.lexists(entry)
+    # A launcher of the person's own under this name is theirs
+    if not ours:
+        return 1
+    # The desktop runs this as the key changes, and `ame desktop open-anything` too, perhaps at the same moment
+    if state == "on":
+        try:
+            os.unlink(entry)
+        except FileNotFoundError:
+            pass
+        return 0
+    os.makedirs(folder, exist_ok=True)
+    handle, temporary = tempfile.mkstemp(prefix=f".{LAUNCHER}.", dir=folder)
+    os.fchmod(handle, 0o644)
+    with os.fdopen(handle, "w", encoding="utf-8") as hidden:
+        hidden.write(HIDDEN)
+    os.replace(temporary, entry)
+    return 0
+
+
+def after_dashes(args):
+    """The one path after --, whole"""
+    return args[1] if len(args) == 2 and args[0] == "--" else None
+
+
+def main(args):
+    if not args:
+        return 64
+    command, rest = args[0], args[1:]
+    if command == "lookup" and rest[:1] == ["--json"] and after_dashes(rest[1:]):
+        try:
+            print(json.dumps(lookup(os.path.abspath(after_dashes(rest[1:]))), ensure_ascii=False))
+        except (GLib.Error, OSError, ET.ParseError) as error:
+            print(json.dumps({"version": 1, "error": str(error)}))
+            return 1
+        return 0
+    if command in ("install-open", "open") and rest and REF.match(rest[0]) and after_dashes(rest[1:]):
+        path = os.path.abspath(after_dashes(rest[1:]))
+        if command == "install-open":
+            # A person pressed this, and polkit may have to ask them (flatpak-password, or an account that is no administrator)
+            done = subprocess.run([ASK, "install", "--system", "flathub", rest[0]],
+                                  stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+            if done.returncode != 0:
+                return 1
+        run_app(rest[0], path)
+        return 0
+    if command == "switch" and rest in (["on"], ["off"]):
+        return switch(rest[0])
+    if len(args) == 1 and not command.startswith("-"):
+        return show(os.path.abspath(command))
+    return 64
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

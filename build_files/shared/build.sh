@@ -75,6 +75,9 @@ fi
 # releases (whats-new.json, which `just build` writes with release-commits.sh; without it, no notes)
 /usr/bin/python3 /ctx/build_files/shared/build-whats-new.py image /ctx/build_files/whats-new.json /
 
+# The kinds of file nothing in the image opens, once every package and launcher is in place (dx's too), for Anything opens
+/usr/bin/python3 -I /ctx/build_files/shared/open-anything-types.py
+
 # The AI agent's index, of the image as it now is
 /ctx/build_files/shared/build-agent-index.sh
 

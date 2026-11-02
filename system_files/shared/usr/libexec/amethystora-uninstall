@@ -1,0 +1,275 @@
+#!/usr/bin/python3 -I
+"""amethystora-uninstall: what a removed Flatpak leaves behind, and taking that too, by way of the trash (R7-41). Amethystora UI's
+Uninstall asks it; `ame apps unused` and `ame apps undo-uninstall` run it in a terminal.
+
+    amethystora-uninstall info ID --json        the size of the app's own folder, when it was last opened, the trash's days
+    amethystora-uninstall trash-data ID         moves ~/.var/app/ID to the trash, for an app already uninstalled
+    amethystora-uninstall remove ID [--keep-data] [--user|--system|--installation=NAME]   uninstalls it, then the same
+    amethystora-uninstall undo ID [--user|--system|--installation=NAME]   installs the app again and puts its folder back
+    amethystora-uninstall removed --json        the apps' folders in the trash now
+    amethystora-uninstall unused --json         the apps with a launcher not opened for 90 days, and how long that is
+
+Only ever ~/.var/app/ID, the folder Flatpak gave the app: a document saved anywhere else is never part of this. It goes through
+the trash, and GNOME's housekeeping empties that after the days the account chose (30 as the image ships), so a mistake has until
+then. What the app was granted beyond its manifest goes with it, as `flatpak uninstall --delete-data` takes it: a reinstall
+later asks again. Nothing is recorded: the trash itself says what was removed and when. Run as the account whose apps they are.
+It prints no sentence: the recipes and the desktop say each thing in the person's own language, by how it ended.
+"""
+
+import json
+import os
+import re
+import subprocess
+import sys
+import time
+import urllib.parse
+import xml.etree.ElementTree as ET
+
+import gi
+
+gi.require_version("Gio", "2.0")
+from gi.repository import Gio, GLib  # noqa: E402
+
+APP_ID = re.compile(r"^[A-Za-z_][A-Za-z0-9_-]*(\.[A-Za-z_][A-Za-z0-9_-]*)+$")
+# A remote's or an extra installation's name, as it may reach Flatpak's arguments
+NAME = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.-]*$")
+INSTALLATION = re.compile(r"^(--user|--system|--installation=[A-Za-z0-9_][A-Za-z0-9_.-]*)$")
+REF = re.compile(r"^app/[A-Za-z_][A-Za-z0-9_-]*(\.[A-Za-z_][A-Za-z0-9_-]*)+/[A-Za-z0-9_]+/[A-Za-z0-9_.-]+$")
+# Asks polkit as a person's press may (flatpak-password, an account that is no administrator), where flatpak's -y never does
+ASK = os.environ.get("AMETHYSTORA_FLATPAK_ASK", "/usr/libexec/amethystora-flatpak-ask")
+UNUSED_DAYS = 90
+PRIVACY = "org.gnome.desktop.privacy"
+# undo's word when the app is back and a folder it has made since keeps what was removed in the trash
+DATA_STAYS = "data-stays-in-trash"
+
+
+def data_folder(app_id):
+    return f"{os.path.realpath(os.environ['HOME'])}/.var/app/{app_id}"
+
+
+def size_of(path):
+    """Bytes on disk under a path, never through a link"""
+    try:
+        total = os.lstat(path).st_blocks * 512
+    except OSError:
+        return 0
+    if os.path.islink(path) or not os.path.isdir(path):
+        return total
+    for folder, folders, files in os.walk(path, onerror=lambda _error: None):
+        for name in folders + files:
+            try:
+                total += os.lstat(os.path.join(folder, name)).st_blocks * 512
+            except OSError:
+                pass
+    return total
+
+
+def usage_seen():
+    """When GNOME last saw each app in use, by launcher. It forgets an app seldom used and unseen for a week, so that an app is
+    missing here says little."""
+    seen = {}
+    try:
+        for application in ET.parse(f"{GLib.get_user_data_dir()}/gnome-shell/application_state").getroot().iter("application"):
+            try:
+                seen[application.get("id")] = int(application.get("last-seen", "0"))
+            except ValueError:
+                pass
+    except (OSError, ET.ParseError):
+        pass
+    return seen
+
+
+def last_opened(app_id, seen=None):
+    """The later of what GNOME saw and what the app last wrote in its own folder, near the top of it; None when neither says"""
+    seen = usage_seen() if seen is None else seen
+    moments = [seen.get(f"{app_id}.desktop", 0)]
+    base = data_folder(app_id)
+    for place in ("config", "data", ".local/state", "cache"):
+        try:
+            with os.scandir(f"{base}/{place}") as entries:
+                moments += [int(entry.stat(follow_symlinks=False).st_mtime) for entry in entries]
+        except OSError:
+            pass
+    newest = max(moments)
+    return newest if newest > 0 else None
+
+
+def trash_days():
+    """How long the trash keeps things, or None when the account has it keep them until emptied"""
+    source = Gio.SettingsSchemaSource.get_default()
+    if not source or not source.lookup(PRIVACY, True):
+        return None
+    settings = Gio.Settings.new(PRIVACY)
+    return settings.get_uint("old-files-age") if settings.get_boolean("remove-old-trash-files") else None
+
+
+def trash_data(app_id):
+    """The app's folder to the trash (a link only as a link: nothing outside it is ever followed), and what it was granted"""
+    folder = data_folder(app_id)
+    if os.path.lexists(folder):
+        try:
+            if not Gio.File.new_for_path(folder).trash(None):
+                return False
+        except GLib.Error:
+            return False
+    run(["flatpak", "permission-reset", app_id], 30)
+    run(["flatpak", "override", "--user", "--reset", app_id], 30)
+    return True
+
+
+def trash_entries():
+    """What the trash holds of the apps' folders: (id, moment, info file, file), the newest first. An info file with no name before
+    its .trashinfo would name the whole of Trash/files, so it names nothing."""
+    base = f"{GLib.get_user_data_dir()}/Trash"
+    prefix = data_folder("")
+    found = []
+    try:
+        names = os.listdir(f"{base}/info")
+    except OSError:
+        return found
+    for name in names:
+        stem = name[:-len(".trashinfo")] if name.endswith(".trashinfo") else ""
+        if not stem:
+            continue
+        info = f"{base}/info/{name}"
+        where, when = None, 0
+        try:
+            with open(info, encoding="utf-8", errors="replace") as lines:
+                for line in lines:
+                    if line.startswith("Path="):
+                        where = urllib.parse.unquote(line[5:].strip())
+                    elif line.startswith("DeletionDate="):
+                        when = int(time.mktime(time.strptime(line[13:].strip()[:19], "%Y-%m-%dT%H:%M:%S")))
+        except (OSError, ValueError):
+            continue
+        if where and where.startswith(prefix) and APP_ID.match(where[len(prefix):]):
+            found.append((where[len(prefix):], when, info, f"{base}/files/{stem}"))
+    found.sort(key=lambda entry: -entry[1])
+    return found
+
+
+def run(argv, timeout=1800):
+    try:
+        return subprocess.run(argv, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=timeout, check=False)
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def where_installed(app_id, given=None):
+    """The installation it is in and its whole ref, or None"""
+    for option in ([given] if given else ["--user", "--system"]):
+        done = run(["flatpak", "info", option, "--show-ref", app_id], 30)
+        if done and done.returncode == 0 and REF.match(done.stdout.strip()):
+            return option, done.stdout.strip()
+    return None
+
+
+def where_it_came_from(app_id):
+    """The installation, remote and ref of the app's last install, from Flatpak's own history, as it prints "deploy install", a ref,
+    "system" and the remote; Flathub's stable for the machine when that says nothing, as it says nothing to an account that may not
+    read the system's journal. The journal can be written to by others, so a value is only believed in the shape of a name."""
+    done = run(["flatpak", "history", "--columns=change,ref,installation,remote"], 30)
+    origin = ("--system", "flathub", f"app/{app_id}/{os.uname().machine}/stable")
+    for line in (done.stdout.splitlines() if done and done.returncode == 0 else []):
+        parts = [part.strip() for part in line.split("\t")]
+        if len(parts) == 4 and parts[0] == "deploy install" and REF.match(parts[1]) and parts[1].split("/")[1] == app_id:
+            ref, place, remote = parts[1:]
+            if NAME.match(remote) and NAME.match(place):
+                origin = ({"user": "--user", "system": "--system"}.get(place, f"--installation={place}"), remote, ref)
+    return origin
+
+
+def undo(app_id, option):
+    """Exit 0 once the app is back. A folder the app made since it was removed, or kept when it was, is left: then what the trash
+    holds of an older removal stays there, which Files can restore, and undo says so on its output."""
+    if where_installed(app_id, option) is None:
+        came_from, remote, ref = where_it_came_from(app_id)
+        done = run([ASK, "install", option or came_from, remote, ref])
+        if not done or done.returncode != 0:
+            return 1
+    entries = [entry for entry in trash_entries() if entry[0] == app_id]
+    if not entries:
+        return 0
+    folder = data_folder(app_id)
+    if os.path.lexists(folder):
+        print(DATA_STAYS)
+        return 0
+    _app, _when, info, held = entries[0]
+    try:
+        os.makedirs(os.path.dirname(folder), exist_ok=True)
+        os.rename(held, folder)
+    except OSError:
+        return 1
+    try:
+        os.unlink(info)
+    except OSError:
+        pass
+    return 0
+
+
+def unused():
+    now = time.time()
+    seen = usage_seen()
+    listed = run(["flatpak", "list", "--app", "--columns=application,name,installation"], 30)
+    found = []
+    for line in (listed.stdout.splitlines() if listed and listed.returncode == 0 else []):
+        parts = line.split("\t")
+        if len(parts) != 3 or not APP_ID.match(parts[0]):
+            continue
+        app_id, name, installation = parts
+        root = "/var/lib/flatpak" if installation == "system" else f"{GLib.get_user_data_dir()}/flatpak"
+        # An app without a launcher is nothing a person opens (GNOME's previewer, say)
+        if not os.path.exists(f"{root}/exports/share/applications/{app_id}.desktop"):
+            continue
+        last = last_opened(app_id, seen)
+        if last is not None and now - last < UNUSED_DAYS * 86400:
+            continue
+        # Not an app installed last week and not opened yet
+        try:
+            born = int(subprocess.run(["stat", "-c", "%W", f"{root}/app/{app_id}"], capture_output=True, text=True, timeout=5, check=True).stdout)
+        except (OSError, ValueError, subprocess.SubprocessError):
+            born = 0
+        if born and now - born < UNUSED_DAYS * 86400:
+            continue
+        found.append({"id": app_id, "name": name, "last_opened": last, "data_bytes": size_of(data_folder(app_id))})
+    found.sort(key=lambda app: -app["data_bytes"])
+    return found
+
+
+def main(args):
+    if not args:
+        return 64
+    command, rest = args[0], args[1:]
+    app_id = rest[0] if rest and APP_ID.match(rest[0]) else None
+    if command == "info" and app_id and rest[1:] == ["--json"]:
+        folder = data_folder(app_id)
+        print(json.dumps({"version": 1, "data_bytes": size_of(folder), "data": os.path.lexists(folder),
+                          "last_opened": last_opened(app_id), "trash_days": trash_days()}))
+        return 0
+    if command == "trash-data" and app_id and not rest[1:]:
+        return 0 if trash_data(app_id) else 1
+    if command == "remove" and app_id:
+        keep = "--keep-data" in rest[1:]
+        given = [arg for arg in rest[1:] if arg != "--keep-data"]
+        if len(rest[1:]) > 2 or len(given) > 1 or (given and not INSTALLATION.match(given[0])):
+            return 64
+        found = where_installed(app_id, given[0] if given else None)
+        if found is None:
+            return 1
+        done = run([ASK, "uninstall", found[0], found[1]])
+        if not done or done.returncode != 0:
+            return 1
+        return 0 if keep or trash_data(app_id) else 1
+    if command == "undo" and app_id and (not rest[1:] or (len(rest) == 2 and INSTALLATION.match(rest[1]))):
+        return undo(app_id, rest[1] if len(rest) == 2 else None)
+    if command == "removed" and rest == ["--json"]:
+        print(json.dumps([{"id": entry[0], "removed": entry[1]} for entry in trash_entries()]))
+        return 0
+    if command == "unused" and rest == ["--json"]:
+        print(json.dumps(unused(), ensure_ascii=False))
+        return 0
+    return 64
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

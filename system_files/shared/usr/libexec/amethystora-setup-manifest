@@ -165,9 +165,9 @@ DESKWIDGETS_KEYS=(enabled)
 # The privacy module's keys, which amethystora-setup's PRIVACY_KEYS takes: the share guard, the shield, network by app
 PRIVACY=org.gnome.shell.extensions.amethystora-ui.privacy
 PRIVACY_KEYS=(share-guard share-guard-apps share-guard-private shield network-apps zone-notice)
-# The tools module's switch, which amethystora-setup's TOOLS_KEYS takes; its two keys are keybindings (KEY_SCHEMAS)
+# The tools module's switches, which amethystora-setup's TOOLS_KEYS takes; its two other keys are keybindings (KEY_SCHEMAS)
 TOOLS=org.gnome.shell.extensions.amethystora-ui.tools
-TOOLS_KEYS=(convert-in-files)
+TOOLS_KEYS=(convert-in-files earlier-versions offer-room open-anything uninstall-takes-data)
 # The keyboard settings GNOME keeps out of sight, which amethystora-setup's INPUT_KEYS, KEYBOARD_KEYS, PASTE_KEYS and
 # KEYS_KEYS take; never the input sources themselves, nor accents. The keys module's plain-paste is kept with the
 # other keybindings

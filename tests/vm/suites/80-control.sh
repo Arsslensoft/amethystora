@@ -22,7 +22,7 @@
 #   8. The apps this image comes with installed now, and disk space freed.
 #   9. The add-ons: the chosen agent installed, JetBrains Toolbox, the command-line tools, Bold Brew's lists.
 # Switching to the developer image and starting over are 90-control-switch.sh's.
-# vmlab-paths: apps/control/* apps/control-core/* @sf/usr/libexec/amethystora-control-list @sf/usr/share/amethystora/just/* @sf/usr/lib/amethystora-control/*
+# vmlab-paths: apps/control/* apps/control-core/* @sf/usr/libexec/amethystora-control-list @sf/usr/share/amethystora/just/* @sf/usr/lib/amethystora-control/* @sf/usr/libexec/amethystora-free-space @sf/usr/libexec/amethystora-uninstall @sf/usr/libexec/amethystora-flatpak-ask
 source "$(dirname "$0")/lib.sh"
 
 LIST=/usr/libexec/amethystora-control-list

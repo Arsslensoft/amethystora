@@ -725,9 +725,11 @@ backup's id as `ame backup snapshots` lists them.
 
 Beside each file it says whether your folder no longer has it, has changed it since, or has it the
 same. **Show hidden files** shows the ones whose names start with a dot. **Versions** and **Look** are
-there when one item is chosen; each version has **Go there**, which opens its folder at that time. A
-file looked at from the backup is first copied into `~/.cache/amethystora-restore/look`, read-only, and
-removed a day later. `Alt+Up` or `Backspace` goes to the folder above, `Ctrl+A` chooses everything in
+there when one item is chosen; each version has **Go there**, which opens its folder at that time, and
+**Keep this one too**, which puts that version beside your file with its date in its name and never touches
+the file. A file looked at from the backup is first copied into `~/.cache/amethystora-restore/look`, read-only,
+and removed a day after it was last read, by your account's own daily cleaning, so within about two days. With the hourly
+snapshots on, those made meanwhile hold that copy too, until they expire within 14 days. `Alt+Up` or `Backspace` goes to the folder above, `Ctrl+A` chooses everything in
 it, and `Esc` closes a question or the versions. In a script, `/usr/libexec/amethystora-restore` does
 what the window does, each with `--json`: `status`, `points`, `ls`, `versions`, `put-back` (with
 `--keep-both`, `--replace` or `--skip`) and `open`.

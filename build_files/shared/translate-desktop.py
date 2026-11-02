@@ -20,7 +20,8 @@ APPS = ["amethystora-manual", "amethystora-security", "amethystora-update", "ame
         "amethystora-control", "amethystora-backups", "amethystora-phone", "amethystora-shelf",
         "amethystora-trim"]
 # Launchers of no app of their own, with the app whose catalogs hold their words
-OTHERS = {"amethystora-private-folder": "amethystora-security", "amethystora-phone-send": "amethystora-phone"}
+OTHERS = {"amethystora-private-folder": "amethystora-security", "amethystora-phone-send": "amethystora-phone",
+          "zz-amethystora-open-anything": "amethystora-control"}
 KEYS = ("Name", "GenericName", "Comment", "Keywords")
 LOCALIZED = re.compile(r"^(Name|GenericName|Comment|Keywords)\[")
 

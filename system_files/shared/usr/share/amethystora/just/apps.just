@@ -456,6 +456,46 @@ startup *ARGS:
             ;;
     esac
 
+# The Flatpak apps not opened for 90 days, with what each keeps in its own folder; those picked are removed, their data going to the trash
+unused:
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    list="$(/usr/libexec/amethystora-uninstall unused --json)"
+    if [[ "$(jq length <<<"${list}")" == 0 ]]; then
+        echo "$(gettext "Every app was opened in the last 90 days.")"
+        exit 0
+    fi
+    never="$(gettext "not lately")"
+    mapfile -t rows < <(jq -r --arg never "${never}" '.[] | "\(.id)\t\(.name)\t\(if .last_opened then (.last_opened | strflocaltime("%B %Y")) else $never end)\t\(.data_bytes)"' <<<"${list}" |
+        numfmt -d $'\t' --field=4 --to=iec --suffix=B --invalid=ignore)
+    echo "$(gettext "Pick the ones to remove, or none. Each one's data goes to the trash; ame apps undo-uninstall ID brings it back until the trash is emptied.")"
+    picked="$(printf '%s\n' "${rows[@]}" | gum choose --no-limit)" || exit 0
+    while IFS=$'\t' read -r id _; do
+        [[ -n "${id}" ]] || continue
+        if /usr/libexec/amethystora-uninstall remove "${id}"; then
+            echo "$(eval_gettext "\${id} is removed.")"
+        else
+            echo "$(eval_gettext "\${id} could not be removed, or its data could not be moved to the trash.")" >&2
+        fi
+    done <<<"${picked}"
+
+# Brings a removed Flatpak back: installs it again and puts its data back from the trash
+[positional-arguments]
+undo-uninstall ID:
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    if ! said="$(/usr/libexec/amethystora-uninstall undo "$1")"; then
+        echo "$(gettext "It could not be brought back. Install it again in Bazaar; its data can be restored from the trash in Files.")" >&2
+        exit 1
+    fi
+    if [[ "${said}" == data-stays-in-trash ]]; then
+        echo "$(gettext "It is back. It has a folder of its own already, so what was removed stays in the trash.")"
+    fi
+
 # Let amethystora-pkg build packages from the Arch User Repository, or stop it again (ACTION: on or off; off by default, and without it, it flips)
 [positional-arguments]
 aur ACTION="":

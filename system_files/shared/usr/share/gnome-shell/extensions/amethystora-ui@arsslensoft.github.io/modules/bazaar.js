@@ -20,11 +20,14 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
-import {askToUninstall, explainTwoCopies} from './bazaar/dialog.js';
+import {askToRemove, askToUninstall, explainTwoCopies} from './bazaar/dialog.js';
+import {run} from './tools/run.js';
 
 Gio._promisify(Gio.Subprocess.prototype, 'wait_async');
 
 const BAZAAR = 'io.github.kolunmi.Bazaar';
+const UNINSTALL = '/usr/libexec/amethystora-uninstall';
+const TOOLS_SCHEMA = 'org.gnome.shell.extensions.amethystora-ui.tools';
 // What Flatpak accepts as an app's ID; anything else, a leading dash above all, is never handed to it
 const APP_ID = /^[A-Za-z_][A-Za-z0-9_-]*(\.[A-Za-z_][A-Za-z0-9_-]*)+$/;
 // The ring over an icon while its app is removed: one turn in 1.2 seconds, whatever the shell's animation speed
@@ -216,6 +219,7 @@ export class Bazaar {
     }
 
     enable() {
+        this._settings = this._ext.getSettings(TOOLS_SCHEMA);
         const proto = AppMenu.AppMenu.prototype;
         this._proto = proto;
         this._descriptors = new Map(WRAPPED.map(name => [name, Object.getOwnPropertyDescriptor(proto, name)]));
@@ -245,6 +249,9 @@ export class Bazaar {
     }
 
     disable() {
+        // Disposed now rather than by the collector (dock.js says why)
+        this._settings?.run_dispose();
+        this._settings = null;
         if (!this._proto)
             return;
         for (const [name, descriptor] of this._descriptors) {
@@ -352,6 +359,11 @@ export class Bazaar {
             return;
         }
 
+        if (this._settings.get_boolean('uninstall-takes-data')) {
+            await this._remove(app, name, id, user ? '--user' : (extra ? installation : '--system'));
+            return;
+        }
+
         const {dialog, answer} = askToUninstall(name, id);
         this._track(dialog);
         const deleteData = await answer;
@@ -380,6 +392,57 @@ export class Bazaar {
         }
     }
 
+    // Uninstall means gone (R7-41): the app, and, unless the person says otherwise, what it left in its own folder, by way
+    // of the trash, with Undo while the notice is there and `ame apps undo-uninstall` until the trash is emptied
+    async _remove(app, name, id, option) {
+        const {dialog, answer, fill} = askToRemove(name, id);
+        this._track(dialog);
+        run([UNINSTALL, 'info', id, '--json'], {timeout: 60000}).then(({ok, stdout}) => (ok ? JSON.parse(stdout) : null))
+            .catch(() => null).then(info => {
+                if (this._dialogs?.has(dialog))
+                    fill(info);
+            });
+        const chosen = await answer;
+        if (!chosen || !this._menus)
+            return;
+
+        const job = this._grey(app);
+        this._busy.add(job);
+        // Through the helper, which lets polkit ask where it wants a password (flatpak uninstall -y never does)
+        const {ok: done} = await run([UNINSTALL, 'remove', id, '--keep-data', option], {timeout: 30 * 60 * 1000}).catch(() => ({ok: false}));
+        const running = this._busy?.delete(job) ?? false;
+        if (running)
+            job.restore();
+        if (done && running)
+            job.hide();
+        else
+            job.forget();
+        if (!done) {
+            this._notify(_('%s could not be uninstalled').format(name), _('Try uninstalling it in Bazaar.'));
+            return;
+        }
+        let trashed = false;
+        // An app with no folder still goes with what it was granted, which the helper takes
+        if (chosen.data || chosen.none)
+            ({ok: trashed} = await run([UNINSTALL, 'trash-data', id], {timeout: 60000}).catch(() => ({ok: false})));
+        let said = '';
+        if (!chosen.none) {
+            said = !chosen.data ? _('Its data was kept.')
+                : trashed ? _('Its settings and data are in the trash.')
+                    : _('Its settings and data could not be moved to the trash, and are still in its folder.');
+        }
+        this._notify(_('%s is removed').format(name), said, [_('Undo'), () => this._undo(name, id, option)]);
+    }
+
+    // Back where it was, the account's or the machine's
+    async _undo(name, id, option) {
+        const {ok, stdout} = await run([UNINSTALL, 'undo', id, option], {timeout: 30 * 60 * 1000}).catch(() => ({ok: false, stdout: ''}));
+        let said = _('Install it again in Bazaar. Its data can be restored from the trash in Files.');
+        if (ok)
+            said = stdout.trim() === 'data-stays-in-trash' ? _('It has a folder of its own already, so what was removed stays in the trash.') : '';
+        this._notify(ok ? _('%s is back').format(name) : _('%s could not be brought back').format(name), said);
+    }
+
     _track(dialog) {
         this._dialogs.add(dialog);
         dialog.connect('closed', () => this._dialogs?.delete(dialog));
@@ -404,13 +467,16 @@ export class Bazaar {
         return new Greyed(icons);
     }
 
-    // Said by Bazaar, in passing: it does not stay in the list
-    _notify(title, body) {
+    // Said by Bazaar, in passing: it does not stay in the list, unless it offers something to do
+    _notify(title, body, action = null) {
         const source = new MessageTray.Source({
             title: bazaarApp()?.get_name() ?? 'Bazaar',
             iconName: BAZAAR,
         });
         Main.messageTray.add(source);
-        source.addNotification(new MessageTray.Notification({source, title, body, isTransient: true}));
+        const notification = new MessageTray.Notification({source, title, body, isTransient: !action});
+        if (action)
+            notification.addAction(...action);
+        source.addNotification(notification);
     }
 }

@@ -1676,6 +1676,32 @@ opens on that folder's timeline, where you can see it as it was and put back wha
 only for something selected: for the folder you are in, right-click it in the folder above, or use **Open With ›
 Backups**. Folders outside your home folder are not in the snapshots or the backup, and the menu says so.
 
+### Earlier versions
+
+Right-click a file in your home folder and pick **Scripts › Earlier versions**: [Backups](security.md#backups) opens on
+that file's own versions, each with when it was made. **Look** opens one read-only, beside the file you have, and **Keep
+this one too** puts it next to your file with its date in its name; your file is never touched. It shows what the hourly
+snapshots and the backup hold, those on this machine at once and those in the backup when it answers, and it says when either
+is off. A file in the [private folder](security.md#a-private-folder-that-locks-with-the-screen) is in neither. `ame desktop
+earlier-versions off`, or **Earlier versions in Files** in [Control](control.md), takes the entry away.
+
+### A file nothing opens
+
+Open a kind of file nothing here opens and a card says what it is, in plain words, and which app on Flathub opens it, with
+**Install and open**. Each app says whether Flathub has checked who made it: any app can say it opens a kind of file, and the one
+you install is started on this file with whatever it asks for. The file stays on this computer, and only its type is looked up, in
+the list of apps Flatpak keeps here, so nothing is sent until you press the button. A kind no app on Flathub claims, or a file that does not say what it is, is
+said too, and **Open With** in Files can still try any app on it. An app you install takes those files from then on, without
+the card. `ame desktop open-anything off`, or **A file nothing opens says what it is** in [Control](control.md), brings back
+GNOME's own message for your account.
+
+### Look at a file with Space
+
+Select a file in Files and press `Space` for a preview: pictures, PDFs, text and video. The arrow keys walk the folder, the
+button in the preview opens the file in its app, and `Space` or `Esc` closes it. It is GNOME's previewer, one of the apps that
+[install the first time the machine is online](software.md#apps-bazaar-and-flathub), so it works from then on. It runs only
+while it shows and keeps nothing, and it can read your home folder only, so a file on a USB stick does not preview.
+
 ### Copy without hidden data
 
 Select one or more files and pick **Scripts › Copy without hidden data**: beside each, a copy named
@@ -1714,7 +1740,7 @@ is turned upright first, and its metadata (where a photo was taken among it) is 
 over white where the picture was transparent. Pictures Files cannot show cannot be converted either: an iPhone's HEIC
 needs a decoder Fedora does not ship. `ame desktop files-convert off` takes the menu away.
 
-These are scripts in `~/.local/share/nautilus/scripts`. The first four are written once for each account: delete one
+These are scripts in `~/.local/share/nautilus/scripts`. The first five are written once for each account: delete one
 and it stays gone. Convert is there exactly while it is on.
 
 ### New documents

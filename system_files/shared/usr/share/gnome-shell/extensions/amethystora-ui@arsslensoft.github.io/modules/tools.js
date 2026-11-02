@@ -7,9 +7,14 @@
 //   - QR codes, for Amethystora Clipboard's text actions (showQrCode) and Share this Wi-Fi (tools/qr.js, tools/wifi.js)
 //   - Convert in Files' Scripts menu, offered and off: the key convert-in-files has /usr/libexec/amethystora-convert
 //     write or take away the menu's entries
+//   - Earlier versions in Files' Scripts menu: the key earlier-versions, the same way (amethystora-back-in-time)
+//   - Anything opens, the card for a file nothing here opens (tools/opener.js): the key open-anything hides or shows the
+//     launcher that asks for it, for this account
+//   - Never out of room, in place of GNOME's low-space notice (tools/room.js): the key offer-room
 //
 // Keys of org.gnome.shell.extensions.amethystora-ui.tools, read live: colour-picker and mute-microphone (keybindings; an
-// empty list leaves one unbound) and convert-in-files.
+// empty list leaves one unbound), convert-in-files, earlier-versions, open-anything, offer-room, and uninstall-takes-data,
+// which modules/bazaar.js reads.
 
 import GLib from 'gi://GLib';
 import Meta from 'gi://Meta';
@@ -23,14 +28,21 @@ import {Microphone} from './tools/microphone.js';
 import {Users} from './tools/users.js';
 import {QrDialog, QR_LONGEST} from './tools/qr.js';
 import {WifiShare} from './tools/wifi.js';
+import {Opener} from './tools/opener.js';
+import {Room} from './tools/room.js';
 import {keyLabel} from './quit/list.js';
 import {run} from './tools/run.js';
 
 const SCHEMA = 'org.gnome.shell.extensions.amethystora-ui.tools';
 const CONVERT = '/usr/libexec/amethystora-convert';
+const BACK_IN_TIME = '/usr/libexec/amethystora-back-in-time';
+const OPEN_ANYTHING = '/usr/libexec/amethystora-open-anything';
 // Written by the helper while Convert is in Files' menu, so that a start of the module tells cheaply whether the menu
 // matches the key
 const CONVERT_STATE = GLib.build_filenamev([GLib.get_user_state_dir(), 'amethystora', 'files-convert.json']);
+// The same for the two others, each a file only while off, so that the ordinary case starts nothing
+const VERSIONS_OFF = GLib.build_filenamev([GLib.get_user_state_dir(), 'amethystora', 'files-earlier-versions-off']);
+const LAUNCHER_HIDDEN = GLib.build_filenamev([GLib.get_user_data_dir(), 'applications', 'zz-amethystora-open-anything.desktop']);
 
 export class Tools {
     constructor(ext) {
@@ -44,6 +56,8 @@ export class Tools {
             'changed::colour-picker', () => this._bind('colour-picker', () => this.pickColour()),
             'changed::mute-microphone', () => this._bind('mute-microphone', () => this.toggleMicrophone()),
             'changed::convert-in-files', () => this._convertMenu(),
+            'changed::earlier-versions', () => this._helperSwitch(BACK_IN_TIME, 'menu', 'earlier-versions'),
+            'changed::open-anything', () => this._helperSwitch(OPEN_ANYTHING, 'switch', 'open-anything'),
             this);
         this._bind('colour-picker', () => this.pickColour());
         this._bind('mute-microphone', () => this.toggleMicrophone());
@@ -54,11 +68,20 @@ export class Tools {
         this._users.enable();
         this._wifi = new WifiShare();
         this._wifi.enable();
+        this._opener = new Opener(this._settings);
+        this._opener.enable();
+        this._room = new Room(this._settings);
+        this._room.enable();
 
         // The menu as the key says, if it is not already
         const shown = GLib.file_test(CONVERT_STATE, GLib.FileTest.EXISTS);
         if (shown !== this._settings.get_boolean('convert-in-files'))
             this._convertMenu();
+        // ...and these, for a key set while this was not running: `ame setup apply`, a lock, an image's own default
+        if (GLib.file_test(VERSIONS_OFF, GLib.FileTest.EXISTS) === this._settings.get_boolean('earlier-versions'))
+            this._helperSwitch(BACK_IN_TIME, 'menu', 'earlier-versions');
+        if (GLib.file_test(LAUNCHER_HIDDEN, GLib.FileTest.EXISTS) === this._settings.get_boolean('open-anything'))
+            this._helperSwitch(OPEN_ANYTHING, 'switch', 'open-anything');
     }
 
     disable() {
@@ -70,6 +93,10 @@ export class Tools {
         this._picker = null;
         this._qr?.close();
         this._qr = null;
+        this._room?.disable();
+        this._room = null;
+        this._opener?.disable();
+        this._opener = null;
         this._wifi?.disable();
         this._wifi = null;
         this._users?.disable();
@@ -182,10 +209,18 @@ export class Tools {
         }).catch(e => console.warn(`Amethystora UI: Files' Convert menu: ${e.message}`));
     }
 
+    // Earlier versions in Files' menu and the launcher for files nothing opens, as their keys say; `ame desktop` does the same
+    _helperSwitch(helper, verb, key) {
+        run([helper, verb, this._settings.get_boolean(key) ? 'on' : 'off'], {timeout: 15000}).catch(e =>
+            console.warn(`Amethystora UI: ${key}: ${e.message}`));
+    }
+
     // For the suites
     state() {
         return {
             bound: [...this._bound ?? []],
+            opener: this._opener?.state ?? null,
+            room: this._room?.state ?? null,
             picker: this._picker?.state ?? null,
             colours: pickedColours(),
             microphone: this._microphone?.state ?? null,

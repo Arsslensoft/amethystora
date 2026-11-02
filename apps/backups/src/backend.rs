@@ -286,6 +286,15 @@ pub fn point_argument(args: &[String]) -> String {
     if point_expression().is_match(point) { point.to_string() } else { String::new() }
 }
 
+/// The file whose earlier versions to open on, `--versions=FILE` (Files' Earlier versions): inside the home
+/// folder, or nothing
+pub fn versions_argument(args: &[String], cwd: &Path, home: &Path) -> Option<String> {
+    let given = args.iter().find_map(|arg| arg.strip_prefix("--versions="))?;
+    let resolved = std::fs::canonicalize(normalize(&cwd.join(given))).ok()?;
+    let inside = resolved.strip_prefix(home).ok()?;
+    (!inside.as_os_str().is_empty() && home != Path::new("/")).then(|| inside.to_string_lossy().into_owned())
+}
+
 // --- What has been read ----------------------------------------------------------------------------------
 
 /// The points and paths the helper gave: the only ones sent back to it
@@ -324,6 +333,10 @@ impl Known {
 
     pub fn has_point(&self, id: &str) -> bool {
         self.points.contains_key(id)
+    }
+
+    pub fn point(&self, id: &str) -> Option<&Point> {
+        self.points.get(id)
     }
 
     pub fn has_path(&self, path: &str) -> bool {
@@ -422,6 +435,15 @@ impl Restore {
     pub async fn versions(&self, file: &str) -> Answer<Versions> {
         self.known.borrow().check_versions(file)?;
         let versions: Versions = helper(&["versions", file], Duration::from_secs(600)).await?;
+        self.known.borrow_mut().versions_found(&versions);
+        Ok(versions)
+    }
+
+    /// The same, from this machine's snapshots alone, which is a moment's work; `backup` says "later" when
+    /// there is a backup still to ask
+    pub async fn versions_here(&self, file: &str) -> Answer<Versions> {
+        self.known.borrow().check_versions(file)?;
+        let versions: Versions = helper(&["versions", file, "--local"], Duration::from_secs(60)).await?;
         self.known.borrow_mut().versions_found(&versions);
         Ok(versions)
     }
@@ -660,6 +682,17 @@ mod tests {
         assert_eq!(folder(&[".."], &home), None);
         assert_eq!(folder(&["Documents/nothing"], &home), None);
         assert_eq!(folder(&[], &home), None);
+        // Earlier versions: a file inside the home, never the home itself, a path out of it, or a missing file
+        let file = |list: &[&str], cwd: &Path| versions_argument(&args(list), cwd, &home);
+        assert_eq!(file(&["--versions=Documents/report.txt"], &home), Some("Documents/report.txt".into()));
+        assert_eq!(file(&[&format!("--versions={}", home.join("Documents/report.txt").display())], &base), Some("Documents/report.txt".into()));
+        assert_eq!(file(&["--versions=."], &home), None);
+        assert_eq!(file(&["--versions=../elsewhere"], &home), None);
+        assert_eq!(file(&["--versions=Documents/nothing"], &home), None);
+        assert_eq!(file(&["Documents/report.txt"], &home), None);
+        // It is an option, so it is never taken for a folder or a page
+        assert_eq!(folder(&["--versions=Documents/report.txt"], &home), None);
+        assert_eq!(page_argument(&args(&["--versions=status"])), None);
         std::fs::remove_dir_all(&base).unwrap();
     }
 

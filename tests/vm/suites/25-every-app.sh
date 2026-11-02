@@ -7,7 +7,7 @@
 # own settings, using the image's own apps is not news. Then a restart, after which a boot and a login make it
 # say nothing either: loading its own audit rules, Fedora's sssd and tuned, and a program of the login once did.
 # Amethystora's own apps are 20-apps.sh's.
-# vmlab-paths: @sf/usr/share/flatpak/* @sf/etc/flatpak/* @sf/usr/libexec/amethystora-security-watch
+# vmlab-paths: @sf/usr/share/flatpak/* @sf/etc/flatpak/* @sf/usr/libexec/amethystora-security-watch @sf/usr/share/applications/zz-amethystora-open-anything.desktop build_files/shared/open-anything-types.py @sf/usr/libexec/amethystora-uninstall
 source "$(dirname "$0")/lib.sh"
 
 EVENTS=/var/lib/amethystora/security/events.json

@@ -4900,6 +4900,136 @@ files-convert STATE="":
             ;;
     esac
 
+# Earlier versions in Files' Scripts menu (the tools module, plans/ui-ideas/r7/spec-files.md R7-33): each version the snapshots
+# and the backup keep of a file (STATE: on or off; without it, it says which)
+[positional-arguments]
+earlier-versions STATE="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.tools
+    case "${1:-}" in
+        "")
+            if [[ "$(gsettings get "${schema}" earlier-versions)" == true ]]; then
+                echo "$(gettext "Earlier versions in Files: on.")"
+            else
+                echo "$(gettext "Earlier versions in Files: off.")"
+            fi
+            ;;
+        on | off)
+            gsettings set "${schema}" earlier-versions "$([[ "$1" == on ]] && echo true || echo false)"
+            /usr/libexec/amethystora-back-in-time menu "$1"
+            if [[ "$1" == on ]]; then
+                echo "$(gettext "Earlier versions in Files: on. Right-click a file in Files, and choose Scripts › Earlier versions.")"
+            else
+                echo "$(gettext "Earlier versions in Files: off.")"
+            fi
+            ;;
+        *)
+            echo "usage: ame desktop earlier-versions [on|off]"
+            exit 64
+            ;;
+    esac
+
+# A file nothing here opens says what it is and offers the app on Flathub that does (R7-40), for this account. Off, GNOME says
+# there is no app for it (STATE: on or off; without it, it says which)
+[positional-arguments]
+open-anything STATE="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.tools
+    case "${1:-}" in
+        "")
+            if [[ "$(gsettings get "${schema}" open-anything)" == true ]]; then
+                echo "$(gettext "A file nothing opens says what it is: on.")"
+            else
+                echo "$(gettext "A file nothing opens says what it is: off.")"
+            fi
+            ;;
+        on | off)
+            # The launcher first: one of the person's own under its name stays, and then the key says what is so
+            if ! /usr/libexec/amethystora-open-anything switch "$1"; then
+                echo "$(gettext "A launcher of your own has this name, in ~/.local/share/applications, so nothing was changed.")" >&2
+                exit 1
+            fi
+            gsettings set "${schema}" open-anything "$([[ "$1" == on ]] && echo true || echo false)"
+            if [[ "$1" == on ]]; then
+                echo "$(gettext "A file nothing opens says what it is: on.")"
+            else
+                echo "$(gettext "A file nothing opens says what it is: off.")"
+            fi
+            ;;
+        *)
+            echo "usage: ame desktop open-anything [on|off]"
+            exit 64
+            ;;
+    esac
+
+# Uninstall says what an app leaves behind and takes that to the trash (R7-41). Off, it asks whether to keep or delete the data
+# (STATE: on or off; without it, it says which)
+[positional-arguments]
+uninstall-data STATE="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.tools
+    case "${1:-}" in
+        "")
+            if [[ "$(gsettings get "${schema}" uninstall-takes-data)" == true ]]; then
+                echo "$(gettext "Uninstall takes an app's data too: on.")"
+            else
+                echo "$(gettext "Uninstall takes an app's data too: off.")"
+            fi
+            ;;
+        on | off)
+            gsettings set "${schema}" uninstall-takes-data "$([[ "$1" == on ]] && echo true || echo false)"
+            if [[ "$1" == on ]]; then
+                echo "$(gettext "Uninstall takes an app's data too: on.")"
+            else
+                echo "$(gettext "Uninstall takes an app's data too: off.")"
+            fi
+            ;;
+        *)
+            echo "usage: ame desktop uninstall-data [on|off]"
+            exit 64
+            ;;
+    esac
+
+# When GNOME's low-space notice fires, say how much can be cleared and that none of it is the person's work (R7-58). Off, GNOME's
+# notice shows as before (STATE: on or off; without it, it says which)
+[positional-arguments]
+low-space STATE="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.tools
+    case "${1:-}" in
+        "")
+            if [[ "$(gsettings get "${schema}" offer-room)" == true ]]; then
+                echo "$(gettext "Offer to clear space when the disk runs low: on.")"
+            else
+                echo "$(gettext "Offer to clear space when the disk runs low: off.")"
+            fi
+            ;;
+        on | off)
+            gsettings set "${schema}" offer-room "$([[ "$1" == on ]] && echo true || echo false)"
+            if [[ "$1" == on ]]; then
+                echo "$(gettext "Offer to clear space when the disk runs low: on.")"
+            else
+                echo "$(gettext "Offer to clear space when the disk runs low: off.")"
+            fi
+            ;;
+        *)
+            echo "usage: ame desktop low-space [on|off]"
+            exit 64
+            ;;
+    esac
+
 # What the clock shows (GNOME's own clock keys): 24 or 12 hours (format 24h|12h), seconds, the weekday, the date and
 # week numbers in the calendar (seconds|weekday|date|week-numbers on|off), and a second time zone after it (zone
 # AREA/CITY|off, a name of the system's time-zone data such as Asia/Tokyo). Without on or off, it flips

@@ -407,7 +407,7 @@ bash -n /usr/libexec/amethystora-back-in-time
 # picture's metadata for it
 test -x /usr/libexec/amethystora-clean-copy
 bash -n /usr/libexec/amethystora-clean-copy
-grep -q "^version-script files-menu user 3 " /usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh
+grep -q "^version-script files-menu user 4 " /usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh
 grep -q '"Copy without hidden data")" /usr/libexec/amethystora-clean-copy$' /usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh
 grep -vh '^ *#' /usr/libexec/amethystora-clean-copy | grep -qE 'NAUTILUS_SCRIPT_|eval |bash -c|sh -c|--inplace' && false
 grep -q 'mv -n -- ' /usr/libexec/amethystora-clean-copy
@@ -1351,6 +1351,47 @@ done
 grep -q '^files-convert STATE="":' /usr/share/amethystora/just/desktop.just
 grep -q 'ame desktop files-convert' /usr/libexec/amethystora-control-list
 grep -q '"What is using this?")" /usr/libexec/amethystora-what-uses show$' /usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh
+
+# Round 7, the files group (plans/ui-ideas/r7/spec-files.md). Every switch has its command and its Control entry
+for recipe in earlier-versions open-anything uninstall-data low-space; do
+    grep -q "^${recipe} STATE=\"\":" /usr/share/amethystora/just/desktop.just
+    grep -q "ame desktop ${recipe}" /usr/libexec/amethystora-control-list
+done
+grep -q '"Earlier versions")" /usr/libexec/amethystora-back-in-time --versions$' /usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh
+for helper in amethystora-open-anything amethystora-free-space amethystora-uninstall amethystora-flatpak-ask; do
+    test -x "/usr/libexec/${helper}"
+    python3 -I -c 'import ast, sys; ast.parse(open(sys.argv[1], encoding="utf-8").read())' "/usr/libexec/${helper}"
+    grep -vh '^ *#' "/usr/libexec/${helper}" | grep -qE 'shell=True|os\.system|bash -c|sh -c' && false
+    # Flatpak's -y and --noninteractive both call off polkit's question, which a person who pressed a button must be able to answer
+    sed -n '/^"""$/,$p' "/usr/libexec/${helper}" | grep -vE '^ *#' | grep -qE '"--noninteractive"|"-y"' && false
+    [[ "$("/usr/libexec/${helper}" >/dev/null 2>&1; echo $?)" == 64 ]]
+done
+# New shell code blocks nothing, and writes nothing that is not markup-free
+[[ -z "$(grep -nE '_sync\(|file_get_contents|use_markup = true' "${UI_EXTENSION}/modules/tools/opener.js" "${UI_EXTENSION}/modules/tools/room.js")" ]]
+# Never out of room never takes a container's volume, a named image or the trash's last 30 days
+grep -vh '^ *#' /usr/libexec/amethystora-free-space | grep -qE 'volume prune|prune.*-a|-af\b' && false
+# ...and a check connects to nothing: Homebrew's dry run would fetch its list of formulae
+grep -q '"--dry-run"' /usr/libexec/amethystora-free-space && false
+# Uninstall goes through the trash: what it may touch is the app's own folder, and it never deletes it
+grep -vh '^ *#' /usr/libexec/amethystora-uninstall | grep -qE 'rmtree|--delete-data' && false
+# Anything opens: its launcher stays out of the app grid, claims what the image does not open, and the index GIO reads has it. An
+# image's own launcher never loses a kind to it, text and folders are never claimed, and a claim outranks only nothing: Flatpak's
+# launchers come first, and in its own folder, a package added later included, its name sorts last (test-files-group.sh)
+OPENER=/usr/share/applications/zz-amethystora-open-anything.desktop
+grep -qx 'NoDisplay=true' "${OPENER}"
+grep -qx 'Exec=/usr/libexec/amethystora-open-anything %f' "${OPENER}"
+grep -q '^application/octet-stream=.*zz-amethystora-open-anything.desktop' /usr/share/applications/mimeinfo.cache
+[[ "$(sed -n 's/^MimeType=//p' "${OPENER}" | tr ';' '\n' | grep -c .)" -ge 100 ]]
+[[ -z "$(sed -n 's/^MimeType=//p' "${OPENER}" | tr ';' '\n' | grep -E '^(text|inode|x-content|x-scheme-handler)/')" ]]
+[[ -z "$(for launcher in /usr/share/applications/*.desktop; do
+    [[ "${launcher}" == "${OPENER}" ]] || sed -n 's/^MimeType=//p' "${launcher}"
+done | tr ';' '\n' | grep . | sort -u | comm -12 - <(sed -n 's/^MimeType=//p' "${OPENER}" | tr ';' '\n' | grep . | sort -u))" ]]
+# Look's copy from a backup goes after a day with nothing new running: the account's own tmpfiles timer, on as Fedora ships it
+grep -qx 'e %C/amethystora-restore/look - - - 1d' /usr/share/user-tmpfiles.d/amethystora-restore.conf
+[[ "$(systemctl --global is-enabled systemd-tmpfiles-clean.timer)" == enabled ]]
+# Space to look: GNOME's previewer stays on the default list, since nothing else answers Files' Space
+grep -q '^\[Flatpak Preinstall org.gnome.NautilusPreviewer\]$' /usr/share/flatpak/preinstall.d/amethystora.preinstall
+bash /ctx/build_files/shared/test-files-group.sh
 
 # The glass and the dock are Amethystora UI's own modules, in place of Blur my Shell and Dash to Dock. The glass
 # is a stylesheet and a shader (modules/glass/lens.glsl) with no setting of its own, and no Shell.GLSLEffect,

@@ -8,6 +8,9 @@
 #
 # The paths are Files' arguments, read from argv only (never the NAUTILUS_SCRIPT_* variables), each whole, never
 # given to a shell.
+#
+#   amethystora-back-in-time --versions -- PATH...     Earlier versions: Backups on the first file's own versions
+#   amethystora-back-in-time menu on|off               Earlier versions in Files' Scripts menu (ame desktop earlier-versions)
 
 set -uo pipefail
 
@@ -15,6 +18,47 @@ export TEXTDOMAIN=amethystora
 # shellcheck source=/dev/null
 source gettext.sh
 
+SCRIPTS="${XDG_DATA_HOME:-${HOME}/.local/share}/nautilus/scripts"
+# There while the entry is off, so that the desktop tells from one look at the disk whether the menu matches the key
+OFF="${XDG_STATE_HOME:-${HOME}/.local/state}/amethystora/files-earlier-versions-off"
+BACKUPS="${AMETHYSTORA_BACKUPS:-/usr/bin/amethystora-backups}"
+
+# Earlier versions' entry: found by what it runs, in any language it was written in. Only an entry the image wrote, by
+# its marker in the second line, is ever replaced or taken away, as in user-setup.hooks.d/24-files-menu.sh.
+versions_entries() {
+    local file
+    for file in "${SCRIPTS}"/*; do
+        [[ -f "${file}" && ! -L "${file}" && "$(sed -n 2p "${file}")" == "# amethystora-files-menu "* ]] &&
+            [[ "$(sed -n 3p "${file}")" == 'exec /usr/libexec/amethystora-back-in-time --versions -- '* ]] && REPLY+=("${file}")
+    done
+}
+
+if [[ "${1:-}" == menu ]]; then
+    REPLY=()
+    versions_entries
+    case "${2:-}" in
+        off)
+            rm -f -- "${REPLY[@]}"
+            mkdir -p -- "${OFF%/*}" && : >"${OFF}"
+            ;;
+        on)
+            rm -f -- "${OFF}"
+            ((${#REPLY[@]} == 0)) || exit 0
+            name="$(gettext "Earlier versions" | tr -d '/\n')"
+            [[ -n "${name}" && "${name}" != .* ]] || name="Earlier versions"
+            [[ ! -e "${SCRIPTS}/${name}" && ! -L "${SCRIPTS}/${name}" ]] || exit 0
+            mkdir -p -- "${SCRIPTS}" || exit 1
+            temporary="$(mktemp "${SCRIPTS}/.files-menu.XXXXXX")" || exit 1
+            printf '#!/bin/sh\n# amethystora-files-menu 1. Written by the image (amethystora-back-in-time menu); delete it to remove the entry.\nexec /usr/libexec/amethystora-back-in-time --versions -- "$@"\n' >"${temporary}"
+            chmod 0755 "${temporary}" && mv -f -- "${temporary}" "${SCRIPTS}/${name}" || { rm -f -- "${temporary}"; exit 1; }
+            ;;
+        *) exit 64 ;;
+    esac
+    exit 0
+fi
+
+versions=false
+[[ "${1:-}" == --versions ]] && versions=true && shift
 [[ "${1:-}" == -- ]] && shift
 (($# > 0)) || exit 0
 
@@ -29,6 +73,19 @@ resolve() { # PATH: as the kernel finds it, links resolved; false when it is not
 }
 
 target=""
+# A file's own versions, unless a folder was picked: a folder's are the timeline below. Inside the home, as below.
+if ${versions}; then
+    absolute "$1"
+    if [[ ! -d "${REPLY}" ]] && resolve "${REPLY}"; then
+        file="${REPLY}"
+        resolve "${HOME}" || exit 0
+        if [[ "${file}" == "${REPLY}/"* ]]; then
+            exec "${BACKUPS}" "--versions=${file}"
+        fi
+        notify-send --app-name=Backups --icon=amethystora-backups "$(gettext "Earlier versions covers your home folder.")" 2>/dev/null
+        exit 0
+    fi
+fi
 for path in "$@"; do
     absolute "${path}"
     if [[ -d "${REPLY}" ]]; then
@@ -50,4 +107,4 @@ if [[ "${resolved}" != "${home}" && "${resolved}" != "${home}/"* ]]; then
     notify-send --app-name=Backups --icon=amethystora-backups "$(gettext "Back in time covers your home folder.")" 2>/dev/null
     exit 0
 fi
-exec /usr/bin/amethystora-backups "${resolved}"
+exec "${BACKUPS}" "${resolved}"

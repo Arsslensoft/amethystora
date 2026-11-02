@@ -9,7 +9,7 @@
 #   3. the NVIDIA check, here and on stand-in hardware; then everything amethystora-pkg made goes
 #   4. a newer version of the image made the default while this one runs, as picking the second boot entry
 #      leaves a machine, and "Keep this version"
-# vmlab-paths: @sf/usr/bin/amethystora-pkg @sf/usr/share/amethystora/pkg/* @sf/usr/libexec/amethystora-pkg* @sf/etc/containers/* @sf/usr/libexec/amethystora-gpu-check @sf/usr/libexec/amethystora-update-alert*
+# vmlab-paths: @sf/usr/bin/amethystora-pkg @sf/usr/share/amethystora/pkg/* @sf/usr/libexec/amethystora-pkg* @sf/etc/containers/* @sf/usr/libexec/amethystora-gpu-check @sf/usr/libexec/amethystora-update-alert* @sf/usr/share/applications/zz-amethystora-open-anything.desktop build_files/shared/open-anything-types.py @ui/modules/tools/opener.js
 source "$(dirname "$0")/lib.sh"
 
 HOME_DIR="/var/home/${TEST_USER}"

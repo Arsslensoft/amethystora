@@ -3,7 +3,7 @@
 # Back in time as user-setup.hooks.d/24-files-menu.sh writes them, run as Files runs a script (the folder shown as
 # the current folder, the selection as arguments), on names Files allows and a shell would not, the coloured folder in
 # an open Files window, the icon packs' coloured folders, and a script of the person's own that the hook leaves alone.
-# vmlab-paths: @sf/usr/libexec/amethystora-folder-colour @sf/usr/libexec/amethystora-back-in-time @sf/usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh @sf/usr/share/icons/*/places/*
+# vmlab-paths: @sf/usr/libexec/amethystora-folder-colour @sf/usr/libexec/amethystora-back-in-time @sf/usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh @sf/usr/share/icons/*/places/* @sf/usr/libexec/amethystora-open-anything @sf/usr/share/applications/zz-amethystora-open-anything.desktop build_files/shared/open-anything-types.py @ui/modules/tools/opener.js @sf/usr/libexec/amethystora-flatpak-ask
 source "$(dirname "$0")/lib.sh"
 
 HOME_DIR="/var/home/${TEST_USER}"
@@ -42,8 +42,8 @@ done
 same "24 Folder colour holds its seven entries, each executable and marked" "${entries}" 7
 check "24 Back in time is there, executable and marked" \
     bash -c "[[ -x '${SCRIPTS}/Back in time' && \"\$(sed -n 2p '${SCRIPTS}/Back in time')\" == '# amethystora-files-menu 1.'* ]]"
-same "24 files-menu.json lists the ten entries (Copy without hidden data and What is using this? among them) and the folder" \
-    "$(jq -r '.version, (.paths | length)' "${HOME_DIR}/.local/state/amethystora/files-menu.json" 2>&1 | paste -sd ' ')" "1 11"
+same "24 files-menu.json lists the eleven entries (Earlier versions, Copy without hidden data and What is using this? among them) and the folder" \
+    "$(jq -r '.version, (.paths | length)' "${HOME_DIR}/.local/state/amethystora/files-menu.json" 2>&1 | paste -sd ' ')" "1 12"
 same "24 an entry passes Files' arguments after --" "$(sed -n 3p "${FOLDER}/Jade")" \
     'exec /usr/libexec/amethystora-folder-colour jade -- "$@"'
 

@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 #
-# Files' scripts menu: Folder colour (the six colours and No colour), Back in time, Copy without hidden data and What is
-# using this?, in the account's language, as tiny scripts in ~/.local/share/nautilus/scripts that hand Files' arguments to
+# Files' scripts menu: Folder colour (the six colours and No colour), Back in time, Earlier versions, Copy without hidden
+# data and What is using this?, in the account's language, as tiny scripts in ~/.local/share/nautilus/scripts that hand Files' arguments to
 # /usr/libexec/amethystora-folder-colour, /usr/libexec/amethystora-back-in-time, /usr/libexec/amethystora-clean-copy and
 # /usr/libexec/amethystora-what-uses show. Files shows them under Scripts in the menu of a selection. Convert, which is
 # offered and off, is written by /usr/libexec/amethystora-convert menu instead (ame desktop files-convert).
@@ -15,7 +15,7 @@ source /usr/lib/amethystora/setup-services/libsetup.sh
 
 command -v jq >/dev/null || exit 0
 
-version-script files-menu user 3 || exit 0
+version-script files-menu user 4 || exit 0
 
 set -uo pipefail
 
@@ -116,6 +116,17 @@ if ${ours}; then
 fi
 # Translators: an entry of Files' Scripts menu, which opens Backups on the folder picked as it was at other times
 entry "${SCRIPTS}/$(entry_name "$(gettext "Back in time")" "Back in time")" /usr/libexec/amethystora-back-in-time
+# Translators: an entry of Files' Scripts menu, which opens Backups on the file picked: each version kept of it, to look at
+# or keep beside the file. Unless it was turned off (ame desktop earlier-versions off), or that command wrote it already, in the
+# language of its day: not a second one under another name
+versions_there=false
+for file in "${SCRIPTS}"/*; do
+    marked "${file}" && [[ "$(sed -n 3p "${file}")" == 'exec /usr/libexec/amethystora-back-in-time --versions -- '* &&
+        "$(sed -n 2p "${file}")" == *"(amethystora-back-in-time menu)"* ]] && versions_there=true
+done
+if ! ${versions_there} && [[ "$(gsettings get org.gnome.shell.extensions.amethystora-ui.tools earlier-versions 2>/dev/null)" != false ]]; then
+    entry "${SCRIPTS}/$(entry_name "$(gettext "Earlier versions")" "Earlier versions")" /usr/libexec/amethystora-back-in-time --versions
+fi
 # Translators: an entry of Files' Scripts menu, which makes a copy of each file picked without its location, camera,
 # author and edit history
 entry "${SCRIPTS}/$(entry_name "$(gettext "Copy without hidden data")" "Copy without hidden data")" /usr/libexec/amethystora-clean-copy

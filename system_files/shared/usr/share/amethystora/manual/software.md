@@ -25,7 +25,7 @@ flatpak list --app
 flatpak uninstall --delete-data org.gimp.GIMP
 ```
 
-Or right-click a Flatpak app in the app grid: **Uninstall** asks whether to keep its data, and its
+Or right-click a Flatpak app in the app grid: **Uninstall** says what it leaves behind, and its
 details open its page in Bazaar.
 
 The apps the machine comes with install from Flathub the first time it is online: Firefox is the one
@@ -36,6 +36,19 @@ for archives; Connections for remote desktops, Document Scanner, Disk Usage Anal
 Center, Impression to write an ISO to a USB stick, Ignition for what starts at login, Metadata Cleaner,
 Smile for emoji, Refine for GNOME's hidden settings, Extension Manager, DistroShelf and Bazaar itself.
 The [developer image](developer.md#what-it-adds) adds its own.
+
+### Removing an app
+
+**Uninstall** says when you last opened the app and how much it keeps in its own folder, and takes that too, unless you say
+otherwise. The folder goes to the trash, not away: **Undo** on the notice, or `ame apps undo-uninstall ID` until the trash is
+emptied (30 days as the image ships), installs the app again and puts it back; what it was granted beyond what it asks for
+itself goes with it, and it asks again. Your documents are never part of it, unless an
+app saved one only inside its own folder, so look before you remove an app that keeps its work there. `ame desktop uninstall-data
+off`, or **Uninstall takes an app's data too** in [Control](control.md), brings back the question of whether to keep or delete
+the data.
+
+`ame apps unused`, or **Apps you have not opened for months** in Control, lists the apps not opened for 90 days, with what each
+keeps, and removes those you pick the same way.
 
 Two more tools are there for Flatpaks:
 

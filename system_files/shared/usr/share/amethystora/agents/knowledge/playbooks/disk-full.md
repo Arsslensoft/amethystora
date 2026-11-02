@@ -39,7 +39,9 @@ snapshots and offers to delete them, giving up ransomware protection; never run 
 ### 2, 3, 4
 Control's **Free disk space** (entry `clean`, an action: hand `ame system clean` to the user with
 `run`). It asks before pruning Podman's and Docker's unused images and volumes, then removes unused
-Flatpak runtimes, rpm-ostree's cached base layers and metadata, and Homebrew's cache. Beyond it, each
+Flatpak runtimes, rpm-ostree's cached base layers and metadata, and Homebrew's cache. `ame system free-space`
+(what the low-space notice's Clear does) asks once for what needs no choosing: unused runtimes, Homebrew's old versions, unnamed
+container layers, the caches of apps not running, thumbnails, and what the trash's own housekeeping (`org.gnome.desktop.privacy`) lets go, never under 30 days. Beyond them, each
 asked first:
 - The rollback deployment: `sudo rpm-ostree cleanup -r` (root); there is nothing to roll back to until
   the next update. A pinned one: `sudo ostree admin pin --unpin INDEX` (root), INDEX from

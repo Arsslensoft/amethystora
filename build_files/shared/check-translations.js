@@ -151,7 +151,8 @@ const DATA = {
     'amethystora-update': () => launcher('amethystora-update'),
     'amethystora-logs': () => launcher('amethystora-logs'),
     'amethystora-notes': () => launcher('amethystora-notes'),
-    'amethystora-control': () => launcher('amethystora-control'),
+    // ...and the launcher of a file nothing opens, which has no app of its own
+    'amethystora-control': () => [...launcher('amethystora-control'), ...launcher('zz-amethystora-open-anything')],
     'amethystora-backups': () => launcher('amethystora-backups'),
     // ...and the launcher of sending files to it from Files, which has no app of its own
     'amethystora-phone': () => [...launcher('amethystora-phone'), ...launcher('amethystora-phone-send')],

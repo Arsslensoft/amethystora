@@ -60,7 +60,7 @@
 #                screens by serial number), the not-responding question's look (QUIT_KEYS; force quit's key and the
 #                agent's selection key are keybindings; never the agent's pill, which shows what the agent changes
 #                and is the person's own to turn off), the share guard, the shield and network by app (PRIVACY_KEYS; walk-away lock is a
-#                security switch, never in the file), Convert in Files' Scripts menu (TOOLS_KEYS; the colour picker's and
+#                security switch, never in the file), the tools module's switches (TOOLS_KEYS; the colour picker's and
 #                the microphone's keys are keybindings), the keyboard GNOME keeps out of sight: each window's own layout and
 #                the xkb options (INPUT_KEYS), Num Lock at start and the repeat delay (KEYBOARD_KEYS), middle-click paste
 #                (PASTE_KEYS) and what Super alone opens (KEYS_KEYS; never accents, which look at what is typed), the
@@ -318,9 +318,10 @@ PRIVACY_KEYS='{
     "share-guard": ["s", ["blur", "card", "off"]], "share-guard-apps": ["as", "launchers"], "share-guard-private": ["b"],
     "shield": ["s", ["tile", "mark", "attention", "off"]], "network-apps": ["b"], "zone-notice": ["b"]
 }'
-# The tools module: Convert in Files' Scripts menu
+# The tools module: Convert and Earlier versions in Files' Scripts menu, the card for a file nothing opens, Uninstall taking an
+# app's data to the trash, and the offer to clear space
 TOOLS=org.gnome.shell.extensions.amethystora-ui.tools
-TOOLS_KEYS='{"convert-in-files": ["b"]}'
+TOOLS_KEYS='{"convert-in-files": ["b"], "earlier-versions": ["b"], "offer-room": ["b"], "open-anything": ["b"], "uninstall-takes-data": ["b"]}'
 # The keyboard settings GNOME keeps out of sight (Control's Keyboard page): each window's own layout and the xkb options
 # (Caps Lock, Compose, and whatever else the account chose there, each group:option), Num Lock at start and the repeat
 # delay, middle-click paste, and what Super alone opens. One schema each; never the input sources themselves, which
@@ -1717,6 +1718,14 @@ bake() {
           section("org.gnome.shell.extensions.amethystora-ui.power"; ($s.power // {})),
           section("org.gnome.shell.extensions.amethystora-ui.quit"; ($s.quit // {}))' <<<"${setup}" \
         >"${schemas}/zz2-image-setup.gschema.override"
+
+    # A file nothing opens: the launcher is hidden per account, which a new account has from the start (amethystora-open-anything
+    # switch writes the same, and the desktop does for an account made before this image)
+    rm -f "${root}/etc/skel/.local/share/applications/zz-amethystora-open-anything.desktop"
+    if [[ "$(jq -r '.settings.tools["open-anything"]' <<<"${setup}")" == false ]]; then
+        mkdir -p "${root}/etc/skel/.local/share/applications" || die "Could not write into ${root:-/}."
+        printf '[Desktop Entry]\nHidden=true\n' >"${root}/etc/skel/.local/share/applications/zz-amethystora-open-anything.desktop"
+    fi
 
     # The image's custom keybindings are relocatable, so their keys are dconf's
     jq -r "${GVARIANT}"'.settings.keybindings.custom // {} | to_entries[]

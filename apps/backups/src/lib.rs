@@ -173,6 +173,12 @@ impl App for Backups {
         let cwd = cwd.or_else(|| std::env::current_dir().ok()).unwrap_or_else(|| self.home.clone());
         let folder = if page.is_some() { None } else { backend::folder_argument(args, &cwd, &self.home) };
         let point = backend::point_argument(args);
+        // Files' Earlier versions: the file's own versions, over the folder it is in
+        let file = backend::versions_argument(args, &cwd, &self.home);
+        let folder = file.as_deref().map(|file| backend::parent(file).to_string()).or(folder);
+        if let Some(file) = &file {
+            self.restore.known.borrow_mut().remember(file);
+        }
         if !self.state.borrow().started {
             if let Some(folder) = &folder {
                 self.restore.known.borrow_mut().remember(folder);
@@ -187,6 +193,9 @@ impl App for Backups {
                 state.point = point;
             }
             self.render();
+            if let Some(file) = &file {
+                self.show_versions(file);
+            }
             this.load(false, false);
             return;
         }
@@ -197,6 +206,12 @@ impl App for Backups {
             self.state.borrow_mut().page = "browse";
             let opener = this.clone();
             glib::spawn_future_local(async move { opener.open_folder_now(&folder).await });
+            // The file's versions come in a moment, and do not wait for a backup's folder: spawned after the line above, whose
+            // first step clears the versions
+            if let Some(file) = file {
+                let shower = this.clone();
+                glib::spawn_future_local(async move { shower.show_versions(&file) });
+            }
             // A point in time asked for, such as the snapshot from before something rewrote the files
             let known = self.state.borrow().timeline.as_ref().is_some_and(|timeline| timeline.points.iter().any(|p| p.id == point));
             if !point.is_empty() && known {
@@ -505,12 +520,49 @@ impl Backups {
         self.render();
         let (this, file) = (self.rc(), file.to_string());
         glib::spawn_future_local(async move {
-            let result = this.restore.versions(&file).await;
-            let current = this.state.borrow().versions.as_ref().is_some_and(|(shown, _)| *shown == file);
-            if current {
-                this.state.borrow_mut().versions = Some((file, VersionsState::Read(result)));
-                this.render();
+            let here = this.restore.versions_here(&file).await;
+            // A backup can take minutes to answer: what this machine holds is shown meanwhile
+            let later = here.as_ref().is_ok_and(|versions| versions.backup == "later");
+            if !this.show_found(&file, here) || !later {
+                return;
             }
+            let result = this.restore.versions(&file).await;
+            this.show_found(&file, result);
+        });
+    }
+
+    /// Whether the file's versions were still what the window was showing
+    fn show_found(&self, file: &str, result: Answer<Versions>) -> bool {
+        let current = self.state.borrow().versions.as_ref().is_some_and(|(shown, _)| shown == file);
+        if current {
+            self.state.borrow_mut().versions = Some((file.to_string(), VersionsState::Read(result)));
+            self.render();
+        }
+        current
+    }
+
+    /// One version, kept beside the file there is now, which it never touches
+    pub(crate) fn keep_version(&self, file: &str, id: &str) {
+        let from_backup = self.restore.known.borrow().point(id).is_some_and(|point| point.source == "backup");
+        {
+            let mut state = self.state.borrow_mut();
+            state.banner = None;
+            state.working = if from_backup { t!("Getting it from the backup and putting it back…") } else { t!("Putting it back…") };
+        }
+        self.render();
+        let (this, file, id) = (self.rc(), file.to_string(), id.to_string());
+        glib::spawn_future_local(async move {
+            let result = this.restore.put_back(&id, std::slice::from_ref(&file), "keep-both").await;
+            {
+                let mut state = this.state.borrow_mut();
+                state.working.clear();
+                state.banner = Some(match &result {
+                    Err(failure) => Banner { failed: true, text: page::error_text(failure), detail: failure.detail.clone() },
+                    Ok(done) => Banner { failed: false, text: page::put_back_text(done, "keep-both"), detail: String::new() },
+                });
+            }
+            this.load_folder(true).await;
+            this.render();
         });
     }
 

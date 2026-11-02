@@ -340,6 +340,31 @@ clean:
         fi
     fi
 
+# What can be cleared without touching your work, in one total, and clearing it: runtimes no app uses, Homebrew's old versions, unnamed container layers, the caches of apps not running, and what the trash has been told to let go of
+free-space:
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    found="$(/usr/libexec/amethystora-free-space check --all --json)"
+    total="$(jq -r .total <<<"${found}" | numfmt --to=iec)"
+    apps="$(jq -r .apps <<<"${found}" | numfmt --to=iec)"
+    trash="$(jq -r .trash <<<"${found}" | numfmt --to=iec)"
+    echo "$(eval_gettext "Old app versions and caches: \${apps}")"
+    days="$(jq -r .trash_days <<<"${found}")"
+    if [[ "${days}" == null ]]; then
+        echo "$(gettext "The trash stays until you empty it, so none of it counts.")"
+    else
+        echo "$(eval_ngettext "The trash, older than \${days} day: \${trash}" "The trash, older than \${days} days: \${trash}" "${days}")"
+    fi
+    if [[ "$(jq -r .total <<<"${found}")" == 0 ]]; then
+        echo "$(gettext "Nothing can be cleared by itself. ame system clean asks about the rest.")"
+        exit 0
+    fi
+    gum confirm "$(eval_gettext "Clear \${total}?")" || exit 0
+    cleared="$(/usr/libexec/amethystora-free-space clear --all --json | jq -r .cleared | numfmt --to=iec)"
+    echo "$(eval_gettext "Cleared \${cleared}.")"
+
 # Pools of disks (RAID): how they are, then make one from spare disks, or replace or add a disk
 [no-cd]
 [no-exit-message]

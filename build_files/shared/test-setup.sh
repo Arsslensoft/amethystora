@@ -412,13 +412,17 @@ done <<<"${listed}"
 saved="$(sed -n 's/^PRIVACY_KEYS=(\(.*\))$/\1/p' "$(dirname "${SETUP}")/amethystora-setup-manifest" | tr ' ' '\n' | sort)"
 [[ "${saved}" == "${listed}" ]] ||
     { echo "the manifest saves other privacy keys than amethystora-setup reads:"; diff <(echo "${saved}") <(echo "${listed}"); false; }
-# The tools module: Convert in Files, the schema's one key besides its two keybindings (the keybindings part keeps those),
-# and the manifest saves the same key
-[[ "$(sed -n "s/^TOOLS_KEYS='\(.*\)'\$/\1/p" "${SETUP}" | jq -c .)" == '{"convert-in-files":["b"]}' ]]
+# The tools module: its switches, every key of the schema besides its two keybindings (the keybindings part keeps those),
+# and the manifest saves the same keys
+TOOLS_SWITCHES="convert-in-files earlier-versions offer-room open-anything uninstall-takes-data"
+[[ "$(sed -n "s/^TOOLS_KEYS='\(.*\)'\$/\1/p" "${SETUP}" | jq -r 'keys | join(" ")')" == "${TOOLS_SWITCHES}" ]]
+[[ "$(sed -n "s/^TOOLS_KEYS='\(.*\)'\$/\1/p" "${SETUP}" | jq -c '[.[]] | unique')" == '[["b"]]' ]]
 [[ "$(GSETTINGS_BACKEND=memory /usr/bin/gsettings list-keys org.gnome.shell.extensions.amethystora-ui.tools |
-    grep -vxE 'colour-picker|mute-microphone' | sort | xargs)" == "convert-in-files" ]]
-[[ "$(GSETTINGS_BACKEND=memory /usr/bin/gsettings range org.gnome.shell.extensions.amethystora-ui.tools convert-in-files | xargs)" == "type b" ]]
-[[ "$(sed -n 's/^TOOLS_KEYS=(\(.*\))$/\1/p' "$(dirname "${SETUP}")/amethystora-setup-manifest")" == "convert-in-files" ]]
+    grep -vxE 'colour-picker|mute-microphone' | sort | xargs)" == "${TOOLS_SWITCHES}" ]]
+for key in ${TOOLS_SWITCHES}; do
+    [[ "$(GSETTINGS_BACKEND=memory /usr/bin/gsettings range org.gnome.shell.extensions.amethystora-ui.tools "${key}" | xargs)" == "type b" ]]
+done
+[[ "$(sed -n 's/^TOOLS_KEYS=(\(.*\))$/\1/p' "$(dirname "${SETUP}")/amethystora-setup-manifest")" == "${TOOLS_SWITCHES}" ]]
 
 # A machine with two apps, three things from Homebrew, a container, an extension and a theme, whose
 # dock, close key, terminal key, tiling key, two tiling settings and window rules are not the image's. What
@@ -1010,6 +1014,16 @@ bake "${T}/image.json" >/dev/null
 diff <(printf '%s\n' 'tap "someone/tools"' 'brew "fd"' 'brew "someone/tools/lint"' 'cask "font-iosevka"') \
     "${ROOT}/usr/share/amethystora/image-setup/Brewfile"
 cmp -s "${T}/image.json" "${ROOT}/usr/share/amethystora/image-setup/setup.json"
+# A file nothing opens, off in the file: a new account has the launcher hidden as the key says, in the helper's own bytes
+HIDDEN_LAUNCHER="${ROOT}/etc/skel/.local/share/applications/zz-amethystora-open-anything.desktop"
+[[ ! -e "${HIDDEN_LAUNCHER}" ]]
+jq '.settings.tools = {"open-anything": false}' "${T}/image.json" >"${T}/image-opener.json"
+bake "${T}/image-opener.json" >/dev/null
+[[ "$(image org.gnome.shell.extensions.amethystora-ui.tools open-anything)" == false ]]
+[[ "$(cat "${HIDDEN_LAUNCHER}")" == "$(printf '[Desktop Entry]\nHidden=true')" ]]
+grep -qF 'HIDDEN = "[Desktop Entry]\nHidden=true\n"' /usr/libexec/amethystora-open-anything
+bake "${T}/image.json" >/dev/null
+[[ ! -e "${HIDDEN_LAUNCHER}" ]]
 # An app from a remote the image declares (amethystora-image-policy --only flatpak-remotes, before bake) is baked in
 bake_root
 mkdir -p "${ROOT}/etc/flatpak/remotes.d"

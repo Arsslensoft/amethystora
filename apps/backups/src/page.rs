@@ -867,10 +867,25 @@ impl Backups {
                     }),
                     Some(match rows {
                         Some(rows) => rows.upcast(),
+                        None if result.backup == "later" => ui::label(&t!("No version of it is on this machine."), &["soft"]).upcast(),
                         None => ui::label(&t!("No version of it was kept."), &["soft"]).upcast(),
                     }),
+                    (result.backup == "later").then(|| Self::spinner(&t!("Looking in your backup…")).upcast()),
+                    self.versions_kept_note().map(|note| ui::label(&note, &["soft"]).upcast()),
                 ])
             }
+        }
+    }
+
+    /// Which of the two that keep versions is off, in a sentence: only what they hold can be shown
+    fn versions_kept_note(&self) -> Option<String> {
+        let state = self.state.borrow();
+        let status = state.status.as_ref()?;
+        match (status.snapshots.on, status.backup.set_up) {
+            (true, true) => None,
+            (true, false) => Some(t!("Only the hourly snapshots keep versions: no backup is set up.")),
+            (false, true) => Some(t!("Only your backup keeps versions: the hourly snapshots are off.")),
+            (false, false) => Some(t!("The hourly snapshots are off and no backup is set up, so nothing new is being kept.")),
         }
     }
 
@@ -891,10 +906,12 @@ impl Backups {
             row.append(&words);
             let (id, go, look) = (version.id.clone(), name.to_string(), file.to_string());
             let at = id.clone();
+            let (keep, kept_id) = (file.to_string(), id.clone());
             let actions = Self::actions(
                 vec![
                     Some(self.button(&t!("Go there"), Look { small: true, ..Default::default() }, move |this| this.go_to(&id, &go)).upcast()),
                     Some(self.button(&t!("Look"), Look { small: true, icon: Some("eye"), ..Default::default() }, move |this| this.look_at(&look, Some(&at))).upcast()),
+                    Some(self.button(&t!("Keep this one too"), Look { small: true, ..Default::default() }, move |this| this.keep_version(&keep, &kept_id)).upcast()),
                 ],
                 &["actions"],
             );

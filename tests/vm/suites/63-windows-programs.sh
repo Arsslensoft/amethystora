@@ -7,7 +7,7 @@
 #      Windows, known malware, and the image's own app opened in place of one
 #   2. an unknown program run with Bottles: X11 granted to Bottles alone, a first bottle made, and the file reaching
 #      Bottles through the document portal
-# vmlab-paths: @sf/usr/libexec/amethystora-windows-program @sf/usr/share/amethystora/windows-programs.json
+# vmlab-paths: @sf/usr/libexec/amethystora-windows-program @sf/usr/share/amethystora/windows-programs.json @sf/usr/share/applications/zz-amethystora-open-anything.desktop build_files/shared/open-anything-types.py @ui/modules/tools/opener.js
 source "$(dirname "$0")/lib.sh"
 
 HOME_DIR="/var/home/${TEST_USER}"

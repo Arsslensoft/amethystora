@@ -4,7 +4,7 @@
 #   amethystora-restore status [--json]                  what is set up, and the last good backup
 #   amethystora-restore points [--local] [--json]        every point in time, newest first
 #   amethystora-restore ls POINT [PATH] [--json]         one folder as it was at POINT
-#   amethystora-restore versions PATH [--json]           the points at which PATH differs from the one before
+#   amethystora-restore versions PATH [--local] [--json] the points at which PATH differs from the one before
 #   amethystora-restore put-back POINT PATH... (--keep-both | --replace | --skip) [--json]
 #   amethystora-restore open POINT PATH [--json]         a read-only copy, opened in its app
 #
@@ -442,8 +442,11 @@ cmd_versions() {
         locals="$(jq -c --argjson times "$(local_points | jq -sc 'map({key: .id, value: .time}) | from_entries')" \
             '. + {time: $times[.id]}' <<<"${locals}")"
     fi
-    # In the backup: restic find, for both names of the home, in every snapshot at once
-    if load_backup; then
+    # In the backup: restic find, for both names of the home, in every snapshot at once. Asked for this
+    # machine's alone (Earlier versions shows them at once, then asks again): "later" says there is a backup
+    if [[ "${LOCAL_ONLY}" == true ]]; then
+        [[ ! -r "${ENV_FILE}" ]] || backup=later
+    elif load_backup; then
         if snapshots="$(backup_points)" &&
             out="$(restic_read find --json --tag amethystora "$(pattern "${HOME_DIR}/${REL}")" \
                 "$(pattern "${REAL_HOME}/${REL}")")"; then
@@ -628,7 +631,9 @@ cmd_open() {
         target="${FROM}/${REL}"
         within "${target}" "${FROM}" || fail outside "${REL} leads out of your home folder in that snapshot."
     else
-        # A copy of its own, read-only, kept a day for whatever opened it
+        # A copy of its own, read-only, kept a day after it was last read for whatever opened it, by the account's tmpfiles
+        # timer (/usr/share/user-tmpfiles.d/amethystora-restore.conf), which can only take a file out of a folder it may write
+        # to. What is already old goes here too, as any left from before that
         mkdir -p "${CACHE}/look"
         find "${CACHE}/look" -mindepth 1 -maxdepth 1 -mmin +1440 \
             -exec sh -c 'chmod -R u+w -- "$@" && rm -rf -- "$@"' sh {} + 2>/dev/null || true
@@ -636,6 +641,7 @@ cmd_open() {
         from_backup "${REL}" "${look}"
         target="${FOUND}"
         chmod -R a-w -- "${look}"
+        find "${look}" -type d -exec chmod u+w -- {} +
     fi
     [[ -e "${target}" || -L "${target}" ]] || fail not-found "There is no ${REL} in ${POINT}."
     xdg-open "${target}" >/dev/null 2>&1 &
