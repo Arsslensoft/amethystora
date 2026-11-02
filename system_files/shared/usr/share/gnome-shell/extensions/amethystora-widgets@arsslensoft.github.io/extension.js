@@ -204,7 +204,7 @@ class WidgetButton extends PanelMenu.Button {
             this._act(this._state.click);
             return Clutter.EVENT_STOP;
         }
-        return super.vfunc_event(event);
+        return Clutter.EVENT_PROPAGATE;
     }
 });
 

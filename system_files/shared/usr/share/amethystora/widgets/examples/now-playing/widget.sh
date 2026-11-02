@@ -54,7 +54,7 @@ property "${chosen}" Metadata | jq -c --arg status "${status}" '
         icon: (if $status == "Playing" then "media-playback-start-symbolic" else "media-playback-pause-symbolic" end),
         click: "./widget.sh play-pause",
         menu: ([if $artist != "" then {label: $artist} else empty end] + [
-            {label: (if $status == "Playing" then "Pause" else "Play" end), icon: "media-playback-start-symbolic", run: "./widget.sh play-pause"},
+            {label: (if $status == "Playing" then "Pause" else "Play" end), icon: (if $status == "Playing" then "media-playback-pause-symbolic" else "media-playback-start-symbolic" end), run: "./widget.sh play-pause"},
             {label: "Next", icon: "media-skip-forward-symbolic", run: "./widget.sh next"},
             {label: "Previous", icon: "media-skip-backward-symbolic", run: "./widget.sh previous"}
         ])
