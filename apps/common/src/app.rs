@@ -141,7 +141,7 @@ const BASE_CSS: &str = include_str!("style.css");
 
 /// GNOME's text size (ame desktop text-size, Settings' Large Text), as GTK has it: the fonts' resolution over 96 dpi.
 /// GTK grows text given in points by it, but not text given in px, which is what the apps' stylesheets use.
-fn text_factor() -> f64 {
+pub(crate) fn text_factor() -> f64 {
     gtk::Settings::default()
         .map(|settings| settings.gtk_xft_dpi())
         .filter(|dpi| *dpi > 0)
