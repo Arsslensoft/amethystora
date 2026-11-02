@@ -153,9 +153,14 @@ impl Notes {
         search_box.append(&self.search);
         sidebar.append(&search_box);
         let weak = self.me.clone();
-        self.search.connect_changed(move |_| {
-            if let Some(this) = weak.upgrade() {
+        self.search.connect_changed(move |search| {
+            let Some(this) = weak.upgrade() else { return };
+            if search.text().trim().is_empty() {
+                this.search_pause.cancel();
                 this.searched();
+            } else {
+                let again = this.clone();
+                this.search_pause.after_typing(move || again.searched());
             }
         });
         let keys = gtk::EventControllerKey::new();
@@ -168,6 +173,7 @@ impl Notes {
                     glib::Propagation::Stop
                 }
                 gdk::Key::Down => {
+                    this.flush_search();
                     this.focus_first_item();
                     glib::Propagation::Stop
                 }
@@ -179,6 +185,7 @@ impl Notes {
         let weak = self.me.clone();
         self.search.connect_activate(move |_| {
             if let Some(this) = weak.upgrade() {
+                this.flush_search();
                 this.focus_first_item();
             }
         });
@@ -211,6 +218,13 @@ impl Notes {
     }
 
     /// The search changed: the notes or tasks that have every word
+    /// A key that acts on the results acts on what has been typed
+    fn flush_search(&self) {
+        if self.search_pause.cancel() {
+            self.searched();
+        }
+    }
+
     fn searched(&self) {
         self.commit();
         let query = self.search.text().trim().to_string();

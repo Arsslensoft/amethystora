@@ -139,6 +139,7 @@ pub struct Notes {
     pub mode_buttons: [gtk::Button; 2],
     pub today_count: gtk::Label,
     pub search: gtk::Entry,
+    pub search_pause: ui::Pause,
     pub nav: gtk::Box,
     pub nav_scroll: gtk::ScrolledWindow,
     pub settings_button: gtk::Button,
@@ -310,6 +311,7 @@ impl Notes {
             first_open: Cell::new(true),
             today: RefCell::new(None),
             bus_search: RefCell::new(None),
+            search_pause: ui::Pause::default(),
             capture: RefCell::new(None),
         });
         shell.window.set_title(Some(&t!("Notes")));

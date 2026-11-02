@@ -100,7 +100,7 @@ The menu at the right end of the top bar opens on tiles, two to a row, each sayi
 Wi-Fi network and how strong it is, the earbuds and their battery, the power mode, and, while a paired
 phone is connected, the phone and its battery (click it for the Phone app). Click a tile to switch it, and
 its arrow for its menu. Under the tiles are the sliders, then the apps playing sound, a swatch for every
-theme, and Screenshot, Lock, Settings and Power.
+theme, and Screenshot, Lock, Log out, Settings and Power.
 
 - **Moving and hiding tiles.** Hold a tile for half a second (or press `Menu` on it): the tiles shrink a
   little and each gets a round button at its corner. Drag a tile to its new place; the button puts it

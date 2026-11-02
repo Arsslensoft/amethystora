@@ -17,6 +17,12 @@ use regex::bytes::RegexBuilder;
 
 use crate::backend::Entry;
 
+/// The rows told to the list view at once, then each frame while they show, and each frame once they are below the window
+const ROWS_AT_ONCE: usize = 8;
+const ROWS_PER_FRAME: usize = 5;
+const ROWS_ON_SCREEN: usize = 48;
+const ROWS_BELOW_PER_FRAME: usize = 60;
+
 /// What one place in the list shows
 #[derive(Debug, Clone)]
 pub enum Slot {
@@ -108,6 +114,10 @@ mod rows {
     #[derive(Default)]
     pub struct Rows {
         pub slots: RefCell<Vec<Slot>>,
+        /// The rows that have not been told to the list view yet
+        pub waiting: RefCell<std::collections::VecDeque<Slot>>,
+        /// Which filling is the current one
+        pub turn: std::cell::Cell<u64>,
     }
 
     #[glib::object_subclass]
@@ -151,8 +161,72 @@ impl Rows {
         self.imp().slots.borrow_mut()
     }
 
+    /// Everything shown, anew, the first rows at once and the others a few each frame: the list view binds what it shows as
+    /// it learns of it, and told of them all it stops the window
+    pub fn replace_gradually(&self, entries: &[Rc<Entry>], on: &gtk::Widget) {
+        let mut next = Vec::with_capacity(entries.len() + entries.len() / 50 + 2);
+        slots(entries, None, &mut next);
+        if !entries.is_empty() {
+            next.push(Slot::Foot);
+        }
+        let rest = if next.len() > ROWS_AT_ONCE { next.split_off(ROWS_AT_ONCE) } else { Vec::new() };
+        let old = {
+            let mut list = self.slots();
+            let old = list.len();
+            *list = next;
+            old
+        };
+        let new = self.imp().slots.borrow().len();
+        *self.imp().waiting.borrow_mut() = rest.into();
+        let turn = self.imp().turn.get() + 1;
+        self.imp().turn.set(turn);
+        self.items_changed(0, old as u32, new as u32);
+        if self.imp().waiting.borrow().is_empty() {
+            return;
+        }
+        let weak = self.downgrade();
+        on.add_tick_callback(move |_, _| {
+            let Some(this) = weak.upgrade() else { return glib::ControlFlow::Break };
+            if this.imp().turn.get() != turn {
+                return glib::ControlFlow::Break;
+            }
+            // A few while they show, and many once they are below the window
+            let at = this.imp().slots.borrow().len();
+            let step = if at < ROWS_ON_SCREEN { ROWS_PER_FRAME } else { ROWS_BELOW_PER_FRAME };
+            this.bring(step);
+            if this.imp().waiting.borrow().is_empty() { glib::ControlFlow::Break } else { glib::ControlFlow::Continue }
+        });
+    }
+
+    fn bring(&self, count: usize) {
+        let added = {
+            let mut waiting = self.imp().waiting.borrow_mut();
+            let count = count.min(waiting.len());
+            waiting.drain(..count).collect::<Vec<_>>()
+        };
+        if added.is_empty() {
+            return;
+        }
+        let (at, count) = {
+            let mut list = self.slots();
+            let at = list.len();
+            let count = added.len();
+            list.extend(added);
+            (at, count)
+        };
+        self.items_changed(at as u32, 0, count as u32);
+    }
+
+    /// Whatever is still on its way, for what changes the list as a whole
+    fn all_here(&self) {
+        let left = self.imp().waiting.borrow().len();
+        self.bring(left);
+    }
+
     /// Everything shown, anew
     pub fn replace(&self, entries: &[Rc<Entry>]) {
+        self.imp().waiting.borrow_mut().clear();
+        self.imp().turn.set(self.imp().turn.get() + 1);
         let mut next = Vec::with_capacity(entries.len() + entries.len() / 50 + 2);
         slots(entries, None, &mut next);
         if !entries.is_empty() {
@@ -173,6 +247,7 @@ impl Rows {
 
     /// Entries written since, newest first, above the others: the day's heading moves up to above them
     pub fn prepend(&self, fresh: &[Rc<Entry>]) {
+        self.all_here();
         let Some(oldest) = fresh.last() else { return };
         let mut added = Vec::new();
         slots(fresh, None, &mut added);
@@ -193,6 +268,7 @@ impl Rows {
 
     /// Older entries, below the others and above the foot
     pub fn append(&self, older: &[Rc<Entry>], previous: Option<i64>) {
+        self.all_here();
         let mut added = Vec::new();
         slots(older, previous, &mut added);
         if added.is_empty() {
@@ -210,6 +286,7 @@ impl Rows {
 
     /// Only the first `kept` entries, and no heading left without entries under it
     pub fn keep(&self, kept: usize) {
+        self.all_here();
         let (at, removed) = {
             let mut list = self.slots();
             let mut entries = 0;
@@ -248,6 +325,7 @@ impl Rows {
 
     /// Where an entry is in the list
     pub fn position(&self, cursor: &str) -> Option<u32> {
+        self.all_here();
         self.imp().slots.borrow().iter().position(|slot| matches!(slot, Slot::Entry(entry) if &*entry.cursor == cursor)).map(|at| at as u32)
     }
 

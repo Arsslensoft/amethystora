@@ -109,6 +109,7 @@ echo "# the new account's shell: $(pgrep -a -u "${NEW}" gnome-shell | head -n 1 
 revealed() { (($(reveal_lines) >= 1)); }
 wait_for 30 revealed
 same "9 the reveal ran once at this login" "$(reveal_lines)" 1
+same "9 the reveal ends on the desktop, not in the overview GNOME starts in" "$(ev "Main.overview.visible")" false
 same "9 the top bar is whole" "$(ev 'Main.layoutManager.panelBox.opacity')" 255
 same "9 no sky is left in the shell's top group" \
     "$(ev "Main.layoutManager.uiGroup.get_children().filter(c => c.name === 'amethystoraRevealCover').length")" 0

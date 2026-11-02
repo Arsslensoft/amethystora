@@ -265,6 +265,7 @@ the glass you use now, live; each glass keeps its own. Text on the glass stays r
     ame desktop glass-strength blur 130            # the glass in use; 50 to 150 per cent
     ame desktop glass-strength tint 70 frost       # one glass by name
     ame desktop glass-strength                     # all of them
+    ame desktop glass-strength reset               # the glass in use, back to its own
 
 ## Comfort
 

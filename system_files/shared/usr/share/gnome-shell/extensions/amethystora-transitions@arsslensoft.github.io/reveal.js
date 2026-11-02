@@ -5,7 +5,8 @@
 //
 // Only transforms and opacities of four actors change, frame by frame, from one timeline; nothing is laid out again
 // while it runs. The sky never takes a click: GNOME's own start-up cover keeps input away while its animation runs,
-// as it always has, and once that is over a click goes where it would.
+// as it always has, and once that is over a click goes where it would. GNOME's own start-up ends in the overview, and
+// the reveal is of the desktop, so the overview leaves first, unseen behind the sky.
 
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
@@ -150,7 +151,7 @@ export class Reveal {
         // Chrome that comes after this (the dock, another extension's) would otherwise be drawn over the sky
         uiGroup.connectObject('child-added', () => this._raise(), this);
         Main.layoutManager.connectObject(
-            'startup-complete', () => this._play(),
+            'startup-complete', () => this._leaveOverview(),
             'monitors-changed', () => this.stop(),
             this);
     }
@@ -165,7 +166,17 @@ export class Reveal {
         }
     }
 
+    _leaveOverview() {
+        if (!Main.overview.visible) {
+            this._play();
+            return;
+        }
+        Main.overview.connectObject('hidden', () => this._play(), this);
+        Main.overview.hide();
+    }
+
     _play() {
+        Main.overview.disconnectObject(this);
         Main.layoutManager.disconnectObject(this);
         Main.layoutManager.connectObject('monitors-changed', () => this.stop(), this);
         if (!this._cover)
@@ -296,6 +307,7 @@ export class Reveal {
         this._holdId = 0;
         layoutManager.uiGroup.disconnectObject(this);
         layoutManager.disconnectObject(this);
+        Main.overview.disconnectObject(this);
         if (this._timeline) {
             this._timeline.disconnectObject(this);
             this._timeline.stop();

@@ -342,6 +342,31 @@ fn empty(text: &str) -> gtk::Box {
     card
 }
 
+/// A long list's rows are made at the first frames they can be shown, a few at a time: made and laid out at once, they stop
+/// the window
+const ROWS_AT_ONCE: usize = 4;
+const ROWS_PER_FRAME: usize = 2;
+
+fn list_card_filling<T: 'static>(values: Vec<T>, row: impl Fn(&T) -> Option<gtk::Widget> + 'static) -> gtk::Box {
+    let card = list_card(Vec::new());
+    let row = Rc::new(row);
+    let mut steps: std::collections::VecDeque<Box<dyn FnOnce()>> = Default::default();
+    for (index, value) in values.into_iter().enumerate() {
+        if index < ROWS_AT_ONCE {
+            card.append(&row(&value).unwrap_or_else(|| ui::hbox(0, &[]).upcast()));
+        } else {
+            let (card, row) = (card.clone(), row.clone());
+            steps.push_back(Box::new(move || {
+                if let Some(row) = row(&value) {
+                    card.append(&row);
+                }
+            }));
+        }
+    }
+    ui::in_frames(&card, ROWS_PER_FRAME, steps);
+    card
+}
+
 fn list_card(rows: Vec<gtk::Widget>) -> gtk::Box {
     let card = ui::vbox(0, &["list", "card"]);
     card.set_overflow(gtk::Overflow::Hidden);
@@ -1024,8 +1049,13 @@ impl Security {
         self.frame.view.append(&built);
         self.frame.shown.replace(self.state.borrow().page.clone());
         adjustment.set_value(keep);
-        // ...and once the new page has been measured
-        glib::idle_add_local_once(move || adjustment.set_value(keep));
+        // ...and once the new page has been measured, and is long enough again, its lists filling in
+        let frames = std::cell::Cell::new(0);
+        self.frame.scroller.add_tick_callback(move |_, _| {
+            adjustment.set_value(keep);
+            frames.set(frames.get() + 1);
+            if (adjustment.value() - keep).abs() < 0.5 || frames.get() > 120 { glib::ControlFlow::Break } else { glib::ControlFlow::Continue }
+        });
     }
 
     fn build(&self) -> gtk::Widget {
@@ -2403,7 +2433,11 @@ impl Security {
             Some(data) if data.error.is_some() => empty(data.error.as_deref().unwrap_or("")),
             Some(_) if apps.is_empty() => empty(&t!("No Flatpak apps are installed.")),
             Some(_) if reaching.is_empty() => empty(&t!("No app reaches anything beyond its sandbox without asking.")),
-            Some(_) => list_card(reaching.iter().map(|app| self.app_row(app).upcast()).collect()),
+            Some(_) => {
+                let me = self.me.clone();
+                let values: Vec<backend::App> = reaching.iter().map(|app| (*app).clone()).collect();
+                list_card_filling(values, move |app| Some(me.upgrade()?.app_row(app).upcast()))
+            }
         };
         let mut children: Vec<gtk::Widget> = vec![page_head(
             &t!("Apps"),
@@ -2456,7 +2490,11 @@ impl Security {
             children.push(
                 section(
                     &t!("Network"),
-                    &list_card(networked.iter().map(|app| self.app_network_row(app).upcast()).collect()),
+                    &{
+                        let me = self.me.clone();
+                        let values: Vec<backend::App> = networked.iter().map(|app| (*app).clone()).collect();
+                        list_card_filling(values, move |app| Some(me.upgrade()?.app_network_row(app).upcast()))
+                    },
                     Some(&t!("An app without the network cannot send anything it reads. From its next start.")),
                 )
                 .upcast(),
@@ -2665,6 +2703,8 @@ impl Security {
 
     fn events_page(&self) -> gtk::Widget {
         let data = self.state.borrow().events.clone();
+        // Each row is a good many widgets: the 500 the watcher keeps, drawn at once, stop the window for a second
+        let shown = self.state.borrow().events_shown;
         let list = match &data {
             None => empty(&t!("Reading…")),
             Some(data) if !data.readable => empty(&t!(
@@ -2672,16 +2712,31 @@ impl Security {
                 command = "ame security events"
             )),
             Some(data) if data.events.is_empty() => empty(&t!("Nothing yet. Whatever the watcher finds from now on is listed here.")),
-            Some(data) => list_card(data.events.iter().take(200).map(|event| self.event_row(event, data.triage).upcast()).collect()),
+            Some(data) => {
+                let me = self.me.clone();
+                let triage = data.triage;
+                let values: Vec<Event> = data.events.iter().take(shown).cloned().collect();
+                list_card_filling(values, move |event| Some(me.upgrade()?.event_row(event, triage).upcast()))
+            }
         };
         let count = data.as_ref().filter(|d| !d.events.is_empty()).map(|d| t!("{count, plural, one {# event} other {# events}}", count = d.events.len()));
-        let children: Vec<gtk::Widget> = vec![
+        let mut children: Vec<gtk::Widget> = vec![
             page_head(
                 &t!("Events"),
                 &t!("What the security watcher found, newest first: changes to accounts, to who may become root, to what starts by itself and to the security settings, programs that read the keyboard or listen on the network, and checks that turned bad. Each says which account it is about and which part of the watcher found it. If you made the change, or installed something that did, there is nothing to do."),
             )
             .upcast(),
             section(&t!("Found"), &list, count.as_deref()).upcast(),
+        ];
+        if data.as_ref().is_some_and(|data| data.events.len() > shown) {
+            children.push(actions(vec![self.button(&t!("Show more"), Opts::default(), |this| {
+                this.state.borrow_mut().events_shown += crate::EVENTS_AT_ONCE;
+                this.render();
+            })
+            .upcast()])
+            .upcast());
+        }
+        children.push(
             actions(vec![
                 // Seeing them in a terminal marks them read, after the administrator's password
                 self.button(&t!("Mark them read, in a terminal"), Opts { icon: Some("terminal"), ..Default::default() }, |_| {
@@ -2691,7 +2746,7 @@ impl Security {
                 self.manual_link(&t!("The security watcher in the manual"), "security#the-security-watcher").upcast(),
             ])
             .upcast(),
-        ];
+        );
         Self::page(children)
     }
 

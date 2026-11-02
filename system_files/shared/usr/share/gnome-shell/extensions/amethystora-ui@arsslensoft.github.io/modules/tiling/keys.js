@@ -218,7 +218,7 @@ export class Keys {
         const combo = ofEvent(event);
         for (const [name, entries] of this._wrapped) {
             const entry = entries.find(([taken]) => same(taken, combo));
-            if (entry && this._gnomeFlags(name) & Meta.KeyBindingFlags.PER_WINDOW) {
+            if (entry?.[1] && this._gnomeFlags(name) & Meta.KeyBindingFlags.PER_WINDOW) {
                 this._run(entry[1], {window: null, event, binding: null});
                 return Clutter.EVENT_STOP;
             }
@@ -337,7 +337,7 @@ export class Keys {
                 }
                 if (this._canWrap(id, key, real.length === shared.length)) {
                     this._giveBack(id, key);
-                    wanted.set(key, shared.map(s => [s.combo, s.owner.name]));
+                    wanted.set(key, shared);
                     for (const s of shared)
                         handedOver.add(`${s.owner.name}\n${s.owner.accelerator}`);
                 } else if (TAKE_OUT.has(key)) {
@@ -349,6 +349,12 @@ export class Keys {
                         yielded.add(`${s.owner.name}\n${s.owner.accelerator}`);
                 }
             }
+        }
+        // A combination given up is given up everywhere: the handler on a Mutter key that shares it (Super+Left's half tile)
+        // does nothing for it, rather than the tiling's action or Mutter's, which would move the window
+        for (const [key, shared] of wanted) {
+            wanted.set(key, shared.map(s => [s.combo,
+                yielded.has(`${s.owner.name}\n${s.owner.accelerator}`) ? null : s.owner.name]));
         }
         for (const name of [...this._wrapped.keys()]) {
             if (!wanted.has(name))
@@ -395,9 +401,10 @@ export class Keys {
             const mine = list.find(([taken]) => same(taken, combo)) ??
                 (list.filter(([taken]) => taken.mods === mods).length === 1
                     ? list.find(([taken]) => taken.mods === mods) : null);
-            if (mine && Main.actionMode === Shell.ActionMode.NORMAL)
-                this._run(mine[1], {window, event, binding});
-            else if (method)
+            if (mine && Main.actionMode === Shell.ActionMode.NORMAL) {
+                if (mine[1])
+                    this._run(mine[1], {window, event, binding});
+            } else if (method)
                 Main.wm[method](display, window, event, binding);
         });
         if (done)

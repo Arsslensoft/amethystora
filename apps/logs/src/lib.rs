@@ -148,6 +148,9 @@ pub struct Logs {
     live: RefCell<page::Live>,
     notice_timer: RefCell<Option<glib::SourceId>>,
     search_timer: RefCell<Option<glib::SourceId>>,
+    filter_pause: amethystora_ui::ui::Pause,
+    /// The request whose entries the list shows
+    list_of: Cell<u64>,
     /// The window's height, for what the page sized in vh
     vh: Cell<i32>,
     /// Where the list was scrolled to, and how tall it was then, to keep its place when it is resized
@@ -218,6 +221,8 @@ impl Logs {
             live: RefCell::new(page::Live::default()),
             notice_timer: RefCell::new(None),
             search_timer: RefCell::new(None),
+            filter_pause: amethystora_ui::ui::Pause::default(),
+            list_of: Cell::new(0),
             vh: Cell::new(840),
             list_top: Cell::new(0.0),
             list_page: Cell::new(0.0),

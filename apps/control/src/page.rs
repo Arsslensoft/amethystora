@@ -6,6 +6,7 @@
 //! widgets with text in them, never as markup.
 
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 
 use amethystora_ui::gem::Gem;
@@ -181,6 +182,36 @@ pub fn plain(text: &str) -> String {
     glib::normalize(text, glib::NormalizeMode::Default).chars().filter(|c| !c.is_mark()).collect::<String>().to_lowercase()
 }
 
+/// What a card was drawn from: all a card of the plain kinds shows
+#[derive(PartialEq)]
+pub(crate) struct Shown {
+    item: Item,
+    busy: bool,
+    said: Option<(bool, String)>,
+}
+
+/// The page in the window, by its cards
+#[derive(Default)]
+pub(crate) struct Drawn {
+    page: &'static str,
+    ids: Vec<String>,
+    cards: HashMap<String, (Shown, gtk::Box)>,
+}
+
+/// The kinds of card that also show what is being typed or picked in them, drawn again with every change
+fn reads_more(kind: &str) -> bool {
+    !matches!(kind, "switch" | "choice" | "range" | "link" | "action" | "themes" | "wallpapers")
+}
+
+/// The cards drawn at once when a page opens; the others follow, a few each frame
+const CARDS_AT_ONCE: usize = 3;
+const CARDS_PER_FRAME: usize = 2;
+/// The height a card has at the least, for how many it takes to reach a place in a page that is scrolled
+const CARD_AT_LEAST: f64 = 90.0;
+
+/// The most settings a search draws at once
+const SEARCH_CARDS: usize = 30;
+
 fn matches(item: &Item, words: &[String]) -> bool {
     let mut parts: Vec<String> = vec![
         item.title.clone(),
@@ -201,6 +232,8 @@ fn matches(item: &Item, words: &[String]) -> bool {
 
 /// The most rows the shortcuts' card draws at once; its search finds the rest
 const KEYBINDING_ROWS: usize = 150;
+const KEYBINDINGS_AT_ONCE: usize = 10;
+const KEYBINDINGS_PER_FRAME: usize = 3;
 
 /// A shortcut's keys as GTK names them in the session's language, each its own cap: Super, Alt, V
 fn key_caps(accel: &str) -> Vec<String> {
@@ -2059,23 +2092,23 @@ impl Control {
         let field = gtk::Entry::builder().text(&typed).placeholder_text(t!("Find a shortcut")).css_classes(["field", "keybinding-search"]).build();
         field.update_property(&[gtk::accessible::Property::Label(&t!("Find a shortcut"))]);
         let list = ui::vbox(4, &["keybinding-rows"]);
-        let mut rows = Vec::new();
-        for binding in &item.keybindings {
+        // The rows are made when their turn comes, whether they show or not: there are hundreds
+        let entries: Rc<Vec<(String, bool)>> = Rc::new(item.keybindings.iter().map(|binding| {
             let here = recording.as_ref().is_some_and(|(schema, key, _)| *schema == binding.schema && *key == binding.key);
-            let row = self.keybinding_row(&item.id, binding, busy, here);
-            list.append(&row);
-            rows.push((row, keybinding_words(binding), here));
-        }
+            (keybinding_words(binding), here)
+        }).collect());
+        let rows: Rc<RefCell<Vec<Option<gtk::Box>>>> = Rc::new(RefCell::new(vec![None; entries.len()]));
+        let shows: Rc<RefCell<Vec<bool>>> = Rc::new(RefCell::new(vec![true; entries.len()]));
         let more = ui::label("", &["form-note"]);
         let none = ui::label(&t!("No shortcut matches."), &["row-empty"]);
         // Shown are the rows every word matches, and the one being recorded always: KEYBINDING_ROWS at most
         let rows = Rc::new(rows);
         let show = {
-            let (rows, more, none) = (rows.clone(), more.downgrade(), none.downgrade());
+            let (entries, rows, shows, more, none) = (entries.clone(), rows.clone(), shows.clone(), more.downgrade(), none.downgrade());
             move |text: &str| {
                 let words: Vec<String> = plain(text).split_whitespace().map(str::to_string).collect();
                 let (mut shown, mut left) = (0usize, 0usize);
-                for (row, haystack, here) in rows.iter() {
+                for (index, (haystack, here)) in entries.iter().enumerate() {
                     let found = *here || words.iter().all(|word| haystack.contains(word.as_str()));
                     let visible = found && (*here || shown < KEYBINDING_ROWS);
                     if visible {
@@ -2083,7 +2116,10 @@ impl Control {
                     } else if found {
                         left += 1;
                     }
-                    row.set_visible(visible);
+                    shows.borrow_mut()[index] = visible;
+                    if let Some(row) = &rows.borrow()[index] {
+                        row.set_visible(visible);
+                    }
                 }
                 if let Some(more) = more.upgrade() {
                     more.set_text(&t!("{count, plural, one {One more: type to find it.} other {# more: type to find them.}}", count = left));
@@ -2096,6 +2132,27 @@ impl Control {
         };
         // Found from the window's search too: its words narrow the card until the card's own field says otherwise
         show(if typed.is_empty() { &global } else { &typed });
+        let mut steps: std::collections::VecDeque<Box<dyn FnOnce()>> = Default::default();
+        let recording_one = recording.is_some();
+        for (index, binding) in item.keybindings.iter().enumerate() {
+            let here = entries[index].1;
+            let make: Box<dyn FnOnce()> = {
+                let (me, card, binding, list, rows, shows) = (self.me.clone(), item.id.clone(), binding.clone(), list.clone(), rows.clone(), shows.clone());
+                Box::new(move || {
+                    let Some(this) = me.upgrade() else { return };
+                    let row = this.keybinding_row(&card, &binding, busy, here);
+                    row.set_visible(shows.borrow()[index]);
+                    list.append(&row);
+                    rows.borrow_mut()[index] = Some(row);
+                })
+            };
+            if recording_one || index < KEYBINDINGS_AT_ONCE {
+                make();
+            } else {
+                steps.push_back(make);
+            }
+        }
+        ui::in_frames(&list, KEYBINDINGS_PER_FRAME, steps);
         {
             let me = self.me.clone();
             field.connect_changed(move |field| {
@@ -2404,13 +2461,74 @@ impl Control {
         }
         let cards = ui::vbox(12, &["cards"]);
         for item in items {
-            let card = self.card(item);
-            // Found by its entry's id when the window is opened on it (amethystora-control PAGE ENTRY)
-            card.set_widget_name(&format!("entry:{}", item.id));
-            cards.append(&card);
+            if self.draw_now.get() > 0 {
+                self.draw_now.set(self.draw_now.get() - 1);
+                self.place(item, &cards);
+            } else {
+                let (me, id, cards) = (self.me.clone(), item.id.clone(), cards.clone());
+                self.to_draw.borrow_mut().push_back(Box::new(move || {
+                    let Some(this) = me.upgrade() else { return };
+                    let list = this.state.borrow().list.clone();
+                    if let Some(item) = list.as_ref().and_then(|list| list.items.iter().find(|item| item.id == id)) {
+                        this.place(item, &cards);
+                    }
+                }));
+            }
         }
         section.append(&cards);
         section
+    }
+
+    fn drawn_as(&self, item: &Item) -> Shown {
+        let state = self.state.borrow();
+        let said = state.said.get(&item.id).map(|said| (said.ok, said.output.clone()));
+        Shown { item: item.clone(), busy: state.busy.contains(&item.id), said }
+    }
+
+    fn place(&self, item: &Item, cards: &gtk::Box) {
+        let shown = self.drawn_as(item);
+        let card = self.card(item);
+        // Found by its entry's id when the window is opened on it (amethystora-control PAGE ENTRY)
+        card.set_widget_name(&format!("entry:{}", item.id));
+        cards.append(&card);
+        self.drawn.borrow_mut().cards.insert(item.id.clone(), (shown, card));
+    }
+
+    /// The page as it is, with only the cards that changed drawn again. Laying a page of cards out again takes the window
+    /// away for most of a second, and a switch changes one card. False when this page is not the one to patch.
+    fn patch(&self) -> bool {
+        let (page, list, plain_page) = {
+            let state = self.state.borrow();
+            (state.page, state.list.clone(), state.search.is_empty() && state.error.is_empty())
+        };
+        let Some(list) = list.filter(|_| plain_page && page != backend::WELCOME) else { return false };
+        let items: Vec<&Item> = list.items.iter().filter(|item| item.page == page).collect();
+        let ids: Vec<String> = items.iter().map(|item| item.id.clone()).collect();
+        {
+            let drawn = self.drawn.borrow();
+            if drawn.page != page || drawn.ids != ids {
+                return false;
+            }
+        }
+        for item in items {
+            let shown = self.drawn_as(item);
+            let old = {
+                let drawn = self.drawn.borrow();
+                match drawn.cards.get(&item.id) {
+                    // Its turn has not come yet: it reads the list when it does
+                    None => continue,
+                    Some((before, _)) if *before == shown && !reads_more(&item.kind) => continue,
+                    Some((_, card)) => card.clone(),
+                }
+            };
+            let Some(cards) = old.parent().and_then(|parent| parent.downcast::<gtk::Box>().ok()) else { continue };
+            let card = self.card(item);
+            card.set_widget_name(&format!("entry:{}", item.id));
+            cards.insert_child_after(&card, Some(&old));
+            cards.remove(&old);
+            self.drawn.borrow_mut().cards.insert(item.id.clone(), (shown, card));
+        }
+        true
     }
 
     /// An entry's cards in the groups the list gives them, in its order
@@ -2473,6 +2591,11 @@ impl Control {
         let view = ui::vbox(28, &["page"]);
         view.append(&Self::page_head(&title, &lead));
         let items: Vec<&Item> = list.as_ref().map(|list| list.items.iter().filter(|item| item.page == page).collect()).unwrap_or_default();
+        {
+            let mut drawn = self.drawn.borrow_mut();
+            drawn.page = page;
+            drawn.ids = items.iter().map(|item| item.id.clone()).collect();
+        }
         if items.is_empty() {
             view.append(&Self::empty(vec![ui::label(&t!("Nothing to set here on this machine."), &[]).upcast()]));
         } else {
@@ -2495,7 +2618,7 @@ impl Control {
             (state.search.clone(), state.list.clone())
         };
         let words: Vec<String> = plain(&search).split_whitespace().map(str::to_string).collect();
-        let found: Vec<&Item> = list.as_ref().map(|list| list.items.iter().filter(|item| matches(item, &words)).collect()).unwrap_or_default();
+        let mut found: Vec<&Item> = list.as_ref().map(|list| list.items.iter().filter(|item| matches(item, &words)).collect()).unwrap_or_default();
         let view = ui::vbox(28, &["page"]);
         if found.is_empty() {
             let actions = Self::actions(vec![
@@ -2513,6 +2636,15 @@ impl Control {
             &t!("Search"),
             &t!("{count, plural, one {One setting matches} other {# settings match}} “{search}”.", count = found.len(), search = &search),
         ));
+        // The settings named by the words first, then as many others as can be laid out without the window stopping
+        if found.len() > SEARCH_CARDS {
+            found.sort_by_key(|item| {
+                let title = plain(&item.title);
+                !words.iter().all(|word| title.contains(word.as_str()))
+            });
+            found.truncate(SEARCH_CARDS);
+            view.append(&ui::label(&t!("Showing the first {shown}. Type more to narrow them down.", shown = i18n::number(SEARCH_CARDS as f64)), &["form-note"]));
+        }
         for page in backend::PAGES {
             let here: Vec<&Item> = found.iter().copied().filter(|item| item.page == page).collect();
             if !here.is_empty() {
@@ -2586,7 +2718,7 @@ impl Control {
         // page's body: GTK would otherwise hand it to the next widget it finds, and scroll to that
         let window = &self.shell.window;
         let inside = |area: &gtk::Box| gtk::prelude::GtkWindowExt::focus(window).is_some_and(|focus| focus.is_ancestor(area));
-        if inside(&self.parts.view) || inside(&self.parts.banner) {
+        if inside(&self.parts.banner) {
             gtk::prelude::GtkWindowExt::set_focus(window, None::<&gtk::Widget>);
         }
         ui::clear(&self.parts.banner);
@@ -2595,7 +2727,18 @@ impl Control {
         if let Some(banner) = banner {
             self.parts.banner.append(&banner);
         }
+        if self.patch() {
+            return;
+        }
+        if inside(&self.parts.view) {
+            gtk::prelude::GtkWindowExt::set_focus(window, None::<&gtk::Widget>);
+        }
         ui::clear(&self.parts.view);
+        // A window opened on an entry needs it there to scroll to, and a page scrolled down what it is scrolled to
+        let at_once = if self.state.borrow().reveal.is_some() { usize::MAX } else { CARDS_AT_ONCE + ((top + adjustment.page_size()) / CARD_AT_LEAST) as usize * usize::from(top > 0.0) };
+        self.draw_now.set(at_once);
+        self.to_draw.borrow_mut().clear();
+        *self.drawn.borrow_mut() = Drawn::default();
         let (has_list, has_error, searching) = {
             let state = self.state.borrow();
             (state.list.is_some(), !state.error.is_empty(), !state.search.is_empty())
@@ -2611,6 +2754,7 @@ impl Control {
             self.page_view()
         };
         self.parts.view.append(&content);
+        ui::in_frames(&content, CARDS_PER_FRAME, std::mem::take(&mut *self.to_draw.borrow_mut()));
         adjustment.set_value(top);
         // Once the page is laid out again, which may move the focus and with it the scroll
         let adjustment = adjustment.clone();

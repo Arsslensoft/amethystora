@@ -8457,6 +8457,11 @@ msgstr ""
 
 #: usr/share/amethystora/just/desktop.just
 #, sh-format
+msgid "Not saved, too little contrast. ${name}: ${ratio}:1, needs ${need}:1. ${nearest} would pass."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+#, sh-format
 msgid "You have a theme called ${shown}. Replace it?"
 msgstr ""
 
@@ -8681,6 +8686,11 @@ msgstr ""
 
 #: usr/share/amethystora/just/desktop.just
 msgid "The glass is drawn solid while Reduce transparency, High Contrast or the power saver is on."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+#, sh-format
+msgid "The ${material} glass is back to its own blur and tint."
 msgstr ""
 
 #: usr/share/amethystora/just/desktop.just
@@ -15427,6 +15437,10 @@ msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/quick.js
 msgid "Lock"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/quick.js
+msgid "Log out"
 msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/quick.js

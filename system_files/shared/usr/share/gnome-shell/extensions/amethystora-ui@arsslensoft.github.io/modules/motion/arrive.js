@@ -63,9 +63,12 @@ export class Arrivals {
         if (kind === 'slide')
             actor.translation_y = t0.y + SLIDE * scaleFactor();
         actor.show();
+        const duration = reduced ? Math.min(REDUCED, OPEN.fade) : OPEN[kind];
+        // Never the pop's overshoot on the opacity: past 255 it wraps round to nearly nothing, a flash as it ends
+        actor.ease({opacity: 255, duration, mode: Clutter.AnimationMode.EASE_OUT_CUBIC});
         actor.ease({
-            opacity: 255, scale_x: 1, scale_y: 1, translation_y: t0.y,
-            duration: reduced ? Math.min(REDUCED, OPEN.fade) : OPEN[kind],
+            scale_x: 1, scale_y: 1, translation_y: t0.y,
+            duration,
             mode: kind === 'pop' ? Clutter.AnimationMode.EASE_OUT_BACK : Clutter.AnimationMode.EASE_OUT_CUBIC,
             onStopped: () => this._opened(shellwm, actor),
         });

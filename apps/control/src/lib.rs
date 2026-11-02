@@ -190,6 +190,12 @@ pub struct Control {
     preview_css: gtk::CssProvider,
     /// The search field is being emptied by the page itself
     clearing: Cell<bool>,
+    search_pause: ui::Pause,
+    /// The cards still to be drawn, and how many more of the page's are drawn at once
+    to_draw: RefCell<std::collections::VecDeque<Box<dyn FnOnce()>>>,
+    draw_now: Cell<usize>,
+    /// What the page in the window shows, so that a change draws only the cards it touched
+    drawn: RefCell<page::Drawn>,
     /// The welcome page's preview, kept from one drawing of the page to the next
     welcome_preview: RefCell<Option<Rc<welcome::Preview>>>,
     /// The window was closed while a command ran: it goes once the last one has finished
@@ -264,6 +270,10 @@ impl Control {
             color_css,
             preview_css,
             clearing: Cell::new(false),
+            search_pause: ui::Pause::default(),
+            to_draw: RefCell::default(),
+            draw_now: Cell::new(0),
+            drawn: RefCell::default(),
             welcome_preview: RefCell::new(None),
             closing: Cell::new(false),
         });
@@ -488,10 +498,14 @@ impl Control {
             return;
         }
         self.state.borrow_mut().search = text.trim().to_string();
-        self.render();
+        self.search_pause.cancel();
         if self.state.borrow().search.is_empty() {
+            self.render();
             self.read_diff();
+            return;
         }
+        let this = self.clone();
+        self.search_pause.after_typing(move || this.render());
     }
 
     // --- The list -------------------------------------------------------------------------------------
@@ -577,7 +591,8 @@ impl Control {
                     adjustment.set_value((point.y() as f64 - 24.0).max(0.0));
                     glib::ControlFlow::Break
                 }
-                _ if tries.get() < 60 => glib::ControlFlow::Continue,
+                // The page may still be filling in, a couple of cards a frame
+                _ if tries.get() < 300 => glib::ControlFlow::Continue,
                 _ => glib::ControlFlow::Break,
             }
         });
@@ -674,6 +689,9 @@ impl Control {
                 }
             } else if ran {
                 this.load_list(true).await;
+                // A list that came back the same draws nothing, and this card still has to lose its spinner and say what
+                // the command said: a command that fails usually changes nothing
+                this.render();
             } else {
                 this.render();
             }

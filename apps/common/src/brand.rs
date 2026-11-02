@@ -9,9 +9,9 @@ use crate::gem::Gem;
 /// "Amethystora <product>" as one image to a screen reader, `em` pixels being its lettering's size
 pub fn brand(product: &str, em: f32) -> gtk::Box {
     let brand = in_a_line(product, em);
-    // A sidebar has room beside the wordmark for about eight letters: a longer name, as German's and
-    // Arabic's are, goes under it, or the sidebar would clip it
-    if product.chars().count() > 8 {
+    // A sidebar has room beside the wordmark for about eight letters at the desktop's text size: a longer name, as
+    // German's and Arabic's are, goes under it, or the sidebar would clip it
+    if product.chars().count() as f64 * crate::app::text_factor() > 8.0 {
         brand.set_orientation(gtk::Orientation::Vertical);
         brand.add_css_class("stacked");
         for part in [brand.first_child(), brand.last_child()].into_iter().flatten() {

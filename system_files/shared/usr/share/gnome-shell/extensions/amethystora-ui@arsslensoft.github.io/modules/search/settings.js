@@ -2,13 +2,15 @@
 // (amethystora-control-list --json), read in the background the first time a search starts and again when the copy
 // is a minute old or a change was made from here; never at login. A row either sets one of a setting's other values
 // (Phone pairing: On), runs an action, or opens the setting in Control. Matching is strict, every word typed the start
-// of a word, because Enter may change something at once. The only commands run are the list's own, and only when
+// of a word, because Enter may change something at once: only a setting's own words can change it, and its sentence's
+// only open it. The only commands run are the list's own, and only when
 // they are an `ame` command; one that asks something or needs a password opens in a terminal. Nothing of security is
 // in Control's list, so nothing here switches a security feature. The whole name of a GNOME power action asks for that
 // action, and Enter must not change a setting that only shares its words.
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import Shell from 'gi://Shell';
 
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
@@ -106,6 +108,8 @@ export class SettingsProvider {
             return Promise.resolve([]);
 
         const headings = this._headings();
+        // Words of a setting's sentence find it only when no app answers to them either: Enter is the app's
+        const appNamed = Shell.AppSystem.search(typed.join(' ')).length > 0;
         const startsAll = (list, also = []) => typed.every(word =>
             list.some(other => other.startsWith(word)) ||
             (word.length >= TEXT_WORD && also.some(other => other.startsWith(word))));
@@ -123,7 +127,7 @@ export class SettingsProvider {
                         typeof choice.value !== 'string' || !runnable(choice.command))
                         continue;
                     const own = words(choice.title);
-                    if (!startsAll([...own, ...entry], sentence))
+                    if (!startsAll([...own, ...entry]))
                         continue;
                     const rank = typed.some(word => own.some(other => other.startsWith(word))) ? 0
                         : typed.some(word => words(item.title).some(other => other.startsWith(word))) ? 1 : 2;
@@ -132,7 +136,7 @@ export class SettingsProvider {
                         description: choice.title, command: choice.command, terminal: choice.terminal === true,
                     });
                 }
-                if (item.kind === 'action' && runnable(item.command) && startsAll(entry, sentence)) {
+                if (item.kind === 'action' && runnable(item.command) && startsAll(entry)) {
                     const rank = typed.some(word => words(item.title).some(other => other.startsWith(word))) ? 1 : 2;
                     choices.push({
                         rank, order, id: `act:${item.id}`, name: item.title,
@@ -141,7 +145,7 @@ export class SettingsProvider {
                     });
                 }
             }
-            if (startsAll(entry, sentence)) {
+            if (startsAll(entry, appNamed ? [] : sentence)) {
                 opens.push({
                     rank: typed.some(word => words(item.title).some(other => other.startsWith(word))) ? 1 : 2,
                     order, id: `open:${item.id}`, name: _('Control › %s').format(item.title),

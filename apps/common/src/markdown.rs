@@ -34,9 +34,10 @@ pub enum Block {
 }
 
 /// What the page asks of the renderer
+#[derive(Clone)]
 pub struct Options {
     /// Where a link written in the page goes, as the label's href: the Manual's routing of `updates.md#x`
-    pub route: Box<dyn Fn(&str) -> String>,
+    pub route: Rc<dyn Fn(&str) -> String>,
     /// What a click on a link does with that href, or on an attachment with its href
     pub open: Rc<dyn Fn(&str)>,
     /// The ids the page's sections get, h2 and below in order; a missing one is made from its heading
@@ -77,7 +78,7 @@ impl Options {
     /// Plain Markdown: links routed and opened as given, no keycaps, buttons, anchors or pictures
     pub fn new(route: Box<dyn Fn(&str) -> String>, open: Rc<dyn Fn(&str)>, margins: fn(Block) -> (i32, i32)) -> Options {
         Options {
-            route,
+            route: Rc::from(route),
             open,
             ids: Vec::new(),
             keycaps: false,
@@ -360,6 +361,9 @@ impl Stack {
 
     fn push(&mut self, widget: impl IsA<gtk::Widget>, margins: (i32, i32)) {
         let widget = widget.upcast();
+        // As finish() gives them, for a page that shows while it fills in
+        let above = self.blocks.last().map_or(margins.0, |last| margins.0.max(last.2));
+        widget.set_margin_top((above as f64 * icon::zoom()).round() as i32);
         self.container.append(&widget);
         self.blocks.push((widget, margins.0, margins.1));
     }
@@ -386,8 +390,8 @@ enum Frame {
 }
 
 /// The page's state while it is rendered
-struct Render<'a> {
-    options: &'a Options,
+struct Render {
+    options: Rc<Options>,
     frames: Vec<Frame>,
     inline: Option<Inline>,
     tasks: Rc<Cell<usize>>,
@@ -395,7 +399,7 @@ struct Render<'a> {
     cards: Option<gtk::FlowBox>,
 }
 
-impl Render<'_> {
+impl Render {
     fn inline(&mut self) -> &mut Inline {
         self.inline.get_or_insert_with(Inline::default)
     }
@@ -433,316 +437,369 @@ impl Render<'_> {
 }
 
 pub fn render(markdown: &str, options: &Options) -> Rendered {
-    let mut render = Render {
-        options,
-        frames: vec![Frame::Blocks(Stack::new(ui::vbox(0, &["blocks"]), false))],
-        inline: None,
-        tasks: Rc::new(Cell::new(0)),
-        cards: None,
-    };
-    let mut code: Option<String> = None;
-    let mut headings: Vec<(String, gtk::Widget)> = Vec::new();
-    let mut next_id = 0;
-    let mut seen_title = false;
-    let mut lead_done = false;
-    let margins = options.margins;
+    let mut filling = Filling::new(markdown, options.clone());
+    filling.advance(usize::MAX);
+    filling.finish()
+}
 
-    for event in Parser::new_ext(markdown, parse_options()) {
-        match event {
-            Event::Start(Tag::Paragraph) => render.inline = Some(Inline::default()),
-            Event::End(TagEnd::Paragraph) => {
-                render.cards = None;
-                if let Some(text) = render.inline.take() {
-                    // .page h1 + p: the paragraph straight after the title
-                    let lead = seen_title && !lead_done && render.frames.len() == 1;
-                    lead_done = true;
-                    if text.is_empty() {
+/// A page rendered a few blocks at a time, for a long one that should not stop the window: its root is there from the
+/// start and fills in with each `advance`.
+pub struct Filling {
+    options: Rc<Options>,
+    render: Render,
+    events: std::vec::IntoIter<Event<'static>>,
+    root: gtk::Box,
+    code: Option<String>,
+    headings: Vec<(String, gtk::Widget)>,
+    next_id: usize,
+    seen_title: bool,
+    lead_done: bool,
+}
+
+impl Filling {
+    pub fn new(markdown: &str, options: Options) -> Filling {
+        let options = Rc::new(options);
+        let root = ui::vbox(0, &["blocks"]);
+        let render = Render {
+            options: options.clone(),
+            frames: vec![Frame::Blocks(Stack::new(root.clone(), false))],
+            inline: None,
+            tasks: Rc::new(Cell::new(0)),
+            cards: None,
+        };
+        let events: Vec<Event<'static>> = Parser::new_ext(markdown, parse_options()).map(Event::into_static).collect();
+        Filling { options, render, events: events.into_iter(), root, code: None, headings: Vec::new(), next_id: 0, seen_title: false, lead_done: false }
+    }
+
+    pub fn root(&self) -> gtk::Box {
+        self.root.clone()
+    }
+
+    /// The headings so far, each with its widget
+    pub fn headings(&self) -> &[(String, gtk::Widget)] {
+        &self.headings
+    }
+
+    /// As far as the end of `blocks` more of the page's blocks. Whether there is more.
+    pub fn advance(&mut self, blocks: usize) -> bool {
+        let options_kept = self.options.clone();
+        let options: &Options = &options_kept;
+        let render = &mut self.render;
+        let mut code = self.code.take();
+        let mut headings = std::mem::take(&mut self.headings);
+        let (mut next_id, mut seen_title, mut lead_done) = (self.next_id, self.seen_title, self.lead_done);
+        let margins = options.margins;
+        let mut done = 0;
+
+        for event in self.events.by_ref() {
+            match event {
+                Event::Start(Tag::Paragraph) => render.inline = Some(Inline::default()),
+                Event::End(TagEnd::Paragraph) => {
+                    render.cards = None;
+                    if let Some(text) = render.inline.take() {
+                        // .page h1 + p: the paragraph straight after the title
+                        let lead = seen_title && !lead_done && render.frames.len() == 1;
+                        lead_done = true;
+                        if text.is_empty() {
+                            continue;
+                        }
+                        let (kind, class) = if lead { (Block::Lead, "lead") } else { (Block::P, "p") };
+                        let rich = render.paragraph(text, &[class]);
+                        render.push_block(rich.upcast(), margins(kind));
+                    }
+                }
+                Event::Start(Tag::Heading { .. }) => render.inline = Some(Inline::default()),
+                Event::End(TagEnd::Heading(level)) => {
+                    let text = render.inline.take().unwrap_or_default();
+                    if level == HeadingLevel::H1 {
+                        seen_title = true;
+                        let rich = render.paragraph(text, &["h1"]);
+                        render.push_block(rich.upcast(), margins(Block::H1));
                         continue;
                     }
-                    let (kind, class) = if lead { (Block::Lead, "lead") } else { (Block::P, "p") };
+                    lead_done = true;
+                    let id = options.ids.get(next_id).cloned().unwrap_or_else(|| slug(&text.plain));
+                    next_id += 1;
+                    let (kind, class) = match level {
+                        HeadingLevel::H2 => (Block::H2, "h2"),
+                        HeadingLevel::H3 => (Block::H3, "h3"),
+                        _ => (Block::H4, "h4"),
+                    };
                     let rich = render.paragraph(text, &[class]);
-                    render.push_block(rich.upcast(), margins(kind));
-                }
-            }
-            Event::Start(Tag::Heading { .. }) => render.inline = Some(Inline::default()),
-            Event::End(TagEnd::Heading(level)) => {
-                let text = render.inline.take().unwrap_or_default();
-                if level == HeadingLevel::H1 {
-                    seen_title = true;
-                    let rich = render.paragraph(text, &["h1"]);
-                    render.push_block(rich.upcast(), margins(Block::H1));
-                    continue;
-                }
-                lead_done = true;
-                let id = options.ids.get(next_id).cloned().unwrap_or_else(|| slug(&text.plain));
-                next_id += 1;
-                let (kind, class) = match level {
-                    HeadingLevel::H2 => (Block::H2, "h2"),
-                    HeadingLevel::H3 => (Block::H3, "h3"),
-                    _ => (Block::H4, "h4"),
-                };
-                let rich = render.paragraph(text, &[class]);
-                let overlay = gtk::Overlay::new();
-                overlay.add_css_class("heading");
-                overlay.add_css_class(class);
-                overlay.set_child(Some(&rich));
-                if options.anchors {
-                    // The # before a section's heading, there while the pointer is on it
-                    let anchor = ui::line("#", &["anchor"]);
-                    anchor.set_halign(gtk::Align::Start);
-                    anchor.set_valign(gtk::Align::Start);
-                    overlay.add_overlay(&anchor);
-                    hover_class(&overlay);
-                }
-                headings.push((id, overlay.clone().upcast()));
-                render.push_block(overlay.upcast(), margins(kind));
-            }
-            Event::Start(Tag::BlockQuote(_)) => render.frames.push(Frame::Blocks(Stack::new(ui::vbox(0, &["blockquote"]), true))),
-            Event::End(TagEnd::BlockQuote(_)) => {
-                if let Some(Frame::Blocks(stack)) = render.frames.pop() {
-                    render.push_block(stack.finish().upcast(), margins(Block::Quote));
-                }
-            }
-            Event::Start(Tag::CodeBlock(_)) => code = Some(String::new()),
-            Event::End(TagEnd::CodeBlock) => {
-                let text = code.take().unwrap_or_default();
-                let text = text.strip_suffix('\n').unwrap_or(&text).to_string();
-                render.push_block(code_block(&text, options.copy.as_ref()).upcast(), margins(Block::Code));
-            }
-            Event::Start(Tag::List(start)) => {
-                let class = if start.is_some() { "ol" } else { "ul" };
-                render.frames.push(Frame::List { stack: Stack::new(ui::vbox(0, &[class]), false), ordered: start, index: start.unwrap_or(1) });
-            }
-            Event::End(TagEnd::List(_)) => {
-                if let Some(Frame::List { stack, .. }) = render.frames.pop() {
-                    render.push_block(stack.finish().upcast(), margins(Block::List));
-                }
-            }
-            Event::Start(Tag::Item) => {
-                let marker = match render.frames.last_mut() {
-                    Some(Frame::List { ordered: Some(_), index, .. }) => {
-                        let marker = format!("{index}.");
-                        *index += 1;
-                        marker
+                    let overlay = gtk::Overlay::new();
+                    overlay.add_css_class("heading");
+                    overlay.add_css_class(class);
+                    overlay.set_child(Some(&rich));
+                    if options.anchors {
+                        // The # before a section's heading, there while the pointer is on it
+                        let anchor = ui::line("#", &["anchor"]);
+                        anchor.set_halign(gtk::Align::Start);
+                        anchor.set_valign(gtk::Align::Start);
+                        overlay.add_overlay(&anchor);
+                        hover_class(&overlay);
                     }
-                    _ => "•".to_string(),
-                };
-                render.frames.push(Frame::Item { stack: Stack::new(ui::vbox(0, &["li-body"]), false), marker, task: None });
-            }
-            Event::End(TagEnd::Item) => {
-                // A tight list's item has its text without a paragraph around it
-                if let Some(text) = render.inline.take().filter(|text| !text.is_empty()) {
-                    let rich = render.paragraph(text, &["li-text"]);
-                    render.push_block(rich.upcast(), (0, 0));
+                    headings.push((id, overlay.clone().upcast()));
+                    render.push_block(overlay.upcast(), margins(kind));
                 }
-                if let Some(Frame::Item { stack, marker, task }) = render.frames.pop() {
-                    let row = ui::hbox(0, &["li"]);
-                    match task {
-                        // A task list's item has its box in place of the bullet
-                        Some(done) => {
-                            row.add_css_class("task");
-                            if done {
-                                row.add_css_class("done");
-                            }
-                            let check = gtk::CheckButton::builder().active(done).valign(gtk::Align::Start).css_classes(["task-check"]).build();
-                            let index = render.tasks.get();
-                            render.tasks.set(index + 1);
-                            match options.task.clone() {
-                                Some(toggle) => {
-                                    check.connect_toggled(move |check| {
-                                        // The note changes, and is drawn again from it
-                                        check.set_sensitive(false);
-                                        toggle(index);
-                                    });
+                Event::Start(Tag::BlockQuote(_)) => render.frames.push(Frame::Blocks(Stack::new(ui::vbox(0, &["blockquote"]), true))),
+                Event::End(TagEnd::BlockQuote(_)) => {
+                    if let Some(Frame::Blocks(stack)) = render.frames.pop() {
+                        render.push_block(stack.finish().upcast(), margins(Block::Quote));
+                    }
+                }
+                Event::Start(Tag::CodeBlock(_)) => code = Some(String::new()),
+                Event::End(TagEnd::CodeBlock) => {
+                    let text = code.take().unwrap_or_default();
+                    let text = text.strip_suffix('\n').unwrap_or(&text).to_string();
+                    render.push_block(code_block(&text, options.copy.as_ref()).upcast(), margins(Block::Code));
+                }
+                Event::Start(Tag::List(start)) => {
+                    let class = if start.is_some() { "ol" } else { "ul" };
+                    render.frames.push(Frame::List { stack: Stack::new(ui::vbox(0, &[class]), false), ordered: start, index: start.unwrap_or(1) });
+                }
+                Event::End(TagEnd::List(_)) => {
+                    if let Some(Frame::List { stack, .. }) = render.frames.pop() {
+                        render.push_block(stack.finish().upcast(), margins(Block::List));
+                    }
+                }
+                Event::Start(Tag::Item) => {
+                    let marker = match render.frames.last_mut() {
+                        Some(Frame::List { ordered: Some(_), index, .. }) => {
+                            let marker = format!("{index}.");
+                            *index += 1;
+                            marker
+                        }
+                        _ => "•".to_string(),
+                    };
+                    render.frames.push(Frame::Item { stack: Stack::new(ui::vbox(0, &["li-body"]), false), marker, task: None });
+                }
+                Event::End(TagEnd::Item) => {
+                    // A tight list's item has its text without a paragraph around it
+                    if let Some(text) = render.inline.take().filter(|text| !text.is_empty()) {
+                        let rich = render.paragraph(text, &["li-text"]);
+                        render.push_block(rich.upcast(), (0, 0));
+                    }
+                    if let Some(Frame::Item { stack, marker, task }) = render.frames.pop() {
+                        let row = ui::hbox(0, &["li"]);
+                        match task {
+                            // A task list's item has its box in place of the bullet
+                            Some(done) => {
+                                row.add_css_class("task");
+                                if done {
+                                    row.add_css_class("done");
                                 }
-                                None => check.set_sensitive(false),
+                                let check = gtk::CheckButton::builder().active(done).valign(gtk::Align::Start).css_classes(["task-check"]).build();
+                                let index = render.tasks.get();
+                                render.tasks.set(index + 1);
+                                match options.task.clone() {
+                                    Some(toggle) => {
+                                        check.connect_toggled(move |check| {
+                                            // The note changes, and is drawn again from it
+                                            check.set_sensitive(false);
+                                            toggle(index);
+                                        });
+                                    }
+                                    None => check.set_sensitive(false),
+                                }
+                                row.append(&check);
                             }
-                            row.append(&check);
+                            None => {
+                                let mark = ui::line(&marker, &["marker"]);
+                                mark.set_valign(gtk::Align::Start);
+                                mark.set_xalign(1.0);
+                                row.append(&mark);
+                            }
                         }
-                        None => {
-                            let mark = ui::line(&marker, &["marker"]);
-                            mark.set_valign(gtk::Align::Start);
-                            mark.set_xalign(1.0);
-                            row.append(&mark);
+                        let body = stack.finish();
+                        body.set_hexpand(true);
+                        row.append(&body);
+                        render.push_block(row.upcast(), margins(Block::Item));
+                    }
+                }
+                Event::TaskListMarker(done) => {
+                    if let Some(Frame::Item { task, .. }) = render.frames.last_mut() {
+                        *task = Some(done);
+                    }
+                }
+                Event::Start(Tag::Table(alignments)) => {
+                    let grid = gtk::Grid::new();
+                    grid.add_css_class("table");
+                    render.frames.push(Frame::Table { grid, alignments, row: 0, column: 0, head: false, cells: Vec::new() });
+                }
+                Event::End(TagEnd::Table) => {
+                    if let Some(Frame::Table { grid, cells, .. }) = render.frames.pop() {
+                        hover_rows(&cells);
+                        render.push_block(grid.upcast(), margins(Block::Table));
+                    }
+                }
+                Event::Start(Tag::TableHead) => {
+                    if let Some(Frame::Table { head, column, cells, .. }) = render.frames.last_mut() {
+                        *head = true;
+                        *column = 0;
+                        cells.push(Vec::new());
+                    }
+                }
+                Event::End(TagEnd::TableHead) => {
+                    if let Some(Frame::Table { head, row, .. }) = render.frames.last_mut() {
+                        *head = false;
+                        *row += 1;
+                    }
+                }
+                Event::Start(Tag::TableRow) => {
+                    if let Some(Frame::Table { column, cells, .. }) = render.frames.last_mut() {
+                        *column = 0;
+                        cells.push(Vec::new());
+                    }
+                }
+                Event::End(TagEnd::TableRow) => {
+                    if let Some(Frame::Table { row, .. }) = render.frames.last_mut() {
+                        *row += 1;
+                    }
+                }
+                Event::Start(Tag::TableCell) => {
+                    let head = matches!(render.frames.last(), Some(Frame::Table { head: true, .. }));
+                    render.inline = Some(Inline { capitals: head && options.head_capitals, cell: true, ..Default::default() });
+                }
+                Event::End(TagEnd::TableCell) => {
+                    let text = render.inline.take().unwrap_or_default();
+                    let head = matches!(render.frames.last(), Some(Frame::Table { head: true, .. }));
+                    let rich = render.paragraph(text, &[if head { "th-text" } else { "td-text" }]);
+                    if let Some(Frame::Table { grid, alignments, row, column, head, cells }) = render.frames.last_mut() {
+                        match alignments.get(*column as usize) {
+                            Some(Alignment::Center) => rich.label().set_xalign(0.5),
+                            Some(Alignment::Right) => rich.label().set_xalign(1.0),
+                            _ => {}
                         }
+                        let cell = ui::vbox(0, &[if *head { "th" } else { "td" }]);
+                        cell.append(&rich);
+                        cell.set_hexpand(true);
+                        grid.attach(&cell, *column, *row, 1, 1);
+                        if let Some(last) = cells.last_mut() {
+                            last.push(cell.upcast());
+                        }
+                        *column += 1;
                     }
-                    let body = stack.finish();
-                    body.set_hexpand(true);
-                    row.append(&body);
-                    render.push_block(row.upcast(), margins(Block::Item));
                 }
-            }
-            Event::TaskListMarker(done) => {
-                if let Some(Frame::Item { task, .. }) = render.frames.last_mut() {
-                    *task = Some(done);
+                Event::Rule => {
+                    let rule = ui::hbox(0, &["hr"]);
+                    render.push_block(rule.upcast(), margins(Block::Hr));
                 }
-            }
-            Event::Start(Tag::Table(alignments)) => {
-                let grid = gtk::Grid::new();
-                grid.add_css_class("table");
-                render.frames.push(Frame::Table { grid, alignments, row: 0, column: 0, head: false, cells: Vec::new() });
-            }
-            Event::End(TagEnd::Table) => {
-                if let Some(Frame::Table { grid, cells, .. }) = render.frames.pop() {
-                    hover_rows(&cells);
-                    render.push_block(grid.upcast(), margins(Block::Table));
+                Event::Text(text) => match code.as_mut() {
+                    Some(code) => code.push_str(&text),
+                    None => render.inline().text(&text),
+                },
+                Event::Code(text) => {
+                    render.inline().code(&text, options);
                 }
-            }
-            Event::Start(Tag::TableHead) => {
-                if let Some(Frame::Table { head, column, cells, .. }) = render.frames.last_mut() {
-                    *head = true;
-                    *column = 0;
-                    cells.push(Vec::new());
-                }
-            }
-            Event::End(TagEnd::TableHead) => {
-                if let Some(Frame::Table { head, row, .. }) = render.frames.last_mut() {
-                    *head = false;
-                    *row += 1;
-                }
-            }
-            Event::Start(Tag::TableRow) => {
-                if let Some(Frame::Table { column, cells, .. }) = render.frames.last_mut() {
-                    *column = 0;
-                    cells.push(Vec::new());
-                }
-            }
-            Event::End(TagEnd::TableRow) => {
-                if let Some(Frame::Table { row, .. }) = render.frames.last_mut() {
-                    *row += 1;
-                }
-            }
-            Event::Start(Tag::TableCell) => {
-                let head = matches!(render.frames.last(), Some(Frame::Table { head: true, .. }));
-                render.inline = Some(Inline { capitals: head && options.head_capitals, cell: true, ..Default::default() });
-            }
-            Event::End(TagEnd::TableCell) => {
-                let text = render.inline.take().unwrap_or_default();
-                let head = matches!(render.frames.last(), Some(Frame::Table { head: true, .. }));
-                let rich = render.paragraph(text, &[if head { "th-text" } else { "td-text" }]);
-                if let Some(Frame::Table { grid, alignments, row, column, head, cells }) = render.frames.last_mut() {
-                    match alignments.get(*column as usize) {
-                        Some(Alignment::Center) => rich.label().set_xalign(0.5),
-                        Some(Alignment::Right) => rich.label().set_xalign(1.0),
-                        _ => {}
+                // Raw HTML is shown as the text it is
+                Event::Html(text) | Event::InlineHtml(text) => match code.as_mut() {
+                    Some(code) => code.push_str(&text),
+                    None => render.inline().text(&text),
+                },
+                Event::SoftBreak => match code.as_mut() {
+                    Some(code) => code.push('\n'),
+                    None => {
+                        let breaks = options.breaks;
+                        render.inline().text(if breaks { "\n" } else { " " });
                     }
-                    let cell = ui::vbox(0, &[if *head { "th" } else { "td" }]);
-                    cell.append(&rich);
-                    cell.set_hexpand(true);
-                    grid.attach(&cell, *column, *row, 1, 1);
-                    if let Some(last) = cells.last_mut() {
-                        last.push(cell.upcast());
+                },
+                Event::HardBreak => render.inline().text("\n"),
+                Event::Start(Tag::Emphasis) => render.inline().raw("<i>", ""),
+                Event::End(TagEnd::Emphasis) => render.inline().raw("</i>", ""),
+                Event::Start(Tag::Strong) => render.inline().raw("<span weight=\"650\">", ""),
+                Event::End(TagEnd::Strong) => render.inline().raw("</span>", ""),
+                Event::Start(Tag::Strikethrough) => render.inline().raw("<s>", ""),
+                Event::End(TagEnd::Strikethrough) => render.inline().raw("</s>", ""),
+                Event::Start(Tag::Link { dest_url, title, .. }) => {
+                    let href = (options.route)(&dest_url);
+                    if options.attachment.as_ref().is_some_and(|is| is(&href)) {
+                        // An attachment: a chip with its clip, clicked as a whole, the room for the clip and
+                        // its padding made with thin spaces (a.attachment's 9 px, 14 px clip and 5 px gap)
+                        let pad = PAD.repeat(9);
+                        let inline = render.inline();
+                        let start = inline.length;
+                        inline.raw(&format!("<span foreground=\"{}\">{pad}", options.attachment_color), &pad);
+                        inline.chip = Some((start, href));
+                    } else {
+                        let title = if title.is_empty() { String::new() } else { format!(" title=\"{}\"", glib::markup_escape_text(&title)) };
+                        render.inline().raw(&format!("<a href=\"{}\"{title}>", glib::markup_escape_text(&href)), "");
                     }
-                    *column += 1;
                 }
-            }
-            Event::Rule => {
-                let rule = ui::hbox(0, &["hr"]);
-                render.push_block(rule.upcast(), margins(Block::Hr));
-            }
-            Event::Text(text) => match code.as_mut() {
-                Some(code) => code.push_str(&text),
-                None => render.inline().text(&text),
-            },
-            Event::Code(text) => {
-                let options = render.options;
-                render.inline().code(&text, options);
-            }
-            // Raw HTML is shown as the text it is
-            Event::Html(text) | Event::InlineHtml(text) => match code.as_mut() {
-                Some(code) => code.push_str(&text),
-                None => render.inline().text(&text),
-            },
-            Event::SoftBreak => match code.as_mut() {
-                Some(code) => code.push('\n'),
-                None => {
-                    let breaks = options.breaks;
-                    render.inline().text(if breaks { "\n" } else { " " });
-                }
-            },
-            Event::HardBreak => render.inline().text("\n"),
-            Event::Start(Tag::Emphasis) => render.inline().raw("<i>", ""),
-            Event::End(TagEnd::Emphasis) => render.inline().raw("</i>", ""),
-            Event::Start(Tag::Strong) => render.inline().raw("<span weight=\"650\">", ""),
-            Event::End(TagEnd::Strong) => render.inline().raw("</span>", ""),
-            Event::Start(Tag::Strikethrough) => render.inline().raw("<s>", ""),
-            Event::End(TagEnd::Strikethrough) => render.inline().raw("</s>", ""),
-            Event::Start(Tag::Link { dest_url, title, .. }) => {
-                let href = (options.route)(&dest_url);
-                if options.attachment.as_ref().is_some_and(|is| is(&href)) {
-                    // An attachment: a chip with its clip, clicked as a whole, the room for the clip and
-                    // its padding made with thin spaces (a.attachment's 9 px, 14 px clip and 5 px gap)
-                    let pad = PAD.repeat(9);
+                Event::End(TagEnd::Link) => {
                     let inline = render.inline();
-                    let start = inline.length;
-                    inline.raw(&format!("<span foreground=\"{}\">{pad}", options.attachment_color), &pad);
-                    inline.chip = Some((start, href));
-                } else {
-                    let title = if title.is_empty() { String::new() } else { format!(" title=\"{}\"", glib::markup_escape_text(&title)) };
-                    render.inline().raw(&format!("<a href=\"{}\"{title}>", glib::markup_escape_text(&href)), "");
-                }
-            }
-            Event::End(TagEnd::Link) => {
-                let inline = render.inline();
-                match inline.chip.take() {
-                    Some((start, href)) => {
-                        let pad = PAD.repeat(3);
-                        inline.raw(&format!("{pad}</span>"), &pad);
-                        inline.decos.push(Deco { start, end: inline.length, kind: Kind::Chip, target: Some(href) });
-                    }
-                    None => inline.raw("</a>", ""),
-                }
-            }
-            Event::Start(Tag::Image { dest_url, .. }) => {
-                render.inline().image = Some((dest_url.to_string(), String::new()));
-            }
-            Event::End(TagEnd::Image) => {
-                let Some((url, alt)) = render.inline().image.take() else { continue };
-                let href = (options.route)(&url);
-                match options.image.as_ref().and_then(|image| image(&href, &alt)) {
-                    // Beside the pictures just before it, with nothing but white space between them
-                    Some(picture) if options.image_rows && render.cards.is_some() && render.inline.as_ref().is_none_or(Inline::is_empty) => {
-                        if let Some(cards) = render.cards.as_ref() {
-                            cards.append(&picture);
-                            // The card itself takes the focus, not the row's slot round it
-                            if let Some(slot) = picture.parent() { slot.set_focusable(false); }
+                    match inline.chip.take() {
+                        Some((start, href)) => {
+                            let pad = PAD.repeat(3);
+                            inline.raw(&format!("{pad}</span>"), &pad);
+                            inline.decos.push(Deco { start, end: inline.length, kind: Kind::Chip, target: Some(href) });
                         }
-                        render.inline = Some(Inline::default());
+                        None => inline.raw("</a>", ""),
                     }
-                    Some(picture) if options.image_rows => {
-                        render.flush_paragraph("p");
-                        let cards = gtk::FlowBox::builder()
-                            .css_classes(["cards"])
-                            .homogeneous(true)
-                            .column_spacing(12)
-                            .row_spacing(12)
-                            .selection_mode(gtk::SelectionMode::None)
-                            .max_children_per_line(16)
-                            .halign(gtk::Align::Start)
-                            .build();
-                        cards.append(&picture);
-                        if let Some(slot) = picture.parent() { slot.set_focusable(false); }
-                        render.push_block(cards.clone().upcast(), margins(Block::Image));
-                        render.cards = Some(cards);
-                        render.inline = Some(Inline::default());
+                }
+                Event::Start(Tag::Image { dest_url, .. }) => {
+                    render.inline().image = Some((dest_url.to_string(), String::new()));
+                }
+                Event::End(TagEnd::Image) => {
+                    let Some((url, alt)) = render.inline().image.take() else { continue };
+                    let href = (options.route)(&url);
+                    match options.image.as_ref().and_then(|image| image(&href, &alt)) {
+                        // Beside the pictures just before it, with nothing but white space between them
+                        Some(picture) if options.image_rows && render.cards.is_some() && render.inline.as_ref().is_none_or(Inline::is_empty) => {
+                            if let Some(cards) = render.cards.as_ref() {
+                                cards.append(&picture);
+                                // The card itself takes the focus, not the row's slot round it
+                                if let Some(slot) = picture.parent() { slot.set_focusable(false); }
+                            }
+                            render.inline = Some(Inline::default());
+                        }
+                        Some(picture) if options.image_rows => {
+                            render.flush_paragraph("p");
+                            let cards = gtk::FlowBox::builder()
+                                .css_classes(["cards"])
+                                .homogeneous(true)
+                                .column_spacing(12)
+                                .row_spacing(12)
+                                .selection_mode(gtk::SelectionMode::None)
+                                .max_children_per_line(16)
+                                .halign(gtk::Align::Start)
+                                .build();
+                            cards.append(&picture);
+                            if let Some(slot) = picture.parent() { slot.set_focusable(false); }
+                            render.push_block(cards.clone().upcast(), margins(Block::Image));
+                            render.cards = Some(cards);
+                            render.inline = Some(Inline::default());
+                        }
+                        // A picture is a block of its own, between what the paragraph said before and after it
+                        Some(picture) => {
+                            render.flush_paragraph("p");
+                            render.push_block(picture, margins(Block::Image));
+                            render.inline = Some(Inline::default());
+                        }
+                        None => render.inline().text(&alt),
                     }
-                    // A picture is a block of its own, between what the paragraph said before and after it
-                    Some(picture) => {
-                        render.flush_paragraph("p");
-                        render.push_block(picture, margins(Block::Image));
-                        render.inline = Some(Inline::default());
-                    }
-                    None => render.inline().text(&alt),
+                }
+                _ => {}
+            }
+            if render.frames.len() == 1 && render.inline.is_none() && code.is_none() {
+                done += 1;
+                if done >= blocks {
+                    break;
                 }
             }
-            _ => {}
         }
+        self.code = code;
+        self.headings = headings;
+        (self.next_id, self.seen_title, self.lead_done) = (next_id, seen_title, lead_done);
+        self.events.len() > 0
     }
-    let root = match render.frames.into_iter().next() {
-        Some(Frame::Blocks(stack)) => stack.finish(),
-        _ => ui::vbox(0, &["blocks"]),
-    };
-    Rendered { root, headings }
+
+    pub fn finish(mut self) -> Rendered {
+        let root = match self.render.frames.drain(..).next() {
+            Some(Frame::Blocks(stack)) => stack.finish(),
+            _ => ui::vbox(0, &["blocks"]),
+        };
+        Rendered { root, headings: self.headings }
+    }
 }
 
 /// The class `hover` on a widget while the pointer is on it, for what CSS's :hover did to its children

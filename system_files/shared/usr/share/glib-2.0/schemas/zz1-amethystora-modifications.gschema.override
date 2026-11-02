@@ -129,3 +129,6 @@ switch-to-application-9=['<Alt>9']
 # take Super+. and Super+; for its own emoji panel first, and the picker never opened there
 [org.freedesktop.ibus.panel.emoji]
 hotkey=@as []
+
+[org.gnome.shell]
+always-show-log-out=true

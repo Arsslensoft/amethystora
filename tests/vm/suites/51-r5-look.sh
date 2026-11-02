@@ -98,6 +98,13 @@ if in_session "ame desktop theme save 'Lab Bad' <${WORK}/bad" >/dev/null 2>&1 ||
 else
     ok "a palette with a command in it is refused"
 fi
+sed 's/^background = .*/background = "#ffff00"/' "${WORK}/palette" >"${WORK}/faint"
+chmod a+r "${WORK}/faint"
+if in_session "ame desktop theme save 'Lab Faint' <${WORK}/faint" >/dev/null 2>&1 || [[ -e "${CONFIG}/themes/lab-faint" ]]; then
+    not_ok "a palette with too little contrast was taken"
+else
+    ok "a palette with too little contrast is refused"
+fi
 
 # --- 4. Colour files from elsewhere ---------------------------------------------------------------------------------
 cat >"${WORK}/kanagawa.conf" <<'EOF'

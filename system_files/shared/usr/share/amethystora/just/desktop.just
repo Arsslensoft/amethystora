@@ -45,6 +45,27 @@ theme *ARGS:
         done < <(palette_checks "${dir}")
         rm -rf "${dir}"
     }
+    # A palette from Control's theme maker that fails a check is not kept: the reason, and a failure
+    refuses() {
+        local dir name ratio nearest need good=0
+        dir="$(mktemp -d)"
+        printf '%s\n' "$1" >"${dir}/colors.toml"
+        if "${helper}" light <<<"$1" 2>/dev/null; then : >"${dir}/light.mode"; fi
+        while read -r name ratio nearest; do
+            case "${name}" in
+                text) name="$(gettext "Text on the surfaces")" need=4.5 ;;
+                label) name="$(gettext "A label on the accent")" need=4.5 ;;
+                outline) name="$(gettext "Outlines")" need=3 ;;
+                *) continue ;;
+            esac
+            if ! awk -v r="${ratio}" -v n="${need}" 'BEGIN { exit !(r >= n) }'; then
+                echo "$(eval_gettext "Not saved, too little contrast. \${name}: \${ratio}:1, needs \${need}:1. \${nearest} would pass.")" >&2
+                good=1
+            fi
+        done < <(palette_checks "${dir}")
+        rm -rf "${dir}"
+        return "${good}"
+    }
     # A name of the account's own for a theme: one a shipped theme has gets a number
     own_name() {
         local name="$1" n=2
@@ -65,7 +86,9 @@ theme *ARGS:
         save)
             # The palette Control's theme maker made, on stdin; the helper takes it only whole
             [[ $# == 2 ]] || { echo "usage: ame desktop theme save NAME"; exit 64; }
-            slug="$("${helper}" save "$2")"
+            palette="$(cat)"
+            refuses "${palette}" || exit 3
+            slug="$("${helper}" save "$2" <<<"${palette}")"
             AMETHYSTORA_THEME_QUIET=1 amethystora-theme set "${slug}" >/dev/null
             name="$2"
             echo "$(eval_gettext "Theme saved as \${name}, and applied.")"
@@ -628,7 +651,7 @@ glass MATERIAL="":
     fi
 
 # How deep a glass's blur is and how dense its tint (R6-28): 50 to 150 per cent of the glass's own, for the glass in
-# use or the one named (ame desktop glass-strength blur|tint PERCENT|reset [frost|prism|clear]); without anything it
+# use or the one named (ame desktop glass-strength blur|tint PERCENT|reset [frost|prism|clear], or reset for both); without anything it
 # shows them all. The text on the glass keeps 4.5:1 at every strength.
 [positional-arguments]
 glass-strength *ARGS:
@@ -637,12 +660,19 @@ glass-strength *ARGS:
     # shellcheck source=/dev/null
     source gettext.sh
     SCHEMA=org.gnome.shell.extensions.amethystora-ui.glass
-    usage() { echo "usage: ame desktop glass-strength blur|tint 50..150|reset [frost|prism|clear]" >&2; exit 64; }
+    usage() { echo "usage: ame desktop glass-strength blur|tint 50..150|reset [frost|prism|clear], or reset" >&2; exit 64; }
     percent() { awk -v a="$(gsettings get "${SCHEMA}" "$1")" 'BEGIN { printf "%.0f", a * 100 }'; }
     if [[ $# -eq 0 ]]; then
         for material in frost prism clear; do
             echo "${material} blur $(percent "blur-${material}") tint $(percent "tint-${material}")"
         done
+        exit 0
+    fi
+    if [[ $# -eq 1 && "$1" == reset ]]; then
+        material="$(gsettings get "${SCHEMA}" material | tr -d "'")"
+        gsettings reset "${SCHEMA}" "blur-${material}"
+        gsettings reset "${SCHEMA}" "tint-${material}"
+        echo "$(eval_gettext "The \${material} glass is back to its own blur and tint.")"
         exit 0
     fi
     kind="${1:-}"
@@ -4176,7 +4206,7 @@ tidy-downloads ACTION="":
             /usr/libexec/amethystora-tidy-downloads undo
             ;;
         now)
-            /usr/libexec/amethystora-tidy-downloads run
+            /usr/libexec/amethystora-tidy-downloads now
             ;;
         "")
             if systemctl --user is-enabled --quiet "${timer}" 2>/dev/null; then echo on; else echo off; fi

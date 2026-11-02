@@ -2,6 +2,7 @@
 # Themes into files and out of them, for `ame desktop theme save|import|share|look` and Control's theme maker:
 #
 #   amethystora-theme-file save NAME                 a palette on stdin (`key = "#rrggbb"` lines) as the account's theme
+#   amethystora-theme-file light                     whether a palette on stdin has a light ground: exit 0 if it has
 #   amethystora-theme-file read FILE                 what a colour file from elsewhere holds, as JSON, writing nothing
 #   amethystora-theme-file import FILE NAME          such a file as the account's theme, with the picture beside it
 #   amethystora-theme-file share OUT --theme DIR --name NAME [--picture P] [--style S] [--icons I] [--font F]
@@ -538,8 +539,7 @@ def svg_pixbuf(path):
 
 # --- The commands --------------------------------------------------------------------------------
 
-def save(name):
-    s = checked_slug(name)
+def palette_of_stdin():
     text = sys.stdin.read(65536)
     found = {}
     for line in text.splitlines():
@@ -552,7 +552,12 @@ def save(name):
     missing = [key for key in KEYS if key not in found]
     if missing:
         raise Refused(f'the palette has no {missing[0]}')
-    write_theme(s, found, name)
+    return found
+
+
+def save(name):
+    s = checked_slug(name)
+    write_theme(s, palette_of_stdin(), name)
     print(s)
 
 
@@ -581,6 +586,8 @@ def main(argv):
     try:
         if command == 'save' and len(args) == 1:
             save(args[0])
+        elif command == 'light' and not args:
+            sys.exit(0 if light(palette_of_stdin()) else 1)
         elif command == 'read' and len(args) == 1:
             info = read_colour_file(args[0])
             print(json.dumps(info))

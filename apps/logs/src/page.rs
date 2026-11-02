@@ -783,7 +783,8 @@ impl Logs {
         let entries = self.state.borrow().entries.clone();
         self.render_foot();
         let began = since_start();
-        self.parts.model.replace(&entries);
+        self.list_of.set(self.state.borrow().request);
+        self.parts.model.replace_gradually(&entries, self.parts.list_view.upcast_ref());
         glib::g_debug!("amethystora-logs", "model of {} rows from {began} to {} ms", self.parts.model.len(), since_start());
         self.set_list_child(None);
         self.parts.scroller.vadjustment().set_value(0.0);
@@ -1511,6 +1512,29 @@ impl Logs {
     fn logs_page(&self) -> Panes {
         let main = ui::vbox(0, &["logs-main"]);
         main.set_hexpand(true);
+        let head = self.logs_head();
+        main.append(&head);
+        main.append(&self.parts.list_wrap);
+
+        let panes = Panes::new(&main, &self.parts.detail);
+        let weak = self.me.clone();
+        panes.on_height(move |height| {
+            if let Some(this) = weak.upgrade() {
+                this.vh.set(height);
+                if let Some(loading) = this.live.borrow().loading.clone() {
+                    loading.set_size_request(-1, (0.4 * height as f64).round() as i32);
+                }
+                if let Some((scroller, _, _)) = this.live.borrow().message.clone() {
+                    scroller.set_max_content_height(this.message_height());
+                }
+            }
+        });
+        self.live.borrow_mut().panes = Some(panes.clone());
+        panes
+    }
+
+    /// What is above the list: the title, the search and the filters
+    fn logs_head(&self) -> gtk::Box {
         let head = ui::vbox(14, &["logs-head"]);
         let title_row = ui::hbox(20, &["title-row"]);
         let grow = ui::vbox(0, &["grow"]);
@@ -1556,26 +1580,9 @@ impl Logs {
         }
         let notice = ui::vbox(0, &["notice"]);
         head.append(&notice);
-        main.append(&head);
-        main.append(&self.parts.list_wrap);
-
-        let panes = Panes::new(&main, &self.parts.detail);
-        let weak = self.me.clone();
-        panes.on_height(move |height| {
-            if let Some(this) = weak.upgrade() {
-                this.vh.set(height);
-                if let Some(loading) = this.live.borrow().loading.clone() {
-                    loading.set_size_request(-1, (0.4 * height as f64).round() as i32);
-                }
-                if let Some((scroller, _, _)) = this.live.borrow().message.clone() {
-                    scroller.set_max_content_height(this.message_height());
-                }
-            }
-        });
         {
             let mut live = self.live.borrow_mut();
-            live.panes = Some(panes.clone());
-            live.head = Some(head);
+            live.head = Some(head.clone());
             live.actions = Some(actions);
             live.count = Some(count);
             live.notice = Some(notice);
@@ -1584,7 +1591,7 @@ impl Logs {
             live.range = Some(range);
             live.title_row = Some(title_row);
         }
-        panes
+        head
     }
 
     // --- Apps and services -------------------------------------------------------------------------
@@ -1732,7 +1739,8 @@ impl Logs {
             filter.connect_changed(move |filter| {
                 if let Some(this) = weak.upgrade() {
                     this.state.borrow_mut().source_filter = filter.text().to_string();
-                    this.fill_sources(&list);
+                    let (again, list) = (this.clone(), list.clone());
+                    this.filter_pause.after_typing(move || again.fill_sources(&list));
                 }
             });
             page.append(&results);
@@ -1781,6 +1789,11 @@ impl Logs {
     }
 
     pub(crate) fn render(&self) {
+        // On the logs already, only what is above the list changes: a list view taken out of the window and put back makes
+        // all its rows again, which stops the window at every change of view
+        if self.state.borrow().page == PageKind::Logs && self.render_head_only() {
+            return;
+        }
         // The parts that stay are taken out of the page before it is drawn again
         if let Some(parent) = self.parts.list_wrap.parent().and_downcast::<gtk::Box>() {
             parent.remove(&self.parts.list_wrap);
@@ -1807,6 +1820,34 @@ impl Logs {
         self.render_list();
         self.render_fresh();
         self.render_detail();
+    }
+
+    fn render_head_only(&self) -> bool {
+        let old = {
+            let live = self.live.borrow();
+            live.panes.as_ref().and(live.head.clone())
+        };
+        let Some(old) = old else { return false };
+        let Some(main) = old.parent().and_then(|parent| parent.downcast::<gtk::Box>().ok()) else { return false };
+        main.remove(&old);
+        main.prepend(&self.logs_head());
+        self.render_nav();
+        self.render_hint();
+        self.render_actions();
+        self.render_notice();
+        // Only a list that is not what the state says: load() draws its own, and the same rows drawn again are work for nothing
+        let (loading, request) = {
+            let state = self.state.borrow();
+            (state.loading, state.request)
+        };
+        if loading || self.list_of.get() != request {
+            self.render_list();
+        } else {
+            self.render_count();
+        }
+        self.render_fresh();
+        self.render_detail();
+        true
     }
 
     pub(crate) fn focus_search(&self) {

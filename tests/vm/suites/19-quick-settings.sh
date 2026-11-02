@@ -3,7 +3,7 @@
 # Quick settings as live tiles (plans/beyond/spec-quick.md, section 7, 19-quick-settings items 1 to 12 and 23), in the
 # test account's session, asked of GNOME Shell itself through Eval, which a lab-only extension of the test account
 # opens (never in the image):
-#   - the module runs: tiles first, then the output slider, the theme block, Screenshot, Lock, Settings and Power, and
+#   - the module runs: tiles first, then the output slider, the theme block, Screenshot, Lock, Log out, Settings and Power, and
 #     the hint; tiles 184 wide, the menu 408;
 #   - a long press starts arrange mode and toggles nothing; a tile hidden from its corner button and another dragged
 #     before power mode stay so across a new session, and a drag let go outside the tiles changes nothing; reset puts
@@ -128,7 +128,7 @@ same "2 under the tiles: the volume, the theme block, the row of buttons and the
     "OutputStreamSlider,theme,SystemItem,hint"
 ACTIONS="(() => { const item = ${QS}.menu._grid.get_children().find(c => c.constructor.name === 'SystemItem');
     return item.child.get_children().filter(c => c.visible).map(b => b.get_child().get_children().at(-1).text).join(','); })()"
-same "2 the row of buttons" "$(ev "${ACTIONS}")" "Screenshot,Lock,Settings,Power"
+same "2 the row of buttons" "$(ev "${ACTIONS}")" "Screenshot,Lock,Log out,Settings,Power"
 same "3 every tile is 184 wide and at least 56 high" \
     "$(ev "${Q}.tiles().every(t => Math.round(t.width) === 184 && Math.round(t.height) >= 56)")" true
 width="$(ev "Math.round(${QS}.menu.box.width)")"

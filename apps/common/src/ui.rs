@@ -130,6 +130,59 @@ pub fn wrap(spacing: i32, line_spacing: i32, classes: &[&str]) -> adw::WrapBox {
 }
 
 /// Takes every child out of a box, to build it again
+/// Work done a little at a time, between frames, so that a long page fills in while the window goes on answering: at
+/// most `per_frame` steps a frame, and fewer when they take longer than a frame can spare. It ends with `on`.
+pub fn in_frames(on: &impl IsA<gtk::Widget>, per_frame: usize, steps: std::collections::VecDeque<Box<dyn FnOnce()>>) {
+    if steps.is_empty() {
+        return;
+    }
+    let steps = std::cell::RefCell::new(steps);
+    on.as_ref().add_tick_callback(move |widget, _| {
+        if widget.root().is_none() {
+            return glib::ControlFlow::Break;
+        }
+        let began = std::time::Instant::now();
+        for _ in 0..per_frame {
+            let step = steps.borrow_mut().pop_front();
+            match step {
+                Some(step) => step(),
+                None => break,
+            }
+            if began.elapsed() > std::time::Duration::from_millis(5) {
+                break;
+            }
+        }
+        if steps.borrow().is_empty() { glib::ControlFlow::Break } else { glib::ControlFlow::Continue }
+    });
+}
+
+/// A search's results, drawn once the typing has paused: laying out a page takes longer than a key takes to press.
+/// A key that acts on the results asks `cancel` first, and draws them at once if something was waiting.
+#[derive(Default)]
+pub struct Pause(std::rc::Rc<Cell<Option<glib::SourceId>>>);
+
+impl Pause {
+    pub fn after_typing(&self, then: impl FnOnce() + 'static) {
+        self.cancel();
+        let slot = self.0.clone();
+        let source = glib::timeout_add_local_once(std::time::Duration::from_millis(180), move || {
+            slot.set(None);
+            then();
+        });
+        self.0.set(Some(source));
+    }
+
+    /// Whether something was waiting
+    pub fn cancel(&self) -> bool {
+        let waiting = self.0.take();
+        let was = waiting.is_some();
+        if let Some(source) = waiting {
+            source.remove();
+        }
+        was
+    }
+}
+
 pub fn clear(container: &gtk::Box) {
     while let Some(child) = container.first_child() {
         container.remove(&child);

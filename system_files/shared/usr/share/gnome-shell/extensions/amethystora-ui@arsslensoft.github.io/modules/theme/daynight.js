@@ -33,8 +33,12 @@ function day(dt) {
 // boundary, each a GLib.DateTime: {side, since, next}
 export function partOfDay(now, dayStarts, nightStarts) {
     const at = (offset, hours) => {
+        // By the clock on the wall, so that a day of 23 or 25 hours keeps its times
         const midnight = GLib.DateTime.new_local(now.get_year(), now.get_month(), now.get_day_of_month(), 0, 0, 0);
-        return midnight.add_days(offset).add_seconds(Math.round(hours * 3600));
+        const day = midnight.add_days(offset);
+        const seconds = Math.min(Math.round(hours * 3600), 24 * 3600 - 1);
+        return GLib.DateTime.new_local(day.get_year(), day.get_month(), day.get_day_of_month(),
+            Math.floor(seconds / 3600), Math.floor(seconds / 60) % 60, seconds % 60);
     };
     const boundaries = [];
     for (const offset of [-1, 0, 1]) {
