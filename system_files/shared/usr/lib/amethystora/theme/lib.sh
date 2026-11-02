@@ -889,7 +889,7 @@ render_templates() {
     # A palette too close to its own ground has colours that no lightness brings to the ratio WCAG asks: it is applied as it is,
     # and says which
     if [[ -n ${values[unmet]:-} ]]; then
-        echo "The palette of ${dest##*/} cannot give every colour the contrast WCAG asks (${values[unmet]}); it is applied as it is." >&2
+        echo "The palette of ${THEME_SHOWN:-${dest##*/}} cannot give every colour the contrast WCAG asks (${values[unmet]}); it is applied as it is." >&2
     fi
     values[mono_font]="$(mono_font "${dest}")"
     # The scheme the theme is drawn in, which the palette for libadwaita is limited to

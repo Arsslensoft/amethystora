@@ -70,7 +70,8 @@ stage_theme() {
         colors_merge "${staging}/colors.toml" accent "$(accent_fill "${accent}")"
     fi
 
-    render_templates "${staging}" \
+    # The folder it is rendered in has no name a person knows
+    THEME_SHOWN="${slug}" render_templates "${staging}" \
         "theme_name=${slug}" \
         "ptyxis_palette_name=Amethystora ${slug}"
     ACCENTS_KEEP=1 render_accent_sets "${staging}" "${slug}"
