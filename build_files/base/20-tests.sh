@@ -2471,6 +2471,11 @@ GLASS_ICONS="$(find /usr/share/icons/amethystora-glass -name '*.svg' | wc -l)"
 # Other makers' apps are drawn by what they do, a maker's logo never: Firefox and Thunderbird keep theirs
 [[ -s /usr/share/icons/amethystora-glass/apps/scalable/org.kde.konsole.svg ]]
 [[ -z "$(find /usr/share/icons/amethystora-glass -name 'firefox.svg' -o -name 'org.mozilla.*')" ]]
+# Extensions and Extension Manager each have a drawing of their own, neither the add-on file type's
+EXTENSION_ICONS=(/usr/share/icons/amethystora-glass/{apps/scalable/org.gnome.Extensions,apps/scalable/com.mattjakeman.ExtensionManager,mimetypes/scalable/application-x-addon}.svg)
+! cmp -s "${EXTENSION_ICONS[0]}" "${EXTENSION_ICONS[1]}"
+! cmp -s "${EXTENSION_ICONS[0]}" "${EXTENSION_ICONS[2]}"
+! cmp -s "${EXTENSION_ICONS[1]}" "${EXTENSION_ICONS[2]}"
 ICON_PACK_NAMES="$(source /usr/lib/amethystora/theme/lib.sh && echo "${ICON_PACKS[*]}")"
 [[ "$(wc -w <<<"${ICON_PACK_NAMES}")" == 8 ]]
 # Icon packs are the folders with Directories=; the pointers (amethystora-pointer-*) have none

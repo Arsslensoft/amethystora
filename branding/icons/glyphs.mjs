@@ -99,6 +99,7 @@ const EMBLEM = {
     desktop: s => `<rect x="96" y="120" width="64" height="42" rx="7" fill="${s}"/>` + line('M128 164v10M112 178h32', s, 8),
     remote: s => `<path d="M108 176h42a17 17 0 0 0 3-34 23 23 0 0 0-44-5 20 20 0 0 0-1 39z" fill="${s}"/>`,
     locked: s => line('M114 140v-10a14 14 0 0 1 28 0v10', s, 8) + `<rect x="102" y="138" width="52" height="40" rx="9" fill="${s}"/>`,
+    bookmarks: s => `<path d="M108 120h40v60l-20-14-20 14z" fill="${s}" stroke="${s}" stroke-width="4" stroke-linejoin="round"/>`,
 };
 
 // The letters a file type's page names it with (`label-PY`), drawn as strokes in a 20 by 28 box, so that no font is
@@ -301,6 +302,13 @@ export const DRAW = {
         `<rect x="40" y="56" width="176" height="44" rx="14" fill="${ink}"/>` + line('M48 104h160', soft, 6) +
         `<rect x="114" y="56" width="28" height="156" fill="${soft}"/>`,
     addon: ({ink}) => `<path d="M62 78h32a20 20 0 1 1 40 0h40v40a20 20 0 1 1 0 40v40H62v-40a20 20 0 1 0 0-40z" fill="${ink}"/>`,
+    // GNOME's Extensions: the add-ons a machine has, each switched on or off
+    extensions: ({ink, soft}) => `<path d="M58 84h32a26 26 0 1 1 36 0h32a14 14 0 0 1 14 14v32a26 26 0 1 1 0 36v32a14 14 0 0 1-14 14H58a14 14 0 0 1-14-14V98a14 14 0 0 1 14-14z" fill="${ink}"/>` +
+        `<rect x="66" y="126" width="84" height="44" rx="22" fill="none" stroke="${soft}" stroke-width="10"/><circle cx="128" cy="148" r="12" fill="${soft}"/>`,
+    // Extension Manager: a bag to carry add-ons home in, from where they are published
+    'extension-store': ({ink, soft}) => line('M94 104V84a34 34 0 0 1 68 0v20', soft, 13) +
+        `<path d="M58 96h140l-10 104a16 16 0 0 1-16 14H84a16 16 0 0 1-16-14z" fill="${ink}" stroke="${ink}" stroke-width="6" stroke-linejoin="round"/>` +
+        `<path d="M100 134h15a13 13 0 1 1 26 0h15v15a13 13 0 1 1 0 26v15h-56z" fill="${soft}"/>`,
 
     // ---- Devices -----------------------------------------------------------------------------------------------------
     laptop: ({ink, soft}) => `<rect x="56" y="52" width="144" height="104" rx="16" fill="${ink}"/>` +
@@ -428,6 +436,33 @@ export const DRAW = {
     tasks: ({ink, soft}) => `<circle cx="128" cy="128" r="84" fill="${ink}"/>` + line('M88 130l28 28 54-60', soft, 18),
     toggles: ({ink, soft}) => `<rect x="40" y="56" width="176" height="64" rx="32" fill="${ink}"/><circle cx="184" cy="88" r="22" fill="${soft}"/>` +
         `<rect x="40" y="136" width="176" height="64" rx="32" fill="${ink}" fill-opacity="0.6"/><circle cx="72" cy="168" r="22" fill="${soft}"/>`,
+    // Sending something across, whatever carries it: never the Bluetooth mark
+    transfer: ({ink, soft}) => `<rect x="44" y="44" width="168" height="168" rx="40" fill="${ink}"/>` +
+        line('M80 102h88M146 78l24 24-24 24', soft, 14) + line('M176 154H88M110 130l-24 24 24 24', soft, 14),
+    vpn: ({ink, soft}) => `<rect x="44" y="44" width="168" height="168" rx="40" fill="${ink}"/>` + word('VPN', 128, 110, soft),
+    lock: ({ink, soft}) => line('M88 112V84a40 40 0 0 1 80 0v28', ink, 18) + `<rect x="56" y="108" width="144" height="104" rx="24" fill="${ink}"/>` +
+        `<circle cx="128" cy="150" r="14" fill="${soft}"/><rect x="120" y="150" width="16" height="34" rx="6" fill="${soft}"/>`,
+    bell: ({ink, soft}) => `<path d="M128 40a14 14 0 0 1 14 14v8c28 6 46 30 46 58v36l20 28H48l20-28v-36c0-28 18-52 46-58v-8a14 14 0 0 1 14-14z" fill="${ink}"/>` +
+        `<path d="M102 192h52a26 26 0 0 1-52 0z" fill="${soft}"/>`,
+    // Windows over each other: two panes, never four
+    stacked: ({ink, soft}) => `<rect x="88" y="44" width="128" height="104" rx="18" fill="${soft}"/>` +
+        `<rect x="40" y="92" width="144" height="120" rx="20" fill="${ink}"/>` + line('M62 124h100', soft, 10),
+    smartcard: ({ink, soft}) => `<rect x="36" y="64" width="184" height="128" rx="20" fill="${ink}"/><rect x="60" y="92" width="52" height="46" rx="9" fill="${soft}"/>` +
+        line('M136 104h60M136 130h60M60 164h96', soft, 9),
+    modem: ({ink, soft}) => line('M78 124L62 50M178 124l16-74', ink, 12) + `<rect x="40" y="118" width="176" height="84" rx="20" fill="${ink}"/>` +
+        [76, 110, 144].map(x => `<circle cx="${x}" cy="160" r="10" fill="${soft}"/>`).join('') + line('M170 160h20', soft, 10),
+    tape: ({ink, soft}) => `<rect x="36" y="60" width="184" height="136" rx="18" fill="${ink}"/>` +
+        `<circle cx="92" cy="118" r="18" fill="none" stroke="${soft}" stroke-width="10"/><circle cx="164" cy="118" r="18" fill="none" stroke="${soft}" stroke-width="10"/>` +
+        `<path d="M84 196l12-26h64l12 26z" fill="${soft}"/>`,
+    dialpad: ({ink, soft}) => `<rect x="64" y="36" width="128" height="184" rx="26" fill="${ink}"/>` +
+        [0, 1, 2, 3].map(r => [0, 1, 2].map(c => `<circle cx="${96 + c * 32}" cy="${72 + r * 37}" r="10" fill="${soft}"/>`).join('')).join(''),
+    ereader: ({ink, soft}) => `<rect x="66" y="36" width="124" height="184" rx="22" fill="${ink}"/>` +
+        line('M92 76h72M92 104h72M92 132h72M92 160h40', soft, 10) + `<circle cx="128" cy="196" r="8" fill="${soft}"/>`,
+    'shield-ok': ({ink, soft}) => `<path d="M128 46l68 26v52c0 44-30 74-68 88-38-14-68-44-68-88V72z" fill="${ink}"/>` + line('M98 126l22 22 40-44', soft, 17),
+    'image-missing': ({ink, soft}) => `<rect x="36" y="52" width="184" height="152" rx="26" fill="${ink}"/>` +
+        `<path d="M60 180l40-50 30 34 20-22 46 38z" fill="${soft}" fill-opacity="0.4"/>` + line('M66 186L190 70', soft, 15),
+    'image-loading': ({ink, soft}) => `<rect x="36" y="52" width="184" height="152" rx="26" fill="${ink}"/>` +
+        [88, 128, 168].map(x => `<circle cx="${x}" cy="128" r="14" fill="${soft}"/>`).join(''),
 
     // ---- Dialogs -----------------------------------------------------------------------------------------------------
     info: ({ink, soft}) => `<circle cx="128" cy="128" r="84" fill="${ink}"/><circle cx="128" cy="86" r="13" fill="${soft}"/>` + line('M128 118v62', soft, 20),
@@ -447,6 +482,11 @@ export const DRAW = {
     'book-file': c => page(c, `<path d="M126 124c-12-8-26-10-42-8v64c16-2 30 0 42 8zM130 124c12-8 26-10 42-8v64c-16-2-30 0-42 8z" fill="${c.soft}"/>`),
     'mail-file': c => page(c, `<rect x="82" y="118" width="92" height="64" rx="10" fill="${c.soft}"/>` + line('M94 130l34 24 34-24', c.over ?? c.ink, 8)),
     'download-file': c => page(c, line('M128 104v56M104 138l24 24 24-24M96 188h64', c.soft, 12)),
+    blank: c => page(c),
+    'colour-profile': c => page(c, [[108, 128], [148, 128], [128, 164]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="25" fill="${c.soft}" fill-opacity="0.65"/>`).join('')),
+    symlink: c => page(c, line('M92 186v-20a32 32 0 0 1 32-32h36', c.soft, 12) + line('M140 110l24 24-24 24', c.soft, 12)),
+    'model-file': c => page(c, `<path d="M128 102l42 23v47l-42 23-42-23v-47z" fill="none" stroke="${c.soft}" stroke-width="8" stroke-linejoin="round"/>` +
+        line('M88 126l40 22 40-22M128 150v43', c.soft, 7)),
     database: ({ink, soft}) => `<path d="M56 64c0-14 32-24 72-24s72 10 72 24v128c0 14-32 24-72 24s-72-10-72-24z" fill="${ink}"/>` +
         `<ellipse cx="128" cy="64" rx="72" ry="24" fill="${soft}"/>` + line('M56 112c0 14 32 24 72 24s72-10 72-24M56 156c0 14 32 24 72 24s72-10 72-24', soft, 8),
     json: c => page(c, line('M110 106c-12 0-14 6-14 16v10c0 6-4 10-10 10 6 0 10 4 10 10v10c0 10 2 16 14 16M146 106c12 0 14 6 14 16v10c0 6 4 10 10 10-6 0-10 4-10 10v10c0 10-2 16-14 16', c.soft, 10)),

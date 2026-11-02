@@ -129,7 +129,8 @@ for path in glob.glob('/usr/share/applications/amethystora-*.desktop'):
 names |= {'folder', 'text-x-generic', 'application-pdf', 'user-trash', 'org.gnome.Nautilus', 'org.gnome.Settings'}
 # Other makers' apps, by what they do, and the file types and dialogs drawn since 2026-10-24
 names |= {'htop', 'nvtop', 'org.gnome.Shell.Extensions', 'org.kde.konsole', 'org.gnome.Geary', 'text-x-python',
-          'application-zip', 'dialog-warning', 'network-wireless'}
+          'application-zip', 'dialog-warning', 'network-wireless', 'org.gnome.Extensions', 'com.mattjakeman.ExtensionManager',
+          'bluetooth', 'image-missing', 'application-vnd.iccprofile'}
 bad = 0
 for pack in ('glass', 'glass-light', 'neon', 'neon-light', 'duotone', 'line', 'clay', 'muted'):
     theme = Gtk.IconTheme()
