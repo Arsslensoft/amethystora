@@ -75,6 +75,15 @@ assert sorted(box) == ['h', 'kind', 'w', 'x', 'y'] and box['kind'] == 'address'
 assert box['x'] <= 100 and box['x'] + box['w'] >= 140 and box['y'] <= 20 and box['y'] + box['h'] >= 30
 EOF
 
+# An address Tesseract cut in two at a dot is covered whole: the word before the cut too, but not the words before that
+answer="$(tsv <<<"Mail canary .jones@example.org" | "${HELPER}" tsv)"
+python3 - "${answer}" <<'EOF' || fail "an address cut in two is not covered whole: ${answer}"
+import json, sys
+boxes = json.loads(sys.argv[1])['boxes']
+assert len(boxes) == 1 and boxes[0]['kind'] == 'address'
+assert boxes[0]['x'] <= 100 and boxes[0]['x'] + boxes[0]['w'] >= 190 and boxes[0]['x'] > 90
+EOF
+
 # What cannot be read says so, with no reason that could name anything
 out="$(head -c 512 /dev/urandom | "${HELPER}" 2>/dev/null)" && fail "garbage read as a picture"
 [[ "${out}" == '{"error": "unreadable"}' ]] || fail "unexpected answer to garbage: ${out}"

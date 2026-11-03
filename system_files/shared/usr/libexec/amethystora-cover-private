@@ -35,6 +35,9 @@ MOST_GROUPS = 12
 ENV = {'OMP_THREAD_LIMIT': '2', 'LC_ALL': 'C.UTF-8', 'PATH': '/usr/bin'}
 
 EMAIL = re.compile(r"[\w.+'-]+@[\w-]+(?:\.[\w-]+)+", re.UNICODE)
+# What an address's local part is made of, and where Tesseract cuts one in two
+LOCAL_PART = re.compile(r"^[\w.+'-]+$", re.UNICODE)
+SEPARATORS = ('.', '_', '-', '+')
 DIGIT_RUN = re.compile(r'(?<![\w.,/-])\+?\(?\d[\d ().-]{6,}\d(?![\w])')
 FOUR_BY_FOUR = re.compile(r'^\d{4}([ -])\d{4}\1\d{4}\1\d{3,7}$')
 IBAN = re.compile(r'\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]{2,4}){3,8}\b')
@@ -153,6 +156,14 @@ def boxes_of(tsv, scale=1):
             inside = [word for first, last, word in places if first < end and last > start]
             if not inside:
                 continue
+            # Tesseract may cut an address in two at a dot or a dash ("canary" ".jones@example.org"): the words before it
+            # that such a cut leaves behind are part of it, so that no piece of the address stays readable
+            if kind == 'address':
+                at = next(i for i, (first, last, word) in enumerate(places) if word is inside[0])
+                while at > 0 and (places[at][2][0][:1] in SEPARATORS or places[at - 1][2][0][-1:] in SEPARATORS) \
+                        and LOCAL_PART.match(places[at - 1][2][0]):
+                    at -= 1
+                    inside.insert(0, places[at][2])
             # In the picture's own pixels again, always a little over rather than under
             left = max(0, min(word[1] for word in inside) // scale - PADDING)
             top = max(0, min(word[2] for word in inside) // scale - PADDING)
