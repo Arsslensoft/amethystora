@@ -1402,7 +1402,7 @@ done
 # the module or the clipboard's text actions; Convert offered and off; What is using this? in Files' Scripts menu
 TOOLS=org.gnome.shell.extensions.amethystora-ui.tools
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-recursively "${TOOLS}" | cut -d' ' -f2- | LC_ALL=C sort | paste -sd ';')" == \
-    "colour-picker ['<Super><Alt>c'];convert-in-files false;mute-microphone ['<Super><Alt>m'];network-reach true" ]] ||
+    "colour-picker ['<Super><Alt>c'];convert-in-files false;earlier-versions true;mute-microphone ['<Super><Alt>m'];network-reach true;offer-room true;open-anything true;uninstall-takes-data true" ]] ||
     { echo "the tools module's keys or defaults are not the spec's"; exit 1; }
 TOOLS_ORDER="$(grep -oE "^    \['[a-z]+'," "${UI_EXTENSION}/extension.js" | tr -d " [',")"
 tools_at() { grep -nx "$1" <<<"${TOOLS_ORDER}" | cut -d: -f1; }
