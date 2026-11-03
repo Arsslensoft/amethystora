@@ -15,8 +15,7 @@
 #   3. after a restart: closed, the files and the root still there, and everything given back
 #
 # Not run, and said so where each would be: a FIDO2 security key (cargo holds the slot against stand-ins), the camera, a picture's QR
-# through the window's file chooser, the browser extension (it has its own harness in apps/vault-extension/tests, which runs the image's
-# Firefox through Marionette and Chromium through chromedriver), a second account with a seat of its own, and Bitwarden's own server
+# through the window's file chooser, Bitwarden's browser extension against a Vaultwarden (the maintainer's, by hand), a second account with a seat of its own, and Bitwarden's own server
 # (the maintainer's, by hand). BackMyCodes' own app reading what this writes is done by hand when a format changes.
 # vmlab-paths: apps/vault* @sf/usr/libexec/amethystora-vault* @sf/usr/lib/systemd/system/amethystora-vault* @sf/usr/share/polkit-1/actions/org.amethystora.vault.policy @sf/usr/share/amethystora/just/vault.just @sf/usr/bin/amethystora-vault @sf/usr/lib/sysusers.d/amethystora-vault* @sf/usr/share/amethystora/vault/* @sf/usr/libexec/amethystora-backup
 source "$(dirname "$0")/lib.sh"

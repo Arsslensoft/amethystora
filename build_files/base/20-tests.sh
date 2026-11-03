@@ -4372,6 +4372,10 @@ grep -q "^browser " /usr/share/amethystora/just/security.just
 "${BROWSER_POLICY}" show chromium |
     jq -e '.ExtensionInstallBlocklist == ["*"] and (.ExtensionInstallAllowlist | length > 0)
         and (has("ExtensionSettings") or has("ExtensionInstallForcelist") | not)' >/dev/null
+# Bitwarden's extension works with the Vault (Chrome Web Store and Edge Add-ons have an ID each)
+"${BROWSER_POLICY}" show chromium |
+    jq -e '(.ExtensionInstallAllowlist | index("nngceckbapebfimnlniiiahkandclblb") and index("jbkfoedolllekgbhcbcoahefnbanhhlh"))' >/dev/null
+"${BROWSER_POLICY}" show firefox | jq -e '.policies.ExtensionSettings | has("{446900e4-71c2-419f-a6a7-df9c091e268b}")' >/dev/null
 for guard in DefaultWebHidGuardSetting DefaultWebUsbGuardSetting DefaultSerialGuardSetting DefaultWebBluetoothGuardSetting; do
     "${BROWSER_POLICY}" show chromium | jq -e ".${guard} == 2" >/dev/null
 done

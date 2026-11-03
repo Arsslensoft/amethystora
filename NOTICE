@@ -343,7 +343,7 @@ of libreport-anaconda's (GPL-2.0-or-later, https://github.com/abrt/libreport)
 rules for installer crashes. Each change is made from the repository when an
 ISO is built, and the files that change say so.
 
-Amethystora Vault (apps/vault-core, apps/vault-service, apps/vault-native, apps/vault-pkcs11, apps/vault-extension and the
+Amethystora Vault (apps/vault-core, apps/vault-service, apps/vault-pkcs11 and the
 Vault window) is Amethystora's own work, under Apache-2.0, and is built into the same program and the same list of crates as
 the apps. Its passphrase generator uses the Electronic Frontier Foundation's large word list, under the Creative Commons
 Attribution 3.0 United States licence, built into its programs unchanged; the licence ships in

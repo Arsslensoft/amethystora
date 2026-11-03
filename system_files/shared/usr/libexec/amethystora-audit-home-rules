@@ -137,13 +137,6 @@ WATCH_EXISTING_DIRS=(
     .ssh
     .config/fish/conf.d
     .config/fish/functions
-    # Where a browser looks for the programs it may start for an extension (native messaging): Amethystora Vault's host is one
-    # file there, which the watcher knows by heart (vault_native_manifest), so anything else is said
-    .mozilla/native-messaging-hosts
-    .config/google-chrome/NativeMessagingHosts
-    .config/chromium/NativeMessagingHosts
-    .config/microsoft-edge/NativeMessagingHosts
-    .config/BraveSoftware/Brave-Browser/NativeMessagingHosts
 )
 # Where a session finds commands before the system's own, and the app grid's launchers, under a key of
 # their own: writes here are everyday (pip, a container's exported apps), so the watcher only records

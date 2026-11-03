@@ -383,25 +383,6 @@ tls *ARGS:
     fi
     run tls "$@"
 
-# Let your browsers reach the Vault's extension: on writes the files that allow it into your own folders, off takes them away. The extension itself comes from your browser's add-on store
-[positional-arguments]
-browser STATE="":
-    #!/usr/bin/bash
-    set -euo pipefail
-    # shellcheck source=/dev/null
-    source gettext.sh
-    case "${1:-}" in
-        on)
-            /usr/libexec/amethystora-vault-native browser on
-            gettext "Firefox and the Chromium browsers can now reach the Vault. Install Amethystora Vault from your browser's add-on store. Nothing fills until you click."; echo ;;
-        off)
-            /usr/libexec/amethystora-vault-native browser off
-            gettext "Browsers can no longer reach the Vault."; echo ;;
-        "")
-            if [[ "$(/usr/libexec/amethystora-vault-native browser status)" == on ]]; then gettext "Browsers can reach the Vault."; else gettext "Browsers cannot reach the Vault."; fi; echo ;;
-        *) echo "usage: ame vault browser on|off"; exit 64 ;;
-    esac
-
 # The SSH agent: on points this account's programs at the keys in the vault from your next login, off takes that back, status says how it is
 [positional-arguments]
 ssh ARG="status":

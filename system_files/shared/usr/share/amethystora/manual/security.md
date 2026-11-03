@@ -962,7 +962,7 @@ ame security browser
 
 An extension sees every page you open, and that is how most password stealers arrive. With browser
 protection on, browsers install only the extensions on a list: the Bitwarden, 1Password, Proton Pass
-and KeePassXC password managers and [Vault's own extension](vault.md#in-your-browser), and the ones you add with
+and KeePassXC password managers (the Vault works with Bitwarden's, see [In your browser](vault.md#in-your-browser)), and the ones you add with
 `ame security browser allow <id>`. Web pages are also kept from USB, serial, HID and
 Bluetooth devices. It covers Firefox, Brave, Chrome, Chromium, ungoogled-chromium and Edge, as
 packages or Flatpaks, whether installed now or later, for every account on the machine. Other browsers

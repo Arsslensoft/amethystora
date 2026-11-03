@@ -448,7 +448,6 @@ mod tests {
             "just --justfile /usr/share/amethystora/just/00-entry.just vault status",
             "/usr/libexec/amethystora-vault-cli item list",
             "amethystora-vault status",
-            "/usr/libexec/amethystora-vault-native browser on",
             "cat /var/lib/amethystora/vault/1000/account",
             "socat - UNIX-CONNECT:/run/amethystora/vault.sock",
             "systemctl stop amethystora-vault.socket",

@@ -51,10 +51,9 @@ install -Dpm0755 /apps-stage/out/amethystora-connect /usr/libexec/amethystora-co
 
 # Amethystora Vault (plans/PLAN-vault.md; the window is the app above). The service holds the keys, started by
 # amethystora-vault.socket as its own user; the command line is what `ame vault` runs; the work child is the only one of
-# them that loads libcrypto (keys and certificates), one job at a time; the native host is what a browser starts for the
-# extension; the PKCS#11 module is what pdfsig loads to sign through the service (the key never leaves it); and the network
-# service is the only thing sync reaches a server through (a user of its own, no key, no state).
-for program in service cli work native net; do
+# them that loads libcrypto (keys and certificates), one job at a time; the PKCS#11 module is what pdfsig loads to sign through
+# the service (the key never leaves it); and the network service is the only thing sync reaches a server through (a user of its own, no key, no state).
+for program in service cli work net; do
     install -Dpm0755 "/apps-stage/out/amethystora-vault-${program}" "/usr/libexec/amethystora-vault-${program}"
 done
 install -Dpm0755 /apps-stage/out/libamethystora_vault_pkcs11.so /usr/lib64/amethystora-vault/libamethystora_vault_pkcs11.so

@@ -17,8 +17,8 @@ programs of the account, and **never gets in**:
 - Never read, move or delete anything in `/var/lib/amethystora/vault`, never open the socket
   (`/run/amethystora/vault.sock`) or the SSH agent's (`/run/amethystora/vault-ssh.sock`), and never ask for the vault's
   password, a security key's PIN or the recovery key.
-- Never hand-write a Vault file, a browser's native-host file for it, or the settings that point a tool at it
-  (`ame vault helpers`, `ame vault ssh`, `ame vault browser` change the person's own files, and only the person
+- Never hand-write a Vault file or the settings that point a tool at it
+  (`ame vault helpers` and `ame vault ssh` change the person's own files, and only the person
   runs them).
 - A secret the person types or pastes into the conversation is the provider's from then on. If one has to be
   used, tell the person to put it somewhere the tool can ask for it: the Vault, through its own prompt.
@@ -37,7 +37,7 @@ Say what the Vault is for in one or two sentences, and give the way, never the s
 | To use an SSH key without it lying in `~/.ssh` | `ame vault ssh on`, then `ame vault key import`, in their own terminal; `ssh` then asks the Vault. |
 | To keep a login file out of the home folder | `ame vault protect PATH`, and `ame vault run NAME -- COMMAND` to use it. It says first what that cannot do. |
 | To sign a PDF | **Vault**, Certificates, then Sign a PDF, or `ame vault pdf sign FILE`. Only computers that trust their root accept it. |
-| To fill logins in the browser | `ame vault browser on`, then the extension from the browser's store. It fills on a click. |
+| To fill logins in the browser | The Vault has no extension of its own: **Vault**, In your browser, has the steps. Connect Sync, install Bitwarden's extension from the browser's store, choose the self-hosted server with the address Sync uses, and sign in with the same account. What syncs as Plain fills there; sealed items stay on this computer. |
 | To move their codes from another app | **Vault**, Authenticator, Move or save your codes. |
 | To back it up | `ame vault backup`; the recovery key opens it. |
 

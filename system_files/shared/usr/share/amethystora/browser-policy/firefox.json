@@ -17,9 +17,6 @@
             },
             "keepassxc-browser@keepassxc.org": {
                 "installation_mode": "allowed"
-            },
-            "vault@amethystora.org": {
-                "installation_mode": "allowed"
             }
         },
         "Preferences": {

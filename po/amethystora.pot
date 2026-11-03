@@ -14940,22 +14940,6 @@ msgid "Browsers that read your own certificate database will accept a certificat
 msgstr ""
 
 #: usr/share/amethystora/just/vault.just
-msgid "Firefox and the Chromium browsers can now reach the Vault. Install Amethystora Vault from your browser's add-on store. Nothing fills until you click."
-msgstr ""
-
-#: usr/share/amethystora/just/vault.just
-msgid "Browsers can no longer reach the Vault."
-msgstr ""
-
-#: usr/share/amethystora/just/vault.just
-msgid "Browsers can reach the Vault."
-msgstr ""
-
-#: usr/share/amethystora/just/vault.just
-msgid "Browsers cannot reach the Vault."
-msgstr ""
-
-#: usr/share/amethystora/just/vault.just
 msgid "Programs you start after your next login use the keys in the vault. The vault has to be open for them to."
 msgstr ""
 

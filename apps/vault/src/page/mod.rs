@@ -843,8 +843,8 @@ impl Vault {
         self.current_page(|page| page.left());
         self.secrets.hide_all();
         self.section.set(section);
-        // A page already made is read again as it is shown: the vault may have been changed from the command line or the browser's
-        // extension, or another vault opened, since it was drawn. A page made now has just been read.
+        // A page already made is read again as it is shown: the vault may have been changed from the command line,
+        // or another vault opened, since it was drawn. A page made now has just been read.
         let existed = self.pages.borrow().contains_key(&section);
         let page = self.page(section);
         self.main.set_visible_child_name(section.name());

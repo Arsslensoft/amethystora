@@ -981,9 +981,9 @@ approval**: those two halves are the whole design, and every rule below serves o
   importers, `keys` and `pki/`, the protocol), `vault-service` (`/usr/libexec/amethystora-vault-service`; `amethystora-vault-cli`, which
   `vault.just` runs; `amethystora-vault-work`, the short-lived child that is the only one of them linking libcrypto; and
   `git-credential-amethystora` and `docker-credential-amethystora` in `/usr/bin`), `vault-client` (the wire format Round 7's features seal
-  under: `seal`, `open`, `forget`; keep it exactly), `vault` (the window, app id `org.amethystora.Vault`), `vault-native` (the browser's host),
+  under: `seal`, `open`, `forget`; keep it exactly), `vault` (the window, app id `org.amethystora.Vault`),
   `vault-pkcs11` (a PKCS#11 module with no key in it, which lets `pdfsig` sign through the socket) and `vault-net` (the network service).
-  `vault-extension` is the WebExtension, plain files, never in the image. The sentences polkit shows are `say` in `vault-service/src/outside.rs`.
+  The sentences polkit shows are `say` in `vault-service/src/outside.rs`.
 - **The service** is a system service under its own user (`amethystora-vault`, `usr/lib/sysusers.d`), started by `amethystora-vault.socket` and
   `amethystora-vault-ssh.socket` (both enabled, every account may connect: `SO_PEERCRED` picks the account, never what a client says), and gone
   within a minute of the last vault closing. Its unit has `PrivateNetwork=yes`, `CapabilityBoundingSet=`, `MemoryDenyWriteExecute=yes`,
@@ -1024,10 +1024,7 @@ approval**: those two halves are the whole design, and every rule below serves o
   the vault is open, and only through `amethystora-vault-net` (own user, the network, **no key, no state, no home**; a socket only the Vault's user opens). The
   connection and its links are items of the first vault (`SERVICE_ONLY`); the address is in `amethystora-sends` and never in `setup.json`, the manifest or an image's
   `policy/`. An item set to Ask every time stays off sync; keys and certificates go only sealed, and only when chosen.
-- **The browser extension** is never in the image and never installed by it (Mozilla's terms for Firefox): `ame vault browser on` writes the native-messaging manifest
-  into the account's own folders (`~/.mozilla` too), `off` takes it away, the watcher accepts exactly the file `amethystora-vault-native browser manifest` prints and
-  says anything else there. The match of an origin to items is in the host (`site.rs`, the public suffix list `publicsuffix-list-dafsa` of the image), never in the
-  page. Its ids (`vault@amethystora.org`, and `CHROMIUM_IDS` in `install.rs`, a placeholder until the store assigns one) are in the browser policy's allowlist.
+- **There is no browser extension of its own** (the maintainer's choice of 2026-11-03): Bitwarden's works with the same Vaultwarden or Bitwarden account sync uses, so the Vault gives instructions instead, on the window's **In your browser** page, in `vault.md` and in the agents' knowledge. No native host, no recipe for one, no manifest and no ID of ours in the browser policy; Bitwarden's own IDs stay in its allowlist. `user-setup.hooks.d/29-retire-vault-browser.sh` takes away the manifest an earlier image wrote, only where it is exactly ours. Keep the page a fact and no more: it shows no Bitwarden logo and never claims to be Bitwarden.
 - **Clean rooms.** BackMyCodes' formats (`plans/vault-bmc/spec-formats.md`: BMC1 transfers, its export version 2, 2fa.directory's shape) are kept byte for byte and
   nothing of its code or test files is here; Bitwarden's and Vaultwarden's clients, KeePassXC's and the like are never read. EFF's large word list is built in
   (`apps/vault-core/assets`, CC-BY 3.0 US, `usr/share/licenses/eff-wordlists`), and `usr/share/amethystora/vault/2fa-directory.json` is 2fa.directory trimmed at one
@@ -1045,7 +1042,7 @@ approval**: those two halves are the whole design, and every rule below serves o
 - **Tested** by cargo in the apps stage (`VAULT_VERIFIERS_REQUIRED=1`, with `openssl`, `osslsigncode`, `pdfsig`, `certutil`, `jarsigner`, `ssh` and `oathtool` as separate programs, so
   that no test passes by skipping; also on OpenSSL 4), by `build_files/shared/test-vault.sh` from `20-tests.sh` (the unit, the policy, the sockets, the recipes, the sentences,
   the crates, the data), and by `tests/vm/suites/74-vault.sh` on a booted image (real polkit, SELinux enforcing, a virtual fingerprint reader, the TPM, `ssh`, `pdfsig`,
-  a Vaultwarden in a container). **By hand, and not in CI**: BackMyCodes' own app reading what this writes, Bitwarden's own server, Acrobat, the browser stores' reviews,
+  a Vaultwarden in a container). **By hand, and not in CI**: BackMyCodes' own app reading what this writes, Bitwarden's own server, Acrobat, Bitwarden's extension,
   a real TPM and reader.
 
 ### The Control app

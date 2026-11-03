@@ -129,7 +129,7 @@ What a hidden vault does **not** do:
 - Removing it needs it open, and `ame vault forget` removes **every** vault of your account, always saying "including any you
   cannot see", so that the question never tells whether there is one.
 
-Locking closes them all. The SSH agent, `ame vault run`, the browser extension and the AI agent see only what is open.
+Locking closes them all. The SSH agent, `ame vault run` and the AI agent see only what is open.
 
 ## Passwords
 
@@ -441,21 +441,27 @@ is on *What this machine sends* from then on (`ame security sends`).
 
 ## In your browser
 
-The extension fills a login and a one-time code in Firefox and the Chromium family. It is never in the image and never installed by it,
-and **the image's Firefox stays exactly as it was built.** **Browser**, in the window, opens its listing in your browser's store, and
-`ame vault browser on` writes the one small file that lets the browser reach the Vault, into your own folders. `ame vault browser off`
-takes it away. The browser needs that file, and the extension needs your permission, one site at a time.
+The Vault has no browser extension of its own. Bitwarden's works with the same account that [Sync](#sync) uses, so it fills your
+logins and sign-in codes in Firefox and the Chromium family, and the Vault gives the steps. Nothing is installed for you, no file is
+written into your browser's folders, and **the image's Firefox stays exactly as it was built.** **In your browser**, in the window,
+shows the same steps, with your server's address ready to copy once Sync is connected.
 
-- **It fills on your click, never by itself.** A small button appears in a login or code field of a site you allowed. It only opens
-  the extension's own window, which the page cannot cover or move, and the fill is a click there.
-- **Only for the same site.** It offers only items whose address has the same registrable domain as the page (the public suffix
-  list on this computer decides), over https unless the item says otherwise, and never in a frame of another site, nor into a form that
-  sends what you type to another site. A page cannot ask for a password by loading.
-- **Approval is the item's own.** A closed vault says so and offers to open the window.
-- **A new password is kept in the Vault before it is filled**, and Save this login shows the site and the username first.
-- **Flatpak browsers cannot reach it**: a program outside the sandbox needs a portal. Connect the vault to a server under
-  [Sync](#sync) and use Bitwarden's own extension there, against the same account.
-- With **browser protection** on (see [Browser protection](security.md#browser-protection)), this extension is among the ones allowed.
+1. **Connect Sync** to your Vaultwarden or Bitwarden server (see [Sync](#sync)).
+2. **Install Bitwarden's extension** from your browser's own store: the window has a button for Firefox, for Chrome, Chromium and
+   Brave, and for Edge.
+3. **Point it at your server.** On the extension's sign-in screen, open the list beside *Logging in on*, choose the self-hosted
+   server, paste your server's address as the Server URL and save.
+4. **Sign in with the same account** that Sync connected to.
+
+- **What fills there is what syncs as Plain.** Items that sync **Sealed**, and items that do not sync at all, stay on this computer
+  and are not in the extension. The Sync page says which kinds are which.
+- **A server with a certificate authority of your own** has to be trusted by the browser as well, or the extension cannot reach it.
+- **A browser installed as a Flatpak works too**, since it talks to your server and not to this computer.
+- **The extension is Bitwarden's**, a trademark of its owner. The Vault works with it, and is not made by or connected with it. What
+  it asks for and how it asks is Bitwarden's, and its help pages describe it.
+- With **browser protection** on (see [Browser protection](security.md#browser-protection)), Bitwarden's extension is among the ones
+  allowed.
+- An earlier image let you turn on a small file in your browser's folders for an extension of the Vault's own. The next login takes that file away.
 
 ## Backing up and moving
 
@@ -504,5 +510,5 @@ terminal from the window.
 | `ame vault password`, `codes`, `auth`, `key`, `cert` | Passwords, backup codes, authenticator codes, keys and certificates |
 | `ame vault pdf sign FILE`, `root`, `root rotate` | Signing and the machine's root |
 | `ame vault ssh on|off|status`, `helpers`, `get`, `run`, `protect`, `protected`, `unprotect` | Using a secret without handing it over |
-| `ame vault sync`, `browser`, `logos`, `tls` | Sync, the browser extension, service logos, trusting the local CA |
+| `ame vault sync`, `logos`, `tls` | Sync, service logos, trusting the local CA |
 | `ame vault backup`, `restore FILE` | The sealed backup |

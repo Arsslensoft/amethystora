@@ -322,18 +322,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "amethystora-vault-native"
-version = "1.0.0"
-dependencies = [
- "amethystora-vault-client",
- "base64",
- "getrandom",
- "libc",
- "serde_json",
- "zeroize",
-]
-
-[[package]]
 name = "amethystora-vault-net"
 version = "1.0.0"
 dependencies = [

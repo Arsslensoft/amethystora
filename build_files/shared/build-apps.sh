@@ -21,10 +21,10 @@ dnf5 -y install --repo=fedora --repo=updates --setopt=install_weak_deps=False \
     rust cargo gcc gtk4-devel libadwaita-devel jq nodejs clang llvm bpftool libbpf-devel kernel-devel
 # The Vault: the openssl crate (keys and certificates, in the one short-lived child that loads libcrypto) builds against
 # openssl-devel, and its tests hold the work to what other programs make of it: openssl, osslsigncode, pdfsig and pdftotext
-# (poppler-utils), certutil (nss-tools), ssh-keygen, oathtool, qrencode, a JDK for jarsigner, libpsl's psl and its list (the
-# browser host's suffix list is checked against them) and a private dbus-daemon for the service's desktop tests
+# (poppler-utils), certutil (nss-tools), ssh-keygen, oathtool, qrencode, a JDK for jarsigner and a private dbus-daemon
+# for the service's desktop tests
 dnf5 -y install --repo=fedora --repo=updates --setopt=install_weak_deps=False \
-    openssl-devel pkgconf-pkg-config openssl osslsigncode poppler-utils nss-tools openssh-clients oathtool qrencode psl publicsuffix-list \
+    openssl-devel pkgconf-pkg-config openssl osslsigncode poppler-utils nss-tools openssh-clients oathtool qrencode \
     java-latest-openjdk-devel dbus-daemon
 # Node's whole ICU data, for 20-tests.sh's checks of numbers and dates in other languages (Fedora's node has only
 # English without it); the package is named after the node version, so ask the one that came with nodejs.
@@ -76,22 +76,22 @@ cargo build --release --locked -p amethystora-agent-tools
 cargo build --release --locked -p amethystora-clipboard-seal
 # The phone link's program (no GTK): it speaks the KDE Connect protocol, so that the phone's app works with it
 cargo build --release --locked -p amethystora-connect
-# The Vault (plans/PLAN-vault.md): the service, its command line and the child that does its libcrypto work, the browser's native
-# host, the PKCS#11 module pdfsig loads, and the network service that sync reaches a server through (no key, no state)
-cargo build --release --locked -p amethystora-vault-service -p amethystora-vault-native -p amethystora-vault-pkcs11 -p amethystora-vault-net
+# The Vault (plans/PLAN-vault.md): the service, its command line and the child that does its libcrypto work,
+# the PKCS#11 module pdfsig loads, and the network service that sync reaches a server through (no key, no state)
+cargo build --release --locked -p amethystora-vault-service -p amethystora-vault-pkcs11 -p amethystora-vault-net
 
 mkdir -p /out/licenses
 install -Dpm0755 "${CARGO_TARGET_DIR}/release/amethystora-apps" /out/amethystora-apps
 install -Dpm0755 "${CARGO_TARGET_DIR}/release/amethystora-sensor" /out/amethystora-sensor
 for program in amethystora-agent-tools amethystora-agent-root amethystora-clipboard-seal amethystora-connect \
-    amethystora-vault-service amethystora-vault-cli amethystora-vault-work amethystora-vault-native amethystora-vault-net \
+    amethystora-vault-service amethystora-vault-cli amethystora-vault-work amethystora-vault-net \
     git-credential-amethystora docker-credential-amethystora; do
     install -Dpm0755 "${CARGO_TARGET_DIR}/release/${program}" "/out/${program}"
 done
 install -Dpm0755 "${CARGO_TARGET_DIR}/release/libamethystora_vault_pkcs11.so" /out/libamethystora_vault_pkcs11.so
 # The service holds every open vault's keys and must never map libcrypto (its memory is 8 MB, and libcrypto parses what it is
 # given): the openssl crate is the work child's and the command line's alone
-for program in amethystora-vault-service amethystora-vault-native; do
+for program in amethystora-vault-service; do
     ! ldd "${CARGO_TARGET_DIR}/release/${program}" | grep -q libcrypto ||
         { echo "::error::${program} is linked against libcrypto"; exit 1; }
 done
@@ -104,7 +104,7 @@ ldd "${CARGO_TARGET_DIR}/release/amethystora-sensor" | grep -q 'libbpf\.so\.1' |
 # it), with its licence, and the licence and notice files it ships: most are MIT or Apache-2.0, whose
 # terms ask for their notices to travel with the program
 cargo tree --locked -p amethystora-apps -p amethystora-sensor -p amethystora-agent-tools -p amethystora-clipboard-seal -p amethystora-connect \
-    -p amethystora-vault-service -p amethystora-vault-native -p amethystora-vault-pkcs11 -p amethystora-vault-net -e normal --prefix none --format '{p}' |
+    -p amethystora-vault-service -p amethystora-vault-pkcs11 -p amethystora-vault-net -e normal --prefix none --format '{p}' |
     sed -n 's/^\([^ ]*\) v\([^ ]*\)\( (\*)\)\{0,1\}$/\1\t\2/p' | sort -u >/tmp/built.tsv
 cargo metadata --locked --format-version 1 >/tmp/metadata.json
 jq -r '.packages[] | select(.source != null)
