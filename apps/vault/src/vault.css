@@ -48,6 +48,7 @@ label.small { font-size: 12.5px; line-height: 18.75px; }
 label.tiny { font-size: 12px; line-height: 17px; }
 .accent-text { color: var(--link); }
 icon.warn { color: var(--warn); }
+label.warn:not(.chip) { color: var(--warn); }
 
 scrollbar slider {
     min-width: 4px;

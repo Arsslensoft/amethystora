@@ -976,6 +976,7 @@ impl Vault {
                 _ if by_default && approval != "ask" => "on".to_string(),
                 _ => "off".to_string(),
             };
+            let this_item = format!("{kind}.{id}");
             let mut choices = vec![("off", t!("Off")), ("sealed", t!("Sealed"))];
             if by_default {
                 choices.insert(0, ("on", t!("Syncs")));
@@ -992,6 +993,15 @@ impl Vault {
                 });
             }));
             shown.append(&widgets::p(&t!("Sealed: encrypted once more with this vault's own key, so the account on the server cannot open it."), &["soft", "small"]));
+            // The last run left it here: why, in the person's words
+            let why = status["last"]["report"]["refused"].as_array().into_iter().flatten().find(|refused| refused["item"] == json!(this_item)).and_then(|refused| refused["why"].as_str());
+            if let Some(why) = why {
+                let words = match why {
+                    "too-large-to-seal" => t!("It did not go: sealed, it is larger than one note on the server can hold, so it stays on this computer only."),
+                    _ => t!("It did not go to the server at the last sync, and stays on this computer only."),
+                };
+                shown.append(&widgets::p(&words, &["warn", "small"]));
+            }
             shown.set_visible(true);
         });
         card

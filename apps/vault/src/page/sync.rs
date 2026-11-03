@@ -69,8 +69,9 @@ impl SyncPage {
             (t!("Passwords"), t!("Syncs"), "ok"),
             (t!("Authenticator codes"), t!("Syncs"), "ok"),
             (t!("Backup codes"), t!("Syncs"), "ok"),
-            (t!("Keys"), t!("Off"), ""),
-            (t!("Certificates"), t!("Off"), ""),
+            // Each on its own page: off unless chosen, and then only sealed
+            (t!("Keys"), t!("Sealed, if chosen"), ""),
+            (t!("Certificates"), t!("Sealed, if chosen"), ""),
             (t!("Protected files"), t!("Off"), ""),
         ] {
             goes.append(&kind_row(&name, &state, tone));
@@ -122,7 +123,7 @@ impl SyncPage {
         if status["running"] == json!(true) {
             pairs.add(&t!("Now"), &t!("Syncing…"), false);
         } else if let Some(last) = status["last_success_ms"].as_i64().filter(|last| *last > 0) {
-            pairs.add(&t!("Last sync"), &list::long_date(last / 1000), false);
+            pairs.add(&t!("Last sync"), &list::long_date(last), false);
         } else {
             pairs.add(&t!("Last sync"), &t!("Not yet"), false);
         }
@@ -133,15 +134,21 @@ impl SyncPage {
         server.append(&row);
         ui::clear(&self.conflicts);
         // What the last run did to items changed in both places: both were kept
-        let conflicts = status["last"]["conflicts"].as_u64().unwrap_or(0);
+        let report = &status["last"]["report"];
+        let conflicts = report["conflicts"].as_u64().unwrap_or(0);
+        // What the server was not sent, and so is on this computer only: said, never left to be found missing
+        let refused = report["refused_total"].as_u64().unwrap_or(0);
         let problem = &status["problem"];
-        if conflicts == 0 && !problem.is_object() {
+        if conflicts == 0 && refused == 0 && !problem.is_object() {
             return;
         }
         let card = widgets::card();
         card.append(&widgets::h2(&t!("Needs a look")));
         if conflicts > 0 {
             card.append(&ui::label(&t!("{count, plural, one {# item changed here and on the server. Both are kept.} other {# items changed here and on the server. Both are kept.}}", count = conflicts), &[]));
+        }
+        if refused > 0 {
+            card.append(&ui::label(&t!("{count, plural, one {# item did not go to the server, and stays on this computer only. Its page says why.} other {# items did not go to the server, and stay on this computer only. Each one's page says why.}}", count = refused), &[]));
         }
         if let Some(name) = problem["name"].as_str() {
             let count = problem["detail"]["count"].as_u64().unwrap_or(0);
