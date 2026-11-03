@@ -72,7 +72,10 @@ def kinds_handled():
 
 def main():
     parents, aliases = kinds_known()
-    handled = {aliases.get(kind, kind) for kind in kinds_handled()}
+    # A launcher's kind, and what it is an alias of: a name can be both a type of one package and an alias in another
+    # (gcr-viewer's application/x-pkcs7-certificates), and claiming it would take it from that app
+    named = kinds_handled()
+    handled = named | {aliases.get(kind, kind) for kind in named}
     claimed = sorted(
         kind for kind in parents
         if kind not in handled and kind not in LEFT_KINDS and not kind.startswith(LEFT_MEDIA)
