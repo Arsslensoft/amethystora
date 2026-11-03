@@ -930,7 +930,7 @@ grep -q '^quick-settings ACTION="" VALUE="":$' /usr/share/amethystora/just/deskt
 [[ -z "$(grep -rnE 'use_markup = true|use_markup: true|set_markup\(' "${UI_EXTENSION}/modules/quick.js" \
     "${UI_EXTENSION}/modules/quick")" ]]
 [[ "$(grep -rnE "Subprocess\.new|Util\.spawn|spawn_command_line|GLib\.spawn" "${UI_EXTENSION}/modules/quick.js" \
-    "${UI_EXTENSION}/modules/quick" | grep -c .)" == 4 ]]
+    "${UI_EXTENSION}/modules/quick" | grep -c .)" == 5 ]]
 grep -q "Util.spawn(\[PHONE_APP\])" "${UI_EXTENSION}/modules/quick/tiles.js"
 grep -q "Gio.Subprocess.new(\[AME, 'desktop', 'theme', slug\]," "${UI_EXTENSION}/modules/quick/theme.js"
 [[ -z "$(grep -rn "charge_control\|/sys/" "${UI_EXTENSION}/modules/quick.js" "${UI_EXTENSION}/modules/quick")" ]]

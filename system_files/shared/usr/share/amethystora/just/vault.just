@@ -98,7 +98,7 @@ setup METHOD="password":
     set -euo pipefail
     # shellcheck source=/dev/null
     source gettext.sh
-    {{words}}
+    {{ words }}
     if [[ "$1" == no-prompt ]]; then
         gettext "No prompt stops a program that reads your files, a copied backup and a Flatpak with access to your home. It does not stop a program of this account that asks."; echo
         printf '%s ' "$(gettext 'To choose it, type: no prompt')"
@@ -114,7 +114,7 @@ status:
     set -euo pipefail
     # shellcheck source=/dev/null
     source gettext.sh
-    {{words}}
+    {{ words }}
     output=$(/usr/libexec/amethystora-vault-cli status) || vault_says $?
     while IFS=$'\t' read -r what id state first methods name; do
         case "$what" in
@@ -145,7 +145,7 @@ open *METHOD:
     set -euo pipefail
     # shellcheck source=/dev/null
     source gettext.sh
-    {{words}}
+    {{ words }}
     run open "$@" >/dev/null
     gettext "Open."; echo
 
@@ -155,7 +155,7 @@ lock:
     set -euo pipefail
     # shellcheck source=/dev/null
     source gettext.sh
-    {{words}}
+    {{ words }}
     run lock
 
 # How each vault opens, as JSON. add approval, no-prompt, security-key or password; remove SLOT; background on or off (a key for unattended work, on the TPM); idle MINUTES
@@ -165,7 +165,7 @@ methods *ARGS:
     set -euo pipefail
     # shellcheck source=/dev/null
     source gettext.sh
-    {{words}}
+    {{ words }}
     if [[ "${1:-} ${2:-}" == "add no-prompt" ]] || [[ "${1:-} ${2:-}" == "background on" ]]; then
         gettext "This stops a program that reads your files, a copied backup and a Flatpak with access to your home. It does not stop a program of this account that asks."; echo
         printf '%s ' "$(gettext 'To choose it, type: no prompt')"
@@ -180,7 +180,7 @@ change-password:
     set -euo pipefail
     # shellcheck source=/dev/null
     source gettext.sh
-    {{words}}
+    {{ words }}
     run change-password
     gettext "The password is changed."; echo
 
@@ -190,7 +190,7 @@ new:
     set -euo pipefail
     # shellcheck source=/dev/null
     source gettext.sh
-    {{words}}
+    {{ words }}
     run new
     gettext "The vault is made and open."; echo
 
@@ -200,7 +200,7 @@ rename:
     set -euo pipefail
     # shellcheck source=/dev/null
     source gettext.sh
-    {{words}}
+    {{ words }}
     run rename
 
 # Remove the vault that is open, and everything in it. Not the first: forget removes that
@@ -209,7 +209,7 @@ remove-this:
     set -euo pipefail
     # shellcheck source=/dev/null
     source gettext.sh
-    {{words}}
+    {{ words }}
     run remove-this
 
 # Remove every vault here, including any you cannot see, and everything in them, for good
@@ -218,7 +218,7 @@ forget:
     set -euo pipefail
     # shellcheck source=/dev/null
     source gettext.sh
-    {{words}}
+    {{ words }}
     gettext "This removes every vault here, including any you cannot see, and everything in them, for good. Nothing can bring them back but a backup and its recovery key."; echo
     printf '%s ' "$(gettext 'To go on, type: FORGET')"
     read -r answer
@@ -233,7 +233,7 @@ item *ARGS:
     set -euo pipefail
     # shellcheck source=/dev/null
     source gettext.sh
-    {{words}}
+    {{ words }}
     run item "$@"
 
 # Passwords: generate [LENGTH|words], add NAME [USER] [ADDRESS] (asks for it), new NAME [USER] [ADDRESS] (makes one), list, get NAME (to standard output, after you approve), remove NAME
@@ -243,7 +243,7 @@ password *ARGS:
     set -euo pipefail
     # shellcheck source=/dev/null
     source gettext.sh
-    {{words}}
+    {{ words }}
     run password "$@"
 
 # Backup codes: add SERVICE [FILE] (a text file or a PDF, or standard input), list, next SERVICE, used SERVICE CODE-NUMBER (with --undo to take it back), remove SERVICE
@@ -254,7 +254,7 @@ codes *ARGS:
     set -euo pipefail
     # shellcheck source=/dev/null
     source gettext.sh
-    {{words}}
+    {{ words }}
     run codes "$@"
 
 # Authenticator codes: add [FILE] (a file from another app, or asks for a link), list, code NAME (with --step for the next code of a counter-based account), qr NAME, remove NAME
@@ -265,7 +265,7 @@ auth *ARGS:
     set -euo pipefail
     # shellcheck source=/dev/null
     source gettext.sh
-    {{words}}
+    {{ words }}
     if [[ "${1:-}" == qr ]]; then
         gettext "Anyone who sees this code or the key under it can make your codes."; echo
     fi
@@ -279,7 +279,7 @@ key *ARGS:
     set -euo pipefail
     # shellcheck source=/dev/null
     source gettext.sh
-    {{words}}
+    {{ words }}
     if [[ "${1:-}" == export ]]; then
         gettext "A key taken out of the vault lives outside it from now on."; echo
     fi
@@ -299,7 +299,7 @@ cert *ARGS:
     set -euo pipefail
     # shellcheck source=/dev/null
     source gettext.sh
-    {{words}}
+    {{ words }}
     if [[ "${1:-}" == new ]]; then
         gettext "Only computers that trust this machine's root, or your CA, accept this. Other computers call the signer unknown until then."; echo
     fi
@@ -313,7 +313,7 @@ pdf *ARGS:
     set -euo pipefail
     # shellcheck source=/dev/null
     source gettext.sh
-    {{words}}
+    {{ words }}
     gettext "Only computers that trust this machine's root, or your CA, accept this. Other computers call the signer unknown until then."; echo
     run pdf "$@"
 
@@ -324,7 +324,7 @@ root *ARGS:
     set -euo pipefail
     # shellcheck source=/dev/null
     source gettext.sh
-    {{words}}
+    {{ words }}
     run root "$@"
 
 # The sealed backup: every vault of this account, hidden ones too, as they lie sealed, in ~/.local/share/amethystora/vault-backup (seven kept). It needs no open vault, and only the recovery keys open what is in it. The daily backup runs it first
@@ -333,7 +333,7 @@ backup:
     set -euo pipefail
     # shellcheck source=/dev/null
     source gettext.sh
-    {{words}}
+    {{ words }}
     run backup
 
 # Bring a vault back from a sealed backup: it asks the vault's recovery key, then a new way to open it
@@ -344,7 +344,7 @@ restore FILE:
     set -euo pipefail
     # shellcheck source=/dev/null
     source gettext.sh
-    {{words}}
+    {{ words }}
     run restore "$1"
     gettext "The vault is open."; echo
 
@@ -380,7 +380,7 @@ tls *ARGS:
     set -euo pipefail
     # shellcheck source=/dev/null
     source gettext.sh
-    {{words}}
+    {{ words }}
     if [[ "${1:-}" == trust && "${2:-}" == browsers && "${3:-}" == on ]]; then
         gettext "Browsers that read your own certificate database will accept a certificate this machine made for a local name, such as printer.local, and nothing for a public website."; echo
     fi
@@ -393,7 +393,7 @@ ssh ARG="status":
     set -euo pipefail
     # shellcheck source=/dev/null
     source gettext.sh
-    {{words}}
+    {{ words }}
     case "$1" in
         on)
             run ssh on
@@ -427,7 +427,7 @@ get *ARGS:
     set -euo pipefail
     # shellcheck source=/dev/null
     source gettext.sh
-    {{words}}
+    {{ words }}
     /usr/libexec/amethystora-vault-cli get "$@" || vault_says $? >&2
 
 # One command with a secret: NAME -- COMMAND. A protected file appears at its path for that command alone, and is sealed again when it ends. Anything else is a variable, NAME's in capitals or the one you give as VARIABLE=NAME
@@ -468,7 +468,7 @@ protect PATH:
     set -euo pipefail
     # shellcheck source=/dev/null
     source gettext.sh
-    {{words}}
+    {{ words }}
     gettext "Old copies survive this. The hourly snapshots keep the plain file for up to 14 days, backups for as long as they last, and nothing here deletes from them."; echo
     gettext "So replace this key or login once it is protected: whatever could read the old file may have kept it."; echo
     gettext "The file is unlinked, not wiped, since the disk copies on write. The disk's encryption covers what is left of it."; echo
@@ -486,7 +486,7 @@ protected *ARGS:
     set -euo pipefail
     # shellcheck source=/dev/null
     source gettext.sh
-    {{words}}
+    {{ words }}
     run protected "$@"
 
 # Put a protected file back in your home as an ordinary file, and take it out of the vault
@@ -497,7 +497,7 @@ unprotect NAME:
     set -euo pipefail
     # shellcheck source=/dev/null
     source gettext.sh
-    {{words}}
+    {{ words }}
     run unprotect "$1"
     gettext "It is back in your home, as an ordinary file."; echo
 
@@ -508,7 +508,7 @@ helpers *ARGS:
     set -euo pipefail
     # shellcheck source=/dev/null
     source gettext.sh
-    {{words}}
+    {{ words }}
     if (( $# > 0 )); then
         run helpers "$@"
         exit 0
@@ -531,7 +531,7 @@ sync *ARGS:
     set -euo pipefail
     # shellcheck source=/dev/null
     source gettext.sh
-    {{words}}
+    {{ words }}
     options=(
         --say-sync-intro="$(gettext "What this vault holds that syncs becomes items in that account, encrypted with the account's own key, and the account's changes come back. Passwords, authenticator codes and backup codes go as plain items that Bitwarden's apps open; keys, certificates and protected files go only when you choose it, plain or sealed (a note only this vault opens). The server learns how many items there are, of which kind, how long each is and when it changed. The account's key is kept in this vault, so whoever opens this vault can reach that whole account. A dedicated account for the vault is the better choice. It works with Bitwarden and Vaultwarden accounts, and is not Bitwarden.")"
         --say-sync-email="$(gettext 'Email address of the account: ')"
