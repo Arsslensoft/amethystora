@@ -365,7 +365,7 @@ grep -qE '^(MemoryMax|TasksMax|LimitNOFILE)=' /usr/lib/systemd/user/amethystora-
 # pair too, off (plans/beyond/spec-r4-later.md A.2), and music from either side and the phone as a slide clicker, both off
 # (plans/ui-ideas/spec-phone.md)
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys org.amethystora.Connect | sort | paste -sd ' ')" == \
-    "clicker clipboard-receive clipboard-send computers device-name music photo-folder" ]]
+    "clicker clipboard-receive clipboard-send codes computers device-name music photo-folder" ]]
 for key in music clicker; do
     [[ "$(GSETTINGS_BACKEND=memory gsettings get org.amethystora.Connect "${key}")" == false ]]
     grep -q "item desktop phone-${key} switch" /usr/libexec/amethystora-control-list
