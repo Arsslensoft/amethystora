@@ -80,6 +80,10 @@ const open = [
 ];
 const held = layout('classic', [{...place, rank: 1}, place, {...place, rank: 2}, {...place, app: 'gone.desktop'}]);
 assert.deepEqual(match(held, open).map(m => [m.entry.rank, m.window]), [[1, 'b'], [0, 'a']]);
+// Kept by this GNOME Shell: each entry is its own window by stable sequence, so closing the older window of an app shifts
+// no later one onto its place (R7-STURDY-25), and a sequence of another app is nobody's
+const keptByShell = new Map([['kitty.desktop 0', 1], ['kitty.desktop 1', 3], ['kitty.desktop 2', 9], ['gone.desktop 0', 12]]);
+assert.deepEqual(match(held, open, keptByShell).map(m => [m.entry.rank, m.window]), [[1, 'a'], [2, 'b']]);
 
 // A strip's columns close up over what was closed, and stacked windows keep their order
 const entry = (column, row, rank) => ({entry: {...tile, column, row, rank, width: 500 + column}, window: `w${column}.${row}`});

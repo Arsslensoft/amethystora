@@ -85,7 +85,16 @@ export function visit(layouts, base, layout) {
 
 // Each kept entry with the window open now that it means: `open` is [{window, app, seq}], and a kept entry is the
 // window of its app and rank, oldest first. What was closed since is left out, and a window opened since is not moved.
-export function match(layout, open) {
+// `seqs`, when this GNOME Shell kept the layout itself, holds each entry's window by its stable sequence ("app rank" to
+// seq): a window of an app closed meanwhile then shifts no other window of that app onto its place.
+export function match(layout, open, seqs = null) {
+    if (seqs) {
+        const bySeq = new Map(open.map(item => [item.seq, item]));
+        return layout.windows.map(entry => {
+            const item = bySeq.get(seqs.get(`${entry.app} ${entry.rank}`));
+            return {entry, window: item?.app === entry.app ? item.window : null};
+        }).filter(({window}) => window);
+    }
     const byApp = new Map();
     for (const item of open)
         byApp.set(item.app, [...byApp.get(item.app) ?? [], item]);

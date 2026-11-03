@@ -40,6 +40,9 @@ const NOTE_FOR = 4000;
 
 // The last desk this GNOME Shell knew, across the disable and enable of every lock
 let lastBase = null;
+// The windows each desk's layout was kept with, by stable sequence, in memory only and for this GNOME Shell's run: across
+// a lock's disable and enable, never on disk (a number of this run means nothing to the next)
+const keptWindows = new Map();
 // Each write after the last, across the disable and enable too, so that one does not lose what another has under way
 let queue = Promise.resolve();
 const TRIES = 3;
@@ -177,6 +180,7 @@ export class Layouts {
         if (!layout)
             return;
         const base = this._here.base;
+        keptWindows.set(base, new Map([...this._ranks()].map(([window, {app, rank}]) => [`${app} ${rank}`, window.get_stable_sequence()])));
         update(data => {
             const layouts = visit(data.layouts, base, layout);
             return layouts ? JSON.stringify({...data, layouts}) : null;
@@ -282,7 +286,7 @@ export class Layouts {
         if (layout.mode !== (engine ? 'tiling' : 'classic'))
             return 0;
         const connectorOf = new Map([...here.keys].map(([connector, key]) => [key, connector]));
-        const matched = match(layout, this._openWindows());
+        const matched = match(layout, this._openWindows(), keptWindows.get(here.base) ?? null);
         return engine ? this._restoreTiling(engine, layout, matched, connectorOf) : this._restoreClassic(matched, connectorOf);
     }
 
