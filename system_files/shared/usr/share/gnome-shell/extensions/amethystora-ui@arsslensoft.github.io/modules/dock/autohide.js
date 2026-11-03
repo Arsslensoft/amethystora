@@ -5,7 +5,8 @@
 // has the keyboard, while one of its menus or cards is open, and when the windows module asks for its numbers.
 //
 // Where another screen continues past the dock's edge the window manager keeps no strip free there, and a barrier would
-// hold the pointer back from the next screen: such a dock hides the same way, without the barrier.
+// hold the pointer back from the next screen: such a dock hides the same way, without the barrier. It cannot slide past
+// that edge, which would put it on the next screen, so it fades where it is and is then taken away, clicks and all.
 
 import GLib from 'gi://GLib';
 import Meta from 'gi://Meta';
@@ -94,6 +95,7 @@ export class Autohide {
         if (strip) {
             strip.remove_all_transitions();
             strip.set({translation_x: 0, translation_y: 0, opacity: 255});
+            strip.show();
         }
     }
 
@@ -188,6 +190,9 @@ export class Autohide {
         const strip = site.strip;
         if (!strip)
             return;
+        // Taken away where another screen continues: back before it is measured, since a hidden actor is not laid out
+        if (!hide)
+            strip.show();
         // Not laid out yet: looked at again once it is
         if (!strip.has_allocation() || !site.dash?.has_allocation()) {
             this._synced = false;
@@ -199,22 +204,26 @@ export class Autohide {
         const thickness = site.edgeName === 'bottom' ? strip.height : strip.width;
         const past = thickness + PAST * sf;
         const away = {bottom: [0, past], left: [-past, 0], right: [past, 0]}[site.edgeName];
-        const to = hide ? {translation_x: away[0], translation_y: away[1]} : {translation_x: 0, translation_y: 0};
+        // Past an edge that another screen continues, it would land on that screen: there it stays where it is
+        const to = hide && !site.shared ? {translation_x: away[0], translation_y: away[1]} : {translation_x: 0, translation_y: 0};
         strip.remove_all_transitions();
         // Where the items are is read again once the strip stands still: the pointer may already be on it
         const settled = () => site.dash?.swell?.invalidate();
+        const gone = () => {
+            strip.set(to);
+            if (site.shared)
+                strip.hide();
+            settled();
+        };
         if (level === 'none') {
             strip.set({...to, opacity: 255});
+            if (hide && site.shared)
+                strip.hide();
             settled();
-        } else if (level === 'reduced') {
+        } else if (level === 'reduced' || site.shared) {
             // Nothing travels: it fades out where it is, and in again
             if (hide) {
-                strip.ease({
-                    opacity: 0, duration: REDUCED_FADE, mode: EASE.out, onComplete: () => {
-                        strip.set(to);
-                        settled();
-                    },
-                });
+                strip.ease({opacity: 0, duration: REDUCED_FADE, mode: EASE.out, onComplete: gone});
             } else {
                 strip.set(to);
                 settled();
