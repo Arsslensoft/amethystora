@@ -186,6 +186,7 @@ REST_KEYS=(enabled after)
 HELLO=org.gnome.shell.extensions.amethystora-ui.hello
 HELLO_KEYS=(greet)
 GUIDE=org.gnome.shell.extensions.amethystora-ui.guide
+GUIDE_KEYS=(show-me)
 LIVING=org.gnome.shell.extensions.amethystora-ui.living
 LIVING_KEYS=(wallpaper)
 FOCUS_KEYS=(trigger-games trigger-sleep work-banners work-apps work-sounds work-dock work-lighter work-night-light work-power work-accent work-wallpaper work-grey games-banners games-apps games-sounds games-dock games-lighter games-night-light games-power games-accent games-wallpaper games-grey sleep-banners sleep-apps sleep-sounds sleep-dock sleep-lighter sleep-night-light sleep-power sleep-accent sleep-wallpaper sleep-grey)
@@ -312,6 +313,7 @@ settings() {
         changed "${KEYS}" | awk 'NR == FNR { kept[$1]; next } $2 in kept' <(printf '%s\n' "${KEYS_KEYS[@]}") -
         changed "${REST}" | awk 'NR == FNR { kept[$1]; next } $2 in kept' <(printf '%s\n' "${REST_KEYS[@]}") -
         changed "${HELLO}" | awk 'NR == FNR { kept[$1]; next } $2 in kept' <(printf '%s\n' "${HELLO_KEYS[@]}") -
+        changed "${GUIDE}" | awk 'NR == FNR { kept[$1]; next } $2 in kept' <(printf '%s\n' "${GUIDE_KEYS[@]}") -
         changed "${LIVING}" | awk 'NR == FNR { kept[$1]; next } $2 in kept' <(printf '%s\n' "${LIVING_KEYS[@]}") -
         changed "${BACKUPDISK}" | awk 'NR == FNR { kept[$1]; next } $2 in kept' <(printf '%s\n' "${BACKUPDISK_KEYS[@]}") -
     } | while read -r schema key value; do

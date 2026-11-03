@@ -1325,7 +1325,7 @@ COMMAND=(ame desktop windows simple-tiles)
 TERMINAL=true
 BUTTON="${ gettext "Choose…"; }"
 USAGE="ame desktop windows simple-tiles [LAUNCHER.desktop...]"
-[[ "${ onoff_of "${WINDOWS}" simple-desktop; }" == on ]] || DETAIL="${ gettext "They show once the simple desktop is on."; }"
+[[ "${ onoff simple-desktop; }" == on ]] || DETAIL="${ gettext "They show once the simple desktop is on."; }"
 item desktop windows-simple-tiles action "${ gettext "The simple desktop's tiles"; }" \
     "${ gettext "Up to six apps, by their launchers; none, and it picks four itself."; }" "" desktop#a-simple-desktop
 
