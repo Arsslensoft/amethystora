@@ -211,7 +211,9 @@ def merge(source, target):
             merge(os.path.join(source, name), os.path.join(target, name))
         os.rmdir(source)
     else:
-        os.rename(source, target)
+        # Overlay refuses to rename a directory of a lower layer (EXDEV) unless redirect_dir is on, and
+        # shutil.move copies it then
+        shutil.move(source, target)
 
 
 def rename_paths():

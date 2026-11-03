@@ -12,6 +12,8 @@ dnf config-manager setopt keepcache=1
 # The base image's ujust, setup, signing, udev and update packages. system_files carries the image's own
 # versions of the same files, which a later `dnf remove` would take away with the packages
 dnf remove -y ublue-os-luks ublue-os-just ublue-os-udev-rules ublue-os-signing ublue-os-update-services
+# They leave the folders they did not own, which 07-debrand.sh cannot move out of the base image's layer
+find /usr/share/ublue-os -depth -type d -empty -delete
 
 # Keep *-logos in RPM DB for downstream package installations
 # We are not allowed to ship an empty fedora-logos package
