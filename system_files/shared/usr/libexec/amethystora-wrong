@@ -365,17 +365,14 @@ def memory_short():
 
 
 def background():
-    """What runs by itself now, by what it is called: the first of them"""
-    units = [unit for unit, _kind in BACKGROUND_SYSTEM]
-    states = (run("systemctl", "is-active", *units) or "").split()
-    for (_unit, kind), state in zip(BACKGROUND_SYSTEM, states):
-        if state in ("active", "activating"):
-            return kind
-    units = [unit for unit, _kind in BACKGROUND_USER]
-    states = (run("systemctl", "--user", "is-active", *units) or "").split()
-    for (_unit, kind), state in zip(BACKGROUND_USER, states):
-        if state in ("active", "activating"):
-            return kind
+    """What runs by itself now, by what it is called: the first of them. A unit that ran and stays active
+    (RemainAfterExit, as flatpak-preinstall.service) has the sub-state "exited": it is no longer running"""
+    for user, table in ((False, BACKGROUND_SYSTEM), (True, BACKGROUND_USER)):
+        units = [unit for unit, _kind in table]
+        states = (run("systemctl", *(["--user"] if user else []), "show", "-p", "SubState", "--value", *units) or "").split()
+        for (_unit, kind), state in zip(table, states):
+            if state in ("running", "start", "start-pre", "start-post", "reload"):
+                return kind
     return None
 
 

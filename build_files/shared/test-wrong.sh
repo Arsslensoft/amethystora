@@ -239,8 +239,8 @@ quiet() {
     rm -rf "${ROOT}/proc" "${ROOT}/proc.later"
     mkdir -p "${ROOT}/proc/pressure"
     says df_-h_--output_pcent_avail_/var/home $'Use% Avail\n 40% 100G'
-    says systemctl_is-active_uupd.service_uupd-manual.service_amethystora-integrity.service_amethystora-clamav-scan.service_flatpak-preinstall.service $'inactive\ninactive\ninactive\ninactive\ninactive'
-    says systemctl_--user_is-active_amethystora-backup.service_amethystora-pkg-upgrade.service $'inactive\ninactive'
+    says systemctl_show_-p_SubState_--value_uupd.service_uupd-manual.service_amethystora-integrity.service_amethystora-clamav-scan.service_flatpak-preinstall.service $'dead\ndead\ndead\ndead\nexited'
+    says systemctl_--user_show_-p_SubState_--value_amethystora-backup.service_amethystora-pkg-upgrade.service $'dead\ndead'
     proc 4242 kitty 1 2
     printf 'some avg10=0.00 avg60=0.00 avg300=0.00 total=0\n' >"${ROOT}/proc/pressure/memory"
     printf 'MemTotal: 8000000 kB\nSwapTotal:  100 kB\nSwapFree:  100 kB\n' >"${ROOT}/proc/meminfo"
@@ -249,10 +249,13 @@ quiet; says df_-h_--output_pcent_avail_/var/home $'Use% Avail\n 96% 1G'
 holds slow '.fix.command == ["ame","system","clean"] and .fix.terminal == true' "a full disk"
 quiet; proc 4243 falco 90 2
 holds slow '.security.page == "settings/detection"' "the behaviour sensor goes to Security"
-quiet; says systemctl_--user_is-active_amethystora-backup.service_amethystora-pkg-upgrade.service $'active\ninactive'
+quiet; says systemctl_--user_show_-p_SubState_--value_amethystora-backup.service_amethystora-pkg-upgrade.service $'start\ndead'
 holds slow '.state == "found" and .fix == null and (.words | contains("backup"))' "a backup running"
 quiet; proc 4244 CANARY-PROGRAM 150 2
 holds slow '.state == "found" and (.words | contains("CANARY-PROGRAM"))' "a busy program"
+# The first apps' unit stays active once it has run (RemainAfterExit): only a sub-state of running says it still works
+quiet; proc 4246 CANARY-PROGRAM 150 2
+holds slow '(.words | contains("CANARY-PROGRAM")) and (.words | contains("apps") | not)' "an install that has ended is not named"
 # What it used over its life is not what it uses now: a program with a long past and no use in the last second is not busy
 quiet; mkdir -p "${ROOT}/proc/4245" "${ROOT}/proc.later/4245"
 for one in proc proc.later; do
