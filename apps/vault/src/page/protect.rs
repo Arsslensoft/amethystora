@@ -2,6 +2,7 @@
 //! terminal, where the person sees what they do. What the window adds is what is said first: old copies survive, in the snapshots and
 //! the backups, so a key that was protected should be replaced.
 
+use crate::scan;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
@@ -83,8 +84,7 @@ impl Protected {
         other_row.append(&btn(&t!("Protect another file"), Some("plus"), &["small"], move || {
             let vault = vault_pick.clone();
             glib::spawn_future_local(async move {
-                let dialog = gtk::FileDialog::builder().title(t!("Protect another file")).modal(true).build();
-                if let Some(path) = dialog.open_future(Some(&vault.window())).await.ok().and_then(|file| file.path()) {
+                if let Some(path) = scan::choose_file(&t!("Protect another file"), None).await {
                     ask_to_protect(&vault, path);
                 }
             });

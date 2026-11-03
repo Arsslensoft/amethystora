@@ -1,6 +1,7 @@
 //! Certificates: all five kinds, each issued by this machine's own authority, and what the window always says beside one, since only a
 //! computer that trusts it accepts it. Signing a PDF and trusting a CA are `ame vault` commands in a terminal, as the plan has them.
 
+use crate::scan;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
@@ -148,6 +149,7 @@ impl Certificates {
         body.append(&chain);
         body.append(&self.use_card(row, profile));
         body.append(&self.vault.approval_card("certificate", row));
+        body.append(&self.vault.sync_card("certificate", row));
         let (weak, id, title) = (self.me.borrow().clone(), row.id.clone(), row.title.clone());
         let remove = btn(&t!("Remove"), Some("trash"), &["small", "danger"], move || {
             let Some(page) = weak.upgrade() else { return };
@@ -313,8 +315,7 @@ fn give_ca(vault: &Rc<Vault>, words: &str, which: &'static str, file: &'static s
 fn sign_pdf(vault: &Rc<Vault>, id: String) {
     let vault = vault.clone();
     glib::spawn_future_local(async move {
-        let dialog = gtk::FileDialog::builder().title(t!("Sign a PDF")).modal(true).build();
-        let Some(path) = dialog.open_future(Some(&vault.window())).await.ok().and_then(|file| file.path()) else { return };
+        let Some(path) = scan::choose_file(&t!("Sign a PDF"), None).await else { return };
         let sure = vault.confirm(&t!("Sign this PDF?"), &t!("Only computers that trust this machine's root, or your CA, accept this. Other computers call the signer unknown until then."), &t!("Sign it"), false).await;
         if sure {
             process::in_terminal(&["ame", "vault", "pdf", "sign", "--", &path.to_string_lossy(), &id]);

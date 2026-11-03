@@ -173,9 +173,7 @@ fn from_screen(vault: &Rc<Vault>) {
 
 fn open_picture(vault: &Rc<Vault>, then: impl Fn(&Rc<Vault>, Vec<Zeroizing<String>>) + 'static) {
     vault.clone().spawn(async move |vault| {
-        let dialog = gtk::FileDialog::builder().title(t!("Open a picture")).modal(true).build();
-        let Ok(file) = dialog.open_future(Some(&vault.window())).await else { return };
-        let Some(path) = file.path() else { return };
+        let Some(path) = scan::choose_file(&t!("Open a picture"), None).await else { return };
         match scan::picture(path).await {
             Ok(codes) => then(&vault, codes),
             Err(()) => vault.say(&t!("That file could not be read as a picture.")),
@@ -472,9 +470,7 @@ pub fn bmc_words(problem: BmcError) -> String {
 
 fn from_file(vault: &Rc<Vault>) {
     vault.clone().spawn(async move |vault| {
-        let dialog = gtk::FileDialog::builder().title(t!("Import from another app")).modal(true).build();
-        let Ok(file) = dialog.open_future(Some(&vault.window())).await else { return };
-        let Some(path) = file.path() else { return };
+        let Some(path) = scan::choose_file(&t!("Import from another app"), None).await else { return };
         read_file(&vault, path, None);
     });
 }

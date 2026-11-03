@@ -1,6 +1,7 @@
 //! Your vaults: those listed and those open, a new one, hidden or not, how each opens, and the logos' switch. A hidden vault is only here
 //! while it is open, and nothing else says it exists: not a count, and not by leaving something out that a person could notice.
 
+use crate::scan;
 use std::rc::Rc;
 
 use amethystora_ui::adw::prelude::*;
@@ -65,12 +66,9 @@ impl Vaults {
         backup.append(&widgets::p(&t!("A sealed backup needs only your recovery key to open, and holds every vault here, including any you cannot see. These run in a terminal."), &["soft", "small"]));
         let row = ui::wrap(8, 8, &[]);
         row.append(&btn(&t!("Back up now"), Some("down"), &["small"], || process::in_terminal(&["ame", "vault", "backup"])));
-        let weak = Rc::downgrade(vault);
         row.append(&btn(&t!("Restore from a backup"), Some("up"), &["small"], move || {
-            let Some(vault) = weak.upgrade() else { return };
             glib::spawn_future_local(async move {
-                let dialog = gtk::FileDialog::builder().title(t!("Restore from a backup")).modal(true).build();
-                if let Some(path) = dialog.open_future(Some(&vault.window())).await.ok().and_then(|file| file.path()) {
+                if let Some(path) = scan::choose_file(&t!("Restore from a backup"), None).await {
                     process::in_terminal(&["ame", "vault", "restore", &path.to_string_lossy()]);
                 }
             });

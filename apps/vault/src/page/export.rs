@@ -140,9 +140,7 @@ fn write_private(path: &PathBuf, bytes: &[u8]) -> std::io::Result<()> {
 
 /// Save it where the person says, off the window's thread
 pub async fn save_to(vault: &Vault, name: &str, bytes: Zeroizing<Vec<u8>>) -> Option<PathBuf> {
-    let dialog = gtk::FileDialog::builder().title(t!("Save")).initial_name(name).modal(true).build();
-    let file = dialog.save_future(Some(&vault.window())).await.ok()?;
-    let path = file.path()?;
+    let path = crate::scan::choose_file(&t!("Save"), Some(name)).await?;
     let target = path.clone();
     let written = gio::spawn_blocking(move || write_private(&target, &bytes)).await;
     match written {

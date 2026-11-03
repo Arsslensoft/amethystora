@@ -3,7 +3,7 @@
 //! glycin sandbox, and what comes out goes to the service as text, which parses it strictly.
 //!
 //! A portal will not serve a program it cannot read, and the window is not dumpable. So the window has a small helper, itself started
-//! with `--portal-screenshot` or `--portal-camera`, which asks the portal and is gone: it holds no secret but the picture it passes on.
+//! with `--portal-screenshot`, `--portal-camera`, `--portal-open` or `--portal-save` (every file dialog: GTK's asks the same portal), which asks the portal and is gone: it holds no secret but the picture it passes on.
 //! A screenshot's file is deleted as soon as it has been read, so that the picture stays in memory only.
 
 use std::cell::RefCell;
@@ -172,6 +172,9 @@ pub fn helper() -> Option<glib::ExitCode> {
     match std::env::args().nth(1).as_deref() {
         Some("--portal-screenshot") => Some(run_helper(screenshot_helper)),
         Some("--portal-camera") => Some(run_helper(camera_helper)),
+        Some("--portal-open") => Some(run_helper(|| file_helper(false))),
+        Some("--portal-save") => Some(run_helper(|| file_helper(true))),
+        Some("--open-uri") => Some(run_helper(uri_helper)),
         _ => None,
     }
 }
@@ -216,23 +219,87 @@ fn options(entries: &[(&str, glib::Variant)]) -> glib::Variant {
 fn screenshot_helper() -> Option<()> {
     let bus = gio::bus_get_sync(gio::BusType::Session, gio::Cancellable::NONE).ok()?;
     let results = portal_request(&bus, "org.freedesktop.portal.Screenshot", "Screenshot", |token| {
-        ("", options(&[("handle_token", token.to_variant()), ("interactive", true.to_variant())])).to_variant()
+        glib::Variant::tuple_from_iter(["".to_variant(), options(&[("handle_token", token.to_variant()), ("interactive", true.to_variant())])])
     })?;
     let uri = glib::VariantDict::new(Some(&results)).lookup::<String>("uri").ok()??;
     println!("{uri}");
     Some(())
 }
 
+/// A file to open, or where to save one, through the portal, which will not serve the window either: the helper asks, with the
+/// dialog's title and the name to save as on its standard input, and prints the file's address
+pub async fn choose_file(title: &str, save_as: Option<&str>) -> Option<std::path::PathBuf> {
+    let title = title.replace(['\n', '\r'], " ");
+    let name = save_as.map(|name| name.replace(['\n', '\r', '/'], " "));
+    gio::spawn_blocking(move || {
+        use std::io::Write;
+        let mut command = helper_command(if name.is_some() { "--portal-save" } else { "--portal-open" })?;
+        let mut child = command.stdin(Stdio::piped()).stdout(Stdio::piped()).spawn().ok()?;
+        {
+            let mut input = child.stdin.take()?;
+            writeln!(input, "{title}").ok()?;
+            if let Some(name) = &name {
+                writeln!(input, "{name}").ok()?;
+            }
+        }
+        let output = child.wait_with_output().ok()?;
+        if !output.status.success() {
+            return None;
+        }
+        gio::File::for_uri(String::from_utf8_lossy(&output.stdout).trim()).path()
+    })
+    .await
+    .ok()
+    .flatten()
+}
+
+/// A web page in the person's browser. GTK's launcher asks the portal, which will not serve the window: the helper opens it, an
+/// https address only, read from its standard input
+pub fn open_uri(uri: &str) {
+    use std::io::Write;
+    let uri = uri.to_string();
+    gio::spawn_blocking(move || {
+        let mut child = helper_command("--open-uri")?.stdin(Stdio::piped()).spawn().ok()?;
+        writeln!(child.stdin.take()?, "{uri}").ok()?;
+        child.wait().ok()
+    });
+}
+
+fn uri_helper() -> Option<()> {
+    let uri = std::io::stdin().lines().next()?.ok()?;
+    if !uri.starts_with("https://") || uri.chars().any(char::is_control) {
+        return None;
+    }
+    gio::AppInfo::launch_default_for_uri(&uri, gio::AppLaunchContext::NONE).ok()
+}
+
+fn file_helper(save: bool) -> Option<()> {
+    let mut lines = std::io::stdin().lines();
+    let title = lines.next()?.ok()?;
+    let name = if save { Some(lines.next()?.ok()?) } else { None };
+    let bus = gio::bus_get_sync(gio::BusType::Session, gio::Cancellable::NONE).ok()?;
+    let results = portal_request(&bus, "org.freedesktop.portal.FileChooser", if save { "SaveFile" } else { "OpenFile" }, |token| {
+        let mut entries = vec![("handle_token", token.to_variant()), ("modal", true.to_variant())];
+        if let Some(name) = &name {
+            entries.push(("current_name", name.to_variant()));
+        }
+        glib::Variant::tuple_from_iter(["".to_variant(), title.to_variant(), options(&entries)])
+    })?;
+    let uris = glib::VariantDict::new(Some(&results)).lookup::<Vec<String>>("uris").ok()??;
+    println!("{}", uris.first()?);
+    Some(())
+}
+
 fn camera_helper() -> Option<()> {
     let bus = gio::bus_get_sync(gio::BusType::Session, gio::Cancellable::NONE).ok()?;
-    portal_request(&bus, "org.freedesktop.portal.Camera", "AccessCamera", |token| (options(&[("handle_token", token.to_variant())]),).to_variant())?;
+    portal_request(&bus, "org.freedesktop.portal.Camera", "AccessCamera", |token| glib::Variant::tuple_from_iter([options(&[("handle_token", token.to_variant())])]))?;
     let (_, fds) = bus
         .call_with_unix_fd_list_sync(
             Some(PORTAL),
             PORTAL_PATH,
             "org.freedesktop.portal.Camera",
             "OpenPipeWireRemote",
-            Some(&(options(&[]),).to_variant()),
+            Some(&glib::Variant::tuple_from_iter([options(&[])])),
             None,
             gio::DBusCallFlags::NONE,
             -1,

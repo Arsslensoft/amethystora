@@ -18,7 +18,7 @@ pub struct Browser {
 }
 
 impl Browser {
-    pub fn new(vault: &Rc<Vault>) -> Rc<dyn Page> {
+    pub fn new(_vault: &Rc<Vault>) -> Rc<dyn Page> {
         let page = ui::vbox(18, &["page"]);
         let head = ui::vbox(4, &["page-head"]);
         head.append(&widgets::h1(&t!("In your browser")));
@@ -29,10 +29,8 @@ impl Browser {
         get.append(&widgets::h2(&t!("1. Install the extension")));
         get.append(&widgets::p(&t!("From your browser's own store. Vault never installs it for you."), &["soft", "small"]));
         let row = ui::wrap(8, 8, &[]);
-        let window = vault.window();
-        row.append(&btn(&t!("For Firefox"), Some("down"), &[], move || process::open_uri(Some(&window), FIREFOX_LISTING)));
-        let window = vault.window();
-        row.append(&btn(&t!("For Chromium, Chrome, Brave and Edge"), Some("down"), &[], move || process::open_uri(Some(&window), CHROMIUM_LISTING)));
+        row.append(&btn(&t!("For Firefox"), Some("down"), &[], move || crate::scan::open_uri(FIREFOX_LISTING)));
+        row.append(&btn(&t!("For Chromium, Chrome, Brave and Edge"), Some("down"), &[], move || crate::scan::open_uri(CHROMIUM_LISTING)));
         get.append(&row);
         page.append(&get);
 

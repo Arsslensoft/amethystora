@@ -1,6 +1,7 @@
 //! Keys: the list and one in detail, its public forms, which need no approval, and the page that makes one, with no list beside it, as
 //! the board draws it. Keys are made in the service; the window only ever holds the public part.
 
+use crate::scan;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
@@ -144,6 +145,7 @@ impl Keys {
         }
         body.append(&private);
         body.append(&self.vault.approval_card("key", row));
+        body.append(&self.vault.sync_card("key", row));
         let (weak, id, title) = (self.me.borrow().clone(), row.id.clone(), row.title.clone());
         let remove = btn(&t!("Remove"), Some("trash"), &["small", "danger"], move || {
             let Some(page) = weak.upgrade() else { return };
@@ -386,12 +388,11 @@ fn import_key(vault: &Rc<Vault>, page: std::rc::Weak<Keys>) {
     let path_shown = ui::label("", &["mono", "small"]);
     path_shown.set_direction(gtk::TextDirection::Ltr);
     let chosen: Rc<RefCell<Option<std::path::PathBuf>>> = Rc::new(RefCell::new(None));
-    let (vault_pick, keep, shown) = (vault.clone(), chosen.clone(), path_shown.clone());
+    let (keep, shown) = (chosen.clone(), path_shown.clone());
     let pick = btn(&t!("Pick the key's file"), Some("key"), &["small"], move || {
-        let (vault, keep, shown) = (vault_pick.clone(), keep.clone(), shown.clone());
+        let (keep, shown) = (keep.clone(), shown.clone());
         glib::spawn_future_local(async move {
-            let dialog = gtk::FileDialog::builder().title(t!("Pick the key's file")).modal(true).build();
-            if let Some(path) = dialog.open_future(Some(&vault.window())).await.ok().and_then(|file| file.path()) {
+            if let Some(path) = scan::choose_file(&t!("Pick the key's file"), None).await {
                 shown.set_label(&path.to_string_lossy());
                 keep.replace(Some(path));
             }

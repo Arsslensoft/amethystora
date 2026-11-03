@@ -1,6 +1,7 @@
 //! Backup codes: one service at a time, the next code on request, Copy and Mark used with Undo, a warning at two left, and which
 //! authenticator accounts have none. Used ones stay, struck through, with the date. Showing them all, or printing them, asks every time.
 
+use crate::scan;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
@@ -93,6 +94,7 @@ impl Codes {
             body.append(&self.note_card(&row.id));
         }
         body.append(&self.vault.approval_card(KIND_BACKUP_CODES, row));
+        body.append(&self.vault.sync_card(KIND_BACKUP_CODES, row));
         let foot = ui::hbox(8, &[]);
         let (vault, id, name) = (self.vault.clone(), row.id.clone(), row.title.clone());
         foot.append(&btn(&t!("Add more codes"), Some("plus"), &["small"], move || add_to(&vault, id.clone(), name.clone())));
@@ -423,8 +425,7 @@ impl Codes {
             line.append(&words);
             let page = directory.as_ref().and_then(|directory| directory.find(service)).and_then(|row| row.docs.clone());
             if let Some(page) = page.filter(|page| page.starts_with("https://")) {
-                let window = self.vault.window();
-                line.append(&widgets::link(&t!("Get new codes"), move || process::open_uri(Some(&window), &page)));
+                line.append(&widgets::link(&t!("Get new codes"), move || crate::scan::open_uri(&page)));
             }
             coverage.append(&line);
         }
@@ -492,9 +493,7 @@ fn codes_sheet(vault: &Rc<Vault>, to: Option<(String, String)>) {
     let pick = btn(&t!("Pick a text file or a PDF"), Some("picture"), &["small"], move || {
         let (vault, filling, keeping, saying) = (vault_pick.clone(), filling.clone(), keeping.clone(), saying.clone());
         glib::spawn_future_local(async move {
-            let dialog = gtk::FileDialog::builder().title(t!("Pick a text file or a PDF")).modal(true).build();
-            let Ok(file) = dialog.open_future(Some(&vault.window())).await else { return };
-            let Some(path) = file.path() else { return };
+            let Some(path) = scan::choose_file(&t!("Pick a text file or a PDF"), None).await else { return };
             // A PDF can take a while, and the sheet says so
             saying.set_label(&t!("Reading the file…"));
             let Some((words, from_document)) = file_text(path).await else {
