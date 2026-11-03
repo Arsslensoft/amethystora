@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Take away the file `ame vault browser on` of an earlier image put in the account's browsers' native-messaging folders.
+# Take away the file the Vault's browser switch of an earlier image put in the account's browsers' native-messaging folders.
 #
 # The Vault had a browser extension of its own, and this one small file let the browser start the program behind it. The extension
 # is gone (Bitwarden's works with the same account that the Vault's sync uses: the manual's Vault page says how), and so is the
