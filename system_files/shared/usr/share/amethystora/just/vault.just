@@ -288,7 +288,7 @@ key *ARGS:
     [[ "$answer" == yes ]] || exit 0
     ame vault protect "$file"
 
-# Certificates: new NAME pdf|code|mail|tls|device|login [HOST...] (--name, --email, --web, --org, --country, --key, --digest), list, show NAME, chain NAME, export NAME [pem] (--out=FILE), renew NAME, ca [account|device|local|root], remove NAME
+# Certificates: new NAME pdf|code|mail|tls|device|login [HOST...] (--name=NAME, --email=ADDRESS, --web=ADDRESS, --org=ORGANIZATION, --country=CC, --key=TYPE, --digest=DIGEST), list, show NAME, chain NAME, export NAME [pem] (--out=FILE), renew NAME, ca [account|device|local|root], remove NAME
 [no-cd]
 [positional-arguments]
 cert *ARGS:
