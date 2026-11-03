@@ -34,7 +34,8 @@ MOST_GROUPS = 12
 # Two threads at most: a button pressed once should not take the whole machine
 ENV = {'OMP_THREAD_LIMIT': '2', 'LC_ALL': 'C.UTF-8', 'PATH': '/usr/bin'}
 
-EMAIL = re.compile(r"[\w.+'-]+@[\w-]+(?:\.[\w-]+)+", re.UNICODE)
+# An address, or what shows of one: a window or a banner over its end leaves "jane.doe@exampl", which is still hers
+EMAIL = re.compile(r"[\w.+'-]+@[\w-]{2,}(?:\.[\w-]+)*", re.UNICODE)
 # What an address's local part is made of, and where Tesseract cuts one in two
 LOCAL_PART = re.compile(r"^[\w.+'-]+$", re.UNICODE)
 SEPARATORS = ('.', '_', '-', '+')

@@ -38,6 +38,9 @@ expect() {
 
 expect "address" "To: sam.jones@example.org"
 expect "address address" "a@example.org and b+c@mail.example.co.uk"
+# What shows of an address with its end under a banner or a window is still the person's; a handle with no name before it is not
+expect "address" "Contact: jane.doe@exampl"
+expect "" "Thanks @everyone, see you at 5"
 expect "card" "Card 4111 1111 1111 1111"
 expect "card" "pay 4111-1111-1111-1111 now"
 expect "card" "number 4111111111111111"
