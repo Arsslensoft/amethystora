@@ -212,12 +212,31 @@ TILING_KEPT="$(jq -r '(.taken // [])[] as $t
     | "\($t.schema) \($t.key) " + if $keys == [] then "@as []"
         else "[" + ($keys | map(@sh) | join(", ")) + "]" end' "${TILING_STATE}" 2>/dev/null)"
 
+# The simple desktop, while it is on, has set a few keys of its own (text size, the layout, the dock, the bar...) and
+# keeps in its state file what each held: the account's own value is that one, and the image's where it was the
+# image's (null). As "schema key value" lines, as the tiling's above.
+SIMPLE_STATE="${XDG_STATE_HOME:-${HOME}/.local/state}/amethystora/simple.json"
+SIMPLE_KEPT=""
+if [[ "$(gsettings get org.gnome.shell.extensions.amethystora-ui.windows simple-desktop 2>/dev/null)" == true ]]; then
+    while IFS=$'\t' read -r schema key value; do
+        [[ "${value}" == null ]] && value="$(GSETTINGS_BACKEND=memory gsettings get "${schema}" "${key}" 2>/dev/null)"
+        SIMPLE_KEPT+="${schema} ${key} ${value}"$'\n'
+    done < <(jq -r 'to_entries[] | select(.key | test("^[a-z0-9.-]+ [a-z0-9-]+$"))
+        | [(.key | split(" ") | .[0], .[1]), (.value // "null")] | @tsv' "${SIMPLE_STATE}" 2>/dev/null)
+fi
+# A key's value as the account chose it: what the simple desktop keeps for it while on, else what it holds
+own() {
+    local kept
+    kept="$(awk -v s="$1" -v k="$2" '$1 == s && $2 == k { $1 = $2 = ""; print substr($0, 3); exit }' <<<"${SIMPLE_KEPT}")"
+    if [[ -n "${kept}" ]]; then printf '%s\n' "${kept}"; else gsettings get "$1" "$2" 2>/dev/null; fi
+}
+
 # The lines "schema key value" of a schema whose value is not the image's
 changed() {
     comm -13 <(GSETTINGS_BACKEND=memory gsettings list-recursively "$1" 2>/dev/null | sort) \
         <(gsettings list-recursively "$1" 2>/dev/null | awk 'NR == FNR { key = $1 " " $2; $1 = $2 = "";
             kept[key] = substr($0, 3); next } ($1 " " $2) in kept { print $1, $2, kept[$1 " " $2]; next } 1' \
-            <(printf '%s\n' "${TILING_KEPT}") - | sort) | awk -v schema="$1" '$1 == schema'
+            <(printf '%s\n%s\n' "${TILING_KEPT}" "${SIMPLE_KEPT}") - | sort) | awk -v schema="$1" '$1 == schema'
 }
 
 # A value as GSettings prints it, as JSON: lists of strings or numbers, strings, numbers, switches and the dock's
@@ -332,7 +351,7 @@ settings() {
 }
 
 LAYOUT=tiling
-[[ "$(gsettings get org.gnome.shell.extensions.amethystora-ui.tiling enabled 2>/dev/null)" == false ]] && LAYOUT=classic
+[[ "$(own org.gnome.shell.extensions.amethystora-ui.tiling enabled)" == false ]] && LAYOUT=classic
 SETTINGS="$(settings | jq -sc --arg layout "${LAYOUT}" --arg tiling "${TILING}" --arg pointer "${POINTER}" --arg glass "${GLASS}" \
     --arg windows "${WINDOWS}" --arg dock "${DOCK}" --arg motion "${MOTION}" --arg workspaces "${WORKSPACES}" \
     --arg pill "${PILL}" --arg quick "${QUICK}" --arg bars "${BARS}" --arg today "${TODAY}" --arg breaks "${BREAKS}" \
