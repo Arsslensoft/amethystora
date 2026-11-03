@@ -332,9 +332,6 @@ impl Vault {
         }
     }
 
-    pub fn window(&self) -> gtk::Window {
-        self.shell.gtk_window()
-    }
 
     /// Whether the window has the focus, or gets it within a moment. A prompt that is being answered takes the focus while it is up and
     /// gives it back as it goes, so an answer waits a little for that; one that comes to a window nobody is looking at is not shown.
@@ -957,6 +954,46 @@ impl Vault {
             });
         });
         card.append(&seg);
+        card
+    }
+
+    /// Whether the item goes to the sync server, shown only while one is connected: off, sealed (encrypted once more under this
+    /// vault's key) or, for what syncs by default, as it is. A change is asked for, as the service asks it
+    pub fn sync_card(&self, kind: &'static str, row: &Row) -> gtk::Box {
+        let card = widgets::card();
+        card.set_visible(false);
+        card.append(&widgets::h2(&t!("Sync")));
+        let (weak, id, approval, shown) = (self.me.clone(), row.id.clone(), row.approval.clone(), card.clone());
+        glib::spawn_future_local(async move {
+            let Some(this) = weak.upgrade() else { return };
+            let Ok(status) = this.call(json!({"op": "sync-status"})).await else { return };
+            if status["connected"] != json!(true) {
+                return;
+            }
+            let by_default = amethystora_vault_core::sync::kinds::ON_BY_DEFAULT.contains(&kind);
+            let current = match status["choices"][format!("{kind}.{id}")].as_str() {
+                Some(choice @ ("on" | "off" | "sealed")) => choice.to_string(),
+                _ if by_default && approval != "ask" => "on".to_string(),
+                _ => "off".to_string(),
+            };
+            let mut choices = vec![("off", t!("Off")), ("sealed", t!("Sealed"))];
+            if by_default {
+                choices.insert(0, ("on", t!("Syncs")));
+            }
+            let weak = this.me.clone();
+            shown.append(&widgets::seg(&choices, &current, move |value| {
+                let Some(this) = weak.upgrade() else { return };
+                let (value, id) = (value.to_string(), id.clone());
+                glib::spawn_future_local(async move {
+                    if let Err(trouble) = this.call(json!({"op": "sync-choose", "kind": kind, "id": id, "choice": value})).await {
+                        this.say(&trouble.words());
+                    }
+                    this.reload_current();
+                });
+            }));
+            shown.append(&widgets::p(&t!("Sealed: encrypted once more with this vault's own key, so the account on the server cannot open it."), &["soft", "small"]));
+            shown.set_visible(true);
+        });
         card
     }
 

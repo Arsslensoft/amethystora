@@ -240,6 +240,7 @@ impl Authenticator {
             body.append(&self.note_card(&row.id));
         }
         body.append(&self.vault.approval_card(KIND_ACCOUNT, row));
+        body.append(&self.vault.sync_card(KIND_ACCOUNT, row));
         let foot = ui::hbox(8, &[]);
         let (weak, id) = (self.me.borrow().clone(), row.id.clone());
         foot.append(&btn(&t!("Edit"), Some("edit"), &["small"], move || {

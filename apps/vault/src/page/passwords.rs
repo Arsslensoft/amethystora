@@ -142,6 +142,7 @@ impl Passwords {
         }
 
         body.append(&self.vault.approval_card(KIND_PASSWORD, row));
+        body.append(&self.vault.sync_card(KIND_PASSWORD, row));
         let weak = self.me.borrow().clone();
         let (id, title) = (row.id.clone(), row.title.clone());
         let remove = btn(&t!("Remove"), Some("trash"), &["danger", "small"], move || {
