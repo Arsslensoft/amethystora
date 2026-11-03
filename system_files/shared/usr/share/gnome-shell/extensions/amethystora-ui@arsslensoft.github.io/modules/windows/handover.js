@@ -18,7 +18,6 @@ import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js'
 import * as Dialog from 'resource:///org/gnome/shell/ui/dialog.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as ModalDialog from 'resource:///org/gnome/shell/ui/modalDialog.js';
-import {PopupMenuItem} from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 const LOCKDOWN = 'org.gnome.desktop.lockdown';
 // The chip says its piece at full strength, then steps back until the pointer comes to it
@@ -99,10 +98,8 @@ export class HandOver {
     menuItems(menu, window) {
         if (!this._offered(window))
             return null;
-        const item = new PopupMenuItem(_('Hand this over…'));
-        item.connect('activate', () => this.ask(window));
-        menu.addMenuItem(item);
-        return item;
+        // As the menu's own lines are made, so that it lines up with them
+        return menu.addAction(_('Hand this over…'), () => this.ask(window));
     }
 
     _name(window) {
