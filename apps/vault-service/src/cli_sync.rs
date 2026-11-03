@@ -59,6 +59,30 @@ impl Talk {
     }
 }
 
+/// What the person types between two steps of a login, while the connection is kept: the service lets a connection with
+/// nothing asked of it go after 5 s, and with it the yes said to this connection, so it is asked something harmless meanwhile
+fn kept<T>(talk: &mut Talk, typed: impl FnOnce() -> T) -> T {
+    let done = std::sync::atomic::AtomicBool::new(false);
+    std::thread::scope(|scope| {
+        scope.spawn(|| {
+            let mut quiet = std::time::Duration::ZERO;
+            while !done.load(std::sync::atomic::Ordering::SeqCst) {
+                std::thread::sleep(std::time::Duration::from_millis(100));
+                quiet += std::time::Duration::from_millis(100);
+                if quiet >= std::time::Duration::from_secs(2) {
+                    quiet = std::time::Duration::ZERO;
+                    if talk.ask(json!({"op": "status"})).is_err() {
+                        return;
+                    }
+                }
+            }
+        });
+        let value = typed();
+        done.store(true, std::sync::atomic::Ordering::SeqCst);
+        value
+    })
+}
+
 /// A line that is not a secret
 fn plain(prompt: &str) -> Option<String> {
     if std::io::stdin().is_terminal() {
@@ -226,7 +250,6 @@ fn chosen(chain: &[Value]) -> Option<&Value> {
 fn connect(args: &Args) -> Result<(), u8> {
     let address = args.word(2).ok_or(USAGE)?;
     eprintln!("{}", said(args, "say-sync-intro", "This sends what the vault holds that syncs to the server, encrypted, and keeps it in step. Whoever opens this vault can reach that whole account, so a dedicated account is the better choice.", &[]));
-    let mut talk = Talk::open()?;
     let address = address.to_string();
     let email = plain(&said(args, "say-sync-email", "Email address of the account: ", &[])).ok_or(1u8)?;
     let method = plain(&said(args, "say-sync-method", "Log in with the personal API key (it asks no code) or the master password? Type key or password: ", &[])).ok_or(1u8)?;
@@ -238,6 +261,8 @@ fn connect(args: &Args) -> Result<(), u8> {
     }
     let password = read_secret(&said(args, "say-sync-password", "Master password (it opens the account's key here and is not kept): ", &[])).ok_or(1u8)?;
     request["secret"] = json!(encode(password.as_bytes()));
+    // Only now: what was typed above took longer than the service keeps a quiet connection
+    let mut talk = Talk::open()?;
     let mut step = 0;
     let answer = loop {
         step += 1;
@@ -263,7 +288,7 @@ fn connect(args: &Args) -> Result<(), u8> {
                 // Not the one the certificate showed: a fingerprint read off this screen proves that it was read, and nothing about whose it
                 // is. The owner's, given whole, has to be the same (the review's L8).
                 let fingerprint = cert["sha256"].as_str().unwrap_or("").to_string();
-                let typed = plain(&said(args, "say-sync-trust-type", "SHA-256 fingerprint from the server's owner: ", &[])).ok_or(1u8)?;
+                let typed = kept(&mut talk, || plain(&said(args, "say-sync-trust-type", "SHA-256 fingerprint from the server's owner: ", &[]))).ok_or(1u8)?;
                 if !same_fingerprint(&typed, &fingerprint) {
                     eprintln!("{}", said(args, "say-sync-trust-mismatch", "That is not this certificate's fingerprint. Nothing was trusted.", &[]));
                     return Err(1);
@@ -273,7 +298,7 @@ fn connect(args: &Args) -> Result<(), u8> {
             }
             "kdf-memory-confirm" => {
                 let memory = answer["memory"].as_u64().unwrap_or(0);
-                let typed = plain(&said(args, "say-sync-kdf-memory", "This account's key takes {n} MiB of memory to make, which is a lot, and it is made in a program of its own that is gone afterwards. Type yes to go on: ", &[("n", &memory.to_string())])).ok_or(1u8)?;
+                let typed = kept(&mut talk, || plain(&said(args, "say-sync-kdf-memory", "This account's key takes {n} MiB of memory to make, which is a lot, and it is made in a program of its own that is gone afterwards. Type yes to go on: ", &[("n", &memory.to_string())]))).ok_or(1u8)?;
                 if typed != "yes" {
                     return Err(1);
                 }
@@ -281,7 +306,7 @@ fn connect(args: &Args) -> Result<(), u8> {
             }
             "kdf-confirm" => {
                 let rounds = answer["iterations"].as_u64().unwrap_or(0);
-                let typed = plain(&said(args, "say-sync-kdf", "This account's key is made with only {n} rounds, which is far fewer than Bitwarden's default and easier to guess a password against. Type yes to go on: ", &[("n", &rounds.to_string())])).ok_or(1u8)?;
+                let typed = kept(&mut talk, || plain(&said(args, "say-sync-kdf", "This account's key is made with only {n} rounds, which is far fewer than Bitwarden's default and easier to guess a password against. Type yes to go on: ", &[("n", &rounds.to_string())]))).ok_or(1u8)?;
                 if typed != "yes" {
                     return Err(1);
                 }
@@ -292,7 +317,7 @@ fn connect(args: &Args) -> Result<(), u8> {
                 let provider = if providers.len() == 1 {
                     providers[0]
                 } else {
-                    match plain(&said(args, "say-sync-provider", "Which second step? Type authenticator, email or yubikey: ", &[])).as_deref() {
+                    match kept(&mut talk, || plain(&said(args, "say-sync-provider", "Which second step? Type authenticator, email or yubikey: ", &[]))).as_deref() {
                         Some("authenticator") if providers.contains(&0) => 0,
                         Some("email") if providers.contains(&1) => 1,
                         Some("yubikey") if providers.contains(&3) => 3,
@@ -309,11 +334,11 @@ fn connect(args: &Args) -> Result<(), u8> {
                     1 => said(args, "say-sync-code-email", "Code sent to your email: ", &[]),
                     _ => said(args, "say-sync-code-yubikey", "Touch your YubiKey: ", &[]),
                 };
-                let code = read_secret(&prompt).ok_or(1u8)?;
+                let code = kept(&mut talk, || read_secret(&prompt)).ok_or(1u8)?;
                 request["two_factor"] = json!({"provider": provider, "code": code.as_str(), "remember": false});
             }
             "new-device" => loop {
-                let typed = read_secret(&said(args, "say-sync-device", "This server checks new devices, and sent a code to the account's email. Code, or type resend: ", &[])).ok_or(1u8)?;
+                let typed = kept(&mut talk, || read_secret(&said(args, "say-sync-device", "This server checks new devices, and sent a code to the account's email. Code, or type resend: ", &[]))).ok_or(1u8)?;
                 if typed.as_str() == "resend" {
                     let mut resend = request.clone();
                     resend["resend_device_code"] = json!(true);
