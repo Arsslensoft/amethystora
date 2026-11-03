@@ -10,11 +10,37 @@ publish.workspace = true
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true
-aes-gcm.workspace = true
+aes-gcm = { workspace = true, features = ["zeroize"] }
 scrypt.workspace = true
 sha2.workspace = true
+# TOTP's default is HMAC-SHA-1; the service makes codes and never loads libcrypto, so not openssl::sha
+sha1 = "0.11"
 getrandom.workspace = true
 base64.workspace = true
 flate2.workspace = true
 openssl.workspace = true
 zeroize.workspace = true
+libc.workspace = true
+# MAX_LINE, MAX_DATA and the refusals: one definition of the wire
+amethystora-vault-client.workspace = true
+# A password's NFC form, as Notes takes it through GLib, which the service does not link
+icu_normalizer = "2"
+# ML-KEM-1024's encapsulate and decapsulate: libcrypto has them, and the openssl crate does not call them yet
+openssl-sys = "0.9"
+foreign-types = "0.3"
+# NFD for a service's name, and which characters are marks: std has neither. ICU4X, as the apps' translations use.
+icu_properties = "2"
+# OpenSSH stretches a key file's passphrase with bcrypt_pbkdf, which libcrypto does not have
+bcrypt-pbkdf = { version = "0.11", features = ["zeroize"] }
+# Sync with Vaultwarden and Bitwarden (src/sync): the protocol's AES-256-CBC, HMAC-SHA256 and PBKDF2, from the crates the
+# workspace already has, and Argon2id, the one crate sync adds (pure Rust, MIT or Apache-2.0)
+aes = "0.9"
+hmac = "0.13"
+pbkdf2 = { version = "0.13", default-features = false, features = ["hmac"] }
+argon2 = { version = "0.6", default-features = false, features = ["alloc", "zeroize"] }
+
+[features]
+# Lets a test reach a server on a test network over plain http (plans/vault-sync/IMPLEMENTERS.md 3). Nothing shipped has it.
+plain-http-for-tests = []
+# A server of our own for the tests of sync: honest, or each attack of the spec when told (src/sync/fake.rs)
+fake-server = []

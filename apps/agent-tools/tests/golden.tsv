@@ -89,3 +89,15 @@ deleted file gone from the trash	knowledge/by-design#the-trash-empties-itself-af
 change the gap between tiled windows	manual/desktop#tiling-settings|manual/desktop#tiling-settings~2|control/tiling-settings|ame/desktop/tiling-settings
 what does this computer send to fedora by itself	manual/security#what-this-machine-sends|manual/security#what-this-machine-sends~2|manual/security#what-this-machine-sends~3
 hotel wifi login page does not open	knowledge/by-design#no-login-page-on-a-hotel-or-train-network-or-no-firmware-offered-only-with-a-sending-switch-off|manual/security#what-this-machine-sends~2
+where do i keep my passwords safely	manual/vault#*|knowledge/vault#*|manual/faq#where-do-i-keep-my-passwords
+recovery key for my vault	manual/vault#the-recovery-key|knowledge/vault#questions-you-will-get*|manual/vault#how-it-opens
+can the ai agent read my passwords	knowledge/vault#the-agent-stays-out*|manual/ai-agent#privacy
+add an authenticator code from a qr code	manual/vault#adding-one|manual/vault#authenticator-codes*
+sign a pdf with my own certificate	manual/vault#signing-a-pdf|manual/vault#certificates-and-signing*
+keep my ssh key in the vault and sign in with it	manual/vault#the-ssh-agent|manual/vault#using-a-secret-without-handing-it-over*
+sync my passwords with vaultwarden or bitwarden	manual/vault#sync*
+other computers say the signer of my pdf is unknown	manual/vault#trusting-a-certificate*|manual/vault#who-vouches*|knowledge/vault#questions-you-will-get*
+a program calling itself asks to use an item from the vault	knowledge/vault#questions-you-will-get*|manual/vault#what-it-is-and-what-it-protects-you-from*
+keep my aws credentials file away from other programs	manual/vault#protected-files*|manual/vault#using-a-secret-without-handing-it-over*
+a vault that is not listed anywhere	manual/vault#several-vaults-and-hidden-ones*
+back up the vault and restore it with the recovery key	manual/vault#backing-up-and-moving*|manual/vault#the-recovery-key

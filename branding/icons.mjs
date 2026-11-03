@@ -51,6 +51,8 @@ const RAMPS = {
     indigo: [['#667eea', '#764ba2'], ['#a1c4fd', '#667eea', '#8e6bd8'], ['#f9f871', '#ffc371']],
     ice: [['#89f7fe', '#66a6ff'], ['#e0fcff', '#89f7fe', '#66a6ff'], ['#ff9a9e', '#fecfef']],
     gold: [['#f7b733', '#fc4a1a'], ['#fff3b0', '#f7b733', '#fc4a1a'], ['#89f7fe', '#66a6ff']],
+    // The Vault's door (its icon board, option A): brass, with the dial in a paler brass and, for Duotone, in a violet
+    brass: [['#f5c76a', '#d98a2b'], ['#fff3cf', '#f5c76a', '#d98a2b'], ['#a98bf2', '#6b6fe0']],
     // The folder colours of Files' scripts menu (board 35): the board's six swatches, light over dark, the prism from a
     // near-white of the hue (Sky's a little bluer than the board's, which Neon would leave too near Slate), and a
     // contrasting pair for Duotone's details
@@ -76,6 +78,7 @@ const SET = {
         ['amethystora-logs', 'logs', 'aqua', ['utilities-log-viewer', 'org.gnome.Logs']],
         ['amethystora-notes', 'notes', 'gold', ['accessories-notes']],
         ['amethystora-backups', 'backups', 'royal'],
+        ['amethystora-vault', 'door', 'brass'],
         ['amethystora-phone', 'phone-link', 'grape'],
         ['amethystora-community', 'community', 'magenta'],
         ['org.gnome.Nautilus', 'files', 'sunset', ['system-file-manager']],

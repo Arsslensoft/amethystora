@@ -1,0 +1,16 @@
+[Unit]
+Description=Amethystora Vault's network socket
+Documentation=file:///usr/share/amethystora/manual/vault.md
+
+# Only the Vault's service connects to this: the socket belongs to its user and nobody else can open it. It starts the network
+# service when sync asks, and costs nothing until then. A machine that never connects a server never starts it.
+[Socket]
+ListenStream=/run/amethystora/vault-net.sock
+SocketUser=amethystora-vault
+SocketGroup=amethystora-vault
+SocketMode=0600
+DirectoryMode=0755
+RemoveOnStop=yes
+
+[Install]
+WantedBy=sockets.target

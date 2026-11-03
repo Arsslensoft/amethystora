@@ -1,0 +1,13 @@
+2fa.directory's list of services that offer two-factor sign-in, which Amethystora Vault uses to link a backup code's service to where
+new codes come from and what to do when access is lost, and to tell which service an authenticator account is for. The copy is
+/usr/share/amethystora/vault/2fa-directory.json.
+
+  Data:         https://github.com/2factorauth/twofactorauth, commit 9b39477ccf259f022f694b4f14ed79c529b1039d
+  Tarball:      https://codeload.github.com/2factorauth/twofactorauth/tar.gz/9b39477ccf259f022f694b4f14ed79c529b1039d
+                SHA-256 25edb7984039d2259bcb99d9e98ff1637c46c387856005408093850fe0442b8d
+  Made with:    node build_files/shared/trim-2fa-directory.mjs entries 2fa-directory.json 2026-11-02 LICENSE.md
+                (1649 rows; the file is SHA-256 f4bc5b38d7dc8c2d8117f89c2df121ab6bdf1edfde0a74dbd37b3ed751ba345e, and holds this licence)
+  Licence:      MIT, Copyright 2021 2factorauth and Contributors, LICENSE here (the repository's LICENSE.md)
+
+Only the name, the domain, the two links and the other domains of each service are kept. Move to a newer commit by hand, with the
+tarball's sum and the file's again.

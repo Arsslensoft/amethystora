@@ -1,0 +1,51 @@
+[Unit]
+Description=Amethystora Vault's network access
+Documentation=file:///usr/share/amethystora/manual/vault.md
+Requires=amethystora-vault-net.socket
+After=amethystora-vault-net.socket
+
+# The only part of the Vault with the network, and the part that holds nothing: no key, no state and no home. Bitwarden's
+# protocol encrypts on the client, so what passes through is ciphertext and what a login needs: the access token, at a password
+# login the master password's hash, at an API key login its client_secret, the refresh and remember tokens, a second step's or a
+# new device's code, the account's email, and a private CA's certificate. Never the master password, the master key or the user
+# key: those stay in the Vault's service, which makes the master key itself. The Vault's own service stays without a network and
+# asks this one over the socket for the one server its account is connected to, on a connection for each account that syncs. It
+# exits when sync has nothing more to ask.
+[Service]
+ExecStart=/usr/libexec/amethystora-vault-net
+User=amethystora-vault-net
+# Nothing it could write, and nothing of anyone's it could read
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+ProcSubset=pid
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+UMask=0077
+LimitCORE=0
+# A response is 32 MiB at most, held three times over (the body, its base64 and the line that carries it), and at most four
+# connections are served at once
+MemoryMax=512M
+TasksMax=16
+LogLevelMax=warning
+TimeoutStopSec=5
+
+[Install]
+Also=amethystora-vault-net.socket

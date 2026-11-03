@@ -1,0 +1,29 @@
+# A PKCS#11 module that holds no key: NSS loads it into pdfsig, and each signature is forwarded to the Vault, so that a PDF is
+# signed without the key leaving the service (plans/PLAN-vault.md, Signing certificates).
+[package]
+name = "amethystora-vault-pkcs11"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# A backend that reads a key from a folder, for tests alone: never built into the image
+test-backend = ["dep:amethystora-vault-core"]
+
+[dependencies]
+openssl.workspace = true
+amethystora-vault-client.workspace = true
+serde_json.workspace = true
+base64.workspace = true
+amethystora-vault-core = { workspace = true, optional = true }
+
+[dev-dependencies]
+amethystora-vault-core.workspace = true
+
+[[test]]
+name = "pdfsig"
+required-features = ["test-backend"]

@@ -32,7 +32,8 @@ This document provides essential information for coding agents working with the 
   - `sealed/` - the sealed images only, copied in by `build_files/sealed/00-sealed.sh`
 - `apps/` - The Amethystora apps (Manual, Security, Updates, Notes, Logs, Backups, Control, Help): one Rust
   program, a Cargo workspace built in the Containerfile's `apps` stage (see The Amethystora apps); the same
-  workspace builds `amethystora-sensor` and the AI agent's tools (`agent-tools`, see Agentic features)
+  workspace builds `amethystora-sensor` and the AI agent's tools (`agent-tools`, see Agentic features); the Vault is
+  `apps/vault*`, seven crates (see The Vault)
 - `build_files/` - Build scripts organized as base/, dx/, shared/
   - `base/` - Base image build scripts (00-image-info.sh through 20-tests.sh)
   - `dx/` - Developer experience build scripts
@@ -399,7 +400,7 @@ agent cleaned and marked as data. Off costs nothing: no daemon, timer or service
 - **The never list** (`apps/agent-tools/src/never.rs`) is refused by the tools and again by the root helper:
   the duress feature, a security command that loosens protection or sends something away (only reads and
   turning protection on pass), deleting from a backup or a snapshot, erasing disks, the AUR, sudoers, polkit,
-  PAM, the agent's own lock and root mode, the update boot guard and the lost-computer line, the Notes data, and shells or wrappers that would run commands out
+  PAM, the agent's own lock and root mode, the update boot guard and the lost-computer line, the Notes data, the Vault, and shells or wrappers that would run commands out
   of sight. The tools that change things refuse while the agent runs with its own checks off (a flag from
   `agent-cli-flags` on the agent above the server, or a setting the security reader reports).
 - **`/etc/amethystora/agent.conf`** is the administrator's: `ALLOW=act|know|off` (the most any account may
@@ -969,6 +970,84 @@ key without `credProtect` is refused: a key of the first FIDO2 generation may ot
 so unlocking tries each passkey in turn. Nothing is stored on the security key, and a backup carries
 no passkey.
 
+### The Vault
+
+Amethystora Vault (`amethystora-vault`, **Vault** in the app grid, `ame vault`; the design is `plans/PLAN-vault.md`, its brief
+`plans/vault/IMPLEMENTERS.md`) keeps passwords, authenticator codes, backup codes, keys, certificates and protected files, away from the
+programs of the account that owns them. **A secret is out of the account's reach, and a program of the account that asks needs the person's
+approval**: those two halves are the whole design, and every rule below serves one of them. Its manual page is `vault.md`.
+
+- **The crates** (all in `apps/`, one Cargo workspace): `vault-core` (no GTK, no socket: items, sealing, slots, the store, generators, the
+  importers, `keys` and `pki/`, the protocol), `vault-service` (`/usr/libexec/amethystora-vault-service`; `amethystora-vault-cli`, which
+  `vault.just` runs; `amethystora-vault-work`, the short-lived child that is the only one of them linking libcrypto; and
+  `git-credential-amethystora` and `docker-credential-amethystora` in `/usr/bin`), `vault-client` (the wire format Round 7's features seal
+  under: `seal`, `open`, `forget`; keep it exactly), `vault` (the window, app id `org.amethystora.Vault`), `vault-native` (the browser's host),
+  `vault-pkcs11` (a PKCS#11 module with no key in it, which lets `pdfsig` sign through the socket) and `vault-net` (the network service).
+  `vault-extension` is the WebExtension, plain files, never in the image. The sentences polkit shows are `say` in `vault-service/src/outside.rs`.
+- **The service** is a system service under its own user (`amethystora-vault`, `usr/lib/sysusers.d`), started by `amethystora-vault.socket` and
+  `amethystora-vault-ssh.socket` (both enabled, every account may connect: `SO_PEERCRED` picks the account, never what a client says), and gone
+  within a minute of the last vault closing. Its unit has `PrivateNetwork=yes`, `CapabilityBoundingSet=`, `MemoryDenyWriteExecute=yes`,
+  `ProtectSystem=strict`, `ProtectHome=yes`, `SystemCallFilter=@system-service`, `LimitCORE=0` and `LogLevelMax=warning`, and its state is
+  `/var/lib/amethystora/vault/<uid>` (0700, the service's) and `machine/`. **Why not a user unit:** an account can override its own units with a
+  drop-in, start them under `LD_PRELOAD` and read their memory. `test-vault.sh` holds every line of the unit.
+- **Approval is polkit**, `org.amethystora.vault.{open,use,export,admin}`, each owned by the service's user (which is what lets it ask for the process
+  that connected and pass the sentence: `polkit.message` with `$(program)`, `$(item)`, `$(detail)`), `allow_any` and `allow_inactive` no,
+  `auth_self` (`auth_admin` for `.admin`), **no `yes`, no `keep`, no rule that lets anyone through**. A forced ask records no yes, so the item
+  asks again; the service never asks while the account's session is locked (the dialog would show over the lock screen) and cancels what is pending on
+  lock, sleep and a client hanging up. The name in a prompt is what the program calls itself (`comm` and `cmdline[0]`, a Flatpak's app id from its
+  cgroup): it proves nothing and is never used to skip an approval. Every `# N_` line of `vault.just` must equal a `say` sentence, which is how the
+  prompts are translated (the service says them in English, polkit's gettext domain `amethystora` translates).
+- **The rules that must hold.** The service never links libcrypto (8 MB resident, no parser in the process that holds every vault's key: keys, X.509 and
+  PKCS#12 run in `amethystora-vault-work`, one job each), never has a network, never panics on a request (`panic = "abort"`), and holds secrets in
+  `Zeroizing` types that wipe. Everything an outside party names (an id, a purpose, a path) is checked for its shape before it touches a path; writes
+  are atomic; the same refusal for "no such item" as for "wrong key". A client's connection is dropped after 5 s idle, so every client reconnects for each
+  call. Round 7's unattended `background` key is served to a lingering account, and nothing else is. No `rsa` crate anywhere (RUSTSEC-2023-0071;
+  `test-vault.sh` fails on one in `CRATES`).
+- **Several and hidden vaults.** The first vault is the only one with the account's CA, its certificates, sync and Round 7's `data-key`s. A hidden vault is in no
+  list, log, error, report or `status.json`, opens by its password only (one scrypt salt for all of an account's vaults, so time says nothing), never fetches a
+  logo, is never offered sync, is not in `amethystora-sends`, and `ame vault forget` says "including any you cannot see" whether there is one or not. It is
+  **not the duress feature and is never tied to it**. Do not add a place where a hidden vault shows.
+- **Certificates.** Each machine makes its **Amethystora OS Root CA** on first need (`OU=Machine` and eight hex digits of its key, never the host name or
+  `/etc/machine-id`), RSA 4096, in `vault/machine/`, in no backup and never exported; it signs only what a table in the service says, through three CAs
+  (an account's Code Signing CA, the machine's `Device Identity CA` and `Local Services CA`), **each with its own critical Name Constraints** (a constraint above a
+  trust anchor is never read: tested in Firefox). It never joins `/etc/pki/ca-trust`. A PDF certificate and a code certificate are two certificates (poppler
+  accepts neither `codeSigning` alone nor a CA limited to it). The key signs inside the service; `apps/vault-pkcs11` hands `pdfsig` a digest and gets a
+  signature, and `ame vault pdf sign` always passes `-nssdir`. `ame vault root rotate` is the only revocation there is.
+- **Using a secret without handing it over**: the SSH agent (`amethystora-vault-ssh.socket`, the same process; `ame vault ssh on` writes `environment.d`
+  and a drop-in for `gcr-ssh-agent.socket`), tools' own helpers (`ame vault helpers`: they write a tool's settings only when asked and never over someone's own),
+  `ame vault run` (a user, mount and PID namespace with a tmpfs over the file's folder; **inside it there is no `sudo` or `pkexec`, and other programs of the
+  account can reach what it holds**, which the manual and `protect` say first) and protected files (kind `protected`, sealed, never mounted into the account;
+  the plain original is unlinked, not wiped, and snapshots and backups keep it). `amethystora-agent` wraps an agent whose login is protected in `ame vault run`
+  unless the agent's tools are at level 2 with a root mode, where it starts the agent without the login and says why. `apps/vault-service/src/tools.rs`'s list of
+  variables that steer programs is the only thing that keeps a secret out of `LD_PRELOAD`: extend it, never shorten it.
+- **Sync** is Bitwarden's protocol, written clean-room from `plans/vault-sync/spec-*.md` (never Bitwarden's or Vaultwarden's code), off until connected, only while
+  the vault is open, and only through `amethystora-vault-net` (own user, the network, **no key, no state, no home**; a socket only the Vault's user opens). The
+  connection and its links are items of the first vault (`SERVICE_ONLY`); the address is in `amethystora-sends` and never in `setup.json`, the manifest or an image's
+  `policy/`. An item set to Ask every time stays off sync; keys and certificates go only sealed, and only when chosen.
+- **The browser extension** is never in the image and never installed by it (Mozilla's terms for Firefox): `ame vault browser on` writes the native-messaging manifest
+  into the account's own folders (`~/.mozilla` too), `off` takes it away, the watcher accepts exactly the file `amethystora-vault-native browser manifest` prints and
+  says anything else there. The match of an origin to items is in the host (`site.rs`, the public suffix list `publicsuffix-list-dafsa` of the image), never in the
+  page. Its ids (`vault@amethystora.org`, and `CHROMIUM_IDS` in `install.rs`, a placeholder until the store assigns one) are in the browser policy's allowlist.
+- **Clean rooms.** BackMyCodes' formats (`plans/vault-bmc/spec-formats.md`: BMC1 transfers, its export version 2, 2fa.directory's shape) are kept byte for byte and
+  nothing of its code or test files is here; Bitwarden's and Vaultwarden's clients, KeePassXC's and the like are never read. EFF's large word list is built in
+  (`apps/vault-core/assets`, CC-BY 3.0 US, `usr/share/licenses/eff-wordlists`), and `usr/share/amethystora/vault/2fa-directory.json` is 2fa.directory trimmed at one
+  commit by `build_files/shared/trim-2fa-directory.mjs` (MIT, `usr/share/licenses/2fa-directory/SOURCE` says which commit and the sums).
+- **The agent never gets in**: `never.rs` refuses every spelling of `ame vault`, `amethystora-vault*`, `org.amethystora.vault`, the sockets and the folder, and no tool reads
+  it. `agents/knowledge/vault.md` and the skill say what to tell a person: keep both accurate with the commands.
+- **On the desktop**: the window follows Notes' rules (a `gtk::ListView`, every call async, a frame over 16 ms is a bug, one wakeup a second only while the Authenticator
+  page shows a code), copies as a secret (`x-kde-passwordManagerHint`, cleared after 30 s), hides a revealed secret after 30 s and on focus loss, sets
+  `PR_SET_DUMPABLE` 0 (so its portal helper is the same program started again) and is in `share-guard-apps`. Its icon is the door of `branding/icons/glyphs.mjs`
+  in all eight packs, with the tile `generate.mjs` draws (`amethystora-vault.svg`); the logos switch is a marker file (`~/.config/amethystora/vault-logos`) that
+  `ame vault logos` writes.
+- **Backup and moving**: `ame vault backup` writes `~/.local/share/amethystora/vault-backup/vault-DATE.avb`, the sealed items and the key under the **recovery slot
+  alone**, which needs no open vault; `amethystora-backup` runs it before each restic run, seven kept; `ame vault restore FILE` asks for the recovery key. There is one
+  recovery key a vault, never split, and nobody (not Amethystora) can make another.
+- **Tested** by cargo in the apps stage (`VAULT_VERIFIERS_REQUIRED=1`, with `openssl`, `osslsigncode`, `pdfsig`, `certutil`, `jarsigner`, `ssh` and `oathtool` as separate programs, so
+  that no test passes by skipping; also on OpenSSL 4), by `build_files/shared/test-vault.sh` from `20-tests.sh` (the unit, the policy, the sockets, the recipes, the sentences,
+  the crates, the data), and by `tests/vm/suites/74-vault.sh` on a booted image (real polkit, SELinux enforcing, a virtual fingerprint reader, the TPM, `ssh`, `pdfsig`,
+  a Vaultwarden in a container). **By hand, and not in CI**: BackMyCodes' own app reading what this writes, Bitwarden's own server, Acrobat, the browser stores' reviews,
+  a real TPM and reader.
+
 ### The Control app
 
 Amethystora Control (`amethystora-control [page [entry]]`, **Control** in the app grid, `Super+Ctrl+Shift+C`) is
@@ -1394,7 +1473,7 @@ The modules, and what each replaced:
   and leads back to the page. `check-guides.mjs` holds every guide at build time as `check-manual.js` does links: add a guide with its
   link in the page.
 - `privacy`, after the modules it reads (`connect`, `pill`, `quick`, `meters`): the **share guard** (`share-guard`, `blur`
-  by default, or `card`) covers the windows of `share-guard-apps` (Notes, Security, Backups, Help, the password managers) and Files
+  by default, or `card`) covers the windows of `share-guard-apps` (Notes, Security, Backups, Help, Vault, the password managers) and Files
   in the Private folder while the whole screen is shared, from Mutter's first handle, and uncovers only once Mutter's
   screen cast service says every stream is a window's; the **shield** (`shield`, a tile by default) is described under
   The Security app; **network by app** (`network-apps`, off) lists in the network meter's menu, only while it is open, the

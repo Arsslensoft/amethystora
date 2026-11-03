@@ -72,6 +72,27 @@ TOOLS_ENTRY="{\"command\": \"${TOOLS}\", \"args\": [\"mcp\"]}"
 READ_TOOLS=(search read state logs history)
 CHANGE_TOOLS=(change software run undo)
 
+# Where each agent keeps its login, as the watcher's CREDENTIAL_FILES has them. One the account protected in the vault
+# (ame vault protect) is given to the agent for its session alone, through ame vault run. Copilot CLI keeps its login in
+# the keyring, so it has none here.
+declare -A LOGINS=([claude]=.claude/.credentials.json [codex]=.codex/auth.json [opencode]=.local/share/opencode/auth.json
+    [agy]=.gemini/antigravity-cli/antigravity-oauth-token [cursor-agent]=.config/cursor/auth.json)
+
+# Whether NAME's login is protected: asking needs the vault open, and a closed or absent vault is a no
+protected_login() {
+    local login="${LOGINS[$1]:-}"
+    [[ -n ${login} && -x /usr/libexec/amethystora-vault-cli ]] || return 1
+    /usr/libexec/amethystora-vault-cli protected --json 2>/dev/null |
+        jq -e --arg path "${login}" 'any(.items[]; .meta.path == $path)' >/dev/null
+}
+
+# Whether the agent's tools may run commands as root: its tools at level 2, which is the only place they come from. Those go
+# through pkexec (or a terminal opened from the agent), and neither works inside the namespace `ame vault run` makes, where no
+# program is setuid
+root_commands_possible() {
+    "${TOOLS}" policy --json 2>/dev/null | jq -e '.level == "act" and .root != "off"' >/dev/null
+}
+
 usage() {
     sed -n '3,/^$/p' "$0" | sed 's/^# \?//'
 }
@@ -190,6 +211,21 @@ launch() {
     fi
     cd "${HOME}"
     command_for "${name}" "$@"
+    if protected_login "${name}"; then
+        if root_commands_possible; then
+            # No sudo or pkexec inside the namespace: the agent starts without its login, as when the vault is closed, and asks to
+            # sign in. Said once for each agent.
+            local said="${XDG_STATE_HOME:-${HOME}/.local/state}/amethystora/agent-login-said-${name}"
+            if [[ ! -e ${said} ]]; then
+                mkdir -p "$(dirname "${said}")" && : >"${said}"
+                echo "$(title "${name}")'s login is protected in the Vault, which would be given to it through ame vault run." >&2
+                echo "Inside that, the agent's commands as root cannot run, and they are on. So it starts without its login and asks you to sign in." >&2
+                echo "To keep the login in the Vault, turn the agent's tools off (ame agent tools off). To keep the tools, take it out with: ame vault unprotect" >&2
+            fi
+        else
+            exec /usr/bin/ame vault run "${HOME}/${LOGINS[${name}]}" -- "${COMMAND[@]}"
+        fi
+    fi
     exec "${COMMAND[@]}"
 }
 

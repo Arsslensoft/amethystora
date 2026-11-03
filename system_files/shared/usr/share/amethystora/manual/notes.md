@@ -5,6 +5,8 @@ this computer. Nothing is synced, and the app never connects to the internet. It
 Joplin and Planify, and brings in what you already have in them (see
 [Coming from Joplin or Planify](#coming-from-joplin-or-planify)).
 
+Passwords, authenticator codes and keys do not belong in a note: keep them in the [Vault](vault.md), which asks before each use.
+
 The first time you open it, it offers to encrypt your notes with a passphrase. That is the choice it
 recommends, and the rest of this page assumes you took it.
 

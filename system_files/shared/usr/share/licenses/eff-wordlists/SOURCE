@@ -1,0 +1,9 @@
+The Electronic Frontier Foundation's large word list for dice-generated passphrases, which Amethystora Vault builds into its
+programs (apps/vault-core/assets/eff_large_wordlist.txt, included at compile time), to make a passphrase of random words.
+
+  List:         https://www.eff.org/files/2016/07/18/eff_large_wordlist.txt
+  Fetched:      2026-11-02, 7776 lines, 108800 bytes, SHA-256 addd35536511597a02fa0a9ff1e5284677b8883b83e986e43f15a3db996b903e
+  By:           the Electronic Frontier Foundation (https://www.eff.org/deeplinks/2016/07/new-wordlists-random-passphrases)
+  Licence:      Creative Commons Attribution 3.0 United States, in LICENSE here (the text of the SPDX licence list's CC-BY-3.0-US)
+
+The list is used as it is, unchanged.

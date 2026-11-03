@@ -1,0 +1,25 @@
+# amethystora-vault-native: what the browser starts for the Vault's extension (plans/PLAN-vault.md, The browser extension). It
+# bridges the browser's native messaging to the Vault's socket, and decides which items a page may be offered. No GTK, and none
+# of vault-core: it holds no key and seals nothing. 13-apps.sh installs it as /usr/libexec/amethystora-vault-native.
+[package]
+name = "amethystora-vault-native"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+name = "amethystora_vault_native"
+path = "src/lib.rs"
+
+[[bin]]
+name = "amethystora-vault-native"
+path = "src/main.rs"
+
+[dependencies]
+amethystora-vault-client.workspace = true
+base64.workspace = true
+getrandom.workspace = true
+libc.workspace = true
+serde_json.workspace = true
+zeroize.workspace = true

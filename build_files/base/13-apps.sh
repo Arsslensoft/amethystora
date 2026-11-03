@@ -5,7 +5,7 @@ echo "::group:: ===$(basename "$0")==="
 set -eoux pipefail
 
 # The Amethystora apps: the Manual (Super+F1), Security, Updates, Notes, Logs, Backups, Control, Phone, the Shelf
-# (a window the desktop opens while something is put down on it, round 4's R4-08) and Trim (R6-19). They are
+# (a window the desktop opens while something is put down on it, round 4's R4-08) and Trim (R6-19), and the Vault (see below). They are
 # one program, written in Rust with GTK 4 and libadwaita (apps/), which the Containerfile's apps stage built
 # on this same base, and which picks the app by the name it is started as: each app's own path is a hard
 # link to it, so that /usr/bin/amethystora-<app>, the process names and the launchers stay as they were.
@@ -21,7 +21,7 @@ APPS_DIR=/usr/lib/amethystora-apps
 LICENSE_DIR=/usr/share/licenses/amethystora-apps
 
 install -Dpm0755 /apps-stage/out/amethystora-apps "${APPS_DIR}/amethystora-apps"
-for app in manual security update notes logs backups control phone shelf trim help; do
+for app in manual security update notes logs backups control phone shelf trim help vault; do
     install -d "/usr/lib/amethystora-${app}"
     ln -f "${APPS_DIR}/amethystora-apps" "/usr/lib/amethystora-${app}/amethystora-${app}"
 done
@@ -48,6 +48,19 @@ install -Dpm0755 /apps-stage/out/amethystora-clipboard-seal /usr/libexec/amethys
 # The phone link's program (no GTK either), started by the user unit amethystora-connect.service, which nothing
 # enables for anyone: `ame desktop phone on` does. The window it is paired and used from is amethystora-phone.
 install -Dpm0755 /apps-stage/out/amethystora-connect /usr/libexec/amethystora-connect
+
+# Amethystora Vault (plans/PLAN-vault.md; the window is the app above). The service holds the keys, started by
+# amethystora-vault.socket as its own user; the command line is what `ame vault` runs; the work child is the only one of
+# them that loads libcrypto (keys and certificates), one job at a time; the native host is what a browser starts for the
+# extension; the PKCS#11 module is what pdfsig loads to sign through the service (the key never leaves it); and the network
+# service is the only thing sync reaches a server through (a user of its own, no key, no state).
+for program in service cli work native net; do
+    install -Dpm0755 "/apps-stage/out/amethystora-vault-${program}" "/usr/libexec/amethystora-vault-${program}"
+done
+install -Dpm0755 /apps-stage/out/libamethystora_vault_pkcs11.so /usr/lib64/amethystora-vault/libamethystora_vault_pkcs11.so
+# What git and docker look for on their PATH, under the names they look for, to have a login from the vault (ame vault helpers)
+install -Dpm0755 /apps-stage/out/git-credential-amethystora /usr/bin/git-credential-amethystora
+install -Dpm0755 /apps-stage/out/docker-credential-amethystora /usr/bin/docker-credential-amethystora
 install -d /usr/share/amethystora/agents/knowledge/model
 install -pm0644 -t /usr/share/amethystora/agents/knowledge/model /apps-stage/out/model/*
 

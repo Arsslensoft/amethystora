@@ -1209,7 +1209,7 @@ PRIVACY=org.gnome.shell.extensions.amethystora-ui.privacy
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${PRIVACY}" shield)" == "'tile'" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${PRIVACY}" share-guard-private)" == true ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${PRIVACY}" network-apps)" == false ]]
-for app in amethystora-notes amethystora-security amethystora-backups amethystora-help; do
+for app in amethystora-notes amethystora-security amethystora-backups amethystora-help amethystora-vault; do
     GSETTINGS_BACKEND=memory gsettings get "${PRIVACY}" share-guard-apps | grep -qF "'${app}.desktop'"
     test -f "/usr/share/applications/${app}.desktop"
 done
@@ -2037,7 +2037,7 @@ grep -q "paperwm@paperwm.github.com" /usr/share/amethystora/user-setup.hooks.d/1
 # wordmarks, which the program carries, is the logo's own, cropped the way branding/generate.mjs crops it.
 APPS_PROGRAM=/usr/lib/amethystora-apps/amethystora-apps
 test -x "${APPS_PROGRAM}"
-for app in manual security update notes logs backups phone control shelf trim help; do
+for app in manual security update notes logs backups vault phone control shelf trim help; do
     test -x "/usr/bin/amethystora-${app}"
     [[ "/usr/lib/amethystora-${app}/amethystora-${app}" -ef "${APPS_PROGRAM}" ]]
     [[ "$(env -u DISPLAY -u WAYLAND_DISPLAY "/usr/lib/amethystora-${app}/amethystora-${app}" --version)" == "amethystora-${app} "* ]]
@@ -5156,6 +5156,11 @@ done
     jq -e '.mcpServers.amethystora == null' "${HOME}/.cursor/mcp.json" >/dev/null
     rm -rf "${HOME}" "${XDG_RUNTIME_DIR}"
 )
+
+# The Vault (plans/PLAN-vault.md): its service's sandbox, its polkit policy with no yes and no kept answer, its sockets enabled,
+# every recipe, every sentence of the service a line of the recipes' catalog, no rsa crate, the data and licences it ships
+# (tests/vm/suites/74-vault.sh is what runs it)
+bash /ctx/build_files/shared/test-vault.sh /ctx
 
 # these packages are supposed to be removed
 # and are considered footguns

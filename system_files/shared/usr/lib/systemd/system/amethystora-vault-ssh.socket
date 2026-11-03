@@ -1,0 +1,17 @@
+[Unit]
+Description=Amethystora Vault's SSH agent
+Documentation=file:///usr/share/amethystora/manual/vault.md
+
+# The same service as the vault's own socket, started when something asks. Every account may connect, and the kernel says which
+# account is asking. Nothing points at it until an account runs `ame vault ssh on`, which is that account's own choice.
+[Socket]
+ListenStream=/run/amethystora/vault-ssh.sock
+Service=amethystora-vault.service
+SocketUser=root
+SocketGroup=root
+SocketMode=0666
+DirectoryMode=0755
+RemoveOnStop=yes
+
+[Install]
+WantedBy=sockets.target

@@ -140,6 +140,9 @@ FEDORA_PACKAGES=(
     NetworkManager-libreswan-gnome
     NetworkManager-sstp
     NetworkManager-sstp-gnome
+    # certutil and modutil, through which `ame vault pdf sign` gives pdfsig a throwaway NSS database holding only the Vault's
+    # PKCS#11 module (amethystora-vault-cli)
+    nss-tools
     oddjob-mkhomedir
     opendyslexic-fonts
     openssh-askpass
@@ -148,8 +151,13 @@ FEDORA_PACKAGES=(
     pam-u2f
     pamu2fcfg
     perl-Image-ExifTool
+    # The camera behind a QR code the Vault's window reads (pipewiresrc, through the camera portal's descriptor, for gst-launch-1.0)
+    pipewire-gstreamer
     plymouth-plugin-label
     plymouth-plugin-script
+    # pdftotext, which reads backup codes out of a PDF, and pdfsig, which checks a signed one (amethystora-vault-cli); the base
+    # image has them, and the Vault depends on them
+    poppler-utils
     powerstat
     powertop
     printer-driver-brlaser

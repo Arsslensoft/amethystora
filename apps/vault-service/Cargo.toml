@@ -7,6 +7,10 @@ edition.workspace = true
 license.workspace = true
 publish.workspace = true
 
+[lib]
+name = "amethystora_vault_service"
+path = "src/lib.rs"
+
 [[bin]]
 name = "amethystora-vault-service"
 path = "src/main.rs"
@@ -15,8 +19,34 @@ path = "src/main.rs"
 name = "amethystora-vault-cli"
 path = "src/cli.rs"
 
+# What a tool calls to have a login from the vault, each on the PATH under the name its tool looks for
+[[bin]]
+name = "git-credential-amethystora"
+path = "src/git_credential.rs"
+
+[[bin]]
+name = "docker-credential-amethystora"
+path = "src/docker_credential.rs"
+
+# What takes libcrypto, one job at a time and gone: the service itself never loads it (plugs/work.rs)
+[[bin]]
+name = "amethystora-vault-work"
+path = "src/work.rs"
+
 [dependencies]
 amethystora-vault-core.workspace = true
+amethystora-vault-client.workspace = true
+base64.workspace = true
+# Seeing whether a command changed a protected file
+sha2.workspace = true
+serde.workspace = true
 serde_json.workspace = true
 libc.workspace = true
+# For amethystora-vault-work alone: the service never calls it, and links no libcrypto (ldd, in release)
+openssl.workspace = true
 zeroize.workspace = true
+
+[dev-dependencies]
+# The tests run sync through the whole path: this service, the network service's own code, and a server of our own
+amethystora-vault-core = { workspace = true, features = ["fake-server"] }
+amethystora-vault-net = { path = "../vault-net" }

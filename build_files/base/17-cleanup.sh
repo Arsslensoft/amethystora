@@ -73,6 +73,8 @@ systemctl enable clamav-freshclam.service
 # clamd starts through its socket when something scans, and stops when nothing does (clamd@.socket)
 systemctl enable clamd@scan.socket
 systemctl enable amethystora-clamd-idle.timer
+# The Vault's service starts through its socket when something asks, and exits when no vault is open (plans/PLAN-vault.md)
+systemctl enable amethystora-vault.socket amethystora-vault-ssh.socket amethystora-vault-net.socket
 systemctl enable dconf-update.service
 # Blocks addresses that fail to log in too often (08-hardening.sh, /etc/fail2ban/jail.d/10-amethystora.conf)
 systemctl enable fail2ban.service

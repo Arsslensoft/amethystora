@@ -5,7 +5,7 @@
   },
   {
     "section": "The desktop",
-    "pages": ["desktop.md", "control.md", "../keybindings.md", "themes.md", "terminal.md", "web-apps.md", "notes.md", "phone.md", "ai-agent.md", "widgets.md"]
+    "pages": ["desktop.md", "control.md", "../keybindings.md", "themes.md", "terminal.md", "web-apps.md", "notes.md", "vault.md", "phone.md", "ai-agent.md", "widgets.md"]
   },
   {
     "section": "Software",

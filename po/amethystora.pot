@@ -1783,6 +1783,10 @@ msgid "Read every password in your keyring"
 msgstr ""
 
 #: usr/libexec/amethystora-app-permissions
+msgid "Ask your Vault for logins, codes and signatures, which you are asked to approve each time"
+msgstr ""
+
+#: usr/libexec/amethystora-app-permissions
 msgid "granted on this machine"
 msgstr ""
 
@@ -8332,6 +8336,31 @@ msgid "The speech models of these languages were each downloaded once from alpha
 msgstr ""
 
 #: usr/libexec/amethystora-sends
+msgid "Amethystora Vault's logos"
+msgstr ""
+
+#: usr/libexec/amethystora-sends
+msgid "For each authenticator account in the vault you can see, the vault asks that account's own website for its icon (/favicon.ico or /apple-touch-icon.png), and only the host name goes out. The website learns that someone at this address has an account there."
+msgstr ""
+
+#: usr/libexec/amethystora-sends
+msgid "Without it, each account shows a letter on a colour, and nothing is asked of any website."
+msgstr ""
+
+#: usr/libexec/amethystora-sends
+msgid "Amethystora Vault's sync"
+msgstr ""
+
+#: usr/libexec/amethystora-sends
+#, sh-format
+msgid "While the vault is open, what it holds that syncs (passwords, authenticator codes and backup codes) is sent to ${SYNC_ADDRESS}, encrypted with the account's key, and the account's changes are fetched, on opening, after a change and every 15 minutes. The server sees how many items there are, of which kind, how long each is and when it changed."
+msgstr ""
+
+#: usr/libexec/amethystora-sends
+msgid "Without it, the server's copy stops being updated and nothing else changes: the vault is the source."
+msgstr ""
+
+#: usr/libexec/amethystora-sends
 msgid "Firefox"
 msgstr ""
 
@@ -14547,6 +14576,849 @@ msgstr ""
 #: usr/share/amethystora/just/update.just
 #, sh-format
 msgid "automatic updates are currently running, use `journalctl -fexu ${SERVICE}` to see logs"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "No: that was refused, or it did not match."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The vault is closed. Open it with: ame vault open"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "There is no vault on this account yet. Set one up with: ame vault setup"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "That is too large for the vault."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The vault did not understand that."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "That was not typed the same both times, so nothing was kept."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "That is outside your home, through a link, or not a plain file or folder."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Nothing is there."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "That holds no secret, and stays where it is."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Something else is already there, and it was left as it is."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Another command has that file open."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "It changed meanwhile, so nothing was removed."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "This system gives a command no namespace of its own, so the file stays sealed."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "That tool is not installed."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "That is protected already. Take it out of the vault first with: ame vault unprotect"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "That file has another name, which would keep its content in the open."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Something above it cannot be changed, so nothing was moved."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Something took the file's place away while the command ran, and nothing was sealed."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "That variable changes how programs start, so a secret is never put in it. Name another: VARIABLE=NAME"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The vault's service could not do that. Try again in a moment."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Vault password or recovery key: "
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Current vault password: "
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "New vault password: "
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Once more: "
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Name for the vault: "
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "To make it hidden, type: hidden "
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Your recovery key. Write it down: it is the only way back if every other way in is lost."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Type the recovery key back: "
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Password: "
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Password of the file: "
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Passphrase of the key: "
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The otpauth:// link: "
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+#, python-brace-format
+msgid "Codes found: {count}. Keep them? y/n "
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Recovery key of the vault to bring back: "
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The vault is back. Choose how it opens now."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+#, python-brace-format
+msgid "Not kept: {dropped} too long or past what one text may hold, {repeats} already kept, {over_limit} past what one item holds."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+#, python-brace-format
+msgid "git already asks another credential helper, {helper}, and would hand it what the vault answers. Remove that one from git"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Set up Amethystora Vault. A program calling itself $(program) asks."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Open Amethystora Vault. A program calling itself $(program) asks."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Make a new vault. A program calling itself $(program) asks."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Change how Amethystora Vault opens. A program calling itself $(program) asks."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A program calling itself $(program) asks to use “$(item)” from Amethystora Vault."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A program calling itself $(program) asks to change “$(item)” in Amethystora Vault."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A program calling itself $(program) asks to remove “$(item)” from Amethystora Vault."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A program calling itself $(program) asks to change how often “$(item)” asks you in Amethystora Vault."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A program calling itself $(program) asks to remove the vault “$(item)” and everything in it."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A program calling itself $(program) asks to remove every vault of this account and everything in them."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A program calling itself $(program) asks to keep Amethystora Vault open for longer before it closes by itself."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A program calling itself $(program) asks to take “$(item)” out of Amethystora Vault."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A program calling itself $(program) asks to show the key of “$(item)”. Anyone who sees it can make your codes."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A program calling itself $(program) asks to show every backup code of “$(item)”."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A program calling itself $(program) asks to take every authenticator account and backup code out of Amethystora Vault."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A program calling itself $(program) asks to replace your authenticator accounts in Amethystora Vault with an import."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A program calling itself $(program) asks Amethystora Vault to issue the certificate “$(item)”."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A program calling itself $(program) asks Amethystora Vault to issue the identity certificate of this machine, “$(item)”."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A program calling itself $(program) asks to replace the root certificate of this machine. Everyone who trusted the old one has to stop by hand."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A program calling itself $(program) asks to sign with “$(item)” from Amethystora Vault."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A program calling itself $(program) asks to sign a message for “$(detail)”, not a login, with “$(item)” from Amethystora Vault."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A program calling itself $(program) asks to sign something that is not a login with “$(item)” from Amethystora Vault."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A program calling itself $(program), on a connection forwarded from another computer (host key $(detail)), asks to sign with “$(item)” from Amethystora Vault."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A program calling itself $(program) asks to connect Amethystora Vault to the server and account “$(item)”. Whatever in the vault syncs is sent to that account, and whoever opens the vault can reach all of it."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A program calling itself $(program) asks to connect Amethystora Vault to “$(item)”, trusting the certificate with that fingerprint for this connection. Whatever in the vault syncs is sent to that account, and whoever opens the vault can reach all of it."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A program calling itself $(program) asks to stop syncing Amethystora Vault with its server."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A program calling itself $(program) asks to send “$(item)” to the server Amethystora Vault syncs with."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A program calling itself $(program) asks to stop syncing “$(item)”, which moves its copy on the server to the trash of the server."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A program calling itself $(program) asks to let Amethystora Vault take, on its next sync, the items that went from the server or came from it."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "No prompt stops a program that reads your files, a copied backup and a Flatpak with access to your home. It does not stop a program of this account that asks."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "To choose it, type: no prompt"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The vault is set up and open."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A closed vault"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+#, sh-format
+msgid "${label}: open"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+#, sh-format
+msgid "${label}: closed"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Open."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "This stops a program that reads your files, a copied backup and a Flatpak with access to your home. It does not stop a program of this account that asks."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The password is changed."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The vault is made and open."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "This removes every vault here, including any you cannot see, and everything in them, for good. Nothing can bring them back but a backup and its recovery key."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "To go on, type: FORGET"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Every vault here is gone."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Anyone who sees this code or the key under it can make your codes."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A key taken out of the vault lives outside it from now on."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The key is in the vault. Take the file out of your home as well? To do so, type: yes"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Only computers that trust this machine's root, or your CA, accept this. Other computers call the signer unknown until then."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The vault is open."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A logo is fetched from the account's own website, which learns that someone at your address has an account there. Nothing else is sent, and no vault you cannot see is ever looked up."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "To turn it on, type: logos"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Logos are on."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Logos are off."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Browsers that read your own certificate database will accept a certificate this machine made for a local name, such as printer.local, and nothing for a public website."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Firefox and the Chromium browsers can now reach the Vault. Install Amethystora Vault from your browser's add-on store. Nothing fills until you click."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Browsers can no longer reach the Vault."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Browsers can reach the Vault."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Browsers cannot reach the Vault."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Programs you start after your next login use the keys in the vault. The vault has to be open for them to."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "From your next login, programs no longer use the keys in the vault."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The SSH agent is on for this account."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The SSH agent is off for this account."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "It does not answer now."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+#, sh-format
+msgid "It lists $count key."
+msgid_plural "It lists $count keys."
+msgstr[0] ""
+msgstr[1] ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "This session uses it."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "This session does not use it. A new login would."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+#, python-brace-format
+msgid "The secret is in {variable} for this command. Every program it starts inherits it, and other programs of this account can read it while it runs."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "While this command runs, other programs of this account can read this file and the command"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "What the command left cannot be sealed again, so the file stays as it was before it ran."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The command did not end well after changing the file. What it left is sealed beside the old copy, under its own name. See: ame vault protected"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The command left the file empty, so the sealed copy was kept as it was."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Something took the file"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Not kept, since it may be a copy of the protected file, or half of one: its name has the file"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "These could not be kept, and are gone with the command"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The vault closed while the command ran, and what it left is only here. Open the vault, then press Enter to seal it, or type no to lose it: "
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "That was refused, and what the command left is only here. Press Enter to be asked again, or type no to lose it: "
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "What the command left is gone. The file is as it was before it ran."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Old copies survive this. The hourly snapshots keep the plain file for up to 14 days, backups for as long as they last, and nothing here deletes from them."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "So replace this key or login once it is protected: whatever could read the old file may have kept it."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The file is unlinked, not wiped, since the disk copies on write. The disk's encryption covers what is left of it."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "It stays sealed until a command is given it, and while that command runs, other programs of this account can read it."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "To go on, type: yes"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "It is out of your home and sealed. A command reaches it through: ame vault run"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "It is back in your home, as an ordinary file."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+#, sh-format
+msgid "${tool}: asks the vault"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+#, sh-format
+msgid "${tool}: does not ask the vault"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+#, sh-format
+msgid "${tool}: not installed"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "What this vault holds that syncs (passwords, authenticator codes and backup codes) becomes items in that account, encrypted with the account's own key, and the account's changes come back. The server learns how many items there are, of which kind, how long each is and when it changed. The account's key is kept in this vault, so whoever opens this vault can reach that whole account. A dedicated account for the vault is the better choice. It works with Bitwarden and Vaultwarden accounts, and is not Bitwarden."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Email address of the account: "
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Log in with the personal API key (it asks for no code) or the master password? Type key or password: "
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "API key client_id: "
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "API key client_secret: "
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Master password (it opens the account's key here and is not kept): "
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The server's certificate is not one this machine knows. To trust it for this connection only, give the fingerprint of it that the server's owner gave you:"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Subject:"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Issuer:"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "SHA-256:"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "SHA-256 fingerprint from the server's owner: "
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "That is not this certificate's fingerprint. Nothing was trusted."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+#, sh-format
+msgid "This account's key takes ${n} MiB of memory to make, which is a lot, and it is made in a program of its own that is gone afterwards. Type yes to go on: "
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+#, sh-format
+msgid "This account's key is made with only ${n} rounds, which is far fewer than Bitwarden's default, and makes the master password easier to guess. Type yes to go on: "
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Which second step? Type authenticator, email or yubikey: "
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Code from your authenticator app: "
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Code sent to your email: "
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Touch your YubiKey: "
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "This server checks new devices, and sent a code to the account's email. Code, or type resend: "
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Connected. While the vault is open, it and the account keep each other up to date."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "That is not an address of a server."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Only a server on this machine may be reached without https."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "This kind of server is not supported."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A server is connected already. Reconnect it, or turn sync off first."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "That is another account than the one connected. Turn sync off first."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "No server is connected. Connect one with: ame vault sync connect ADDRESS"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "That kind of item does not sync."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A key or a certificate goes to the server only sealed."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "That key was made so that it cannot leave the vault."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "That was not understood."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The server could not be reached."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The server's certificate is not trusted."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The server took too long to answer."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The server sent more than the vault will take."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The vault would not go where the server pointed it."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The server is not answering right now. The vault goes on, and tries again later."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The server asks for fewer tries. Wait a while."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The server refused the connection itself. The personal API key may get through where the password does not."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The server said:"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "This account asks for a second step the vault cannot do. The personal API key does not ask for one."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The server asked for a kind of key stretching the vault does not know."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The server asks for far too little work to make the key. The vault will not log in."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The server asks for more work than the vault will do."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The server now asks for less work to make the key than when this was connected. That is what a server would do to make a master password easier to guess, so nothing was sent. To accept it, turn sync off and connect again."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The server gave another salt than the account's email. Something is wrong."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "This account logs in in a way the vault does not support (single sign-on, a key connector, or no master password)."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The account must change its master password first. Do that in its web vault."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "This account uses Bitwarden's newer encryption, which the vault cannot read yet. Nothing was changed on either side."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The account's key did not open. The master password may be wrong."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The server sent no usable key for this account. Nothing was changed."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The account's key changed on the server, as it does when the master password is changed elsewhere. Connect again to prove the new one."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Another account than the connected one answered."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The login ran out. Connect again."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The server will not talk to this version of the vault."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The server answered in a way the protocol does not allow."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+#, sh-format
+msgid "Items have gone from the server, or been put in its trash, at once or over the last days: ${n}. If you removed them there, accept it with: ame vault sync now accept"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+#, sh-format
+msgid "Items have come from the server at once or over the last days: ${n}. If you added them there, accept it with: ame vault sync now accept"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+#, sh-format
+msgid "Items of the vault did not read: ${n}. Nothing is sent to the server while that is so, since an item that is not there looks removed. Restore the vault from a backup, or remove the damaged items."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "What the vault keeps of its sync did not read. Turn sync off and connect again."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "No server is connected."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+#, sh-format
+msgid "Server: ${a}"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+#, sh-format
+msgid "Account: ${a}"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+#, sh-format
+msgid "Items linked with the server: ${a}"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A sync is running now."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+#, sh-format
+msgid "Last synced: ${when}"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+#, sh-format
+msgid "Stopped: ${a}"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+#, sh-format
+msgid "Sent to the server: ${a}"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+#, sh-format
+msgid "Taken from the server: ${a}"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+#, sh-format
+msgid "Changed on both sides, both kept: ${a}"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+#, sh-format
+msgid "Items of an organization, left alone: ${a}"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Not synced: an item is too large for the account to keep. A secure note holds a little over 5 KB, and the vault will not split an item across several."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Not synced: an item has a field longer than Bitwarden accepts."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Not synced: an authenticator account of a kind Bitwarden's apps cannot read."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Not taken from the server: an item had its fields moved around, which a server can do to an item. The vault kept its own."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Not taken from the server: an item had the same ciphertext as another, which only a server copying one item does."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Not synced: an item is larger or nested deeper than any of a person's, and was left alone."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Not taken from the server: an item is dated far ahead of this machine's clock, and was left alone."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Not taken from the server: an item did not open, so it was left as it is."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Not taken from the server: an item came back older than the vault knows. It was left as it is."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Not taken from the server: an item changed in a way only a tampering server does. It was left as it is."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+#, sh-format
+msgid "Not synced: ${a}"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Sync is off. The vault and the account keep what they have."
 msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/access/filter.js

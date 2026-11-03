@@ -1,0 +1,17 @@
+#!/usr/bin/bash
+#
+# Amethystora Vault: passwords, sign-in codes, backup codes, keys and certificates, held by a service of their own.
+#
+#   amethystora-vault                 open it
+#   amethystora-vault SECTION         open it on passwords, authenticator, codes, keys, certificates, protected, sync or vaults
+#   amethystora-vault SECTION new     ...and start a new one there
+#
+# The window holds no key: they are amethystora-vault-service's. `ame vault` is the same from a terminal.
+# The window is a GTK program, one with the other Amethystora apps (apps/, build_files/base/13-apps.sh).
+
+set -euo pipefail
+
+case "${1:-}" in
+    -h | --help | help) sed -n '3,10p' "$0" | sed 's/^# \?//' ;;
+    *) exec /usr/lib/amethystora-vault/amethystora-vault "$@" ;;
+esac

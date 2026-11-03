@@ -2,7 +2,7 @@
 # image ships (launcher), which every app's path is a hard link to. plans/done/PLAN-rust-apps.md says why.
 [workspace]
 resolver = "3"
-members = ["common", "launcher", "update", "security", "control-core", "control", "backups", "logs", "manual", "notes", "sensor", "agent-tools", "clipboard-seal", "connect", "phone", "shelf", "trim", "vault-core", "vault-service", "vault-client", "vault", "help"]
+members = ["common", "launcher", "update", "security", "control-core", "control", "backups", "logs", "manual", "notes", "sensor", "agent-tools", "clipboard-seal", "connect", "phone", "shelf", "trim", "vault-core", "vault-service", "vault-client", "vault-pkcs11", "vault", "vault-native", "vault-net", "help"]
 
 [workspace.package]
 version = "1.0.0"

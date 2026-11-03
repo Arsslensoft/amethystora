@@ -313,6 +313,25 @@ hidden_autostart() {
     [[ "${text}" == $'[Desktop Entry]\nHidden=true\n.' || "${text}" == $'[Desktop Entry]\r\nHidden=true\r\n.' ]]
 }
 
+# Whether PATH is the one file `ame vault browser on` puts in a browser's native-messaging folder (Amethystora Vault's host), and
+# byte for byte what the host itself prints for that browser: the manifest names the program a browser starts and the extensions
+# it lets talk to it, so a changed one is said, and only the exact one is recorded quietly. Read as the home folders are: a plain
+# file, never through a link, small, under a time limit.
+vault_native_manifest() {
+    local path="$1" file root kind
+    local program=/usr/libexec/amethystora-vault-native
+    [[ "${path}" =~ ^/[^[:cntrl:]]*/(\.mozilla/native-messaging-hosts|\.config/(google-chrome|chromium|microsoft-edge|BraveSoftware/Brave-Browser)/NativeMessagingHosts)/org\.amethystora\.vault\.json$ && "${path}" != *"/../"* ]] || return 1
+    kind=chromium
+    [[ "${BASH_REMATCH[1]}" == .mozilla/* ]] && kind=firefox
+    [[ -x "${program}" ]] || return 1
+    file="${ROOT}${path}"
+    [[ -f "${file}" && ! -L "${file}" ]] || return 1
+    root="$(realpath -e -- "${ROOT:-/}" 2>/dev/null)" || return 1
+    [[ "$(realpath -e -- "${file}" 2>/dev/null)" == "${root%/}${path}" ]] || return 1
+    [[ "$(stat -c %s -- "${file}" 2>/dev/null)" -le 4096 ]] || return 1
+    timeout 5 cmp -s -- "${file}" <(timeout 5 "${program}" browser manifest "${kind}" 2>/dev/null)
+}
+
 read_audit() {
     local key count mark event exe level text object
     for key in "${AUDIT_KEYS[@]}"; do
@@ -365,6 +384,8 @@ read_audit() {
             # An autostart entry turned off the way GNOME has always let an account do it (Control's Starting with
             # you, amethystora-startup): a file of exactly that shape starts nothing, and is recorded only
             [[ "${key}" == persistence && -n "${object}" ]] && hidden_autostart "${object}" && level=quiet
+            # ...and the native-messaging manifest `ame vault browser on` writes, exactly as the host prints it
+            [[ "${key}" == persistence && -n "${object}" ]] && vault_native_manifest "${object}" && level=quiet
             text="${AUDIT_WHAT[${key}]}: ${event}"
             [[ "${count}" -gt 1 ]] && text+=" (${count} times)"
             # The first run has no "since": it only makes the checkpoints
@@ -1249,6 +1270,10 @@ read_journal() {
         elif [[ "${line}" =~ sudo\[[0-9]+\]:\ +([^ ]+)\ :\ ([0-9]+)\ incorrect\ password\ attempt ]]; then
             user="${BASH_REMATCH[1]}"
             wrong["${user}"]=$((${wrong[${user}]:-0} + BASH_REMATCH[2]))
+        elif [[ "${line}" == *"FAILED to authenticate to gain authorization for action org.amethystora.vault."* ]]; then
+            # Amethystora Vault asks a person to approve each use, and polkit writes this line for a Cancel, an Esc and the
+            # service's own cancel when the screen locks as well as for a wrong password: it is about no administrator
+            :
         elif [[ "${line}" == *"FAILED to authenticate to gain authorization"* ]]; then
             polkit=$((polkit + 1))
         elif [[ "${line}" == *"Device is not authorized for usage"* ]]; then

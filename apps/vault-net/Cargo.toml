@@ -1,0 +1,36 @@
+# amethystora-vault-net: the only part of Amethystora Vault with the network (plans/PLAN-vault.md, "Sync with Vaultwarden and
+# Bitwarden"). Its own user, no key, no state, no home: one request at a time from the vault's service, to the one server
+# that account is connected to. TLS is Fedora's libcrypto through the openssl crate the workspace has already; HTTP/1.1 is
+# written here (src/http.rs), which is less than a crate for it would bring.
+[package]
+name = "amethystora-vault-net"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+name = "amethystora_vault_net"
+path = "src/lib.rs"
+
+[[bin]]
+name = "amethystora-vault-net"
+path = "src/main.rs"
+
+[dependencies]
+# Only its address rules (`sync::address`): one definition of which hosts a connection reaches
+amethystora-vault-core.workspace = true
+openssl.workspace = true
+serde_json.workspace = true
+base64.workspace = true
+libc.workspace = true
+zeroize.workspace = true
+
+[features]
+# Plain http to a test network's server, for the tests against Vaultwarden in a container. Nothing shipped has it.
+plain-http-for-tests = ["amethystora-vault-core/plain-http-for-tests"]
+
+[dev-dependencies]
+amethystora-vault-client.workspace = true
+# Against Vaultwarden in a container (tests/vaultwarden.rs, `-- --ignored`): the account is made by test code only
+amethystora-vault-core = { workspace = true, features = ["fake-server"] }

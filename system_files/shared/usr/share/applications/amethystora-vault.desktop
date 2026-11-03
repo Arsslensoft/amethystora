@@ -1,0 +1,21 @@
+[Desktop Entry]
+Type=Application
+Name=Vault
+GenericName=Password Manager
+Comment=Passwords, sign-in codes, backup codes, keys and certificates, kept by this computer
+Exec=amethystora-vault
+Icon=amethystora-vault
+Terminal=false
+Categories=Utility;Security;
+Keywords=passwords;password manager;authenticator;2fa;totp;otp;backup codes;recovery codes;keys;ssh;certificates;pdf;signing;secrets;
+StartupNotify=true
+StartupWMClass=org.amethystora.Vault
+Actions=passwords;authenticator;
+
+[Desktop Action passwords]
+Name=Passwords
+Exec=amethystora-vault passwords
+
+[Desktop Action authenticator]
+Name=Authenticator
+Exec=amethystora-vault authenticator

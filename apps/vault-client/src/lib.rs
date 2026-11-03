@@ -3,7 +3,8 @@
 //!
 //! The socket is `/run/amethystora/vault.sock`, a Unix stream, and every message either way is one line of JSON, so
 //! that GNOME Shell can speak it through Gio without blocking. A connection may carry any number of requests, each
-//! answered in turn before the next is read.
+//! answered in turn before the next is read, but one with nothing asked for 5 seconds is closed: a client that keeps one
+//! between requests reconnects when it finds it gone.
 //!
 //! ```text
 //! {"v":1,"op":"seal","purpose":"resume","record":"2026","data":"<base64>"}   -> {"ok":true,"data":"<base64>"}
@@ -19,6 +20,7 @@
 
 use std::io::{BufRead, BufReader, Read, Write};
 use std::os::unix::net::UnixStream;
+use std::path::Path;
 use std::time::Duration;
 
 use base64::Engine;
@@ -27,6 +29,8 @@ use serde_json::{json, Value};
 pub const SOCKET: &str = "/run/amethystora/vault.sock";
 /// What one seal or open carries, before base64
 pub const MAX_DATA: usize = 1024 * 1024;
+/// What sealing adds: `AVs1`, the nonce and the tag
+pub const OVERHEAD: usize = 32;
 /// One line of the protocol: the data in base64 and a little JSON around it
 pub const MAX_LINE: usize = MAX_DATA / 3 * 4 + 4096;
 
@@ -69,17 +73,22 @@ impl Refusal {
     }
 }
 
-fn ask(request: &Value) -> Result<Value, Refusal> {
-    let mut stream = UnixStream::connect(SOCKET).map_err(|_| Refusal::Failed)?;
-    let wait = Some(Duration::from_secs(10));
-    stream.set_read_timeout(wait).map_err(|_| Refusal::Failed)?;
-    stream.set_write_timeout(wait).map_err(|_| Refusal::Failed)?;
+/// One request and its whole answer, a refusal included, over a connection of its own. For what asks a person, `wait` has to
+/// be as long as a person takes.
+pub fn exchange(socket: &Path, request: &Value, wait: Duration) -> Result<Value, Refusal> {
+    let mut stream = UnixStream::connect(socket).map_err(|_| Refusal::Failed)?;
+    stream.set_read_timeout(Some(wait)).map_err(|_| Refusal::Failed)?;
+    stream.set_write_timeout(Some(wait)).map_err(|_| Refusal::Failed)?;
     let mut line = request.to_string();
     line.push('\n');
     stream.write_all(line.as_bytes()).map_err(|_| Refusal::Failed)?;
     let mut answer = String::new();
     BufReader::new(stream.take(MAX_LINE as u64)).read_line(&mut answer).map_err(|_| Refusal::Failed)?;
-    let answer: Value = serde_json::from_str(&answer).map_err(|_| Refusal::Failed)?;
+    serde_json::from_str(&answer).map_err(|_| Refusal::Failed)
+}
+
+fn ask(socket: &Path, request: &Value) -> Result<Value, Refusal> {
+    let answer = exchange(socket, request, Duration::from_secs(10))?;
     if answer["ok"] == Value::Bool(true) {
         Ok(answer)
     } else {
@@ -87,28 +96,46 @@ fn ask(request: &Value) -> Result<Value, Refusal> {
     }
 }
 
-fn with_data(op: &str, purpose: &str, record: &str, data: &[u8]) -> Result<Vec<u8>, Refusal> {
-    if data.len() > MAX_DATA {
+fn with_data(socket: &Path, op: &str, purpose: &str, record: &str, data: &[u8]) -> Result<Vec<u8>, Refusal> {
+    if data.len() > MAX_DATA + OVERHEAD {
         return Err(Refusal::TooLarge);
     }
     let engine = base64::engine::general_purpose::STANDARD;
-    let answer = ask(&json!({"v": 1, "op": op, "purpose": purpose, "record": record, "data": engine.encode(data)}))?;
+    let answer = ask(socket, &json!({"v": 1, "op": op, "purpose": purpose, "record": record, "data": engine.encode(data)}))?;
     engine.decode(answer["data"].as_str().ok_or(Refusal::Failed)?).map_err(|_| Refusal::Failed)
 }
 
 /// `plain`, sealed under this account's key for `purpose`
 pub fn seal(purpose: &str, record: &str, plain: &[u8]) -> Result<Vec<u8>, Refusal> {
-    with_data("seal", purpose, record, plain)
+    seal_at(Path::new(SOCKET), purpose, record, plain)
 }
 
 /// What [`seal`] sealed, given the same purpose and record
 pub fn open(purpose: &str, record: &str, sealed: &[u8]) -> Result<Vec<u8>, Refusal> {
-    with_data("open", purpose, record, sealed)
+    open_at(Path::new(SOCKET), purpose, record, sealed)
 }
 
 /// Removes the key for `purpose`, after which nothing sealed under it can be read again
 pub fn forget(purpose: &str) -> Result<(), Refusal> {
-    ask(&json!({"v": 1, "op": "forget", "purpose": purpose})).map(|_| ())
+    forget_at(Path::new(SOCKET), purpose)
+}
+
+/// [`seal`], at another socket: a test's
+pub fn seal_at(socket: &Path, purpose: &str, record: &str, plain: &[u8]) -> Result<Vec<u8>, Refusal> {
+    if plain.len() > MAX_DATA {
+        return Err(Refusal::TooLarge);
+    }
+    with_data(socket, "seal", purpose, record, plain)
+}
+
+/// [`open`], at another socket
+pub fn open_at(socket: &Path, purpose: &str, record: &str, sealed: &[u8]) -> Result<Vec<u8>, Refusal> {
+    with_data(socket, "open", purpose, record, sealed)
+}
+
+/// [`forget`], at another socket
+pub fn forget_at(socket: &Path, purpose: &str) -> Result<(), Refusal> {
+    ask(socket, &json!({"v": 1, "op": "forget", "purpose": purpose})).map(|_| ())
 }
 
 #[cfg(test)]
@@ -125,6 +152,6 @@ mod tests {
 
     #[test]
     fn a_line_holds_the_largest_data_in_base64() {
-        assert!(MAX_LINE > MAX_DATA.div_ceil(3) * 4);
+        assert!(MAX_LINE > (MAX_DATA + OVERHEAD).div_ceil(3) * 4 + 256);
     }
 }

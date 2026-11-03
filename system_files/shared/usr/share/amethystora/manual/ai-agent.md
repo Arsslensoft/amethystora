@@ -186,4 +186,5 @@ startup files.
 No agent does anything until you sign in to it, and what you send it goes to the provider you
 signed in to. So does what its tools answer: the search runs on this machine, but the passages,
 the machine's state and the log lines the agent reads go to that provider like anything else it reads.
-Nothing personal is in the search's index: not your files, not the journal.
+Nothing personal is in the search's index: not your files, not the journal. **The agent never gets into the [Vault](vault.md)**:
+its tools refuse every command and file of it, and if you ask it for a password it tells you to open the Vault yourself.

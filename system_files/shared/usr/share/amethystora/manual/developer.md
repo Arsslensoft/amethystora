@@ -124,6 +124,9 @@ something against a real cluster. `ame apps cncf`, **Cloud native tools** on [Co
 **Apps** page, lets you pick from the Cloud Native Computing Foundation's projects
 ([Homebrew](software.md#command-line-tools-homebrew)).
 
+Your SSH keys, Git and Docker logins, AWS and Kubernetes credentials and an AI agent's login can stay in the
+[Vault](vault.md#using-a-secret-without-handing-it-over) and be handed to each tool only when it asks, with your say-so.
+
 ## An image of your own
 
 For what has to be in the system itself, such as a driver, a system service or a tool every account

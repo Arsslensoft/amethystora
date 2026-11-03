@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+
+  <vendor>Amethystora</vendor>
+  <vendor_url>https://github.com/arsslensoft/amethystora</vendor_url>
+
+  <!-- Amethystora Vault's approvals (plans/PLAN-vault.md). A program running as the person can ask, so the person approves: the
+       person at the machine, with the account's own password or finger, every time, and no rule lets anyone through. The
+       service's user is each action's owner, which is what lets it ask for the process that connected and pass the sentence
+       that names the program (polkit.message), checked in the lab on 2026-11-02. -->
+  <action id="org.amethystora.vault.open">
+    <description>Open Amethystora Vault</description>
+    <message>A program asks to open Amethystora Vault, or to change how it opens.</message>
+    <icon_name>dialog-password</icon_name>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_self</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.owner">unix-user:amethystora-vault</annotate>
+  </action>
+
+  <action id="org.amethystora.vault.use">
+    <description>Use something from Amethystora Vault</description>
+    <message>A program asks to use or change something in Amethystora Vault.</message>
+    <icon_name>dialog-password</icon_name>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_self</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.owner">unix-user:amethystora-vault</annotate>
+  </action>
+
+  <action id="org.amethystora.vault.export">
+    <description>Take something out of Amethystora Vault</description>
+    <message>A program asks to take a secret out of Amethystora Vault, where it would live outside it.</message>
+    <icon_name>dialog-password</icon_name>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_self</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.owner">unix-user:amethystora-vault</annotate>
+  </action>
+
+  <action id="org.amethystora.vault.admin">
+    <description>Change this machine's certificates in Amethystora Vault</description>
+    <message>A program asks to issue this machine's identity certificate, or to replace its root certificate.</message>
+    <icon_name>dialog-password</icon_name>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.owner">unix-user:amethystora-vault</annotate>
+  </action>
+
+</policyconfig>

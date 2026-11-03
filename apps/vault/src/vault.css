@@ -1,0 +1,708 @@
+/* Amethystora Vault, as the boards draw it (layout A: three panes, like Notes; the closed screen centred, gem first). The ten theme
+   colours and --on-accent are palette.rs's; everything else is mixed from them, as in Notes, so any theme and a light one read well
+   without a stylesheet of their own. Layout is the code's; this paints. */
+
+:root {
+    --sidebar: color-mix(in oklab, var(--bg) 94%, var(--fg));
+    --card: color-mix(in oklab, var(--surface) 40%, var(--bg));
+    --raised: color-mix(in oklab, var(--surface) 62%, var(--bg));
+    --control: color-mix(in oklab, var(--surface) 62%, var(--bg));
+    --line: color-mix(in oklab, var(--fg) 11%, transparent);
+    --line-strong: color-mix(in oklab, var(--fg) 20%, transparent);
+    --hover: color-mix(in oklab, var(--fg) 6%, transparent);
+    --soft: color-mix(in oklab, var(--fg) 70%, var(--bg));
+    --faint: color-mix(in oklab, var(--fg) 60%, var(--bg));
+    --link: color-mix(in oklab, var(--accent) 72%, var(--fg));
+    --tint: color-mix(in oklab, var(--accent) 20%, transparent);
+    --well: var(--bg);
+    --radius: 16px;
+    --shadow: none;
+}
+
+window.light {
+    --card: color-mix(in oklab, var(--bg) 20%, #ffffff);
+    --raised: color-mix(in oklab, var(--bg) 30%, #ffffff);
+    --control: color-mix(in oklab, var(--bg) 20%, #ffffff);
+    --faint: color-mix(in oklab, var(--fg) 72%, var(--bg));
+    --soft: color-mix(in oklab, var(--fg) 78%, var(--bg));
+    --link: color-mix(in oklab, var(--accent) 85%, var(--fg));
+    --well: color-mix(in oklab, var(--surface) 30%, var(--bg));
+    --shadow: 0 1px 2px color-mix(in oklab, var(--fg) 6%, transparent);
+}
+
+window.amethystora {
+    font-family: Inter, "Adwaita Sans", Cantarell, sans-serif;
+    font-size: 14px;
+    line-height: 21px;
+    font-feature-settings: "cv11", "ss01";
+}
+
+.mono {
+    font-family: "JetBrains Mono", "Adwaita Mono", monospace;
+    font-size: 13px;
+}
+
+.soft { color: var(--soft); }
+.faint { color: var(--faint); }
+label.small { font-size: 12.5px; line-height: 18.75px; }
+label.tiny { font-size: 12px; line-height: 17px; }
+.accent-text { color: var(--link); }
+icon.warn { color: var(--warn); }
+
+scrollbar slider {
+    min-width: 4px;
+    min-height: 4px;
+    background-color: color-mix(in oklab, var(--fg) 22%, transparent);
+}
+
+/* --- The frame --------------------------------------------------------------------------------------------------------- */
+
+.sidebar {
+    min-width: 214px;
+    padding: 22px 12px 18px;
+    background: var(--sidebar);
+    border-right: 1px solid var(--line);
+}
+
+.sidebar:dir(rtl) {
+    border-right: none;
+    border-left: 1px solid var(--line);
+}
+
+window.controls-start .sidebar {
+    padding-top: 34px;
+}
+
+window.narrow .sidebar {
+    min-width: 182px;
+}
+
+window.tiny .sidebar {
+    min-width: 0;
+    padding: 22px 8px 14px;
+}
+
+.brand {
+    padding: 4px 8px 0;
+    font-family: Quicksand, Inter, sans-serif;
+    font-weight: 700;
+    font-size: 21px;
+    line-height: 21px;
+    letter-spacing: -0.015em;
+}
+
+.wordmark { color: #ffffff; }
+window.light .wordmark { color: #241f31; }
+
+.brand .product {
+    color: var(--soft);
+    font-weight: 600;
+    font-size: 14px;
+}
+
+window.tiny .brand .wordmark > label,
+window.tiny .brand .product {
+    font-size: 0;
+}
+
+button.nav-button {
+    min-height: 40px;
+    padding: 0 10px;
+    border-radius: 10px;
+    color: var(--soft);
+    font-weight: 600;
+}
+
+button.nav-button > box {
+    border-spacing: 10px;
+}
+
+button.nav-button:hover {
+    background: var(--hover);
+    color: var(--fg);
+}
+
+button.nav-button.current {
+    background: var(--tint);
+    color: var(--link);
+}
+
+button.nav-button.nav-apart {
+    margin-top: 14px;
+}
+
+label.badge.count {
+    color: var(--faint);
+    font-size: 12px;
+    font-weight: 600;
+    font-feature-settings: "tnum";
+}
+
+button.nav-button.current label.badge.count {
+    color: var(--link);
+}
+
+.foot-card {
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+}
+
+.foot-state {
+    color: var(--ok);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+window.tiny .foot-card {
+    padding: 6px;
+    border: none;
+}
+
+/* --- Lists ----------------------------------------------------------------------------------------------------------------- */
+
+.list-pane {
+    min-width: 276px;
+    padding: 22px 12px 12px;
+    border-right: 1px solid var(--line);
+}
+
+.list-pane:dir(rtl) {
+    border-right: none;
+    border-left: 1px solid var(--line);
+}
+
+.list-pane.alone {
+    border: none;
+}
+
+window.controls-start .list-pane {
+    padding-top: 22px;
+}
+
+.find {
+    min-height: 38px;
+    padding: 0 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--control);
+    color: var(--faint);
+}
+
+.find:focus-within {
+    border-color: color-mix(in oklab, var(--accent) 60%, transparent);
+}
+
+.find entry {
+    font-size: 14px;
+    color: var(--fg);
+}
+
+entry.plain {
+    min-height: 0;
+    padding: 0;
+    border: none;
+    outline: none;
+    background: none;
+    box-shadow: none;
+}
+
+listview.items,
+listview.preview {
+    background: none;
+}
+
+listview.items > row {
+    padding: 0;
+    margin-bottom: 2px;
+    border-radius: 12px;
+    background: none;
+    outline-color: var(--accent);
+}
+
+listview.items > row:hover {
+    background: var(--hover);
+}
+
+listview.items > row:selected {
+    background: var(--tint);
+    color: var(--fg);
+}
+
+.item {
+    min-height: 38px;
+    padding: 8px 10px;
+}
+
+label.item-title {
+    font-weight: 600;
+    font-size: 14px;
+    line-height: 20px;
+}
+
+label.item-sub {
+    color: var(--soft);
+    font-size: 12.5px;
+    line-height: 18px;
+}
+
+label.empty-list {
+    padding: 12px 8px;
+}
+
+.list-foot,
+.coverage {
+    padding: 10px 8px 2px;
+    border-top: 1px solid var(--line);
+}
+
+label.coverage-title {
+    font-weight: 600;
+    font-size: 13px;
+}
+
+avatar {
+    min-width: 34px;
+    min-height: 34px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 14px;
+}
+
+/* --- Detail and pages ---------------------------------------------------------------------------------------------------------- */
+
+.detail,
+.page {
+    padding: 44px 32px 28px;
+}
+
+.page {
+    padding-top: 32px;
+}
+
+window.controls-start .page-head,
+.page-head {
+    margin-right: 80px;
+}
+
+.page-head:dir(rtl) {
+    margin-right: 0;
+    margin-left: 80px;
+}
+
+window.narrow .detail,
+window.narrow .page {
+    padding: 36px 20px 20px;
+}
+
+label.h1 {
+    font-size: 22px;
+    line-height: 28px;
+    font-weight: 700;
+}
+
+label.h2 {
+    font-size: 15px;
+    line-height: 22px;
+    font-weight: 700;
+}
+
+.card {
+    padding: 16px 18px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--card);
+    box-shadow: var(--shadow);
+}
+
+.callout {
+    padding: 12px 14px;
+    border: 1px solid color-mix(in oklab, var(--warn) 35%, transparent);
+    border-radius: 12px;
+    font-size: 13.5px;
+    line-height: 20px;
+}
+
+label.problem {
+    color: var(--bad);
+    font-size: 13px;
+}
+
+label.chip {
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--fg) 7%, transparent);
+    color: var(--soft);
+    font-size: 12px;
+    line-height: 18px;
+    font-weight: 600;
+}
+
+label.chip.ok { background: color-mix(in oklab, var(--ok) 13%, transparent); color: var(--ok); }
+label.chip.warn { background: color-mix(in oklab, var(--warn) 15%, transparent); color: var(--warn); }
+label.chip.bad { background: color-mix(in oklab, var(--bad) 14%, transparent); color: var(--bad); }
+label.chip.accent { background: var(--tint); color: var(--link); }
+
+/* Buttons, as the boards draw them */
+button.btn {
+    min-height: 40px;
+    padding: 0 16px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--raised);
+    color: var(--fg);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+button.btn:hover { filter: brightness(1.12); }
+window.light button.btn:hover { filter: brightness(0.96); }
+
+button.btn.primary {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--on-accent);
+}
+
+button.btn.danger {
+    background: none;
+    color: var(--destructive-text);
+}
+
+button.btn.small {
+    min-height: 34px;
+    padding: 0 12px;
+    font-size: 13px;
+}
+
+button.btn:disabled {
+    opacity: 0.5;
+    filter: none;
+}
+
+button.icon-btn {
+    min-width: 40px;
+    min-height: 40px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--raised);
+    color: var(--fg);
+}
+
+button.icon-btn:hover { filter: brightness(1.12); }
+
+button.link {
+    min-height: 40px;
+    padding: 0 10px;
+    color: var(--link);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+button.link.quiet {
+    min-height: 30px;
+    padding: 0 8px;
+    color: var(--soft);
+}
+
+/* Fields */
+label.field-label,
+label.slider-name {
+    color: var(--faint);
+    font-size: 12px;
+    line-height: 18px;
+    font-weight: 600;
+}
+
+entry.input,
+passwordentry.input,
+.secret-box,
+textview.note-input,
+spinbutton,
+dropdown > button {
+    min-height: 40px;
+    padding: 0 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--raised);
+    color: var(--fg);
+    box-shadow: none;
+    outline: none;
+}
+
+entry.input:focus-within,
+passwordentry.input:focus-within,
+textview.note-input:focus-within {
+    border-color: var(--accent);
+}
+
+textview.note-input {
+    min-height: 72px;
+    padding: 8px 12px;
+}
+
+textview.note-input text {
+    background: none;
+    color: var(--fg);
+}
+
+textview.note-input.tall {
+    min-height: 160px;
+}
+
+label.pair-key {
+    min-width: 150px;
+    color: var(--faint);
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+label.pair-value {
+    font-size: 13.5px;
+    line-height: 20px;
+}
+
+label.pair-value.mono {
+    font-size: 12.5px;
+}
+
+/* A row of choices */
+.seg {
+    padding: 3px;
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    background: var(--raised);
+}
+
+button.seg-button {
+    min-height: 34px;
+    padding: 0 12px;
+    border-radius: 8px;
+    color: var(--soft);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+button.seg-button:checked {
+    background: var(--tint);
+    color: var(--link);
+}
+
+button.tile,
+button.way,
+button.way-tile {
+    padding: 9px 12px;
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    background: var(--raised);
+    color: var(--fg);
+}
+
+button.tile:checked,
+button.way:checked {
+    border-color: var(--accent);
+    background: var(--tint);
+}
+
+label.tile-name { font-weight: 600; }
+label.tile-sub { color: var(--soft); font-size: 12px; line-height: 17px; }
+
+button.way {
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: var(--card);
+}
+
+button.way:checked icon { color: var(--link); }
+
+label.way-title {
+    font-size: 15px;
+    line-height: 22px;
+    font-weight: 700;
+}
+
+button.way-tile {
+    min-height: 104px;
+    padding: 14px;
+    border-radius: 14px;
+}
+
+button.way-tile:hover { border-color: var(--accent); }
+button.way-tile label.way-title { font-size: 14px; }
+
+checkbutton.check check:checked {
+    background: var(--accent);
+    color: var(--on-accent);
+}
+
+/* Secrets */
+.secret-box { padding: 0 12px; }
+label.secret-text { font-size: 13px; }
+
+label.code-big {
+    font-family: "JetBrains Mono", "Adwaita Mono", monospace;
+    font-size: 44px;
+    line-height: 52px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+}
+
+label.seconds {
+    color: var(--link);
+    font-size: 26px;
+    line-height: 30px;
+    font-weight: 700;
+    font-feature-settings: "tnum";
+}
+
+levelbar.countdown trough {
+    min-height: 6px;
+    border-radius: 999px;
+    background: var(--raised);
+    border: none;
+}
+
+levelbar.countdown block.filled {
+    border-radius: 999px;
+    background: var(--accent);
+}
+
+levelbar.countdown block.empty {
+    background: none;
+}
+
+.made-row,
+.next-code {
+    min-height: 64px;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--well);
+}
+
+label.made {
+    font-size: 17px;
+    letter-spacing: 0.02em;
+}
+
+label.code-shown {
+    font-family: "JetBrains Mono", "Adwaita Mono", monospace;
+    font-size: 20px;
+    letter-spacing: 0.04em;
+    color: var(--fg);
+}
+
+.code-row {
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: var(--raised);
+}
+
+.code-row.used {
+    background: none;
+    border: 1px solid var(--line);
+    color: var(--faint);
+}
+
+.earlier { color: var(--soft); }
+
+/* A QR code is black on white in every theme */
+.qr-frame {
+    padding: 14px;
+    border-radius: 14px;
+    background: #ffffff;
+}
+
+qrcode { border-radius: 2px; }
+
+picture.camera {
+    border-radius: 12px;
+    background: #000000;
+}
+
+/* The chain */
+.chain-step {
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: var(--raised);
+    color: var(--soft);
+}
+
+.chain-step.this { background: var(--tint); color: var(--link); }
+label.step-title { color: var(--fg); font-size: 13px; font-weight: 600; }
+.chain-step.depth-1:dir(ltr) { margin-left: 12px; }
+.chain-step.depth-2:dir(ltr) { margin-left: 24px; }
+.chain-step.depth-1:dir(rtl) { margin-right: 12px; }
+.chain-step.depth-2:dir(rtl) { margin-right: 24px; }
+
+.reads {
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--well);
+}
+
+.file-row,
+.vault-row {
+    min-height: 52px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: var(--raised);
+}
+
+.sync-kind { min-height: 36px; }
+
+/* --- First run and the closed screen ---------------------------------------------------------------------------------------- */
+
+.closed {
+    padding: 40px;
+}
+
+.closed-choices {
+    min-width: 340px;
+    margin-top: 8px;
+}
+
+.first {
+    padding: 40px 32px;
+}
+
+.recovery-key {
+    padding: 18px;
+    border: 1px solid var(--line-strong);
+    border-radius: 14px;
+    background: var(--card);
+}
+
+label.recovery-group {
+    font-size: 15px;
+}
+
+/* --- Sheets ---------------------------------------------------------------------------------------------------------------- */
+
+dialog.vault-sheet > .dialog-contents,
+dialog.vault-sheet sheet,
+dialog.vault-sheet floating-sheet > sheet {
+    border: 1px solid var(--line-strong);
+    border-radius: 18px;
+    background: var(--card);
+}
+
+.sheet-body {
+    padding: 24px 24px 12px;
+}
+
+.sheet-foot {
+    padding: 0 24px 22px;
+}
+
+.transfer-chips label.chip { font-feature-settings: "tnum"; }
+
+label.preview-row {
+    padding: 4px 6px;
+}
+
+toast {
+    background: color-mix(in oklab, var(--surface) 80%, var(--bg));
+    color: var(--fg);
+}

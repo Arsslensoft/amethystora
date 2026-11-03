@@ -130,6 +130,9 @@ what stops working without it. Nothing here is turned off for you.
   system as `amethystora;44;x86_64`. The last is left out by an empty file, `/etc/flatpak/no-report-os-info`.
 - **The firmware catalogue** is fetched at most once a day and says nothing about this machine; off,
   [Updates](updates.md#firmware) offers no firmware.
+- **The Vault** sends nothing by itself. Only if you connect a Bitwarden or Vaultwarden server (its address is then a row of
+  `ame security sends`) or turn on its service logos does it contact anything, and each says what it sends first
+  ([Sync](vault.md#sync), [Service logos](vault.md#service-logos)).
 - **Homebrew's analytics are off** for every account, and **Tailscale** talks to its servers and relays only
   where you turned it on. Firefox has its own settings for what it sends, under **Privacy & Security**.
 
@@ -212,6 +215,7 @@ by the app itself:
 | Use every device | Cameras, security keys and game controllers, without asking |
 | Read and change your files, or only read them | Everything in your home folder, or every file you can open |
 | Use your SSH or GPG keys, or read your keyring | Sign in, sign or decrypt as you, or read every password you saved |
+| Ask your Vault | Ask [the Vault](vault.md) for a login, a code or a signature, which you are asked to approve each time |
 
 What an app asks for through a portal, such as a file you choose for it, is asked each time and is
 not listed. The security report says when an app can leave its sandbox, and when one was given back
@@ -565,6 +569,12 @@ on, in case one is why something stopped working.
 | `ame security vscodium-extensions` | VSCodium updates no extension by itself, and with names in `/etc/amethystora/vscodium-extensions` installs only those | Updates by hand. Developer mode only |
 
 ## Worth turning on
+
+### Passwords, codes and keys
+
+**Vault** keeps your passwords, authenticator codes, backup codes, keys and certificates where the programs you run cannot read
+them, and asks you before each use ([Vault](vault.md)). It is a security feature of its own, with its own window, and no switch
+here.
 
 ### Security keys
 
@@ -952,7 +962,7 @@ ame security browser
 
 An extension sees every page you open, and that is how most password stealers arrive. With browser
 protection on, browsers install only the extensions on a list: the Bitwarden, 1Password, Proton Pass
-and KeePassXC password managers, and the ones you add with
+and KeePassXC password managers and [Vault's own extension](vault.md#in-your-browser), and the ones you add with
 `ame security browser allow <id>`. Web pages are also kept from USB, serial, HID and
 Bluetooth devices. It covers Firefox, Brave, Chrome, Chromium, ungoogled-chromium and Edge, as
 packages or Flatpaks, whether installed now or later, for every account on the machine. Other browsers

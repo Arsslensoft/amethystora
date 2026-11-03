@@ -168,6 +168,16 @@ export const DRAW = {
     // Backups: the clock, with time going back round it
     backups: ({ink, soft}) => `<circle cx="128" cy="128" r="54" fill="${ink}"/>` + arcArrow(128, 128, 78, 160, -100, 15, ink) +
         line('M128 98v32l22 14', soft, 13),
+    // Vault: a vault door, its dial in four quarters with the door's own colour showing between them (the maintainer's
+    // choice of 2026-11-02, option A of the Vault's icon board). The gaps are the body, so the dial is one soft shape of
+    // four pieces: no ink over the soft one, which Line would paint over, and no hole cut
+    door: ({ink, soft}) => {
+        const cx = 128, cy = 124.5, r = 45.5, gap = 7, reach = f(Math.sqrt(r * r - gap * gap));
+        const quarter = (sx, sy) => `M${cx + sx * gap} ${f(cy + sy * gap)}V${f(cy + sy * reach)}A${r} ${r} 0 0 ${sx * sy < 0 ? 1 : 0} ${f(cx + sx * reach)} ${f(cy + sy * gap)}Z`;
+        return `<rect x="44" y="44" width="168" height="161" rx="38" fill="${ink}"/>` +
+            `<rect x="65" y="198" width="28" height="21" rx="7" fill="${ink}"/><rect x="163" y="198" width="28" height="21" rx="7" fill="${ink}"/>` +
+            `<path d="${[[1, -1], [1, 1], [-1, 1], [-1, -1]].map(([sx, sy]) => quarter(sx, sy)).join('')}" fill="${soft}"/>`;
+    },
     // Community: two speech bubbles
     community: ({ink, soft, over = ink}) =>
         `<path d="M62 52h92a22 22 0 0 1 22 22v50a22 22 0 0 1-22 22h-50l-30 26v-26h-12a22 22 0 0 1-22-22V74a22 22 0 0 1 22-22z" fill="${ink}"/>` +

@@ -65,6 +65,11 @@ In your home folder: `~/.config` and `~/.local` for apps and the desktop,
 `~/.var/app` for each Flatpak. Back up your home folder and you have backed up everything that is
 yours.
 
+## Where do I keep my passwords?
+
+In **Vault**, which also keeps your authenticator codes, backup codes, SSH keys and certificates, and asks you before a program uses any
+of them ([Vault](vault.md)). The browsers' own password managers still work, and Vault's extension fills from it.
+
 ## Can I sign in with a work or school account?
 
 Yes, if it belongs to an Active Directory domain. Join the machine to the domain in **Settings ›

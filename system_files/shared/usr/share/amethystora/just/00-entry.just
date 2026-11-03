@@ -24,6 +24,9 @@ mod setup
 # The image, its streams and automatic updates, and the hardware
 mod system
 
+# The Vault: your passwords, one-time codes, keys and certificates, kept sealed, and the programs that ask for them
+mod vault
+
 import "backup.just"
 import "changelog.just"
 import "control.just"

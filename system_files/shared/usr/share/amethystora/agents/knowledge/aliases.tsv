@@ -123,3 +123,11 @@ work vpn	vpn anyconnect fortinet sstp ipsec l2tp libreswan openconnect globalpro
 fortinet	vpn fortisslvpn openconnect openfortivpn
 anyconnect	vpn openconnect cisco
 vpn	networkmanager plugin ipsec l2tp sstp openvpn wireguard tailscale
+password manager	vault passwords authenticator secrets
+2fa	vault authenticator totp codes
+two-factor	vault authenticator totp codes
+one-time code	vault authenticator totp
+backup codes	vault codes
+ssh key	vault agent ssh keys
+pdf signature	vault certificate signing pdf
+code signing	vault certificate signing

@@ -195,6 +195,20 @@ const backupsGlyph = `<g fill="none" stroke="#ffffff" stroke-width="16" stroke-l
   </g>
   <path d="M57.3 86.5L91.9 106.5L61.6 119z" fill="#ffffff"/>`;
 
+// A vault door: the body in an outline on two feet, and its dial in four quarters, the tile showing between them
+const vaultGlyph = `<g fill="none" stroke="#ffffff" stroke-width="14">
+    <rect x="58" y="56" width="140" height="130" rx="34"/>
+  </g>
+  <g fill="#ffffff">
+    <circle cx="128" cy="121" r="38"/>
+    <rect x="74" y="188" width="26" height="16" rx="6"/>
+    <rect x="156" y="188" width="26" height="16" rx="6"/>
+  </g>
+  <g fill="${SHADES[4]}">
+    <rect x="122" y="83" width="12" height="76"/>
+    <rect x="90" y="115" width="76" height="12"/>
+  </g>`;
+
 // Three sliders, each set somewhere else along its track
 const controlGlyph = `<g fill="none" stroke="#ffffff" stroke-width="16" stroke-linecap="round" stroke-opacity="0.6">
     <path d="M64 84h128M64 128h128M64 172h128"/>
@@ -2692,6 +2706,7 @@ write("usr/share/icons/hicolor/scalable/places/amethystora-update.svg", tileSvg(
 write("usr/share/icons/hicolor/scalable/places/amethystora-logs.svg", tileSvg(logsGlyph));
 write("usr/share/icons/hicolor/scalable/places/amethystora-control.svg", tileSvg(controlGlyph));
 write("usr/share/icons/hicolor/scalable/places/amethystora-backups.svg", tileSvg(backupsGlyph));
+write("usr/share/icons/hicolor/scalable/places/amethystora-vault.svg", tileSvg(vaultGlyph));
 write("usr/share/amethystora/logos/symbols/amethystora", ansiLogo());
 write("usr/share/amethystora/logos/console/amethystora", consoleLogo());
 rmSync(join(SHARED, "usr/share/amethystora/logos/glint"), { recursive: true, force: true });

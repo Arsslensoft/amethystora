@@ -39,6 +39,7 @@
     "60-vanilla.sh": 24.2,
     "63-windows-programs.sh": 7.3,
     "70-backups.sh": 5.8,
+    "74-vault.sh": 22,
     "75-deja-dup.sh": 4.2,
     "80-control.sh": 20.9,
     "83-logins.sh": 6.2,

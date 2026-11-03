@@ -1,0 +1,56 @@
+[Unit]
+Description=Amethystora Vault
+Documentation=file:///usr/share/amethystora/manual/vault.md
+Requires=amethystora-vault.socket
+After=amethystora-vault.socket
+
+# A system service and not a user one: an account can override its own user units with a drop-in and start them under
+# LD_PRELOAD, or read their memory, and cannot do either to another user's service.
+[Service]
+# The SSH agent is served by this same process, so it is handed both
+Sockets=amethystora-vault.socket amethystora-vault-ssh.socket
+ExecStart=/usr/libexec/amethystora-vault-service
+User=amethystora-vault
+StateDirectory=amethystora/vault
+StateDirectoryMode=0700
+# The service that holds the keys has no network. The bus, this socket and systemd-creds' own, which seals to the TPM for it,
+# are files.
+PrivateNetwork=yes
+RestrictAddressFamilies=AF_UNIX
+NoNewPrivileges=yes
+# The chip is systemd-creds' to reach (through systemd), and the service reads sysfs to know there is one
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+# What a service needs, and not the privileged calls, mounts, the clock, reboots or modules (@system-service leaves them out)
+SystemCallFilter=@system-service
+UMask=0077
+LimitCORE=0
+# The key's pages: one each, and few
+LimitMEMLOCK=1M
+# A ceiling, not a budget (the budget is 8 MB): opening a vault is one scrypt of 128 MiB in this process, which no limit below
+# 134 MB can hold; a hostile sync answer is read within about 200 MB; and the one thing that takes more, Argon2 for an account that
+# asks for up to a gigabyte, is made in a child of this service, which counts here too, and only after the person confirmed it
+MemoryMax=1536M
+# It logs next to nothing, and nothing about a vault, a hidden one least of all
+LogLevelMax=warning
+# Closes everything on SIGTERM. An open vault is not worth holding up a shutdown for.
+TimeoutStopSec=5
+
+[Install]
+Also=amethystora-vault.socket amethystora-vault-ssh.socket

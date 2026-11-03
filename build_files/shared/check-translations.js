@@ -32,7 +32,7 @@ const appsDir = appsAt >= 0 ? args[appsAt + 1] : path.join(__dirname, '..', '..'
 const root = args.find((arg, at) => !arg.startsWith('--') && (poAt < 0 || at !== poAt + 1) && (appsAt < 0 || at !== appsAt + 1)) || '/';
 
 const APPS = ['amethystora-manual', 'amethystora-security', 'amethystora-update', 'amethystora-logs', 'amethystora-notes', 'amethystora-control',
-    'amethystora-backups', 'amethystora-phone', 'amethystora-shelf', 'amethystora-trim', 'amethystora-help'];
+    'amethystora-backups', 'amethystora-vault', 'amethystora-phone', 'amethystora-shelf', 'amethystora-trim', 'amethystora-help'];
 
 // --- Messages, as common/src/i18n.rs reads them ------------------------------------------------------
 //
@@ -154,6 +154,7 @@ const DATA = {
     // ...and the launcher of a file nothing opens, which has no app of its own
     'amethystora-control': () => [...launcher('amethystora-control'), ...launcher('zz-amethystora-open-anything')],
     'amethystora-backups': () => launcher('amethystora-backups'),
+    'amethystora-vault': () => launcher('amethystora-vault'),
     // ...and the launcher of sending files to it from Files, which has no app of its own
     'amethystora-phone': () => [...launcher('amethystora-phone'), ...launcher('amethystora-phone-send')],
     'amethystora-shelf': () => launcher('amethystora-shelf'),
@@ -350,7 +351,7 @@ const SHELL = ['usr/libexec/amethystora-security-status', 'usr/libexec/amethysto
     'usr/share/gnome-shell/extensions/amethystora-logo-menu@arsslensoft.github.io/extension.js',
     // Amethystora Clipboard's text actions, Amethystora's own file in it, in domain amethystora
     'usr/share/gnome-shell/extensions/amethystora-clipboard@arsslensoft.github.io/textActions.js',
-    ...['agent', 'apps', 'backup', 'changelog', 'desktop', 'report', 'security', 'system', 'update'].map((group) => `usr/share/amethystora/just/${group}.just`),
+    ...['agent', 'apps', 'backup', 'changelog', 'desktop', 'report', 'security', 'system', 'update', 'vault'].map((group) => `usr/share/amethystora/just/${group}.just`),
     // Amethystora UI: every module, however deep it is split
     ...jsFiles('usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io')];
 

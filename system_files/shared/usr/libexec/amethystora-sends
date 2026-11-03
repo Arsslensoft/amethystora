@@ -186,6 +186,34 @@ if [[ ${#SPEECH[@]} -gt 0 ]]; then
         "ame desktop captions"
 fi
 
+# Amethystora Vault. A logo for each authenticator account is asked of that account's own website, once the person chose it
+# (`ame vault logos on`, the marker below): the site learns that someone at this address has an account there. A hidden vault is
+# never looked up, so it is never in this row.
+VAULT_LOGOS="${XDG_CONFIG_HOME:-${HOME:-/nonexistent}/.config}/amethystora/vault-logos"
+if [[ -e "${VAULT_LOGOS}" ]]; then
+    row vault-logos on "$(gettext "Amethystora Vault's logos")" \
+        "$(gettext "For each authenticator account in the vault you can see, the vault asks that account's own website for its icon (/favicon.ico or /apple-touch-icon.png), and only the host name goes out. The website learns that someone at this address has an account there.")" \
+        "ame vault logos off" \
+        "$(gettext "Without it, each account shows a letter on a colour, and nothing is asked of any website.")"
+fi
+
+# Amethystora Vault's sync, once a server was connected to the vault. The service says so while the vault is open; closed, the
+# marker `ame vault sync` keeps in the account's own folder (an address is nothing secret) is all there is to go by.
+VAULT_SYNC="${XDG_CONFIG_HOME:-${HOME:-/nonexistent}/.config}/amethystora/vault-sync"
+SYNC_ADDRESS=""
+if [[ -x /usr/libexec/amethystora-vault-cli ]]; then
+    SYNC_ADDRESS="$(timeout 5 /usr/libexec/amethystora-vault-cli sync status 2>/dev/null | awk -F'	' '$1=="connected"{c=$2} $1=="address"{a=$2} END{if(c=="yes")print a}' | tr -d '[:cntrl:]' | cut -c1-200)"
+fi
+if [[ -z "${SYNC_ADDRESS}" && -s "${VAULT_SYNC}" ]]; then
+    SYNC_ADDRESS="$(head -n1 -- "${VAULT_SYNC}" | tr -d '[:cntrl:]' | cut -c1-200)"
+fi
+if [[ -n "${SYNC_ADDRESS}" ]]; then
+    row vault-sync on "$(gettext "Amethystora Vault's sync")" \
+        "$(eval_gettext "While the vault is open, what it holds that syncs (passwords, authenticator codes and backup codes) is sent to \${SYNC_ADDRESS}, encrypted with the account's key, and the account's changes are fetched, on opening, after a change and every 15 minutes. The server sees how many items there are, of which kind, how long each is and when it changed.")" \
+        "ame vault sync off" \
+        "$(gettext "Without it, the server's copy stops being updated and nothing else changes: the vault is the source.")"
+fi
+
 if command -v firefox >/dev/null; then
     row firefox on "$(gettext "Firefox")" \
         "$(gettext "Firefox has its own settings for what it sends, under Privacy & Security in its settings.")" \

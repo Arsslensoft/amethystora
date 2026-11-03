@@ -448,7 +448,7 @@ out.
 ### Share guard
 
 While your whole screen is shared, in a video call or a remote desktop, the windows of Notes, Security,
-Backups, Help (which lists what you deleted and removed) and the password managers (KeePassXC, Bitwarden, Secrets, Passwords and Keys, Proton Pass, 1Password,
+Backups, Help (which lists what you deleted and removed), Vault and the password managers (KeePassXC, Bitwarden, Secrets, Passwords and Keys, Proton Pass, 1Password,
 Authenticator), and Files windows showing your [private folder](security.md#a-private-folder-that-locks-with-the-screen),
 are covered: blurred so that no word can be read, and labelled **Hidden while you share**. A window that opens
 during the share is covered before it is first drawn, and the live pill says once what is covered.

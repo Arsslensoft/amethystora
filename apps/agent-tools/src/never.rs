@@ -28,13 +28,15 @@ const RUNNERS: &[&str] = &[
 const INTERPRETERS: &[&str] = &["python", "python3", "perl", "ruby", "node", "lua", "php", "awk", "gawk", "osascript", "gjs"];
 
 /// Paths no command of the agent's may name: who may become root, the agent's own lock, the duress
-/// feature's files, and the notes
+/// feature's files, the notes, and the Vault
 const PATHS: &[&str] = &[
     "/etc/sudoers", "/etc/polkit-1", "/usr/share/polkit-1", "/etc/amethystora/agent.conf", "/etc/pam.d", "/etc/authselect",
     "/etc/security", "amethystora-notes", "/etc/shadow", "/etc/gshadow", "text-shortcuts.json", "amethystora-boot-guard",
     "/var/lib/amethystora/boot-guard",
     // The guard's two levers in /boot, which reach the same place without its name: its count and the file it writes
     "ame_boot_tries", "/boot/grub2/custom.cfg", "/boot/grub2/grubenv",
+    // The Vault (plans/PLAN-vault.md): its programs and units, its socket and its files, in any spelling that names them
+    "amethystora-vault", "org.amethystora.vault", "/run/amethystora/vault", "/var/lib/amethystora/vault",
 ];
 
 fn base(path: &str) -> &str {
@@ -221,6 +223,8 @@ fn ame_refusal(args: &[String]) -> Option<String> {
         ["apps", "aur", ..] => Some("turning the AUR on is the user's choice alone".into()),
         // Anyone holding the computer reads it at the login and lock screens: its words are chosen by the person
         ["system", "if-found", ..] => Some("the line on the login and lock screens is the user's own words: the user writes it".into()),
+        // Every command of the Vault is the person's: it holds what the agent must never see, and each one may prompt for them
+        ["vault", ..] => Some("the Vault is the user's alone: the agent neither reads nor changes it".into()),
         // External screens' brightness gives the person at the machine the displays' i2c buses, which reach other chips
         // of the graphics card too: an access grant only the machine's owner makes (taking it back is fine)
         ["desktop", "phone", "codes"] | ["desktop", "phone", "codes", "on", ..] => {
@@ -434,6 +438,28 @@ mod tests {
             "ame desktop shortcut reset custom custom27",
             "ame desktop shortcut clear org.gnome.shell.extensions.amethystora-ui.agent ask-selection",
             "ame desktop::shortcut set org.gnome.shell.extensions.amethystora-ui.agent ask-selection <Super>F11",
+            // The Vault, however spelled
+            "ame vault",
+            "ame vault open",
+            "ame -q vault::open",
+            "ame Vault Item List",
+            "ame -- vault -- status",
+            "just -f /usr/share/amethystora/just/vault.just status",
+            "just --justfile /usr/share/amethystora/just/00-entry.just vault status",
+            "/usr/libexec/amethystora-vault-cli item list",
+            "amethystora-vault status",
+            "/usr/libexec/amethystora-vault-native browser on",
+            "cat /var/lib/amethystora/vault/1000/account",
+            "socat - UNIX-CONNECT:/run/amethystora/vault.sock",
+            "systemctl stop amethystora-vault.socket",
+            "pkcheck --action-id org.amethystora.vault.open --process 1",
+            "ame vault sync now",
+            "ame vault backup",
+            "ame vault restore backup.avb",
+            "ame vault tls trust browsers on",
+            "/usr/libexec/amethystora-vault-net",
+            "/usr/libexec/amethystora-vault-service --sync-kdf",
+            "socat - UNIX-CONNECT:/run/amethystora/vault-net.sock",
         ] {
             assert!(refusal(&argv(words)).is_some(), "{words}");
         }
@@ -498,6 +524,7 @@ mod tests {
             "ame desktop shortcut set org.gnome.shell.extensions.amethystora-ui.keys plain-paste <Super><Alt>v",
             "ame desktop shortcut reset custom custom20",
             "ame desktop keyboard caps escape",
+            "cat /usr/share/amethystora/vault/2fa-directory.json",
         ] {
             assert_eq!(refusal(&argv(words)), None, "{words}");
         }
