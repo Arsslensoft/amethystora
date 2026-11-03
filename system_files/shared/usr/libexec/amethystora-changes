@@ -206,7 +206,8 @@ def restorable(target):
     relative = os.path.relpath(os.path.join(parent, os.path.basename(target)), home)
     if relative == "." or relative == ".." or relative.startswith("../") or os.path.isabs(relative):
         return False
-    return not any(relative == place or relative.startswith(place + "/") for place in NOT_PUT_BACK_HERE)
+    # A name that goes on from one of them is kept out too: ~/.bashrc.d is read by Fedora's ~/.bashrc, and others are alike
+    return not any(relative == place or relative.startswith((place + "/", place + ".")) for place in NOT_PUT_BACK_HERE)
 
 
 def trash_items(apps=()):
