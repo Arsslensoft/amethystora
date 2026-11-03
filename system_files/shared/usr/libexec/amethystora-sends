@@ -209,7 +209,7 @@ if [[ -z "${SYNC_ADDRESS}" && -s "${VAULT_SYNC}" ]]; then
 fi
 if [[ -n "${SYNC_ADDRESS}" ]]; then
     row vault-sync on "$(gettext "Amethystora Vault's sync")" \
-        "$(eval_gettext "While the vault is open, what it holds that syncs (passwords, authenticator codes and backup codes) is sent to \${SYNC_ADDRESS}, encrypted with the account's key, and the account's changes are fetched, on opening, after a change and every 15 minutes. The server sees how many items there are, of which kind, how long each is and when it changed.")" \
+        "$(eval_gettext "While the vault is open, what it holds that syncs (passwords, authenticator codes and backup codes, and keys, certificates and protected files where you chose it, plain or sealed, with files for what is larger than a note) is sent to \${SYNC_ADDRESS}, encrypted with the account's key, and the account's changes are fetched, on opening, after a change and every 15 minutes. The server sees how many items there are, of which kind, how long each is and when it changed.")" \
         "ame vault sync off" \
         "$(gettext "Without it, the server's copy stops being updated and nothing else changes: the vault is the source.")"
 fi

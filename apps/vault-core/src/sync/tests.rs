@@ -18,43 +18,43 @@ use crate::protocol::Approval;
 use crate::seal::Key;
 
 /// A day after the clock of the fake server begins
-const NOW_MS: i64 = 1_791_000_000_000;
+pub(super) const NOW_MS: i64 = 1_791_000_000_000;
 
-fn server() -> Server {
+pub(super) fn server() -> Server {
     Server { address: BASE.into(), identity: format!("{BASE}/identity"), api: format!("{BASE}/api") }
 }
 
-fn connect(fake: &mut Fake) -> Result<Connection, Problem> {
+pub(super) fn connect(fake: &mut Fake) -> Result<Connection, Problem> {
     let pending = merge::prepare(fake, &crypto::master_key, server(), EMAIL, PASSWORD.as_bytes(), None, None, None, "dev-1".into())?;
     merge::finish(fake, &pending, &Extra::default()).map(|(connection, _)| connection)
 }
 
 #[derive(Default)]
-struct Vault {
-    locals: BTreeMap<(String, String), Local>,
-    links: BTreeMap<String, Link>,
-    sealing: Option<(Key, String)>,
+pub(super) struct Vault {
+    pub(super) locals: BTreeMap<(String, String), Local>,
+    pub(super) links: BTreeMap<String, Link>,
+    pub(super) sealing: Option<(Key, String)>,
     /// Items the service could not read, and whether it could not read the links
-    unreadable: usize,
-    links_unreadable: bool,
+    pub(super) unreadable: usize,
+    pub(super) links_unreadable: bool,
 }
 
 impl Vault {
-    fn put(&mut self, kind: &str, id: &str, value: Value) {
+    pub(super) fn put(&mut self, kind: &str, id: &str, value: Value) {
         self.locals.insert((kind.into(), id.into()), Local { kind: kind.into(), id: id.into(), name: map::name_of(kind, &value), meta: Value::Null, approval: Approval::WhileOpen, value });
     }
 
-    fn value(&self, kind: &str, id: &str) -> Value {
+    pub(super) fn value(&self, kind: &str, id: &str) -> Value {
         self.locals.get(&(kind.into(), id.into())).map(|local| local.value.clone()).unwrap_or(Value::Null)
     }
 
-    fn of_kind(&self, kind: &str) -> Vec<&Local> {
+    pub(super) fn of_kind(&self, kind: &str) -> Vec<&Local> {
         self.locals.values().filter(|local| local.kind == kind).collect()
     }
 
     /// As the service applies a run: a group whose basis no longer holds is skipped whole, and so is every later one for
     /// that cipher
-    fn apply(&mut self, outcome: &mut Outcome) {
+    pub(super) fn apply(&mut self, outcome: &mut Outcome) {
         let mut skipped = std::collections::HashSet::new();
         for group in outcome.groups.drain(..) {
             let holds = group.basis.iter().all(|basis| self.locals.get(&(basis.kind.clone(), basis.id.clone())).map(map::hash) == basis.hash);
@@ -76,7 +76,7 @@ impl Vault {
         }
     }
 
-    fn sync(&mut self, fake: &mut Fake, connection: &Connection) -> Outcome {
+    pub(super) fn sync(&mut self, fake: &mut Fake, connection: &Connection) -> Outcome {
         self.sync_with(fake, connection, false)
     }
 
@@ -93,27 +93,28 @@ impl Vault {
             now_ms: NOW_MS,
             local_unreadable: self.unreadable,
             links_unreadable: self.links_unreadable,
+            retry_files: false,
         };
-        let mut outcome = merge::run(fake, input);
+        let mut outcome = merge::run(fake, &super::convert::Direct, input);
         self.apply(&mut outcome);
         outcome
     }
 }
 
-fn password(title: &str, username: &str, secret: &str, address: &str) -> Value {
+pub(super) fn password(title: &str, username: &str, secret: &str, address: &str) -> Value {
     serde_json::to_value(Password { title: title.into(), username: username.into(), password: Secret::new(secret), address: address.into(), ..Password::default() }).unwrap()
 }
 
-fn totp_account(issuer: &str, label: &str) -> Value {
+pub(super) fn totp_account(issuer: &str, label: &str) -> Value {
     serde_json::to_value(Account { kind: Some(OtpKind::Totp), issuer: issuer.into(), label: label.into(), secret: Secret::new("JBSWY3DPEHPK3PXP"), ..Account::default() }).unwrap()
 }
 
-fn backup_codes(service: &str) -> Value {
+pub(super) fn backup_codes(service: &str) -> Value {
     serde_json::to_value(BackupService { service_name: service.into(), codes: vec![BackupCode::new("1111-2222"), BackupCode::new("3333-4444")], ..BackupService::default() }).unwrap()
 }
 
 /// Nothing decrypted, and no key, ever reached the server in the clear
-fn assert_nothing_leaked(fake: &Fake, secrets: &[&str]) {
+pub(super) fn assert_nothing_leaked(fake: &Fake, secrets: &[&str]) {
     let user_hex = crate::seal::hex(fake.user.bytes());
     for seen in &fake.seen {
         let everything = format!("{} {} {:?} {}", seen.method, seen.url, seen.headers, seen.body);
@@ -124,7 +125,7 @@ fn assert_nothing_leaked(fake: &Fake, secrets: &[&str]) {
         }
         assert!(seen.url.starts_with(BASE), "a request left the connected server: {}", seen.url);
         assert!(seen.method != "DELETE" && !(seen.method == "POST" && seen.url.ends_with("/delete")), "a permanent delete");
-        assert!(!seen.body.contains("\"data\""), "data was sent");
+        assert!(seen.body.starts_with("--") || !seen.body.contains("\"data\""), "data was sent");
     }
 }
 
@@ -404,13 +405,14 @@ fn a_sealed_item_is_a_note_only_this_vault_opens() {
     vault.put("key", "k1", json!({"private": "PRIVATE-KEY-MATERIAL"}));
     vault.put("certificate", "c1", json!({"pem": "x".repeat(6000)}));
     vault.put("key", "k2", json!({"private": "never"}));
-    // Keys and certificates are off until chosen; the large one cannot fit a note
+    // Keys and certificates are off until chosen; the large one cannot fit a note and goes as the note's file
     connection.choices.insert("key.k1".into(), "sealed".into());
     connection.choices.insert("certificate.c1".into(), "sealed".into());
     let outcome = vault.sync(&mut fake, &connection);
-    assert_eq!(fake.ciphers.len(), 1);
-    assert!(outcome.report.refused.iter().any(|r| r["why"] == "too-large-to-seal"));
-    let content = open_on_server(&fake, fake.ciphers[0]["id"].as_str().unwrap());
+    assert_eq!(fake.ciphers.len(), 2);
+    assert_eq!(outcome.report.refused_total, 0, "{:?}", outcome.report.refused);
+    let small = fake.ciphers.iter().find(|raw| raw["attachments"].is_null()).unwrap()["id"].as_str().unwrap().to_string();
+    let content = open_on_server(&fake, &small);
     assert_eq!(content.name, map::SEALED_NAME);
     assert!(!content.notes.as_deref().unwrap().contains("PRIVATE"));
     assert_nothing_leaked(&fake, &["PRIVATE-KEY-MATERIAL", "never"]);
@@ -420,7 +422,7 @@ fn a_sealed_item_is_a_note_only_this_vault_opens() {
     assert_eq!(restored.value("key", "k1"), json!({"private": "PRIVATE-KEY-MATERIAL"}));
     let mut other = Vault { sealing: Some((Key::random(), "vault-2".into())), ..Vault::default() };
     let outcome = other.sync(&mut fake, &connection);
-    assert_eq!(outcome.report.sealed_elsewhere, 1);
+    assert_eq!(outcome.report.sealed_elsewhere, 2);
     assert!(other.locals.is_empty());
 }
 
@@ -772,7 +774,7 @@ fn identical_items_on_both_sides_are_linked_not_doubled() {
 
 // --- The review's findings (plans/vault/work/security-sync.md), each as the review showed it, and what must happen now ----------
 
-fn bump(fake: &mut Fake, id: &str, change: impl FnOnce(&mut Value)) {
+pub(super) fn bump(fake: &mut Fake, id: &str, change: impl FnOnce(&mut Value)) {
     let now = fake.now();
     let raw = fake.find_mut(id).unwrap();
     change(raw);

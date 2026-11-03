@@ -59,7 +59,7 @@ The manual's page is `vault.md` (`amethystora-manual vault`); point to its secti
   sections on certificates say how, per system. This is expected where the root has not been given to them.
 - **"Where are the files?"** In `/var/lib/amethystora/vault`, owned by the service's own user, outside the home folder, so
   that neither the snapshots nor Backups hold them. The sealed backup (`ame vault backup`) is in the home.
-- **"Does it sync?"** Only to a Bitwarden or Vaultwarden server the person connects (`ame vault sync connect`); off until then.
+- **"Does it sync?"** Only to a Bitwarden or Vaultwarden server the person connects (`ame vault sync connect`); off until then. Each kind (passwords, codes, backup-codes, keys, certificates, files) is one switch, off, plain or sealed (`ame vault sync kind KIND off|on|sealed`, or the Sync page): plain is what Bitwarden's apps open, sealed a note only this vault opens. Passwords, codes and backup codes are plain until changed; keys, certificates and files are off. Files and large items go as attachments, only to the connected server, and not at all to Bitwarden's own cloud, which keeps them at a storage host the Vault never contacts.
   The Vault sends nothing else by itself, and service logos are off until the person turns them on.
 
 ## What you may read

@@ -161,20 +161,29 @@ pub const SEALED_MOST: usize = 7439;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Unmapped {
-    /// Larger than one secure note can carry: refused, never split
+    /// Larger than a file of ours may be (the sealed blob of an item is at most what a note holds, or a file)
     TooLargeToSeal,
+    /// A file more than this client sends
+    FileTooLarge,
     /// An authenticator account no link can say: an algorithm Bitwarden's apps do not read
     NoLink,
     Unreadable,
 }
 
-/// A sealed note's text for an item: its kind, id, name and value inside the vault's own sealing, so that a broken server
+/// What a sealed note says when its blob is the note's attachment: a blob of more than a note holds (spec 7) goes as a file
+pub const SEALED_ATTACHED: &str = "amethystora-vault-sealed-1\nattached";
+
+/// An item as the bytes a sealed note holds, under the vault's own sealing: its kind, id, name and value, so that a broken server
 /// learns its length and nothing more. `counter` is how many times this item has been sent: inside the seal, where a server cannot
 /// move it, so that an older copy of the note, which a server can keep, is told from a newer.
-pub fn sealed_text(local: &Local, key: &Key, vault: &str, counter: u64) -> Result<Zeroizing<String>, Unmapped> {
+pub fn sealed_bytes(local: &Local, key: &Key, vault: &str, counter: u64) -> Result<Vec<u8>, Unmapped> {
     let inside = Zeroizing::new(serde_json::to_vec(&json!({"kind": local.kind, "id": local.id, "name": local.name, "meta": local.meta, "approval": local.approval, "value": local.value, "c": counter})).map_err(|_| Unmapped::Unreadable)?);
-    let sealed = seal::seal_data(key, vault, SEALED_PURPOSE, SEALED_RECORD, &inside);
-    let text = Zeroizing::new(format!("{SEALED_HEADER}{}", base64::engine::general_purpose::STANDARD.encode(sealed)));
+    Ok(seal::seal_data(key, vault, SEALED_PURPOSE, SEALED_RECORD, &inside))
+}
+
+/// The sealed note's text for an item, when it fits one note
+pub fn sealed_text(local: &Local, key: &Key, vault: &str, counter: u64) -> Result<Zeroizing<String>, Unmapped> {
+    let text = Zeroizing::new(format!("{SEALED_HEADER}{}", base64::engine::general_purpose::STANDARD.encode(sealed_bytes(local, key, vault, counter)?)));
     if text.len() > SEALED_MOST { Err(Unmapped::TooLargeToSeal) } else { Ok(text) }
 }
 
@@ -182,12 +191,16 @@ pub fn sealed_text(local: &Local, key: &Key, vault: &str, counter: u64) -> Resul
 /// that has none.
 pub fn open_sealed(text: &str, key: &Key, vault: &str) -> Option<(Local, u64)> {
     let body = text.strip_prefix(SEALED_HEADER)?;
-    let bytes = base64::engine::general_purpose::STANDARD.decode(body.trim()).ok()?;
-    let plain = seal::open_data(key, vault, SEALED_PURPOSE, SEALED_RECORD, &bytes).ok()?;
+    open_sealed_bytes(&base64::engine::general_purpose::STANDARD.decode(body.trim()).ok()?, key, vault)
+}
+
+/// The same from the blob itself, which a note's attachment is
+pub fn open_sealed_bytes(bytes: &[u8], key: &Key, vault: &str) -> Option<(Local, u64)> {
+    let plain = seal::open_data(key, vault, SEALED_PURPOSE, SEALED_RECORD, bytes).ok()?;
     let inside: Value = serde_json::from_slice(&plain).ok()?;
     let kind = inside.get("kind")?.as_str()?.to_string();
     let id = inside.get("id")?.as_str()?.to_string();
-    if !super::kinds::SEALED_ONLY.contains(&kind.as_str()) || !crate::protocol::valid_id(&id) {
+    if !super::kinds::may_sync(&kind) || !crate::protocol::valid_id(&id) {
         return None;
     }
     let counter = inside.get("c").and_then(Value::as_u64).unwrap_or(0);
@@ -200,6 +213,11 @@ pub fn open_sealed(text: &str, key: &Key, vault: &str) -> Option<(Local, u64)> {
         value: inside.get("value")?.clone(),
     };
     Some((local, counter))
+}
+
+/// Whether a sealed note holds its blob as its attachment
+pub fn is_attached_seal(content: &Content) -> bool {
+    content.notes.as_deref() == Some(SEALED_ATTACHED)
 }
 
 pub fn is_sealed_note(content: &Content) -> bool {
@@ -245,6 +263,8 @@ pub fn compose(old: Option<&Content>, parts: &Parts<'_>, sealed: Option<&str>) -
             content.username = None;
             content.password = None;
             content.uri = None;
+            // The note was the password item's too
+            content.notes = None;
         }
         None => {}
     }

@@ -278,7 +278,7 @@ impl EncString {
         EncString::seal_with_iv(key, plain, iv)
     }
 
-    fn seal_with_iv(key: &SymKey, plain: &[u8], iv: [u8; 16]) -> EncString {
+    pub(crate) fn seal_with_iv(key: &SymKey, plain: &[u8], iv: [u8; 16]) -> EncString {
         let aes = Aes256::new_from_slice(key.enc()).expect("a 32-byte key");
         let pad = 16 - plain.len() % 16;
         let mut ct = Zeroizing::new(Vec::with_capacity(plain.len() + pad));
@@ -300,6 +300,26 @@ impl EncString {
 
     pub fn text(&self) -> String {
         format!("2.{}|{}|{}", B64.encode(self.iv), B64.encode(&self.ct), B64.encode(self.mac))
+    }
+
+    /// The binary form an attachment's file is kept in (spec-attachments 3.4): the type byte, the IV, the MAC, the ciphertext
+    pub fn binary(&self) -> Vec<u8> {
+        let mut out = Vec::with_capacity(49 + self.ct.len());
+        out.push(2);
+        out.extend_from_slice(&self.iv);
+        out.extend_from_slice(&self.mac);
+        out.extend_from_slice(&self.ct);
+        out
+    }
+
+    /// The binary form read: at least 65 bytes, whole blocks after the 49 of the head, and type byte 2, nothing else
+    pub fn from_binary(bytes: &[u8]) -> Result<EncString, Unreadable> {
+        if bytes.len() < 65 || !(bytes.len() - 49).is_multiple_of(16) || bytes[0] != 2 {
+            return Err(Unreadable);
+        }
+        let iv: [u8; 16] = bytes[1..17].try_into().map_err(|_| Unreadable)?;
+        let mac: [u8; 32] = bytes[17..49].try_into().map_err(|_| Unreadable)?;
+        Ok(EncString { iv, ct: bytes[49..].to_vec(), mac })
     }
 }
 

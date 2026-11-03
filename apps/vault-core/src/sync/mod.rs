@@ -9,17 +9,24 @@
 
 pub mod address;
 pub mod api;
+pub mod attach;
 pub mod cipher;
+pub mod convert;
 pub mod crypto;
 #[cfg(any(test, feature = "fake-server"))]
 pub mod fake;
 pub mod json;
 pub mod map;
 pub mod merge;
+pub mod plain;
 #[cfg(feature = "fake-server")]
 pub mod register;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod kinds_tests;
+#[cfg(test)]
+mod kinds_review_tests;
 
 /// `Bitwarden-Client-Version` (spec 3.1). What the client says it understands: at or above 2024.12.0 a server sends SSH key
 /// items, which are then counted and left alone; below 2026.2.0 Bitwarden's leaves out its types 6 to 8, which this client
@@ -62,14 +69,53 @@ pub mod lengths {
     }
 }
 
-/// What a person may decide an item does in sync, and the kinds that never go at all, whatever anyone says
+/// What a person may decide an item does in sync, and the kinds that never go at all, whatever anyone says. A kind has one choice,
+/// `off`, `on` (Plain: Bitwarden's own encryption alone, which every Bitwarden app opens) or `sealed` (a note only this vault opens),
+/// and an item may have a choice of its own, which wins.
 pub mod kinds {
-    /// Synced unless the person says not to
-    pub const ON_BY_DEFAULT: &[&str] = &[crate::items::KIND_PASSWORD, crate::items::KIND_ACCOUNT, crate::items::KIND_BACKUP_CODES];
-    /// Off unless the person chooses sealed for the item: a key (an exportable one) and a certificate
-    pub const SEALED_ONLY: &[&str] = &["key", "certificate"];
+    pub const PASSWORD: &str = crate::items::KIND_PASSWORD;
+    pub const ACCOUNT: &str = crate::items::KIND_ACCOUNT;
+    pub const BACKUP_CODES: &str = crate::items::KIND_BACKUP_CODES;
+    pub const KEY: &str = crate::protocol::KIND_KEY;
+    pub const CERTIFICATE: &str = crate::protocol::KIND_CERTIFICATE;
+    pub const PROTECTED: &str = "protected";
+
+    /// Synced, plain, unless the person says not to
+    pub const ON_BY_DEFAULT: &[&str] = &[PASSWORD, ACCOUNT, BACKUP_CODES];
+    /// Off until the person chooses
+    pub const OFF_BY_DEFAULT: &[&str] = &[KEY, CERTIFICATE, PROTECTED];
+    /// Every kind that can go, in the order the window shows them, with the word a person types for each
+    pub const ALL: &[(&str, &str)] = &[("passwords", PASSWORD), ("codes", ACCOUNT), ("backup-codes", BACKUP_CODES), ("keys", KEY), ("certificates", CERTIFICATE), ("files", PROTECTED)];
 
     pub fn may_sync(kind: &str) -> bool {
-        ON_BY_DEFAULT.contains(&kind) || SEALED_ONLY.contains(&kind)
+        ON_BY_DEFAULT.contains(&kind) || OFF_BY_DEFAULT.contains(&kind)
+    }
+
+    /// An item no kind covers: it goes by its own word alone. The identity of this machine (its device certificate, whose issue asked an
+    /// administrator) is one: the switch for all certificates is not what lets its private key leave the vault.
+    pub fn by_item_only(kind: &str, meta: &serde_json::Value) -> bool {
+        kind == CERTIFICATE && meta.get("profile").and_then(serde_json::Value::as_str) == Some("device-identity")
+    }
+
+    /// What a kind is called where a person reads it, in the plural
+    pub fn plural(kind: &str) -> &'static str {
+        match kind {
+            PASSWORD => "passwords",
+            ACCOUNT => "authenticator codes",
+            BACKUP_CODES => "backup codes",
+            KEY => "keys",
+            CERTIFICATE => "certificates",
+            _ => "protected files",
+        }
+    }
+
+    /// The kind a person's word names (`keys`), or the kind itself
+    pub fn of_word(word: &str) -> Option<&'static str> {
+        ALL.iter().find(|(name, kind)| *name == word || *kind == word).map(|(_, kind)| *kind)
+    }
+
+    /// What a kind does until it is chosen
+    pub fn default_choice(kind: &str) -> &'static str {
+        if ON_BY_DEFAULT.contains(&kind) { "on" } else { "off" }
     }
 }

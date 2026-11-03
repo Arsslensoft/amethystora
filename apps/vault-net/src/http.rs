@@ -156,11 +156,14 @@ impl Session {
         if scheme == "http" && !loopback(&host) && !self.plain_anywhere {
             return Err(Failure::NotAllowed);
         }
-        // Only what the protocol's trash, restore and writes use. DELETE, and POST to an item's `/delete`, destroy it for good.
+        // Only what the protocol's trash, restore and writes use. DELETE, and POST to an item's `/delete`, destroy it for good. The one
+        // delete the Vault ever sends is of an attachment slot it opened a moment ago and could not fill (spec-attachments 5.4), and it is
+        // that route alone: `.../ciphers/ID/attachment/ID`, no query.
         let bare = path.split('?').next().unwrap_or("").trim_end_matches('/').to_ascii_lowercase();
         match method {
             "GET" | "PUT" => {}
             "POST" if !bare.ends_with("/delete") => {}
+            "DELETE" if !path.contains('?') && is_slot(&bare) => {}
             _ => return Err(Failure::NotAllowed),
         }
         let deadline = Instant::now() + WHOLE;
@@ -224,6 +227,16 @@ impl Session {
             Err(failure) => Err(failure),
         }
     }
+}
+
+/// `.../ciphers/UUID/attachment/ID` and nothing after it
+fn is_slot(path: &str) -> bool {
+    let parts: Vec<&str> = path.split('/').collect();
+    let [.., "ciphers", cipher, "attachment", slot] = parts.as_slice() else { return false };
+    cipher.len() == 36
+        && cipher.bytes().enumerate().all(|(at, b)| if matches!(at, 8 | 13 | 18 | 23) { b == b'-' } else { b.is_ascii_hexdigit() })
+        && (1..=64).contains(&slot.len())
+        && slot.bytes().all(|b| b.is_ascii_alphanumeric())
 }
 
 fn host_header(host: &str, port: u16, scheme: &str) -> String {
@@ -491,6 +504,26 @@ mod tests {
         assert_eq!(far.request("GET", "http://vault.example.test/x", &[], b"").err(), Some(Failure::NotAllowed));
         // A pin that is not the CA's, or one without the other
         assert!(Session::new(vec!["https://a.test:443".into()], None, Some("00")).is_err());
+    }
+
+    #[test]
+    fn the_one_delete_is_of_an_attachment_slot_and_nothing_else() {
+        let cipher = "3f2504e0-4f89-11d3-9a0c-0305e82c3301";
+        let mut session = session("http://127.0.0.1:9");
+        // Not refused here: it goes as far as the connection, which nothing answers
+        assert_ne!(session.request("DELETE", &format!("http://127.0.0.1:9/api/ciphers/{cipher}/attachment/abc123"), &[], b"").err(), Some(Failure::NotAllowed));
+        for url in [
+            format!("http://127.0.0.1:9/api/ciphers/{cipher}"),
+            format!("http://127.0.0.1:9/api/ciphers/{cipher}/attachment"),
+            format!("http://127.0.0.1:9/api/ciphers/{cipher}/attachment/abc/delete"),
+            format!("http://127.0.0.1:9/api/ciphers/{cipher}/attachment/abc?x=1"),
+            format!("http://127.0.0.1:9/api/ciphers/{cipher}/attachment/a-b"),
+            "http://127.0.0.1:9/api/ciphers/not-a-uuid/attachment/abc".to_string(),
+            format!("http://127.0.0.1:9/api/folders/{cipher}"),
+        ] {
+            assert_eq!(session.request("DELETE", &url, &[], b"").err(), Some(Failure::NotAllowed), "{url}");
+        }
+        assert_eq!(session.request("POST", &format!("http://127.0.0.1:9/api/ciphers/{cipher}/attachment/abc/delete"), &[], b"").err(), Some(Failure::NotAllowed));
     }
 
     #[test]

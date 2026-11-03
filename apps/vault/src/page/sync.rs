@@ -7,7 +7,7 @@
 use std::rc::Rc;
 
 use amethystora_ui::adw::prelude::*;
-use amethystora_ui::{gtk, i18n, process, t, ui};
+use amethystora_ui::{glib, gtk, i18n, process, t, ui};
 use serde_json::{json, Value};
 
 use super::{Page, Vault, Width};
@@ -21,6 +21,10 @@ pub struct SyncPage {
     server: gtk::Box,
     conflicts: gtk::Box,
     columns: gtk::Box,
+    /// The row of each kind with its choice, which is drawn again by every reload
+    kinds: gtk::Box,
+    /// What the server cannot hold, said under the kinds
+    caution: gtk::Box,
     me: std::cell::RefCell<std::rc::Weak<SyncPage>>,
 }
 
@@ -65,29 +69,89 @@ impl SyncPage {
         let goes = widgets::card();
         goes.set_hexpand(true);
         goes.append(&widgets::h2(&t!("What goes there")));
-        for (name, state, tone) in [
-            (t!("Passwords"), t!("Syncs"), "ok"),
-            (t!("Authenticator codes"), t!("Syncs"), "ok"),
-            (t!("Backup codes"), t!("Syncs"), "ok"),
-            // Each on its own page: off unless chosen, and then only sealed
-            (t!("Keys"), t!("Sealed, if chosen"), ""),
-            (t!("Certificates"), t!("Sealed, if chosen"), ""),
-            (t!("Protected files"), t!("Off"), ""),
-        ] {
-            goes.append(&kind_row(&name, &state, tone));
-        }
+        let kinds = ui::vbox(8, &[]);
+        goes.append(&kinds);
+        goes.append(&widgets::p(&t!("Plain: Bitwarden's apps and browser extension on your other devices open it. The server's encryption is all that protects it."), &["soft", "small"]));
+        goes.append(&widgets::p(&t!("Sealed: a note only this vault opens, so even a broken server learns nothing of what it holds. Bitwarden's apps cannot read it, and another computer needs this vault restored with its recovery key."), &["soft", "small"]));
+        let caution = ui::vbox(6, &[]);
+        goes.append(&caution);
         columns.append(&goes);
         page.append(&columns);
         let conflicts = ui::vbox(0, &[]);
         page.append(&conflicts);
         page.append(&widgets::p(&t!("The server sees only encrypted items, but it can try to trick an app. Use a server you trust, and keep your most sensitive items set to Sealed."), &["soft", "small"]));
         let root = gtk::ScrolledWindow::builder().hscrollbar_policy(gtk::PolicyType::Never).hexpand(true).vexpand(true).child(&page).build();
-        let this = Rc::new(SyncPage { vault: vault.clone(), root, head_chip, server, conflicts, columns, me: std::cell::RefCell::new(std::rc::Weak::new()) });
+        let this = Rc::new(SyncPage { vault: vault.clone(), root, head_chip, server, conflicts, columns, kinds, caution, me: std::cell::RefCell::new(std::rc::Weak::new()) });
         this.me.replace(Rc::downgrade(&this));
+        this.idle_kinds();
         this
     }
 
+    /// Before a server is connected: what each kind will do once one is
+    fn idle_kinds(&self) {
+        ui::clear(&self.kinds);
+        ui::clear(&self.caution);
+        for (name, state, tone) in [
+            (t!("Passwords"), t!("Plain"), "ok"),
+            (t!("Authenticator codes"), t!("Plain"), "ok"),
+            (t!("Backup codes"), t!("Plain"), "ok"),
+            (t!("Keys"), t!("Off"), ""),
+            (t!("Certificates"), t!("Off"), ""),
+            (t!("Protected files"), t!("Off"), ""),
+        ] {
+            self.kinds.append(&kind_row(&name, &state, tone));
+        }
+        self.caution.append(&widgets::p(&t!("Bitwarden's own servers keep files at a storage host this vault does not use, so there only what fits one note or field syncs. Vaultwarden, or a server of your own, keeps everything."), &["soft", "small"]));
+    }
+
+    /// With a server: one row a kind, Off, Plain and Sealed side by side, one click each. Each change is asked of the person by the
+    /// service, once, and covers what is added later.
+    fn connected_kinds(&self, status: &Value) {
+        ui::clear(&self.kinds);
+        ui::clear(&self.caution);
+        let names = [
+            ("passwords", t!("Passwords")),
+            ("codes", t!("Authenticator codes")),
+            ("backup-codes", t!("Backup codes")),
+            ("keys", t!("Keys")),
+            ("certificates", t!("Certificates")),
+            ("files", t!("Protected files")),
+        ];
+        for (word, name) in names {
+            let row = ui::hbox(8, &["sync-kind"]);
+            let words = ui::line(&name, &[]);
+            words.set_hexpand(true);
+            row.append(&words);
+            let current = status["kinds"][word].as_str().unwrap_or("off").to_string();
+            let vault = self.vault.clone();
+            row.append(&widgets::seg(&[("off", t!("Off")), ("on", t!("Plain")), ("sealed", t!("Sealed"))], &current, move |value| {
+                let (vault, value) = (vault.clone(), value.to_string());
+                glib::spawn_future_local(async move {
+                    if let Err(trouble) = vault.call(json!({"op": "sync-kind", "kind": word, "choice": value})).await {
+                        vault.say(&trouble.words());
+                    }
+                    vault.reload_current();
+                });
+            }));
+            self.kinds.append(&row);
+        }
+        let cloud = status["address"].as_str().is_some_and(|address| address.contains("bitwarden.com") || address.contains("bitwarden.eu"));
+        if cloud {
+            self.caution.append(&widgets::p(&t!("Bitwarden's own servers keep files at a storage host this vault does not use, so here only what fits one note or field syncs. The rest stays on this computer."), &["warn", "small"]));
+        }
+        let why = match status["no_files"].as_str() {
+            Some("attachments-premium") => Some(t!("This account has no premium, which Bitwarden's server asks for files. What does not fit a note stays on this computer.")),
+            Some("attachments-refused") => Some(t!("This server does not take files, or the account's room for them is spent. What does not fit a note stays on this computer.")),
+            Some("attachments-elsewhere") => Some(t!("This server keeps files at another host, which the vault never contacts. What does not fit a note stays on this computer.")),
+            _ => None,
+        };
+        if let Some(words) = why.filter(|_| !cloud) {
+            self.caution.append(&widgets::p(&words, &["warn", "small"]));
+        }
+    }
+
     fn not_connected(&self) {
+        self.idle_kinds();
         let server = &self.server;
         ui::clear(server);
         server.append(&widgets::h2(&t!("Your server")));
@@ -182,6 +246,7 @@ impl Page for SyncPage {
                     page.head_chip.set_label(&t!("Connected"));
                     page.head_chip.add_css_class("ok");
                     page.connected(&status);
+                    page.connected_kinds(&status);
                 }
                 _ => {
                     page.head_chip.set_label(&t!("Not connected"));

@@ -546,7 +546,8 @@ fn a_metered_connection_makes_a_timers_run_wait_and_never_a_persons() {
     assert_eq!(rig.server_ciphers(), 1);
     assert_eq!(rig.fake.lock().unwrap().seen.len(), seen, "the server heard nothing");
     // A person asking is never made to wait
-    assert_eq!(rig.ask(json!({"op": "sync-now"}))["ok"], json!(true));
+    // Asked again while the run of the first choice is still at it
+    until(|| (rig.ask(json!({"op": "sync-now"}))["ok"] == json!(true)).then_some(()));
     assert_eq!(rig.server_ciphers(), 2);
     // Back on a connection that does not count data, the timer's run goes through and the wait is forgotten
     std::fs::remove_file(&yes).unwrap();
@@ -592,9 +593,9 @@ fn a_key_is_sent_only_sealed_and_only_when_chosen() {
     let before = rig.outside.asked();
     assert_eq!(rig.ask(json!({"op": "sync-choose", "kind": "key", "id": "k1", "choice": "sealed"}))["ok"], json!(true));
     assert_eq!(rig.outside.asked(), before + 1);
-    // A key made not to leave is not offered, and "on" is not a way for a key
+    // A key made not to leave is not offered, whatever the choice
     assert_eq!(rig.ask(json!({"op": "sync-choose", "kind": "key", "id": "k2", "choice": "sealed"}))["problem"], json!("not-exportable"));
-    assert_eq!(rig.ask(json!({"op": "sync-choose", "kind": "key", "id": "k1", "choice": "on"}))["problem"], json!("sealed-only"));
+    assert_eq!(rig.ask(json!({"op": "sync-choose", "kind": "key", "id": "k2", "choice": "on"}))["problem"], json!("not-exportable"));
     assert_eq!(rig.ask(json!({"op": "sync-choose", "kind": "data-key", "id": "x", "choice": "sealed"}))["problem"], json!("not-syncable"));
     until(|| (rig.server_ciphers() == 1).then_some(()));
     let fake = rig.fake.lock().unwrap();
@@ -602,6 +603,46 @@ fn a_key_is_sent_only_sealed_and_only_when_chosen() {
     let content = cipher::open(&fake.ciphers[0], &fake.user).unwrap().content;
     assert_eq!(content.name, "Amethystora sealed item");
     assert!(!content.notes.unwrap().contains("PRIVATE"));
+}
+
+#[test]
+fn a_kind_is_one_switch_asked_once_that_covers_what_is_added_later() {
+    let rig = rig("kind", Settings::default());
+    rig.set_up();
+    rig.put("key", "k1", "A key", json!({"key_kind": "ssh", "exportable": true}), json!({"private": "PRIVATE-KEY-MATERIAL"}));
+    rig.put("key", "k2", "Locked in", json!({"key_kind": "ssh", "exportable": false}), json!({"private": "NEVER"}));
+    assert_eq!(rig.connect()["ok"], json!(true));
+    rig.synced();
+    let status = rig.status();
+    assert_eq!(status["kinds"]["keys"], json!("off"));
+    assert_eq!(status["kinds"]["passwords"], json!("on"));
+    // Sealed, for the whole kind, after one question that says what it is
+    let before = rig.outside.asked();
+    assert_eq!(rig.ask(json!({"op": "sync-kind", "kind": "keys", "choice": "sealed"}))["ok"], json!(true));
+    assert_eq!(rig.outside.asked(), before + 1);
+    assert_eq!(rig.outside.said.lock().unwrap().asked.last().unwrap().message, say::SYNC_KIND_SEALED);
+    until(|| (rig.server_ciphers() == 1).then_some(()));
+    assert_eq!(rig.status()["kinds"]["keys"], json!("sealed"));
+    // One added later follows it; a key made not to leave never goes
+    rig.put("key", "k3", "Another", json!({"key_kind": "ssh", "exportable": true}), json!({"private": "LATER-KEY"}));
+    // Asked again while the run of the first choice is still at it
+    until(|| (rig.ask(json!({"op": "sync-now"}))["ok"] == json!(true)).then_some(()));
+    assert_eq!(rig.server_ciphers(), 2);
+    {
+        let fake = rig.fake.lock().unwrap();
+        assert!(fake.seen.iter().all(|seen| !seen.body.contains("NEVER") && !seen.body.contains("LATER-KEY") && !seen.body.contains("PRIVATE-KEY-MATERIAL")));
+    }
+    // Off moves the copies to the server's trash, after a question of its own
+    let before = rig.outside.asked();
+    assert_eq!(rig.ask(json!({"op": "sync-kind", "kind": "keys", "choice": "off"}))["ok"], json!(true));
+    assert_eq!(rig.outside.asked(), before + 1);
+    assert_eq!(rig.outside.said.lock().unwrap().asked.last().unwrap().message, say::SYNC_KIND_OFF);
+    until(|| (rig.fake.lock().unwrap().ciphers.iter().all(|raw| !raw["deletedDate"].is_null())).then_some(()));
+    assert_eq!(rig.server_ciphers(), 2, "nothing was destroyed");
+    // Words that are not a kind, or a choice, are refused
+    assert_eq!(rig.ask(json!({"op": "sync-kind", "kind": "bananas", "choice": "on"}))["problem"], json!("not-syncable"));
+    assert_eq!(rig.ask(json!({"op": "sync-kind", "kind": "keys", "choice": "maybe"}))["why"], json!("bad-request"));
+    assert_eq!(rig.ask(json!({"op": "sync-kind", "kind": "data-key", "choice": "on"}))["problem"], json!("not-syncable"));
 }
 
 // --- The review's findings, through the whole path ----------------------------------------------------------------------------

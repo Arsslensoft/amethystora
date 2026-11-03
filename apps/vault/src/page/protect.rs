@@ -148,7 +148,8 @@ impl Protected {
             let what = t!("Used through the vault. Run a tool with it by `ame vault run {name} -- COMMAND`.", name = name.clone());
             let vault = self.vault.clone();
             let shown_name = name.clone();
-            let details = btn(&t!("Details"), None, &["small"], move || details_sheet(&vault, shown_name.clone()));
+            let (id, approval) = (item["id"].as_str().unwrap_or("").to_string(), item["approval"].as_str().unwrap_or("while-open").to_string());
+            let details = btn(&t!("Details"), None, &["small"], move || details_sheet(&vault, shown_name.clone(), &id, &approval));
             self.rows.append(&self.file_row(&path, &what, widgets::chip(&t!("Protected"), "ok"), details));
         }
         for path in found {
@@ -204,8 +205,9 @@ fn ask_to_protect(vault: &Rc<Vault>, path: PathBuf) {
     });
 }
 
-fn details_sheet(vault: &Rc<Vault>, name: String) {
+fn details_sheet(vault: &Rc<Vault>, name: String, id: &str, approval: &str) {
     let sheet = widgets::sheet(&name, 520);
+    sheet.body.append(&vault.sync_card("protected", id, approval, false));
     sheet.body.append(&widgets::p(&t!("Sealed in the vault. A tool reaches it through the command below, after you approve, and it is sealed again when the command ends."), &[]));
     sheet.body.append(&widgets::code(&format!("ame vault run {name} -- COMMAND"), &["small"]));
     sheet.body.append(&widgets::p(&t!("While that command runs, other programs of yours can reach what it holds. It is safe at rest and while nothing uses it."), &["soft", "small"]));

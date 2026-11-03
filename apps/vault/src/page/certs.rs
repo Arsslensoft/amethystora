@@ -149,7 +149,7 @@ impl Certificates {
         body.append(&chain);
         body.append(&self.use_card(row, profile));
         body.append(&self.vault.approval_card("certificate", row));
-        body.append(&self.vault.sync_card("certificate", row));
+        body.append(&self.vault.sync_card("certificate", &row.id, &row.approval, row.meta["profile"] == "device-identity"));
         let (weak, id, title) = (self.me.borrow().clone(), row.id.clone(), row.title.clone());
         let remove = btn(&t!("Remove"), Some("trash"), &["small", "danger"], move || {
             let Some(page) = weak.upgrade() else { return };

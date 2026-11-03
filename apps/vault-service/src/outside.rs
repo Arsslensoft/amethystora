@@ -65,9 +65,12 @@ pub mod say {
     pub const SYNC_CONNECT: &str = "A program calling itself $(program) asks to connect Amethystora Vault to the server and account “$(item)”. Whatever in the vault syncs is sent to that account, and whoever opens the vault can reach all of it.";
     pub const SYNC_CONNECT_CA: &str = "A program calling itself $(program) asks to connect Amethystora Vault to “$(item)”, trusting the certificate with that fingerprint for this connection. Whatever in the vault syncs is sent to that account, and whoever opens the vault can reach all of it.";
     pub const SYNC_OFF: &str = "A program calling itself $(program) asks to stop syncing Amethystora Vault with its server.";
-    pub const SYNC_ITEM: &str = "A program calling itself $(program) asks to send “$(item)” to the server Amethystora Vault syncs with.";
-    pub const SYNC_ITEM_OFF: &str = "A program calling itself $(program) asks to stop syncing “$(item)”, which moves its copy on the server to the trash of the server.";
+    pub const SYNC_ITEM: &str = "A program calling itself $(program) asks to send “$(item)” to the server Amethystora Vault syncs with. A copy already there in another form is moved to the trash of the server, or the fields the vault wrote are taken out of it.";
+    pub const SYNC_ITEM_OFF: &str = "A program calling itself $(program) asks to stop syncing “$(item)”, which moves its copy on the server to the trash of the server, or takes the fields the vault wrote out of it if the copy holds anything else.";
     pub const SYNC_ACCEPT: &str = "A program calling itself $(program) asks to let Amethystora Vault take, on its next sync, the items that went from the server or came from it.";
+    pub const SYNC_KIND_ON: &str = "A program calling itself $(program) asks to send every one of your $(item) in Amethystora Vault, and every one added later, to the server it syncs with, as items that every Bitwarden app of that account opens, protected there by the encryption of the server alone. Those set to ask every time are included. A copy already there in another form is moved to the trash, or the fields the vault wrote are taken out of it.";
+    pub const SYNC_KIND_SEALED: &str = "A program calling itself $(program) asks to send every one of your $(item) in Amethystora Vault, and every one added later, to the server it syncs with, sealed so that only this vault opens them. Those set to ask every time are included. A copy already there in another form is moved to the trash, or the fields the vault wrote are taken out of it.";
+    pub const SYNC_KIND_OFF: &str = "A program calling itself $(program) asks to stop syncing every one of your $(item), which moves their copies on the server to the trash of the server, or takes the fields the vault wrote out of a copy that holds anything else.";
 }
 
 /// Who an account is, as the machine says, for a certificate's name: never what a client says

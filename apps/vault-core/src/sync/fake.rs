@@ -47,6 +47,25 @@ pub struct Fake {
     pub revision: u64,
     /// Where this server says it is: requests to any other address are refused
     pub base: String,
+    /// Files uploaded, by cipher and attachment id
+    pub files: HashMap<(String, String), Vec<u8>>,
+    /// Slots dropped by the one delete there is
+    pub dropped: Vec<(String, String)>,
+    pub premium: bool,
+    /// What the slot call answers to a refusal: a status (400, with Vaultwarden's words), none to accept
+    pub slot_status: Option<u16>,
+    /// The `fileUploadType` the slot call answers with: 0 is direct
+    pub upload_type: i64,
+    /// The host a download address names, where it is not the server's own (a wrong `DOMAIN`)
+    pub download_host: Option<String>,
+    /// An address of another shape, for a server that keeps its files elsewhere
+    pub download_url: Option<String>,
+    /// Uploads that answer 200 and keep nothing
+    pub swallow_uploads: bool,
+    /// Bitwarden moves a cipher's date when an attachment comes or goes; Vaultwarden does not
+    pub bump_on_attachment: bool,
+    /// A server that does not keep an SSH key item: it answers `sshKey: null`
+    pub no_ssh: bool,
 }
 
 fn time_text(at: i64) -> String {
@@ -84,7 +103,7 @@ impl Fake {
         let user = SymKey::random();
         let protected = EncString::seal(&stretched, user.bytes()).text();
         let hash = crypto::master_hash(&master, PASSWORD.as_bytes()).to_string();
-        Fake { kdf, user, protected, hash, ciphers: Vec::new(), seen: Vec::new(), clock: 0, two_factor: false, refresh_count: 0, hooks: HashMap::new(), status: HashMap::new(), revision: 1, base: BASE.to_string() }
+        Fake { kdf, user, protected, hash, ciphers: Vec::new(), seen: Vec::new(), clock: 0, two_factor: false, refresh_count: 0, hooks: HashMap::new(), status: HashMap::new(), revision: 1, base: BASE.to_string(), files: HashMap::new(), dropped: Vec::new(), premium: true, slot_status: None, upload_type: 0, download_host: None, download_url: None, swallow_uploads: false, bump_on_attachment: false, no_ssh: false }
     }
 
     pub fn now(&mut self) -> String {
@@ -117,6 +136,10 @@ impl Fake {
         cipher.as_object_mut().map(|o| o.entry("deletedDate").or_insert(Value::Null));
         cipher.as_object_mut().map(|o| o.remove("encryptedFor"));
         cipher.as_object_mut().map(|o| o.remove("lastKnownRevisionDate"));
+        cipher.as_object_mut().map(|o| o.entry("attachments").or_insert(Value::Null));
+        if self.no_ssh && cipher["type"] == json!(5) {
+            cipher["sshKey"] = Value::Null;
+        }
         self.ciphers.push(cipher);
         id
     }
@@ -126,6 +149,104 @@ impl Fake {
         let now = self.now();
         if let Some(raw) = self.find_mut(id) {
             raw["revisionDate"] = json!(now);
+        }
+    }
+
+    /// What another client does: a file on a cipher, with its key and name made as an app makes them (the cipher's key wraps the file's)
+    pub fn attach(&mut self, cipher: &str, name: &str, plain: &[u8]) -> String {
+        let raw = self.find(cipher).cloned().expect("a cipher");
+        let item = super::cipher::key_of(&raw, &self.user).expect("its key");
+        let prepared = super::attach::prepare(&item, name, plain).expect("a file");
+        let id = format!("{:010x}", self.files.len() + 1);
+        self.files.insert((cipher.to_string(), id.clone()), prepared.bytes.to_vec());
+        self.record(cipher, &id, &prepared.key, &prepared.name, prepared.size());
+        id
+    }
+
+    fn record(&mut self, cipher: &str, id: &str, key: &str, name: &str, size: usize) {
+        let bump = self.bump_on_attachment;
+        let now = self.now();
+        let Some(raw) = self.find_mut(cipher) else { return };
+        let mut list = raw["attachments"].as_array().cloned().unwrap_or_default();
+        list.push(json!({"object": "attachment", "id": id, "url": "unused", "fileName": name, "key": key, "size": size.to_string(), "sizeName": format!("{size} Bytes")}));
+        raw["attachments"] = Value::Array(list);
+        if bump {
+            raw["revisionDate"] = json!(now);
+        }
+    }
+
+    /// The calls about files: a slot, the bytes, what a file is, its bytes, and the one delete
+    fn files(&mut self, route: &str, path: &str, headers: &[(&'static str, String)], body: &[u8]) -> (u16, Vec<u8>) {
+        let json_of = |status: u16, value: Value| (status, serde_json::to_vec(&value).unwrap_or_default());
+        let parts: Vec<&str> = path.trim_start_matches('/').split('/').collect();
+        match (route, parts.as_slice()) {
+            ("slot", ["api", "ciphers", id, "attachment", "v2"]) => {
+                if let Some(status) = self.slot_status {
+                    return json_of(status, json!({"message": "Attachments are disabled"}));
+                }
+                let Some(cipher) = self.find(id).cloned() else { return json_of(400, json!({"message": "Cipher doesn't exist"})) };
+                let request: Value = serde_json::from_slice(body).unwrap_or(Value::Null);
+                let Some(size) = request["fileSize"].as_u64() else { return json_of(400, json!({"message": "fileSize"})) };
+                let attachment = format!("{:010x}", self.files.len() + 1000 + cipher["attachments"].as_array().map_or(0, Vec::len));
+                self.record(id, &attachment, request["key"].as_str().unwrap_or(""), request["fileName"].as_str().unwrap_or(""), size as usize);
+                // The record is there before any file, as on both servers
+                let now = self.find(id).cloned().unwrap_or_default();
+                json_of(200, json!({"object": "attachment-fileUpload", "attachmentId": attachment, "url": format!("/ciphers/{id}/attachment/{attachment}"), "fileUploadType": self.upload_type, "cipherResponse": now}))
+            }
+            ("upload", ["api", "ciphers", id, "attachment", attachment]) => {
+                let boundary = headers.iter().find(|(name, _)| name.eq_ignore_ascii_case("content-type")).and_then(|(_, value)| value.split("boundary=").nth(1)).map(str::to_string);
+                let Some(boundary) = boundary else { return json_of(400, json!({"message": "Invalid content"})) };
+                let start = format!("--{boundary}\r\n");
+                let text_start = body.windows(4).position(|window| window == b"\r\n\r\n");
+                let end_marker = format!("\r\n--{boundary}--\r\n");
+                let end = body.windows(end_marker.len()).rposition(|window| window == end_marker.as_bytes());
+                let (Some(from), Some(to)) = (text_start, end) else { return json_of(400, json!({"message": "Invalid content"})) };
+                if !body.starts_with(start.as_bytes()) || to < from + 4 || !String::from_utf8_lossy(&body[..from]).contains("name=\"data\"; filename=") {
+                    return json_of(400, json!({"message": "Invalid content"}));
+                }
+                let data = body[from + 4..to].to_vec();
+                if self.swallow_uploads {
+                    return (200, Vec::new());
+                }
+                let announced: Option<usize> = self.find(id).and_then(|raw| raw["attachments"].as_array().and_then(|list| list.iter().find(|one| one["id"] == json!(attachment)).and_then(|one| one["size"].as_str().and_then(|size| size.parse().ok()))));
+                if announced.is_none_or(|announced| announced.abs_diff(data.len()) > 1024 * 1024) {
+                    return json_of(400, json!({"message": "Attachment size mismatch"}));
+                }
+                self.files.insert((id.to_string(), attachment.to_string()), data.clone());
+                // The size is what arrived
+                if let Some(raw) = self.find_mut(id)
+                    && let Some(list) = raw["attachments"].as_array_mut()
+                    && let Some(one) = list.iter_mut().find(|one| one["id"] == json!(attachment))
+                {
+                    one["size"] = json!(data.len().to_string());
+                }
+                (200, Vec::new())
+            }
+            ("info", ["api", "ciphers", id, "attachment", attachment]) => {
+                let Some(one) = self.find(id).and_then(|raw| raw["attachments"].as_array().and_then(|list| list.iter().find(|one| one["id"] == json!(attachment)).cloned())) else {
+                    return json_of(400, json!({"message": "Attachment doesn't exist"}));
+                };
+                let host = self.download_host.clone().unwrap_or_else(|| self.base.clone());
+                let url = self.download_url.clone().unwrap_or_else(|| format!("{host}/attachments/{id}/{attachment}?token=aaaa.bbbb.cccc"));
+                let mut answer = one;
+                answer["url"] = json!(url);
+                json_of(200, answer)
+            }
+            ("bytes", ["attachments", id, attachment]) => match self.files.get(&(id.to_string(), attachment.to_string())) {
+                Some(data) => (200, data.clone()),
+                None => json_of(404, json!({})),
+            },
+            ("drop", ["api", "ciphers", id, "attachment", attachment]) => {
+                self.dropped.push((id.to_string(), attachment.to_string()));
+                self.files.remove(&(id.to_string(), attachment.to_string()));
+                if let Some(raw) = self.find_mut(id)
+                    && let Some(list) = raw["attachments"].as_array_mut()
+                {
+                    list.retain(|one| one["id"] != json!(attachment));
+                }
+                json_of(200, json!({"cipher": {}}))
+            }
+            _ => json_of(404, json!({})),
         }
     }
 
@@ -171,7 +292,7 @@ impl Fake {
     fn sync(&self) -> Value {
         json!({
             "object": "sync",
-            "profile": {"id": USER_ID, "email": EMAIL, "key": self.protected, "privateKey": "2.AAAAAAAAAAAAAAAAAAAAAA==|AAAAAAAAAAAAAAAAAAAAAA==|AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", "securityStamp": "x", "organizations": []},
+            "profile": {"id": USER_ID, "email": EMAIL, "premium": self.premium, "key": self.protected, "privateKey": "2.AAAAAAAAAAAAAAAAAAAAAA==|AAAAAAAAAAAAAAAAAAAAAA==|AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", "securityStamp": "x", "organizations": []},
             "folders": [],
             "collections": [],
             "ciphers": self.ciphers,
@@ -238,9 +359,15 @@ impl Http for Fake {
             ("GET", "/api/sync") => "sync",
             ("GET", "/api/accounts/revision-date") => "revision",
             ("GET", "/api/config") => "config",
+            ("POST", p) if p.starts_with("/api/ciphers/") && p.ends_with("/attachment/v2") => "slot",
+            ("POST", p) if p.starts_with("/api/ciphers/") && p.contains("/attachment/") => "upload",
+            ("GET", p) if p.starts_with("/api/ciphers/") && p.contains("/attachment/") => "info",
+            ("GET", p) if p.starts_with("/attachments/") => "bytes",
+            ("DELETE", p) if p.starts_with("/api/ciphers/") && p.contains("/attachment/") => "drop",
             ("GET", p) if p.starts_with("/api/ciphers/") => "fetch",
             ("DELETE", _) => "destroy",
             ("POST", p) if p.ends_with("/delete") => "destroy",
+            ("PUT", p) if p.ends_with("/delete") => "trash",
             _ => "write",
         };
         if let Some(status) = self.status.get(route) {
@@ -261,6 +388,10 @@ impl Http for Fake {
                     Some(raw) => (200, raw.clone()),
                     None => (404, json!({})),
                 }
+            }
+            "slot" | "upload" | "info" | "bytes" | "drop" => {
+                let (status, body) = self.files(route, path.split('?').next().unwrap_or(""), &request.headers, &request.body);
+                return Ok(Response { status, body: Zeroizing::new(body) });
             }
             "destroy" => panic!("a permanent delete was asked for: {} {}", request.method, request.url),
             _ => {

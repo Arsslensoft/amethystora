@@ -2,6 +2,7 @@
 //! body that changes it. An update starts from the server's last raw JSON and replaces only the EncStrings of what changed, so
 //! that what this client does not read (passkeys, other URIs, fields, keys it does not know) goes back as it came.
 
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use zeroize::Zeroizing;
 
@@ -14,9 +15,73 @@ use super::lengths;
 pub const MARKER: &str = "amethystora-vault";
 pub const MARKER_CODES: &str = "backup-codes";
 pub const MARKER_SEALED: &str = "sealed";
+/// What a plain key, certificate or protected file is, in the marker's place (the item's kind says which, in words)
+pub const MARKER_KEY: &str = "key";
+pub const MARKER_CERT: &str = "certificate";
+pub const MARKER_FILE: &str = "file";
+
+/// The other fields of ours a plain note carries: its kind and expiry as text a person reads, and a private key as a hidden field
+pub const FIELD_KIND: &str = "kind";
+pub const FIELD_EXPIRES: &str = "expires";
+pub const FIELD_PRIVATE: &str = "private key";
+const OUR_FIELDS: &[&str] = &[FIELD_KIND, FIELD_EXPIRES, FIELD_PRIVATE];
 
 pub const LOGIN: u8 = 1;
 pub const NOTE: u8 = 2;
+pub const SSH: u8 = 5;
+
+/// A field of ours on a plain note: text, or hidden (type 1)
+#[derive(Clone, PartialEq, Eq)]
+pub struct Field {
+    pub name: String,
+    pub value: String,
+    pub hidden: bool,
+}
+
+/// An SSH key item's three strings (spec 5.3), the private one in OpenSSH's unencrypted form
+#[derive(Clone, PartialEq, Eq)]
+pub struct Ssh {
+    pub private: String,
+    pub public: String,
+    pub fingerprint: String,
+}
+
+/// One attachment of a cipher as the server lists it. The size is the encrypted file's, as the server says: a hint, never a bound.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Att {
+    pub id: String,
+    pub size: u64,
+}
+
+/// An attachment id that may go into a URL (spec-attachments 1): letters and digits, as a server makes them
+pub fn attachment_id_ok(id: &str) -> bool {
+    !id.is_empty() && id.len() <= 64 && id.bytes().all(|b| b.is_ascii_alphanumeric())
+}
+
+/// The attachments a cipher lists, those with an id that may go into a URL, by id. Nothing else of them is read here.
+pub fn attachments(raw: &Value) -> Vec<Att> {
+    let mut found: Vec<Att> = json::get(raw, "attachments")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|one| {
+            let id = json::text(one, "id").filter(|id| attachment_id_ok(id))?.to_string();
+            let size = match json::get(one, "size") {
+                Some(Value::String(text)) => text.parse().unwrap_or(0),
+                Some(other) => other.as_u64().unwrap_or(0),
+                None => 0,
+            };
+            Some(Att { id, size })
+        })
+        .collect();
+    found.sort_by(|a, b| a.id.cmp(&b.id));
+    found
+}
+
+/// The attachment record of an id, raw, for its wrapped key
+pub fn attachment_of<'a>(raw: &'a Value, id: &str) -> Option<&'a Value> {
+    json::get(raw, "attachments").and_then(Value::as_array)?.iter().find(|one| json::text(one, "id") == Some(id))
+}
 
 /// Why a cipher is left alone: read for nothing, written never, deleted never (spec 5.6)
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -90,7 +155,8 @@ pub fn sort(raw: &Value) -> Result<u8, Foreign> {
     if !every_string_is_type2(raw) {
         return Err(Foreign::OldFormat);
     }
-    if kind > NOTE {
+    // Cards and identities are the person's own; an SSH key item may be a key of ours or one made in another app
+    if kind == 3 || kind == 4 {
         return Err(Foreign::OtherType);
     }
     Ok(kind)
@@ -125,6 +191,11 @@ fn encrypted_strings(raw: &Value) -> Vec<&str> {
         for uri in json::get(login, "uris").and_then(Value::as_array).into_iter().flatten() {
             take(json::get(uri, "uri"));
             take(json::get(uri, "uriChecksum"));
+        }
+    }
+    if let Some(ssh) = json::some(raw, "sshKey") {
+        for name in ["privateKey", "publicKey", "keyFingerprint"] {
+            take(json::get(ssh, name));
         }
     }
     for field in json::get(raw, "fields").and_then(Value::as_array).into_iter().flatten() {
@@ -180,7 +251,11 @@ pub fn parse_time(text: &str) -> Option<i128> {
 /// Now, as the servers write a time
 pub fn now_text() -> String {
     let since = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default();
-    let seconds = since.as_secs() as i64;
+    time_text(since.as_secs() as i64, Some(since.subsec_millis()))
+}
+
+/// A time in seconds since 1970 as the servers write one, with milliseconds or without
+pub fn time_text(seconds: i64, millis: Option<u32>) -> String {
     let (days, rest) = (seconds.div_euclid(86_400), seconds.rem_euclid(86_400));
     // The civil date from days (the same algorithm, backwards)
     let z = days + 719_468;
@@ -192,7 +267,10 @@ pub fn now_text() -> String {
     let day = doy - (153 * mp + 2) / 5 + 1;
     let month = if mp < 10 { mp + 3 } else { mp - 9 };
     let year = yoe + era * 400 + i64::from(month <= 2);
-    format!("{year:04}-{month:02}-{day:02}T{:02}:{:02}:{:02}.{:03}Z", rest / 3600, rest % 3600 / 60, rest % 60, since.subsec_millis())
+    match millis {
+        Some(millis) => format!("{year:04}-{month:02}-{day:02}T{:02}:{:02}:{:02}.{millis:03}Z", rest / 3600, rest % 3600 / 60, rest % 60),
+        None => format!("{year:04}-{month:02}-{day:02}T{:02}:{:02}:{:02}Z", rest / 3600, rest % 3600 / 60, rest % 60),
+    }
 }
 
 /// What a cipher holds that this client maps, opened. The service and the network service wipe every block they give back
@@ -209,6 +287,10 @@ pub struct Content {
     pub uri: Option<String>,
     /// MARKER's value: which of ours a secure note is
     pub marker: Option<String>,
+    /// The other fields of ours, by name
+    pub fields: Vec<Field>,
+    /// An SSH key item's strings
+    pub ssh: Option<Ssh>,
 }
 
 impl std::fmt::Debug for Content {
@@ -226,6 +308,8 @@ pub struct Opened {
     pub has_key: bool,
     /// The first URI had no checksum to prove it, on an item without its own key: display text, never a fill match
     pub uri_unproven: bool,
+    /// What the server lists, by id
+    pub attachments: Vec<Att>,
 }
 
 /// The key a cipher's fields are under: its own, exactly 64 bytes, or the user key on an item without one
@@ -288,17 +372,31 @@ pub fn open(raw: &Value, user: &SymKey) -> Result<Opened, Unreadable> {
             }
         }
     }
+    if kind == SSH {
+        let ssh = json::some(raw, "sshKey").ok_or(Unreadable)?;
+        let (private, public, fingerprint) = (open_optional(ssh, "privateKey", &key)?, open_optional(ssh, "publicKey", &key)?, open_optional(ssh, "keyFingerprint", &key)?);
+        match (private, public, fingerprint) {
+            (Some(private), Some(public), Some(fingerprint)) if !private.is_empty() && !public.is_empty() && !fingerprint.is_empty() => content.ssh = Some(Ssh { private, public, fingerprint }),
+            _ => return Err(Unreadable),
+        }
+    }
     for field in json::get(raw, "fields").and_then(Value::as_array).into_iter().flatten() {
         let name = open_optional(field, "name", &key)?;
         let value = open_optional(field, "value", &key)?;
-        if name.as_deref() == Some(MARKER) {
-            content.marker = value;
+        match name.as_deref() {
+            Some(MARKER) => content.marker = value,
+            Some(ours) if OUR_FIELDS.contains(&ours) => {
+                content.fields.push(Field { name: ours.to_string(), value: value.unwrap_or_default(), hidden: json::number(field, "type") == Some(1) });
+            }
+            _ => {}
         }
     }
+    content.fields.sort_by(|a, b| a.name.cmp(&b.name));
     for old in json::get(raw, "passwordHistory").and_then(Value::as_array).into_iter().flatten() {
         open_optional(old, "password", &key)?;
     }
     Ok(Opened {
+        attachments: attachments(raw),
         id: json::text(raw, "id").ok_or(Unreadable)?.to_string(),
         content,
         revision: json::text(raw, "revisionDate").filter(|text| parse_time(text).is_some()).ok_or(Unreadable)?.to_string(),
@@ -327,7 +425,17 @@ impl Content {
         fits(&self.password, lengths::PASSWORD)?;
         fits(&self.totp, lengths::NAME)?;
         fits(&self.uri, lengths::URI)?;
-        fits(&self.marker, lengths::PASSWORD)
+        fits(&self.marker, lengths::PASSWORD)?;
+        for field in &self.fields {
+            fits(&Some(field.name.clone()), lengths::NAME)?;
+            fits(&Some(field.value.clone()), lengths::PASSWORD)?;
+        }
+        if let Some(ssh) = &self.ssh {
+            fits(&Some(ssh.private.clone()), lengths::PASSWORD)?;
+            fits(&Some(ssh.public.clone()), lengths::PASSWORD)?;
+            fits(&Some(ssh.fingerprint.clone()), lengths::NAME)?;
+        }
+        Ok(())
     }
 }
 
@@ -341,6 +449,19 @@ fn uri_entry(key: &SymKey, uri: &str) -> Value {
 
 fn marker_field(key: &SymKey, marker: &str) -> Value {
     json!({"type": 0, "name": crypto::seal_text(key, MARKER), "value": crypto::seal_text(key, marker), "linkedId": null})
+}
+
+fn field_of(key: &SymKey, field: &Field) -> Value {
+    json!({"type": u8::from(field.hidden), "name": crypto::seal_text(key, &field.name), "value": crypto::seal_text(key, &field.value), "linkedId": null})
+}
+
+/// The fields a content carries as ours, the marker first
+fn our_fields(key: &SymKey, content: &Content) -> Vec<Value> {
+    content.marker.iter().map(|marker| marker_field(key, marker)).chain(content.fields.iter().map(|field| field_of(key, field))).collect()
+}
+
+fn ssh_object(key: &SymKey, ssh: &Ssh) -> Value {
+    json!({"privateKey": crypto::seal_text(key, &ssh.private), "publicKey": crypto::seal_text(key, &ssh.public), "keyFingerprint": crypto::seal_text(key, &ssh.fingerprint)})
 }
 
 /// A new personal item: always a fresh key of its own, whatever the server's version says (spec 6.3, BW10)
@@ -357,7 +478,7 @@ pub fn create_body(content: &Content, user_id: &str, user: &SymKey) -> Result<Va
         "notes": sealed(&key, &content.notes),
         "favorite": false,
         "reprompt": 0,
-        "fields": content.marker.as_ref().map_or(Value::Null, |marker| json!([marker_field(&key, marker)])),
+        "fields": Some(our_fields(&key, content)).filter(|fields| !fields.is_empty()).map_or(Value::Null, Value::Array),
         "passwordHistory": null,
         "lastKnownRevisionDate": null,
         "archivedDate": null,
@@ -372,6 +493,8 @@ pub fn create_body(content: &Content, user_id: &str, user: &SymKey) -> Result<Va
             "autofillOnPageLoad": null,
             "fido2Credentials": null,
         });
+    } else if content.kind == SSH {
+        body["sshKey"] = ssh_object(&key, content.ssh.as_ref().ok_or(TooLong)?);
     } else {
         body["secureNote"] = json!({"type": 0});
     }
@@ -379,7 +502,7 @@ pub fn create_body(content: &Content, user_id: &str, user: &SymKey) -> Result<Va
 }
 
 /// The read-only things a body never carries (spec 6.4)
-const NEVER_SENT: &[&str] = &["object", "id", "data", "partialData", "creationDate", "revisionDate", "deletedDate", "edit", "viewPassword", "permissions", "organizationUseTotp", "collectionIds", "attachments"];
+const NEVER_SENT: &[&str] = &["object", "id", "data", "partialData", "creationDate", "revisionDate", "deletedDate", "edit", "viewPassword", "permissions", "organizationUseTotp", "collectionIds", "attachments", "attachments2"];
 const TYPED: &[&str] = &["login", "secureNote", "card", "identity", "sshKey", "bankAccount", "driversLicense", "passport"];
 /// The spec's spelling of the keys a body is known to carry, for a server that wrote them in another case
 const KNOWN: &[&str] = &["type", "organizationId", "folderId", "key", "name", "notes", "favorite", "reprompt", "fields", "passwordHistory", "archivedDate", "login", "secureNote", "card", "identity", "sshKey"];
@@ -403,7 +526,11 @@ pub fn update_body(raw: &Value, old: &Content, new: &Content, user_id: &str, use
         }
     }
     let kind = new.kind;
-    let typed = if kind == LOGIN { "login" } else { "secureNote" };
+    let typed = match kind {
+        LOGIN => "login",
+        SSH => "sshKey",
+        _ => "secureNote",
+    };
     // The typed objects of other types go, when null; one that is not null on the wrong type is the server's business
     for name in TYPED {
         if *name != typed && body.get(*name).is_some_and(Value::is_null) {
@@ -416,15 +543,24 @@ pub fn update_body(raw: &Value, old: &Content, new: &Content, user_id: &str, use
     if new.notes != old.notes {
         body.insert("notes".into(), sealed(&key, &new.notes));
     }
-    if new.marker != old.marker {
+    if new.marker != old.marker || new.fields != old.fields {
         let fields = body.entry("fields").or_insert(Value::Null);
         let mut list = fields.as_array().cloned().unwrap_or_default();
-        // Only our own field is taken out; every other field stays as it came, one that does not open included
-        list.retain(|field| !json::get(field, "name").and_then(Value::as_str).is_some_and(|name| crypto::open_text(name, &key).is_ok_and(|name| name.as_str() == MARKER)));
-        if let Some(marker) = &new.marker {
-            list.push(marker_field(&key, marker));
-        }
+        // Only our own fields are taken out; every other field stays as it came, one that does not open included
+        list.retain(|field| {
+            !json::get(field, "name").and_then(Value::as_str).is_some_and(|name| crypto::open_text(name, &key).is_ok_and(|name| name.as_str() == MARKER || OUR_FIELDS.contains(&name.as_str())))
+        });
+        list.extend(our_fields(&key, new));
         *fields = if list.is_empty() { Value::Null } else { Value::Array(list) };
+    }
+    if kind == SSH && new.ssh != old.ssh {
+        let mut object: Map<String, Value> = body.get("sshKey").and_then(Value::as_object).cloned().unwrap_or_default();
+        if let Some(ssh) = &new.ssh {
+            for (name, value) in [("privateKey", &ssh.private), ("publicKey", &ssh.public), ("keyFingerprint", &ssh.fingerprint)] {
+                json::set(&mut object, name, json!(crypto::seal_text(&key, value)));
+            }
+        }
+        body.insert("sshKey".into(), Value::Object(object));
     }
     if kind == LOGIN {
         let mut login: Map<String, Value> = body.get("login").and_then(Value::as_object).cloned().unwrap_or_default();

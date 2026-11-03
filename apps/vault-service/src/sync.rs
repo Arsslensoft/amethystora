@@ -32,10 +32,11 @@ use amethystora_vault_core::protocol::{Approval, Refusal, Request};
 use amethystora_vault_core::store::{BatchItem, BatchWriter, Store, Trouble};
 use amethystora_vault_core::sync::address::Server;
 use amethystora_vault_core::sync::api::{self, Extra, Http, NetFailure, Problem, Request as HttpRequest, Response, MOST_BODY};
+use amethystora_vault_core::sync::convert::{CertFacts, Convert, KeyRead, SshForms};
 use amethystora_vault_core::sync::crypto::{self, Kdf, KdfProblem};
 use amethystora_vault_core::sync::kinds;
 use amethystora_vault_core::sync::map::{self, Local};
-use amethystora_vault_core::sync::merge::{self, Access, Basis, Connection, Group, Input, Link, Outcome, CONNECTION_ID, KIND_CONNECTION, KIND_LINK};
+use amethystora_vault_core::sync::merge::{self, Access, Basis, Connection, Group, Input, Leftover, Link, Outcome, CONNECTION_ID, KIND_CONNECTION, KIND_LINK};
 use amethystora_vault_core::vaults::Account;
 
 use crate::outside::{say, Action};
@@ -124,6 +125,74 @@ impl Cancel {
                 *socket = Some(stream);
             }
         }
+    }
+}
+
+
+// --- What needs libcrypto --------------------------------------------------------------------------------------------------------
+
+/// What a run asks of `amethystora-vault-work`, one short-lived process for each question: this service never loads libcrypto, and a key,
+/// a certificate or a protected file read back from a server's text is a parser's work. A job that fails is an answer of none.
+/// An SSH key's three strings, as the worker made them
+type SshStrings = (Zeroizing<String>, String, String);
+
+struct Worker {
+    program: PathBuf,
+    /// An SSH key's strings, asked for once a run: a run compares each cipher that arrives with each item that has none, and a process for
+    /// each pair would be thousands
+    ssh: std::cell::RefCell<HashMap<String, Option<SshStrings>>>,
+}
+
+impl Worker {
+    fn ask(&self, request: Value) -> Option<Value> {
+        let answer = crate::plugs::work::run(&self.program, &request);
+        (answer["ok"] == json!(true) && answer["none"] != json!(true)).then_some(answer)
+    }
+}
+
+fn encode(bytes: &[u8]) -> String {
+    base64::engine::general_purpose::STANDARD.encode(bytes)
+}
+
+fn decode(text: &Value) -> Option<Zeroizing<Vec<u8>>> {
+    base64::engine::general_purpose::STANDARD.decode(text.as_str()?).ok().map(Zeroizing::new)
+}
+
+impl Convert for Worker {
+    fn ssh_forms(&self, key_type: &str, key: &[u8]) -> Option<SshForms> {
+        use sha2::Digest;
+        let asked = format!("{key_type}:{}", amethystora_vault_core::seal::hex(&sha2::Sha256::digest(key)));
+        let found = match self.ssh.borrow().get(&asked) {
+            Some(found) => found.clone(),
+            None => {
+                let answer = self.ask(json!({"job": "sync-ssh", "type": key_type, "key": encode(key)}));
+                let made = answer.and_then(|answer| Some((Zeroizing::new(answer["private"].as_str()?.to_string()), answer["public"].as_str()?.to_string(), answer["fingerprint"].as_str()?.to_string())));
+                self.ssh.borrow_mut().insert(asked, made.clone());
+                made
+            }
+        };
+        found.map(|(private, public, fingerprint)| SshForms { private, public, fingerprint })
+    }
+
+    fn key_from_text(&self, text: &str) -> Option<KeyRead> {
+        let answer = self.ask(json!({"job": "sync-key", "text": text}))?;
+        Some(KeyRead { key_type: answer["type"].as_str()?.to_string(), key: decode(&answer["key"])?, public: answer["public"].clone(), agree: answer["agree"] == json!(true) })
+    }
+
+    fn cert_facts(&self, certs: &[Vec<u8>], key: Option<(&str, &[u8])>) -> Option<CertFacts> {
+        let certs: Vec<String> = certs.iter().map(|der| encode(der)).collect();
+        let mut request = json!({"job": "sync-certs", "certs": certs});
+        if let Some((key_type, bytes)) = key {
+            request["type"] = json!(key_type);
+            request["key"] = json!(encode(bytes));
+        }
+        let answer = self.ask(request)?;
+        Some(CertFacts { leaf_sha256: answer["leaf_sha256"].as_str()?.to_string(), spki_sha256: answer["spki_sha256"].as_str()?.to_string(), key_matches: answer["key_matches"] == json!(true), chain_ok: answer["chain_ok"] == json!(true) })
+    }
+
+    /// A protected file's own parser: the same `Tree::from_value` the command line holds an item to
+    fn accepts(&self, kind: &str, value: &Value) -> bool {
+        kind != crate::protect::KIND || crate::protect::Tree::from_value(value).is_ok()
     }
 }
 
@@ -493,7 +562,7 @@ struct Gathered {
 fn gather(store: &mut Store, connection: &Connection) -> Gathered {
     let wanted: Vec<(String, String)> = store
         .entries()
-        .filter(|entry| kinds::may_sync(&entry.kind) && connection.choice(&entry.kind, &entry.id) != "off")
+        .filter(|entry| kinds::may_sync(&entry.kind) && connection.choice_of(&entry.kind, &entry.id, &entry.meta) != "off")
         .map(|entry| (entry.kind.clone(), entry.id.clone()))
         .collect();
     let mut locals = Vec::with_capacity(wanted.len());
@@ -567,6 +636,7 @@ fn write_files(writer: &BatchWriter, groups: &[Group]) -> Vec<Vec<Option<BatchIt
 fn prepare_run(service: &mut Service, uid: u32, manual: bool, accept: bool) -> Result<Prepared, Refusal> {
     let net = service.sync.net.clone();
     let helper = service.sync.metered.clone();
+    let worker = Worker { program: service.config.worker.clone(), ssh: Default::default() };
     let closes = service.closes_so_far(uid);
     let full = service.sync.users.get(&uid).is_some_and(|user| user.full) || manual;
     let access = service.sync.users.get_mut(&uid).and_then(|user| user.access.take());
@@ -600,8 +670,8 @@ fn prepare_run(service: &mut Service, uid: u32, manual: bool, accept: bool) -> R
             Ok(http) => http,
             Err(failure) => return Box::new(Ran::Net(failure)),
         };
-        let input = Input { connection, access, links, locals, sealing, accept, full, now_ms, local_unreadable: unreadable, links_unreadable };
-        let outcome = merge::run(&mut http, input);
+        let input = Input { connection, access, links, locals, sealing, accept, full, now_ms, local_unreadable: unreadable, links_unreadable, retry_files: manual };
+        let outcome = merge::run(&mut http, &worker, input);
         let files = write_files(&writer, &outcome.groups);
         Box::new(Ran::Done(Box::new(Finished { outcome, files })))
     };
@@ -618,6 +688,11 @@ struct Finish {
     churn: u32,
     accepted: bool,
     purge: Vec<Basis>,
+    /// What files came to on this server: why none is tried (a word), and whether one came back whole
+    no_files: Option<Option<String>>,
+    files_read: Option<bool>,
+    /// What the run left on the server to be cleaned up, as it stands
+    pending: Option<Vec<Leftover>>,
 }
 
 /// A run's groups waiting for the loop: put in place a slice at a time, each only if the items it was decided from are still as
@@ -660,9 +735,8 @@ fn finish_run(service: &mut Service, uid: u32, closes: u64, done: Done, busy: Ar
         // An opened-again vault still takes the login's news: a server that rotates a refresh token has retired the old one
         if let Ran::Done(finished) = *ran
             && service.is_open(uid)
-            && let Some(refresh) = finished.outcome.refresh.as_ref()
         {
-            keep_login(service, uid, refresh);
+            keep_news(service, uid, finished.outcome.refresh.as_ref(), &finished.outcome.pending);
         }
         return json!({"ok": false, "why": Refusal::Closed.name()});
     }
@@ -670,7 +744,7 @@ fn finish_run(service: &mut Service, uid: u32, closes: u64, done: Done, busy: Ar
     if service.first_open(uid).is_none_or(|store| !is_connected(store)) {
         return refused("not-connected");
     }
-    let mut finish = Finish { problem: None, report: json!({}), refresh: None, revision: None, access: None, churn: 0, accepted: false, purge: Vec::new() };
+    let mut finish = Finish { problem: None, report: json!({}), refresh: None, revision: None, access: None, churn: 0, accepted: false, purge: Vec::new(), no_files: None, files_read: None, pending: None };
     let mut groups = VecDeque::new();
     match *ran {
         Ran::Waiting => {
@@ -694,6 +768,10 @@ fn finish_run(service: &mut Service, uid: u32, closes: u64, done: Done, busy: Ar
             finish.churn = outcome.churn;
             finish.accepted = outcome.accepted;
             finish.purge = std::mem::take(&mut outcome.purge);
+            // A run that stopped before it asked about files hands back what the connection had
+            finish.no_files = Some(outcome.no_files.take());
+            finish.files_read = Some(outcome.files_read);
+            finish.pending = Some(std::mem::take(&mut outcome.pending));
             // By shard, so that a slice touches few of the sixteen items the links are in; the order within a cipher is kept
             let mut together: Vec<(Group, Vec<Option<BatchItem>>)> = outcome.groups.drain(..).zip(files).collect();
             together.sort_by_key(|(group, _)| merge::shard_of(&group.cipher));
@@ -713,14 +791,19 @@ fn finish_run(service: &mut Service, uid: u32, closes: u64, done: Done, busy: Ar
 }
 
 /// The refresh token a server rotated, kept in a vault that was closed and opened again while the run was at the server
-fn keep_login(service: &mut Service, uid: u32, refresh: &Zeroizing<String>) {
+/// What the run learned that must outlive it: the refresh token a server rotated, and the ciphers and slots it made and could not clean up
+fn keep_news(service: &mut Service, uid: u32, refresh: Option<&Zeroizing<String>>, pending: &[Leftover]) {
     if let Some(store) = service.first_open(uid)
         && let Some(mut connection) = load_connection(store)
-        && connection.api_key.is_none()
-        && connection.refresh.as_deref() != Some(refresh.as_str())
     {
-        connection.refresh = Some(refresh.to_string());
-        let _ = save_connection(store, &connection);
+        let before = (connection.refresh.clone(), connection.pending.clone());
+        if let (Some(refresh), None) = (refresh, &connection.api_key) {
+            connection.refresh = Some(refresh.to_string());
+        }
+        connection.pending = pending.to_vec();
+        if (connection.refresh.clone(), connection.pending.clone()) != before {
+            let _ = save_connection(store, &connection);
+        }
     }
 }
 
@@ -817,7 +900,7 @@ fn conclude(service: &mut Service, applying: &mut Applying) -> Value {
     let Some(finish) = applying.finish.take() else { return json!({"ok": false}) };
     let interval = service.sync.interval;
     let now = Instant::now();
-    let Finish { problem, mut report, refresh, revision, access, churn, accepted, purge } = finish;
+    let Finish { problem, mut report, refresh, revision, access, churn, accepted, purge, no_files, files_read, pending } = finish;
     report["applied"] = json!(applying.applied);
     report["skipped"] = json!(applying.skipped_groups);
     if applying.full {
@@ -852,6 +935,15 @@ fn conclude(service: &mut Service, applying: &mut Applying) -> Value {
             connection.refresh = Some(refresh.to_string());
         }
         connection.record(churn, accepted, merge::now_ms());
+        if let Some(no_files) = no_files {
+            connection.no_files = no_files;
+        }
+        if let Some(files_read) = files_read {
+            connection.files_read = files_read;
+        }
+        if let Some(pending) = pending {
+            connection.pending = pending;
+        }
         connection.last = Some(json!({"at_ms": merge::now_ms(), "problem": summary, "report": report}));
         if problem.is_none() && report.get("waiting").is_none() {
             connection.last_success_ms = Some(merge::now_ms());
@@ -1173,6 +1265,10 @@ fn status_next(service: &mut Service, peer: &Rc<Peer>, _body: &Value) -> Next {
             "last": connection.last,
             "next_in_seconds": next_in,
             "choices": choices,
+            "kinds": kinds::ALL.iter().map(|(word, kind)| (word.to_string(), connection.kind_choice(kind).to_string())).collect::<std::collections::BTreeMap<_, _>>(),
+            "kinds_said": kinds::ALL.iter().filter(|(_, kind)| connection.kinds.contains_key(*kind)).map(|(word, _)| *word).collect::<Vec<_>>(),
+            "no_files": connection.no_files,
+            "files_read": connection.files_read,
             "private_ca": connection.ca.is_some(),
         })))
     })())
@@ -1239,20 +1335,20 @@ fn choose_next(service: &mut Service, peer: &Rc<Peer>, body: &Value) -> Next {
         }
         let Some(store) = service.first_open(uid) else { return Err(Refusal::Closed) };
         let Some(entry) = store.entry(&kind, &id).cloned() else { return Err(Refusal::Refused) };
-        if choice == "on" && !kinds::ON_BY_DEFAULT.contains(&kind.as_str()) {
-            return Ok(Next::Answer(refused("sealed-only")));
-        }
         if choice != "off" && entry.meta.get("exportable") == Some(&Value::Bool(false)) {
             return Ok(Next::Answer(refused("not-exportable")));
         }
         let off = choice == "off";
         let asks = entry.approval == Approval::Ask;
+        let by_item = kinds::by_item_only(&kind, &entry.meta);
         let apply = move |service: &mut Service, peer: &Rc<Peer>| {
             let Some(store) = service.first_open(peer.uid) else { return Next::refuse(Refusal::Closed) };
             let Some(mut connection) = load_connection(store) else { return Next::Answer(refused("not-connected")) };
             let key = format!("{kind}.{id}");
-            // An item set to ask every time is off unless it was chosen, so that its `on` is kept
-            if choice == "on" && kinds::ON_BY_DEFAULT.contains(&kind.as_str()) && !asks {
+            // What the item does with no word of its own: its kind's, but an item set to ask every time is off until its kind was said
+            // for. Saying the same takes the item's own away; anything else is kept, and wins.
+            let inherited = if by_item || (asks && !connection.kinds.contains_key(&kind)) { "off" } else { connection.kind_choice(&kind) };
+            if choice == inherited {
                 connection.choices.remove(&key);
             } else {
                 connection.choices.insert(key, choice.clone());
@@ -1266,6 +1362,42 @@ fn choose_next(service: &mut Service, peer: &Rc<Peer>, body: &Value) -> Next {
             }
         };
         Ok(Next::approve(if off { Action::Use } else { Action::Export }, if off { say::SYNC_ITEM_OFF } else { say::SYNC_ITEM }, &entry.name, apply))
+    })())
+}
+
+/// What a whole kind does in sync: `off`, `on` (plain: Bitwarden's own encryption alone, which every app of the account opens) or
+/// `sealed`. It covers every item of the kind, those set to ask every time and those added later included, and one question is asked for
+/// all of them: to send, an export of them; to stop, a use. An item's own choice still wins over it.
+fn kind_next(service: &mut Service, peer: &Rc<Peer>, body: &Value) -> Next {
+    answer_or((|| {
+        let uid = peer.uid;
+        need_first(service, uid)?;
+        let word = text(body, "kind", 32).ok_or(Refusal::BadRequest)?;
+        let choice = text(body, "choice", 8).filter(|choice| matches!(*choice, "on" | "off" | "sealed")).ok_or(Refusal::BadRequest)?.to_string();
+        let Some((_, kind)) = kinds::ALL.iter().find(|(name, kind)| *name == word || *kind == word).copied() else { return Ok(Next::Answer(refused("not-syncable"))) };
+        let Some(store) = service.first_open(uid) else { return Err(Refusal::Closed) };
+        if load_connection(store).is_none() {
+            return Ok(Next::Answer(refused("not-connected")));
+        }
+        let message = match choice.as_str() {
+            "off" => say::SYNC_KIND_OFF,
+            "on" => say::SYNC_KIND_ON,
+            _ => say::SYNC_KIND_SEALED,
+        };
+        let off = choice == "off";
+        let apply = move |service: &mut Service, peer: &Rc<Peer>| {
+            let Some(store) = service.first_open(peer.uid) else { return Next::refuse(Refusal::Closed) };
+            let Some(mut connection) = load_connection(store) else { return Next::Answer(refused("not-connected")) };
+            connection.kinds.insert(kind.to_string(), choice.clone());
+            match save_connection(store, &connection) {
+                Ok(()) => {
+                    service.sync.changed(peer.uid);
+                    Next::ok()
+                }
+                Err(trouble) => Next::trouble(trouble),
+            }
+        };
+        Ok(Next::approve(if off { Action::Use } else { Action::Export }, message, kinds::plural(kind), apply))
     })())
 }
 
@@ -1283,6 +1415,7 @@ op!(status, status_next);
 op!(now, now_next);
 op!(off, off_next);
 op!(choose, choose_next);
+op!(kind, kind_next);
 
 pub const OPS: &[(&str, crate::plugs::Plug)] = &[
     ("sync-probe", probe_op),
@@ -1291,4 +1424,5 @@ pub const OPS: &[(&str, crate::plugs::Plug)] = &[
     ("sync-now", now),
     ("sync-off", off),
     ("sync-choose", choose),
+    ("sync-kind", kind),
 ];

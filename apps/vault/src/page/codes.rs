@@ -94,7 +94,7 @@ impl Codes {
             body.append(&self.note_card(&row.id));
         }
         body.append(&self.vault.approval_card(KIND_BACKUP_CODES, row));
-        body.append(&self.vault.sync_card(KIND_BACKUP_CODES, row));
+        body.append(&self.vault.sync_card(KIND_BACKUP_CODES, &row.id, &row.approval, false));
         let foot = ui::hbox(8, &[]);
         let (vault, id, name) = (self.vault.clone(), row.id.clone(), row.title.clone());
         foot.append(&btn(&t!("Add more codes"), Some("plus"), &["small"], move || add_to(&vault, id.clone(), name.clone())));

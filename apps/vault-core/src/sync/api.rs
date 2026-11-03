@@ -223,7 +223,7 @@ fn form(pairs: &[(&str, &str)]) -> Zeroizing<Vec<u8>> {
     out
 }
 
-fn headers(content: Option<&'static str>) -> Vec<(&'static str, String)> {
+pub(super) fn headers(content: Option<&'static str>) -> Vec<(&'static str, String)> {
     let mut headers = vec![
         ("Accept", "application/json".to_string()),
         ("Bitwarden-Client-Version", CLIENT_VERSION.to_string()),
@@ -403,7 +403,7 @@ fn parse_sync(response: &Response) -> Result<Value, Problem> {
 }
 
 /// The body as JSON, bounded, or the problem its status says
-fn parse(response: &Response) -> Result<Value, Problem> {
+pub(super) fn parse(response: &Response) -> Result<Value, Problem> {
     if response.body.len() > MOST_BODY {
         return Err(Problem::Net(NetFailure::TooLarge));
     }
@@ -411,7 +411,7 @@ fn parse(response: &Response) -> Result<Value, Problem> {
 }
 
 /// What an unsuccessful answer means (spec 3.7)
-fn failure(response: &Response) -> Problem {
+pub(super) fn failure(response: &Response) -> Problem {
     match response.status {
         429 => return Problem::RateLimited,
         500..=599 => return Problem::ServerDown,
@@ -652,7 +652,7 @@ pub struct Api<'a> {
 }
 
 impl Api<'_> {
-    fn call(&mut self, method: &'static str, path: &str, body: Option<&Value>) -> Result<Response, Problem> {
+    pub(super) fn call(&mut self, method: &'static str, path: &str, body: Option<&Value>) -> Result<Response, Problem> {
         let mut headers = headers(body.map(|_| "application/json"));
         headers.push(("Authorization", format!("Bearer {}", self.access)));
         let body = Zeroizing::new(body.map(|body| serde_json::to_vec(body).unwrap_or_default()).unwrap_or_default());
@@ -664,7 +664,7 @@ impl Api<'_> {
         self.http.call(Request { method, url, headers, body }).map_err(Problem::Net)
     }
 
-    fn expect(&mut self, method: &'static str, path: &str, body: Option<&Value>) -> Result<Value, Expired> {
+    pub(super) fn expect(&mut self, method: &'static str, path: &str, body: Option<&Value>) -> Result<Value, Expired> {
         let response = self.call(method, path, body)?;
         match response.status {
             200 if response.body.is_empty() => Ok(Value::Null),

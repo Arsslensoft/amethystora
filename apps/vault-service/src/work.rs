@@ -15,6 +15,7 @@ use amethystora_vault_core::items::{Account, BackupService};
 use amethystora_vault_core::keys::{self, KeyError, KeyKind, KeyType, PrivateKey, PublicForms};
 use amethystora_vault_core::pki::{self, Authority, CaKey, Digest, Issuer, PkiError, Profile, Purpose, Request, Signer};
 use amethystora_vault_core::protocol::encode;
+use amethystora_vault_core::sync::convert;
 // The allocator that wipes what it is given back
 use amethystora_vault_service as _;
 
@@ -131,7 +132,7 @@ fn key_check(request: &Value) -> Answer {
     let key = PrivateKey::from_bytes(key_type(request)?, &bytes(request, "private")?)?;
     if key.key_type() != KeyType::Aes256 {
         let public = key.public()?;
-        if !halves_agree(&key, &public.spki_der) {
+        if !convert::halves_agree(&key, &public.spki_der) {
             return Err(Why::Problem("malformed", None));
         }
         // Past RSA's sizes anywhere: a key that large only costs whoever uses it later
@@ -172,20 +173,6 @@ fn digest_of(request: &Value) -> Result<Option<Digest>, Why> {
         Some("sha384") => Ok(Some(Digest::Sha384)),
         Some(_) => Err(Why::Problem("digest-not-allowed", None)),
     }
-}
-
-/// A private key whose public half is not the one it says, which a PEM put together by hand can be: a test message signed with
-/// the private half has to verify under the public. A key that cannot sign (X25519, ML-KEM) has nothing to prove here.
-fn halves_agree(key: &PrivateKey, spki: &[u8]) -> bool {
-    let digest = match key.key_type() {
-        KeyType::Ed25519 | KeyType::MlDsa65 => "none",
-        KeyType::EcdsaP256 | KeyType::EcdsaP384 | KeyType::EcdsaP521 | KeyType::Rsa3072 | KeyType::Rsa4096 | KeyType::RsaOther => "sha256",
-        _ => return true,
-    };
-    let message = b"amethystora-vault: the halves of one key";
-    let (Ok(signature), Ok(public)) = (keys::sign_message(key, digest, message), openssl::pkey::PKey::public_key_from_der(spki)) else { return false };
-    let verifier = if digest == "none" { openssl::sign::Verifier::new_without_digest(&public) } else { openssl::sign::Verifier::new(openssl::hash::MessageDigest::sha256(), &public) };
-    verifier.and_then(|mut verifier| verifier.verify_oneshot(&signature, message)).unwrap_or(false)
 }
 
 /// A leaf certificate's own signature over a digest. The service has already held the item to its profile and dates; `Signer::leaf`
@@ -316,6 +303,35 @@ fn issue(request: &Value) -> Answer {
     Ok(json!({"key": encode(key.as_bytes()), "type": chosen.name(), "cert": encode(&made.cert), "chain": chain, "description": description(&made.cert)?}))
 }
 
+/// Sync: an SSH key item's three strings for a key, or nothing where the key is not one of the six an SSH item holds
+fn sync_ssh(request: &Value) -> Answer {
+    Ok(match convert::ssh_forms(text(request, "type")?, &bytes(request, "key")?) {
+        Some(forms) => json!({"private": forms.private.as_str(), "public": forms.public, "fingerprint": forms.fingerprint}),
+        None => json!({"none": true}),
+    })
+}
+
+/// Sync: a private key read back from the text of a note's field or an SSH item
+fn sync_key(request: &Value) -> Answer {
+    Ok(match convert::key_from_text(text(request, "text")?) {
+        Some(read) => json!({"type": read.key_type, "key": encode(&read.key), "public": read.public, "agree": read.agree}),
+        None => json!({"none": true}),
+    })
+}
+
+/// Sync: whether certificates parse, and the key is the leaf's
+fn sync_certs(request: &Value) -> Answer {
+    let certs = certificates(request, "certs")?;
+    let key = match (optional(request, "type"), request.get("key").and_then(Value::as_str)) {
+        (Some(key_type), Some(_)) => Some((key_type, bytes(request, "key")?)),
+        _ => None,
+    };
+    Ok(match convert::cert_facts(&certs, key.as_ref().map(|(key_type, bytes)| (*key_type, bytes.as_slice()))) {
+        Some(facts) => json!({"leaf_sha256": facts.leaf_sha256, "spki_sha256": facts.spki_sha256, "key_matches": facts.key_matches, "chain_ok": facts.chain_ok}),
+        None => json!({"none": true}),
+    })
+}
+
 fn auth_export(request: &Value) -> Answer {
     let accounts: Vec<Account> = serde_json::from_value(request["accounts"].clone()).map_err(|_| Why::Bad)?;
     let services: Vec<BackupService> = serde_json::from_value(request["services"].clone()).map_err(|_| Why::Bad)?;
@@ -348,6 +364,9 @@ fn job(request: &Value) -> Answer {
         "make-ca" => make_ca(request),
         "issue" => issue(request),
         "auth-export" => auth_export(request),
+        "sync-ssh" => sync_ssh(request),
+        "sync-key" => sync_key(request),
+        "sync-certs" => sync_certs(request),
         _ => Err(Why::Bad),
     }
 }

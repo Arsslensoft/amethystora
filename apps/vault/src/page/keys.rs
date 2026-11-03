@@ -145,7 +145,7 @@ impl Keys {
         }
         body.append(&private);
         body.append(&self.vault.approval_card("key", row));
-        body.append(&self.vault.sync_card("key", row));
+        body.append(&self.vault.sync_card("key", &row.id, &row.approval, false));
         let (weak, id, title) = (self.me.borrow().clone(), row.id.clone(), row.title.clone());
         let remove = btn(&t!("Remove"), Some("trash"), &["small", "danger"], move || {
             let Some(page) = weak.upgrade() else { return };

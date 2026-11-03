@@ -435,7 +435,7 @@ fn ssh_mpint(out: &mut Vec<u8>, number: &[u8]) {
 }
 
 /// The key's name in SSH and its wire form, for the types SSH has one for
-fn openssh_blob<T: HasPublic>(pkey: &PKeyRef<T>, key_type: KeyType) -> Result<Option<(&'static str, Vec<u8>)>, KeyError> {
+pub(crate) fn openssh_blob<T: HasPublic>(pkey: &PKeyRef<T>, key_type: KeyType) -> Result<Option<(&'static str, Vec<u8>)>, KeyError> {
     let mut blob = Vec::new();
     let name = match key_type {
         KeyType::Ed25519 => {
@@ -502,6 +502,17 @@ pub fn import_openssh(file: &[u8], passphrase: &[u8]) -> Result<Imported, KeyErr
         return Err(KeyError::Unsupported);
     }
     Ok(Imported { key, comment: String::new() })
+}
+
+/// An unencrypted private key PEM of any type this reads, with an SSH form or none (sync reads a key back from a note's hidden
+/// field): refused unless its numbers agree with each other, as an import is
+pub fn from_pem(text: &str) -> Result<PrivateKey, KeyError> {
+    if text.len() > MAX_IMPORT || !text.contains("PRIVATE KEY-----") || text.contains("ENCRYPTED") {
+        return Err(KeyError::Malformed);
+    }
+    let pkey = PKey::private_key_from_pem(text.as_bytes()).map_err(|_| KeyError::Malformed)?;
+    check_consistent(&pkey)?;
+    from_pkey(&pkey)
 }
 
 /// The scheme, key derivation and count of an encrypted PKCS#8 file, which it sets itself: read, and bounded, before OpenSSL

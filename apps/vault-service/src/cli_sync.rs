@@ -159,6 +159,7 @@ pub fn run(args: &Args) -> Result<(), u8> {
         "status" => status(args),
         "off" => off(),
         "choose" => choose(args),
+        "kind" => kind(args),
         _ => Err(USAGE),
     }
 }
@@ -185,6 +186,12 @@ fn status(args: &Args) -> Result<(), u8> {
     println!("running\t{}", if answer["running"] == json!(true) { "yes" } else { "no" });
     if let Some(at) = answer["last_success_ms"].as_i64() {
         println!("last\t{}", at / 1000);
+    }
+    for (word, _) in amethystora_vault_core::sync::kinds::ALL {
+        println!("kind\t{word}\t{}", answer["kinds"][word].as_str().unwrap_or("off"));
+    }
+    if let Some(why) = answer["no_files"].as_str() {
+        println!("no-files\t{}", data(why));
     }
     if let Some(problem) = answer["problem"].as_object() {
         let detail = problem.get("detail");
@@ -228,6 +235,20 @@ fn off() -> Result<(), u8> {
 
 fn choose(args: &Args) -> Result<(), u8> {
     let answer = ask(json!({"op": "sync-choose", "kind": args.word(2).ok_or(USAGE)?, "id": args.word(3).ok_or(USAGE)?, "choice": args.word(4).ok_or(USAGE)?}))?;
+    if answer["ok"] != json!(true) {
+        eprintln!("{}", problem_text(args, &answer));
+        return Err(refusal_code(&answer));
+    }
+    Ok(())
+}
+
+/// `kind KIND off|on|sealed`: the one switch of a kind, in the words a person types (`passwords`, `codes`, `backup-codes`, `keys`, `certificates`, `files`)
+fn kind(args: &Args) -> Result<(), u8> {
+    let (word, choice) = (args.word(2).ok_or(USAGE)?, args.word(3).ok_or(USAGE)?);
+    if amethystora_vault_core::sync::kinds::ALL.iter().all(|(name, _)| *name != word) || !matches!(choice, "off" | "on" | "sealed") {
+        return Err(USAGE);
+    }
+    let answer = ask(json!({"op": "sync-kind", "kind": word, "choice": choice}))?;
     if answer["ok"] != json!(true) {
         eprintln!("{}", problem_text(args, &answer));
         return Err(refusal_code(&answer));

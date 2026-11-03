@@ -84,9 +84,12 @@ words := '''
 # N_ 'A program calling itself $(program) asks to connect Amethystora Vault to the server and account “$(item)”. Whatever in the vault syncs is sent to that account, and whoever opens the vault can reach all of it.'
 # N_ 'A program calling itself $(program) asks to connect Amethystora Vault to “$(item)”, trusting the certificate with that fingerprint for this connection. Whatever in the vault syncs is sent to that account, and whoever opens the vault can reach all of it.'
 # N_ 'A program calling itself $(program) asks to stop syncing Amethystora Vault with its server.'
-# N_ 'A program calling itself $(program) asks to send “$(item)” to the server Amethystora Vault syncs with.'
-# N_ 'A program calling itself $(program) asks to stop syncing “$(item)”, which moves its copy on the server to the trash of the server.'
+# N_ 'A program calling itself $(program) asks to send “$(item)” to the server Amethystora Vault syncs with. A copy already there in another form is moved to the trash of the server, or the fields the vault wrote are taken out of it.'
+# N_ 'A program calling itself $(program) asks to stop syncing “$(item)”, which moves its copy on the server to the trash of the server, or takes the fields the vault wrote out of it if the copy holds anything else.'
 # N_ 'A program calling itself $(program) asks to let Amethystora Vault take, on its next sync, the items that went from the server or came from it.'
+# N_ 'A program calling itself $(program) asks to send every one of your $(item) in Amethystora Vault, and every one added later, to the server it syncs with, as items that every Bitwarden app of that account opens, protected there by the encryption of the server alone. Those set to ask every time are included. A copy already there in another form is moved to the trash, or the fields the vault wrote are taken out of it.'
+# N_ 'A program calling itself $(program) asks to send every one of your $(item) in Amethystora Vault, and every one added later, to the server it syncs with, sealed so that only this vault opens them. Those set to ask every time are included. A copy already there in another form is moved to the trash, or the fields the vault wrote are taken out of it.'
+# N_ 'A program calling itself $(program) asks to stop syncing every one of your $(item), which moves their copies on the server to the trash of the server, or takes the fields the vault wrote out of a copy that holds anything else.'
 
 # Set up a vault on this account: password, approval (fingerprint or account password) or no-prompt. It ends with a recovery key that you type back
 [positional-arguments]
@@ -521,7 +524,7 @@ helpers *ARGS:
         fi
     done <<<"$output"
 
-# Sync with a Vaultwarden or Bitwarden server. connect ADDRESS, now [accept], status, off, choose KIND ID on|off|sealed (a key or certificate goes only sealed, and only when chosen)
+# Sync with a Vaultwarden or Bitwarden server. connect ADDRESS, now [accept], status, off, kind KIND off|on|sealed (KIND: passwords, codes, backup-codes, keys, certificates, files; on is plain, which every Bitwarden app opens), choose KIND ID on|off|sealed (one item)
 [positional-arguments]
 sync *ARGS:
     #!/usr/bin/bash
@@ -530,7 +533,7 @@ sync *ARGS:
     source gettext.sh
     {{words}}
     options=(
-        --say-sync-intro="$(gettext "What this vault holds that syncs (passwords, authenticator codes and backup codes) becomes items in that account, encrypted with the account's own key, and the account's changes come back. The server learns how many items there are, of which kind, how long each is and when it changed. The account's key is kept in this vault, so whoever opens this vault can reach that whole account. A dedicated account for the vault is the better choice. It works with Bitwarden and Vaultwarden accounts, and is not Bitwarden.")"
+        --say-sync-intro="$(gettext "What this vault holds that syncs becomes items in that account, encrypted with the account's own key, and the account's changes come back. Passwords, authenticator codes and backup codes go as plain items that Bitwarden's apps open; keys, certificates and protected files go only when you choose it, plain or sealed (a note only this vault opens). The server learns how many items there are, of which kind, how long each is and when it changed. The account's key is kept in this vault, so whoever opens this vault can reach that whole account. A dedicated account for the vault is the better choice. It works with Bitwarden and Vaultwarden accounts, and is not Bitwarden.")"
         --say-sync-email="$(gettext 'Email address of the account: ')"
         --say-sync-method="$(gettext 'Log in with the personal API key (it asks for no code) or the master password? Type key or password: ')"
         --say-sync-api-id="$(gettext 'API key client_id: ')"
@@ -557,7 +560,6 @@ sync *ARGS:
         --say-problem-other-account="$(gettext 'That is another account than the one connected. Turn sync off first.')"
         --say-problem-not-connected="$(gettext 'No server is connected. Connect one with: ame vault sync connect ADDRESS')"
         --say-problem-not-syncable="$(gettext 'That kind of item does not sync.')"
-        --say-problem-sealed-only="$(gettext 'A key or a certificate goes to the server only sealed.')"
         --say-problem-not-exportable="$(gettext 'That key was made so that it cannot leave the vault.')"
         --say-problem-bad-request="$(gettext 'That was not understood.')"
         --say-problem-unreachable="$(gettext 'The server could not be reached.')"
@@ -600,6 +602,22 @@ sync *ARGS:
                     email) eval_gettext 'Account: ${a}'; echo ;;
                     linked) eval_gettext 'Items linked with the server: ${a}'; echo ;;
                     running) [[ "$a" != yes ]] || { gettext "A sync is running now."; echo; } ;;
+                    kind) what=${a%%$'\t'*}; how=${a#*$'\t'}
+                        case "$what" in
+                            passwords) what=$(gettext 'passwords') ;;
+                            codes) what=$(gettext 'authenticator codes') ;;
+                            backup-codes) what=$(gettext 'backup codes') ;;
+                            keys) what=$(gettext 'keys') ;;
+                            certificates) what=$(gettext 'certificates') ;;
+                            files) what=$(gettext 'protected files') ;;
+                        esac
+                        case "$how" in
+                            on) eval_gettext "Sent plain, as Bitwarden's apps open it: \${what}"; echo ;;
+                            sealed) eval_gettext "Sent sealed, a note only this vault opens: \${what}"; echo ;;
+                            *) eval_gettext "Not sent: \${what}"; echo ;;
+                        esac
+                        ;;
+                    no-files) eval_gettext 'Files are not sent to this server (${a}). Running "ame vault sync now" tries again.'; echo ;;
                     last) when=$(date -d "@${a}" '+%Y-%m-%d %H:%M'); eval_gettext 'Last synced: ${when}'; echo ;;
                     problem) eval_gettext 'Stopped: ${a}'; echo ;;
                 esac
@@ -616,7 +634,13 @@ sync *ARGS:
                     organization) [[ "$a" == 0 ]] || { eval_gettext 'Items of an organization, left alone: ${a}'; echo; } ;;
                     refused)
                         case "$a" in
-                            too-large-to-seal) gettext "Not synced: an item is too large for the account to keep. A secure note holds a little over 5 KB, and the vault will not split an item across several."; echo ;;
+                            too-large-to-seal | file-too-large) gettext "Not synced: an item is larger than the vault sends."; echo ;;
+                            attachments-cloud) gettext "Not synced: Bitwarden's own servers keep files at a storage host that the vault does not use. This item stays on this computer. Vaultwarden or a server of your own can hold it."; echo ;;
+                            attachments-premium) gettext "Not synced: the account has no premium, which Bitwarden's server asks for files. This item stays on this computer."; echo ;;
+                            attachments-refused) gettext "Not synced: the server does not take files, or the account's room for them is spent. This item stays on this computer."; echo ;;
+                            attachments-elsewhere) gettext "Not synced: this server keeps files at another host, which the vault never contacts. This item stays on this computer."; echo ;;
+                            attachment-lost) gettext "Not synced: the server no longer has the file of an item. The item stays as it is here, and goes again when it changes, or when you run: ame vault sync now accept"; echo ;;
+                            unreadable-note) gettext "Not taken from the server: a note of an item changed so that it no longer reads as what it was. The vault kept its own."; echo ;;
                             too-long) gettext "Not synced: an item has a field longer than Bitwarden accepts."; echo ;;
                             no-link) gettext "Not synced: an authenticator account of a kind Bitwarden's apps cannot read."; echo ;;
                             fields-swapped) gettext "Not taken from the server: an item had its fields moved around, which a server can do to an item. The vault kept its own."; echo ;;
@@ -634,7 +658,7 @@ sync *ARGS:
             [[ $code -eq 1 ]] && exit 1
             vault_says "$code"
             ;;
-        connect | off | choose)
+        connect | off | choose | kind)
             code=0
             /usr/libexec/amethystora-vault-cli sync "$@" "${options[@]}" || code=$?
             [[ $code -eq 1 ]] && exit 1
@@ -642,7 +666,7 @@ sync *ARGS:
             if [[ "$1" == off ]]; then gettext "Sync is off. The vault and the account keep what they have."; echo; fi
             ;;
         *)
-            echo "usage: ame vault sync connect ADDRESS | now [accept] | status | off | choose KIND ID on|off|sealed"
+            echo "usage: ame vault sync connect ADDRESS | now [accept] | status | off | kind KIND off|on|sealed | choose KIND ID on|off|sealed (KIND of kind is passwords, codes, backup-codes, keys, certificates or files; on is plain)"
             exit 64
             ;;
     esac

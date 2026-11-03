@@ -8353,7 +8353,7 @@ msgstr ""
 
 #: usr/libexec/amethystora-sends
 #, sh-format
-msgid "While the vault is open, what it holds that syncs (passwords, authenticator codes and backup codes) is sent to ${SYNC_ADDRESS}, encrypted with the account's key, and the account's changes are fetched, on opening, after a change and every 15 minutes. The server sees how many items there are, of which kind, how long each is and when it changed."
+msgid "While the vault is open, what it holds that syncs (passwords, authenticator codes and backup codes, and keys, certificates and protected files where you chose it, plain or sealed, with files for what is larger than a note) is sent to ${SYNC_ADDRESS}, encrypted with the account's key, and the account's changes are fetched, on opening, after a change and every 15 minutes. The server sees how many items there are, of which kind, how long each is and when it changed."
 msgstr ""
 
 #: usr/libexec/amethystora-sends
@@ -14834,15 +14834,27 @@ msgid "A program calling itself $(program) asks to stop syncing Amethystora Vaul
 msgstr ""
 
 #: usr/share/amethystora/just/vault.just
-msgid "A program calling itself $(program) asks to send “$(item)” to the server Amethystora Vault syncs with."
+msgid "A program calling itself $(program) asks to send “$(item)” to the server Amethystora Vault syncs with. A copy already there in another form is moved to the trash of the server, or the fields the vault wrote are taken out of it."
 msgstr ""
 
 #: usr/share/amethystora/just/vault.just
-msgid "A program calling itself $(program) asks to stop syncing “$(item)”, which moves its copy on the server to the trash of the server."
+msgid "A program calling itself $(program) asks to stop syncing “$(item)”, which moves its copy on the server to the trash of the server, or takes the fields the vault wrote out of it if the copy holds anything else."
 msgstr ""
 
 #: usr/share/amethystora/just/vault.just
 msgid "A program calling itself $(program) asks to let Amethystora Vault take, on its next sync, the items that went from the server or came from it."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A program calling itself $(program) asks to send every one of your $(item) in Amethystora Vault, and every one added later, to the server it syncs with, as items that every Bitwarden app of that account opens, protected there by the encryption of the server alone. Those set to ask every time are included. A copy already there in another form is moved to the trash, or the fields the vault wrote are taken out of it."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A program calling itself $(program) asks to send every one of your $(item) in Amethystora Vault, and every one added later, to the server it syncs with, sealed so that only this vault opens them. Those set to ask every time are included. A copy already there in another form is moved to the trash, or the fields the vault wrote are taken out of it."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A program calling itself $(program) asks to stop syncing every one of your $(item), which moves their copies on the server to the trash of the server, or takes the fields the vault wrote out of a copy that holds anything else."
 msgstr ""
 
 #: usr/share/amethystora/just/vault.just
@@ -15063,7 +15075,7 @@ msgid "${tool}: not installed"
 msgstr ""
 
 #: usr/share/amethystora/just/vault.just
-msgid "What this vault holds that syncs (passwords, authenticator codes and backup codes) becomes items in that account, encrypted with the account's own key, and the account's changes come back. The server learns how many items there are, of which kind, how long each is and when it changed. The account's key is kept in this vault, so whoever opens this vault can reach that whole account. A dedicated account for the vault is the better choice. It works with Bitwarden and Vaultwarden accounts, and is not Bitwarden."
+msgid "What this vault holds that syncs becomes items in that account, encrypted with the account's own key, and the account's changes come back. Passwords, authenticator codes and backup codes go as plain items that Bitwarden's apps open; keys, certificates and protected files go only when you choose it, plain or sealed (a note only this vault opens). The server learns how many items there are, of which kind, how long each is and when it changed. The account's key is kept in this vault, so whoever opens this vault can reach that whole account. A dedicated account for the vault is the better choice. It works with Bitwarden and Vaultwarden accounts, and is not Bitwarden."
 msgstr ""
 
 #: usr/share/amethystora/just/vault.just
@@ -15170,10 +15182,6 @@ msgstr ""
 
 #: usr/share/amethystora/just/vault.just
 msgid "That kind of item does not sync."
-msgstr ""
-
-#: usr/share/amethystora/just/vault.just
-msgid "A key or a certificate goes to the server only sealed."
 msgstr ""
 
 #: usr/share/amethystora/just/vault.just
@@ -15327,6 +15335,50 @@ msgid "A sync is running now."
 msgstr ""
 
 #: usr/share/amethystora/just/vault.just
+msgid "passwords"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "authenticator codes"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "backup codes"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "keys"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "certificates"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "protected files"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+#, sh-format
+msgid "Sent plain, as Bitwarden's apps open it: ${what}"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+#, sh-format
+msgid "Sent sealed, a note only this vault opens: ${what}"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+#, sh-format
+msgid "Not sent: ${what}"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+#, sh-format
+msgid "Files are not sent to this server (${a}). Running \"ame vault sync now\" tries again."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
 #, sh-format
 msgid "Last synced: ${when}"
 msgstr ""
@@ -15357,7 +15409,31 @@ msgid "Items of an organization, left alone: ${a}"
 msgstr ""
 
 #: usr/share/amethystora/just/vault.just
-msgid "Not synced: an item is too large for the account to keep. A secure note holds a little over 5 KB, and the vault will not split an item across several."
+msgid "Not synced: an item is larger than the vault sends."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Not synced: Bitwarden's own servers keep files at a storage host that the vault does not use. This item stays on this computer. Vaultwarden or a server of your own can hold it."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Not synced: the account has no premium, which Bitwarden's server asks for files. This item stays on this computer."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Not synced: the server does not take files, or the account's room for them is spent. This item stays on this computer."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Not synced: this server keeps files at another host, which the vault never contacts. This item stays on this computer."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Not synced: the server no longer has the file of an item. The item stays as it is here, and goes again when it changes, or when you run: ame vault sync now accept"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Not taken from the server: a note of an item changed so that it no longer reads as what it was. The vault kept its own."
 msgstr ""
 
 #: usr/share/amethystora/just/vault.just

@@ -114,6 +114,11 @@ impl Server {
         Ok(Server { identity: format!("{address}/identity"), api: format!("{address}/api"), address })
     }
 
+    /// Bitwarden's own servers, which keep attachments at a storage host this program never contacts (spec-attachments 2.4)
+    pub fn is_cloud(&self) -> bool {
+        ["https://vault.bitwarden.com", "https://vault.bitwarden.eu"].contains(&self.address.as_str())
+    }
+
     /// The origins of the two bases: all a connection ever reaches
     pub fn origins(&self) -> Vec<String> {
         let mut origins: Vec<String> = [&self.identity, &self.api].iter().filter_map(|base| origin_of(base)).collect();
