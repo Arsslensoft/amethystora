@@ -38,8 +38,10 @@ export class DockSite {
         this.edge = EDGES[edgeName];
         const monitor = Main.layoutManager.monitors[monitorIndex];
         this.shared = sharedEdge(monitor, edgeName);
-        // touch: hides when a window touches it; a shared edge always does, without a barrier
-        this.touch = autohide === 'touch' || this.shared;
+        // touch: hides when a window touches it, only when chosen: a dock stays where it is otherwise, also on an edge that another
+        // screen continues, where Mutter still keeps its strip free (seen with two screens stacked, the maintainer's choice of
+        // 2026-11-03). There a hiding dock has no barrier, which would hold the pointer back from the next screen.
+        this.touch = autohide === 'touch';
         this.barrier = autohide === 'touch' && !this.shared;
     }
 
