@@ -180,6 +180,13 @@ agent_on() { # USER UID
 
 # A session bus socket is what someone logged in has and a system user does not, so the sockets are the
 # list of people who can be told. notify-send has to reach the user's own bus, not the system one.
+person() {
+    local session
+    for session in $(loginctl show-user "$1" -p Sessions --value 2>/dev/null); do
+        [[ "$(loginctl show-session "${session}" -p Class --value 2>/dev/null)" == user ]] && return 0
+    done
+    return 1
+}
 TOLD=0
 for bus in /run/user/*/bus; do
     [[ -S "${bus}" ]] || continue
@@ -189,6 +196,9 @@ for bus in /run/user/*/bus; do
     # Not system accounts, nor nobody. A domain's are numbered from far above nobody's 65534.
     [[ "${uid}" -ge 1000 && "${uid}" -ne 65534 ]] || continue
     user="$(id -nu "${uid}" 2>/dev/null)" || continue
+    # Nor the login screen's own account (GDM's gdm-greeter, numbered like a person's): nobody reads its notices,
+    # and one with a button would be waited on for good. Someone logged in has a session of logind's class user
+    person "${uid}" || continue
     [[ "${ADMINS}" == false || " $(id -nG "${user}" 2>/dev/null) " == *" wheel "* ]] || continue
     [[ -z "${ONLY}" || "${user}" == "${ONLY}" ]] || continue
     TOLD=$((TOLD + 1))
