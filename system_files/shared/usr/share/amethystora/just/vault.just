@@ -52,7 +52,6 @@ words := '''
             --say-restored="$(gettext 'The vault is back. Choose how it opens now.')" \
             --say-codes-left-out="$(gettext 'Not kept: {dropped} too long or past what one text may hold, {repeats} already kept, {over_limit} past what one item holds.')" \
             --say-other-helper="$(gettext 'git already asks another credential helper, {helper}, and would hand it what the vault answers. Remove that one from git'\''s settings first, or keep the vault'\''s logins out of git.')" \
-
             || code=$?
         vault_says "$code"
     }

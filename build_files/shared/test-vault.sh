@@ -136,6 +136,9 @@ LISTED="$(sed -n "s/^# N_ '\(.*\)'\$/\1/p" "${JUST}" | sort)"
 [[ -n "${SAID}" ]] || fail "no sentences read from outside.rs"
 [[ "${SAID}" == "${LISTED}" ]] || { diff <(echo "${SAID}") <(echo "${LISTED}") || true; fail "the service's sentences are not the # N_ lines of vault.just"; }
 
+# --- Every recipe's shared shell parses: a blank line inside `words` once broke every `ame vault` ---------------------------
+just --justfile "${JUST}" --evaluate words | bash -n || fail "the shell every recipe of vault.just runs (words) does not parse"
+
 # --- No rsa crate in what is built ----------------------------------------------------------------------------------------
 CRATES=/usr/share/licenses/amethystora-apps/crates/CRATES
 awk -F'\t' '$1 == "rsa" { found = 1 } END { exit found }' "${CRATES}" || fail "the rsa crate is built into the apps (RUSTSEC-2023-0071)"
