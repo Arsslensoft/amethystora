@@ -94,6 +94,7 @@ export class Walk {
         this._step.text = count > 1
             ? _('Step {n} of {count}: {words}').replace('{n}', String(index + 1)).replace('{count}', String(count)).replace('{words}', step.say)
             : step.say;
+        this._said = this._step.text;
         this._fillButtons(step, null);
         this._raise();
         this._place(null);
@@ -313,8 +314,10 @@ export class Walk {
         this._box = box;
         if (box) {
             // Found, and still asked now and then while the step lasts: a page changed or scrolled in the app moves the thing,
-            // and the ring would stay round what is no longer there
+            // and the ring would stay round what is no longer there. Found after it was said that it could not be, the step
+            // says only its own words again
             this._findUntil = GLib.get_monotonic_time() + FIND_FOR * 1000;
+            this._step.text = this._said ?? step.say;
             this._showBox(window);
             this._askLater(step, window, FIND_AGAIN);
         } else if (GLib.get_monotonic_time() < this._findUntil) {
@@ -322,7 +325,9 @@ export class Walk {
             this._hideRing();
             this._askLater(step, window, FIND_EVERY);
         } else {
+            // Said in words, and still looked for, more seldom, while the step lasts: the person may open its page now
             this._notFound();
+            this._askLater(step, window, 2 * FIND_AGAIN);
         }
     }
 
@@ -369,9 +374,8 @@ export class Walk {
     _notFound() {
         this._hideRing();
         const words = _('I cannot point at this one here. The manual says it in words.');
-        const step = this._guide.steps[this._at];
         if (!this._step.text.endsWith(words))
-            this._step.text = `${step.say}\n${words}`;
+            this._step.text = `${this._said ?? this._guide.steps[this._at].say}\n${words}`;
         this._place(null);
     }
 
