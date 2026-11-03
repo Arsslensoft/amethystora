@@ -458,7 +458,7 @@ mod tests {
             "ame plugin add https://example.org/p.git",
             "ame plugin update dev.example.x",
             "ame plugin rollback dev.example.x",
-            "ame plugin dev dev.example.x",
+            "ame -q plugin::dev dev.example.x",
             "ame -q plugin::grant dev.example.x",
             "ame Plugin Grant dev.example.x",
             "ame -- plugin -- add x",
