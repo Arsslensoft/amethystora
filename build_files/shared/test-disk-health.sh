@@ -203,4 +203,13 @@ rm -f "${T}/model"
 rm "${STATE}"
 [[ "$(bash "${HEALTH}" status --json)" == '{"time":null,"disks":[]}' ]] || fail "status before any check"
 
+# A disk first read with bad sectors already counted: they are its baseline, and only a later rise is news
+echo "${passed}" >"${T}/smart"
+rm -f "${STATE}"
+sectors 1 >"${T}/smart"
+says "an old bad sector is not news" ""
+[[ "$(field state)" == errors && "$(field errors)" == 2 ]] || fail "the baseline is kept as errors, 2"
+sectors 3 >"${T}/smart"
+says "a rise after the baseline" "told /dev/sda errors"
+
 echo "test-disk-health: fine"
