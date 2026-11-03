@@ -59,8 +59,18 @@ export class Screenshot {
         // GNOME's own methods, kept to be given back: the opening, wrapped, and the saving, which this takes over
         this._open = Object.getOwnPropertyDescriptor(ui, 'open');
         this._save = Object.getOwnPropertyDescriptor(ui, '_saveScreenshot');
+        this._close = Object.getOwnPropertyDescriptor(ui, 'close');
         const open = ui.open;
         ui.open = (mode, ...rest) => this._onOpen(open, mode, rest);
+        // GNOME closes the UI once a capture's saving returns: a capture refused while Hide what's private reads keeps it
+        const close = ui.close;
+        ui.close = (...rest) => {
+            if (this._keepOpen) {
+                this._keepOpen = false;
+                return;
+            }
+            close.call(ui, ...rest);
+        };
         // The pen's Text tool (modules/touch/ring.js) asks for one capture to go to Extract Text
         ui._saveScreenshot = () => this._take(this._forText && !this._ui?._castButton?.checked ? 'extract' : 'normal');
 
@@ -119,7 +129,7 @@ export class Screenshot {
         this._pins = null;
         this._notifications?.destroy();
         this._notifications = null;
-        for (const [name, descriptor] of [['open', this._open], ['_saveScreenshot', this._save]]) {
+        for (const [name, descriptor] of [['open', this._open], ['_saveScreenshot', this._save], ['close', this._close]]) {
             if (descriptor)
                 Object.defineProperty(ui, name, descriptor);
             else
@@ -307,6 +317,14 @@ export class Screenshot {
         // Hide what's private is still reading the picture: it is not taken without the boxes it was asked to put on
         if (this._session?.coverReading) {
             this._session.coverWait();
+            // The close GNOME makes right after a normal capture's saving returns, and only that one
+            if (kind === 'normal') {
+                this._keepOpen = true;
+                GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
+                    this._keepOpen = false;
+                    return GLib.SOURCE_REMOVE;
+                });
+            }
             return Promise.resolve();
         }
         let picturing;
