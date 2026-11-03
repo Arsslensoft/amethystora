@@ -208,18 +208,18 @@ impl Session {
             // The very certificate the person compared whole is the server's: a server at an address its certificate does not
             // name (CN=localhost reached at 10.0.0.111) is still the one they trusted. Its chain is checked as ever; only the name
             // is not, and only for that certificate: one a pinned CA issued must still name the host
+            // Whatever stops that second try, the answer is the first's
             Err(Failure::Untrusted) if self.pin.is_some() => {
-                let tcp = tcp_to(host, port)?;
-                set_tcp_deadline(&tcp, deadline)?;
-                let mut configured = self.connector.configure().map_err(|_| Failure::Unreachable)?;
-                configured.set_verify_hostname(false);
-                let tls = configured.connect(name, tcp).map_err(failure)?;
-                let presented = tls.ssl().peer_certificate().map(|cert| fingerprint(&cert));
-                if presented.is_some() && presented == self.pin {
-                    Ok(Stream::Tls(Box::new(tls)))
-                } else {
-                    Err(Failure::Untrusted)
-                }
+                let again = || -> Option<Stream> {
+                    let tcp = tcp_to(host, port).ok()?;
+                    set_tcp_deadline(&tcp, deadline).ok()?;
+                    let mut configured = self.connector.configure().ok()?;
+                    configured.set_verify_hostname(false);
+                    let tls = configured.connect(name, tcp).ok()?;
+                    let presented = tls.ssl().peer_certificate().map(|cert| fingerprint(&cert));
+                    (presented.is_some() && presented == self.pin).then(|| Stream::Tls(Box::new(tls)))
+                };
+                again().ok_or(Failure::Untrusted)
             }
             Err(failure) => Err(failure),
         }

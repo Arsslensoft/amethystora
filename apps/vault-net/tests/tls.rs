@@ -144,6 +144,16 @@ fn a_pinned_server_certificate_is_trusted_itself() {
 }
 
 #[test]
+fn a_pinned_server_certificate_is_trusted_at_an_address_it_does_not_name() {
+    // A server at home with a certificate of its own for another name (CN=localhost, reached by its address): the person compared
+    // this very certificate's fingerprint, so its name is not held against it
+    let (leaf, key) = certificate("elsewhere.test", &["elsewhere.test"], false, None);
+    let (port, _thread) = serve(&leaf, &key, &[], OK, 2);
+    let mut session = Session::new(vec![format!("https://localhost:{port}")], Some(&pem(&leaf)), Some(&fingerprint(&leaf))).unwrap();
+    assert_eq!(get(&mut session, port), Ok(200));
+}
+
+#[test]
 fn the_probe_shows_what_the_server_shows_without_trusting_it() {
     let (ca, ca_key) = certificate("Test CA", &[], true, None);
     let (leaf, leaf_key) = certificate("localhost", &["localhost"], false, Some((&ca, &ca_key)));
