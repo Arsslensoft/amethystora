@@ -1320,6 +1320,12 @@ fn a_real_forwarded_login_cannot_have_a_message_signed_without_asking() {
     let _ = server.kill();
     let _ = server.wait();
     let (out, err) = (String::from_utf8_lossy(&done.stdout).into_owned(), String::from_utf8_lossy(&done.stderr).into_owned());
+    // The image build's container logs in but gives the far side no forwarded agent at all (seen in the Beta of 16f323f6): that is
+    // the place, not the Vault, and `a_forwarded_connection_asks_every_time_says_so_and_lists_no_names` holds the same rule there
+    if !out.contains("SHA256:") && format!("{out}{err}").contains("Could not open a connection to your authentication agent") {
+        eprintln!("sshd forwarded no agent on this machine: this test did not run\n{err}");
+        return;
+    }
     // The far side was shown a key and no name for it, and what it signed was asked
     assert!(out.contains("SHA256:") && !out.contains("my key"), "{out} {err}");
     assert!(out.contains("SIGNED"), "{out} {err}");
