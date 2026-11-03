@@ -1459,7 +1459,7 @@ grep -vh '^ *#' /usr/libexec/amethystora-free-space | grep -qE 'volume prune|pru
 # ...and a check connects to nothing: Homebrew's dry run would fetch its list of formulae
 grep -q '"--dry-run"' /usr/libexec/amethystora-free-space && false
 # Uninstall goes through the trash: what it may touch is the app's own folder, and it never deletes it
-grep -vh '^ *#' /usr/libexec/amethystora-uninstall | grep -qE 'rmtree|--delete-data' && false
+sed -n '/^"""$/,$p' /usr/libexec/amethystora-uninstall | grep -vE '^ *#' | grep -qE 'rmtree|--delete-data' && false
 # Anything opens: its launcher stays out of the app grid, claims what the image does not open, and the index GIO reads has it. An
 # image's own launcher never loses a kind to it, text and folders are never claimed, and a claim outranks only nothing: Flatpak's
 # launchers come first, and in its own folder, a package added later included, its name sorts last (test-files-group.sh)
