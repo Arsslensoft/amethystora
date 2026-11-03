@@ -32,8 +32,8 @@ from gi.repository import Gio, GLib  # noqa: E402
 
 APP_ID = r"[A-Za-z_][A-Za-z0-9_-]*(\.[A-Za-z_][A-Za-z0-9_-]*)+"
 REF = re.compile(rf"^app/({APP_ID})/[A-Za-z0-9_]+/[A-Za-z0-9_.-]+$")
-# What Flatpak prints for a size: "68.1 MB"
-SIZE = re.compile(r"^[0-9][0-9.,]* ?[kKMGT]?i?B$")
+# What Flatpak prints for a size: "68.1 MB", with a no-break space between them (GLib's g_format_size)
+SIZE = re.compile(r"^[0-9][0-9.,]*[ \u00a0]?[kKMGT]?i?B$")
 MOST_APPS = 3
 LAUNCHER = "zz-amethystora-open-anything.desktop"
 HIDDEN = "[Desktop Entry]\nHidden=true\n"
