@@ -416,8 +416,14 @@ class AmethystoraPill extends St.Widget {
             }
         };
         if (reduce) {
+            // Shown, then gone, by a timer: with animations off GNOME ends every ease at once, which showed nothing
             flash.opacity = 200;
-            flash.ease({opacity: 0, delay: FLASH, duration: FLASH, mode: Clutter.AnimationMode.LINEAR, onStopped: gone});
+            let timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2 * FLASH, () => {
+                timer = 0;
+                gone();
+                return GLib.SOURCE_REMOVE;
+            });
+            flash.connect('destroy', () => timer && GLib.source_remove(timer));
             return;
         }
         flash.ease({
