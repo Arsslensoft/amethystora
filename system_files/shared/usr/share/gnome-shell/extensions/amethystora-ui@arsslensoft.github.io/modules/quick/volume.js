@@ -137,12 +137,45 @@ export class VolumeBlock {
                 if (this._sounding() && mixer.lookup_stream_id(id) instanceof Gvc.MixerSinkInput)
                     this._askSoon();
             }, this);
+            this._listen();
         }
         this._update();
         this._askSoon(0);
     }
 
+    // The mixer says nothing when a stream is only paused (corked): while the menu is open, PipeWire's own events about
+    // the apps' streams say when to ask again. Its lines are only counted, never kept
+    _listen() {
+        const listening = new Gio.Cancellable();
+        this._listening = listening;
+        let process;
+        try {
+            process = Gio.Subprocess.new(['/usr/bin/pactl', 'subscribe'], Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_SILENCE);
+        } catch (e) {
+            console.debug(`Amethystora UI: pactl did not start: ${e.message}`);
+            return;
+        }
+        listening.connect(() => process.force_exit());
+        const lines = new Gio.DataInputStream({base_stream: process.get_stdout_pipe(), close_base_stream: true});
+        const next = () => lines.read_line_async(GLib.PRIORITY_DEFAULT, listening, (stream, result) => {
+            let line;
+            try {
+                [line] = stream.read_line_finish_utf8(result);
+            } catch {
+                return;
+            }
+            if (line === null || this._listening !== listening)
+                return;
+            if (line.includes("'change' on sink-input"))
+                this._askSoon();
+            next();
+        });
+        next();
+    }
+
     closed() {
+        this._listening?.cancel();
+        this._listening = null;
         this._mixer?.disconnectObject(this);
         this._mixer = null;
         if (this._askTimer)
