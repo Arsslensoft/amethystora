@@ -21,7 +21,7 @@ fail() {
 has() { grep -qxF -- "$2" "$1" || fail "$1 lacks the line \"$2\""; }
 
 # --- What is installed -----------------------------------------------------------------------------------------------------
-for program in service cli work native net; do
+for program in service cli work net; do
     test -x "/usr/libexec/amethystora-vault-${program}" || fail "/usr/libexec/amethystora-vault-${program} is not installed"
 done
 for program in git-credential-amethystora docker-credential-amethystora amethystora-vault; do
@@ -30,13 +30,11 @@ done
 test -s /usr/lib64/amethystora-vault/libamethystora_vault_pkcs11.so || fail "the PKCS#11 module is not installed"
 test -s /usr/lib/amethystora-vault/amethystora-vault || fail "the window's program is not installed"
 test -s /usr/lib/amethystora-vault/resources/app/locale/en.json || fail "the window's messages are not listed"
-# The service and the browser's host never load libcrypto: the keys' process holds no parser, and its memory is eight megabytes
-# (the network service does, for TLS, and holds no key)
-for program in service native; do
-    if ldd "/usr/libexec/amethystora-vault-${program}" | grep -q 'libcrypto\|libssl'; then
-        fail "amethystora-vault-${program} links libcrypto, which only the short-lived worker may"
-    fi
-done
+# The service never loads libcrypto: the keys' process holds no parser, and its memory is eight megabytes (the network service
+# does, for TLS, and holds no key)
+if ldd /usr/libexec/amethystora-vault-service | grep -q 'libcrypto\|libssl'; then
+    fail "amethystora-vault-service links libcrypto, which only the short-lived worker may"
+fi
 grep -q '^u amethystora-vault ' /usr/lib/sysusers.d/amethystora-vault.conf || fail "no sysusers line for the service's user"
 grep -q '^u amethystora-vault-net ' /usr/lib/sysusers.d/amethystora-vault-net.conf || fail "no sysusers line for the network service's user"
 
@@ -106,7 +104,7 @@ fi
 
 # --- The recipes: every one the window, the manual and the knowledge name exists ------------------------------------------
 for recipe in setup status vaults open lock methods change-password new rename remove-this forget item password codes auth key \
-    cert pdf root browser ssh get run protect protected unprotect helpers sync backup restore logos tls; do
+    cert pdf root ssh get run protect protected unprotect helpers sync backup restore logos tls; do
     ame --show "vault::${recipe}" >/dev/null || fail "ame vault ${recipe} is no command"
 done
 # A secret is never an argument, and the recipes that keep the person's place do not change folder
