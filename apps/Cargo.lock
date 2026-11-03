@@ -203,6 +203,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "amethystora-plugin-host"
+version = "1.0.0"
+dependencies = [
+ "futures-channel",
+ "futures-util",
+ "gio",
+ "glib",
+ "libc",
+ "serde",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
 name = "amethystora-security"
 version = "1.0.0"
 dependencies = [

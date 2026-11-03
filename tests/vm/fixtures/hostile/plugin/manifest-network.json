@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "id": "dev.example.hostile",
+  "name": "Hostile",
+  "version": "1.0.1",
+  "license": "Apache-2.0",
+  "command": ["./run.sh"],
+  "contributes": {"pill": {}},
+  "actions": ["fs", "bus", "net", "proc", "bomb", "netp"],
+  "needs": {
+    "network": [{"host": "granted.example.test", "why": "A host the lab's /etc/hosts points at 192.168.7.7"}]
+  }
+}

@@ -1,0 +1,47 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+ "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<!--
+  The plugin host on the session bus (plans/PLAN-plugins.md). amethystora-plugin-host owns the name org.amethystora.Plugins
+  while at least one plugin is on; the shell's `plugins` module (a later phase), Control and Security are its clients. This file
+  is the contract between them: change it with the plan.
+
+  Conventions
+   - Callers are known by the file they run (/proc/PID/exe of the connection): GNOME Shell, Control and Security. Any other
+     program of the account is refused (org.amethystora.Plugins.Error.NotAvailable), and a signal goes only to a caller that
+     asked something.
+   - Everything a plugin printed has been read, refused or cleaned by the host (output.rs) before it is here: text without markup,
+     icons as theme names, at most twenty elements in a card. Clients still clamp it again, and draw it as text.
+   - A plugin's id is its reverse-domain name. The host does the work; a client keeps nothing.
+-->
+<node>
+  <interface name="org.amethystora.Plugins">
+    <!-- A JSON array, one object for each plugin that is on: {"id", "name", "version", "output", "error", "paused"}. "output" is
+         what its last run printed, as the host passed it, or null; "error" says why the last run failed, or is empty -->
+    <method name="List">
+      <arg type="s" name="plugins" direction="out"/>
+    </method>
+    <!-- Runs one of the plugin's own actions, which its manifest names. The answer comes as Updated; this returns at once -->
+    <method name="Action">
+      <arg type="s" name="id" direction="in"/>
+      <arg type="s" name="action" direction="in"/>
+    </method>
+    <!-- Stops a plugin running until Resume. Nothing is granted or taken away by it -->
+    <method name="Pause">
+      <arg type="s" name="id" direction="in"/>
+    </method>
+    <method name="Resume">
+      <arg type="s" name="id" direction="in"/>
+    </method>
+    <!-- A plugin printed something new (the same object List gives), or failed -->
+    <signal name="Updated">
+      <arg type="s" name="id"/>
+      <arg type="s" name="plugin"/>
+    </signal>
+    <!-- Sending to a host passed its limit and it is blocked until a person decides (Keep blocked, or Allow, which asks for an
+         administrator's approval) -->
+    <signal name="OverLimit">
+      <arg type="s" name="id"/>
+      <arg type="s" name="host"/>
+    </signal>
+  </interface>
+</node>

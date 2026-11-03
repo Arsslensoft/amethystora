@@ -1,0 +1,34 @@
+# amethystora-plugin-host and amethystora-plugin-root: the plugin system (plans/PLAN-plugins.md, phase 1). The host is a user
+# service that runs each plugin in a bubblewrap sandbox, checks what it prints and stands between it and the network; the
+# root helper, started only through pkexec, is the one writer of /var/lib/amethystora/plugins. No GTK: the apps stage
+# builds both on their own, and 13-apps.sh installs them in /usr/libexec. The library holds what both and the tests need;
+# only the host's service links GLib.
+[package]
+name = "amethystora-plugin-host"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+name = "amethystora_plugin_host"
+path = "src/lib.rs"
+
+[[bin]]
+name = "amethystora-plugin-host"
+path = "src/main.rs"
+
+[[bin]]
+name = "amethystora-plugin-root"
+path = "src/bin/root.rs"
+
+[dependencies]
+# The bus name and its calls, as the phone link has them: GLib's own
+gio = "0.22"
+glib = "0.22"
+futures-channel = "0.3"
+futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
+libc = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }

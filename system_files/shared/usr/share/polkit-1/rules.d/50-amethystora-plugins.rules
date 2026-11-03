@@ -1,0 +1,18 @@
+// The plugin system's root helper (plans/PLAN-plugins.md, Integrity; org.amethystora.plugins.policy). What can only give a plugin
+// less, or has the person read what was kept, or adds a plugin of the image itself (its files are the signed image's, and the
+// helper grants exactly what its manifest names), is allowed to the person at the machine without a password. What gives a plugin
+// more (commit, grant, unblock, rollback) is not named here and asks an administrator every time: 20-tests.sh holds this list.
+polkit.addRule(function (action, subject) {
+    var withoutPassword = [
+        "org.amethystora.plugins.prepare",
+        "org.amethystora.plugins.inspect",
+        "org.amethystora.plugins.revoke",
+        "org.amethystora.plugins.block",
+        "org.amethystora.plugins.remove",
+        "org.amethystora.plugins.commit-shipped"
+    ];
+    if (withoutPassword.indexOf(action.id) >= 0 && subject.local && subject.active) {
+        return polkit.Result.YES;
+    }
+    return polkit.Result.NOT_HANDLED;
+});

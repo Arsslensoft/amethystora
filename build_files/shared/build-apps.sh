@@ -18,7 +18,7 @@ set -eoux pipefail
 # clang, bpftool, libbpf-devel and kernel-devel (for vmlinux.h) build amethystora-sensor's BPF object; the
 # sensor links Fedora's libbpf, which the image itself carries, so nothing of libbpf is vendored.
 dnf5 -y install --repo=fedora --repo=updates --setopt=install_weak_deps=False \
-    rust cargo gcc gtk4-devel libadwaita-devel jq nodejs clang llvm bpftool libbpf-devel kernel-devel
+    rust cargo gcc gtk4-devel libadwaita-devel jq nodejs clang llvm bpftool libbpf-devel kernel-devel libseccomp-devel
 # The Vault: the openssl crate (keys and certificates, in the one short-lived child that loads libcrypto) builds against
 # openssl-devel, and its tests hold the work to what other programs make of it: openssl, osslsigncode, pdfsig and pdftotext
 # (poppler-utils), certutil (nss-tools), ssh-keygen, oathtool, qrencode, a JDK for jarsigner and a private dbus-daemon
@@ -76,6 +76,11 @@ cargo build --release --locked -p amethystora-agent-tools
 cargo build --release --locked -p amethystora-clipboard-seal
 # The phone link's program (no GTK): it speaks the KDE Connect protocol, so that the phone's app works with it
 cargo build --release --locked -p amethystora-connect
+# The plugin system (plans/PLAN-plugins.md): the host that runs plugins in a sandbox, the root helper that is the only writer of
+# their store, and the sandbox's seccomp filter, written by a small C program with libseccomp (the version the image has)
+cargo build --release --locked -p amethystora-plugin-host
+gcc -Wall -O2 -o /tmp/seccomp-gen /tmp/apps/plugin-host/seccomp/gen.c -lseccomp
+/tmp/seccomp-gen /out/seccomp.bpf
 # The Vault (plans/PLAN-vault.md): the service, its command line and the child that does its libcrypto work,
 # the PKCS#11 module pdfsig loads, and the network service that sync reaches a server through (no key, no state)
 cargo build --release --locked -p amethystora-vault-service -p amethystora-vault-pkcs11 -p amethystora-vault-net
@@ -83,7 +88,7 @@ cargo build --release --locked -p amethystora-vault-service -p amethystora-vault
 mkdir -p /out/licenses
 install -Dpm0755 "${CARGO_TARGET_DIR}/release/amethystora-apps" /out/amethystora-apps
 install -Dpm0755 "${CARGO_TARGET_DIR}/release/amethystora-sensor" /out/amethystora-sensor
-for program in amethystora-agent-tools amethystora-agent-root amethystora-clipboard-seal amethystora-connect \
+for program in amethystora-agent-tools amethystora-agent-root amethystora-clipboard-seal amethystora-connect amethystora-plugin-host amethystora-plugin-root \
     amethystora-vault-service amethystora-vault-cli amethystora-vault-work amethystora-vault-net \
     git-credential-amethystora docker-credential-amethystora; do
     install -Dpm0755 "${CARGO_TARGET_DIR}/release/${program}" "/out/${program}"
@@ -103,14 +108,14 @@ ldd "${CARGO_TARGET_DIR}/release/amethystora-sensor" | grep -q 'libbpf\.so\.1' |
 # Every crate built into the program (its normal dependencies: build tools and test-only crates are not in
 # it), with its licence, and the licence and notice files it ships: most are MIT or Apache-2.0, whose
 # terms ask for their notices to travel with the program
-cargo tree --locked -p amethystora-apps -p amethystora-sensor -p amethystora-agent-tools -p amethystora-clipboard-seal -p amethystora-connect \
+cargo tree --locked -p amethystora-apps -p amethystora-sensor -p amethystora-agent-tools -p amethystora-clipboard-seal -p amethystora-connect -p amethystora-plugin-host \
     -p amethystora-vault-service -p amethystora-vault-pkcs11 -p amethystora-vault-net -e normal --prefix none --format '{p}' |
     sed -n 's/^\([^ ]*\) v\([^ ]*\)\( (\*)\)\{0,1\}$/\1\t\2/p' | sort -u >/tmp/built.tsv
 cargo metadata --locked --format-version 1 >/tmp/metadata.json
 jq -r '.packages[] | select(.source != null)
     | [.name, .version, (.license // "see its licence file"), (.repository // ""), (.manifest_path | sub("/Cargo.toml$"; ""))]
     | @tsv' /tmp/metadata.json | sort -u >/tmp/packages.tsv
-printf '# The Rust crates built into the Amethystora apps, amethystora-sensor, the agent tools, the clipboard seal, the phone link and the Vault: name, version, licence, source\n' \
+printf '# The Rust crates built into the Amethystora apps, amethystora-sensor, the agent tools, the clipboard seal, the phone link, the plugin host and the Vault: name, version, licence, source\n' \
     >/out/licenses/CRATES
 missing=()
 while IFS=$'\t' read -r name version licence repository folder; do

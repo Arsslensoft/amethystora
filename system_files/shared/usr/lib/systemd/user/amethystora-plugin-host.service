@@ -1,0 +1,30 @@
+[Unit]
+Description=Amethystora plugins, run in a sandbox
+Documentation=file:///usr/share/amethystora/manual/plugins.md
+# Not enabled for anyone as the image ships: `ame plugin on` enables and starts it for the account that turns a plugin on, and it
+# stops itself when the last one is off. Nothing runs, listens or waits while no plugin is on.
+After=graphical-session.target
+
+# As the account, on the session bus. Each plugin runs under systemd-run --user, in a scope of its own with its budgets, inside
+# bubblewrap; this service only reads the store (root's), holds the proxy a plugin's network goes through, and checks what a
+# plugin prints. Never root.
+[Service]
+Type=dbus
+BusName=org.amethystora.Plugins
+ExecStart=/usr/libexec/amethystora-plugin-host
+Restart=on-failure
+RestartSec=5
+# A plugin's own budgets are its scope's; what the host itself may use is bounded as well
+TasksMax=256
+MemoryMax=256M
+# No setting that needs a namespace (ProtectSystem=, ReadWritePaths=, Private*=, ProtectKernel*=, CapabilityBoundingSet= and the
+# like): a user's manager can only have those in a user namespace of the program's own, from which /proc/PID/exe of GNOME Shell is
+# unreadable, so the host could not tell the shell from a stranger on the bus, and bubblewrap could not make its own sandboxes.
+# As the account, without capabilities, those settings kept little. 20-tests.sh refuses them here.
+NoNewPrivileges=yes
+RestrictRealtime=yes
+LockPersonality=yes
+UMask=0077
+
+[Install]
+WantedBy=graphical-session.target

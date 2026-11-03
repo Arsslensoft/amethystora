@@ -1683,6 +1683,65 @@ in `plans/amethystora-connect/` are the protocol, the plugins and the desktop si
 - **Interop** is tested against Fedora's `kdeconnectd` as the phone (`apps/connect/tests/`), and a real phone last; what a
   real phone does differently goes back into the specs.
 
+### Plugins
+
+`plans/PLAN-plugins.md` is the design, every decision in it final; **phase 1 is built** (the root helper, the store, the host, the
+sandbox, the proxy, `ame plugin`), and nothing of the shell, Control, Security, the watcher, the broker's `state`/`control`/`events`
+or the widgets' move onto it is. **A plugin's code never runs in the shell**: it runs in bubblewrap as a process of its own and prints
+what to show, which the host reads, refuses or cleans, and the shell will draw from a fixed set of elements. `apps/plugin-host` is one
+crate (no GTK; only the host's `service.rs` links GLib) with two programs: `amethystora-plugin-root` and `amethystora-plugin-host`.
+
+- **The store is root's** (`/var/lib/amethystora/plugins`, tmpfiles): `store/<tree digest>/`, `accounts/<uid>/grants.json` and
+  `history.jsonl`, `quarantine/<ticket>` (0700, cleared at boot and after an hour). `amethystora-plugin-root` is its one writer and
+  starts only through pkexec, one polkit action per verb in `org.amethystora.plugins.policy`, picked by `exec.argv1` (a new verb is a
+  new action, and `test-plugins.sh` counts ten). The account is `PKEXEC_UID`, never an argument; each argument is held to
+  `valid_perm_arg`'s short set of characters (so `$(command_line)` in the dialog is what runs); what is granted is checked against the
+  manifest in the *frozen* files, never against what the caller says. `prepare` reads a bounded tar on stdin (`tree.rs`: files and
+  folders only, no link, device, FIFO, `..`, absolute path or setuid bit; its own modes; `openat` with `O_NOFOLLOW|O_EXCL`), `inspect`
+  prints what was frozen as tab-separated lines for a person to read, `commit ID DIGEST PERM...` moves the frozen tree into the store and
+  rewrites `grants.json` atomically (a block and the old digest, kept as `previous`, survive an update), `grant` widens an installed
+  plugin, `commit-shipped` grants exactly a manifest of `/usr/share/amethystora/plugins` (never `network`, `files`, `window` or
+  `change`), and `revoke`, `block`, `remove`, `unblock`, `rollback` change grants only (a rollback never gives more than the older
+  version's manifest asked). `50-amethystora-plugins.rules` lets the active local session through for `prepare`, `inspect`, `revoke`,
+  `block`, `remove` and `commit-shipped`, and names **nothing that gives more** (`commit`, `grant`, `unblock`, `rollback`): those are
+  `auth_admin`, no `_keep`, no `yes`. Never `NOPASSWD`, never a `--yes` on `grant` or `add` (both ask in a terminal, a permission at
+  a time, `need_terminal`).
+- **One definition of everything** (`manifest.rs`, `output.rs`, `sandbox.rs`): a permission is a normal-form string
+  (`network=api.github.com`, `files=~/Documents/ci:ro`, `state=clock`, `notify`...), the same text in the manifest check, the helper's
+  arguments, the grants and the dialog. The manifest asks with `needs`: `network` entries with `host`, `why` and an optional byte
+  `limit` (named hosts, wildcards `*.example.org`, never an address or `any`), `files` (a `~/` path with no dot-folder, no `..`, not
+  `Private`, checked again by `files.rs` on the real path after links), `state`/`control`/`events`/`change` as `{names, why}`, and
+  `notify|open|clipboard-write|pick|window` as `{why}`; no `why`, no permission. `amethystora.` ids are the system's, so only a
+  shipped manifest parses with `parse_with(.., true)`. `network-local` parses and is granted but the proxy gives it nothing yet.
+  What a plugin prints is one JSON object (or plain text): the widget format plus `progress`, `until`, `private` and a `card` of at most
+  20 elements; icons are theme names, never a path; actions are ids of the manifest's `actions`; text loses control and bidi
+  characters; output over 64 KiB or a card over 20 is refused, not truncated.
+- **The sandbox is one function**, `sandbox::bwrap_args`, printed by `amethystora-plugin-host sandbox ID` and `ame plugin show` and run by
+  `host::Runner::run` under `systemd-run --user --scope` with `MemoryMax=256M`, `CPUQuota=25%`, `TasksMax=64`, 30 s a run, 5 s between
+  runs and never two at once, 8 MiB of state (also while a run writes: `RLIMIT_FSIZE` and a check every half second). The filter is written at build time by `apps/plugin-host/seccomp/gen.c` (libseccomp, which the apps stage
+  installs) into `/usr/share/amethystora/plugins/seccomp.bpf` and passed on descriptor 9; a missing filter means nothing runs. The host
+  loads a plugin only if its folder still has the approved digest (`Store::verify`), and reads grants.json again for every run and
+  every proxy connection, so a revoke or block applies at once.
+- **The network is a proxy** (`proxy.rs`): the sandbox has only loopback, so a plugin with a `network=` permission gets a socket
+  bound at `/proxy/proxy.sock` and `amethystora-plugin-host shim` (started inside the sandbox) forwards `HTTPS_PROXY`'s connections to
+  it. It takes `CONNECT host:443` for granted, unblocked hosts, resolves the name itself and refuses if any address is private,
+  loopback, link-local or reserved (`forbidden_ip`, IPv4-in-IPv6 judged by the IPv4 it carries), counts bytes sent per allowed entry, so a wildcard's hosts share one allowance (default
+  1 MiB an hour), blocks and cuts the connection past the limit, and a block set by the person cuts open connections within a
+  quarter of a second. Every refusal is the same 403. At most 16 connections a plugin. A limit block is also written to the store through `pkexec amethystora-plugin-root block`, untested until phase 0.
+- **The host** (`org.amethystora.Plugins`, `dbus/org.amethystora.Plugins.xml`, `amethystora-plugin-host.service`, enabled for nobody) runs
+  while a plugin is on: `ame plugin on` writes `~/.local/state/amethystora/plugins/enabled`, enables the unit, and the service watches
+  that folder and ends itself when the list is empty. Its unit has no namespace setting for the reason the phone link's has none
+  (`/proc/PID/exe` of the callers), and callers are GNOME Shell, Control and Security by that file. `/etc/amethystora/plugins.conf`
+  (`ALLOW=off|granted|all`, `BLOCK_NETWORK=yes`; unreadable or writable by others counts as the strictest) is read by the host.
+- **The agent** never grants: `never.rs` refuses `ame plugin grant|unblock|add|update|rollback|dev`, `amethystora-plugins` with those
+  words, `amethystora-plugin-root` and `org.amethystora.plugins` in any spelling; it may `revoke`, `block`, `on`, `off`, `check`,
+  `list`, `show`.
+- **Tests:** cargo (manifest, output, tar refusals, proxy address rules, the helper's flow), `build_files/shared/test-plugins.sh` (from
+  `20-tests.sh`), and `tests/vm/suites/72-plugins.sh` with `tests/vm/fixtures/hostile` (a hostile plugin and a hostile account; the suite
+  was written and has not been run). Not built yet: the shell module, the pill and every other surface, Control's page, Security's
+  section and report check, `plugin-approval`, the watcher and `amethystora-sends`, `pick`, `change`, the broker, `new|dev|run`,
+  `update --all`, drafts and the agent's skill; the widgets still run unsandboxed until phase 3 moves them over.
+
 ### The icon packs
 
 `amethystora-glass`, `-glass-light`, `-neon`, `-neon-light`, `-duotone`, `-line`, `-clay` and `-muted`

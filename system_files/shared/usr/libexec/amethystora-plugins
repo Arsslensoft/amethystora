@@ -1,0 +1,373 @@
+#!/usr/bin/bash
+# What `ame plugin` runs (plans/PLAN-plugins.md). It reads with amethystora-plugin-host, which only reads the store, and changes
+# the store only through pkexec amethystora-plugin-root, one polkit action for each verb. Nothing here grants anything by itself:
+# `grant` and `add` ask in a terminal, for each permission on its own, and cannot be answered in advance; an administrator's approval comes after,
+# from polkit's own dialog. The agent never runs them (never.rs).
+#
+#   list|show|check|verify|history [--json]   read
+#   add SOURCE [--digest SHA256]              from a git address (https), a folder or a .amethystora-plugin file
+#   update ID SOURCE                          the same, for a plugin that is installed: what is new is shown first
+#   grant ID [PERMISSION...]                  more of what an installed plugin asks for
+#   revoke ID [PERMISSION...] | block ID [HOST] | unblock ID [HOST] | remove ID | rollback ID
+#   on ID | off ID                            whether it runs, which stays inside what was approved
+set -euo pipefail
+# shellcheck source=/dev/null
+source gettext.sh
+export TEXTDOMAIN=amethystora
+
+HOST=/usr/libexec/amethystora-plugin-host
+ROOT=/usr/libexec/amethystora-plugin-root
+STATE="${XDG_STATE_HOME:-${HOME}/.local/state}/amethystora/plugins"
+ID_PATTERN='^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$'
+WORK=""
+trap '[[ -z "${WORK}" ]] || rm -rf -- "${WORK}"' EXIT
+
+die() {
+    echo "$1" >&2
+    exit "${2:-1}"
+}
+
+usage() {
+    echo "usage: ame plugin list|show|add|update|remove|check|verify|history|rollback|on|off|grant|revoke|block|unblock" >&2
+    exit 64
+}
+
+valid_id() {
+    [[ "$1" =~ ${ID_PATTERN} && ${#1} -le 64 ]]
+}
+
+# Asking is only ever done by a person at a terminal: there is no way to answer in advance
+need_terminal() {
+    [[ -t 0 && -t 1 ]] || die "$(gettext "This asks you before it changes anything, so it needs a terminal.")" 1
+}
+
+ask() {
+    local answer
+    read -r -p "$1 [y/N] " answer || return 1
+    [[ "${answer}" == y || "${answer}" == Y || "${answer}" == yes ]]
+}
+
+# One line of the host's tab-separated answer: the first field names it
+field() {
+    awk -F'\t' -v key="$1" '$1 == key { print $2; exit }'
+}
+
+cmd_list() {
+    if [[ "${1:-}" == --json ]]; then
+        exec "${HOST}" list --json
+    fi
+    local found=0 id version state name
+    while IFS=$'\t' read -r id version state name; do
+        found=1
+        case "${state}" in
+            on) state="$(gettext "on")" ;;
+            changed) state="$(gettext "changed")" ;;
+            *) state="$(gettext "off")" ;;
+        esac
+        printf '%-40s %-9s %-8s %s\n' "${id}" "${version}" "${state}" "${name}"
+    done < <("${HOST}" list)
+    if ((!found)); then
+        gettext "No plugin is installed. Add one with: ame plugin add ADDRESS"
+        echo
+    fi
+}
+
+cmd_show() {
+    valid_id "${1:-}" || usage
+    if [[ "${2:-}" == --json ]]; then
+        exec "${HOST}" show "$1" --json
+    fi
+    local key a b
+    while IFS=$'\t' read -r key a b; do
+        case "${key}" in
+            id | name | version | license) printf '%-10s %s\n' "${key}" "${a}" ;;
+            digest) export digest="${a}"; eval_gettext "Files: \${digest}"; echo ;;
+            verified) [[ "${a}" == yes ]] || { export problem="${a}"; eval_gettext "STOPPED: \${problem}"; echo; } ;;
+            enabled) [[ "${a}" == true ]] && { gettext "It is on."; echo; } || { gettext "It is off."; echo; } ;;
+            granted) export perm="${a}" why="${b}"; eval_gettext "  allowed: \${perm}: \${why}"; echo ;;
+            asked) export perm="${a}" why="${b}"; eval_gettext "  asked, not allowed: \${perm}: \${why}"; echo ;;
+            blocked) export host="${a}"; eval_gettext "  blocked: \${host}"; echo ;;
+            sandbox) gettext "It runs like this:"; echo; echo "  ${a}" ;;
+        esac
+    done < <("${HOST}" show "$1")
+}
+
+cmd_check() {
+    [[ -n "${1:-}" ]] || usage
+    if [[ "${2:-}" == --json ]]; then
+        exec "${HOST}" check "$1" --json
+    fi
+    local key a b status=0 out
+    out="$("${HOST}" check "$1")" || status=$?
+    while IFS=$'\t' read -r key a b; do
+        case "${key}" in
+            error) export what="${a}"; eval_gettext "Not accepted: \${what}"; echo ;;
+            warning) export what="${a}"; eval_gettext "Note: \${what}"; echo ;;
+            perm) export perm="${a}" why="${b}"; eval_gettext "It asks for \${perm}: \${why}"; echo ;;
+        esac
+    done <<<"${out}"
+    if ((status == 0)); then
+        gettext "It can be installed. Nothing of it was run."
+        echo
+    fi
+    return "${status}"
+}
+
+cmd_verify() {
+    local status=0 key id why out
+    out="$("${HOST}" verify ${1:+"$1"})" || status=$?
+    while IFS=$'\t' read -r key id why; do
+        export id why
+        if [[ "${key}" == ok ]]; then
+            eval_gettext "\${id}: as it was approved"
+        else
+            eval_gettext "\${id}: CHANGED since it was approved (\${why})"
+        fi
+        echo
+    done <<<"${out}"
+    return "${status}"
+}
+
+cmd_history() {
+    if [[ "${2:-}" == --json || "${1:-}" == --json ]]; then
+        exec "${HOST}" history ${1:+"$1"} ${2:+"$2"}
+    fi
+    local when action id perms
+    while IFS=$'\t' read -r when action id perms; do
+        printf '%s  %-14s %s %s\n' "${when}" "${action}" "${id}" "${perms}"
+    done < <("${HOST}" history ${1:+"$1"})
+}
+
+units() {
+    # The host runs only while a plugin is on, and stops by itself when the last is off
+    if "${HOST}" list | awk -F'\t' '$3 == "on" { found = 1 } END { exit !found }'; then
+        systemctl --user enable --now amethystora-plugin-host.service
+    else
+        systemctl --user disable --now amethystora-plugin-host.service 2>/dev/null || true
+    fi
+}
+
+cmd_onoff() {
+    valid_id "${2:-}" || usage
+    "${HOST}" "$1" "$2"
+    units
+    export id="$2"
+    if [[ "$1" == enable ]]; then eval_gettext "\${id} is on."; else eval_gettext "\${id} is off."; fi
+    echo
+}
+
+cmd_root() {
+    # The verbs that give nothing (revoke, block, remove) need no password for the person at the machine; the ones that give more ask an
+    # administrator in polkit's own dialog, which names the plugin and each permission
+    valid_id "${2:-}" || usage
+    pkexec "${ROOT}" "$@" >/dev/null
+    export id="$2"
+    case "$1" in
+        revoke) eval_gettext "\${id} was given less." ;;
+        block) eval_gettext "What \${id} sends is blocked." ;;
+        unblock) eval_gettext "\${id} may send again." ;;
+        rollback) eval_gettext "\${id} is back at its earlier version." ;;
+    esac
+    echo
+}
+
+cmd_remove() {
+    valid_id "${1:-}" || usage
+    "${HOST}" disable "$1" || true
+    pkexec "${ROOT}" remove "$1" >/dev/null
+    units
+    rm -rf -- "${STATE:?}/$1"
+    export id="$1"
+    eval_gettext "\${id} was removed, with what it kept."
+    echo
+}
+
+# What was frozen, one permission at a time: nothing is granted that was not answered with a y
+consent() {
+    local id="$1" digest="$2" inspected="$3" previous="$4" key a b
+    local -a chosen=() asked=()
+    local -A why=()
+    while IFS=$'\t' read -r key a b; do
+        case "${key}" in
+            name) export name="${a}"; ;;
+            version) export version="${a}"; ;;
+            license) export license="${a}"; ;;
+            perm) asked+=("${a}"); why["${a}"]="${b}" ;;
+            file) export size="${a}" path="${b}" ;;
+        esac
+    done <<<"${inspected}"
+    export id name version license digest
+    eval_gettext "\${name} \${version} (\${id}), licence \${license}"
+    echo
+    eval_gettext "Its files, as frozen: \${digest}"
+    echo
+    local count
+    count="$(awk -F'\t' '$1 == "file" { n++ } END { print n + 0 }' <<<"${inspected}")"
+    export count
+    eval_gettext "\${count} files. Read them first if you want to: nothing of it has run."
+    echo
+    if ((${#asked[@]} == 0)); then
+        gettext "It asks for no permission."
+        echo
+    fi
+    for perm in "${asked[@]}"; do
+        export perm reason="${why[${perm}]}"
+        echo
+        eval_gettext "It asks for: \${perm}"
+        echo
+        eval_gettext "  Its reason: \${reason}"
+        echo
+        case "${perm}" in
+            network=*) gettext "  A host it may reach is a way for anything it knows to leave this computer."; echo ;;
+        esac
+        if grep -qxF -- "${perm}" <<<"${previous}"; then
+            gettext "  You allowed this before."
+            echo
+        fi
+        if ask "$(gettext "Allow it?")"; then
+            chosen+=("${perm}")
+        fi
+    done
+    local files=0 network=0 p
+    for p in "${chosen[@]}"; do
+        [[ "${p}" == files=* ]] && files=1
+        [[ "${p}" == network=* ]] && network=1
+    done
+    if ((files && network)); then
+        echo
+        gettext "These files and this network are allowed together: the plugin can send those files to those hosts."
+        echo
+        ask "$(gettext "Keep both?")" || {
+            gettext "Nothing was installed."
+            echo
+            return 1
+        }
+    fi
+    echo
+    if ! ask "$(gettext "Install it with only what you allowed?")"; then
+        gettext "Nothing was installed."
+        echo
+        return 1
+    fi
+    # An administrator approves in polkit's dialog, which shows this very command with each permission
+    pkexec "${ROOT}" commit "${id}" "${digest}" "${chosen[@]}" >/dev/null
+    eval_gettext "\${id} is installed. Turn it on with: ame plugin on \${id}"
+    echo
+}
+
+# The files of SOURCE as an archive on standard output: a folder is packed here, a file is sent as it is, and an address is cloned
+fetch() {
+    local source="$1"
+    # A pipeline runs this in a subshell of its own, which cleans up after itself
+    WORK="$(mktemp -d)"
+    trap '[[ -z "${WORK}" ]] || rm -rf -- "${WORK}"' EXIT
+    if [[ -d "${source}" ]]; then
+        "${HOST}" pack "${source}"
+    elif [[ -f "${source}" ]]; then
+        cat -- "${source}"
+    elif [[ "${source}" == https://* ]]; then
+        git clone --quiet --depth 1 -- "${source}" "${WORK}/clone" >&2 || die "$(gettext "It could not be fetched.")"
+        export commit
+        commit="$(git -C "${WORK}/clone" rev-parse HEAD)"
+        eval_gettext "Pinned at commit \${commit}." >&2
+        echo >&2
+        rm -rf -- "${WORK}/clone/.git"
+        "${HOST}" pack "${WORK}/clone"
+    else
+        die "$(gettext "A source is a folder, a .amethystora-plugin file or an https:// git address.")" 64
+    fi
+}
+
+install_from() {
+    local source="$1" want_digest="$2" expect_id="$3" previous=""
+    need_terminal
+    local out ticket digest id
+    out="$(fetch "${source}" | pkexec "${ROOT}" prepare)" || die "$(gettext "It was refused, so nothing was kept.")"
+    ticket="$(field ticket <<<"${out}")"
+    digest="$(field digest <<<"${out}")"
+    id="$(field id <<<"${out}")"
+    if [[ -n "${want_digest}" && "${want_digest}" != "${digest}" ]]; then
+        export digest want_digest
+        die "$(eval_gettext "Its digest is \${digest}, not the \${want_digest} you gave. Nothing was installed.")"
+    fi
+    if [[ -n "${expect_id}" && "${expect_id}" != "${id}" ]]; then
+        export id expect_id
+        die "$(eval_gettext "That is the plugin \${id}, not \${expect_id}. Nothing was installed.")"
+    fi
+    if [[ -n "${expect_id}" ]]; then
+        previous="$("${HOST}" show "${expect_id}" | awk -F'\t' '$1 == "granted" { print $2 }')"
+    fi
+    consent "${id}" "${digest}" "$(pkexec "${ROOT}" inspect "${ticket}")" "${previous}"
+}
+
+cmd_add() {
+    local source="${1:-}" want=""
+    [[ -n "${source}" ]] || usage
+    shift
+    while (($#)); do
+        case "$1" in
+            --digest) want="${2:-}"; shift 2 || usage ;;
+            *) usage ;;
+        esac
+    done
+    install_from "${source}" "${want}" ""
+}
+
+cmd_update() {
+    valid_id "${1:-}" && [[ -n "${2:-}" ]] || usage
+    install_from "$2" "" "$1"
+}
+
+cmd_grant() {
+    valid_id "${1:-}" || usage
+    need_terminal
+    local id="$1" digest key a b
+    shift
+    local -a want=("$@") chosen=()
+    local -A why=()
+    local -a asked=()
+    digest="$("${HOST}" show "${id}" | field digest)"
+    while IFS=$'\t' read -r key a b; do
+        if [[ "${key}" == asked ]]; then
+            asked+=("${a}")
+            why["${a}"]="${b}"
+        fi
+    done < <("${HOST}" show "${id}")
+    if ((${#asked[@]} == 0)); then
+        gettext "It asks for nothing more than it has."
+        echo
+        return 0
+    fi
+    for perm in "${asked[@]}"; do
+        if ((${#want[@]})) && ! printf '%s\n' "${want[@]}" | grep -qxF -- "${perm}"; then
+            continue
+        fi
+        export perm reason="${why[${perm}]}"
+        eval_gettext "\${perm}: \${reason}"
+        echo
+        if ask "$(gettext "Allow it?")"; then
+            chosen+=("${perm}")
+        fi
+    done
+    ((${#chosen[@]})) || { gettext "Nothing was allowed."; echo; return 0; }
+    pkexec "${ROOT}" grant "${id}" "${digest}" "${chosen[@]}" >/dev/null
+    export id
+    eval_gettext "\${id} was given what you allowed."
+    echo
+}
+
+case "${1:-}" in
+    list) shift; cmd_list "$@" ;;
+    show) shift; cmd_show "$@" ;;
+    check) shift; cmd_check "$@" ;;
+    verify) shift; cmd_verify "$@" ;;
+    history) shift; cmd_history "$@" ;;
+    on) shift; cmd_onoff enable "$@" ;;
+    off) shift; cmd_onoff disable "$@" ;;
+    add) shift; cmd_add "$@" ;;
+    update) shift; cmd_update "$@" ;;
+    grant) shift; cmd_grant "$@" ;;
+    revoke | block | unblock | rollback) cmd_root "$@" ;;
+    remove) shift; cmd_remove "$@" ;;
+    *) usage ;;
+esac

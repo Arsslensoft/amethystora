@@ -37,6 +37,8 @@ const PATHS: &[&str] = &[
     "ame_boot_tries", "/boot/grub2/custom.cfg", "/boot/grub2/grubenv",
     // The Vault (plans/PLAN-vault.md): its programs and units, its socket and its files, in any spelling that names them
     "amethystora-vault", "org.amethystora.vault", "/run/amethystora/vault", "/var/lib/amethystora/vault",
+    // The plugin system's root helper and its polkit actions, in any spelling (plans/PLAN-plugins.md): installing and widening are a person's
+    "amethystora-plugin-root", "org.amethystora.plugins",
 ];
 
 fn base(path: &str) -> &str {
@@ -88,6 +90,11 @@ pub fn refusal(argv: &[String]) -> Option<String> {
     }
     if program == "amethystora-raid" && argv.get(1).map(String::as_str) != Some("status") {
         return Some("pools of disks are made, changed and erased only by the user, in a terminal".into());
+    }
+    // The plugin commands that install, update or widen what a plugin may do are the person's, behind an administrator's approval
+    // ...however it is started, by its name or as the file an interpreter is given
+    if argv.iter().position(|a| base(a) == "amethystora-plugins").is_some_and(|at| matches!(argv.get(at + 1).map(String::as_str), Some("grant" | "unblock" | "add" | "update" | "rollback" | "dev"))) {
+        return Some("installing a plugin and widening what it may do are the user's, with an administrator's approval".into());
     }
     if program == "amethystora-if-found" && argv.get(1).map(String::as_str) != Some("status") {
         return Some("the line on the login and lock screens is the user's own words: the user writes it".into());
@@ -225,6 +232,11 @@ fn ame_refusal(args: &[String]) -> Option<String> {
         ["system", "if-found", ..] => Some("the line on the login and lock screens is the user's own words: the user writes it".into()),
         // Every command of the Vault is the person's: it holds what the agent must never see, and each one may prompt for them
         ["vault", ..] => Some("the Vault is the user's alone: the agent neither reads nor changes it".into()),
+        // Installing a plugin, giving it more, lifting a block and going back to older code each take an administrator's approval: the agent never
+        // asks for one, however it is spelled (taking away, blocking and switching off stay open to it)
+        ["plugin", "grant" | "unblock" | "add" | "update" | "rollback" | "dev", ..] => {
+            Some("installing a plugin and widening what it may do are the user's, with an administrator's approval".into())
+        }
         // External screens' brightness gives the person at the machine the displays' i2c buses, which reach other chips
         // of the graphics card too: an access grant only the machine's owner makes (taking it back is fine)
         ["desktop", "phone", "codes"] | ["desktop", "phone", "codes", "on", ..] => {
@@ -440,6 +452,26 @@ mod tests {
             "ame desktop::shortcut set org.gnome.shell.extensions.amethystora-ui.agent ask-selection <Super>F11",
             // The Vault, however spelled
             "ame vault",
+            // The plugin system: only what widens, however spelled
+            "ame plugin grant dev.example.x",
+            "ame plugin unblock dev.example.x api.github.com",
+            "ame plugin add https://example.org/p.git",
+            "ame plugin update dev.example.x",
+            "ame plugin rollback dev.example.x",
+            "ame plugin dev dev.example.x",
+            "ame -q plugin::grant dev.example.x",
+            "ame Plugin Grant dev.example.x",
+            "ame -- plugin -- add x",
+            "just -f /usr/share/amethystora/just/plugin.just grant dev.example.x",
+            "just --justfile /usr/share/amethystora/just/00-entry.just plugin unblock x",
+            "/usr/libexec/amethystora-plugin-root commit dev.example.x 00 notify",
+            "pkexec /usr/libexec/amethystora-plugin-root commit-shipped amethystora.clock",
+            "amethystora-plugin-root unblock x",
+            "amethystora-plugins grant dev.example.x",
+            "python3 /usr/libexec/amethystora-plugins grant dev.example.x",
+            "bash /usr/libexec/amethystora-plugins unblock dev.example.x",
+            "/usr/libexec/amethystora-plugins add x",
+            "pkcheck --action-id org.amethystora.plugins.commit --process 1",
             "ame vault open",
             "ame -q vault::open",
             "ame Vault Item List",
@@ -498,6 +530,15 @@ mod tests {
             "ame security::status",
             "just --justfile /usr/share/amethystora/just/00-entry.just security scan now",
             "ame -q system raid status",
+            "ame plugin list",
+            "ame plugin show dev.example.x",
+            "ame plugin check /tmp/p",
+            "ame plugin verify",
+            "ame plugin history",
+            "ame plugin revoke dev.example.x notify",
+            "ame plugin block dev.example.x",
+            "ame plugin on dev.example.x",
+            "amethystora-plugins list",
             "ame desktop greeting on",
             "ame update",
             "ame update boot-guard",

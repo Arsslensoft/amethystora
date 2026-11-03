@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+
+  <vendor>Amethystora</vendor>
+  <vendor_url>https://github.com/arsslensoft/amethystora</vendor_url>
+
+  <!-- The plugin system's root helper (plans/PLAN-plugins.md, Integrity), one action for each verb, so that the dialog says what
+       the approval gives. pkexec picks the action by the helper's path and its first argument. What gives a plugin more (installing
+       or updating its code, a permission, lifting a block, going back to older code) asks an administrator, every time: no
+       kept approval and no yes on those, and the message shows $(command_line), which is the plugin's id and each permission being
+       granted, in a short set of characters the helper holds its arguments to. What only takes away or reads (revoke, block,
+       remove, prepare, inspect) is allowed to the person at the machine by 50-amethystora-plugins.rules. 20-tests.sh holds all of it. -->
+  <action id="org.amethystora.plugins.commit">
+    <description>Install or update a plugin and give it what it asked for</description>
+    <message>Install or update a plugin and give it the permissions listed here: $(command_line)</message>
+    <icon_name>dialog-password</icon_name>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/amethystora-plugin-root</annotate>
+    <annotate key="org.freedesktop.policykit.exec.argv1">commit</annotate>
+  </action>
+
+  <action id="org.amethystora.plugins.commit-shipped">
+    <description>Add a plugin of the system</description>
+    <message>Add a plugin that comes with the system: $(command_line)</message>
+    <icon_name>dialog-password</icon_name>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/amethystora-plugin-root</annotate>
+    <annotate key="org.freedesktop.policykit.exec.argv1">commit-shipped</annotate>
+  </action>
+
+  <action id="org.amethystora.plugins.grant">
+    <description>Give a plugin more permissions</description>
+    <message>Give a plugin the permissions listed here: $(command_line)</message>
+    <icon_name>dialog-password</icon_name>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/amethystora-plugin-root</annotate>
+    <annotate key="org.freedesktop.policykit.exec.argv1">grant</annotate>
+  </action>
+
+  <action id="org.amethystora.plugins.unblock">
+    <description>Lift what blocks a plugin</description>
+    <message>Let a plugin send again, which was blocked: $(command_line)</message>
+    <icon_name>dialog-password</icon_name>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/amethystora-plugin-root</annotate>
+    <annotate key="org.freedesktop.policykit.exec.argv1">unblock</annotate>
+  </action>
+
+  <action id="org.amethystora.plugins.rollback">
+    <description>Go back to an earlier version of a plugin</description>
+    <message>Go back to the earlier version of a plugin: $(command_line)</message>
+    <icon_name>dialog-password</icon_name>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/amethystora-plugin-root</annotate>
+    <annotate key="org.freedesktop.policykit.exec.argv1">rollback</annotate>
+  </action>
+
+  <action id="org.amethystora.plugins.prepare">
+    <description>Keep a plugin's files for you to read</description>
+    <message>Keep the files of a plugin, so that you can read what it asks before you decide</message>
+    <icon_name>dialog-password</icon_name>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/amethystora-plugin-root</annotate>
+    <annotate key="org.freedesktop.policykit.exec.argv1">prepare</annotate>
+  </action>
+
+  <action id="org.amethystora.plugins.inspect">
+    <description>Show what was kept of a plugin</description>
+    <message>Show what was kept of a plugin</message>
+    <icon_name>dialog-password</icon_name>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/amethystora-plugin-root</annotate>
+    <annotate key="org.freedesktop.policykit.exec.argv1">inspect</annotate>
+  </action>
+
+  <action id="org.amethystora.plugins.revoke">
+    <description>Take permissions away from a plugin</description>
+    <message>Take permissions away from a plugin: $(command_line)</message>
+    <icon_name>dialog-password</icon_name>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/amethystora-plugin-root</annotate>
+    <annotate key="org.freedesktop.policykit.exec.argv1">revoke</annotate>
+  </action>
+
+  <action id="org.amethystora.plugins.block">
+    <description>Block what a plugin sends</description>
+    <message>Block what a plugin sends: $(command_line)</message>
+    <icon_name>dialog-password</icon_name>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/amethystora-plugin-root</annotate>
+    <annotate key="org.freedesktop.policykit.exec.argv1">block</annotate>
+  </action>
+
+  <action id="org.amethystora.plugins.remove">
+    <description>Remove a plugin</description>
+    <message>Remove a plugin: $(command_line)</message>
+    <icon_name>dialog-password</icon_name>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/amethystora-plugin-root</annotate>
+    <annotate key="org.freedesktop.policykit.exec.argv1">remove</annotate>
+  </action>
+
+</policyconfig>
