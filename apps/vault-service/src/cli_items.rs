@@ -144,8 +144,12 @@ pub fn codes_command(args: &Args) -> Result<(), u8> {
             let parsed = match file {
                 Some(path) if path.to_lowercase().ends_with(".pdf") => codes_in_pdf(path)?,
                 _ => {
+                    // A downloaded list has a heading and a line of advice, whose words are not codes: only what looks like
+                    // one is kept, unless nothing does (a list of codes made of letters alone)
                     let bytes = input_of(file)?;
-                    codes::parse_codes(&String::from_utf8_lossy(&bytes))
+                    let text = String::from_utf8_lossy(&bytes);
+                    let found = codes::parse_document_codes(&text);
+                    if found.codes.is_empty() && !found.text_too_large { codes::parse_codes(&text) } else { found }
                 }
             };
             // A text past the limit is not a list of codes: none was read (the codes past the limits are in `parsed.dropped`)
@@ -395,6 +399,10 @@ pub fn cert(args: &Args) -> Result<(), u8> {
             let mut request = json!({"op": "cert-new", "title": title, "profile": profile_of(kind)?});
             for (option, field) in [("name", "name"), ("email", "email"), ("web", "web"), ("org", "organization"), ("country", "country"), ("key", "key_type"), ("digest", "digest")] {
                 if let Some(value) = args.option(option) {
+                    // `--name Ann` would make Ann a host name: the value goes after an equals sign
+                    if value.is_empty() {
+                        return Err(USAGE);
+                    }
                     request[field] = json!(value);
                 }
             }
