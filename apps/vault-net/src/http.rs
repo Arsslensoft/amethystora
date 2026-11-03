@@ -97,6 +97,8 @@ pub struct Session {
     connector: SslConnector,
     plain_anywhere: bool,
     open: HashMap<String, Stream>,
+    /// The fingerprint the person compared, when they trusted a certificate for this connection
+    pin: Option<String>,
 }
 
 /// The SHA-256 of a certificate's DER, in lowercase hex: what a person compares
@@ -135,13 +137,14 @@ impl Session {
             (None, None) => None,
             _ => return Err(Failure::Untrusted),
         };
-        Ok(Session { origins, connector: connector(ca.as_ref(), true)?, plain_anywhere: false, open: HashMap::new() })
+        let pin = ca.as_ref().map(|cert| fingerprint(cert));
+        Ok(Session { origins, connector: connector(ca.as_ref(), true)?, plain_anywhere: false, open: HashMap::new(), pin })
     }
 
     /// Plain http to any host: for the tests against a server on a test network, and nothing shipped
     #[cfg(feature = "plain-http-for-tests")]
     pub fn plain_for_tests(origins: Vec<String>) -> Session {
-        Session { origins, connector: connector(None, true).expect("a connector"), plain_anywhere: true, open: HashMap::new() }
+        Session { origins, connector: connector(None, true).expect("a connector"), plain_anywhere: true, open: HashMap::new(), pin: None }
     }
 
     pub fn request(&mut self, method: &str, url: &str, headers: &[(String, String)], body: &[u8]) -> Result<(u16, Zeroizing<Vec<u8>>), Failure> {
@@ -195,12 +198,31 @@ impl Session {
             return Ok(Stream::Plain(tcp));
         }
         let name = host.trim_start_matches('[').trim_end_matches(']');
-        let tls = self.connector.connect(name, tcp).map_err(|error| match error {
+        let failure = |error: openssl::ssl::HandshakeError<TcpStream>| match error {
             openssl::ssl::HandshakeError::Failure(mid) if mid.ssl().verify_result() != X509VerifyResult::OK => Failure::Untrusted,
             openssl::ssl::HandshakeError::WouldBlock(_) => Failure::Timeout,
             _ => Failure::Unreachable,
-        })?;
-        Ok(Stream::Tls(Box::new(tls)))
+        };
+        match self.connector.connect(name, tcp).map_err(failure) {
+            Ok(tls) => Ok(Stream::Tls(Box::new(tls))),
+            // The very certificate the person compared whole is the server's: a server at an address its certificate does not
+            // name (CN=localhost reached at 10.0.0.111) is still the one they trusted. Its chain is checked as ever; only the name
+            // is not, and only for that certificate: one a pinned CA issued must still name the host
+            Err(Failure::Untrusted) if self.pin.is_some() => {
+                let tcp = tcp_to(host, port)?;
+                set_tcp_deadline(&tcp, deadline)?;
+                let mut configured = self.connector.configure().map_err(|_| Failure::Unreachable)?;
+                configured.set_verify_hostname(false);
+                let tls = configured.connect(name, tcp).map_err(failure)?;
+                let presented = tls.ssl().peer_certificate().map(|cert| fingerprint(&cert));
+                if presented.is_some() && presented == self.pin {
+                    Ok(Stream::Tls(Box::new(tls)))
+                } else {
+                    Err(Failure::Untrusted)
+                }
+            }
+            Err(failure) => Err(failure),
+        }
     }
 }
 
