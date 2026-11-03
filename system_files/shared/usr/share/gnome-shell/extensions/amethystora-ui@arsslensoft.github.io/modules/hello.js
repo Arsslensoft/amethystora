@@ -83,7 +83,7 @@ vec3 m = texture2D(map, cogl_tex_coord_in[0].st).rgb;
 float done = smoothstep(m.r - 0.012, m.r + 0.004, progress);
 float tip = exp(-max(progress - m.r, 0.0) * 22.0);
 float ink = m.g * done;
-float glow = m.b * smoothstep(m.r - 0.05, m.r + 0.03, progress) * (0.45 + 0.5 * tip);
+float glow = m.b * smoothstep(m.r - 0.004, m.r + 0.07, progress) * (0.45 + 0.5 * tip);
 float halo = (1.0 - ink) * glow;
 cogl_color_out = vec4(vec3(0.98, 0.956, 1.0) * ink + vec3(0.702, 0.49, 0.976) * halo, ink + halo) * fade;
 `;

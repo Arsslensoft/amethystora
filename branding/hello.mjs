@@ -192,7 +192,10 @@ function measures(lines) {
         const d = nearest[k];
         const ink = Math.min(1, Math.max(0, PEN / 2 + 0.5 - d));
         const glow = Math.exp(-((d / GLOW) ** 2)) * (d < reach ? 1 : 0);
-        const time = inkTime[k] >= 0 ? inkTime[k] : glowTimes[k];
+        // Close to a line, its own moment: spread, a pixel beside a stroke still to come would take the moment of an earlier
+        // one, and the glow would run ahead of the pen. Farther out, the spread one, which has no edge where two lines meet
+        const own = Math.exp(-((d / (GLOW * 0.5)) ** 2));
+        const time = inkTime[k] >= 0 ? inkTime[k] : glowTime[k] * own + glowTimes[k] * (1 - own);
         data[k * 3] = Math.round(Math.min(1, time) * 255);
         data[k * 3 + 1] = Math.round(ink * 255);
         data[k * 3 + 2] = Math.round(glow * 255);
