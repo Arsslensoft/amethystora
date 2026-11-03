@@ -35,6 +35,8 @@ def installation_of(option):
 
 def carry_out(installation, add):
     transaction = Flatpak.Transaction.new_for_installation(installation, None)
+    # As `flatpak install --user` does: a runtime the machine's installation has already is used, not fetched again
+    transaction.add_default_dependency_sources()
     add(transaction)
     transaction.run(None)
 
