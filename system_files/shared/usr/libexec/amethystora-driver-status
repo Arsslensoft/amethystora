@@ -35,6 +35,9 @@ case "${MODE}" in
     "" | --json | check) ;;
     *) echo "usage: ${0##*/} [--json|check]" >&2; exit 64 ;;
 esac
+# At boot the check can start before the kernel has bound every driver (a DisplayLink dock starts it within a minute):
+# the devices udev is still adding are waited for first, so that a driver still loading is not said to be missing
+[[ "${MODE}" == check && -z "${ROOT}" ]] && { udevadm settle --timeout=60 >/dev/null 2>&1 || true; }
 
 print() {
     if [[ "${MODE}" == --json ]]; then
