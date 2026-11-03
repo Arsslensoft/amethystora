@@ -1136,8 +1136,20 @@ export class Clock {
         const ids = list.map(a => a.id).join();
         if (!list.some(a => a.id === this._cardId))
             this._cardId = list[0].id;
-        if (ids !== this._cardIds)
+        if (ids !== this._cardIds) {
             this._fillCard();
+            return;
+        }
+        // The next track's cover tints the card it is in, as it does the pill
+        this._tintCard(list.find(a => a.id === this._cardId) ?? list[0]);
+    }
+
+    _tintCard(shown) {
+        const style = tintStyle(shown.tint ?? null, this._pill._textColour(), 0.75);
+        if (style !== this._cardStyle) {
+            this._cardStyle = style;
+            this._card.box.set_style(style);
+        }
     }
 
     _fillCard() {
@@ -1149,7 +1161,8 @@ export class Clock {
         const api = {close: () => this._closeCard(), calendar: () => this._calendar()};
         box.add_child(shown.card(api));
         // The card takes the album's colour too; another activity's card, the theme's
-        box.set_style(tintStyle(shown.tint ?? null, this._pill._textColour(), 0.75));
+        this._cardStyle = undefined;
+        this._tintCard(shown);
 
         const others = list.filter(a => a !== shown).slice(0, 3);
         if (others.length > 0) {
