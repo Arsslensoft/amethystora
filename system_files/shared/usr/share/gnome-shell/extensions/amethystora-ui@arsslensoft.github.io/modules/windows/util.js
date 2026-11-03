@@ -108,9 +108,11 @@ function keyName(key) {
     return key;
 }
 
-// A row of key caps, each in its own box
+// A row of key caps, each in its own box. Left to right in every language: a combination is pressed in that order (Super,
+// then Space), and right to left the caps read "Space Super"
 export function capRow(words, styleClass) {
     const row = new St.BoxLayout({style_class: `${styleClass}-keys`, y_align: Clutter.ActorAlign.CENTER});
+    row.set_text_direction(Clutter.TextDirection.LTR);
     for (const word of words) {
         const cap = label(word, styleClass);
         cap.clutter_text.ellipsize = 0; // Pango.EllipsizeMode.NONE: a key name is never cut
