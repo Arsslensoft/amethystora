@@ -40,6 +40,8 @@ case "\$*" in
     "is-system-running --wait") echo degraded; exit 1 ;;
     *SoftRebootsCount*) cat "${WORK}/soft" ;;
     *FinishTimestampMonotonic*) cat "${WORK}/finish" ;;
+    get-default) echo graphical.target ;;
+    *ActiveEnterTimestampMonotonic*graphical.target) cat "${WORK}/reached" 2>/dev/null ;;
     *) exit 1 ;;
 esac
 EOF
@@ -113,6 +115,13 @@ echo 0 >"${WORK}/soft"
 echo 0 >"${WORK}/finish"
 record
 same "an unfinished start is not recorded" "$(wc -l <"${FILE}")" 2
+
+# A job of the start that hangs keeps it from finishing for half an hour: the start is when the login screen was reached
+echo 1899000000 >"${WORK}/finish"
+echo 24500000 >"${WORK}/reached"
+record
+same "a hung job is not the start" "$(tail -n 1 "${FILE}" | cut -f2)" 24.5
+rm "${WORK}/reached"
 
 # The first line stays for good, and at most 999 follow it
 {

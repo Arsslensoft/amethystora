@@ -44,6 +44,12 @@ record() {
     [[ "${soft:-0}" == 0 ]] || return 0
     finish="$(systemctl show -p FinishTimestampMonotonic --value 2>/dev/null)"
     [[ "${finish}" =~ ^[1-9][0-9]*$ ]] || return 0
+    # What a person waits for is the login screen: the default target reached. A job of the start that hangs (a notice
+    # waited on, a disk that times out) keeps the start from finishing for as long, which is not the computer starting
+    local target reached
+    target="$(systemctl get-default 2>/dev/null)"
+    reached="$(systemctl show -p ActiveEnterTimestampMonotonic --value "${target}" 2>/dev/null)"
+    [[ "${reached}" =~ ^[1-9][0-9]*$ ]] && ((reached < finish)) && finish="${reached}"
     # Each disk's unlock, from when its unit began to when it finished, the first time in this start, and where two
     # overlap only once. What the initramfs did is in this boot's journal too. Asked for by the two messages' ids, which the
     # journal looks up in its index, and not by a unit name with a * in it, which it matches by listing every unit it has
