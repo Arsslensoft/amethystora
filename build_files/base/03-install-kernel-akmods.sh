@@ -47,13 +47,15 @@ pin_repo_key /etc/yum.repos.d/_copr_ublue-os-akmods.repo 19E98556EE61C8EF1FABFEF
 if [[ "${UBLUE_IMAGE_TAG}" == "beta" ]]; then
     rpmfusion_release_install free || true
     rpmfusion_release_install nonfree || true
-    dnf5 -y install \
+    readarray -t RPMFUSION_MASTER < <(rpmfusion_master)
+    dnf5 -y install "${RPMFUSION_MASTER[@]}" \
         v4l2loopback /tmp/akmods/kmods/*v4l2loopback*.rpm || true
     dnf5 -y remove rpmfusion-free-release || true
     dnf5 -y remove rpmfusion-nonfree-release || true
 else
     rpmfusion_release_install free nonfree
-    dnf5 -y install \
+    readarray -t RPMFUSION_MASTER < <(rpmfusion_master)
+    dnf5 -y install "${RPMFUSION_MASTER[@]}" \
         v4l2loopback /tmp/akmods/kmods/*v4l2loopback*.rpm
     dnf5 -y remove rpmfusion-free-release rpmfusion-nonfree-release
 fi

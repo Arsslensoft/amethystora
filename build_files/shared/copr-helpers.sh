@@ -52,6 +52,19 @@ rpmfusion_release_install() {
     rm -f "${packages[@]}"
 }
 
+# dnf's options that take each RPM Fusion repository configured from RPM Fusion's own server, one per line:
+# a mirror can lag it by days and serve a package whose source it no longer publishes, and
+# source-manifest.sh fetches the sources from that server
+rpmfusion_master() {
+    local repo
+    for repo in $(dnf5 repo list --all --json | jq -r '.[].id | select(test("^rpmfusion-(free|nonfree)$"))'); do
+        printf '%s\n' "--setopt=${repo}.metalink=" \
+            "--setopt=${repo}.baseurl=https://download1.rpmfusion.org/${repo#rpmfusion-}/fedora/releases/\$releasever/Everything/\$basearch/os/" \
+            "--setopt=${repo}-updates.metalink=" \
+            "--setopt=${repo}-updates.baseurl=https://download1.rpmfusion.org/${repo#rpmfusion-}/fedora/updates/\$releasever/\$basearch/"
+    done
+}
+
 # The fingerprint of each primary key in an OpenPGP key file, one per line
 key_fingerprints() {
     gpg --homedir "$(mktemp -d)" --show-keys --with-colons "$1" |

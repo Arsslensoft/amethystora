@@ -58,7 +58,8 @@ rpmfusion_release_install free
 # Its repository files are in /etc/yum.repos.d before 45 and /usr/share/dnf5/repos.d from 45-1
 dnf5 repo list --enabled --json | jq -r '.[].id | select(startswith("rpmfusion-free"))' |
     xargs -r -I{} dnf5 config-manager setopt "{}.enabled=0"
-dnf -y install --repo=fedora --repo=updates --repo=rpmfusion-free --repo=rpmfusion-free-updates \
+readarray -t RPMFUSION_MASTER < <(rpmfusion_master)
+dnf -y install "${RPMFUSION_MASTER[@]}" --repo=fedora --repo=updates --repo=rpmfusion-free --repo=rpmfusion-free-updates \
     libavcodec-freeworld pipewire-codec-aptx
 if ((${#MULTIMEDIA_DEPENDENTS[@]})); then
     rpm --verify --nofiles --noscripts "${MULTIMEDIA_DEPENDENTS[@]}"
