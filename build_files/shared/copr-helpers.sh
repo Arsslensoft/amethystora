@@ -40,7 +40,15 @@ rpmfusion_release_install() {
         done
         packages+=("${file}")
     done
-    dnf5 -y install --setopt=localpkg_gpgcheck=1 "${packages[@]}"
+    # Their release 45-1 requires "/usr/share/dnf5/libdnf.conf.d/", a folder libdnf5 owns, which neither dnf
+    # nor rpm matches with its trailing slash: rpm installs them without it, once each signature checks out
+    for file in "${packages[@]}"; do
+        [[ "$(rpm -K "${file}")" == *": digests signatures OK" ]] || {
+            echo "ERROR: ${file} is not signed with RPM Fusion's key"
+            return 1
+        }
+    done
+    rpm -U --nodeps "${packages[@]}"
     rm -f "${packages[@]}"
 }
 

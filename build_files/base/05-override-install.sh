@@ -55,7 +55,9 @@ dnf -y install --repo=fedora --repo=updates \
     ffmpeg-free fdk-aac-free libavcodec-free libavfilter-free libavformat-free libavutil-free \
     libswresample-free libswscale-free libheif libheif-ffmpeg
 rpmfusion_release_install free
-sed -i 's@^enabled=1@enabled=0@' /etc/yum.repos.d/rpmfusion-free*.repo
+# Its repository files are in /etc/yum.repos.d before 45 and /usr/share/dnf5/repos.d from 45-1
+dnf5 repo list --enabled --json | jq -r '.[].id | select(startswith("rpmfusion-free"))' |
+    xargs -r -I{} dnf5 config-manager setopt "{}.enabled=0"
 dnf -y install --repo=fedora --repo=updates --repo=rpmfusion-free --repo=rpmfusion-free-updates \
     libavcodec-freeworld pipewire-codec-aptx
 if ((${#MULTIMEDIA_DEPENDENTS[@]})); then
