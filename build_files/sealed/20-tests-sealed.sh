@@ -25,15 +25,22 @@ KERNEL="$(basename "${UKI}" .efi)"
 sbverify --cert "${CERT}" "${UKI}"
 
 # Its command line carries the digest of exactly this tree, which is what the machine checks at boot, and
-# requires it ("composefs=?" would make fs-verity optional and the image unsealed). bootc 1.17 names the
-# digest's format, composefs.digest=v1-sha512-12:<digest>, and follows it with a bare composefs= of the
-# older V2 digest for older clients. Both are checked, each against its own digest: the bare one is also
-# what starts amethystora-sealed-verity.service (ConditionKernelCommandLine=composefs)
+# requires it ("composefs=?" would make fs-verity optional and the image unsealed). The image's own bootc
+# wrote it (10-uki.sh). From 1.17 it names the digest's format, composefs.digest=v1-sha512-12:<digest>,
+# and follows it with a bare composefs= of the older V2 digest for older clients: both are checked, each
+# against its own digest. Before 1.17 there is only the bare composefs=, and no --erofs-version. The bare
+# one is also what starts amethystora-sealed-verity.service (ConditionKernelCommandLine=composefs)
 CMDLINE="$(ukify inspect "${UKI}" --json=short | jq -r '.".cmdline".text')"
-DIGEST_V1="$(bootc container compute-composefs-digest --erofs-version=v1 "${T}")"
-DIGEST_V2="$(bootc container compute-composefs-digest --erofs-version=v2 "${T}")"
-[[ " ${CMDLINE} " == *" composefs.digest=v1-sha512-12:${DIGEST_V1} "* ]]
-[[ " ${CMDLINE} " == *" composefs=${DIGEST_V2} "* ]]
+BOOTC_VERSION="$("${RPM[@]}" -q --queryformat '%{VERSION}' bootc)"
+if [[ "$(printf '%s\n' 1.17.0 "${BOOTC_VERSION}" | sort -V | head -n 1)" == 1.17.0 ]]; then
+    DIGEST_V1="$(bootc container compute-composefs-digest --erofs-version=v1 "${T}")"
+    DIGEST_V2="$(bootc container compute-composefs-digest --erofs-version=v2 "${T}")"
+    [[ " ${CMDLINE} " == *" composefs.digest=v1-sha512-12:${DIGEST_V1} "* ]]
+    [[ " ${CMDLINE} " == *" composefs=${DIGEST_V2} "* ]]
+else
+    DIGEST="$(bootc container compute-composefs-digest "${T}")"
+    [[ " ${CMDLINE} " == *" composefs=${DIGEST} "* ]]
+fi
 [[ " ${CMDLINE} " != *" composefs="\?* && " ${CMDLINE} " != *" composefs.digest="\?* ]]
 
 # ...and the kernel arguments of kargs.d: read-write btrfs root, the splash, no credentials from the
