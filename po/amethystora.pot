@@ -51,14 +51,17 @@ msgstr ""
 msgid "${title}: ${COMMAND} (${reason})"
 msgstr ""
 
+#. Translators: the state of a check in the terminal, in a column seven letters wide: keep it short
 #: usr/libexec/amethystora-security-status
 msgid "ok"
 msgstr ""
 
+#. Translators: the state of a check in the terminal, in a column seven letters wide: keep it short
 #: usr/libexec/amethystora-security-status
 msgid "check"
 msgstr ""
 
+#. Translators: the state of a check in the terminal, in a column seven letters wide: keep it short
 #: usr/libexec/amethystora-security-status usr/libexec/amethystora-plugins
 msgid "off"
 msgstr ""
@@ -72,10 +75,12 @@ msgstr ""
 msgid "Turn it back on with:"
 msgstr ""
 
+#. Translators: words separated by | are alternatives, in lower case, the words people say in your language. {n} is a number; keep it.
 #: usr/libexec/amethystora-security-status usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
 msgid "today"
 msgstr ""
 
+#. Translators: words separated by | are alternatives, in lower case, the words people say in your language. {n} is a number; keep it.
 #: usr/libexec/amethystora-security-status usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
 msgid "yesterday"
 msgstr ""
@@ -1817,6 +1822,7 @@ msgstr ""
 msgid "The colours of the desktop, the terminal and the apps that follow it, with the theme's own wallpapers."
 msgstr ""
 
+#. Translators: the colours of folders in Files' Scripts menu, which sorts them by name
 #: usr/libexec/amethystora-control-list usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/theme/accents.js
 msgid "Amethyst"
 msgstr ""
@@ -1825,6 +1831,7 @@ msgstr ""
 msgid "Iris"
 msgstr ""
 
+#. Translators: the colours of folders in Files' Scripts menu, which sorts them by name
 #: usr/libexec/amethystora-control-list usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/theme/accents.js
 msgid "Sky"
 msgstr ""
@@ -1833,6 +1840,7 @@ msgstr ""
 msgid "Lagoon"
 msgstr ""
 
+#. Translators: the colours of folders in Files' Scripts menu, which sorts them by name
 #: usr/libexec/amethystora-control-list usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/theme/accents.js
 msgid "Jade"
 msgstr ""
@@ -1841,6 +1849,7 @@ msgstr ""
 msgid "Moss"
 msgstr ""
 
+#. Translators: the colours of folders in Files' Scripts menu, which sorts them by name
 #: usr/libexec/amethystora-control-list usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/theme/accents.js
 msgid "Amber"
 msgstr ""
@@ -1849,6 +1858,7 @@ msgstr ""
 msgid "Ember"
 msgstr ""
 
+#. Translators: the colours of folders in Files' Scripts menu, which sorts them by name
 #: usr/libexec/amethystora-control-list usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/theme/accents.js
 msgid "Coral"
 msgstr ""
@@ -1861,6 +1871,7 @@ msgstr ""
 msgid "Orchid"
 msgstr ""
 
+#. Translators: the colours of folders in Files' Scripts menu, which sorts them by name
 #: usr/libexec/amethystora-control-list usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/theme/accents.js
 msgid "Slate"
 msgstr ""
@@ -1978,6 +1989,7 @@ msgstr ""
 msgid "Soft matte volumes, a highlight above and a shade below"
 msgstr ""
 
+#. Translators: the heading of the notifications that wait, with how many
 #: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/later.js
 msgid "Muted"
 msgstr ""
@@ -3310,6 +3322,7 @@ msgstr ""
 msgid "Scribble, a screenshot of an area, a note, the text in an area, right click and back, from the pen's side button or Super+Ctrl+P."
 msgstr ""
 
+#. Translators: a choice in a menu: to set gaming up
 #: usr/libexec/amethystora-control-list usr/share/amethystora/just/apps.just usr/share/amethystora/just/backup.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/desks.js
 msgid "Set up"
 msgstr ""
@@ -7192,6 +7205,7 @@ msgstr ""
 msgid "Its files can still be read. Log out to close it."
 msgstr ""
 
+#. Translators: PROGRAMS is a list of program names, such as "nautilus, gnome-text-editor"
 #: usr/libexec/amethystora-private-folder
 #, sh-format
 msgid "These programs had files open in it, and can no longer read them: ${PROGRAMS}. What they had not saved is still in their windows."
@@ -7302,6 +7316,7 @@ msgstr ""
 msgid "I have the recovery key"
 msgstr ""
 
+#. Translators: choices of a menu that turns automatic updates on or off
 #: usr/libexec/amethystora-private-folder usr/libexec/amethystora-windows-program usr/share/amethystora/just/apps.just usr/share/amethystora/just/backup.just usr/share/amethystora/just/desktop.just usr/share/amethystora/just/security.just usr/share/amethystora/just/system.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/selection.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/appgrid/dialogs.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/bazaar/dialog.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/printing.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/timer.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/quit/list.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/prefs.js apps/connect/src/service.rs apps/connect/src/transfers.rs
 msgid "Cancel"
 msgstr ""
@@ -7508,6 +7523,7 @@ msgid_plural "$count items were left as they were."
 msgstr[0] ""
 msgstr[1] ""
 
+#. Translators: an entry of Files' Scripts menu, which opens Backups on the file picked: each version kept of it, to look at
 #: usr/libexec/amethystora-back-in-time usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh
 msgid "Earlier versions"
 msgstr ""
@@ -7520,22 +7536,27 @@ msgstr ""
 msgid "Back in time covers your home folder."
 msgstr ""
 
+#. Translators: a submenu of Files' Scripts menu, holding the six colours a folder can be given and No colour
 #: usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh
 msgid "Folder colour"
 msgstr ""
 
+#. Translators: the colours of folders in Files' Scripts menu, which sorts them by name
 #: usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh
 msgid "No colour"
 msgstr ""
 
+#. Translators: an entry of Files' Scripts menu, which opens Backups on the folder picked as it was at other times
 #: usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh
 msgid "Back in time"
 msgstr ""
 
+#. Translators: an entry of Files' Scripts menu, which makes a copy of each file picked without its location, camera,
 #: usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh usr/libexec/amethystora-clean-copy usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/drop.js
 msgid "Copy without hidden data"
 msgstr ""
 
+#. Translators: an entry of Files' Scripts menu, which lists the programs of the person's own that hold the file, folder
 #: usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh usr/libexec/amethystora-what-uses
 msgid "What is using this?"
 msgstr ""
@@ -7544,6 +7565,7 @@ msgstr ""
 msgid "mat2, which makes the copy, is not installed."
 msgstr ""
 
+#. Translators: added to a file's name for its copy without hidden data, "beach (clean).jpg"
 #: usr/libexec/amethystora-clean-copy
 msgid "clean"
 msgstr ""
@@ -7576,6 +7598,7 @@ msgstr ""
 msgid "other details"
 msgstr ""
 
+#. Translators: what comes between two items of the list of what was taken out of a file, "place, camera, time"
 #: usr/libexec/amethystora-clean-copy
 msgid ", "
 msgstr ""
@@ -7782,18 +7805,22 @@ msgstr ""
 msgid "The time is between 02:00 and 05:00, as HH:MM."
 msgstr ""
 
+#. Translators: a file name in Files' New Document menu (keep the .txt)
 #: usr/share/amethystora/user-setup.hooks.d/28-templates.sh
 msgid "Empty text.txt"
 msgstr ""
 
+#. Translators: a file name in Files' New Document menu (keep the .md)
 #: usr/share/amethystora/user-setup.hooks.d/28-templates.sh
 msgid "Markdown note.md"
 msgstr ""
 
+#. Translators: a file name in Files' New Document menu (keep the .sh)
 #: usr/share/amethystora/user-setup.hooks.d/28-templates.sh
 msgid "Shell script.sh"
 msgstr ""
 
+#. Translators: a file name in Files' New Document menu (keep the .py)
 #: usr/share/amethystora/user-setup.hooks.d/28-templates.sh
 msgid "Python script.py"
 msgstr ""
@@ -8609,38 +8636,47 @@ msgstr ""
 msgid "Nothing of yours is using it."
 msgstr ""
 
+#. Translators: the submenu of Files' Scripts menu that holds the six ways to convert pictures
 #: usr/libexec/amethystora-convert usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/drop.js
 msgid "Convert"
 msgstr ""
 
+#. Translators: the submenu of Files' Scripts menu that holds the six ways to convert pictures
 #: usr/libexec/amethystora-convert
 msgid "As PNG"
 msgstr ""
 
+#. Translators: the submenu of Files' Scripts menu that holds the six ways to convert pictures
 #: usr/libexec/amethystora-convert
 msgid "As JPEG"
 msgstr ""
 
+#. Translators: the submenu of Files' Scripts menu that holds the six ways to convert pictures
 #: usr/libexec/amethystora-convert
 msgid "As WebP"
 msgstr ""
 
+#. Translators: the submenu of Files' Scripts menu that holds the six ways to convert pictures
 #: usr/libexec/amethystora-convert usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/drop.js
 msgid "Half the size"
 msgstr ""
 
+#. Translators: the submenu of Files' Scripts menu that holds the six ways to convert pictures
 #: usr/libexec/amethystora-convert
 msgid "1920 pixels wide"
 msgstr ""
 
+#. Translators: the submenu of Files' Scripts menu that holds the six ways to convert pictures
 #: usr/libexec/amethystora-convert
 msgid "Into one PDF"
 msgstr ""
 
+#. Translators: added to a picture's name for its copy at half the size, "holiday (half size).jpg"
 #: usr/libexec/amethystora-convert
 msgid "half size"
 msgstr ""
 
+#. Translators: added to a picture's name for its copy 1920 pixels wide, "holiday (1920 px).jpg"
 #: usr/libexec/amethystora-convert
 msgid "1920 px"
 msgstr ""
@@ -8753,6 +8789,7 @@ msgstr ""
 msgid "{count} file older than a month went into a folder for its month."
 msgstr ""
 
+#. Translators: a desk's name, then the things it set, as a list of noun phrases ("the sound output", "the dock",
 #: usr/libexec/amethystora-tidy-downloads usr/libexec/amethystora-changes usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/changes.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/appgrid/looks.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/bazaar.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/desks.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/later.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/power/slept.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/toolbar.js
 msgid "Undo"
 msgstr ""
@@ -9461,6 +9498,7 @@ msgstr ""
 msgid "Show as QR code"
 msgstr ""
 
+#. Translators: a choice about the private folder, which is open: close it.
 #: usr/share/gnome-shell/extensions/amethystora-clipboard@arsslensoft.github.io/textActions.js usr/share/amethystora/just/security.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/cover.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/pins.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/today/year.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/tools/opener.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/tools/qr.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/tools/room.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/tools/users.js
 msgid "Close"
 msgstr ""
@@ -9590,10 +9628,12 @@ msgstr ""
 msgid "Done. X11 is taken back from them with their overrides, and /dev/uinput at the next restart."
 msgstr ""
 
+#. Translators: a choice in a menu: to start Android
 #: usr/share/amethystora/just/apps.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/hello.js
 msgid "Start"
 msgstr ""
 
+#. Translators: a choice in a menu: to stop Android
 #: usr/share/amethystora/just/apps.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/access/speech.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/capture.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/privacy.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/present.js
 msgid "Stop"
 msgstr ""
@@ -9635,6 +9675,7 @@ msgstr ""
 msgid "Removed. Waydroid itself stays in the image, set up only when you ask."
 msgstr ""
 
+#. Translators: a choice in a menu: to uninstall the drawing tablet driver
 #: usr/share/amethystora/just/apps.just usr/share/amethystora/just/security.just
 msgid "Take it away"
 msgstr ""
@@ -10631,10 +10672,12 @@ msgstr ""
 msgid "What it empties stays in the snapshots and the backup, where they are on."
 msgstr ""
 
+#. Translators: a choice in a menu: to put the artwork on the boot menu
 #: usr/share/amethystora/just/desktop.just usr/share/amethystora/just/security.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/battery.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/today/weather.js
 msgid "Turn on"
 msgstr ""
 
+#. Translators: a choice in a menu: to take the artwork off the boot menu
 #: usr/share/amethystora/just/desktop.just usr/share/amethystora/just/security.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/focus/mark.js
 msgid "Turn off"
 msgstr ""
@@ -12881,6 +12924,7 @@ msgstr ""
 msgid "Remove the ${name} again?"
 msgstr ""
 
+#. Translators: "Test my duress finger" is a choice of the menu of ame security duress; use its translation here.
 #: usr/share/amethystora/just/security.just
 msgid "Set up. Test it with: ame security duress, Test my duress finger, which never runs the action."
 msgstr ""
@@ -13060,11 +13104,13 @@ msgstr ""
 msgid "At next reboot, the blue MOK manager screen appears (QWERTY keyboard layout)."
 msgstr ""
 
+#. Translators: the quoted words are the blue screen's own buttons, which are not translated.
 #: usr/share/amethystora/just/security.just
 #, sh-format
 msgid "Select \"Enroll MOK\", then \"Continue\", \"Yes\", and type \"${ENROLLMENT_PASSWORD}\" as the password."
 msgstr ""
 
+#. Translators: a level of kernel lockdown, the stricter one (confidentiality), as a menu choice.
 #: usr/share/amethystora/just/security.just
 msgid "Strict"
 msgstr ""
@@ -13184,6 +13230,7 @@ msgstr ""
 msgid "Last checked: ${when}"
 msgstr ""
 
+#. Translators: the number that decides the plural is the one of deployments (the system's installed copies).
 #: usr/share/amethystora/just/security.just
 #, sh-format
 msgid "The system: ${files} files, in ${deployments} deployment"
@@ -13717,6 +13764,7 @@ msgstr ""
 msgid "Make one"
 msgstr ""
 
+#. Translators: a choice about the private folder, which is closed: open it.
 #: usr/share/amethystora/just/security.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/connect.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/desks.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/focus.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/phone.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/today/year.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/tools/opener.js apps/connect/src/plugins.rs apps/connect/src/transfers.rs
 msgid "Open"
 msgstr ""
@@ -14347,14 +14395,17 @@ msgstr ""
 msgid "Automatic updates are currently disabled"
 msgstr ""
 
+#. Translators: choices of a menu that turns automatic updates on or off
 #: usr/share/amethystora/just/system.just
 msgid "Enable"
 msgstr ""
 
+#. Translators: choices of a menu that turns automatic updates on or off
 #: usr/share/amethystora/just/system.just
 msgid "Disable"
 msgstr ""
 
+#. Translators: choices of a menu that turns automatic updates on or off
 #: usr/share/amethystora/just/system.just
 msgid "Toggle automatic updates?"
 msgstr ""
@@ -16038,6 +16089,7 @@ msgstr[1] ""
 msgid "Your backup disk"
 msgstr ""
 
+#. Translators: the version updated to, and the one before it
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/backupdisk.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/desks.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/focus.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/battery.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/phone.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/resume.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/through.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/whatsnew.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/power/busy.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/today/weather.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/windows/handover.js
 msgid "Not now"
 msgstr ""
@@ -16322,22 +16374,26 @@ msgstr ""
 msgid "Keep it as it is"
 msgstr ""
 
+#. Translators: the phone's charge, said by a screen reader: "battery 54 per cent"
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/connect/indicator.js
 msgid "battery %d per cent"
 msgid_plural "battery %d per cent"
 msgstr[0] ""
 msgstr[1] ""
 
+#. Translators: the phone's mobile signal, said by a screen reader: "signal 3 of 4 bars"
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/connect/indicator.js
 msgid "signal %d of 4 bars"
 msgid_plural "signal %d of 4 bars"
 msgstr[0] ""
 msgstr[1] ""
 
+#. Translators: the phone in the top bar, said by a screen reader: its battery, then its signal
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/connect/indicator.js
 msgid "Phone: %s, %s"
 msgstr ""
 
+#. Translators: the phone in the top bar, said by a screen reader: its battery or its signal
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/connect/indicator.js
 msgid "Phone: %s"
 msgstr ""
@@ -16366,6 +16422,7 @@ msgstr ""
 msgid "Phones…"
 msgstr ""
 
+#. Translators: a phone's media player and the phone, in the live pill's card: "Spotify on Pixel 8"
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/connect/players.js
 msgid "%s on %s"
 msgstr ""
@@ -16474,6 +16531,7 @@ msgstr ""
 msgid "At the bottom"
 msgstr ""
 
+#. Translators: a desk's name, then the things it set, as a list of noun phrases ("the sound output", "the dock",
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/desks.js
 msgid "Set for %s: %s"
 msgstr ""
@@ -16562,14 +16620,17 @@ msgstr ""
 msgid "Sending to %s"
 msgstr ""
 
+#. Translators: the phone's name and how far the files have gone, as in "Sending to Pixel · 64%"
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/dock/drops.js
 msgid "Sending to %s · %s"
 msgstr ""
 
+#. Translators: the phone's name and how far the files have gone, as in "Sending to Pixel · 64%"
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/dock/drops.js
 msgid "Not sent"
 msgstr ""
 
+#. Translators: the phone's name and how far the files have gone, as in "Sending to Pixel · 64%"
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/dock/drops.js
 msgid "Sent"
 msgstr ""
@@ -17067,6 +17128,7 @@ msgstr ""
 msgid "Largest processes"
 msgstr ""
 
+#. Translators: memory that is free, such as "7.3 GB available of 16 GB"
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/meters.js
 #, python-brace-format
 msgid "{available} available of {total}"
@@ -17394,24 +17456,29 @@ msgstr ""
 msgid "Mute %s for an hour"
 msgstr ""
 
+#. Translators: the heading of the notifications that wait, with how many
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/later.js
 msgid "Later · %d"
 msgstr ""
 
+#. Translators: the heading of the notifications that wait, with how many
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/later.js
 msgid "Now"
 msgstr ""
 
+#. Translators: the heading of the notifications that wait, with how many
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/later.js
 msgid "Muted until %s · %d held"
 msgid_plural "Muted until %s · %d held"
 msgstr[0] ""
 msgstr[1] ""
 
+#. Translators: the heading of the notifications that wait, with how many
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/later.js
 msgid "Muted until %s"
 msgstr ""
 
+#. Translators: the heading of the notifications that wait, with how many
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/later.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/privacy.js
 msgid "Unmute"
 msgstr ""
@@ -17804,14 +17871,17 @@ msgstr ""
 msgid "The update is in. %d app was open before the restart."
 msgstr ""
 
+#. Translators: the time the session after the update began
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/resume.js
 msgid "Updated · %s"
 msgstr ""
 
+#. Translators: the time the session after the update began
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/resume.js
 msgid "Back · %s"
 msgstr ""
 
+#. Translators: the time the session after the update began
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/resume.js
 msgid "Welcome back"
 msgstr ""
@@ -17832,10 +17902,12 @@ msgstr ""
 msgid "Reopen"
 msgstr ""
 
+#. Translators: a day, as GLib.DateTime.format takes it
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/saving.js
 msgid "Waiting since %s"
 msgstr ""
 
+#. Translators: a day, as GLib.DateTime.format takes it
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/saving.js
 msgid "%A %e %B"
 msgstr ""
@@ -17888,10 +17960,12 @@ msgstr ""
 msgid "Something is still using “%s”"
 msgstr ""
 
+#. Translators: the disk's name and roughly how much of what it was given has reached it; the number is an estimate
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/stick.js
 msgid "Still writing to “%s” · about %d%%"
 msgstr ""
 
+#. Translators: the disk's name and roughly how much of what it was given has reached it; the number is an estimate
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/stick.js
 msgid "Still writing to “%s”"
 msgstr ""
@@ -17900,10 +17974,12 @@ msgstr ""
 msgid "All on"
 msgstr ""
 
+#. Translators: a rough percent of what has reached a disk, for a small space
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/stick.js
 msgid "About %d%%"
 msgstr ""
 
+#. Translators: a rough percent of what has reached a disk, for a small space
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/stick.js
 msgid "Writing"
 msgstr ""
@@ -17924,10 +18000,12 @@ msgstr ""
 msgid "A program is still using it. A copy can look finished with data still on its way."
 msgstr ""
 
+#. Translators: a size, as "1.2 GB"; it counts everything waiting to be written on the computer
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/stick.js
 msgid "A copy can look finished with data still on its way. About %s is still waiting to be written."
 msgstr ""
 
+#. Translators: a size, as "1.2 GB"; it counts everything waiting to be written on the computer
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/stick.js
 msgid "A copy can look finished with data still on its way. It is still writing."
 msgstr ""
@@ -18200,14 +18278,17 @@ msgstr ""
 msgid "Updated tonight"
 msgstr ""
 
+#. Translators: the version updated to, and the one before it
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/whatsnew.js
 msgid "%s · from %s"
 msgstr ""
 
+#. Translators: the version updated to, and the one before it
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/whatsnew.js
 msgid "Read it all"
 msgstr ""
 
+#. Translators: the version updated to, and the one before it
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/whatsnew.js
 msgid "Said once per update"
 msgstr ""
@@ -18440,24 +18521,29 @@ msgstr ""
 msgid "%d%% gone while it slept"
 msgstr ""
 
+#. Translators: how many times the computer woke by itself, then at what times
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/power/slept.js
 msgid "It woke once, at %s."
 msgid_plural "It woke %d times, at %s."
 msgstr[0] ""
 msgstr[1] ""
 
+#. Translators: how many times the computer woke by itself, then at what times
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/power/slept.js
 msgid "It woke %d times."
 msgstr ""
 
+#. Translators: how many times the computer woke by itself, then at what times
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/power/slept.js
 msgid "It did not say what woke it."
 msgstr ""
 
+#. Translators: how many times the computer woke by itself, then at what times
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/power/slept.js
 msgid "Nothing woke it, so the battery went on sleep itself. Some computers use more than others while asleep."
 msgstr ""
 
+#. Translators: how many times the computer woke by itself, then at what times
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/power/slept.js
 msgid "It did not say why."
 msgstr ""
@@ -18614,12 +18700,14 @@ msgstr ""
 msgid "Protected"
 msgstr ""
 
+#. Translators: the time of day on a 12-hour and on a 24-hour clock, as GLib.DateTime.format takes it
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/privacy/shield.js
 msgid "Checked %s · %d check fine"
 msgid_plural "Checked %s · %d checks fine"
 msgstr[0] ""
 msgstr[1] ""
 
+#. Translators: the time of day on a 12-hour and on a 24-hour clock, as GLib.DateTime.format takes it
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/privacy/shield.js
 msgid "One thing needs a look"
 msgid_plural "%d things need a look"
@@ -19194,6 +19282,7 @@ msgstr ""
 msgid "Ask the agent: %s"
 msgstr ""
 
+#. Translators: a word after a place that asks for the time there now ("Tokyo time"), apart by "|"
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/answers.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/timesProvider.js
 msgid "in|to"
 msgstr ""
@@ -19306,127 +19395,157 @@ msgstr ""
 msgid "Only while it is on"
 msgstr ""
 
+#. Translators: words separated by | are alternatives, in lower case, the words people say in your language. {n} is a number; keep it.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
 msgid "document|documents|letter|letters"
 msgstr ""
 
+#. Translators: words separated by | are alternatives, in lower case, the words people say in your language. {n} is a number; keep it.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
 msgid "spreadsheet|spreadsheets"
 msgstr ""
 
+#. Translators: words separated by | are alternatives, in lower case, the words people say in your language. {n} is a number; keep it.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
 msgid "presentation|presentations|slides"
 msgstr ""
 
+#. Translators: words separated by | are alternatives, in lower case, the words people say in your language. {n} is a number; keep it.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
 msgid "photo|photos|picture|pictures|image|images|screenshot|screenshots"
 msgstr ""
 
+#. Translators: words separated by | are alternatives, in lower case, the words people say in your language. {n} is a number; keep it.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
 msgid "video|videos|movie|movies|film|films"
 msgstr ""
 
+#. Translators: words separated by | are alternatives, in lower case, the words people say in your language. {n} is a number; keep it.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
 msgid "music|song|songs|audio|recording|recordings"
 msgstr ""
 
+#. Translators: words separated by | are alternatives, in lower case, the words people say in your language. {n} is a number; keep it.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
 msgid "archive|archives"
 msgstr ""
 
+#. Translators: words separated by | are alternatives, in lower case, the words people say in your language. {n} is a number; keep it.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
 msgid "text file|text files"
 msgstr ""
 
+#. Translators: words separated by | are alternatives, in lower case, the words people say in your language. {n} is a number; keep it.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
 msgid "this week"
 msgstr ""
 
+#. Translators: words separated by | are alternatives, in lower case, the words people say in your language. {n} is a number; keep it.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
 msgid "last week|past week|a week ago"
 msgstr ""
 
+#. Translators: words separated by | are alternatives, in lower case, the words people say in your language. {n} is a number; keep it.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
 msgid "this month"
 msgstr ""
 
+#. Translators: words separated by | are alternatives, in lower case, the words people say in your language. {n} is a number; keep it.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
 msgid "last month|past month|a month ago"
 msgstr ""
 
+#. Translators: words separated by | are alternatives, in lower case, the words people say in your language. {n} is a number; keep it.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
 msgid "this year"
 msgstr ""
 
+#. Translators: words separated by | are alternatives, in lower case, the words people say in your language. {n} is a number; keep it.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
 msgid "last year|past year|a year ago"
 msgstr ""
 
+#. Translators: words separated by | are alternatives, in lower case, the words people say in your language. {n} is a number; keep it.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
 #, python-brace-format
 msgid "{n} days ago|{n} day ago"
 msgstr ""
 
+#. Translators: words separated by | are alternatives, in lower case, the words people say in your language. {n} is a number; keep it.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
 #, python-brace-format
 msgid "{n} weeks ago|{n} week ago"
 msgstr ""
 
+#. Translators: words separated by | are alternatives, in lower case, the words people say in your language. {n} is a number; keep it.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
 #, python-brace-format
 msgid "{n} months ago|{n} month ago"
 msgstr ""
 
+#. Translators: words separated by | are alternatives, in lower case, the words people say in your language. {n} is a number; keep it.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
 msgid "last"
 msgstr ""
 
+#. Translators: words separated by | are alternatives, in lower case, the words people say in your language. {n} is a number; keep it.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
 msgid "big|large|huge"
 msgstr ""
 
+#. Translators: words separated by | are alternatives, in lower case, the words people say in your language. {n} is a number; keep it.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
 msgid "small|tiny"
 msgstr ""
 
+#. Translators: words separated by | are alternatives, in lower case, the words people say in your language. {n} is a number; keep it.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
 msgid "over|bigger than|larger than|more than"
 msgstr ""
 
+#. Translators: words separated by | are alternatives, in lower case, the words people say in your language. {n} is a number; keep it.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
 msgid "under|smaller than|less than"
 msgstr ""
 
+#. Translators: exactly four words, for kilobytes, megabytes, gigabytes and terabytes, in this order: a size is read by the word's place in the list.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
 msgid "kb|mb|gb|tb"
 msgstr ""
 
+#. Translators: "since" in your language, a word before a date that leaves the period open to now. Alternatives are separated by |, in lower case.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
 msgid "since"
 msgstr ""
 
+#. Translators: words separated by | are alternatives, in lower case: small words left out of a search, such as "of" and "the".
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
 msgid "from|of|in|on|at|the|my|a|an|some|any|file|files|that|which|around|about|with|and"
 msgstr ""
 
+#. Translators: the time of day on a 12-hour and on a 24-hour clock, as GLib.DateTime.format takes it
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remindProvider.js
 #, python-brace-format
 msgid "today at {time}"
 msgstr ""
 
+#. Translators: the time of day on a 12-hour and on a 24-hour clock, as GLib.DateTime.format takes it
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remindProvider.js
 #, python-brace-format
 msgid "tomorrow at {time}"
 msgstr ""
 
+#. Translators: a day in the coming week, as GLib.DateTime.format takes it
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remindProvider.js
 msgid "%A"
 msgstr ""
 
+#. Translators: a day in the coming week, as GLib.DateTime.format takes it
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remindProvider.js
 msgid "%e %B"
 msgstr ""
 
+#. Translators: a day in the coming week, as GLib.DateTime.format takes it
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remindProvider.js
 #, python-brace-format
 msgid "{day} at {time}"
@@ -19467,10 +19586,12 @@ msgstr ""
 msgid "Start a timer called %s"
 msgstr ""
 
+#. Translators: the words before a place that ask for the time there now, apart by "|", longest first
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/timesProvider.js
 msgid "time in|now in|what time is it in|the time in|current time in|time at"
 msgstr ""
 
+#. Translators: a word after a place that asks for the time there now ("Tokyo time"), apart by "|"
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/timesProvider.js
 msgid "time|now"
 msgstr ""
@@ -19556,6 +19677,7 @@ msgstr ""
 msgid "What is running, and what it uses"
 msgstr ""
 
+#. Translators: words separated by | are alternatives: in lower case, the everyday words people say in your language, never a product's name.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
 msgid "task manager|process list|running programs|what is running|stop a program|end a program"
 msgstr ""
@@ -19564,6 +19686,7 @@ msgstr ""
 msgid "And Control for the rest"
 msgstr ""
 
+#. Translators: words separated by | are alternatives: in lower case, the everyday words people say in your language, never a product's name.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
 msgid "control panel|computer settings"
 msgstr ""
@@ -19572,6 +19695,7 @@ msgstr ""
 msgid "In Files"
 msgstr ""
 
+#. Translators: words separated by | are alternatives: in lower case, the everyday words people say in your language, never a product's name.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
 msgid "recycle bin|rubbish bin|waste basket|wastebasket|garbage can|deleted files"
 msgstr ""
@@ -19580,6 +19704,7 @@ msgstr ""
 msgid "Your folders and files"
 msgstr ""
 
+#. Translators: words separated by | are alternatives: in lower case, the everyday words people say in your language, never a product's name.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
 msgid "file manager|file browser|my files"
 msgstr ""
@@ -19588,6 +19713,7 @@ msgstr ""
 msgid "Get apps, and remove them"
 msgstr ""
 
+#. Translators: words separated by | are alternatives: in lower case, the everyday words people say in your language, never a product's name.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
 msgid "software store|install a program|install programs|uninstall a program|uninstall programs|remove a program|remove programs"
 msgstr ""
@@ -19596,6 +19722,7 @@ msgstr ""
 msgid "Keeps the system up to date"
 msgstr ""
 
+#. Translators: words separated by | are alternatives: in lower case, the everyday words people say in your language, never a product's name.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
 msgid "check for updates|system update|install updates"
 msgstr ""
@@ -19604,6 +19731,7 @@ msgstr ""
 msgid "What takes up the space"
 msgstr ""
 
+#. Translators: words separated by | are alternatives: in lower case, the everyday words people say in your language, never a product's name.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
 msgid "disk space|free up space|what takes up space"
 msgstr ""
@@ -19612,6 +19740,7 @@ msgstr ""
 msgid "Format and look after your disks"
 msgstr ""
 
+#. Translators: words separated by | are alternatives: in lower case, the everyday words people say in your language, never a product's name.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
 msgid "format a disk|format a drive|partition a disk|partitions"
 msgstr ""
@@ -19620,6 +19749,7 @@ msgstr ""
 msgid "Type commands"
 msgstr ""
 
+#. Translators: words separated by | are alternatives: in lower case, the everyday words people say in your language, never a product's name.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
 msgid "command line|command window|console"
 msgstr ""
@@ -19628,6 +19758,7 @@ msgstr ""
 msgid "Notes and tasks, on this computer"
 msgstr ""
 
+#. Translators: words separated by | are alternatives: in lower case, the everyday words people say in your language, never a product's name.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
 msgid "to do list|to-do list|todo list"
 msgstr ""
@@ -19640,10 +19771,12 @@ msgstr ""
 msgid "The Print key does this too"
 msgstr ""
 
+#. Translators: words separated by | are alternatives: in lower case, the everyday words people say in your language, never a product's name.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
 msgid "print screen|screen capture|screen grab"
 msgstr ""
 
+#. Translators: words separated by | are alternatives: in lower case, the everyday words people say in your language, never a product's name.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
 msgid "startup programs|startup apps|programs at startup|apps at startup"
 msgstr ""
@@ -19656,6 +19789,7 @@ msgstr ""
 msgid "What each device runs on, in a terminal"
 msgstr ""
 
+#. Translators: words separated by | are alternatives: in lower case, the everyday words people say in your language, never a product's name.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
 msgid "drivers|hardware drivers"
 msgstr ""
@@ -19664,6 +19798,7 @@ msgstr ""
 msgid "Your home folder at any hour"
 msgstr ""
 
+#. Translators: words separated by | are alternatives: in lower case, the everyday words people say in your language, never a product's name.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
 msgid "restore files|restore my files|recover files|back up my files"
 msgstr ""
@@ -19676,6 +19811,7 @@ msgstr ""
 msgid "In the manual"
 msgstr ""
 
+#. Translators: words separated by | are alternatives: in lower case, the everyday words people say in your language, never a product's name.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
 msgid "undo an update"
 msgstr ""
@@ -19684,6 +19820,7 @@ msgstr ""
 msgid "What protects this computer"
 msgstr ""
 
+#. Translators: words separated by | are alternatives: in lower case, the everyday words people say in your language, never a product's name.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
 msgid "antivirus|anti-virus|virus scan|virus scanner|malware|firewall"
 msgstr ""
@@ -19692,6 +19829,7 @@ msgstr ""
 msgid "Reads PDFs"
 msgstr ""
 
+#. Translators: words separated by | are alternatives: in lower case, the everyday words people say in your language, never a product's name.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
 msgid "pdf reader|pdf viewer|read a pdf"
 msgstr ""
@@ -19700,6 +19838,7 @@ msgstr ""
 msgid "Shows pictures"
 msgstr ""
 
+#. Translators: words separated by | are alternatives: in lower case, the everyday words people say in your language, never a product's name.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
 msgid "photo viewer|picture viewer"
 msgstr ""
@@ -19708,6 +19847,7 @@ msgstr ""
 msgid "Plays videos"
 msgstr ""
 
+#. Translators: words separated by | are alternatives: in lower case, the everyday words people say in your language, never a product's name.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
 msgid "video player|movie player|media player"
 msgstr ""
@@ -19716,6 +19856,7 @@ msgstr ""
 msgid "Plays sound files"
 msgstr ""
 
+#. Translators: words separated by | are alternatives: in lower case, the everyday words people say in your language, never a product's name.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
 msgid "music player|audio player"
 msgstr ""
@@ -19724,6 +19865,7 @@ msgstr ""
 msgid "Draw and edit pictures"
 msgstr ""
 
+#. Translators: words separated by | are alternatives: in lower case, the everyday words people say in your language, never a product's name.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
 msgid "drawing program|draw a picture|image editor"
 msgstr ""
@@ -19732,6 +19874,7 @@ msgstr ""
 msgid "Opens and makes archives"
 msgstr ""
 
+#. Translators: words separated by | are alternatives: in lower case, the everyday words people say in your language, never a product's name.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/words.js
 msgid "unzip|zip files|compress files|extract files"
 msgstr ""
