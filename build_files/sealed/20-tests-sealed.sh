@@ -28,8 +28,8 @@ sbverify --cert "${CERT}" "${UKI}"
 # requires it ("composefs=?" would make fs-verity optional and the image unsealed). The image's own bootc
 # wrote it (10-uki.sh). From 1.17 it names the digest's format, composefs.digest=v1-sha512-12:<digest>,
 # and follows it with a bare composefs= of the older V2 digest for older clients: both are checked, each
-# against its own digest. Before 1.17 there is only the bare composefs=, and no --erofs-version. The bare
-# one is also what starts amethystora-sealed-verity.service (ConditionKernelCommandLine=composefs)
+# against its own digest. Before 1.17 there is only the bare composefs=, and no --erofs-version.
+# amethystora-sealed-verity.service starts on either one
 CMDLINE="$(ukify inspect "${UKI}" --json=short | jq -r '.".cmdline".text')"
 BOOTC_VERSION="$("${RPM[@]}" -q --queryformat '%{VERSION}' bootc)"
 if [[ "$(printf '%s\n' 1.17.0 "${BOOTC_VERSION}" | sort -V | head -n 1)" == 1.17.0 ]]; then
