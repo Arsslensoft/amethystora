@@ -123,6 +123,62 @@ pub fn in_terminal(args: &[&str]) {
     launch(IN_TERMINAL, args);
 }
 
+/// The same, with `ended` called on the window's thread the moment the command has finished, while the terminal still shows what
+/// it printed, so that a window shows what it changed at once. The wrapper's `--done` writes only the exit status, into a folder of
+/// the account's own in the runtime folder, which a monitor watches: no timer. A terminal closed before the command ended, or one
+/// that never opened, calls it too.
+pub fn in_terminal_then(args: &[&str], ended: impl Fn() + 'static) {
+    use std::os::unix::fs::DirBuilderExt;
+    use std::os::unix::process::CommandExt;
+    use std::sync::atomic::{AtomicU32, Ordering};
+    static NEXT: AtomicU32 = AtomicU32::new(0);
+    let parent = glib::user_runtime_dir().join("amethystora");
+    let dir = parent.join(format!("ended-{}-{}", std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed)));
+    let made = std::fs::DirBuilder::new().recursive(true).mode(0o700).create(&parent).and_then(|_| std::fs::DirBuilder::new().mode(0o700).create(&dir));
+    let monitor = made.ok().and_then(|_| gio::File::for_path(&dir).monitor_directory(gio::FileMonitorFlags::NONE, gio::Cancellable::NONE).ok());
+    let Some(monitor) = monitor else {
+        in_terminal(args);
+        return;
+    };
+    let ended: Rc<dyn Fn()> = Rc::new(ended);
+    let status = dir.join("status");
+    let kept = Rc::new(RefCell::new(Some(monitor.clone())));
+    // Once the status is there: said once, and the folder and its monitor gone
+    let finish: Rc<dyn Fn() -> bool> = {
+        let (kept, ended, dir) = (kept.clone(), ended.clone(), dir.clone());
+        Rc::new(move || {
+            if !status.exists() {
+                return false;
+            }
+            if let Some(monitor) = kept.take() {
+                monitor.cancel();
+                let _ = std::fs::remove_dir_all(&dir);
+                ended();
+            }
+            true
+        })
+    };
+    let on_change = finish.clone();
+    monitor.connect_changed(move |_, _, _, _| {
+        on_change();
+    });
+    let mut argv = vec!["--done", dir.to_str().unwrap_or_default(), "--"];
+    argv.extend_from_slice(args);
+    let child = Command::new(IN_TERMINAL).args(&argv).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).process_group(0).spawn();
+    let Ok(child) = child else {
+        kept.take();
+        let _ = std::fs::remove_dir_all(&dir);
+        return;
+    };
+    glib::child_watch_add_local(glib::Pid(child.id() as i32), move |_, _| {
+        // The terminal has gone: the command ended with it or before it, and the screen is read again either way
+        if !finish() && kept.take().is_some() {
+            let _ = std::fs::remove_dir_all(&dir);
+            ended();
+        }
+    });
+}
+
 /// A page of the Manual, `page` or `page#heading`, and nothing else
 pub fn manual(page: &str) {
     if valid_manual_page(page) {

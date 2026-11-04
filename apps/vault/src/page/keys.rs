@@ -453,7 +453,8 @@ fn import_key(vault: &Rc<Vault>, page: std::rc::Weak<Keys>) {
                     }
                     let shown = path.to_string_lossy().into_owned();
                     let toast = amethystora_ui::adw::Toast::builder().title(t!("Brought in. The file is still where it was.")).use_markup(false).button_label(t!("Protect the file")).timeout(10).build();
-                    toast.connect_button_clicked(move |_| process::in_terminal(&["ame", "vault", "protect", &shown]));
+                    let protect_vault = vault.clone();
+                    toast.connect_button_clicked(move |_| protect_vault.in_terminal(&["ame", "vault", "protect", &shown]));
                     vault.add_toast(toast, None);
                 }
                 Err(trouble) => say(&error, &trouble.words()),

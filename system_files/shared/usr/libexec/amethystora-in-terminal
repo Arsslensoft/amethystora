@@ -5,12 +5,14 @@
 #
 #   amethystora-in-terminal <command> [<argument>...]
 #   amethystora-in-terminal [--agent REASON] [--report DIR] -- <command> [<argument>...]
+#   amethystora-in-terminal --done DIR -- <command> [<argument>...]
 #
 # The two options are the AI agent's tools' (amethystora-agent-tools), for a command the agent hands to the
 # person at the machine. --agent shows the command as words, and the agent's reason as the agent's own words,
 # and runs it only after a yes. --report writes how it ended into DIR, a folder of the caller's own: DIR/status
 # (the exit code, or "declined") after DIR/output (the last 8 KB of what it printed), since neither this nor
-# xdg-terminal-exec tells its caller anything.
+# xdg-terminal-exec tells its caller anything. --done writes DIR/status alone and keeps nothing the command
+# printed: an app that shows what the command changed reads its state again as soon as it is there.
 #
 # xdg-terminal-exec is how amethystora-menu reopens itself from a keybinding, too.
 
@@ -23,11 +25,12 @@ if [[ ! -t 1 ]]; then
     exec xdg-terminal-exec "$0" "$@"
 fi
 
-AGENT=false REASON="" REPORT=""
+AGENT=false REASON="" REPORT="" KEEP_OUTPUT=false
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --agent) AGENT=true REASON="${2:-}"; shift 2 ;;
-        --report) REPORT="${2:-}"; shift 2 ;;
+        --report) REPORT="${2:-}" KEEP_OUTPUT=true; shift 2 ;;
+        --done) REPORT="${2:-}"; shift 2 ;;
         --) shift; break ;;
         *) break ;;
     esac
@@ -62,7 +65,7 @@ if [[ "${AGENT}" == true ]]; then
     fi
 fi
 
-if [[ -n "${REPORT}" ]]; then
+if [[ "${KEEP_OUTPUT}" == true ]]; then
     # In a terminal of its own, as it would be here, with what it prints also kept: Python's pty, since the image
     # has no script(1). Its last 8 KB stay.
     python3 -I -c '
@@ -87,10 +90,11 @@ code = os.waitstatus_to_exitcode(status)
 sys.exit(code if code >= 0 else 128 - code)
 ' "${REPORT}/output" "$@"
     status=$?
-    ended "${status}"
 else
     "$@"
+    status=$?
 fi
+ended "${status}"
 
 echo
 # gum is what the rest of this image prompts with; read is what is there if it ever is not

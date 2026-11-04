@@ -5059,6 +5059,8 @@ test -x /usr/libexec/amethystora-agent-root
 # The hand-off to a terminal shows what the agent asks to run and reports how it ended
 grep -q -- "--agent REASON" /usr/libexec/amethystora-in-terminal
 grep -q -- "--report DIR" /usr/libexec/amethystora-in-terminal
+# The apps learn when a command they opened in a terminal ends, and keep nothing it printed
+grep -q -- "--done DIR" /usr/libexec/amethystora-in-terminal
 grep -qx "ALLOW=act" /etc/amethystora/agent.conf
 grep -qx "ROOT=session" /etc/amethystora/agent.conf
 /usr/libexec/amethystora-agent-tools policy --json | jq -e '.allow == "act" and .root == "session" and .allow_for == {}' >/dev/null

@@ -1025,6 +1025,17 @@ impl Vault {
         self.current_page(|page| page.reload());
     }
 
+    /// A command in a terminal, and what it changed on the screen the moment it ends: which screen shows, the counts and the page
+    pub fn in_terminal(&self, args: &[&str]) {
+        let weak = self.me.clone();
+        process::in_terminal_then(args, move || {
+            if let Some(this) = weak.upgrade() {
+                this.check();
+                App::reload(this.as_ref());
+            }
+        });
+    }
+
     pub async fn confirm(&self, heading: &str, body: &str, yes: &str, danger: bool) -> bool {
         let alert = adw::AlertDialog::new(Some(heading), Some(body));
         alert.add_responses(&[("cancel", &t!("Cancel")), ("yes", yes)]);

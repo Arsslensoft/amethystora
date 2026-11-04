@@ -7,7 +7,7 @@
 use std::rc::Rc;
 
 use amethystora_ui::adw::prelude::*;
-use amethystora_ui::{glib, gtk, i18n, process, t, ui};
+use amethystora_ui::{glib, gtk, i18n, t, ui};
 use serde_json::{json, Value};
 
 use super::{Page, Vault, Width};
@@ -161,6 +161,7 @@ impl SyncPage {
         server.append(&widgets::p(&t!("Whoever opens this vault can reach that whole account, so a dedicated account is best. Its address is named under what this computer sends. The login happens in a terminal."), &["soft", "small"]));
         let error = widgets::problem();
         server.append(&error);
+        let vault = self.vault.clone();
         let connect = btn(&t!("Connect"), Some("refresh"), &["primary"], move || {
             let typed = address.text().trim().to_string();
             if !typed.starts_with("https://") {
@@ -168,7 +169,7 @@ impl SyncPage {
                 return;
             }
             say(&error, "");
-            process::in_terminal(&["ame", "vault", "sync", "connect", &typed]);
+            vault.in_terminal(&["ame", "vault", "sync", "connect", &typed]);
         });
         connect.set_halign(gtk::Align::Start);
         server.append(&connect);
@@ -193,8 +194,9 @@ impl SyncPage {
         }
         server.append(&pairs.grid);
         let row = ui::hbox(8, &[]);
-        row.append(&btn(&t!("Sync now"), Some("refresh"), &["primary"], || process::in_terminal(&["ame", "vault", "sync", "now"])));
-        row.append(&btn(&t!("Disconnect"), None, &["danger"], || process::in_terminal(&["ame", "vault", "sync", "off"])));
+        let (now, off) = (self.vault.clone(), self.vault.clone());
+        row.append(&btn(&t!("Sync now"), Some("refresh"), &["primary"], move || now.in_terminal(&["ame", "vault", "sync", "now"])));
+        row.append(&btn(&t!("Disconnect"), None, &["danger"], move || off.in_terminal(&["ame", "vault", "sync", "off"])));
         server.append(&row);
         ui::clear(&self.conflicts);
         // What the last run did to items changed in both places: both were kept
@@ -222,7 +224,8 @@ impl SyncPage {
             card.append(&said);
             // The service stopped to ask the person, and a person is who answers: in a terminal, where it is asked
             if accept {
-                let button = btn(&t!("Accept it"), Some("check"), &["primary", "small"], || process::in_terminal(&["ame", "vault", "sync", "now", "accept"]));
+                let vault = self.vault.clone();
+                let button = btn(&t!("Accept it"), Some("check"), &["primary", "small"], move || vault.in_terminal(&["ame", "vault", "sync", "now", "accept"]));
                 button.set_halign(gtk::Align::Start);
                 card.append(&button);
             }

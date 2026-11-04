@@ -180,7 +180,8 @@ impl Protected {
             if let Some(old) = self.agent_button.steal_data::<glib::SignalHandlerId>("press") {
                 self.agent_button.disconnect(old);
             }
-            let handler = self.agent_button.connect_clicked(move |_| process::in_terminal(&["ame", "vault", "ssh", state]));
+            let vault = self.vault.clone();
+            let handler = self.agent_button.connect_clicked(move |_| vault.in_terminal(&["ame", "vault", "ssh", state]));
             self.agent_button.set_data("press", handler);
         }
     }
@@ -200,7 +201,7 @@ fn ask_to_protect(vault: &Rc<Vault>, path: PathBuf) {
             )
             .await;
         if sure {
-            process::in_terminal(&["ame", "vault", "protect", &shown]);
+            vault.in_terminal(&["ame", "vault", "protect", &shown]);
         }
     });
 }
@@ -212,7 +213,8 @@ fn details_sheet(vault: &Rc<Vault>, name: String, id: &str, approval: &str) {
     sheet.body.append(&widgets::code(&format!("ame vault run {name} -- COMMAND"), &["small"]));
     sheet.body.append(&widgets::p(&t!("While that command runs, other programs of yours can reach what it holds. It is safe at rest and while nothing uses it."), &["soft", "small"]));
     let target = name.clone();
-    let back = btn(&t!("Give it back"), None, &["danger"], move || process::in_terminal(&["ame", "vault", "unprotect", &target]));
+    let back_vault = vault.clone();
+    let back = btn(&t!("Give it back"), None, &["danger"], move || back_vault.in_terminal(&["ame", "vault", "unprotect", &target]));
     let dialog = sheet.dialog.clone();
     let done = btn(&t!("Done"), None, &[], move || {
         dialog.close();

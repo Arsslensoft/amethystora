@@ -5,7 +5,7 @@ use crate::scan;
 use std::rc::Rc;
 
 use amethystora_ui::adw::prelude::*;
-use amethystora_ui::{glib, gtk, process, t, ui};
+use amethystora_ui::{glib, gtk, t, ui};
 use serde_json::{json, Value};
 
 use super::{Page, Vault};
@@ -65,15 +65,17 @@ impl Vaults {
         backup.append(&widgets::h2(&t!("Backups and starting over")));
         backup.append(&widgets::p(&t!("A sealed backup needs only your recovery key to open, and holds every vault here, including any you cannot see. These run in a terminal."), &["soft", "small"]));
         let row = ui::wrap(8, 8, &[]);
-        row.append(&btn(&t!("Back up now"), Some("down"), &["small"], || process::in_terminal(&["ame", "vault", "backup"])));
+        let (backup_vault, restore_vault, forget_vault) = (vault.clone(), vault.clone(), vault.clone());
+        row.append(&btn(&t!("Back up now"), Some("down"), &["small"], move || backup_vault.in_terminal(&["ame", "vault", "backup"])));
         row.append(&btn(&t!("Restore from a backup"), Some("up"), &["small"], move || {
+            let vault = restore_vault.clone();
             glib::spawn_future_local(async move {
                 if let Some(path) = scan::choose_file(&t!("Restore from a backup"), None).await {
-                    process::in_terminal(&["ame", "vault", "restore", &path.to_string_lossy()]);
+                    vault.in_terminal(&["ame", "vault", "restore", &path.to_string_lossy()]);
                 }
             });
         }));
-        row.append(&btn(&t!("Forget every vault here"), Some("trash"), &["small", "danger"], || process::in_terminal(&["ame", "vault", "forget"])));
+        row.append(&btn(&t!("Forget every vault here"), Some("trash"), &["small", "danger"], move || forget_vault.in_terminal(&["ame", "vault", "forget"])));
         backup.append(&row);
         page.append(&backup);
 

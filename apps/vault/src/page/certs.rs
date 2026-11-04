@@ -186,7 +186,8 @@ impl Certificates {
                 buttons.append(&btn(&t!("Give a server its key and chain"), Some("down"), &["primary"], move || server_files(&vault_key, key_id.clone(), name.clone())));
                 buttons.append(&give_ca(&vault, &t!("Give out the Local Services CA"), "local", "local-services-ca"));
                 let on = t!("Trust it in browsers from your distribution");
-                buttons.append(&btn(&on, Some("shield"), &[], || process::in_terminal(&["ame", "vault", "tls", "trust", "browsers", "on"])));
+                let trust_vault = vault.clone();
+                buttons.append(&btn(&on, Some("shield"), &[], move || trust_vault.in_terminal(&["ame", "vault", "tls", "trust", "browsers", "on"])));
                 card.append(&buttons);
                 card.append(&widgets::p(&t!("Browsers warn until they trust your Local Services CA. Firefox and Flatpak browsers take it by hand."), &["soft", "small"]));
             }
@@ -318,7 +319,7 @@ fn sign_pdf(vault: &Rc<Vault>, id: String) {
         let Some(path) = scan::choose_file(&t!("Sign a PDF"), None).await else { return };
         let sure = vault.confirm(&t!("Sign this PDF?"), &t!("Only computers that trust this machine's root, or your CA, accept this. Other computers call the signer unknown until then."), &t!("Sign it"), false).await;
         if sure {
-            process::in_terminal(&["ame", "vault", "pdf", "sign", "--", &path.to_string_lossy(), &id]);
+            vault.in_terminal(&["ame", "vault", "pdf", "sign", "--", &path.to_string_lossy(), &id]);
         }
     });
 }

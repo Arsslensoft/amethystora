@@ -1038,7 +1038,8 @@ approval**: those two halves are the whole design, and every rule below serves o
 - **The agent never gets in**: `never.rs` refuses every spelling of `ame vault`, `amethystora-vault*`, `org.amethystora.vault`, the sockets and the folder, and no tool reads
   it. `agents/knowledge/vault.md` and the skill say what to tell a person: keep both accurate with the commands.
 - **On the desktop**: the window follows Notes' rules (a `gtk::ListView`, every call async, a frame over 16 ms is a bug, one wakeup a second only while the Authenticator
-  page shows a code), copies as a secret (`x-kde-passwordManagerHint`, cleared after 30 s), hides a revealed secret after 30 s and on focus loss, sets
+  page shows a code; a command it opens in a terminal is read back the moment it ends, through `process::in_terminal_then` and the
+  wrapper's `--done`, never by polling), copies as a secret (`x-kde-passwordManagerHint`, cleared after 30 s), hides a revealed secret after 30 s and on focus loss, sets
   `PR_SET_DUMPABLE` 0 (so its portal helper is the same program started again) and is in `share-guard-apps`. Its icon is the door of `branding/icons/glyphs.mjs`
   in all eight packs, with the tile `generate.mjs` draws (`amethystora-vault.svg`); the logos switch is a marker file (`~/.config/amethystora/vault-logos`) that
   `ame vault logos` writes.
