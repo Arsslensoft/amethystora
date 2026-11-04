@@ -130,6 +130,7 @@ switch-to-application-9=['<Alt>9']
 [org.freedesktop.ibus.panel.emoji]
 hotkey=@as []
 
+# Without it GNOME takes logging out to be unavailable on a machine with one account, and its Power menu has no Log Out…
 [org.gnome.shell]
 always-show-log-out=true
 

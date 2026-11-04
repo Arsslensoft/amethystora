@@ -19009,10 +19009,6 @@ msgid "Lock"
 msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/quick.js
-msgid "Log out"
-msgstr ""
-
-#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/quick.js
 msgid "Arrange: hold a tile and drag it"
 msgstr ""
 

@@ -291,14 +291,14 @@
 }
 
 .quick-settings.amethystora-quick .amethystora-quick-action {
-  height: 54px;
-  padding: 0 2px;
+  height: 40px;
+  padding: 0 8px;
   border-radius: 14px;
 }
 
 .amethystora-quick-action-box {
-  spacing: 3px;
-  font-size: 11px;
+  spacing: 6px;
+  font-size: 12px;
   font-weight: 700;
 }
 
