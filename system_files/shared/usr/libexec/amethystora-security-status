@@ -339,7 +339,7 @@ fi
 # is mounted only with fs-verity required. The ostree images mount composefs with `enabled = yes`, which
 # expects no digest and passes overlayfs no verity option, so an object changed in /sysroot/ostree/repo is
 # what /usr then serves. This reports what is actually mounted rather than what was intended.
-if grep -Eq '(^| )composefs=[0-9a-f]+( |$)' /proc/cmdline 2>/dev/null &&
+if grep -Eq '(^| )(composefs=[0-9a-f]+|composefs\.digest=[a-z0-9-]+:[0-9a-f]+)( |$)' /proc/cmdline 2>/dev/null &&
     findmnt -no OPTIONS / 2>/dev/null | grep -q 'verity=require'; then
     report updates composefs ok "$(gettext "Verified system files")" \
         "$(gettext "The system is sealed: every file of it is checked, as it is read, against the digest its signed kernel carries")"
