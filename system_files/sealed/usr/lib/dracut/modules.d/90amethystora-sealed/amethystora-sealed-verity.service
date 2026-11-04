@@ -1,10 +1,12 @@
 # Stops a sealed system whose files would not be verified (amethystora-sealed-verity). It halts: the
 # emergency target, where bootc's own unit goes on failure, would let the boot continue, since the root
-# account is locked.
+# account is locked. It starts on either argument bootc names the image with: composefs.digest= since
+# 1.17, and the bare composefs=, which 1.17 still writes only for older clients.
 [Unit]
 Description=Check that the sealed system's files are verified
 DefaultDependencies=no
-ConditionKernelCommandLine=composefs
+ConditionKernelCommandLine=|composefs.digest
+ConditionKernelCommandLine=|composefs
 ConditionPathExists=/etc/initrd-release
 After=bootc-root-setup.service
 Requires=bootc-root-setup.service
