@@ -25,10 +25,13 @@ KERNEL="$(basename "${UKI}" .efi)"
 sbverify --cert "${CERT}" "${UKI}"
 
 # Its command line carries the digest of exactly this tree, which is what the machine checks at boot, and
-# requires it ("composefs=?" would make fs-verity optional and the image unsealed)
+# requires it ("composefs=?" would make fs-verity optional and the image unsealed). bootc 1.17 names the
+# digest's format, composefs.digest=v1-sha512-12:<digest>, and follows it with a bare composefs= of the
+# older V2 digest for older clients; before 1.17 the bare composefs= carried the digest itself
 CMDLINE="$(ukify inspect "${UKI}" --json=short | jq -r '.".cmdline".text')"
 DIGEST="$(bootc container compute-composefs-digest "${T}")"
-[[ " ${CMDLINE} " == *" composefs=${DIGEST} "* ]]
+[[ " ${CMDLINE} " == *" composefs.digest=v1-sha512-12:${DIGEST} "* || " ${CMDLINE} " == *" composefs=${DIGEST} "* ]]
+[[ " ${CMDLINE} " != *" composefs="\?* && " ${CMDLINE} " != *" composefs.digest="\?* ]]
 
 # ...and the kernel arguments of kargs.d: read-write btrfs root, the splash, no credentials from the
 # firmware or the ESP, the hardening, no console size query, and lockdown on every image but the NVIDIA
