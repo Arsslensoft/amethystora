@@ -11,7 +11,7 @@ use amethystora_ui::ui::{self, Bar};
 use amethystora_ui::{adw, frame, gtk, process, t, t_parts};
 use gtk::prelude::*;
 
-use crate::backend::{self, Deployment, Device, Step, Update};
+use crate::backend::{self, Deployment, Device, Package, Step, Update, Waiting};
 use crate::icons::icon;
 use crate::Updates;
 
@@ -559,6 +559,10 @@ impl Updates {
                     if let Some(agent) = self.ask_agent() {
                         actions.push(agent.upcast());
                     }
+                } else if self.waiting().is_some_and(|w| w.any()) {
+                    title = t!("An update is waiting");
+                    lead = t!("What is ready to download is listed below. Update now to install it: nothing changes before the next restart.");
+                    actions.push(self.button(&t!("Update now"), Some("download"), true, false, false, |this| this.update_now()).upcast());
                 } else {
                     title = t!("Updates come by themselves");
                     lead = t!("The system, your apps and your command-line tools are updated in the background while you work. Update now to have anything new straight away.");
@@ -717,6 +721,94 @@ impl Updates {
         let card = ui::vbox(0, &["card", "list"]);
         card.append(&row);
         Some(Self::section(&t!("Automatic updates"), &[card.upcast()]))
+    }
+
+    // --- What is waiting ----------------------------------------------------------------------------------
+
+    /// What the last look found, while it still says something: not on a sealed machine, and not once an update has
+    /// finished since it looked, which may have installed it
+    fn waiting(&self) -> Option<Waiting> {
+        let state = self.state.borrow();
+        let status = state.status.as_ref()?;
+        let mut waiting = status.waiting.clone()?;
+        let updated = [
+            status.recent.as_ref().filter(|r| r.result == "success").map(|r| r.finished),
+            self.update.borrow().as_ref().filter(|u| u.state == "done").and_then(|u| u.finished),
+        ];
+        if let Some(checked) = waiting.checked {
+            if updated.into_iter().flatten().any(|finished| finished > checked) {
+                waiting = Waiting { error: waiting.error, ..Default::default() };
+            }
+        }
+        Some(waiting)
+    }
+
+    fn waiting_row(icon_name: &str, title: &str, details: &[String]) -> gtk::Box {
+        let row = ui::hbox(14, &["row"]);
+        row.append(&row_icon(icon_name, &["row-icon", "tone", "accent"]));
+        let text = ui::vbox(2, &["row-text"]);
+        text.set_hexpand(true);
+        text.append(&ui::label(title, &["row-title"]));
+        for detail in details.iter().filter(|d| !d.is_empty()) {
+            text.append(&ui::label(detail, &["row-detail"]));
+        }
+        row.append(&text);
+        row
+    }
+
+    fn package_row(package: &Package) -> gtk::Box {
+        let row = Self::waiting_row(
+            "box",
+            &package.name,
+            &[t!("From {current} to {next}", current = &package.from, next = &package.to), t!("Added to the system with rpm-ostree install")],
+        );
+        // A package's name and versions read left to right in every language
+        row.set_direction(gtk::TextDirection::Ltr);
+        row
+    }
+
+    /// A newer system and newer versions of the layered packages, found without installing them
+    /// (amethystora-update-check). Installing is Update now's.
+    fn waiting_section(&self, kind: &str) -> Option<gtk::Box> {
+        if !matches!(kind, "idle" | "done" | "failed") {
+            return None;
+        }
+        let waiting = self.waiting()?;
+        let looking = self.state.borrow().looking;
+        let card = ui::vbox(0, &["card", "list"]);
+        if let Some((version, built)) = &waiting.system {
+            let title = if version.is_empty() { t!("A new version of the system") } else { format!("Amethystora {version}") };
+            let built = built.map(|b| t!("Built {date}", date = day(b))).unwrap_or_default();
+            card.append(&Self::waiting_row("download", &title, &[built, t!("Takes over at the restart after it is installed")]));
+        }
+        for package in &waiting.packages {
+            card.append(&Self::package_row(package));
+        }
+        if !waiting.any() {
+            let row = ui::hbox(14, &["row", "soft"]);
+            let text = match waiting.checked {
+                Some(checked) => t!("Nothing is waiting. Last looked {when}.", when = when(checked)),
+                None => t!("Not looked since this version started. It looks once a day by itself, and when you press Check now."),
+            };
+            row.append(&ui::label(&text, &[]));
+            card.append(&row);
+        }
+        let mut body: Vec<gtk::Widget> = Vec::new();
+        if let Some(error) = &waiting.error {
+            body.push(Self::callout("check", &t!("The last look did not work"), error, None).upcast());
+        }
+        body.push(card.upcast());
+        let mut actions: Vec<gtk::Widget> = Vec::new();
+        if waiting.any() && kind != "failed" {
+            actions.push(self.button(&t!("Update now"), Some("download"), true, false, false, |this| this.update_now()).upcast());
+        }
+        actions.push(self.button(&if looking { t!("Checking…") } else { t!("Check now") }, Some("refresh"), false, true, looking, |this| this.look()).upcast());
+        actions.push(self.manual_link(&t!("What is waiting, in the manual"), "book", "updates#what-is-waiting").upcast());
+        body.push(Self::actions(actions, false).upcast());
+        if let (true, Some(checked)) = (waiting.any(), waiting.checked) {
+            body.push(ui::label(&t!("Looked {when}", when = when(checked)), &["faint", "small"]).upcast());
+        }
+        Some(Self::section(&t!("Waiting to be installed"), &body))
     }
 
     // --- Firmware -----------------------------------------------------------------------------------------
@@ -964,6 +1056,9 @@ impl Updates {
         if let Some(details) = self.details_section() {
             self.view.append(&details);
         }
+        if let Some(waiting) = self.waiting_section(kind) {
+            self.view.append(&waiting);
+        }
         self.view.append(&self.machine_section());
         if let Some(firmware) = self.firmware_section() {
             self.view.append(&firmware);
@@ -1168,6 +1263,30 @@ impl Updates {
                     status.automatic = result.automatic;
                 }
                 state.notice = result.error.unwrap_or_default();
+            }
+            this.render();
+        });
+    }
+
+    /// Check now: the same look the timer runs, then what it found
+    fn look(self: &Rc<Self>) {
+        self.state.borrow_mut().looking = true;
+        self.render();
+        let booted = self.state.borrow().status.as_ref().and_then(|s| s.machine.as_ref()).map(|m| m.running.checksum.clone()).unwrap_or_default();
+        let this = self.clone();
+        gtk::glib::spawn_future_local(async move {
+            let result = backend::look(&booted).await;
+            {
+                let mut state = this.state.borrow_mut();
+                state.looking = false;
+                match result {
+                    Ok(waiting) => {
+                        if let Some(status) = state.status.as_mut() {
+                            status.waiting = waiting;
+                        }
+                    }
+                    Err(error) => state.notice = error,
+                }
             }
             this.render();
         });

@@ -1,6 +1,7 @@
 # vim: set ft=make :
 
 # boot-guard on|off: an update that does not start goes back by itself.
+# check looks for updates, layered packages included, without installing them; check on|off is its daily look.
 # Update system, flatpaks and homebrew packages all at once; restart to finish, in seconds when the kernel stays.
 # night-restart off|02:00..05:00 chooses when Restart while you're away restarts, and tonight [off] sets it for tonight.
 [positional-arguments]
@@ -67,8 +68,33 @@ update ACTION="" VALUE="":
         esac
         echo "Usage: ame update boot-guard [on|off]" >&2
         exit 2
+    elif [[ "$1" == check ]]; then
+        # Looks without installing anything (amethystora-update-check): the system, and the packages layered onto it
+        case "$2" in
+            "")
+                if [[ -e /usr/share/amethystora/sealed ]]; then
+                    echo "$(gettext "A sealed image's updates are not looked for before they are staged.")"
+                    exit 0
+                fi
+                echo "$(gettext "Looking for updates…")"
+                systemctl start amethystora-update-check.service || exit $?
+                exec /usr/libexec/amethystora-update-check status
+                ;;
+            on)
+                sudo systemctl enable --now amethystora-update-check.timer || exit $?
+                echo "$(gettext "This machine looks for updates once a day, and System Updates says what is waiting.")"
+                exit 0
+                ;;
+            off)
+                sudo systemctl disable --now amethystora-update-check.timer || exit $?
+                echo "$(gettext "This machine no longer looks for updates by itself. Check now in System Updates still does.")"
+                exit 0
+                ;;
+        esac
+        echo "Usage: ame update check [on|off]" >&2
+        exit 2
     elif [[ -n "$1" ]]; then
-        echo "Usage: ame update [restart|night-restart off|HH:MM|tonight [off]|boot-guard [on|off]]" >&2
+        echo "Usage: ame update [restart|night-restart off|HH:MM|tonight [off]|boot-guard [on|off]|check [on|off]]" >&2
         exit 2
     fi
     if systemctl cat -- uupd.timer &> /dev/null; then
@@ -80,12 +106,13 @@ update ACTION="" VALUE="":
         echo "$(eval_gettext "automatic updates are currently running, use \`journalctl -fexu \${SERVICE}\` to see logs")"
         exit 1
     fi
-    if grep -q -E -e "LockLayering=false" /etc/rpm-ostreed.conf ; then
+    # bootc cannot update a system with packages layered onto it, and rpm-ostree leaves out the image's kernel arguments:
+    # each where it can, as uupd picks
+    if [[ "$(sudo /usr/libexec/amethystora-update-check driver)" == rpm-ostree ]]; then
         rpm-ostree upgrade
     else
         sudo bootc upgrade
     fi
-    # rpm-ostree used due to bootc upgrade not supporting local layered packages
     # Updates system Flatpaks
     if flatpak remotes | grep -q system; then
         flatpak update -y

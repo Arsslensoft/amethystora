@@ -1,0 +1,13 @@
+// System Updates' Check now and `ame update check` look for updates without installing anything
+// (amethystora-update-check.service): the person at the machine may start that look without a password, as
+// 40-amethystora-uupd.rules lets them start an update. Anything else asked of the unit takes an administrator's.
+polkit.addRule(function (action, subject) {
+    if (action.id == "org.freedesktop.systemd1.manage-units" &&
+        action.lookup("unit") == "amethystora-update-check.service") {
+        if (action.lookup("verb") == "start" && subject.local && subject.active) {
+            return polkit.Result.YES;
+        }
+        return polkit.Result.AUTH_ADMIN;
+    }
+    return polkit.Result.NOT_HANDLED;
+});

@@ -1,0 +1,268 @@
+#!/usr/bin/bash
+# Looks for updates of the system without installing anything: a newer image, and newer versions of the packages
+# layered onto it with `rpm-ostree install`, whose repositories are read even when the image has not changed.
+# amethystora-update-check.timer runs it once a day and after each start, System Updates' Check now and `ame update
+# check` start the same service. Installing stays uupd's (Update now, or the automatic updates).
+#
+#   check          as root: looks, and writes what it found to /var/lib/amethystora/updates/available.json
+#   notify         as root, from amethystora-update-check-notice.service: says once what is waiting, to whoever is
+#                  logged in, while the automatic updates are off (with them on, uupd installs it anyway)
+#   status [--json] what the last look found, for anyone
+#   driver         as root: bootc, or rpm-ostree on a machine with layered packages (bootc's "incompatible"), which
+#                  is how uupd picks the one that can update it; `ame update` asks this too
+#
+# available.json, 0644:
+#   {"checked": SECONDS, "booted": CHECKSUM, "driver": "bootc"|"rpm-ostree",
+#    "system": {"version": "...", "built": SECONDS|null, "digest": "sha256:..."} | null,
+#    "packages": [{"name": "...", "from": "EVR", "to": "EVR"}], "error": null | "..."}
+# "booted" is the deployment it looked from: once the machine runs another one, what it found no longer applies. A
+# look that failed keeps what the last one found, with its error.
+#
+# rpm-ostree's own check says whether a layered package has a newer version (`upgrade --check`, then the cached
+# update's rpm-diff, layered packages being type 1), but not reliably whether the image changed, so the image is
+# compared with the registry's by digest, as uupd does. A sealed image is left out: it has no rpm-ostree, and its
+# updates are not shown before they are staged.
+
+set -uo pipefail
+
+export TEXTDOMAIN=amethystora
+# shellcheck source=/dev/null
+source gettext.sh
+
+# Stand-ins for test-update-check.sh
+DIR="${AMETHYSTORA_UPDATES_DIR:-/var/lib/amethystora/updates}"
+NOTIFY="${AMETHYSTORA_UPDATES_NOTIFY:-/usr/libexec/amethystora-notify-users}"
+FILE="${DIR}/available.json"
+SAID="${DIR}/said"
+SEALED=/usr/share/amethystora/sealed
+
+usage() {
+    echo "usage: ${0##*/} check | notify | status [--json] | driver" >&2
+    exit 2
+}
+
+need_root() {
+    if [[ "${EUID}" -ne 0 ]]; then
+        echo "${0##*/}: run as root (ame update check)" >&2
+        exit 1
+    fi
+}
+
+driver() {
+    local status
+    if status="$(bootc status --format=json 2>/dev/null)" &&
+        ! jq -e '(.status.booted.incompatible // false) or (.status.staged.incompatible // false)' <<<"${status}" >/dev/null 2>&1; then
+        echo bootc
+    elif command -v rpm-ostree >/dev/null; then
+        echo rpm-ostree
+    else
+        echo bootc
+    fi
+}
+
+# The last line a command said, for the error
+last_line() { grep -v '^[[:space:]]*$' <<<"$1" | tail -n 1 | cut -c 1-300; }
+
+# ISO 8601 to seconds, or null
+seconds() {
+    local at
+    [[ -n "$1" ]] && at="$(date -d "$1" +%s 2>/dev/null)" && echo "${at}" || echo null
+}
+
+write() {
+    local tmp
+    # The unit's StateDirectory makes it 0755; this is for a run outside it
+    mkdir -p "${DIR}"
+    tmp="$(mktemp "${DIR}/.available.XXXXXX")" || return 1
+    if printf '%s\n' "$1" >"${tmp}" && chmod 0644 "${tmp}" && mv -f "${tmp}" "${FILE}"; then
+        return 0
+    fi
+    rm -f "${tmp}"
+    return 1
+}
+
+# A look that did not work: what the last one found stays, with why this one did not
+failed() {
+    local previous
+    previous="$(jq -c . "${FILE}" 2>/dev/null)" || previous='{"checked": null, "system": null, "packages": []}'
+    write "$(jq -c --arg error "$1" --arg booted "${BOOTED}" --argjson at "$(date +%s)" \
+        '. + {error: $error, failed: $at} | if .booted != $booted then . + {booted: $booted, checked: null, system: null, packages: []} else . end' \
+        <<<"${previous}")"
+    echo "$1" >&2
+    exit 1
+}
+
+# The registry's image against the one running: {"version", "built", "digest"} when they differ, null when not
+image_update() {
+    local reference="$1" installed="$2" image info top raw arch new
+    case "${reference}" in
+        *docker://*) image="${reference#*docker://}" ;;
+        ostree-unverified-registry:*) image="${reference#*:}" ;;
+        *) failed "$(eval_gettext "This machine follows \${reference}, which is not an image in a registry.")" ;;
+    esac
+    info="$(skopeo inspect --retry-times 3 --no-tags "docker://${image}" 2>&1)" || failed "$(last_line "${info}")"
+    top="$(jq -r '.Digest // ""' <<<"${info}")"
+    [[ -n "${top}" ]] || failed "$(gettext "The registry did not say which image is the newest.")"
+    if [[ "${top}" == "${installed}" ]]; then
+        echo null
+        return
+    fi
+    # A list of images, one per architecture: the one for this machine is the one installed, or the new one
+    raw="$(skopeo inspect --retry-times 3 --raw "docker://${image}" 2>&1)" || failed "$(last_line "${raw}")"
+    case "$(uname -m)" in
+        x86_64) arch=amd64 ;;
+        aarch64) arch=arm64 ;;
+        *) arch="$(uname -m)" ;;
+    esac
+    new="$(jq -r --arg installed "${installed}" --arg arch "${arch}" --arg top "${top}" '
+        if (.manifests | type) == "array" and (.manifests | length) > 0 then
+            [.manifests[] | select(.platform.os == "linux" and .platform.architecture == $arch) | .digest] as $mine
+            | if ($mine | index($installed)) != null then $installed else ($mine[0] // $top) end
+        else $top end' <<<"${raw}" 2>/dev/null)" || new="${top}"
+    if [[ "${new}" == "${installed}" ]]; then
+        echo null
+        return
+    fi
+    jq -c --arg digest "${new}" --argjson built "$(seconds "$(jq -r '.Created // ""' <<<"${info}")")" \
+        '{version: (.Labels["org.opencontainers.image.version"] // ""), built: $built, digest: $digest}' <<<"${info}"
+}
+
+check() {
+    need_root
+    if [[ -e "${SEALED}" ]]; then
+        echo "$(gettext "A sealed image's updates are not looked for before they are staged.")"
+        exit 0
+    fi
+    local status booted out code cached system packages driver
+    status="$(rpm-ostree status --json 2>&1)" || failed "$(last_line "${status}")"
+    booted="$(jq -c '[.deployments[] | select(.booted)][0] // empty' <<<"${status}")"
+    [[ -n "${booted}" ]] || failed "$(gettext "rpm-ostree did not say which system is running.")"
+    BOOTED="$(jq -r '.checksum // ""' <<<"${booted}")"
+    # An update already waits for the restart: System Updates shows that one, and a look would compare against it
+    if jq -e 'any(.deployments[]; .staged == true)' <<<"${status}" >/dev/null; then
+        exit 0
+    fi
+    # A run of the timer waits for a connection that does not count data; one a person started looks anyway
+    if [[ -n "${TRIGGER_UNIT:-}" ]] && /usr/libexec/amethystora-metered metered; then
+        exit 0
+    fi
+    driver="$(driver)"
+    packages='[]'
+    if [[ "${driver}" == rpm-ostree ]]; then
+        # 77: nothing new. Anything else but 0 is an error, and says so on its last line
+        out="$(rpm-ostree upgrade --check 2>&1)"
+        code=$?
+        case "${code}" in
+            0)
+                cached="$(rpm-ostree status --json 2>/dev/null | jq -c '."cached-update" // {}')"
+                [[ -n "${cached}" ]] || cached='{}'
+                packages="$(jq -c --argjson layered "$(jq -c '.packages // []' <<<"${booted}")" '
+                    [(."rpm-diff".upgraded // [])[] | select(.[0] == 1 or ((.[1]) as $n | $layered | index($n)) != null)
+                     | {name: .[1], from: .[2][0], to: .[3][0]}]' <<<"${cached}" 2>/dev/null)" || packages='[]'
+                ;;
+            77) ;;
+            *) failed "$(last_line "${out}")" ;;
+        esac
+        system="$(image_update "$(jq -r '."container-image-reference" // ""' <<<"${booted}")" \
+            "$(jq -r '."container-image-reference-digest" // ""' <<<"${booted}")")" || exit 1
+    else
+        out="$(bootc upgrade --check 2>&1)" || failed "$(last_line "${out}")"
+        if grep -q "No changes in" <<<"${out}"; then
+            system=null
+        else
+            cached="$(bootc status --format=json 2>/dev/null | jq -c '.status.booted.cachedUpdate // {}')"
+            [[ -n "${cached}" ]] || cached='{}'
+            system="$(jq -c --argjson built "$(seconds "$(jq -r '.timestamp // ""' <<<"${cached}")")" \
+                '{version: (.version // ""), built: $built, digest: (.imageDigest // "")}' <<<"${cached}")"
+        fi
+    fi
+    write "$(jq -nc --argjson checked "$(date +%s)" --arg booted "${BOOTED}" --arg driver "${driver}" \
+        --argjson system "${system}" --argjson packages "${packages}" \
+        '{$checked, $booted, $driver, $system, $packages, error: null}')" || failed "$(gettext "What was found could not be written down.")"
+    # Said by a unit of its own, so that a notice nobody answers yet never holds up the next look
+    if [[ -n "${TRIGGER_UNIT:-}" ]] && waiting; then
+        systemctl start --no-block amethystora-update-check-notice.service
+    fi
+    exit 0
+}
+
+# Something waits, from a look at the system running now
+waiting() {
+    jq -e '.error == null and (.system != null or (.packages | length) > 0)' "${FILE}" >/dev/null 2>&1
+}
+
+notify() {
+    need_root
+    waiting || exit 0
+    # With automatic updates on, uupd installs it before long: nothing to say
+    systemctl is-enabled --quiet uupd.timer 2>/dev/null && exit 0
+    local said seen summary body answers user answer uid
+    # Each version and set of packages is said once
+    said="$(jq -c '[.system.digest, [.packages[] | .name + " " + .to]]' "${FILE}")"
+    seen="$(cat "${SAID}" 2>/dev/null)"
+    [[ "${said}" == "${seen}" ]] && exit 0
+    N_() { printf '%s' "$1"; }
+    PACKAGES="$(jq -r '[.packages[].name] | join(", ")' "${FILE}")"
+    export PACKAGES
+    summary="$(N_ 'An update is waiting')"
+    if jq -e '.system != null and (.packages | length) > 0' "${FILE}" >/dev/null; then
+        body="$(N_ 'A new version of Amethystora, and newer versions of packages you added to it (${PACKAGES}), are ready to download. Automatic updates are off, so nothing is installed until you start it.')"
+    elif jq -e '.system != null' "${FILE}" >/dev/null; then
+        body="$(N_ 'A new version of Amethystora is ready to download. Automatic updates are off, so nothing is installed until you start it.')"
+    else
+        body="$(N_ 'Packages you added to the system have newer versions: ${PACKAGES}. Automatic updates are off, so nothing is installed until you start it.')"
+    fi
+    answers="$("${NOTIFY}" --action "open=$(N_ 'Open System Updates')" --msgid "${summary}" "${body}")" || exit 0
+    # Somebody was told
+    printf '%s\n' "${said}" >"${SAID}"
+    while read -r user answer; do
+        [[ "${answer}" == open ]] || continue
+        # In that person's session, through the systemd user manager that has its display
+        uid="$(id -u "${user}")" || continue
+        runuser -u "${user}" -- env "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/${uid}/bus" \
+            "XDG_RUNTIME_DIR=/run/user/${uid}" systemd-run --user --collect --quiet /usr/bin/amethystora-update || true
+    done <<<"${answers}"
+    exit 0
+}
+
+status() {
+    if [[ "${1:-}" == --json ]]; then
+        jq -c . "${FILE}" 2>/dev/null || echo '{}'
+        return
+    fi
+    if [[ ! -r "${FILE}" ]]; then
+        echo "$(gettext "Not looked for updates yet.")"
+        return
+    fi
+    local error version packages
+    error="$(jq -r '.error // ""' "${FILE}")"
+    [[ -n "${error}" ]] && echo "$(eval_gettext "The last look did not work: \${error}")"
+    if jq -e '.system != null' "${FILE}" >/dev/null; then
+        version="$(jq -r '.system.version // ""' "${FILE}")"
+        if [[ -n "${version}" ]]; then
+            echo "$(eval_gettext "A new version of the system is waiting: Amethystora \${version}.")"
+        else
+            echo "$(gettext "A new version of the system is waiting.")"
+        fi
+    fi
+    packages="$(jq -r '.packages[] | "  \(.name)  \(.from) -> \(.to)"' "${FILE}")"
+    if [[ -n "${packages}" ]]; then
+        echo "$(gettext "Packages you added have newer versions:")"
+        printf '%s\n' "${packages}"
+    fi
+    if [[ -z "${error}" ]] && ! waiting; then
+        echo "$(gettext "Nothing is waiting.")"
+    fi
+}
+
+BOOTED=""
+case "${1:-}" in
+    check) check ;;
+    notify) notify ;;
+    status) status "${2:-}" ;;
+    driver)
+        need_root
+        driver
+        ;;
+    *) usage ;;
+esac

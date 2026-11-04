@@ -336,7 +336,9 @@ sudo rpm-ostree install <package>
 ```
 
 Restart to use it. Every layered package makes every update slower, and the package is only kept
-while you update through `rpm-ostree`. Two things to know:
+while you update through `rpm-ostree`. Its updates come with the system's, and System Updates lists a
+newer version of it under **Waiting to be installed** ([what is waiting](updates.md#what-is-waiting)).
+Two things to know:
 
 - **Switching images or streams:** `bootc switch` builds the new system from the image alone and
   drops layered packages without a word. On a machine with layered packages, switch with

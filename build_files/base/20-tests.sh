@@ -4940,6 +4940,15 @@ mapfile -t DRIVERS_MANUAL < <(jq -r '.findings[].manual' <<<"${DRIVERS_FOUND}" |
 "${NODE[@]}" /ctx/build_files/shared/check-manual.js /usr/share/amethystora/manual --links "${DRIVERS_MANUAL[@]}"
 rm -rf "${DRIVERS_TEST}"
 bash /ctx/build_files/shared/test-driver-status.sh
+# Looking for updates without installing them (amethystora-update-check): what it finds against stand-ins, an update
+# that waits for the look rather than failing beside it, and a look the person at the machine starts without a password
+bash /ctx/build_files/shared/test-update-check.sh
+for unit in uupd uupd-manual; do
+    grep -qx 'After=amethystora-update-check.service' "/usr/lib/systemd/system/${unit}.service.d/52-amethystora-update-check.conf"
+done
+grep -q 'action.lookup("unit") == "amethystora-update-check.service"' /usr/share/polkit-1/rules.d/40-amethystora-update-check.rules
+grep -q 'amethystora-update-check driver' /usr/share/amethystora/just/update.just
+grep -q 'LockLayering' /usr/share/amethystora/just/update.just && false
 # A DisplayLink dock's arrival starts the driver check, after the service that tries to load the dock's driver
 grep -qE 'ATTR\{idVendor\}=="17e9".*ENV\{SYSTEMD_WANTS\}\+="amethystora-driver-check\.service"' /usr/lib/udev/rules.d/99-amethystora-displaylink.rules
 grep -qx 'After=displaylink.service' /usr/lib/systemd/system/amethystora-driver-check.service
@@ -5246,6 +5255,7 @@ IMPORTANT_UNITS=(
     amethystora-signed-updates.service
     amethystora-gpu-check.timer
     amethystora-driver-check.timer
+    amethystora-update-check.timer
     amethystora-raid-check.timer
     amethystora-raid-scrub.timer
     amethystora-disk-health.timer

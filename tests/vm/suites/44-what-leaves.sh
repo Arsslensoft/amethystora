@@ -27,7 +27,7 @@ LIST="$(user_bus "${SENDS}" --json)"
 jq -e 'length >= 6 and all(.[]; (.id | startswith("sends-")) and (.state | IN("on", "off")) and (.title | length > 0)
     and (.text | length > 0) and (.details | type == "array"))' <<<"${LIST}" >/dev/null &&
     ok "the list: a record for each, with its title, sentence and state" || not_ok "the list" "${LIST}"
-for id in countme connectivity-check location auto-updates firmware-metadata clock homebrew-analytics; do
+for id in countme connectivity-check location auto-updates update-check firmware-metadata clock homebrew-analytics; do
     jq -e --arg id "sends-${id}" 'any(.[]; .id == $id)' <<<"${LIST}" >/dev/null && ok "the list names ${id}" || not_ok "the list names ${id}"
 done
 same "Homebrew's analytics are off" "$(jq -r '.[] | select(.id == "sends-homebrew-analytics") | .state' <<<"${LIST}")" off

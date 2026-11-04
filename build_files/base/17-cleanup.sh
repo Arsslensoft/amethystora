@@ -41,6 +41,9 @@ systemctl --global enable amethystora-clear-voice.service amethystora-sound-pres
 systemctl enable amethystora-gpu-check.timer
 # One number a start, how long it took, for Control's System page (ame system start-times): nothing runs but for a moment
 systemctl enable amethystora-start-times.service
+# Looks once a day for a newer system and newer versions of layered packages, without installing them, for System
+# Updates (ame update check off turns it off)
+systemctl enable amethystora-update-check.timer
 # Finds devices whose driver is missing, refused or without its firmware, for ame system drivers, and says each
 # once with what fixes it
 systemctl enable amethystora-driver-check.timer

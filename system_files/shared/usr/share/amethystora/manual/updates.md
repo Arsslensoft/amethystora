@@ -49,12 +49,36 @@ ame update
 | `ame update restart` | Restart to finish the update, in seconds when it can be ([restarting in seconds](#restarting-in-seconds)) |
 | `amepkg upgrade-all` | Upgrade the containers of other distributions now |
 | `ame system auto-updates on` | Turn automatic updates on, or `off`; without either it asks |
+| `ame update check` | Look for what is waiting, without installing it ([what is waiting](#what-is-waiting)) |
+| `ame update check off` | Stop the daily look, or `on` again |
 | `ame changelog` | The release notes of the build you are running, from GitHub (on a stream other than `stable`, the newest release's) |
 | `rpm-ostree status` | The running system, the staged update and the one to roll back to (`sudo bootc status` on a [sealed](#sealed-images) machine) |
 | `fwupdmgr get-updates` | Firmware updates for this machine, from its maker |
 
 The release notes for every stable build are on
 [GitHub](https://github.com/arsslensoft/amethystora/releases).
+
+## What is waiting
+
+Once a day, and again after each start, the machine looks for updates without installing
+anything: whether its image has a newer version, and whether the packages you added to the system with
+[`rpm-ostree install`](software.md#layering-the-last-resort) have newer versions in their repositories.
+The packages are looked for every day, even when the image has not changed. System Updates lists what
+it found under **Waiting to be installed**, and **Check now** looks again straight away, without a
+password. **Update now** installs it, as always.
+
+While [automatic updates](#updating-now) are off, a notification says when something new is waiting,
+once for each version, and opens System Updates. With them on, nothing is said: they install it
+themselves.
+
+The look asks `ghcr.io` for the image, and, only when packages were layered, Fedora's mirrors for their
+package lists. On a connection that counts data ([saving data](#saving-data)), the daily look waits for
+another one; **Check now** looks anyway. To stop it, `ame update check off`, and it is listed with the
+rest of what the machine sends by itself (`ame security sends`). A [sealed](#sealed-images) machine
+does not look: its updates show once they are ready for the restart.
+
+`ame update` uses `bootc` to update, or `rpm-ostree` on a machine with layered packages, which
+`bootc` cannot update, as the automatic updates do.
 
 ## Restarting in seconds
 

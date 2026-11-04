@@ -7156,7 +7156,7 @@ msgstr ""
 msgid "What happened?"
 msgstr ""
 
-#: usr/libexec/amethystora-update-alert
+#: usr/libexec/amethystora-update-alert usr/libexec/amethystora-update-check
 msgid "Open System Updates"
 msgstr ""
 
@@ -8174,6 +8174,71 @@ msgstr ""
 msgid "${DISK_MODEL} still works, and it may for months, but it has begun to report errors. Copy what matters while you can."
 msgstr ""
 
+#: usr/libexec/amethystora-update-check
+#, sh-format
+msgid "This machine follows ${reference}, which is not an image in a registry."
+msgstr ""
+
+#: usr/libexec/amethystora-update-check
+msgid "The registry did not say which image is the newest."
+msgstr ""
+
+#: usr/libexec/amethystora-update-check usr/share/amethystora/just/update.just
+msgid "A sealed image's updates are not looked for before they are staged."
+msgstr ""
+
+#: usr/libexec/amethystora-update-check
+msgid "rpm-ostree did not say which system is running."
+msgstr ""
+
+#: usr/libexec/amethystora-update-check
+msgid "What was found could not be written down."
+msgstr ""
+
+#: usr/libexec/amethystora-update-check
+msgid "An update is waiting"
+msgstr ""
+
+#: usr/libexec/amethystora-update-check
+#, sh-format
+msgid "A new version of Amethystora, and newer versions of packages you added to it (${PACKAGES}), are ready to download. Automatic updates are off, so nothing is installed until you start it."
+msgstr ""
+
+#: usr/libexec/amethystora-update-check
+msgid "A new version of Amethystora is ready to download. Automatic updates are off, so nothing is installed until you start it."
+msgstr ""
+
+#: usr/libexec/amethystora-update-check
+#, sh-format
+msgid "Packages you added to the system have newer versions: ${PACKAGES}. Automatic updates are off, so nothing is installed until you start it."
+msgstr ""
+
+#: usr/libexec/amethystora-update-check
+msgid "Not looked for updates yet."
+msgstr ""
+
+#: usr/libexec/amethystora-update-check
+#, sh-format
+msgid "The last look did not work: ${error}"
+msgstr ""
+
+#: usr/libexec/amethystora-update-check
+#, sh-format
+msgid "A new version of the system is waiting: Amethystora ${version}."
+msgstr ""
+
+#: usr/libexec/amethystora-update-check
+msgid "A new version of the system is waiting."
+msgstr ""
+
+#: usr/libexec/amethystora-update-check
+msgid "Packages you added have newer versions:"
+msgstr ""
+
+#: usr/libexec/amethystora-update-check
+msgid "Nothing is waiting."
+msgstr ""
+
 #: usr/libexec/amethystora-security-watch
 msgid "See it with: ame security events"
 msgstr ""
@@ -8255,6 +8320,18 @@ msgstr ""
 
 #: usr/libexec/amethystora-sends
 msgid "Without them, nothing is updated until you start it in Updates."
+msgstr ""
+
+#: usr/libexec/amethystora-sends
+msgid "Looking for updates"
+msgstr ""
+
+#: usr/libexec/amethystora-sends
+msgid "Once a day and after each start, this machine asks ghcr.io whether its image has a newer version, and, when packages were added to the system with rpm-ostree install, Fedora's mirrors for their package lists. Nothing is installed."
+msgstr ""
+
+#: usr/libexec/amethystora-sends
+msgid "Without it, System Updates says what is waiting only once you press Check now, and nobody is told while automatic updates are off."
 msgstr ""
 
 #: usr/libexec/amethystora-sends
@@ -14787,6 +14864,18 @@ msgstr ""
 
 #: usr/share/amethystora/just/update.just
 msgid "An update that does not start is left to the boot menu, whose second entry is the system before it."
+msgstr ""
+
+#: usr/share/amethystora/just/update.just
+msgid "Looking for updates…"
+msgstr ""
+
+#: usr/share/amethystora/just/update.just
+msgid "This machine looks for updates once a day, and System Updates says what is waiting."
+msgstr ""
+
+#: usr/share/amethystora/just/update.just
+msgid "This machine no longer looks for updates by itself. Check now in System Updates still does."
 msgstr ""
 
 #: usr/share/amethystora/just/update.just

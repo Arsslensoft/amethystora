@@ -28,6 +28,11 @@
 //! second entry in the boot menu does, is said so, with the choice of keeping that version, which
 //! `bootc rollback` does after an administrator's password, or restarting into the newest.
 //!
+//! What is waiting is looked for without installing anything: amethystora-update-check, once a day from its timer and
+//! when Check now is pressed, as root, compares the image with the registry's and reads the repositories of the packages
+//! layered onto the system with `rpm-ostree install`, and writes what it found where anyone can read it. The window
+//! shows that for the version running now only, and only while no update waits for the restart.
+//!
 //! Firmware is not uupd's: the window asks fwupd which devices have an update on LVFS, which needs no
 //! password, and installing one is `fwupdmgr update`, in a terminal, where fwupd says what it is about to
 //! do and asks before it restarts the machine. fwupd-refresh.timer fetches what LVFS has every day.
@@ -57,6 +62,11 @@ pub const SOFT_REBOOT: &str = "/usr/libexec/amethystora-soft-reboot";
 pub const NIGHT: &str = "/usr/libexec/amethystora-night-restart";
 /// Saving data: whether the connection counts data, and since when the automatic update has waited
 pub const METERED: &str = "/usr/libexec/amethystora-metered";
+/// The look for what is waiting, and the unit Check now starts, which the person at the machine may start without a password
+pub const CHECK: &str = "/usr/libexec/amethystora-update-check";
+pub const CHECK_UNIT: &str = "amethystora-update-check.service";
+/// A sealed machine has no such look: its updates are not shown before they are staged
+pub const SEALED: &str = "/usr/share/amethystora/sealed";
 
 /// One version of the system: what it is called, when it was built (seconds) and which image it follows
 #[derive(Debug, Clone, Default)]
@@ -64,6 +74,8 @@ pub struct Deployment {
     pub version: String,
     pub built: Option<f64>,
     pub image: String,
+    /// ostree's checksum, which tells apart two deployments of the same version
+    pub checksum: String,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -144,6 +156,31 @@ pub struct Metered {
     pub since: Option<f64>,
 }
 
+/// A package layered onto the system with a newer version in its repository
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Package {
+    pub name: String,
+    pub from: String,
+    pub to: String,
+}
+
+/// What the last look for updates found, from the version running now
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Waiting {
+    /// When it last looked; None when it has not since this version started
+    pub checked: Option<f64>,
+    /// A new system, by its version (empty when the image does not say) and when it was built
+    pub system: Option<(String, Option<f64>)>,
+    pub packages: Vec<Package>,
+    pub error: Option<String>,
+}
+
+impl Waiting {
+    pub fn any(&self) -> bool {
+        self.system.is_some() || !self.packages.is_empty()
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct Status {
     pub machine: Option<Machine>,
@@ -154,6 +191,8 @@ pub struct Status {
     pub firmware: Firmware,
     pub night: Night,
     pub metered: Metered,
+    /// None on a sealed machine, which does not look
+    pub waiting: Option<Waiting>,
 }
 
 /// One of uupd's modules, as the page shows it
@@ -276,6 +315,7 @@ pub async fn machine() -> Option<Machine> {
             version: deployment.get("version").and_then(Value::as_str).unwrap_or("").to_string(),
             built: timestamp,
             image: image_of(reference),
+            checksum: deployment.get("checksum").and_then(Value::as_str).unwrap_or("").to_string(),
         }
     };
     let booted = deployments.iter().position(|d| d.get("booted").and_then(Value::as_bool).unwrap_or(false))?;
@@ -398,6 +438,55 @@ pub fn read_metered(text: &str) -> Metered {
 
 pub async fn metered() -> Metered {
     read_metered(&process::run(METERED, &["status", "--json"]).await.stdout)
+}
+
+// --- What is waiting -------------------------------------------------------------------------------------------
+
+/// Text a repository or a registry wrote, kept to one short line
+fn short(value: Option<&Value>, most: usize) -> String {
+    let text: String = value.and_then(Value::as_str).unwrap_or("").chars().filter(|c| !c.is_control()).collect();
+    if text.chars().count() > most { format!("{}…", text.chars().take(most).collect::<String>()) } else { text }
+}
+
+/// What amethystora-update-check status --json says, for the deployment running now (its checksum): a look from
+/// another one says nothing of this one
+pub fn read_waiting(text: &str, booted: &str) -> Waiting {
+    let Ok(value) = serde_json::from_str::<Value>(text) else { return Waiting::default() };
+    let error = Some(short(value.get("error"), 300)).filter(|e| !e.is_empty());
+    if booted.is_empty() || value.get("booted").and_then(Value::as_str) != Some(booted) {
+        return Waiting { error, ..Default::default() };
+    }
+    let system = value.get("system").filter(|s| s.is_object()).map(|s| (short(s.get("version"), 80), s.get("built").and_then(Value::as_f64).filter(|t| *t > 0.0)));
+    let packages = value
+        .get("packages")
+        .and_then(Value::as_array)
+        .map(|list| {
+            list.iter()
+                .take(200)
+                .map(|p| Package { name: short(p.get("name"), 120), from: short(p.get("from"), 80), to: short(p.get("to"), 80) })
+                .filter(|p| !p.name.is_empty())
+                .collect()
+        })
+        .unwrap_or_default();
+    Waiting { checked: value.get("checked").and_then(Value::as_f64).filter(|t| *t > 0.0), system, packages, error }
+}
+
+pub async fn waiting(booted: &str) -> Option<Waiting> {
+    if std::path::Path::new(SEALED).exists() {
+        return None;
+    }
+    Some(read_waiting(&process::run(CHECK, &["status", "--json"]).await.stdout, booted))
+}
+
+/// Looks now, as the timer does: systemd runs it to its end, and polkit lets the person at the machine start it
+pub async fn look(booted: &str) -> Result<Option<Waiting>, String> {
+    let output = process::run("systemctl", &["start", CHECK_UNIT]).await;
+    let waiting = waiting(booted).await;
+    if output.code != 0 {
+        let line = output.last_error_line();
+        return Err(if line.is_empty() { t!("Updates could not be looked for.") } else { line });
+    }
+    Ok(waiting)
 }
 
 /// "ostree-image-signed:docker://ghcr.io/arsslensoft/amethystora:stable" -> "ghcr.io/arsslensoft/amethystora:stable"
@@ -813,6 +902,23 @@ mod tests {
         // A reason the page does not know, or an app ID that is no ID, is left out
         assert_eq!(read_night(r#"{"last":{"night":1,"why":"other"}}"#).last, None);
         assert_eq!(read_night(r#"{"last":{"night":1,"why":"late","app":"../x y"}}"#).last.unwrap().app, None);
+    }
+
+    #[test]
+    fn waiting_for_this_version() {
+        let found = r#"{"checked":1762000000,"booted":"abc","driver":"rpm-ostree","system":{"version":"44.20261104","built":1761900000,"digest":"sha256:1"},"packages":[{"name":"htop","from":"3.3-1.fc44","to":"3.4-1.fc44"}],"error":null}"#;
+        let waiting = read_waiting(found, "abc");
+        assert!(waiting.any());
+        assert_eq!(waiting.checked, Some(1762000000.0));
+        assert_eq!(waiting.system, Some(("44.20261104".into(), Some(1761900000.0))));
+        assert_eq!(waiting.packages, vec![Package { name: "htop".into(), from: "3.3-1.fc44".into(), to: "3.4-1.fc44".into() }]);
+        // A look from another deployment says nothing of this one, but its error is still said
+        assert_eq!(read_waiting(found, "other"), Waiting::default());
+        assert_eq!(read_waiting(r#"{"booted":"x","error":"no network"}"#, "abc").error.as_deref(), Some("no network"));
+        assert_eq!(read_waiting("", "abc"), Waiting::default());
+        assert!(!read_waiting(r#"{"checked":1,"booted":"abc","system":null,"packages":[],"error":null}"#, "abc").any());
+        // What a repository wrote stays one line
+        assert_eq!(read_waiting(r#"{"booted":"abc","packages":[{"name":"a\u001bb","from":"1","to":"2"}]}"#, "abc").packages[0].name, "ab");
     }
 
     #[test]

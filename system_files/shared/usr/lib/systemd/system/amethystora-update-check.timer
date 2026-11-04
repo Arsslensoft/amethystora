@@ -1,0 +1,12 @@
+[Unit]
+Description=Look for updates once a day, layered packages included
+ConditionPathExists=!/usr/share/amethystora/sealed
+
+[Timer]
+OnBootSec=15min
+OnCalendar=daily
+RandomizedDelaySec=2h
+Persistent=true
+
+[Install]
+WantedBy=timers.target

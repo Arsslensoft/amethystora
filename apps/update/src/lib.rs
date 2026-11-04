@@ -54,6 +54,8 @@ struct PageState {
     checking_firmware: bool,
     /// Tonight's restart is being set or taken away
     arming: bool,
+    /// Check now is looking for what is waiting
+    looking: bool,
     /// Opened as `amethystora-update update` (the pill's Update anyway): the update starts once the status is in
     wants_update: bool,
     /// When the status was last read
@@ -178,8 +180,11 @@ impl Updates {
         let firmware = glib::spawn_future_local(backend::firmware());
         let night = glib::spawn_future_local(backend::night());
         let metered = glib::spawn_future_local(backend::metered());
+        let machine = machine.await.ok().flatten();
+        let booted = machine.as_ref().map(|m| m.running.checksum.clone()).unwrap_or_default();
+        let waiting = glib::spawn_future_local(async move { backend::waiting(&booted).await });
         let status = Status {
-            machine: machine.await.ok().flatten(),
+            machine,
             automatic: automatic.await.unwrap_or_default(),
             recent: backend::recent(&units.await.unwrap_or_default()),
             containers: containers.await.unwrap_or_default(),
@@ -187,6 +192,7 @@ impl Updates {
             firmware: firmware.await.unwrap_or_default(),
             night: night.await.unwrap_or_default(),
             metered: metered.await.unwrap_or_default(),
+            waiting: waiting.await.ok().flatten(),
         };
         self.last_containers.replace(Some(status.containers.clone()));
         self.last_recent.replace(status.recent.clone());

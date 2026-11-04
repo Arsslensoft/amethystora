@@ -119,6 +119,15 @@ row auto-updates "${UPDATES}" "$(gettext "Automatic updates")" \
     "ame system auto-updates" \
     "$(gettext "Without them, nothing is updated until you start it in Updates.")"
 
+# The daily look for updates (amethystora-update-check), which installs nothing. A sealed image does not look.
+if ! sealed; then
+    if systemctl is-enabled --quiet amethystora-update-check.timer 2>/dev/null; then UPDATE_CHECK=on; else UPDATE_CHECK=off; fi
+    row update-check "${UPDATE_CHECK}" "$(gettext "Looking for updates")" \
+        "$(gettext "Once a day and after each start, this machine asks ghcr.io whether its image has a newer version, and, when packages were added to the system with rpm-ostree install, Fedora's mirrors for their package lists. Nothing is installed.")" \
+        "ame update check" \
+        "$(gettext "Without it, System Updates says what is waiting only once you press Check now, and nobody is told while automatic updates are off.")"
+fi
+
 if command -v flatpak >/dev/null; then
     # shellcheck source=/dev/null
     OS_INFO="$(. /etc/os-release && echo "${ID};${VERSION_ID};$(uname -m)")"

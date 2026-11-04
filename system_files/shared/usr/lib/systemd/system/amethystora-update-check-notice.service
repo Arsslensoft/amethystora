@@ -1,0 +1,8 @@
+[Unit]
+Description=Say once that an update is waiting while automatic updates are off
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/amethystora-update-check notify
+# It waits for the notification to be answered, which can take as long as a person likes
+TimeoutStartSec=infinity

@@ -343,7 +343,7 @@ const SHELL = ['usr/libexec/amethystora-security-status', 'usr/libexec/amethysto
     // The callers of amethystora-notify-users --msgid, which mark their messages with N_
     'usr/libexec/amethystora-scan-alert', 'usr/libexec/amethystora-clamav-onaccess', 'usr/libexec/amethystora-lynis-audit',
     'usr/libexec/amethystora-driver-status', 'usr/libexec/amethystora-gpu-check', 'usr/libexec/amethystora-raid',
-    'usr/libexec/amethystora-disk-health',
+    'usr/libexec/amethystora-disk-health', 'usr/libexec/amethystora-update-check',
     'usr/libexec/amethystora-security-watch', 'usr/libexec/amethystora-sends',
     // The plugin system's command (plans/PLAN-plugins.md); its group's recipes are in the list of groups below
     'usr/libexec/amethystora-plugins',

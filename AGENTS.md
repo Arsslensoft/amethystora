@@ -872,6 +872,15 @@ itself, with one exception: on a machine started from an older deployment than i
 (`amethystora-update-alert.service` says so at login and opens the window). It follows uupd's JSON log
 in the journal and reads the deployments from `rpm-ostree status`. If uupd changes the `Updating`,
 `module_fail` or `Updates Completed Successfully` messages it logs, update `apps/update/src/backend.rs` to match.
+**What is waiting** (`/usr/libexec/amethystora-update-check`, `amethystora-update-check.timer`, daily and after each start,
+`ame update check [on|off]`) looks as root without installing anything: the image against the registry's by digest (skopeo, as
+uupd's rpm-ostree driver does, since `rpm-ostree upgrade --check` does not say it reliably) and, on a machine with layered
+packages, the layered entries (type 1) of that check's cached `rpm-diff`, every day whether the image changed or not. It writes
+`/var/lib/amethystora/updates/available.json` (0644), which the window's **Waiting to be installed** shows only for the deployment
+it names and with nothing staged, and its notice unit says it once while `uupd.timer` is off. uupd's two units are `After=` it so
+that the two never hold rpm-ostree or bootc at once, and polkit lets the person at the machine start it (Check now). Its `driver`
+(bootc, or rpm-ostree when bootc calls the booted or staged deployment `incompatible`, uupd's own test) is what `ame update` uses.
+It is a row of `amethystora-sends`; a sealed machine does not look. `test-update-check.sh` and suite 73 check it.
 **Restart now** finishes an update with a soft reboot (systemd's, the system's programs only) when it keeps the
 kernel, its initramfs, its arguments and the SELinux policy as they are: `/usr/libexec/amethystora-soft-reboot`
 says when (bootc's `softRebootCapable`, then no loaded driver in another version and nothing waiting on the
