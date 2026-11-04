@@ -27,10 +27,13 @@ sbverify --cert "${CERT}" "${UKI}"
 # Its command line carries the digest of exactly this tree, which is what the machine checks at boot, and
 # requires it ("composefs=?" would make fs-verity optional and the image unsealed). bootc 1.17 names the
 # digest's format, composefs.digest=v1-sha512-12:<digest>, and follows it with a bare composefs= of the
-# older V2 digest for older clients; before 1.17 the bare composefs= carried the digest itself
+# older V2 digest for older clients. Both are checked, each against its own digest: the bare one is also
+# what starts amethystora-sealed-verity.service (ConditionKernelCommandLine=composefs)
 CMDLINE="$(ukify inspect "${UKI}" --json=short | jq -r '.".cmdline".text')"
-DIGEST="$(bootc container compute-composefs-digest "${T}")"
-[[ " ${CMDLINE} " == *" composefs.digest=v1-sha512-12:${DIGEST} "* || " ${CMDLINE} " == *" composefs=${DIGEST} "* ]]
+DIGEST_V1="$(bootc container compute-composefs-digest --erofs-version=v1 "${T}")"
+DIGEST_V2="$(bootc container compute-composefs-digest --erofs-version=v2 "${T}")"
+[[ " ${CMDLINE} " == *" composefs.digest=v1-sha512-12:${DIGEST_V1} "* ]]
+[[ " ${CMDLINE} " == *" composefs=${DIGEST_V2} "* ]]
 [[ " ${CMDLINE} " != *" composefs="\?* && " ${CMDLINE} " != *" composefs.digest="\?* ]]
 
 # ...and the kernel arguments of kargs.d: read-write btrfs root, the splash, no credentials from the
