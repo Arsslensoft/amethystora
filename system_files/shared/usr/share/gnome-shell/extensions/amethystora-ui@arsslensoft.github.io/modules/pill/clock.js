@@ -1086,18 +1086,6 @@ export class Clock {
                 if (!open)
                     this._cardClosed(m);
             });
-            // While the card is open the menu's grab takes every press outside it, and closes the card: a press on the
-            // bubble or a chip of the pill acts on it instead, so that the bubble's card follows the pill's in one click. The
-            // card's own gesture is added before the menu manager's, which would take the press first
-            const onPill = new Clutter.ClickGesture({recognize_on_press: true});
-            const chipOf = gesture => {
-                const point = gesture.get_coords_abs();
-                const [x, y] = Array.isArray(point) ? point : [point?.x ?? -1, point?.y ?? -1];
-                return this._pill?.chipAt(x, y) ?? null;
-            };
-            onPill.connect('may-recognize', gesture => chipOf(gesture) !== null);
-            onPill.connect('recognize', gesture => chipOf(gesture)?._pillAction());
-            menu.actor.add_action_full('amethystora-pill-chips', Clutter.EventPhase.CAPTURE, onPill);
             this._card = menu;
         }
         this._cardId = id ?? this._activities.top.id;
@@ -1109,9 +1097,26 @@ export class Clock {
     _cardClosed(menu) {
         if (this._card !== menu)
             return;
+        const shut = this._cardId;
         this._card = null;
         this._cardId = null;
         destroyWhenShut(menu);
+        // While the card is open the menu's grab takes every press outside it and closes the card: a press on the
+        // bubble or a chip of the pill then acts on it too, so that the bubble's card follows the pill's in one click. A
+        // gesture on the card itself would also take the presses meant for the card's own buttons
+        const event = Clutter.get_current_event();
+        const pressed = [Clutter.EventType.BUTTON_PRESS, Clutter.EventType.BUTTON_RELEASE,
+            Clutter.EventType.TOUCH_BEGIN, Clutter.EventType.TOUCH_END];
+        if (!event || !pressed.includes(event.type()))
+            return;
+        const [x, y] = event.get_coords();
+        GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            const chipActor = this._pill?.chipAt(x, y);
+            // The bubble of the card that just closed only closes it, as a click on it does
+            if (chipActor && !(chipActor === this._pill._bubble && this._second?.id === shut))
+                chipActor._pillAction();
+            return GLib.SOURCE_REMOVE;
+        });
     }
 
     _closeCard() {
