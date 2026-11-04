@@ -2368,7 +2368,6 @@ const GRUB_H = 1080;
 const GRUB_ROW = 48; // height of a menu row, and so of the selection pill
 const GRUB_CAP = 24; // width of the pill's rounded end
 const GRUB_FONT = "Inter Regular 16";
-const GRUB_TERMINAL_TOP = 82; // where the terminal starts, in per cent of the screen's height
 const GRUB_PILL = SHADES[5];
 
 // The wallpaper, scaled into a 16:9 frame and darkened, so white menu text holds its contrast
@@ -2379,11 +2378,7 @@ const grubBackgroundHtml = () => `<!doctype html><html><head><style>
     #frame svg{display:block;width:100%;height:100%}
     #scrim{position:absolute;inset:0;background:linear-gradient(180deg,
       rgba(14,4,25,0.45) 0%, rgba(14,4,25,0.80) 46%, rgba(14,4,25,0.62) 100%)}
-    /* GRUB's terminal is black, and can be no other colour: the signed GRUB has no background_color. Pure black here,
-       from just above where theme.txt puts it, is what keeps it from showing as a box when an entry is chosen. */
-    #floor{position:absolute;inset:0;background:linear-gradient(180deg,
-      rgba(0,0,0,0) 58%, #000 ${GRUB_TERMINAL_TOP - 1}%, #000 100%)}
-  </style></head><body><div id="frame">${wallpaperSvg("dark")}<div id="scrim"></div><div id="floor"></div></div></body></html>`;
+  </style></head><body><div id="frame">${wallpaperSvg("dark")}<div id="scrim"></div></div></body></html>`;
 
 // The selection pill is sliced into three: a rounded cap at each end and a one-column middle that
 // GRUB repeats to whatever width the entry needs. Each cap is the same rounded rectangle, shown
@@ -2408,11 +2403,13 @@ title-text: ""
 desktop-image: "background.png"
 desktop-image-scale-method: "stretch"
 desktop-color: "${SHADES[0]}"
+# GRUB's terminal, shown once an entry is chosen, is black and can be no other colour (the signed GRUB has no
+# background_color): it fills the screen, so that choosing an entry turns the screen black rather than leaving a box.
 terminal-font: "${GRUB_FONT}"
-terminal-left: "8%"
-terminal-top: "${GRUB_TERMINAL_TOP}%"
-terminal-width: "84%"
-terminal-height: "${100 - GRUB_TERMINAL_TOP}%"
+terminal-left: "0%"
+terminal-top: "0%"
+terminal-width: "100%"
+terminal-height: "100%"
 terminal-border: "0"
 
 # The wordmark, above the menu

@@ -9,11 +9,13 @@ title-text: ""
 desktop-image: "background.png"
 desktop-image-scale-method: "stretch"
 desktop-color: "#16042c"
+# GRUB's terminal, shown once an entry is chosen, is black and can be no other colour (the signed GRUB has no
+# background_color): it fills the screen, so that choosing an entry turns the screen black rather than leaving a box.
 terminal-font: "Inter Regular 16"
-terminal-left: "8%"
-terminal-top: "82%"
-terminal-width: "84%"
-terminal-height: "18%"
+terminal-left: "0%"
+terminal-top: "0%"
+terminal-width: "100%"
+terminal-height: "100%"
 terminal-border: "0"
 
 # The wordmark, above the menu
