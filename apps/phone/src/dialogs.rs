@@ -367,9 +367,9 @@ impl Phone {
         }
         // Who is nearby, when there is more than one: round avatars, the one chosen ringed (R7-27)
         if sendable.len() > 1 {
-            let options = widgets::role_box(gtk::Orientation::Horizontal, 10, &["nearby"], gtk::AccessibleRole::RadioGroup);
+            // A row that wraps, so that a name has the room to be read and a dozen phones are two rows
+            let options = amethystora_ui::adw::WrapBox::builder().child_spacing(6).line_spacing(6).accessible_role(gtk::AccessibleRole::RadioGroup).css_classes(["nearby"]).build();
             options.set_halign(gtk::Align::Center);
-            options.update_property(&[gtk::accessible::Property::Label(&t!("Send to"))]);
             for phone in &sendable {
                 let chosen = device.as_deref() == Some(phone.id.as_str());
                 let content = ui::vbox(6, &[]);
@@ -381,11 +381,15 @@ impl Phone {
                 disc.append(&mark);
                 content.append(&disc);
                 let name = ui::line(&phone.title(), &["strong", "small"]);
+                name.set_wrap(true);
+                name.set_wrap_mode(gtk::pango::WrapMode::WordChar);
+                name.set_lines(2);
                 name.set_ellipsize(gtk::pango::EllipsizeMode::End);
-                name.set_max_width_chars(14);
+                name.set_max_width_chars(12);
+                name.set_justify(gtk::Justification::Center);
                 name.set_halign(gtk::Align::Center);
                 content.append(&name);
-                let option = gtk::Button::builder().accessible_role(gtk::AccessibleRole::Radio).child(&content).css_classes(["plain", "nearby-pick"]).build();
+                let option = gtk::Button::builder().accessible_role(gtk::AccessibleRole::Radio).child(&content).width_request(96).css_classes(["plain", "nearby-pick"]).build();
                 if chosen {
                     option.add_css_class("checked");
                 }
