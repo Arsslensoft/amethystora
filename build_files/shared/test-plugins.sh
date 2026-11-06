@@ -87,7 +87,7 @@ fi
 grep -q 'org.amethystora.Plugins' "${SRC}/plugin-host/dbus/org.amethystora.Plugins.xml" || fail "the bus contract is missing"
 
 # --- The sandbox is one function, and it is the plan's ----------------------------------------------------------------------------
-for flag in --unshare-all --unshare-user --disable-userns --new-session --die-with-parent '"ALL"' --clearenv --seccomp MemoryMax=256M CPUQuota=25% TasksMax=64; do
+for flag in --unshare-all --unshare-user --disable-userns --new-session --die-with-parent '"ALL"' --clearenv --seccomp --slice=amethystora-plugins.slice MemoryMax=256M MemorySwapMax=0 CPUQuota=25% TasksMax=64; do
     grep -qF -- "${flag}" "${SRC}/plugin-host/src/sandbox.rs" || fail "the sandbox recipe lacks ${flag}"
 done
 # Only one place builds the command line a plugin runs under

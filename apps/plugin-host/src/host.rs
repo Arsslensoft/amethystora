@@ -293,6 +293,7 @@ impl Runner {
                 Ok(())
             });
         }
+        let ooms = oom_kills();
         let mut child = command.spawn().map_err(|e| format!("cannot start the sandbox: {e}"))?;
         let mut stdout = child.stdout.take().ok_or("no output")?;
         let overflow = Arc::new(AtomicBool::new(false));
@@ -336,8 +337,28 @@ impl Runner {
         }
         let text = String::from_utf8_lossy(&text).into_owned();
         match status {
+            // The kernel kills one process, and the user manager stops the rest of the scope (SIGTERM to bubblewrap)
+            Some(s) if !s.success() && oom_kills() > ooms => {
+                // The user manager says only "the OOM killer killed some processes" of the slice: this says whose, and that it was
+                // the plugin's own limit
+                eprintln!("amethystora-plugin-host: plugin {id} was stopped: it went over its 256 MB memory limit. Nothing else was affected.");
+                Err("it went over its 256 MB memory limit, and was stopped".into())
+            }
             Some(s) if !s.success() => Err(format!("it ended with {s}")),
             _ => output::parse(&text, &loaded.manifest.actions),
         }
     }
+}
+
+/// How many times the kernel's OOM killer has acted in the plugins' slice (its memory.events, which counts its scopes' kills too),
+/// or 0 when it cannot be read: the slice is in the account's user manager, which this process's own cgroup is under
+fn oom_kills() -> u64 {
+    let Ok(own) = std::fs::read_to_string("/proc/self/cgroup") else { return 0 };
+    let Some(path) = own.lines().find_map(|l| l.strip_prefix("0::")) else { return 0 };
+    let Some(end) = path.find(".service/").filter(|_| path.contains("/user@")) else { return 0 };
+    let events = format!("/sys/fs/cgroup{}/{}/memory.events", &path[..end + ".service".len()], sandbox::SLICE_CGROUP);
+    std::fs::read_to_string(events)
+        .ok()
+        .and_then(|t| t.lines().find_map(|l| l.strip_prefix("oom_kill ")?.trim().parse().ok()))
+        .unwrap_or(0)
 }

@@ -17,6 +17,7 @@ RestartSec=5
 # A plugin's own budgets are its scope's; what the host itself may use is bounded as well
 TasksMax=256
 MemoryMax=256M
+MemorySwapMax=0
 # No setting that needs a namespace (ProtectSystem=, ReadWritePaths=, Private*=, ProtectKernel*=, CapabilityBoundingSet= and the
 # like): a user's manager can only have those in a user namespace of the program's own, from which /proc/PID/exe of GNOME Shell is
 # unreadable, so the host could not tell the shell from a stranger on the bus, and bubblewrap could not make its own sandboxes.

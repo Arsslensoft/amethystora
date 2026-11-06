@@ -1,0 +1,6 @@
+# Where every plugin's sandbox runs (plans/PLAN-plugins.md), each in a scope of its own with its own budgets
+# (apps/plugin-host/src/sandbox.rs). A slice of their own so that what the user manager says of a plugin, its OOM kill
+# above all, names the plugins rather than app.slice, which reads as the whole session
+[Unit]
+Description=Amethystora plugins, each in a sandbox of its own
+Documentation=file:///usr/share/amethystora/manual/plugins.md

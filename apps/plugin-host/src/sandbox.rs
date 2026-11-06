@@ -105,8 +105,16 @@ pub fn bwrap_args(spec: &Spec) -> Vec<String> {
     a
 }
 
-/// The budgets of the transient scope the sandbox runs in (the user's manager enforces them)
-pub const SCOPE_ARGS: &[&str] = &["--user", "--scope", "--quiet", "--collect", "-p", "MemoryMax=256M", "-p", "CPUQuota=25%", "-p", "TasksMax=64"];
+/// The budgets of the transient scope the sandbox runs in (the user's manager enforces them). MemoryMax counts no swap, and
+/// with zram a plugin held to 256 MB of memory filled a gigabyte: MemorySwapMax=0 is what makes the limit one. The slice of
+/// their own is where the user manager reports a plugin's OOM kill, which under app.slice read as the session running out
+pub const SLICE: &str = "amethystora-plugins.slice";
+/// Its cgroup under the user manager's: a dash in a slice's name is a level, so it is inside amethystora.slice
+pub const SLICE_CGROUP: &str = "amethystora.slice/amethystora-plugins.slice";
+pub const SCOPE_ARGS: &[&str] = &[
+    "--user", "--scope", "--quiet", "--collect", "--slice=amethystora-plugins.slice", "-p", "MemoryMax=256M", "-p", "MemorySwapMax=0", "-p",
+    "CPUQuota=25%", "-p", "TasksMax=64",
+];
 
 /// The whole command line: the scope, then bubblewrap
 pub fn command_line(spec: &Spec) -> Vec<String> {
@@ -177,7 +185,8 @@ mod tests {
         assert!(has(&a, &["--", "/usr/libexec/amethystora-plugin-host", "shim", "/proxy/proxy.sock", "--", "./run.sh", "a"]));
         let line = command_line(&spec(&command, &[], None, &[], None));
         assert_eq!(&line[..3], ["systemd-run", "--user", "--scope"]);
-        assert!(has(&line, &["-p", "MemoryMax=256M", "-p", "CPUQuota=25%", "-p", "TasksMax=64"]) && has(&line, &["bwrap", "--unshare-all"]));
+        assert!(line.iter().any(|x| *x == format!("--slice={SLICE}")));
+        assert!(has(&line, &["-p", "MemoryMax=256M", "-p", "MemorySwapMax=0", "-p", "CPUQuota=25%", "-p", "TasksMax=64"]) && has(&line, &["bwrap", "--unshare-all"]));
     }
 
     #[test]

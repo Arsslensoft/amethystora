@@ -1728,7 +1728,7 @@ crate (no GTK; only the host's `service.rs` links GLib) with two programs: `amet
   20 elements; icons are theme names, never a path; actions are ids of the manifest's `actions`; text loses control and bidi
   characters; output over 64 KiB or a card over 20 is refused, not truncated.
 - **The sandbox is one function**, `sandbox::bwrap_args`, printed by `amethystora-plugin-host sandbox ID` and `ame plugin show` and run by
-  `host::Runner::run` under `systemd-run --user --scope` with `MemoryMax=256M`, `CPUQuota=25%`, `TasksMax=64`, 30 s a run, 5 s between
+  `host::Runner::run` under `systemd-run --user --scope` in `amethystora-plugins.slice` (so that the user manager's OOM line names the plugins, not `app.slice`, and the host logs whose limit it was) with `MemoryMax=256M` and `MemorySwapMax=0` (swap is not memory to systemd, and zram let a plugin fill 1 GB), `CPUQuota=25%`, `TasksMax=64`, 30 s a run, 5 s between
   runs and never two at once, 8 MiB of state (also while a run writes: `RLIMIT_FSIZE` and a check every half second). The filter is written at build time by `apps/plugin-host/seccomp/gen.c` (libseccomp, which the apps stage
   installs) into `/usr/share/amethystora/plugins/seccomp.bpf` and passed on descriptor 9; a missing filter means nothing runs. The host
   loads a plugin only if its folder still has the approved digest (`Store::verify`), and reads grants.json again for every run and
