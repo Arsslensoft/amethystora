@@ -1615,6 +1615,20 @@ language, with Bergamot) is held whole as `plans/ui-ideas/r7/work/r7-47.patch`, 
   `/etc/machine-id`, which each deployment copies), claims no "updates that worked" (uupd logs success after any run) and no "threats stopped"
   (the watcher reports), and keeps only the number `your-year-seen`.
 
+**Round 7's second wave, group later** (`plans/ui-ideas/r7/spec-later.md`, checks in `tests/real/checklist/60-r7-later.md`). All offered and off but
+the first. *Sign a PDF* is Files' scripts entry over the Vault's `pdf sign`, behind a card saying a reader calls the signer unknown until it
+trusts the machine's root (`amethystora-pdf-sign`, hook version 5). *Any language* (R7-47): **the translator is not in the image** (it would add
+about twenty minutes to every build, and the image has no compiler): `amethystora-translate engine build` compiles it on the machine when it is
+asked for, in a Fedora container of the machine's release pinned by digest, from `usr/share/amethystora/translate/build-engine.sh`, source pinned by
+a SHA-256 over the tree; Chinese, Japanese and Korean stay out because their models exceed the 300 MB limit (only the maintainer raises a limit).
+*Look good in every call* (`amethystora-camera`, a user unit enabled for nobody) is offered only where its own `bench` says 720p costs under 15% of a
+core; the model is PP-HumanSeg (Apache-2.0); no shell module. *Your photos* (`amethystora-photos`, search key `photos`, prefix `photo:`) reads photos
+through GdkPixbuf only, on mains power while idle, and keeps its index **sealed in the Vault** (purpose `photo-index`, shards under 1 MiB): a
+closed vault means nothing is read or kept. *Another screen* and *Help from someone you trust* are one helper, `amethystora-share-screen`, on
+GNOME's remote desktop: a new code every time, the one port opened in the `amethystora-home` zone at runtime only; the agent may not turn either on
+(`never.rs`); across the internet it cannot work without a relay, and Amethystora runs none. Commands: `ame desktop translate|camera|second-screen|
+help-me` and `ame desktop search photos`. Kitty 0.48's OSC 9;4 progress cannot be passed out (R7-04): see the spec.
+
 **Rounds 5 and 6** (`plans/ui-ideas/`, the boards and a `spec-<group>.md` per group; VM suites 51 to 69, one per group).
 Every rule above holds for each, and each part is off unless its spec says otherwise:
 - **Look** (51): themes made, saved, shared and imported as files (`/usr/libexec/amethystora-theme-file`, `ame desktop

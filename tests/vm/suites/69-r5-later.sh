@@ -10,7 +10,7 @@
 #   K  click with the keyboard (AC20-AC23): letters on a GTK window's buttons, typed, clicked
 #   G  the guest login (AC24-AC28): a Security switch, PAM refusing it but at the login screen, the home a tmpfs
 # The lab renders in software: the dictation pill's breath and the letters' fade are not checked, only their state.
-# vmlab-paths: @ui/*captions* @ui/*search* @ui/*access* @sf/usr/libexec/amethystora-captions @sf/usr/libexec/amethystora-bookmarks @sf/usr/libexec/amethystora-file-meaning @sf/usr/libexec/amethystora-letters @sf/usr/libexec/amethystora-guest @sf/usr/libexec/amethystora-hardening @sf/usr/libexec/amethystora-security-status @sf/usr/libexec/amethystora-sends @sf/usr/libexec/amethystora-control-list @sf/*just/desktop.just @sf/*just/security.just @sf/*systemd/user/amethystora-file-meaning* apps/notes/* apps/agent-tools/* @sf/usr/share/glib-2.0/schemas/zz1*
+# vmlab-paths: @ui/*captions* @ui/*search* @ui/*access* @sf/usr/libexec/amethystora-captions @sf/usr/libexec/amethystora-bookmarks @sf/usr/libexec/amethystora-file-meaning @sf/usr/libexec/amethystora-letters @sf/usr/libexec/amethystora-guest @sf/usr/libexec/amethystora-hardening @sf/usr/libexec/amethystora-security-status @sf/usr/libexec/amethystora-sends @sf/usr/libexec/amethystora-control-list @sf/*just/desktop.just @sf/*just/security.just @sf/*systemd/user/amethystora-file-meaning* apps/notes/* apps/agent-tools/* @sf/usr/share/glib-2.0/schemas/zz1* @ui/modules/search/photos.js @sf/usr/libexec/amethystora-photos
 source "$(dirname "$0")/lib.sh"
 
 UUID=amethystora-ui@arsslensoft.github.io
