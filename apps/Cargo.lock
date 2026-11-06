@@ -179,6 +179,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "amethystora-move"
+version = "1.0.0"
+dependencies = [
+ "aes-gcm",
+ "getrandom",
+ "libc",
+ "p256",
+ "serde",
+ "serde_json",
+ "sha2",
+ "zeroize",
+]
+
+[[package]]
 name = "amethystora-notes"
 version = "1.0.0"
 dependencies = [

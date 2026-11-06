@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <zone>
   <short>Amethystora, at home</short>
-  <description>For the networks named home with ame security home-networks: the Amethystora zone, and pairing a phone, which no other network is open to.</description>
+  <description>For the networks named home with ame security home-networks: the Amethystora zone, pairing a phone and Move to this computer (ame system move), which no other network is open to.</description>
   <service name="dhcpv6-client"/>
   <service name="mdns"/>
   <service name="samba-client"/>
   <service name="kdeconnect"/>
+  <service name="amethystora-move"/>
 </zone>

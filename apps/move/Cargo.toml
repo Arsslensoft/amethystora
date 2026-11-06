@@ -1,0 +1,30 @@
+# amethystora-move: Move to this computer (R7-25). Two computers on a network named home, the same six digits on both
+# screens, and the person's own folders come across encrypted under a key that lives for one transfer and is never
+# written. No GTK and no D-Bus: a program of the terminal (`ame system move`), started on demand, which ends with the move.
+# The apps stage builds it on its own (cargo build -p amethystora-move) and 13-apps.sh installs it as
+# /usr/libexec/amethystora-move.
+[package]
+name = "amethystora-move"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+name = "amethystora_move"
+path = "src/lib.rs"
+
+[[bin]]
+name = "amethystora-move"
+path = "src/main.rs"
+
+[dependencies]
+aes-gcm = { workspace = true }
+# The key exchange: P-256 by its own arithmetic (the crate's `ecdh` feature would add hkdf, which nothing else needs)
+p256 = { version = "0.14", default-features = false, features = ["alloc", "arithmetic"] }
+sha2 = { workspace = true }
+getrandom = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+zeroize = { workspace = true }
+libc = { workspace = true }

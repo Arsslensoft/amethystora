@@ -3918,6 +3918,10 @@ grep -q 'KERNEL=="uinput".*uaccess' /usr/share/amethystora/hardening/71-amethyst
 [[ -z "$(firewall-offline-cmd --zone=amethystora --list-ports)" ]]
 firewall-offline-cmd --zone=amethystora --query-service=kdeconnect >/dev/null && false
 firewall-offline-cmd --zone=amethystora-home --query-service=kdeconnect >/dev/null
+# ...and so is Move to this computer's port (R7-25), which only a run of `ame system move receive` ever listens on
+firewall-offline-cmd --zone=amethystora --query-service=amethystora-move >/dev/null && false
+firewall-offline-cmd --zone=amethystora-away --query-service=amethystora-move >/dev/null && false
+firewall-offline-cmd --zone=amethystora-home --query-service=amethystora-move >/dev/null
 firewall-offline-cmd --zone=trusted --query-interface=tailscale0
 # Account lockout, and the SSH server's settings for when it is turned on
 grep -q "pam_faillock.so" /etc/pam.d/system-auth

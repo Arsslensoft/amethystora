@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<service>
+  <short>Amethystora move</short>
+  <description>Move to this computer (ame system move): the new computer listens on this port, TCP for the move and UDP for being found, only while the command runs. Open only in the zone of the networks named home.</description>
+  <port port="4793" protocol="tcp"/>
+  <port port="4793" protocol="udp"/>
+</service>

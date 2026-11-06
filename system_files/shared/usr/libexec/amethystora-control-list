@@ -3395,6 +3395,24 @@ tools_switch offer-room system low-space "${ gettext "Offer to clear space when 
     "${ gettext "When GNOME's low-space notice fires, it says instead how much can be cleared and that none of it is your work, with one button."; }" \
     troubleshooting#the-disk-is-filling-up ame desktop low-space
 
+# Moving from another computer: each opens in a terminal, where the six digits are compared and the answers are typed (R7-25)
+GROUP="${ gettext "Moving"; }"
+COMMAND=(ame system move receive)
+TERMINAL=true
+BUTTON="${ gettext "Wait for the old computer"; }"
+USAGE="ame system move receive"
+item system move-receive action "${ gettext "Move to this computer"; }" \
+    "${ gettext "Your folders and setup from an old computer on the same home network, encrypted, with the same six digits on both screens. It adds and never deletes, and passwords and keys never cross."; }" \
+    "" moving#move-to-this-computer
+COMMAND=(ame system move send)
+TERMINAL=true
+BUTTON="${ gettext "Send from this computer"; }"
+USAGE="ame system move send"
+item system move-send action "${ gettext "Move this computer's things to a new one"; }" \
+    "${ gettext "The other end: run this on the old computer while the new one waits. Nothing on this computer is changed."; }" \
+    "" moving#move-to-this-computer
+GROUP=""
+
 # The pools of disks, as `amethystora-raid status --json` has them, and the system's disks when it spans
 # several: each with the actions that fit it, every command made here from the status, so that the page
 # never names a disk or a pool. Each asks which disk, asks for ERASE or needs a password, so all of them

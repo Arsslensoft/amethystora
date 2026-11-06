@@ -486,6 +486,15 @@ free-space:
 raid *ARGS:
     @/usr/libexec/amethystora-raid "$@"
 
+# Move to this computer (R7-25): the person's own folders and setup file from an old computer to this one, over a network named
+# home, encrypted under a key that lives for this move only, with the same six digits on both screens. `move receive` on the new
+# computer, `move send [ADDRESS]` on the old one. It adds and never deletes, and passwords and keys never cross
+[no-cd]
+[no-exit-message]
+[positional-arguments]
+move *ARGS:
+    @/usr/libexec/amethystora-move "$@"
+
 # A warning before the disk dies: the disks the system is on have their health read hourly, and a notice says once when
 # one begins to fail, with Back up now. Off, nothing is read (STATE: on, off or status; without it, it says what they said)
 [positional-arguments]

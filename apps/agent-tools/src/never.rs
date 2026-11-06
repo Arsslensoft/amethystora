@@ -39,6 +39,8 @@ const PATHS: &[&str] = &[
     "amethystora-vault", "org.amethystora.vault", "/run/amethystora/vault", "/var/lib/amethystora/vault",
     // The plugin system's root helper and its polkit actions, in any spelling (plans/PLAN-plugins.md): installing and widening are a person's
     "amethystora-plugin-root", "org.amethystora.plugins",
+    // Move to this computer (R7-25) and Bring everything from your old computer (R7-48) copy a person's folders between machines: only the person starts them
+    "amethystora-move", "amethystora-bring-over",
 ];
 
 fn base(path: &str) -> &str {
@@ -288,6 +290,7 @@ fn ame_refusal(args: &[String]) -> Option<String> {
         {
             Some("the agent's own shortcuts are the user's to change".into())
         }
+        ["system", "move" | "bring-over", ..] => Some("moving a person's folders between computers is the user's, with their eyes on both screens".into()),
         ["system", "raid", rest @ ..] if rest.first() != Some(&"status") => {
             Some("pools of disks are made, changed and erased only by the user, in a terminal".into())
         }
@@ -424,6 +427,9 @@ mod tests {
             "ame security guest-login",
             "/usr/libexec/amethystora-guest enable",
             "ame system raid create",
+            "ame system move receive",
+            "ame system bring-over",
+            "/usr/libexec/amethystora-move send",
             "amethystora-raid create",
             "restic -r x forget --prune",
             "btrfs subvolume delete /var/home/.snapshots/x",

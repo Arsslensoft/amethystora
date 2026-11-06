@@ -434,18 +434,21 @@ function shellMessages() {
             }
         });
     }
-    // The phone link's program (apps/connect) is not a shell program but speaks through the same catalogs: tr("...") and
-    // trf("...", &[("name", value)]) of src/text.rs, whose {name} placeholders msgfmt checks as python-brace-format
-    const connect = path.join(appsDir, 'connect', 'src');
-    for (const file of fs.existsSync(connect) ? rustFiles(connect).sort() : []) {
-        const script = `apps/connect/src/${path.relative(connect, file).split(path.sep).join('/')}`;
-        const text = fs.readFileSync(file, 'utf8');
-        for (const match of text.matchAll(/(?<![\w$.])(?:text::)?trf?\(\s*("(?:[^"\\]|\\[\s\S])*")/g)) {
-            const id = unquoteRust(match[1]);
-            const key = `${id}\u0000`;
-            const entry = found.get(key) || { id, plural: null, files: new Set(), comment: '' };
-            entry.files.add(script);
-            found.set(key, entry);
+    // The phone link's program (apps/connect) and Move to this computer (apps/move) are not shell programs but speak through the
+    // same catalogs: tr("...") and trf("...", &[("name", value)]) of src/text.rs, whose {name} placeholders msgfmt checks as
+    // python-brace-format
+    for (const crate of ['connect', 'move']) {
+        const connect = path.join(appsDir, crate, 'src');
+        for (const file of fs.existsSync(connect) ? rustFiles(connect).sort() : []) {
+            const script = `apps/${crate}/src/${path.relative(connect, file).split(path.sep).join('/')}`;
+            const text = fs.readFileSync(file, 'utf8');
+            for (const match of text.matchAll(/(?<![\w$.])(?:text::)?trf?\(\s*("(?:[^"\\]|\\[\s\S])*")/g)) {
+                const id = unquoteRust(match[1]);
+                const key = `${id}\u0000`;
+                const entry = found.get(key) || { id, plural: null, files: new Set(), comment: '' };
+                entry.files.add(script);
+                found.set(key, entry);
+            }
         }
     }
     return [...found.values()];

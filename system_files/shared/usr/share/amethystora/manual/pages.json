@@ -1,7 +1,7 @@
 [
   {
     "section": "Start here",
-    "pages": ["welcome.md", "getting-started.md", "installing.md"]
+    "pages": ["welcome.md", "getting-started.md", "installing.md", "moving.md"]
   },
   {
     "section": "The desktop",
