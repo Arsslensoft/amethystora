@@ -521,6 +521,33 @@ pub fn serve(env: Env) -> ExitCode {
                     _ => invocation.return_dbus_error("org.freedesktop.DBus.Error.InvalidArgs", "not a plugin that is on, or not a file"),
                 };
             }
+            // Ask is the agent's `plugin` tool, any program of the account's: the plugin's `tool` action, no click, and what it printed as the
+            // answer, once the run ends
+            if method == "Ask" {
+                let (Some(id), Some(action)) = (id_arg(&params, 0), params.child_value(1).get::<String>()) else {
+                    return invocation.return_dbus_error("org.freedesktop.DBus.Error.InvalidArgs", "an id and an action");
+                };
+                let offered = state.plugins.borrow().get(&id).is_some_and(|p| p["places"]["tool"]["action"].as_str() == Some(action.as_str()));
+                if !offered || state.paused.borrow().contains(&id) {
+                    return invocation.return_dbus_error("org.freedesktop.DBus.Error.InvalidArgs", "not a tool of a plugin that is on");
+                }
+                let (tell, heard) = futures_channel::oneshot::channel::<Result<Value, String>>();
+                let (runner, tx, ran) = (state.runner.clone(), state.tx.lock().unwrap().clone(), id.clone());
+                std::thread::spawn(move || {
+                    let result = runner.run_as(&ran, Some(&action), false);
+                    let _ = tell.send(result.clone());
+                    let _ = tx.unbounded_send(Msg::Ran(ran, result, None));
+                });
+                glib::spawn_future_local(async move {
+                    let answer = match heard.await {
+                        Ok(Ok(output)) => json!({"output": output}),
+                        Ok(Err(why)) => json!({"error": why}),
+                        Err(_) => json!({"error": "the run did not end"}),
+                    };
+                    invocation.return_value(Some(&(answer.to_string(),).to_variant()));
+                });
+                return;
+            }
             // Run is any program of the account's (`ame plugin run`, a script): it is no click, so it opens, copies and controls nothing
             if method == "Run" {
                 return match (id_arg(&params, 0), params.child_value(1).get::<String>()) {
@@ -551,6 +578,18 @@ pub fn serve(env: Env) -> ExitCode {
                     _ => invocation.return_dbus_error("org.freedesktop.DBus.Error.InvalidArgs", "not an app's id"),
                 },
                 "Action" => match (id_arg(&params, 0), params.child_value(1).get::<String>()) {
+                    // The panel's action opens its window, beside the plugin's usual runs; what the window does is not an output to show
+                    (Some(id), Some(action))
+                        if valid_action(&action) && state.plugins.borrow().get(&id).is_some_and(|p| p["places"]["panel"]["action"].as_str() == Some(action.as_str())) =>
+                    {
+                        let runner = state.runner.clone();
+                        std::thread::spawn(move || {
+                            if let Err(why) = runner.panel(&id, &action) {
+                                eprintln!("amethystora-plugin-host: plugin {id}'s window: {why}");
+                            }
+                        });
+                        invocation.return_value(None);
+                    }
                     (Some(id), Some(action)) if valid_action(&action) && state.plugins.borrow().contains_key(&id) => {
                         state.run(&id, Some(action));
                         invocation.return_value(None);

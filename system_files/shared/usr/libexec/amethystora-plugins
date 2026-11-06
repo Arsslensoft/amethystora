@@ -328,10 +328,20 @@ install_from() {
     consent "${id}" "${digest}" "$(pkexec "${ROOT}" inspect "${ticket}")" "${previous}"
 }
 
+# A plugin of data alone needs no sandbox, since nothing of it runs (plans/PLAN-plugins.md, "What everything reaches"): a theme's colours or a
+# look go where theme files go, through their own checks (contrast, fixed names, the picture decoded again)
+data_only() {
+    case "$1" in
+        *.amethystora-look) exec ame desktop theme look "$1" ;;
+        *.amethystora-theme) exec ame desktop theme import "$1" ;;
+    esac
+}
+
 cmd_add() {
     local source="${1:-}" want=""
     [[ -n "${source}" ]] || usage
     shift
+    [[ -f "${source}" ]] && data_only "${source}"
     # An id the image ships is added from the image, with a click
     if [[ "${source}" =~ ${ID_PATTERN} && ! -e "${source}" && -d "${SHIPPED}/${source}" ]]; then
         add_shipped "${source}"
@@ -669,6 +679,7 @@ cmd_share() {
 
 cmd_open() {
     [[ -f "${1:-}" ]] || usage
+    data_only "$1"
     install_from "$1" "" ""
 }
 

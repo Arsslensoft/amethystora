@@ -1816,7 +1816,14 @@ crate (no GTK; only the host's `service.rs` links GLib) with two programs: `amet
   call, made only while such a plugin is on; one run per burst after the gap, `plugin event`); `network-local` (the proxy's local branch: host and
   port exactly, every address private or link-local, and the route's interface in `amethystora-home` by firewalld, read-only); and `change`
   (`amethystora-agent-tools plugin-change`, control-core and `never.rs`, recorded with its way back, no terminal entry; the agent is refused that
-  command). Not built yet: panels (`window`), keybindings, the agent's tools from a plugin and data-only plugins.
+  command). Phase 6 is built: a `key` place (`<Super>`, or `<Control><Alt>`,
+  and one key; needs `key`) grabbed by `plugins/keys.js` only after every GSettings shortcut, GNOME's, the extension's schemas and the person's custom ones,
+  is read and none matches (Mutter refuses only its own grabs, and gave `<Super>l` away), the press a click; a `panel` place (needs `window`): the action
+  runs with the session's Wayland socket bound at `/run/wayland/wayland-0` and nothing else of the session, GTK in software, memory settings, up to
+  `PANEL_LIMIT` (8 h) under the same scope, beside the plugin's runs, and **no click** for its whole life; a `tool` place, which the agent's level-2
+  `plugin` tool lists and runs through the bus method `Ask` (no click, the answer marked as data); and data-only plugins, which are the theme files:
+  `ame plugin add|open` hands `.amethystora-theme` and `.amethystora-look` to `ame desktop theme import|look`. Not built: wallpapers, icon packs and
+  sound sets as plugins of data.
 
 ### Plugins in the shell
 

@@ -1216,7 +1216,7 @@ done
     words=" $(amethystora-agent argv-here claude | sed -E 's/^(--[a-z-]+)=/\1 /' | tr '\n' ' ') "
     [[ "${words}" == *" --permission-mode dontAsk "* && "${words}" == *" --no-session-persistence "* ]]
     for tool in search read state logs history; do [[ "${words}" == *"mcp__amethystora__${tool}"* ]]; done
-    for tool in change software run undo; do [[ "${words}" != *"mcp__amethystora__${tool}"* ]]; done
+    for tool in change software run undo plugin; do [[ "${words}" != *"mcp__amethystora__${tool}"* ]]; done
     while IFS=$'\t' read -r name flag; do
         [[ "${name}" == claude && "${flag}" != env:* ]] || continue
         [[ "${words}" != *" ${flag} "* ]]
@@ -5213,10 +5213,10 @@ done
     ame agent tools on
     test -e "${HOME}/.config/amethystora/agent-tools"
     [[ "$(/usr/libexec/amethystora-agent-tools mcp <<<'{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | jq -sr '[.[0].result.tools[].name] | join(" ")')" == \
-        "search read state logs history change software run undo" ]]
+        "search read state logs history change software run undo plugin" ]]
     [[ "$(sed -n 's/^description: .*tools (\(.*\)) to understand.*/\1/p' /usr/share/amethystora/agents/skills/amethystora-tools/SKILL.md |
         tr -c 'a-z\n' ' ' | tr -s ' ' '\n' | grep -vxE 'with|changes|allowed|' | sort | paste -sd ' ')" == \
-        "change history logs read run search software state undo" ]]
+        "change history logs plugin read run search software state undo" ]]
     ame agent toggle off
     test ! -e "${HOME}/.config/amethystora/agent-tools"
     rm -rf "${HOME}"

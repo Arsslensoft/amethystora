@@ -63,6 +63,10 @@ assert.equal(clamp.plugin({id: 'A.B'}), null);
 assert.equal(clamp.plugin({id: '../x.y'}), null);
 assert.equal(clamp.plugin(null), null);
 assert.deepEqual(clamp.plugin({id: 'dev.example.d', places: {dock: {app: 'org.gnome.Nautilus.desktop'}}}).places, {dock: {app: 'org.gnome.Nautilus.desktop'}});
+// A shortcut only with Super, or Control and Alt both, and one key: never one that takes plain typing
+assert.deepEqual(clamp.plugin({id: 'dev.example.k', places: {key: {accel: '<Super><Alt>g', action: 'open'}}}).places, {key: {accel: '<Super><Alt>g', action: 'open'}});
+for (const accel of ['g', '<Shift>g', '<Alt>g', '<Super>Return', '<Super>g<Alt>', '<Control>g'])
+    assert.deepEqual(clamp.plugin({id: 'dev.example.k', places: {key: {accel, action: 'open'}}}).places, {}, accel);
 
 // A script's pill: text, a number, a time, and its owner
 const s = clamp.script({name: 'Backup', text: 'Copying‮', progress: -3, until: 'soon', icon: 'x/y', owner: 1234, started: 1});

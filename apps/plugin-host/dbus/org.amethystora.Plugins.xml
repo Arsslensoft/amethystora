@@ -46,6 +46,13 @@
     <method name="Focused">
       <arg type="s" name="app" direction="in"/>
     </method>
+    <!-- The AI agent's `plugin` tool: runs the action a plugin that is on offers as its "tool", no click, and answers when the run ends
+         with {"output": what it printed} or {"error": why}, for any program of the account -->
+    <method name="Ask">
+      <arg type="s" name="id" direction="in"/>
+      <arg type="s" name="action" direction="in"/>
+      <arg type="s" name="answer" direction="out"/>
+    </method>
     <!-- Stops a plugin running until Resume. Nothing is granted or taken away by it -->
     <method name="Pause">
       <arg type="s" name="id" direction="in"/>

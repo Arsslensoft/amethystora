@@ -50,7 +50,7 @@ check test -z "$(grep '^ARGS:' <<<"${out}" | grep -F 'Ignore all' || true)"
 # Only the five tools that read are allowed, and the server is told to drop the ones that change things
 args="$(grep '^ARGS:' <<<"${out}")"
 for tool in search read state logs history; do check grep -q "mcp__amethystora__${tool}" <<<"${args}"; done
-for tool in change software run undo; do check test -z "$(grep "mcp__amethystora__${tool}" <<<"${args}" || true)"; done
+for tool in change software run undo plugin; do check test -z "$(grep "mcp__amethystora__${tool}" <<<"${args}" || true)"; done
 check grep -q 'READ_ONLY=1 PWD=ask TMPDIR=ask' <<<"${out}"
 # ... and the tool server's own entry says so too, so that it does not depend on the environment the agent passes on
 mcp="$(grep -oE '\[--mcp-config\] \[[^]]+\]' <<<"${args}" | sed -E 's/.*\[([^]]+)\]$/\1/')"

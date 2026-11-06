@@ -10,7 +10,7 @@ pub const MAX_MANIFEST: usize = 64 * 1024;
 /// What a host may be sent in an hour when the manifest asks for no more, and the most it may ask for
 pub const DEFAULT_LIMIT: u64 = 1 << 20;
 pub const MAX_LIMIT: u64 = 64 << 20;
-const SURFACES: &[&str] = &["pill", "bar", "desktop", "search", "tile", "dock", "today", "menu", "files-menu"];
+const SURFACES: &[&str] = &["pill", "bar", "desktop", "search", "tile", "dock", "today", "menu", "files-menu", "key", "tool", "panel"];
 const TOP: &[&str] = &["schema", "id", "name", "version", "license", "author", "command", "interval", "contributes", "needs", "actions", "settings"];
 /// Names `state`, `control` and `events` may list (the broker's, a later phase; the names are the plan's table)
 const STATES: &[&str] = &["clock", "disk", "media", "do-not-disturb", "network", "power", "screen", "theme", "battery", "volume"];
@@ -181,6 +181,42 @@ fn surface_options(surface: &str, m: &Map<String, Value>) -> Result<Value, Strin
             }
             out.insert("app".into(), app.into());
         }
+        // A shortcut that runs one of its actions (it needs `key`): GTK's form, with Super, or with Control and Alt both, so that it never
+        // takes plain typing; the shell grabs it only where nothing holds it already
+        "key" => {
+            only(m, &["action", "accel"], &what)?;
+            let action = text(m.get("action").unwrap_or(&Value::Null), "key.action", 32)?;
+            if !valid_action(&action) {
+                return Err("\"key.action\" has to be one of the plugin's actions".into());
+            }
+            let accel = text(m.get("accel").unwrap_or(&Value::Null), "key.accel", 48)?;
+            out.insert("accel".into(), valid_accel(&accel).ok_or("\"key.accel\" is a shortcut such as <Super><Alt>g: Super, or Control and Alt both, then a letter, a digit or F1 to F12")?.into());
+            out.insert("action".into(), action.into());
+        }
+        // A window of its own (it needs `window`), opened by the action named: an ordinary app window over Wayland, drawn in software
+        "panel" => {
+            only(m, &["action"], &what)?;
+            let action = text(m.get("action").unwrap_or(&Value::Null), "panel.action", 32)?;
+            if !valid_action(&action) {
+                return Err("\"panel.action\" has to be one of the plugin's actions".into());
+            }
+            out.insert("action".into(), action.into());
+        }
+        // A tool the AI agent may run (its `plugin` tool, which the agent asks the person for each time): one of its actions, no click, and
+        // what it prints comes back to the agent marked as data
+        "tool" => {
+            only(m, &["action", "description"], &what)?;
+            let action = text(m.get("action").unwrap_or(&Value::Null), "tool.action", 32)?;
+            if !valid_action(&action) {
+                return Err("\"tool.action\" has to be one of the plugin's actions".into());
+            }
+            let description = text(m.get("description").unwrap_or(&Value::Null), "tool.description", 160)?;
+            if description.is_empty() {
+                return Err("\"tool.description\" says what the tool gives the agent".into());
+            }
+            out.insert("action".into(), action.into());
+            out.insert("description".into(), description.into());
+        }
         // Files' Scripts menu: the files a person gives it there reach the action named, through `plugin pick` (it needs `pick`)
         "files-menu" => {
             only(m, &["action"], &what)?;
@@ -321,6 +357,12 @@ impl Manifest {
                 }
             }
         }
+        if places.contains_key("panel") && !needs.iter().any(|n| n.perm == "window") {
+            return Err("\"panel\" is a window of its own, which needs \"window\" in \"needs\"".into());
+        }
+        if places.contains_key("key") && !needs.iter().any(|n| n.perm == "key") {
+            return Err("\"key\" takes a shortcut, which needs \"key\" in \"needs\"".into());
+        }
         if places.contains_key("files-menu") && !needs.iter().any(|n| n.perm == "pick") {
             return Err("\"files-menu\" hands a file over, which needs \"pick\" in \"needs\"".into());
         }
@@ -420,7 +462,7 @@ fn parse_needs(needs: &Map<String, Value>) -> Result<Parsed, String> {
                     add(format!("{key}={n}"), reason.clone());
                 }
             }
-            "pick" | "notify" | "open" | "clipboard-write" | "window" => {
+            "pick" | "notify" | "open" | "clipboard-write" | "window" | "key" => {
                 let m = object(value, key)?;
                 only(m, &["why"], key)?;
                 add(key.clone(), why(m, key)?);
@@ -429,6 +471,28 @@ fn parse_needs(needs: &Map<String, Value>) -> Result<Parsed, String> {
         }
     }
     Ok((out, limits))
+}
+
+/// A shortcut in GTK's form, written back in one order (<Super><Control><Alt><Shift>key), or None: Super, or Control and Alt both, and one
+/// key that is a lower-case letter, a digit or F1 to F12
+pub fn valid_accel(accel: &str) -> Option<String> {
+    let mut rest = accel;
+    let mut mods = [false; 4];
+    const NAMES: [&str; 4] = ["<Super>", "<Control>", "<Alt>", "<Shift>"];
+    while rest.starts_with('<') {
+        let at = NAMES.iter().position(|n| rest.starts_with(n))?;
+        if mods[at] {
+            return None;
+        }
+        mods[at] = true;
+        rest = &rest[NAMES[at].len()..];
+    }
+    let key_ok = (rest.len() == 1 && rest.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit()))
+        || rest.strip_prefix('F').and_then(|n| n.parse::<u8>().ok()).is_some_and(|n| (1..=12).contains(&n));
+    if !key_ok || !(mods[0] || (mods[1] && mods[2])) {
+        return None;
+    }
+    Some(NAMES.iter().zip(mods).filter(|(_, on)| *on).map(|(n, _)| *n).collect::<String>() + rest)
 }
 
 /// What no shipped plugin may carry: its grant needs no administrator, so it may reach nothing outside the machine's own state
@@ -539,6 +603,25 @@ mod tests {
         ] {
             assert!(edited(surface, options.clone()).is_err(), "{surface} {options}");
         }
+    }
+
+    #[test]
+    fn a_shortcut_needs_key_and_never_takes_plain_typing() {
+        assert_eq!(valid_accel("<Alt><Super>g").as_deref(), Some("<Super><Alt>g"));
+        assert_eq!(valid_accel("<Control><Alt>F5").as_deref(), Some("<Control><Alt>F5"));
+        for bad in ["g", "<Shift>g", "<Alt>g", "<Control>g", "<Super>G", "<Super>gg", "<Super><Super>g", "<Super>F13", "<Hyper>g", "<Super>Return"] {
+            assert!(valid_accel(bad).is_none(), "{bad}");
+        }
+        let keyed = |needs_key: bool| {
+            Manifest::parse(&with(|v| {
+                v["contributes"]["key"] = serde_json::json!({"action": "open-page", "accel": "<Super><Alt>g"});
+                if needs_key {
+                    v["needs"]["key"] = serde_json::json!({"why": "Opens the build with a key"});
+                }
+            }))
+        };
+        assert_eq!(keyed(true).unwrap().places["key"]["accel"], "<Super><Alt>g");
+        assert!(keyed(false).is_err());
     }
 
     #[test]

@@ -22,6 +22,7 @@ import {plugin as clampPlugin} from './plugins/clamp.js';
 import {DockBadges} from './plugins/dock.js';
 import {MenuPlugins} from './plugins/menu.js';
 import {HostClient} from './plugins/host.js';
+import {PluginKeys} from './plugins/keys.js';
 import {ExtraMark} from './plugins/pill.js';
 import {Scripts} from './plugins/script.js';
 import {PluginTile} from './plugins/tile.js';
@@ -143,6 +144,8 @@ export class Plugins {
         this._today = null;
         this._menu?.destroy();
         this._menu = null;
+        this._keys?.destroy();
+        this._keys = null;
         this._tellListeners();
     }
 
@@ -263,6 +266,7 @@ export class Plugins {
         this._renderTiles(plugins.filter(p => p.places.tile));
         this._renderDock(plugins.filter(p => p.places.dock));
         this._watchFocus(plugins.some(p => !p.paused && p.granted.includes('events=focused-app')));
+        this._renderKeys(plugins);
         this._renderPlaced('today', plugins, () => (this._today ??= new TodayPlugins(this._ui)));
         this._renderPlaced('menu', plugins, () => (this._menu ??= new MenuPlugins(this._ui)));
         this._tellListeners();
@@ -429,6 +433,21 @@ export class Plugins {
         }
     }
 
+    // Shortcuts: made only while a plugin with one is on, and given back with the last of them
+    _renderKeys(plugins) {
+        const keyed = plugins.filter(p => p.places.key);
+        if (!keyed.length && !this._keys)
+            return;
+        this._keys ??= new PluginKeys((id, action) => this._host?.action(id, action),
+            (plugin, accel) => this._said(_('%s asked for %s, which is already in use, so it has no shortcut').format(plugin.name, accel)),
+            this._ext.dir.get_child('schemas').get_path());
+        this._keys.sync(keyed);
+        if (!keyed.length) {
+            this._keys.destroy();
+            this._keys = null;
+        }
+    }
+
     // Today's column and the logo menu: each plugin's card or line, while it runs and has said something
     _renderPlaced(place, plugins, surface) {
         const items = plugins.filter(p => p.places[place] && !p.paused).map(p => ({plugin: p, output: this._output(p)}))
@@ -552,6 +571,7 @@ export class Plugins {
             tiles: [...this._tiles?.keys() ?? []],
             today: this._today?._section?.get_n_children() ?? 0,
             menu: this._menu?._section?.numMenuItems ?? 0,
+            keys: this._keys?.held() ?? [],
             scripts: (this._scripts?.pills ?? []).map(s => s.name),
         };
     }

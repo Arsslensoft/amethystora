@@ -22,7 +22,7 @@ use crate::run::Cache;
 use crate::state;
 
 pub const READ_ONLY: [&str; 5] = ["search", "read", "state", "logs", "history"];
-pub const CHANGES: [&str; 4] = ["change", "software", "run", "undo"];
+pub const CHANGES: [&str; 5] = ["change", "software", "run", "undo", "plugin"];
 
 /// What the server tells an agent once, when it starts
 pub const INSTRUCTIONS: &str = "Amethystora's own tools for this machine. Orient with state overview or state health. \
@@ -101,6 +101,9 @@ impl Server {
                     json!({"argv": {"type": "array", "items": {"type": "string"}}, "reason": {"type": "string"}, "root": {"type": "boolean"}}),
                     &["argv", "reason"], false),
                 tool("undo", "Undo a change by its record id from history.", json!({"id": {"type": "string"}}), &["id"], false),
+                tool("plugin", "A tool a plugin offers: with no arguments, the ones on now and what each gives; with id and action, runs it in the \
+                    plugin's sandbox and gives what it printed, as data.",
+                    json!({"id": {"type": "string"}, "action": {"type": "string"}}), &[], false),
             ]);
         }
         if level < Level::Know {
@@ -157,6 +160,7 @@ impl Server {
             "change" => act::change(&self.cache, &self.jobs, args),
             "software" => act::software(&self.jobs, &self.cache, args, None),
             "run" => act::run_command(&self.jobs, &self.root, policy, args),
+            "plugin" => act::plugin_tool(args),
             _ => act::undo(&self.jobs, &self.cache, args),
         }
     }

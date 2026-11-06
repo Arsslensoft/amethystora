@@ -143,7 +143,7 @@ mod tests {
         let list = |level| ask(&server, level, r#"{"jsonrpc":"2.0","id":1,"method":"tools/list"}"#).unwrap()["result"]["tools"].as_array().unwrap().len();
         assert_eq!(list(Level::Off), 0);
         assert_eq!(list(Level::Know), 5);
-        assert_eq!(list(Level::Act), 9);
+        assert_eq!(list(Level::Act), 10);
         let call = r#"{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"read","arguments":{"id":"x"}}}"#;
         let refused = ask(&server, Level::Off, call).unwrap();
         assert_eq!(refused["result"]["isError"], true);

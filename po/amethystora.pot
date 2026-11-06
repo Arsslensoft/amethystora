@@ -20135,6 +20135,10 @@ msgstr ""
 msgid "Paused: it updated too often"
 msgstr ""
 
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins.js
+msgid "%s asked for %s, which is already in use, so it has no shortcut"
+msgstr ""
+
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pointer.js
 msgid "Tip: shake the mouse to find the pointer."
 msgstr ""

@@ -23,6 +23,15 @@ One plugin can ask for several places, and an agent learns one format to reach a
 - **Files**: *Give to a plugin* in the Scripts menu of a file, while a plugin that takes files is on. Your computer asks you first, naming
   the plugin and the file, and the plugin gets that file's contents and nothing else.
 - **Notifications**, under the plugin's name, at most one a minute, with one button of the plugin's own.
+- **A shortcut** that runs one of its actions, with Super, or Control and Alt both. A shortcut that anything already uses, yours included,
+  is never taken: the plugin goes without, and you are told once.
+- **A window of its own**, which opens when you click its action and stays until you close it (eight hours at most), with the same limits
+  as any run. It is an ordinary window, drawn without the graphics card, that can see nothing of yours but what it was given.
+- **The AI agent's tools**: while the agent may make changes, it can run a tool a plugin offers, asking you each time, and reads what the
+  plugin printed as data.
+
+A theme or a look shared as a file (`.amethystora-theme`, `.amethystora-look`) is a plugin of data alone: `ame plugin add` hands it to
+[the theme's own checks](themes.md), and nothing of it runs.
 
 A plugin's **settings** are in its row in [Control](control.md): each one you set is typed unseen, and a secret goes into the Vault.
 
@@ -126,7 +135,10 @@ anything is installed. Nothing updates by itself.
 | `network-local` | One service on your home network, by name and port, only while you are on a network you named home |
 | `change` | Settings of Control's it names, after a click, each recorded with its way back as the agent's changes are |
 
-`window` is only listed so far: a plugin may ask for it, and the part of the system that would answer comes later. Never
+| `window` | A window of its own, over Wayland only: no X11, no screen or sound capture, no portals |
+| `key` | One shortcut, which never takes one already in use |
+
+Never
 grantable: root, a raw bus, the whole home, another plugin's data, the keyring, the screen or microphone, and input.
 
 Two permissions together are said aloud: `files` with `network` means the plugin can send those files to those hosts. An allowed

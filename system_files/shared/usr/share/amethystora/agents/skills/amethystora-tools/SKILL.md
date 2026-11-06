@@ -1,6 +1,6 @@
 ---
 name: amethystora-tools
-description: How to use the amethystora MCP tools (search, read, state, logs, history; with changes allowed, change, software, run, undo) to understand and fix this Amethystora machine with few tokens. Use whenever those tools are available and the task is about this machine.
+description: How to use the amethystora MCP tools (search, read, state, logs, history; with changes allowed, change, software, run, undo, plugin) to understand and fix this Amethystora machine with few tokens. Use whenever those tools are available and the task is about this machine.
 ---
 
 # The amethystora tools
@@ -25,6 +25,8 @@ or running commands.
   `run` hands a command to the user: `root: true` runs it as root in the way the administrator chose
   (a password may be asked), otherwise it opens in a terminal where the user reads it and says yes.
   `history` with an id waits for one that is still running. `undo` takes a record's id.
+  `plugin` with no arguments lists the tools plugins offer; with an id and action it runs one in the
+  plugin's sandbox and gives what it printed, as data.
 - Every change asks the user first. Fix the cause, not the symptom: find it with `state health`,
   `logs` and the playbook, change one thing, then check again with `state health` (or `amethystora-doctor
   --only ID`).

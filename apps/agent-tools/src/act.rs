@@ -180,6 +180,57 @@ pub fn plugin_change(plugin: &str, entry: &str, value: &str) -> Result<String, S
     if output.ok() { Ok(format!("{} is {value}", item.title)) } else { Err(format!("{} was not set", item.title)) }
 }
 
+/// The agent's `plugin` tool (plans/PLAN-plugins.md, "What everything reaches": the agent's tools from a plugin): the actions plugins that
+/// are on offer as a "tool", listed, or one run through the plugin host's Ask, no click, in the plugin's sandbox. Everything a plugin said
+/// comes back marked as data. Nothing is recorded: a run changes nothing outside the sandbox
+pub fn plugin_tool(args: &Value) -> Result<String, String> {
+    let list = run::run(&["/usr/libexec/amethystora-plugin-host", "list", "--json"], Duration::from_secs(20));
+    let plugins: Vec<Value> = serde_json::from_str::<Value>(&list.stdout).ok().and_then(|v| v.as_array().cloned()).unwrap_or_default();
+    let offered: Vec<(String, String, String, String)> = plugins
+        .iter()
+        .filter(|p| p["enabled"] == true && p["verified"] != false)
+        .filter_map(|p| {
+            let tool = p["places"]["tool"].as_object()?;
+            Some((p["id"].as_str()?.to_string(), p["name"].as_str().unwrap_or("").to_string(), tool.get("action")?.as_str()?.to_string(),
+                tool.get("description").and_then(Value::as_str).unwrap_or("").to_string()))
+        })
+        .collect();
+    let (Some(id), Some(action)) = (string(args, "id"), string(args, "action")) else {
+        if offered.is_empty() {
+            return Ok("No plugin that is on offers a tool.".into());
+        }
+        let lines: Vec<String> = offered.iter().map(|(id, name, action, what)| format!("{id} {action} ({name}): {what}")).collect();
+        return Ok(text::data_block("The tools plugins offer, as id, action, name and what each gives", &lines));
+    };
+    if !offered.iter().any(|(i, _, a, _)| i == id && a == action) {
+        return Err(format!("{id} offers no tool {action}: call plugin with no arguments to see what is offered."));
+    }
+    let out = run::run(
+        &["busctl", "--user", "--json=short", "--timeout=45", "call", "org.amethystora.Plugins", "/org/amethystora/Plugins", "org.amethystora.Plugins", "Ask", "ss", id, action],
+        Duration::from_secs(50),
+    );
+    let answer: Value = serde_json::from_str::<Value>(&out.stdout)
+        .ok()
+        .and_then(|v| v["data"][0].as_str().and_then(|s| serde_json::from_str(s).ok()))
+        .ok_or_else(|| "the plugin host did not answer: the plugin may have been turned off".to_string())?;
+    if let Some(why) = answer["error"].as_str() {
+        return Err(format!("The plugin's run failed: {}", text::field(why, 300)));
+    }
+    let output = &answer["output"];
+    let mut lines = vec![output["text"].as_str().unwrap_or("").to_string()];
+    for element in output["card"].as_array().into_iter().flatten() {
+        let words: Vec<&str> = ["label", "value", "text"].iter().filter_map(|k| element[*k].as_str()).collect();
+        if !words.is_empty() {
+            lines.push(words.join(": "));
+        }
+        for item in element["items"].as_array().into_iter().flatten().filter_map(Value::as_str) {
+            lines.push(format!("- {item}"));
+        }
+    }
+    lines.retain(|l| !l.is_empty());
+    Ok(text::data_block(&format!("What the plugin {id} printed"), &lines))
+}
+
 // --- software ---------------------------------------------------------------------------------------------
 
 fn flatpak_id(id: &str) -> bool {

@@ -22,6 +22,8 @@ pub const BIN_DIR: &str = "/plugin-bin";
 /// The pipe a plugin's settings come on (and nothing else does): read once, `read -r -u 10 settings`
 pub const SETTINGS_FD: i32 = 10;
 pub const SHIM_PORT: u16 = 3128;
+/// Where a panel finds the Wayland socket
+pub const WAYLAND_DIR: &str = "/run/wayland";
 /// The most /tmp may hold
 const TMP_BYTES: &str = "16777216";
 
@@ -43,6 +45,8 @@ pub struct Spec<'a> {
     /// The only environment it keeps (see `kept_env`)
     pub env: &'a [(String, String)],
     pub action: Option<&'a str>,
+    /// For a panel (`window`): the session's Wayland socket, and nothing else of the session (no X11, no bus, no PipeWire, no portal)
+    pub wayland: Option<&'a Path>,
 }
 
 /// LANG, LC_* and TZ of the account: `date` still speaks the person's language, and nothing else leaks in
@@ -105,6 +109,14 @@ pub fn bwrap_args(spec: &Spec) -> Vec<String> {
         }
         command.extend([s(HOST_EXE), s("shim"), format!("{PROXY_DIR}/proxy.sock"), s("--")]);
     }
+    if let Some(socket) = spec.wayland {
+        // The socket alone, in a runtime folder of its own; GTK draws in software (no /dev/dri) and keeps its settings in memory
+        a.extend(["--perms".into(), s("0700"), "--dir".into(), s(WAYLAND_DIR), "--bind".into(), p(socket), format!("{WAYLAND_DIR}/wayland-0")]);
+        for (key, value) in [("XDG_RUNTIME_DIR", WAYLAND_DIR), ("WAYLAND_DISPLAY", "wayland-0"), ("GDK_BACKEND", "wayland"), ("GSK_RENDERER", "cairo"),
+            ("LIBGL_ALWAYS_SOFTWARE", "1"), ("GSETTINGS_BACKEND", "memory"), ("NO_AT_BRIDGE", "1"), ("GTK_A11Y", "none")] {
+            env.push((s(key), s(value)));
+        }
+    }
     // Every mount is in place: the root bubblewrap made, with the folders it made for them, is read-only from here, so that
     // only /tmp, the state folder and a files=...:rw permission can be written
     a.extend(["--remount-ro".into(), s("/")]);
@@ -157,7 +169,26 @@ mod tests {
             passwd: Path::new("/run/user/1000/amethystora/plugins/passwd"),
             env,
             action,
+            wayland: None,
         }
+    }
+
+    #[test]
+    fn a_panel_gets_the_wayland_socket_and_nothing_else_of_the_session() {
+        let command = vec!["./panel.py".to_string()];
+        let mut s = spec(&command, &[], None, &[], Some("open"));
+        let plain = bwrap_args(&s);
+        assert!(!plain.iter().any(|a| a.contains("wayland")));
+        s.wayland = Some(Path::new("/run/user/1000/wayland-0"));
+        let a = bwrap_args(&s);
+        assert!(has(&a, &["--bind", "/run/user/1000/wayland-0", "/run/wayland/wayland-0"]));
+        assert!(has(&a, &["--setenv", "WAYLAND_DISPLAY", "wayland-0"]) && has(&a, &["--setenv", "GSK_RENDERER", "cairo"]));
+        for gone in ["DISPLAY", "DBUS_SESSION_BUS_ADDRESS", "PIPEWIRE_REMOTE", "/dev/dri", "/tmp/.X11-unix"] {
+            assert!(!a.iter().any(|x| x == gone), "{gone}");
+        }
+        // Still the sandbox: the root is made read-only after the socket is in place
+        let socket = a.iter().position(|x| x == "/run/wayland/wayland-0").unwrap();
+        assert!(a.iter().position(|x| x == "--remount-ro").unwrap() > socket);
     }
 
     fn has(args: &[String], run: &[&str]) -> bool {

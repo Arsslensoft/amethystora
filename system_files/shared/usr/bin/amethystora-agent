@@ -81,7 +81,7 @@ HEADLESS=(claude)
 # The most a pill question may take, and its picture's largest size
 ASK_HERE_SECONDS=120
 ASK_PICTURE_BYTES=5242880
-CHANGE_TOOLS=(change software run undo)
+CHANGE_TOOLS=(change software run undo plugin)
 
 # Where each agent keeps its login, as the watcher's CREDENTIAL_FILES has them. One the account protected in the vault
 # (ame vault protect) is given to the agent for its session alone, through ame vault run. Copilot CLI keeps its login in

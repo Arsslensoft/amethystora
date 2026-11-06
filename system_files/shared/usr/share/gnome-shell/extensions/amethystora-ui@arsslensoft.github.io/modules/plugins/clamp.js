@@ -135,6 +135,12 @@ export function plugin(raw) {
             if (dockApp(o.app))
                 places.dock = {app: o.app};
             break;
+        // A shortcut, as the host's manifest check wrote it back: Super, or Control and Alt both, and one key
+        case 'key':
+            if (typeof o.accel === 'string' && /^(<Super>)?(<Control>)?(<Alt>)?(<Shift>)?([a-z0-9]|F([1-9]|1[0-2]))$/.test(o.accel) &&
+                (o.accel.startsWith('<Super>') || o.accel.includes('<Control><Alt>')) && typeof o.action === 'string' && ACTION.test(o.action))
+                places.key = {accel: o.accel, action: o.action};
+            break;
         }
     }
     const actions = Array.isArray(raw.actions) ? raw.actions.filter(a => action(a)).slice(0, 16) : [];

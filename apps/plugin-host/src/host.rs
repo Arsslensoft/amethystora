@@ -26,6 +26,8 @@ use crate::store::{Grant, Store};
 use crate::files;
 
 pub const RUN_LIMIT: Duration = Duration::from_secs(30);
+/// A panel (`window`) stays open while the person uses it: within its budgets, but not past this
+pub const PANEL_LIMIT: Duration = Duration::from_secs(8 * 3600);
 pub const MIN_GAP: Duration = Duration::from_secs(5);
 /// A timer that fires every five seconds counts from when each run started, a few milliseconds after its tick: without this the timer of a
 /// plugin with `interval: 5` would be refused every other time
@@ -337,6 +339,17 @@ impl Runner {
 
     /// The command line for one run, and nothing started (also what `sandbox` prints)
     pub fn command_line(&self, loaded: &Loaded, action: Option<&str>, with_proxy: bool) -> Result<Vec<String>, String> {
+        self.command_line_for(loaded, action, with_proxy, false)
+    }
+
+    /// The session's Wayland socket, for a panel: WAYLAND_DISPLAY as a path, or a name in the session's runtime folder
+    fn wayland_socket() -> Option<PathBuf> {
+        let display = std::env::var_os("WAYLAND_DISPLAY").map(PathBuf::from)?;
+        let path = if display.is_absolute() { display } else { PathBuf::from(std::env::var_os("XDG_RUNTIME_DIR")?).join(display) };
+        std::fs::symlink_metadata(&path).is_ok_and(|m| std::os::unix::fs::FileTypeExt::is_socket(&m.file_type())).then_some(path)
+    }
+
+    pub fn command_line_for(&self, loaded: &Loaded, action: Option<&str>, with_proxy: bool, window: bool) -> Result<Vec<String>, String> {
         let env = &self.env;
         let state = env.state_dir(&loaded.id);
         std::fs::create_dir_all(&state).map_err(|e| e.to_string())?;
@@ -363,6 +376,14 @@ impl Runner {
             return Err(format!("{a:?} is not one of the plugin's actions"));
         }
         let kept = sandbox::kept_env(std::env::vars());
+        let wayland = if window {
+            if !perms.iter().any(|p| p == "window") {
+                return Err("it was not allowed a window".into());
+            }
+            Some(Self::wayland_socket().ok_or("there is no Wayland session to show a window in")?)
+        } else {
+            None
+        };
         let spec = Spec {
             id: &loaded.id,
             folder: &loaded.folder,
@@ -374,6 +395,7 @@ impl Runner {
             passwd: &passwd,
             env: &kept,
             action,
+            wayland: wayland.as_deref(),
         };
         Ok(sandbox::command_line(&spec))
     }
@@ -386,13 +408,29 @@ impl Runner {
     /// A run, saying whether a person's click started it: only a click lets it open, copy or control anything. `ame plugin run` and
     /// the agent's tools run an action with none
     pub fn run_as(&self, id: &str, action: Option<&str>, click: bool) -> Result<Value, String> {
+        self.run_with(id, action, click, false)
+    }
+
+    /// A panel (plans/PLAN-plugins.md, `window`): the action its manifest names, in its sandbox with the Wayland socket, open until the person
+    /// closes it (or PANEL_LIMIT), under the same budgets. One at a time for each plugin, beside its usual runs. Started by a click
+    pub fn panel(&self, id: &str, action: &str) -> Result<(), String> {
         let loaded = load(&self.env, id)?;
-        if !self.running.lock().unwrap().insert(id.to_string()) {
-            return Err("it is still running from the last time".into());
+        if loaded.manifest.places.get("panel").and_then(|p| p["action"].as_str()) != Some(action) {
+            return Err("that is not the plugin's panel".into());
         }
-        let _running = Running(&self.running, id.to_string());
+        // No click: open, copy and control need one, and a window that stays open for hours is not one
+        self.run_with(id, Some(action), false, true).map(|_| ())
+    }
+
+    fn run_with(&self, id: &str, action: Option<&str>, click: bool, panel: bool) -> Result<Value, String> {
+        let loaded = load(&self.env, id)?;
+        let key = if panel { format!("{id}#panel") } else { id.to_string() };
+        if !self.running.lock().unwrap().insert(key.clone()) {
+            return Err(if panel { "its window is open already".into() } else { "it is still running from the last time".into() });
+        }
+        let _running = Running(&self.running, key);
         let _sent = SentGuard(self, id.to_string());
-        {
+        if !panel {
             let mut last = self.last.lock().unwrap();
             // A person's click is not made to wait for the timer's gap (a flood of them is the update rule's, service.rs); a run with no click is
             if !click && last.get(id).is_some_and(|t| t.elapsed() + GAP_SLACK < MIN_GAP) {
@@ -400,9 +438,9 @@ impl Runner {
             }
             last.insert(id.to_string(), Instant::now());
         }
-        let line = self.command_line(&loaded, action, true)?;
+        let line = self.command_line_for(&loaded, action, true, panel)?;
         // A person's click is what lets a run change anything outside the sandbox; the next run on the timer has none
-        let _click = ClickGuard(self.brokers.lock().unwrap().get(id).cloned());
+        let _click = ClickGuard(if panel { None } else { self.brokers.lock().unwrap().get(id).cloned() });
         if let Some(b) = &_click.0 {
             b.clicked.store(click, Ordering::Relaxed);
         }
@@ -410,7 +448,7 @@ impl Runner {
         let settings = if !loaded.draft && !loaded.manifest.settings.is_empty() { Some(settings_pipe(&self.env, id)?) } else { None };
         let filter = std::fs::File::open(&self.env.seccomp).map_err(|_| format!("{} is missing, so nothing is run", self.env.seccomp.display()))?;
         let mut command = Command::new(&line[0]);
-        command.args(&line[1..]).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null());
+        command.args(&line[1..]).stdin(Stdio::null()).stdout(if panel { Stdio::null() } else { Stdio::piped() }).stderr(Stdio::null());
         // Both are moved above the two descriptors they are to become, so that dup2 onto one can never overwrite the other (a pipe made
         // while descriptor 9 was free would be 9, and the filter would land on it)
         let high = |fd: i32| -> Result<std::os::fd::OwnedFd, String> {
@@ -445,7 +483,11 @@ impl Runner {
         }
         let ooms = oom_kills();
         let mut child = command.spawn().map_err(|e| format!("cannot start the sandbox: {e}"))?;
-        let mut stdout = child.stdout.take().ok_or("no output")?;
+        // A panel prints nothing that is shown: its window is what it shows
+        let mut stdout: Box<dyn Read + Send> = match child.stdout.take() {
+            Some(out) => Box::new(out),
+            None => Box::new(std::io::empty()),
+        };
         let overflow = Arc::new(AtomicBool::new(false));
         let reader = std::thread::spawn({
             let overflow = overflow.clone();
@@ -466,8 +508,8 @@ impl Runner {
             if let Ok(Some(status)) = child.try_wait() {
                 break Some(status);
             }
-            if started.elapsed() > RUN_LIMIT {
-                failure = Some("it took longer than 30 seconds, and was stopped".to_string());
+            if started.elapsed() > if panel { PANEL_LIMIT } else { RUN_LIMIT } {
+                failure = Some(if panel { "its window was open eight hours, and was closed".to_string() } else { "it took longer than 30 seconds, and was stopped".to_string() });
             } else if ticks % 10 == 9 && dir_size(&state, 0) > STATE_LIMIT {
                 failure = Some("its state folder grew past 8 MiB, and it was stopped".to_string());
             } else if overflow.load(Ordering::Relaxed) {
@@ -495,6 +537,7 @@ impl Runner {
                 Err("it went over its 256 MB memory limit, and was stopped".into())
             }
             Some(s) if !s.success() => Err(format!("it ended with {s}")),
+            _ if panel => Ok(Value::Null),
             _ => output::parse(&text, &loaded.manifest.actions),
         }
     }
