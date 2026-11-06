@@ -3879,6 +3879,14 @@ msgstr ""
 msgid "Finds files in Documents by what they are about, from the text GNOME's indexer already read, on this computer. It reads them once a day on mains power."
 msgstr ""
 
+#: usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just
+msgid "Your photos, by what is in them"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Type photo: and a few words to find a picture by what it shows. A small model reads each photo once on this computer, on mains power while you are away; what it works out is kept sealed in the Vault, and no photo leaves."
+msgstr ""
+
 #: usr/libexec/amethystora-control-list
 msgid "No tone (yellow)"
 msgstr ""
@@ -4971,6 +4979,50 @@ msgstr ""
 
 #: usr/libexec/amethystora-control-list
 msgid "A button in the screenshot bar covers addresses, card, phone and account numbers with solid boxes, read on this computer. It can miss things, and says so."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Read the screen in your language"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "A button in the screenshot bar reads what a box holds and translates it on this computer. Choosing languages downloads their models once, and nothing you translate leaves."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/privacy.js
+msgid "Camera"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Look good in every call"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Blur what is behind you and even out the light in every app at once, made on this computer. It runs only while an app uses the camera, and is offered only where it costs little."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Sharing"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Turn it on in Security first: Network, Let another computer see or extend this screen (ame security remote-screen on)."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Another screen from what you have"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "An old laptop or tablet becomes a second screen over your home network, with any remote desktop (RDP) app and a code shown here. Its keyboard and pointer can use this whole computer. It ends when you lock the screen."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Help from someone you trust"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Someone on your home network sees your screen, and cannot touch anything unless you allow it, with a new code each time. It ends when you lock the screen."
 msgstr ""
 
 #: usr/libexec/amethystora-control-list
@@ -7056,6 +7108,10 @@ msgid "No webcam"
 msgstr ""
 
 #: usr/libexec/amethystora-hardening
+msgid "Let another computer see or extend this screen"
+msgstr ""
+
+#: usr/libexec/amethystora-hardening
 msgid "No automatic mounting"
 msgstr ""
 
@@ -7189,6 +7245,10 @@ msgstr ""
 
 #: usr/libexec/amethystora-hardening
 msgid "The USB webcam driver cannot load, whatever app asks. The webcam stops working."
+msgstr ""
+
+#: usr/libexec/amethystora-hardening
+msgid "Opens the remote desktop port (3389) on the networks you named home only, so that another computer can see this screen or use it as a second screen, with a code that is new each time, when you start it (ame desktop help-me, ame desktop second-screen). Nothing listens on the port until you do, and a share ends when you lock the screen. Anyone on your home network who learns the code, or who watches you type it, sees what is on the screen."
 msgstr ""
 
 #: usr/libexec/amethystora-hardening
@@ -7524,7 +7584,7 @@ msgid "I have the recovery key"
 msgstr ""
 
 #. Translators: choices of a menu that turns automatic updates on or off
-#: usr/libexec/amethystora-private-folder usr/libexec/amethystora-windows-program usr/share/amethystora/just/apps.just usr/share/amethystora/just/backup.just usr/share/amethystora/just/desktop.just usr/share/amethystora/just/security.just usr/share/amethystora/just/system.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/selection.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/appgrid/dialogs.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/bazaar/dialog.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/printing.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/timer.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/quit/list.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/prefs.js apps/connect/src/photo.rs apps/connect/src/service.rs apps/connect/src/transfers.rs
+#: usr/libexec/amethystora-private-folder usr/libexec/amethystora-windows-program usr/libexec/amethystora-pdf-sign usr/share/amethystora/just/apps.just usr/share/amethystora/just/backup.just usr/share/amethystora/just/desktop.just usr/share/amethystora/just/security.just usr/share/amethystora/just/system.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/selection.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/appgrid/dialogs.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/bazaar/dialog.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/printing.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/timer.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/quit/list.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/prefs.js apps/connect/src/photo.rs apps/connect/src/service.rs apps/connect/src/transfers.rs
 msgid "Cancel"
 msgstr ""
 
@@ -7763,6 +7823,11 @@ msgstr ""
 msgid "Copy without hidden data"
 msgstr ""
 
+#. Translators: an entry of Files' Scripts menu, which signs each PDF picked with the person's own certificate from the Vault
+#: usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh usr/libexec/amethystora-pdf-sign
+msgid "Sign a PDF"
+msgstr ""
+
 #. Translators: an entry of Files' Scripts menu, which lists the programs of the person's own that hold the file, folder
 #: usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh usr/libexec/amethystora-what-uses
 msgid "What is using this?"
@@ -7959,6 +8024,124 @@ msgstr ""
 #: usr/libexec/amethystora-start-times
 #, sh-format
 msgid "Measured since ${first_date}. It is not measured any more; what was kept stays here and is never sent."
+msgstr ""
+
+#: usr/libexec/amethystora-pdf-sign
+msgid "That is not a PDF, so it was left as it is."
+msgstr ""
+
+#: usr/libexec/amethystora-pdf-sign
+msgid "The vault is closed. Open it now?"
+msgstr ""
+
+#: usr/libexec/amethystora-pdf-sign
+msgid "There is no vault on this account yet. Set one up now?"
+msgstr ""
+
+#: usr/libexec/amethystora-pdf-sign
+msgid "The vault did not answer, so nothing was signed."
+msgstr ""
+
+#: usr/libexec/amethystora-pdf-sign
+#, sh-format
+msgid "Sign ${name} with your certificate?"
+msgstr ""
+
+#: usr/libexec/amethystora-pdf-sign
+#, sh-format
+msgid "Sign $count PDF with your certificate?"
+msgid_plural "Sign $count PDFs with your certificate?"
+msgstr[0] ""
+msgstr[1] ""
+
+#: usr/libexec/amethystora-pdf-sign
+msgid "The signature is digital, made with a certificate of yours that stays in the Vault. The Vault asks you to approve each one, unless you set that certificate to stay approved while the vault is open. A signed copy is saved beside the original, which is never touched."
+msgstr ""
+
+#: usr/libexec/amethystora-pdf-sign
+msgid "Sign"
+msgstr ""
+
+#: usr/libexec/amethystora-pdf-sign
+msgid "Certificate"
+msgstr ""
+
+#: usr/libexec/amethystora-pdf-sign
+msgid "The vault closed meanwhile. Open it now?"
+msgstr ""
+
+#: usr/libexec/amethystora-pdf-sign
+#, sh-format
+msgid "$count PDF signed"
+msgid_plural "$count PDFs signed"
+msgstr[0] ""
+msgstr[1] ""
+
+#: usr/libexec/amethystora-pdf-sign
+msgid "Nothing was signed"
+msgstr ""
+
+#: usr/libexec/amethystora-pdf-sign
+msgid "Saved beside the original."
+msgstr ""
+
+#: usr/libexec/amethystora-pdf-sign
+#, sh-format
+msgid "$count PDF was not signed: it was refused or could not be read."
+msgstr ""
+
+#: usr/libexec/amethystora-pdf-sign
+#, sh-format
+msgid "$count file was left as it was: not a PDF."
+msgid_plural "$count files were left as they were: not PDFs."
+msgstr[0] ""
+msgstr[1] ""
+
+#: usr/libexec/amethystora-share-screen
+msgid "Sharing the screen is switched on in Security first, since it opens a port in the firewall's home zone. Turn it on in Security, Network (amethystora-security settings/network), or with: ame security remote-screen on. Nothing was shared."
+msgstr ""
+
+#: usr/libexec/amethystora-share-screen
+msgid "The firewall is not Amethystora's (it is off, or another one is in use), so the remote desktop port would not be limited to your home network. Turn the firewall on in Security first. Nothing was shared."
+msgstr ""
+
+#: usr/libexec/amethystora-share-screen
+msgid "Sharing is off, and the code no longer works."
+msgstr ""
+
+#: usr/libexec/amethystora-share-screen
+msgid "GNOME's remote desktop is not installed."
+msgstr ""
+
+#: usr/libexec/amethystora-share-screen
+msgid "GNOME Settings' Remote Desktop already has a username and password. They cannot be kept while this runs, and would have to be set again. Nothing was changed."
+msgstr ""
+
+#: usr/libexec/amethystora-share-screen
+#, sh-format
+msgid "Connect with an RDP client to one of ${addresses} port ${port}."
+msgstr ""
+
+#: usr/libexec/amethystora-share-screen
+#, sh-format
+msgid "User name: ${USER_NAME}"
+msgstr ""
+
+#: usr/libexec/amethystora-share-screen
+#, sh-format
+msgid "Code: ${code}"
+msgstr ""
+
+#: usr/libexec/amethystora-share-screen
+msgid "Sharing ended"
+msgstr ""
+
+#: usr/libexec/amethystora-share-screen
+msgid "Your screen is no longer shared, and the code no longer works."
+msgstr ""
+
+#: usr/libexec/amethystora-share-screen
+msgid "Nobody is being helped right now."
 msgstr ""
 
 #: usr/libexec/amethystora-send-anyone
@@ -8711,6 +8894,30 @@ msgstr ""
 
 #: usr/libexec/amethystora-sends
 msgid "Without Send to anyone, Warp is not offered in Files, and nothing is ever fetched or run."
+msgstr ""
+
+#: usr/libexec/amethystora-sends
+msgid "Translation in the screenshot bar"
+msgstr ""
+
+#: usr/libexec/amethystora-sends
+msgid "The translator was built on this computer once, from a Fedora container (registry.fedoraproject.org) and its packages (Fedora's mirrors) and its source on github.com. Its models were each downloaded once from Mozilla's servers (firefox-settings-attachments.cdn.mozilla.net), and the data to read another script from GitHub (raw.githubusercontent.com), when a language was chosen. What you translate goes nowhere."
+msgstr ""
+
+#: usr/libexec/amethystora-sends
+msgid "Camera effects"
+msgstr ""
+
+#: usr/libexec/amethystora-sends
+msgid "The model that finds you in the picture was downloaded once from media.githubusercontent.com. Your video is made on this computer and never written or sent."
+msgstr ""
+
+#: usr/libexec/amethystora-sends
+msgid "Photos by what is in them"
+msgstr ""
+
+#: usr/libexec/amethystora-sends
+msgid "The model that understands pictures and words was downloaded once from huggingface.co and its content network (cdn.hf.co). Your photos are read on this computer, and what is worked out is sealed in the Vault. Nothing is sent."
 msgstr ""
 
 #: usr/libexec/amethystora-sends
@@ -10102,7 +10309,7 @@ msgid "Show as QR code"
 msgstr ""
 
 #. Translators: a choice about the private folder, which is open: close it.
-#: usr/share/gnome-shell/extensions/amethystora-clipboard@arsslensoft.github.io/textActions.js usr/share/amethystora/just/security.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/cover.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/pins.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/today/year.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/tools/opener.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/tools/qr.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/tools/room.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/tools/users.js
+#: usr/share/gnome-shell/extensions/amethystora-clipboard@arsslensoft.github.io/textActions.js usr/share/amethystora/just/security.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/cover.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/pins.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/translate.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/today/year.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/tools/opener.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/tools/qr.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/tools/room.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/tools/users.js
 msgid "Close"
 msgstr ""
 
@@ -11441,6 +11648,179 @@ msgid "Phone pairing is off"
 msgstr ""
 
 #: usr/share/amethystora/just/desktop.just
+#, sh-format
+msgid "The screenshot bar reads boxes into ${to}. These are on this computer to read from:"
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "The screenshot bar does not translate. ame desktop translate on chooses the languages."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "The screenshot bar does not translate. What was downloaded stays until ame desktop translate remove."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "The models and the translator were deleted, and the screenshot bar does not translate."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "The models were deleted, and the screenshot bar does not translate. The translator stays: ame desktop translate remove all takes it away too."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "The translator is built on this computer from its source, and this one cannot build it: it needs podman and a Fedora release this image knows."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "The translator is not part of the image, since building it into every image would cost every build twenty minutes. It is built here once, from its source, in a Fedora container that is removed again afterwards."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+#, sh-format
+msgid "This takes about ${minutes} minutes of up to four cores and downloads about ${megabytes} MB from ${hosts}. It sends nothing of yours."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "Build it now?"
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "The translator was not built, and nothing was kept."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "Which language do you want to read from?"
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "Which language do you read in?"
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+#, sh-format
+msgid "This downloads ${size} MiB once, from ${hosts}. It sends nothing of yours, and what you translate never leaves this computer."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "A box takes a few seconds and up to 300 MB of memory, given back as soon as the card shows."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "Download it now?"
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "The download failed, and nothing was kept."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "Done. The screenshot bar has a button that reads a box in your language."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "GNOME Settings' Remote Desktop already has a username and password. They cannot be kept while this runs: you would have to set them again afterwards."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "Replace them?"
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "Second screen: on."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "Second screen: off."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "The other computer's keyboard and pointer will be able to use this whole computer, every window on it, not only its own screen. The code stays valid until you turn this off, lock the screen, or eight hours pass. It works on the networks you named home; across the internet it cannot work: that needs a relay, which Amethystora does not run."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "Turn it on now?"
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "Help from someone you trust: on, until you stop it, lock the screen or an hour has gone."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "Help from someone you trust: off."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "The other person sees this whole screen, and cannot touch anything unless you let them. Close what is private first: nothing here promises it is hidden from them. The code stays valid until you stop it, lock the screen or an hour passes. It works on the networks you named home; across the internet it cannot work: that needs a relay, which Amethystora does not run."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "Start it now?"
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "Camera effects: on."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "Camera effects: off."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "No camera was found, or the virtual camera is missing. Nothing was turned on."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+#, sh-format
+msgid "This downloads one model of ${size} MiB once, from ${host}. Your video stays on this computer: it is never written, logged or sent."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "Measuring what 720p video costs on this computer..."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+#, sh-format
+msgid "Here it would take ${percent}% of one processor core, and it is offered only under ${limit}%. Nothing was turned on."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+#, sh-format
+msgid "Here it takes ${percent}% of one processor core, and only while an app uses the camera."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "Apps then show a second camera, the virtual one: choose it in each app. It starts when an app opens it, through PipeWire or itself (a browser does). Blocking the webcam in Security still blocks this."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "Camera effects: off. The model stays until ame desktop camera remove."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "Turn camera effects on first: ame desktop camera on."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+#, sh-format
+msgid "Here it would take ${percent}% of one processor core, and it is offered only under ${limit}%. Nothing was changed."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+#, sh-format
+msgid "Blur what is behind you: ${state}."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+#, sh-format
+msgid "Even out the light: ${state}."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "The model was deleted, and camera effects are off."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
 msgid "The speech recognizer is not installed in this image."
 msgstr ""
 
@@ -11451,14 +11831,6 @@ msgstr ""
 
 #: usr/share/amethystora/just/desktop.just
 msgid "While they are on, they hold about 230 MB of memory, and use part of a processor core while speech plays."
-msgstr ""
-
-#: usr/share/amethystora/just/desktop.just
-msgid "Download it now?"
-msgstr ""
-
-#: usr/share/amethystora/just/desktop.just
-msgid "The download failed, and nothing was kept."
 msgstr ""
 
 #: usr/share/amethystora/just/desktop.just
@@ -12434,6 +12806,15 @@ msgstr ""
 #: usr/share/amethystora/just/desktop.just
 #, sh-format
 msgid "${app} is not a pinned app."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+#, sh-format
+msgid "This downloads a model of ${size} MiB once, from ${host}. It reads your photos on this computer, while it is on mains power and left alone. What it works out is kept sealed in the Vault, and no photo ever leaves."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "The index is kept in the Vault, which is closed or not set up. It is read only while the vault is open: open it with ame vault open."
 msgstr ""
 
 #: usr/share/amethystora/just/desktop.just
@@ -16576,7 +16957,7 @@ msgstr ""
 msgid "Your question left this computer, for the maker of %s."
 msgstr ""
 
-#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/connect.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/code.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/phone.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/card.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/cover.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/pins.js
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/connect.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/code.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/phone.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/card.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/cover.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/pins.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/translate.js
 msgid "Copy"
 msgstr ""
 
@@ -18798,10 +19179,6 @@ msgid "microphone"
 msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/privacy.js
-msgid "Camera"
-msgstr ""
-
-#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/privacy.js
 msgid "screen"
 msgstr ""
 
@@ -20284,7 +20661,7 @@ msgid_plural "%d things covered. Check before you send."
 msgstr[0] ""
 msgstr[1] ""
 
-#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/cover.js
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/cover.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/translate.js
 msgid "Reading the picture, on this computer…"
 msgstr ""
 
@@ -20342,6 +20719,10 @@ msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/session.js
 msgid "Hide what’s private"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/session.js
+msgid "Read it in your language"
 msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/toolbar.js
@@ -20408,6 +20789,34 @@ msgstr ""
 msgid "Frame the area"
 msgstr ""
 
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/translate.js
+msgid "No language to read is on this computer yet. `ame desktop translate` fetches one."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/translate.js
+msgid "This could not be read here."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/translate.js
+msgid "No text was found in the box."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/translate.js
+msgid "Selected from the screen"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/translate.js
+msgid "Translated here. Nothing left this computer. The box held more than one card can take, so the end was left out."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/translate.js
+msgid "Translated here. Nothing left this computer."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/translate.js
+msgid "Translate more"
+msgstr ""
+
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/trim.js
 msgid "Trim"
 msgstr ""
@@ -20437,7 +20846,7 @@ msgstr ""
 msgid "bookmark · %s"
 msgstr ""
 
-#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/bookmarks.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/meaning.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/notes.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/rememberProvider.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/wordsProvider.js
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/bookmarks.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/meaning.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/notes.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/photos.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/rememberProvider.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/wordsProvider.js
 msgid "Enter opens"
 msgstr ""
 
@@ -20489,6 +20898,18 @@ msgstr ""
 msgid "Notes · note"
 msgstr ""
 
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/photos.js
+msgid "Your photos are sealed in the Vault"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/photos.js
+msgid "Open the Vault, then search again"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/photos.js
+msgid "%s · by what is in it"
+msgstr ""
+
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/providers.js
 msgid "The history Amethystora Clipboard already keeps, in memory. Search stores nothing new."
 msgstr ""
@@ -20527,6 +20948,14 @@ msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/providers.js
 msgid "What each last printed"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/providers.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/windows/simple.js
+msgid "Photos"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/providers.js
+msgid "While the vault is open"
 msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/providers.js
@@ -21801,10 +22230,6 @@ msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/windows/simple.js
 msgid "Email"
-msgstr ""
-
-#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/windows/simple.js
-msgid "Photos"
 msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/windows/sizes.js
