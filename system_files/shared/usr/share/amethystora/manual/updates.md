@@ -80,6 +80,16 @@ does not look: its updates show once they are ready for the restart.
 `ame update` uses `bootc` to update, or `rpm-ostree` on a machine with layered packages, which
 `bootc` cannot update, as the automatic updates do.
 
+An update can also change the kernel's arguments, the settings the system starts the kernel with
+(`/usr/lib/bootc/kargs.d` in the image). `bootc` applies them as it stages the update. `rpm-ostree` leaves
+them out, so on a machine with layered packages Amethystora gives the update waiting for the restart the
+same arguments right after it is staged, however it was staged, and once more just before the restart:
+what the new image adds is added, what it drops is taken off, and any you set yourself stay.
+`/usr/libexec/amethystora-kargs status` says whether the update waiting has them. Such an update always
+takes a full restart. A machine that was updated with `rpm-ostree` before this got the image's arguments it
+was missing once, at the first start after the update that brought it, except one you turned off with
+`ame security kernel-args` and kernel lockdown, which stays as `ame security lockdown` left it.
+
 ## Restarting in seconds
 
 Most updates change what runs on top of the kernel, not the kernel itself. When the one waiting for the restart

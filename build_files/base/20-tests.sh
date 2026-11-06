@@ -4444,6 +4444,70 @@ proc_mem_hook sealed ""
 [[ ! -e "${PROC_MEM_TEST}/etc/amethystora/hardening-on" ]]
 rm -rf "${PROC_MEM_TEST}"
 
+# The image's kernel arguments at the same restart on a machine rpm-ostree updates (amethystora-kargs,
+# plans/done/PLAN-kargs-same-restart.md). The arithmetic is bootc's: what the new kargs.d drops is taken off by its
+# exact text, what it adds is added unless that text is there, the owner's own arguments stay, and an image without
+# kargs.d keeps them all
+kargs_plan() { /usr/libexec/amethystora-kargs plan <<<"$1" | jq -c '[.options, .added, .removed, .base]'; }
+[[ "$(kargs_plan '{"options":"ostree=/x a b=1 own","default":["a","b=1"],"new":["a","b=2","c"]}')" == \
+    '["ostree=/x a own b=2 c",["b=2","c"],["b=1"],"default"]' ]]
+# The owner's value of a changed argument stays beside the image's, as bootc leaves it (the kernel takes the last)
+[[ "$(kargs_plan '{"options":"a b=7","default":["a","b=1"],"new":["a","b=2"]}')" == '["a b=7 b=2",["b=2"],[],"default"]' ]]
+[[ "$(kargs_plan '{"options":"a b=1","default":["a","b=1"],"new":null}')" == '["a b=1",[],[],"none"]' ]]
+[[ "$(kargs_plan '{"options":"a b=1","default":["a","b=1"],"new":[]}')" == '["",[],["a","b=1"],"default"]' ]]
+[[ "$(kargs_plan '{"options":"q=\"x y\" a","default":["a"],"new":["a","z"]}')" == '["q=\"x y\" a z",["z"],[],"default"]' ]]
+# Synced already: nothing to do
+[[ "$(kargs_plan '{"options":"a b=2 c","default":["a","b=1"],"new":["a","b=2","c"]}')" == '["a b=2 c",[],[],"default"]' ]]
+# Two updates before one restart: the second inherited the first's synced arguments, so its set is the base...
+[[ "$(kargs_plan '{"options":"a c","default":["a"],"record":["a","c"],"new":["a"]}')" == '["a",[],["c"],"record"]' ]]
+[[ "$(kargs_plan '{"options":"a","default":["a","c"],"record":["a"],"new":["a","c"]}')" == '["a c",["c"],[],"record"]' ]]
+# ...unless the options no longer carry it (a staging from somewhere else)
+[[ "$(kargs_plan '{"options":"a","default":["a"],"record":["a","c"],"new":["a","c"]}')" == '["a c",["c"],[],"default"]' ]]
+# kargs.d is read as bootc reads it: *.toml by name, another architecture's file skipped, a broken one refused
+KARGS_TEST="$(mktemp -d)"
+mkdir -p "${KARGS_TEST}/kargs.d" "${KARGS_TEST}/bin" "${KARGS_TEST}/etc/amethystora"
+printf 'kargs = ["b=1"]\n' >"${KARGS_TEST}/kargs.d/20-b.toml"
+printf 'kargs = ["a", "lockdown=integrity"]\n' >"${KARGS_TEST}/kargs.d/10-a.toml"
+printf 'kargs = ["other"]\nmatch-architectures = ["riscv64-not-this"]\n' >"${KARGS_TEST}/kargs.d/30-other.toml"
+printf 'kargs = ["skipped"]\n' >"${KARGS_TEST}/kargs.d/40-not-toml.conf"
+printf 'kargs = ["mine"]\nmatch-architectures = ["%s"]\n' "$(uname -m)" >"${KARGS_TEST}/kargs.d/50-mine.toml"
+printf '#!/usr/bin/bash\necho "$*" >>"${CALLS}"\n' >"${KARGS_TEST}/bin/rpm-ostree"
+chmod +x "${KARGS_TEST}/bin/rpm-ostree"
+kargs_hook() {
+    echo "BOOT_IMAGE=/vmlinuz root=UUID=0 rhgb quiet $3" >"${KARGS_TEST}/cmdline"
+    SETUP_CHECKER_FILE="${KARGS_TEST}/$1.json" AMETHYSTORA_KARGS_DRIVER="$2" AMETHYSTORA_CMDLINE="${KARGS_TEST}/cmdline" \
+        AMETHYSTORA_SEALED="${KARGS_TEST}/sealed" AMETHYSTORA_HARDENING_ROOT="${KARGS_TEST}" \
+        AMETHYSTORA_KARGS_D="${KARGS_TEST}/kargs.d" CALLS="${KARGS_TEST}/calls" PATH="${KARGS_TEST}/bin:${PATH}" \
+        bash /usr/share/amethystora/system-setup.hooks.d/32-kargs-catch-up.sh
+}
+# Catching up once: a bootc machine is left alone, lockdown is its own switch's, an argument whose name is there with
+# another value is the owner's, and one turned off stays off
+kargs_hook bootc bootc ""
+[[ ! -e "${KARGS_TEST}/calls" ]]
+echo "kernel-args mine" >"${KARGS_TEST}/etc/amethystora/hardening-off"
+kargs_hook layered rpm-ostree "b=0"
+kargs_hook layered rpm-ostree ""
+[[ "$(cat "${KARGS_TEST}/calls")" == "kargs --append-if-missing=a" ]]
+kargs_hook nothing rpm-ostree "a b=1"
+touch "${KARGS_TEST}/sealed"
+kargs_hook sealed rpm-ostree ""
+[[ "$(cat "${KARGS_TEST}/calls")" == "kargs --append-if-missing=a" ]]
+printf 'kargs = "not a list"\n' >"${KARGS_TEST}/kargs.d/60-broken.toml"
+rm "${KARGS_TEST}/sealed"
+! AMETHYSTORA_KARGS_D="${KARGS_TEST}/kargs.d" AMETHYSTORA_CMDLINE="${KARGS_TEST}/cmdline" /usr/libexec/amethystora-kargs missing
+rm -rf "${KARGS_TEST}"
+# It runs after every staging, when uupd's units end, and at shutdown just before ostree finalizes the update, never
+# holding finalization up; a soft reboot is refused while the image's kargs.d changes
+grep -qxF 'PathChanged=/run/ostree/staged-deployment' /usr/lib/systemd/system/amethystora-kargs.path
+grep -qxF 'After=ostree-finalize-staged.service' /usr/lib/systemd/system/amethystora-kargs-finalize.service
+grep -qxF 'ExecStop=/usr/libexec/amethystora-kargs sync --shutdown' /usr/lib/systemd/system/amethystora-kargs-finalize.service
+grep -q '^ExecStop=/usr/bin/ostree admin finalize-staged' /usr/lib/systemd/system/ostree-finalize-staged.service
+for unit in uupd uupd-manual; do
+    grep -qxF 'ExecStopPost=-/usr/libexec/amethystora-kargs sync' "/usr/lib/systemd/system/${unit}.service.d/53-amethystora-kargs.conf"
+done
+systemctl is-enabled amethystora-kargs.path amethystora-kargs-finalize.service >/dev/null
+grep -q 'amethystora-kargs status --json' /usr/libexec/amethystora-soft-reboot
+
 # The ssh the live ISO's Anaconda added to the Amethystora zone goes once, unless sshd is on or the zone has more of the owner's
 INSTALLER_SSH_TEST="$(mktemp -d)"
 mkdir -p "${INSTALLER_SSH_TEST}/etc/firewalld/zones" "${INSTALLER_SSH_TEST}/usr/lib/firewalld/zones"

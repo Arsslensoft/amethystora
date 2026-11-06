@@ -59,6 +59,9 @@ systemctl enable amethystora-disk-health.timer
 systemctl enable amethystora-raid-boot.service
 # An update that does not start goes back by itself (ame update boot-guard). Both are skipped until it is turned on.
 systemctl enable amethystora-boot-guard.service amethystora-boot-guard-good.service
+# The image's kernel arguments for an update rpm-ostree stages, at the same restart (amethystora-kargs): after each
+# staging, and at shutdown just before ostree finalizes it. Both are skipped on a sealed image.
+systemctl enable amethystora-kargs.path amethystora-kargs-finalize.service
 # A mirror's restart from its new disk, before /boot is mounted. Skipped unless a mirror waits for it.
 systemctl enable amethystora-raid-mirror.service
 # The file-watch sensor (amethystora-sensor, plans/done/PLAN-audit-cost.md): it records the files the

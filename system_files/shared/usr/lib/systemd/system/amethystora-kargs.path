@@ -1,0 +1,14 @@
+[Unit]
+Description=Give an update waiting for the restart the image's kernel arguments
+Documentation=file:///usr/share/amethystora/manual/updates.md
+# rpm-ostree leaves out the image's kargs.d, and a machine with layered packages is updated by it alone. Whoever staged the
+# update (uupd, ame update, a rebase, rpm-ostree in a terminal), ostree writes this file, or replaces it, and the service
+# gives it the arguments bootc would have. Its own write starts it again, and that run changes nothing.
+ConditionPathExists=!/usr/share/amethystora/sealed
+
+[Path]
+PathChanged=/run/ostree/staged-deployment
+Unit=amethystora-kargs.service
+
+[Install]
+WantedBy=multi-user.target

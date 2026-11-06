@@ -9,7 +9,8 @@
 #               sealed    a sealed image, whose signed kernel image carries the digest of the whole system, so
 #                         that every update brings a new one
 #               kernel    bootc's softRebootCapable says no: the kernel, the initramfs, the kernel arguments or
-#                         the SELinux policy change, and a soft reboot starts none of them anew
+#                         the SELinux policy change, and a soft reboot starts none of them anew; or the image's
+#                         kargs.d changed (amethystora-kargs), which rpm-ostree's staging leaves to it
 #               driver    a driver the kernel has loaded comes in another version, and a soft reboot would leave
 #                         the old one running
 #               firmware  the firmware waits for the computer to start again: BootNext (fwupd's capsule program,
@@ -84,6 +85,10 @@ why_not() {
     if [[ "$(jq -r '.status.staged != null and (.status.staged.downloadOnly | not)' <<<"${status}")" != true ]]; then
         echo none
     elif [[ "$(jq -r '.status.staged.softRebootCapable' <<<"${status}")" != true ]]; then
+        echo kernel
+    # The image's kernel arguments changed, whether or not the staged update has them yet (amethystora-kargs syncs
+    # them a moment after staging, and at shutdown): a soft reboot would start none of them
+    elif [[ "$(/usr/libexec/amethystora-kargs status --json 2>/dev/null | jq -r '.image_changes')" != false ]]; then
         echo kernel
     else
         next="$(jq -r '.status.staged.ostree | "/sysroot/ostree/deploy/\(.stateroot)/deploy/\(.checksum).\(.deploySerial)"' <<<"${status}")"

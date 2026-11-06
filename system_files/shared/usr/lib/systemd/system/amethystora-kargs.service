@@ -1,0 +1,11 @@
+[Unit]
+Description=Give an update waiting for the restart the image's kernel arguments
+Documentation=file:///usr/share/amethystora/manual/updates.md
+ConditionPathExists=!/usr/share/amethystora/sealed
+ConditionPathExists=/run/ostree/staged-deployment
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/amethystora-kargs sync
+TimeoutStartSec=5min
+RestrictRealtime=yes

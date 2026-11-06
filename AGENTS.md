@@ -959,6 +959,19 @@ too, which the notice and the manual say. The agent's never list holds its switc
 breaks an image on purpose, a real boot (`save_env` under Secure Boot, GRUB's `/loader.N` and kernel tests, `fsfreeze` on `/boot`), and the maintainer
 weighing that anyone at the power button can hold a machine on the old system with automatic updates paused.
 
+**The image's kernel arguments at the same restart** (`plans/done/PLAN-kargs-same-restart.md`, `/usr/libexec/amethystora-kargs`). rpm-ostree
+ignores `kargs.d`, and a machine with layered packages is updated by rpm-ostree alone, so the helper gives the staged update bootc's arithmetic
+(`bootc_kargs.rs`: what the old set has and the new lacks taken off by exact text, what the new adds added unless that text is there, an image
+without `kargs.d` keeping all) on the staged deployment's own options, so the owner's stay. It writes with `deployment_set_kargs_in_place`, which
+rewrites `/run/ostree/staged-deployment` only. The old set is the default deployment's, or this boot's record (`/run/amethystora/kargs.json`) when
+the staged options still carry it (two stagings before one restart). Three triggers, one idempotent `sync`: `amethystora-kargs.path` on that file,
+`ExecStopPost` in both uupd units and `ame update` (System Updates reads the deployments the moment uupd ends), and
+`amethystora-kargs-finalize.service`, whose `ExecStop` runs just before `ostree-finalize-staged.service`'s, waits 30 s at most for the lock and
+never fails. `rpm-ostree reload` does not reread `/run`: rpm-ostreed shows the old arguments until it next starts, and nothing waits on it.
+`amethystora-soft-reboot` says `kernel` whenever the two images' sets differ. `system-setup.hooks.d/32-kargs-catch-up.sh` adds once, on a machine
+rpm-ostree updates, what the running image's set has and the command line lacks by name, but for `hardening-off`'s and lockdown, whose off
+leaves no record. Hooks 27 and 28 stay for the machines that ran them; write no new one. The agent's never list holds the helper and its files.
+
 ### The Logs app
 
 Amethystora Logs (`amethystora-logs`, **Logs** in the app grid) replaces GNOME Logs, which

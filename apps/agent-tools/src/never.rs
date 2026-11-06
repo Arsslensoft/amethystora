@@ -33,6 +33,8 @@ const PATHS: &[&str] = &[
     "/etc/sudoers", "/etc/polkit-1", "/usr/share/polkit-1", "/etc/amethystora/agent.conf", "/etc/pam.d", "/etc/authselect",
     "/etc/security", "amethystora-notes", "/etc/shadow", "/etc/gshadow", "text-shortcuts.json", "amethystora-boot-guard",
     "/var/lib/amethystora/boot-guard",
+    // How the machine starts: the image's kernel arguments on an update, and the record of what it synced
+    "amethystora-kargs", "/run/amethystora/kargs.json", "/run/ostree/staged-deployment",
     // The guard's two levers in /boot, which reach the same place without its name: its count and the file it writes
     "ame_boot_tries", "/boot/grub2/custom.cfg", "/boot/grub2/grubenv",
     // The Vault (plans/PLAN-vault.md): its programs and units, its socket and its files, in any spelling that names them
@@ -414,6 +416,9 @@ mod tests {
             "ame update boot-guard on",
             "ame update boot-guard off",
             "/usr/libexec/amethystora-boot-guard set off",
+            "/usr/libexec/amethystora-kargs sync",
+            "systemctl stop amethystora-kargs-finalize.service",
+            "systemctl mask amethystora-kargs.path",
             "grub2-editenv /boot/grub2/grubenv set ame_boot_tries=0",
             "grub2-editenv - set ame_boot_tries=0",
             "tee /boot/grub2/custom.cfg",

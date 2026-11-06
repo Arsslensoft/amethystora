@@ -110,6 +110,8 @@ update ACTION="" VALUE="":
     # each where it can, as uupd picks
     if [[ "$(sudo /usr/libexec/amethystora-update-check driver)" == rpm-ostree ]]; then
         rpm-ostree upgrade
+        # ...and amethystora-kargs gives what it staged the image's kernel arguments, as bootc does
+        sudo /usr/libexec/amethystora-kargs sync || true
     else
         sudo bootc upgrade
     fi

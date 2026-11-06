@@ -344,6 +344,8 @@ Two things to know:
   drops layered packages without a word. On a machine with layered packages, switch with
   `sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/arsslensoft/<image>:<stream>` instead.
   Automatic updates handle this for you.
+- **Kernel arguments:** `rpm-ostree` leaves out the ones the image sets, and Amethystora adds them to
+  each update it stages ([updates](updates.md#what-is-waiting)), so they still change with the image.
 - **Undoing it:** `sudo rpm-ostree uninstall <package>` removes one, and `sudo rpm-ostree reset`
   goes back to the plain image.
 

@@ -1,0 +1,21 @@
+[Unit]
+Description=Give an update the image's kernel arguments before it is finalized
+Documentation=file:///usr/share/amethystora/manual/updates.md
+# The last word, whatever amethystora-kargs.path missed: stopped before ostree-finalize-staged.service at shutdown (on a
+# soft reboot's way down too), so that its ExecStop runs just before ostree writes the update's boot entry. It never holds
+# finalization up: the helper waits at most 30 s for the lock and passes over any error.
+ConditionPathExists=!/usr/share/amethystora/sealed
+After=ostree-finalize-staged.service
+After=local-fs.target
+RequiresMountsFor=/sysroot
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/true
+ExecStop=/usr/libexec/amethystora-kargs sync --shutdown
+TimeoutStopSec=60
+RestrictRealtime=yes
+
+[Install]
+WantedBy=multi-user.target

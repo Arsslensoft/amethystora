@@ -1,0 +1,296 @@
+#!/usr/bin/python3 -I
+# The image's kernel arguments on a machine that rpm-ostree updates (plans/done/PLAN-kargs-same-restart.md). The image says
+# them in /usr/lib/bootc/kargs.d, which bootc applies to every update it stages and rpm-ostree ignores, and a machine with
+# packages layered onto it can only be updated by rpm-ostree. This gives the update waiting for the restart the arguments
+# bootc would have given it, so that the restart that starts it starts it with them: what the new image adds is added, what
+# it drops is taken off, and the owner's own arguments stay.
+#
+#   sync [--shutdown]  as root: the staged update's arguments set (one small file in /run, ostree's own call), when they
+#                      differ. Run after each staging (amethystora-kargs.path), when uupd's units end, after `ame update`,
+#                      and at shutdown just before ostree finalizes the update (amethystora-kargs-finalize.service), where
+#                      --shutdown never waits long and never fails. With nothing to change it writes nothing.
+#   status [--json]    what sync would do, and whether the staged image's kargs.d differs from the running one's
+#                      (image_changes), which amethystora-soft-reboot takes as a reason for a full restart
+#   missing            the running image's arguments this start lacks, for the catch-up once (system-setup.hooks.d/
+#                      32-kargs-catch-up.sh): an argument whose name the command line has with any value is the owner's
+#                      choice, one turned off with `ame security kernel-args` is in hardening-off, and lockdown is
+#                      `ame security lockdown`'s alone, whose off leaves no record
+#   plan               the arithmetic alone, on JSON from standard input, for 20-tests.sh: {"options", "default", "new",
+#                      "record"?} in, {"options", "added", "removed", "base"} out
+#
+# bootc's rule (crates/lib/src/bootc_kargs.rs): every *.toml of kargs.d by name, a file whose match-architectures leaves
+# this machine out skipped; an argument of the old set missing from the new one is taken off by its exact text, and one
+# of the new set missing from the old one is added unless its exact text is there. It starts from the staged options,
+# not the booted ones, so an argument the owner set on the staged update (`rpm-ostree kargs` after it was staged) stays.
+#
+# The old set is what the staged options already carry: the default deployment's (the running one, or the newer one when
+# the older entry was started from the boot menu), unless this start already synced an update that the one staged now
+# inherited from (two updates before one restart), whose set /run/amethystora/kargs.json keeps. A sealed image carries its
+# arguments in its signed kernel image and is left alone. AMETHYSTORA_CMDLINE, AMETHYSTORA_KARGS_D and
+# AMETHYSTORA_HARDENING_ROOT are for 20-tests.sh, which runs missing against stand-ins.
+
+import json
+import os
+import platform
+import subprocess
+import sys
+import time
+import tomllib
+
+SEALED = '/usr/share/amethystora/sealed'
+RECORD = '/run/amethystora/kargs.json'
+KARGS_D = 'usr/lib/bootc/kargs.d'
+# Rust's names for the architectures, which match-architectures uses: uname's on x86_64 and aarch64
+ARCH = {'ppc64le': 'powerpc64', 'armv7l': 'arm', 'i686': 'x86'}.get(platform.machine(), platform.machine())
+# Kept from the catch-up: its own switch, which leaves no record when turned off
+OWN_SWITCH = ('lockdown',)
+SHUTDOWN_WAIT = 30
+
+
+class Unreadable(Exception):
+    pass
+
+
+def kargs_set(folder):
+    """The arguments a kargs.d folder asks for, as bootc reads it, or None for an image without the folder"""
+    if not os.path.isdir(folder):
+        return None
+    found = []
+    for name in sorted(os.listdir(folder)):
+        path = os.path.join(folder, name)
+        if not name.endswith('.toml') or not os.path.isfile(path):
+            continue
+        try:
+            with open(path, 'rb') as f:
+                data = tomllib.load(f)
+        except (OSError, tomllib.TOMLDecodeError) as e:
+            raise Unreadable(f'{path}: {e}')
+        archs = data.get('match-architectures')
+        if archs is not None and (not isinstance(archs, list) or ARCH not in archs):
+            continue
+        kargs = data.get('kargs', [])
+        if not isinstance(kargs, list) or not all(isinstance(k, str) and k and k.strip() == k for k in kargs):
+            raise Unreadable(f'{path}: kargs is not a list of arguments')
+        found.extend(kargs)
+    return found
+
+
+def split(options):
+    """A command line's arguments, a double-quoted value with spaces in it kept whole (ostree#3208)"""
+    args, word, quoted = [], '', False
+    for c in options:
+        if c == '"':
+            quoted = not quoted
+        if c in ' \t\n' and not quoted:
+            if word:
+                args.append(word)
+            word = ''
+        else:
+            word += c
+    if word:
+        args.append(word)
+    return args
+
+
+def carries(args, record, default):
+    """Whether options carry a set synced earlier: all it added over the default set, none it took off"""
+    return all(a in args for a in record if a not in default) and not any(a in args for a in default if a not in record)
+
+
+def plan(options, default, new, record=None):
+    args = split(options)
+    # An image without kargs.d says nothing about the arguments, and bootc keeps them all
+    if new is None:
+        return {'options': options, 'added': [], 'removed': [], 'base': 'none'}
+    default = default or []
+    base = 'record' if record is not None and carries(args, record, default) else 'default'
+    old = record if base == 'record' else default
+    removed, added = [], []
+    for a in dict.fromkeys(a for a in old if a not in new):
+        if a in args:
+            args = [x for x in args if x != a]
+            removed.append(a)
+    for a in dict.fromkeys(a for a in new if a not in old):
+        if a not in args:
+            args.append(a)
+            added.append(a)
+    return {'options': ' '.join(args), 'added': added, 'removed': removed, 'base': base}
+
+
+def log(text):
+    subprocess.run(['logger', '-t', 'amethystora-kargs', '--', text], check=False)
+    if sys.stderr.isatty():
+        print(text, file=sys.stderr)
+
+
+class Machine:
+    def __init__(self, namespace=False):
+        import gi
+        gi.require_version('OSTree', '1.0')
+        from gi.repository import OSTree
+        self.sysroot = OSTree.Sysroot.new_default()
+        if namespace:
+            # /sysroot made writable for this process alone, as rpm-ostree and bootc do
+            self.sysroot.initialize_with_mount_namespace(None)
+        self.loaded = False
+
+    def load(self):
+        self.sysroot.load(None)
+        deployments = self.sysroot.get_deployments()
+        self.staged = deployments[0] if deployments and deployments[0].is_staged() else None
+        rest = [d for d in deployments if not d.is_staged()]
+        self.default = rest[0] if rest else None
+        self.booted = self.sysroot.get_booted_deployment()
+
+    def folder(self, deployment):
+        return os.path.join(self.sysroot.get_path().get_path(), self.sysroot.get_deployment_dirpath(deployment), KARGS_D)
+
+    @staticmethod
+    def options(deployment):
+        config = deployment.get_bootconfig()
+        return (config.get('options') if config else None) or ''
+
+    def name(self, deployment):
+        return f'{deployment.get_csum()}.{deployment.get_deployserial()}'
+
+    def record(self):
+        try:
+            with open(RECORD) as f:
+                data = json.load(f)
+            if isinstance(data.get('set'), list) and all(isinstance(a, str) for a in data['set']):
+                return data['set']
+        except (OSError, ValueError, AttributeError):
+            pass
+        return None
+
+    def work(self):
+        """What sync does to the staged update, or None when nothing is staged"""
+        if self.staged is None or self.default is None:
+            return None
+        return plan(self.options(self.staged), kargs_set(self.folder(self.default)), kargs_set(self.folder(self.staged)),
+                    self.record())
+
+
+def sync(shutdown):
+    if os.path.exists(SEALED):
+        return 0
+    machine = Machine(namespace=True)
+    if shutdown:
+        # Finalization waits on this: never more than a moment for the lock
+        deadline = time.monotonic() + SHUTDOWN_WAIT
+        while True:
+            _, acquired = machine.sysroot.try_lock()
+            if acquired:
+                break
+            if time.monotonic() > deadline:
+                log('the system was busy at shutdown: the kernel arguments of the update were left as they were')
+                return 0
+            time.sleep(1)
+    else:
+        machine.sysroot.lock()
+    try:
+        machine.load()
+        try:
+            work = machine.work()
+        except Unreadable as e:
+            log(f'the kernel arguments of the update were left as they were: {e}')
+            return 0 if shutdown else 1
+        if work is None:
+            return 0
+        if work['added'] or work['removed']:
+            # rpm-ostreed goes on showing the arguments it read until it next starts (`rpm-ostree reload` does not read
+            # /run again; it stops itself a minute after its last call). Nothing waits on it: bootc and the finalization
+            # read this file, and a `rpm-ostree kargs` from its old view stages again, which this then syncs again
+            machine.sysroot.deployment_set_kargs_in_place(machine.staged, work['options'], None)
+            log('the update starts with the image\'s kernel arguments:'
+                + ''.join(f' +{a}' for a in work['added']) + ''.join(f' -{a}' for a in work['removed']))
+        os.makedirs(os.path.dirname(RECORD), mode=0o755, exist_ok=True)
+        with open(RECORD + '.new', 'w') as f:
+            json.dump({'deployment': machine.name(machine.staged), 'set': kargs_set(machine.folder(machine.staged)) or []}, f)
+        os.replace(RECORD + '.new', RECORD)
+    finally:
+        machine.sysroot.unlock()
+    return 0
+
+
+def status(as_json):
+    out = {'sealed': os.path.exists(SEALED), 'staged': False, 'image_changes': False, 'synced': True,
+           'added': [], 'removed': [], 'error': None}
+    if not out['sealed']:
+        machine = Machine()
+        machine.load()
+        out['staged'] = machine.staged is not None
+        if machine.staged is not None and machine.booted is not None:
+            try:
+                out['image_changes'] = (kargs_set(machine.folder(machine.booted))
+                                        != kargs_set(machine.folder(machine.staged)))
+                work = machine.work()
+                out['added'], out['removed'] = work['added'], work['removed']
+                out['synced'] = not (work['added'] or work['removed'])
+            except Unreadable as e:
+                out['error'] = str(e)
+                out['image_changes'] = True
+    if as_json:
+        print(json.dumps(out))
+    elif out['sealed']:
+        print('A sealed image carries its kernel arguments in its signed kernel image.')
+    elif not out['staged']:
+        print('No update is waiting for the restart.')
+    elif out['error']:
+        print(f'The image\'s kernel arguments cannot be read: {out["error"]}')
+    elif out['synced']:
+        print('The update waiting for the restart has the image\'s kernel arguments.')
+    else:
+        print('The update waiting for the restart is still to get the image\'s kernel arguments:'
+              + ''.join(f' +{a}' for a in out['added']) + ''.join(f' -{a}' for a in out['removed']))
+    return 0
+
+
+def missing():
+    if os.path.exists(os.environ.get('AMETHYSTORA_SEALED', SEALED)):
+        return 0
+    with open(os.environ.get('AMETHYSTORA_CMDLINE', '/proc/cmdline')) as f:
+        names = {a.split('=', 1)[0] for a in split(f.read())}
+    off = set()
+    try:
+        with open(os.environ.get('AMETHYSTORA_HARDENING_ROOT', '') + '/etc/amethystora/hardening-off') as f:
+            off = {line.strip() for line in f}
+    except OSError:
+        pass
+    for a in dict.fromkeys(kargs_set(os.environ.get('AMETHYSTORA_KARGS_D', '/' + KARGS_D)) or []):
+        name = a.split('=', 1)[0]
+        if name not in names and name not in OWN_SWITCH and f'kernel-args {a}' not in off:
+            print(a)
+    return 0
+
+
+def main(argv):
+    if argv[:1] == ['sync'] and argv[1:] in ([], ['--shutdown']):
+        if os.geteuid() != 0:
+            print('Changing the kernel arguments of an update needs root.', file=sys.stderr)
+            return 77
+        try:
+            return sync(argv[1:] == ['--shutdown'])
+        except Exception as e:
+            if argv[1:] == ['--shutdown']:
+                log(f'the kernel arguments of the update were left as they were: {e}')
+                return 0
+            raise
+    if argv[:1] == ['status'] and argv[1:] in ([], ['--json']):
+        return status(argv[1:] == ['--json'])
+    if argv == ['missing']:
+        try:
+            return missing()
+        except Unreadable as e:
+            print(f'The image\'s kernel arguments cannot be read: {e}', file=sys.stderr)
+            return 1
+    if argv == ['plan']:
+        data = json.load(sys.stdin)
+        print(json.dumps(plan(data['options'], data['default'], data['new'], data.get('record'))))
+        return 0
+    print('usage: amethystora-kargs sync [--shutdown] | status [--json] | missing | plan', file=sys.stderr)
+    return 2
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv[1:]))
