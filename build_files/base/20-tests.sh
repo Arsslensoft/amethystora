@@ -1578,6 +1578,14 @@ bash /ctx/build_files/shared/test-wrong.sh
 bash /ctx/build_files/shared/test-changes.sh
 # What changed with the real helper it hands an app's Undo to (R7-41's amethystora-uninstall, of the files group)
 bash /ctx/build_files/shared/test-changes-uninstall.sh
+# Round 7's move (plans/ui-ideas/r7/spec-move.md): files another computer sends wait for Accept unless the key says otherwise (R7-27);
+# the two ends of Move to this computer are in the image and its command exists (R7-25, firewall lines above); Bring everything from
+# your old computer reads a disk read-only and never a password, against stand-ins (R7-48)
+[[ "$(GSETTINGS_BACKEND=memory gsettings get org.amethystora.Connect ask-first)" == "'computers'" ]]
+test -x /usr/libexec/amethystora-move
+grep -q '^move \*ARGS:' /usr/share/amethystora/just/system.just
+test -x /usr/libexec/amethystora-bring-over
+bash /ctx/build_files/shared/test-bring-over.sh /usr/libexec/amethystora-bring-over
 # Every Gio.Settings the shell code of our extensions makes is kept and run_dispose()d on the main thread at disable,
 # never left to the collector: GJS sweeping one while dconf's worker dispatches a change to it deadlocks the shell
 env LD_LIBRARY_PATH=/apps-stage/usr/lib64 NODE_ICU_DATA="$(echo /apps-stage/usr/share/node-*/icudata)" /apps-stage/usr/bin/node /ctx/build_files/shared/test-settings-disposed.mjs \

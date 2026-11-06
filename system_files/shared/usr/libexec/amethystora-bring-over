@@ -1,0 +1,558 @@
+#!/usr/bin/python3 -I
+"""amethystora-bring-over: your things from your old computer's disk (R7-48), brought to the right folders of this one.
+
+    amethystora-bring-over [--from DIR]        the whole thing, in a terminal: pick the disk, unlock it if it is encrypted, see what
+                                               it holds, choose, and it copies (`ame system bring-over`)
+    amethystora-bring-over disks [--json]      the disks that look like another computer's, as lsblk sees them
+    amethystora-bring-over scan DIR [--json]   what a mounted disk holds: its people, each one's folders with their sizes, bookmarks
+    amethystora-bring-over bring DIR USER [--folders ID,ID] [--bookmarks]
+                                               copies the folders chosen (and the bookmarks) of one person of that disk
+
+What it promises, and how the code keeps each:
+- **The disk is never changed.** It is mounted read-only (`udisksctl mount -o ro`); one that the desktop mounted read-write is
+  unmounted first and mounted again read-only. Nothing here writes under the mount point, and rsync only reads from it.
+- **It copies and never moves, adds and never replaces.** Each folder is rsynced into the matching folder of this computer with
+  `--ignore-existing`, so a name that is there stays as it is; a file appears under its name only when whole, and an interrupted run
+  carries on where it stopped when run again (rsync's partial directory). Nothing is deleted.
+- **Nothing on the disk is believed.** A link is never followed or copied (`--no-links`), a folder that is a link, or leads out of
+  the mount, is passed over, modes are made plain (folders 755, files 644), and names reach rsync after `--`.
+- **No password is ever read.** Of a browser only its bookmarks are opened (Chromium's `Bookmarks`, Firefox's `places.sqlite`, the
+  latter read-only and immutable): never `logins.json`, `Login Data`, cookies or keys. They are written to one new HTML file that
+  any browser imports. An encrypted disk's recovery key is typed with no echo, passed on a pipe's standard input to udisks and
+  never put in an argument, an environment variable or a file.
+- It runs at idle disk priority and a low processor priority, so the desktop stays quick.
+
+A disk of another computer's system holds `Users/NAME` (Windows, macOS) or `home/NAME` (Linux), with Documents, Pictures, Music,
+Videos (Movies), Desktop and Downloads. Formats that mount read-only here: NTFS, exFAT, FAT, ext2/3/4, btrfs, XFS and HFS+ as the
+kernel has them; BitLocker through udisks; an APFS or LUKS disk is said not to be supported, with the way to unlock a LUKS one first."""
+
+import fnmatch
+import getpass
+import gettext
+import html
+import json
+import os
+import re
+import shutil
+import sqlite3
+import subprocess
+import sys
+import tempfile
+import time
+
+_ = gettext.translation("amethystora", fallback=True).gettext
+
+HOME = os.path.expanduser("~")
+# What lsblk calls a file system we can read; BitLocker's is a container, asked for its key first
+READABLE = {"ntfs", "exfat", "vfat", "ext2", "ext3", "ext4", "btrfs", "xfs", "hfsplus"}
+BITLOCKER = "BitLocker"
+# Mount points that make a disk this running system's own
+OWN_MOUNTS = ("/", "/boot", "/boot/efi", "/var", "/var/home", "/home", "/sysroot", "/usr", "/etc")
+FOLDERS = (
+    # id, the names such a folder has on the other systems, the name of its XDG user dir on this one
+    ("documents", ("Documents", "My Documents"), "DOCUMENTS", "Documents"),
+    ("pictures", ("Pictures", "My Pictures"), "PICTURES", "Pictures"),
+    ("music", ("Music", "My Music"), "MUSIC", "Music"),
+    ("videos", ("Videos", "Movies", "My Videos"), "VIDEOS", "Videos"),
+    ("desktop", ("Desktop",), "DESKTOP", "Desktop"),
+    ("downloads", ("Downloads",), "DOWNLOAD", "Downloads"),
+)
+NOT_PEOPLE = {"public", "default", "default user", "all users", "defaultuser0", "shared", "guest", "lost+found", "desktop.ini"}
+LEAVE_OUT = ("desktop.ini", "Thumbs.db", "thumbs.db", ".DS_Store", "$RECYCLE.BIN", "System Volume Information", "~$*", ".Trash*", ".Spotlight-V100", ".fseventsd", ".TemporaryItems", ".directory")
+MOST_ENTRIES = 5_000_000
+MOST_BOOKMARKS = 50_000
+BOOKMARK_SCHEMES = ("http://", "https://", "ftp://")
+# Where browsers keep their bookmarks under a person's folder: Chromium's family (a JSON file) and Firefox's (a database)
+CHROMIUM = (
+    "AppData/Local/Google/Chrome/User Data/Default/Bookmarks", "AppData/Local/Microsoft/Edge/User Data/Default/Bookmarks",
+    "AppData/Local/BraveSoftware/Brave-Browser/User Data/Default/Bookmarks", "AppData/Local/Vivaldi/User Data/Default/Bookmarks",
+    "AppData/Local/Chromium/User Data/Default/Bookmarks", "Library/Application Support/Google/Chrome/Default/Bookmarks",
+    "Library/Application Support/BraveSoftware/Brave-Browser/Default/Bookmarks", "Library/Application Support/Microsoft Edge/Default/Bookmarks",
+    ".config/google-chrome/Default/Bookmarks", ".config/chromium/Default/Bookmarks", ".config/BraveSoftware/Brave-Browser/Default/Bookmarks",
+    ".config/microsoft-edge/Default/Bookmarks", ".config/vivaldi/Default/Bookmarks",
+)
+FIREFOX = ("AppData/Roaming/Mozilla/Firefox/Profiles", "Library/Application Support/Firefox/Profiles", ".mozilla/firefox")
+
+
+class Problem(Exception):
+    """Something to say in a sentence, and stop"""
+
+
+def say(text):
+    print(text, flush=True)
+
+
+def run(command, stdin=None, timeout=300):
+    return subprocess.run(command, input=stdin, capture_output=True, timeout=timeout, check=False)
+
+
+# --- Disks ---------------------------------------------------------------------------------------------------------------------
+
+def flatten(devices, parent=None):
+    for device in devices or []:
+        yield device, parent
+        yield from flatten(device.get("children"), device)
+
+
+def mount_points(device):
+    return [m for m in (device.get("mountpoints") or []) if m]
+
+
+def disks():
+    """The disks that look like another computer's: what they are and whether they can be read here"""
+    out = run(["lsblk", "-J", "-b", "-o", "NAME,PATH,FSTYPE,SIZE,LABEL,MOUNTPOINTS,TYPE,RM,MODEL,PKNAME"])
+    if out.returncode != 0:
+        raise Problem(_("The list of disks could not be read."))
+    tree = json.loads(out.stdout or b"{}").get("blockdevices", [])
+    own_parents = set()
+    flat = list(flatten(tree))
+    for device, _parent in flat:
+        if any(m in OWN_MOUNTS or m.startswith(("/boot/", "/var/home/", "/sysroot")) for m in mount_points(device)):
+            own_parents.add(device.get("pkname"))
+            own_parents.add(device.get("name"))
+    found = []
+    for device, parent in flat:
+        kind, fstype = device.get("type"), device.get("fstype")
+        if kind not in ("part", "disk", "loop", "crypt") or not fstype or kind == "disk" and device.get("children"):
+            continue
+        if device.get("name") in own_parents or any(m in OWN_MOUNTS or m.startswith(("/boot/", "/var/home/", "/sysroot")) for m in mount_points(device)):
+            continue
+        if fstype in ("swap", "linux_raid_member", "LVM2_member", "zfs_member", "squashfs", "iso9660"):
+            continue
+        if device.get("name", "").startswith(("zram", "sr")):
+            continue
+        reason = None
+        if fstype == "crypto_LUKS":
+            reason = _("Encrypted with LUKS: unlock it in Files first, then bring its folder in with --from.")
+        elif fstype == "apfs":
+            reason = _("This format cannot be read here.")
+        elif fstype not in READABLE and fstype != BITLOCKER:
+            continue
+        found.append({
+            "device": device.get("path") or "/dev/" + device.get("name", ""), "fstype": fstype, "size": int(device.get("size") or 0),
+            "label": plain(device.get("label") or "", 40), "model": plain((parent or device).get("model") or "", 40),
+            "removable": bool(device.get("rm")), "mounted": mount_points(device),
+            "supported": reason is None, "reason": reason, "encrypted": fstype == BITLOCKER,
+        })
+    return found
+
+
+def plain(text, most=200):
+    """Text from a disk or a person, made safe to show in a terminal"""
+    return "".join(c for c in str(text) if c.isprintable() and c not in "‪‫‬‭‮⁦⁧⁨⁩‎‏")[:most]
+
+
+def udisks(args, stdin=None):
+    out = run(["udisksctl", *args], stdin=stdin)
+    if out.returncode != 0:
+        raise Problem(_("The disk would not open: {why}").format(why=plain(out.stderr.decode("utf-8", "replace").strip().splitlines()[-1] if out.stderr.strip() else "?")))
+    return out.stdout.decode("utf-8", "replace")
+
+
+def unlock(device, key):
+    """Unlocks a BitLocker disk with its recovery key, which is handed over on a pipe and nowhere else"""
+    text = udisks(["unlock", "-b", device, "--key-file", "/dev/stdin"], stdin=key)
+    found = re.search(r"as (/dev/\S+?)\.?\s*$", text.strip())
+    if not found:
+        raise Problem(_("The disk did not unlock."))
+    return found.group(1)
+
+
+def mount_read_only(device):
+    """Mounts it read-only through udisks and says where"""
+    text = udisks(["mount", "-b", device, "-o", "ro"])
+    found = re.search(r" at (/\S.*?)\.?\s*$", text.strip())
+    if not found or not os.path.isdir(found.group(1)):
+        raise Problem(_("The disk mounted, but not where it was said to."))
+    return found.group(1)
+
+
+# --- What a mounted disk holds ---------------------------------------------------------------------------------------------
+
+def plain_dir(root, *parts):
+    """The folder at root/parts, if every step is a real folder (no link) inside the mount; else None"""
+    here = os.path.realpath(root)
+    path = here
+    for part in parts:
+        path = os.path.join(path, part)
+        try:
+            if os.path.islink(path) or not os.path.isdir(path):
+                return None
+        except OSError:
+            return None
+        if os.path.realpath(path) != path:
+            return None
+    return path
+
+
+def leave_out(name):
+    return any(fnmatch.fnmatchcase(name, pattern) for pattern in LEAVE_OUT)
+
+
+def measure(folder):
+    """Files and bytes under a folder, passing over links and what is left out, with a ceiling on how much is counted"""
+    files = size = seen = 0
+    stack = [folder]
+    while stack:
+        current = stack.pop()
+        try:
+            entries = list(os.scandir(current))
+        except OSError:
+            continue
+        for entry in entries:
+            seen += 1
+            if seen > MOST_ENTRIES:
+                return files, size, True
+            if leave_out(entry.name):
+                continue
+            try:
+                if entry.is_symlink():
+                    continue
+                if entry.is_dir(follow_symlinks=False):
+                    stack.append(entry.path)
+                elif entry.is_file(follow_symlinks=False):
+                    files += 1
+                    size += entry.stat(follow_symlinks=False).st_size
+            except OSError:
+                continue
+    return files, size, False
+
+
+def people(root):
+    """Where the people of a disk's system have their folders: (name, path relative to the root)"""
+    found = []
+    for base in ("Users", "home"):
+        folder = plain_dir(root, base)
+        if not folder:
+            continue
+        for name in sorted(os.listdir(folder)):
+            if name.lower() in NOT_PEOPLE or name.startswith(".") or plain_dir(root, base, name) is None:
+                continue
+            found.append((plain(name, 60), f"{base}/{name}"))
+    # A disk that is only a home folder
+    if not found and sum(1 for _id, names, _x, _y in FOLDERS if any(plain_dir(root, n) for n in names)) >= 2:
+        found.append((_("this disk"), ""))
+    return found
+
+
+def folder_of(root, person, names):
+    for name in names:
+        parts = [p for p in person.split("/") if p] + [name]
+        path = plain_dir(root, *parts)
+        if path:
+            return path
+    return None
+
+
+def bookmark_files(root, person):
+    """The browsers' bookmark stores of a person: (kind, path). Only these files are ever opened of a browser's profile."""
+    out = []
+    parts = [p for p in person.split("/") if p]
+    for rel in CHROMIUM:
+        path = os.path.join(os.path.realpath(root), *parts, *rel.split("/"))
+        if os.path.isfile(path) and not os.path.islink(path) and plain_dir(root, *parts, *rel.split("/")[:-1]):
+            out.append(("chromium", path))
+    for rel in FIREFOX:
+        profiles = plain_dir(root, *parts, *rel.split("/"))
+        if not profiles:
+            continue
+        for name in sorted(os.listdir(profiles)):
+            places = os.path.join(profiles, name, "places.sqlite")
+            if plain_dir(root, *parts, *rel.split("/"), name) and os.path.isfile(places) and not os.path.islink(places):
+                out.append(("firefox", places))
+    return out
+
+
+def chromium_bookmarks(path):
+    """[(folder path, title, url)] from a Bookmarks file"""
+    try:
+        with open(path, "rb") as handle:
+            data = json.loads(handle.read(64 * 1024 * 1024))
+    except (OSError, ValueError):
+        return []
+    found = []
+
+    def walk(node, trail):
+        if len(found) >= MOST_BOOKMARKS or not isinstance(node, dict):
+            return
+        if node.get("type") == "url":
+            found.append((trail, plain(node.get("name") or "", 300), str(node.get("url") or "")))
+        for child in node.get("children") or []:
+            walk(child, trail + ([plain(node.get("name") or "", 100)] if node.get("type") == "folder" else []))
+
+    for root_name, node in (data.get("roots") or {}).items():
+        if isinstance(node, dict):
+            walk(node, [plain(node.get("name") or root_name, 100)])
+    return found
+
+
+def firefox_bookmarks(path):
+    """[(folder path, title, url)] from places.sqlite, opened read-only and immutable, so that nothing is written beside it"""
+    try:
+        database = sqlite3.connect(f"file:{path}?mode=ro&immutable=1", uri=True, timeout=5)
+        rows = database.execute("SELECT b.id, b.type, b.parent, b.title, p.url, b.guid FROM moz_bookmarks b LEFT JOIN moz_places p ON b.fk = p.id WHERE b.type IN (1, 2) LIMIT ?", (MOST_BOOKMARKS * 4,)).fetchall()
+        database.close()
+    except sqlite3.Error:
+        return []
+    by_id = {row[0]: row for row in rows}
+    found = []
+    for _id, kind, parent, title, url, _guid in rows:
+        if kind != 1 or not url or len(found) >= MOST_BOOKMARKS:
+            continue
+        trail, at, guard, tagged = [], parent, 0, False
+        while at in by_id and guard < 32:
+            # A tag is a folder of copies of bookmarks, which would be there twice; the root has no name to show
+            tagged = tagged or by_id[at][5] == "tags________"
+            if by_id[at][5] != "root________":
+                trail.append(plain(by_id[at][3] or "", 100))
+            at, guard = by_id[at][2], guard + 1
+        if tagged:
+            continue
+        trail.reverse()
+        found.append((trail, plain(title or url, 300), url))
+    return found
+
+
+def all_bookmarks(root, person):
+    found, seen = [], set()
+    for kind, path in bookmark_files(root, person):
+        for trail, title, url in (chromium_bookmarks(path) if kind == "chromium" else firefox_bookmarks(path)):
+            if not url.lower().startswith(BOOKMARK_SCHEMES) or any(ord(c) < 32 for c in url) or (title, url) in seen:
+                continue
+            seen.add((title, url))
+            found.append((trail, title, url))
+    return found
+
+
+def scan(root):
+    result = []
+    for name, rel in people(root):
+        folders = []
+        for ident, names, _xdg, label in FOLDERS:
+            path = folder_of(root, rel, names)
+            if path:
+                files, size, partial = measure(path)
+                folders.append({"id": ident, "label": label, "files": files, "bytes": size, "partial": partial})
+        result.append({"name": name, "path": rel, "folders": folders, "bookmarks": len(all_bookmarks(root, rel))})
+    return result
+
+
+# --- Bringing them over ------------------------------------------------------------------------------------------------------
+
+def user_dir(xdg, fallback):
+    """This computer's folder for the kind (Documents in the person's language), made if there is none"""
+    out = run(["xdg-user-dir", xdg]) if shutil.which("xdg-user-dir") else None
+    path = out.stdout.decode().strip() if out is not None and out.returncode == 0 else ""
+    if not path or not os.path.isabs(path) or path == HOME:
+        path = os.path.join(HOME, fallback)
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def gently(command):
+    """Idle disk priority and a low processor priority, where the tools are there"""
+    prefix = []
+    if shutil.which("ionice"):
+        prefix += ["ionice", "-c", "3"]
+    if shutil.which("nice"):
+        prefix += ["nice", "-n", "10"]
+    return prefix + command
+
+
+def copy_folder(source, target):
+    """rsync, adding and never replacing: a name already there stays as it is, a file is put under its name whole, and what is
+    interrupted carries on at the next run. Links are neither followed nor copied; modes are made plain."""
+    command = ["rsync", "-rt", "--no-links", "--ignore-existing", "--partial-dir=.amethystora-partial", "--chmod=D755,F644", "--info=progress2", "--no-inc-recursive"]
+    for pattern in LEAVE_OUT:
+        command += ["--exclude", pattern]
+    # The trailing slash is the folder's own content; nothing after `--` is read as an option
+    command += ["--", source + "/", target + "/"]
+    result = subprocess.run(gently(command), check=False)
+    shutil.rmtree(os.path.join(target, ".amethystora-partial"), ignore_errors=True)
+    # 24: files that vanished from the source; 23: some could not be read. Both are said, neither is a reason to stop.
+    return result.returncode in (0, 23, 24)
+
+
+def write_bookmarks(found, documents):
+    """One new HTML file in the Netscape bookmark format, which every browser imports. Never over a file that is there."""
+    tree = {"children": {}, "links": []}
+    for trail, title, url in found:
+        node = tree
+        for name in trail:
+            node = node["children"].setdefault(name, {"children": {}, "links": []})
+        node["links"].append((title, url))
+    lines = ["<!DOCTYPE NETSCAPE-Bookmark-file-1>", '<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">', "<TITLE>Bookmarks</TITLE>", "<H1>Bookmarks</H1>", "<DL><p>"]
+
+    def emit(node, depth):
+        pad = "    " * depth
+        for name in sorted(node["children"]):
+            lines.append(f"{pad}<DT><H3>{html.escape(name)}</H3>")
+            lines.append(f"{pad}<DL><p>")
+            emit(node["children"][name], depth + 1)
+            lines.append(f"{pad}</DL><p>")
+        for title, url in node["links"]:
+            lines.append(f'{pad}<DT><A HREF="{html.escape(url, quote=True)}">{html.escape(title)}</A>')
+
+    emit(tree, 1)
+    lines.append("</DL><p>")
+    base = os.path.join(documents, _("Bookmarks from old computer"))
+    for number in range(0, 100):
+        path = f"{base}.html" if number == 0 else f"{base} ({number}).html"
+        try:
+            descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        except FileExistsError:
+            continue
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            handle.write("\n".join(lines) + "\n")
+        return path
+    raise Problem(_("There are too many bookmark files here already."))
+
+
+def bring(root, person_name, chosen, with_bookmarks):
+    matches = [(name, rel) for name, rel in people(root) if name == person_name]
+    if not matches:
+        raise Problem(_("That person is not on this disk."))
+    rel = matches[0][1]
+    done = 0
+    for ident, names, xdg, label in FOLDERS:
+        if ident not in chosen:
+            continue
+        source = folder_of(root, rel, names)
+        if not source:
+            continue
+        target = user_dir(xdg, label)
+        say(_("Copying {folder}…").format(folder=label))
+        if not copy_folder(source, target):
+            raise Problem(_("Copying {folder} stopped. Run it again to carry on where it stopped.").format(folder=label))
+        done += 1
+    if with_bookmarks:
+        found = all_bookmarks(root, rel)
+        if found:
+            say(_("Your bookmarks are in {path}: import that file in your browser.").format(path=write_bookmarks(found, user_dir("DOCUMENTS", "Documents"))))
+    return done
+
+
+# --- The person at the terminal ----------------------------------------------------------------------------------------------
+
+def size_text(count):
+    value = float(count)
+    for unit in ("B", "kB", "MB", "GB", "TB"):
+        if value < 1000 or unit == "TB":
+            return f"{value:.0f} {unit}" if unit == "B" or value >= 10 else f"{value:.1f} {unit}"
+        value /= 1000
+
+
+def ask(question, default=True):
+    hint = _("[Y/n]") if default else _("[y/N]")
+    while True:
+        answer = input(f"{question} {hint} ").strip().lower()
+        if not answer:
+            return default
+        if answer in ("y", "yes", "j", "o", "s", "ja", "oui", "si", "sí", "да", "نعم"):
+            return True
+        if answer in ("n", "no", "non", "nein", "нет", "لا"):
+            return False
+
+
+def pick(question, options):
+    for number, text in enumerate(options, 1):
+        print(f"  {number}  {text}")
+    while True:
+        answer = input(f"{question} ").strip()
+        if answer.isdigit() and 1 <= int(answer) <= len(options):
+            return int(answer) - 1
+
+
+def interactive(source=None):
+    if not (sys.stdin.isatty() and sys.stdout.isatty()):
+        raise Problem("needs a terminal, with a person at it")
+    os.nice(10)
+    cleanup = []
+    try:
+        if source is None:
+            found = [d for d in disks()]
+            if not found:
+                raise Problem(_("No disk of another computer was found. Plug it in, and run this again."))
+            say(_("Disks that look like another computer's. Nothing on them is changed."))
+            choice = pick(_("Which one? Its number:"), [
+                f"{d['label'] or d['model'] or d['device']}  {d['fstype']}  {size_text(d['size'])}" + ("" if d["supported"] else "  — " + d["reason"]) for d in found])
+            disk = found[choice]
+            if not disk["supported"]:
+                raise Problem(disk["reason"])
+            device = disk["device"]
+            if disk["encrypted"]:
+                say(_("This disk is encrypted with BitLocker. Type its 48-digit recovery key; nothing shows as you type, and it is kept only until the disk is open."))
+                key = bytearray(getpass.getpass("> ").strip().encode())
+                try:
+                    unlocked = unlock(device, bytes(key))
+                finally:
+                    key[:] = b"\0" * len(key)
+                cleanup.append(["udisksctl", "lock", "-b", device])
+                device = unlocked
+            elif disk["mounted"]:
+                say(_("The desktop mounted this disk so that it can be written to. It is unmounted and mounted again read-only."))
+                udisks(["unmount", "-b", device])
+            root = mount_read_only(device)
+            cleanup.insert(0, ["udisksctl", "unmount", "-b", device])
+        else:
+            root = os.path.realpath(source)
+        found_people = scan(root)
+        if not found_people:
+            raise Problem(_("No one's folders were found on this disk."))
+        who = found_people[0] if len(found_people) == 1 else found_people[pick(_("Whose things? Its number:"), [p["name"] for p in found_people])]
+        say(_("Found {name}'s things. Nothing on the disk changes.").format(name=who["name"]))
+        chosen = []
+        for folder in who["folders"]:
+            question = _("Bring {folder} ({size}, {files} files)?").format(folder=folder["label"], size=size_text(folder["bytes"]), files=folder["files"])
+            if ask(question):
+                chosen.append(folder["id"])
+        want_bookmarks = who["bookmarks"] > 0 and ask(_("Bring the browser bookmarks ({count})? No passwords are read.").format(count=who["bookmarks"]))
+        if not chosen and not want_bookmarks:
+            return
+        bring(root, who["name"], chosen, want_bookmarks)
+        say(_("Done. The disk was not changed, and a name already here was kept as it was."))
+    finally:
+        for command in cleanup:
+            run(command)
+
+
+def main(argv):
+    args = argv[1:]
+    as_json = "--json" in args
+    args = [a for a in args if a != "--json"]
+    try:
+        if not args or args[0] == "--from":
+            return interactive(args[1] if len(args) > 1 else None) or 0
+        if args[0] == "disks":
+            found = disks()
+            if as_json:
+                print(json.dumps(found))
+            else:
+                for d in found:
+                    print(f"{d['device']}\t{d['fstype']}\t{size_text(d['size'])}\t{d['label']}")
+            return 0
+        if args[0] == "scan" and len(args) == 2:
+            found = scan(os.path.realpath(args[1]))
+            print(json.dumps(found) if as_json else "\n".join(f"{p['name']}: " + ", ".join(f"{f['label']} {size_text(f['bytes'])}" for f in p["folders"]) for p in found))
+            return 0
+        if args[0] == "bring" and len(args) >= 3:
+            rest = args[3:]
+            folders = ""
+            if "--folders" in rest:
+                folders = rest[rest.index("--folders") + 1] if rest.index("--folders") + 1 < len(rest) else ""
+            known = {f[0] for f in FOLDERS}
+            chosen = [f for f in folders.split(",") if f in known]
+            bring(os.path.realpath(args[1]), args[2], chosen, "--bookmarks" in rest)
+            return 0
+    except Problem as problem:
+        print(f"amethystora-bring-over: {problem}", file=sys.stderr)
+        return 1
+    except (KeyboardInterrupt, EOFError):
+        print(file=sys.stderr)
+        return 1
+    print("usage: amethystora-bring-over [--from DIR] | disks | scan DIR | bring DIR USER [--folders ID,ID] [--bookmarks]", file=sys.stderr)
+    return 64
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

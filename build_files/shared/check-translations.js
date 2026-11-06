@@ -324,7 +324,9 @@ const PYTHON = ['usr/libexec/amethystora-text-shortcuts',
     // Downloads tidied (plans/ui-ideas/spec-apps.md)
     'usr/libexec/amethystora-tidy-downloads',
     // The Help window's helpers (plans/ui-ideas/r7/spec-help.md), and how it finds what Show me points at
-    'usr/libexec/amethystora-wrong', 'usr/libexec/amethystora-changes'];
+    'usr/libexec/amethystora-wrong', 'usr/libexec/amethystora-changes',
+    // Bring everything from your old computer (R7-48)
+    'usr/libexec/amethystora-bring-over'];
 const SHELL = ['usr/libexec/amethystora-security-status', 'usr/libexec/amethystora-app-permissions', 'usr/libexec/amethystora-layout-offer',
     'usr/libexec/amethystora-control-list', 'usr/libexec/amethystora-security-config', 'usr/libexec/amethystora-hardening',
     'usr/libexec/amethystora-phone-link-notice', 'usr/libexec/amethystora-deja-dup-notice', 'usr/libexec/amethystora-widgets-moved-notice',

@@ -3411,6 +3411,13 @@ USAGE="ame system move send"
 item system move-send action "${ gettext "Move this computer's things to a new one"; }" \
     "${ gettext "The other end: run this on the old computer while the new one waits. Nothing on this computer is changed."; }" \
     "" moving#move-to-this-computer
+COMMAND=(ame system bring-over)
+TERMINAL=true
+BUTTON="${ gettext "Find the old disk"; }"
+USAGE="ame system bring-over"
+item system bring-over action "${ gettext "Bring everything from your old computer"; }" \
+    "${ gettext "Your folders and bookmarks from the disk of another computer you plugged in. The disk is read-only and nothing on it changes; an encrypted one asks for its recovery key, which is not kept; no password is read."; }" \
+    "" moving#bring-everything-from-your-old-computer
 GROUP=""
 
 # The pools of disks, as `amethystora-raid status --json` has them, and the system's disks when it spans

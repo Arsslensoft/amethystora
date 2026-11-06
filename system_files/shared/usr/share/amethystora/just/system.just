@@ -495,6 +495,15 @@ raid *ARGS:
 move *ARGS:
     @/usr/libexec/amethystora-move "$@"
 
+# Bring everything from your old computer (R7-48): the folders and bookmarks of another computer's disk, plugged in, copied to the
+# right folders here. The disk is mounted read-only and nothing on it changes; a BitLocker disk asks for its recovery key, which is
+# never kept; no password is read. `bring-over --from DIR` takes a disk that is already mounted
+[no-cd]
+[no-exit-message]
+[positional-arguments]
+bring-over *ARGS:
+    @/usr/libexec/amethystora-bring-over "$@"
+
 # A warning before the disk dies: the disks the system is on have their health read hourly, and a notice says once when
 # one begins to fail, with Back up now. Off, nothing is read (STATE: on, off or status; without it, it says what they said)
 [positional-arguments]
