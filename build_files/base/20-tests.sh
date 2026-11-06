@@ -480,7 +480,7 @@ grep -q "'amethystora-transitions@arsslensoft.github.io'" /usr/share/glib-2.0/sc
 # /usr/share/amethystora/plugins (read-only, in the sandbox of everyone's), and none holds a permission that reaches outside the machine
 # (a click is all it takes to add one, with no administrator). amethystora-widgets stays as a name, over amethystora-plugins
 test ! -e /usr/share/gnome-shell/extensions/amethystora-widgets@arsslensoft.github.io
-! grep -q "amethystora-widgets@arsslensoft" /usr/share/glib-2.0/schemas/zz0-amethystora-modifications.gschema.override
+grep -q "amethystora-widgets@arsslensoft" /usr/share/glib-2.0/schemas/zz0-amethystora-modifications.gschema.override && false
 test -x /usr/bin/amethystora-widgets
 for plugin in /usr/share/amethystora/plugins/*/; do
     id="$(basename "${plugin}")"
@@ -488,14 +488,14 @@ for plugin in /usr/share/amethystora/plugins/*/; do
     /usr/libexec/amethystora-plugin-host check "${plugin}" --system >/dev/null
     [[ "$(jq -r .id "${plugin}manifest.json")" == "${id}" ]]
     # What the helper refuses to a shipped plugin (rootcmd.rs shipped_refuses)
-    ! jq -e '.needs // {} | has("network") or has("network-local") or has("files") or has("window") or has("change")' "${plugin}manifest.json" >/dev/null
+    jq -e '.needs // {} | has("network") or has("network-local") or has("files") or has("window") or has("change")' "${plugin}manifest.json" >/dev/null && false
 done
 for example in /usr/share/amethystora/plugin-examples/*/; do
     test -x "${example}run.sh"
     /usr/libexec/amethystora-plugin-host check "${example}" >/dev/null
 done
 # The desktop's cards are drawn from what the plugins module hands them: no runner, no widgets folder
-! grep -q "runner.js\|WIDGETS_DIR\|widgets@" /usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/deskwidgets.js
+grep -q "runner.js\|WIDGETS_DIR\|widgets@" /usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/deskwidgets.js && false
 # Amethystora Clipboard, Clipboard Indicator's copy that seals its history: enabled, claiming this GNOME, its
 # settings where gsettings finds them and Control's command for keep-history there, nothing of Clipboard
 # Indicator left, and the sealing tried with a stand-in for the keyring (test-clipboard.sh)

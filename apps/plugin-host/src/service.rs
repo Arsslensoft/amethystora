@@ -170,6 +170,10 @@ impl State {
             if let Some(Some(timer)) = self.scheduled.borrow_mut().remove(&id) {
                 timer.remove();
             }
+            // Turned off, it is forgotten whole: turning it on again is a fresh start, which is how a plugin that paused itself is resumed from Control
+            self.paused.borrow_mut().remove(&id);
+            self.failures.borrow_mut().remove(&id);
+            self.recent.borrow_mut().remove(&id);
         }
         if on.is_empty() {
             self.main_loop.quit();
