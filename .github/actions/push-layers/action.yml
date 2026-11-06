@@ -1,0 +1,47 @@
+name: Push layers
+description: >-
+  Pushes every layer the build made (/tmp/amethystora-layers-built, layers/lib.sh) to GHCR, signs it by digest with
+  the images' cosign key and checks the tag's signature against cosign.pub, as the images' own push does. Each is
+  pushed once: the layers are not rechunked, which is what makes a first push change the digest (podman#27796).
+
+inputs:
+  token:
+    description: The job's GITHUB_TOKEN, with packages write
+    required: true
+  signing-key:
+    description: The cosign private key (SIGNING_SECRET)
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Push and sign
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+        COSIGN_PRIVATE_KEY: ${{ inputs.signing-key }}
+        COSIGN_EXPERIMENTAL: "false"
+        REGISTRY: ghcr.io/arsslensoft
+      run: |
+        set -euo pipefail
+        if [[ ! -s /tmp/amethystora-layers-built ]]; then
+          echo "Every layer was there already"
+          exit 0
+        fi
+        auth="${RUNNER_TEMP}/layers-auth.json"
+        trap 'sudo rm -f "${auth}"' EXIT
+        printenv GITHUB_TOKEN | sudo podman login --authfile "${auth}" ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
+        printenv GITHUB_TOKEN | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
+        digest_file="${RUNNER_TEMP}/layer-digest"
+        while read -r name tag; do
+          dest="${REGISTRY}/${name}:${tag}"
+          for attempt in 1 2 3; do
+            sudo podman push --authfile "${auth}" --digestfile "${digest_file}" "localhost/${name}:${tag}" "${dest}" && break
+            [[ ${attempt} == 3 ]] && exit 1
+            sleep 15
+          done
+          digest="$(cat "${digest_file}")"
+          cosign sign -y --key env://COSIGN_PRIVATE_KEY "${REGISTRY}/${name}@${digest}"
+          cosign verify --key cosign.pub "${dest}" > /dev/null
+          echo "::notice::pushed and signed ${dest} (${digest})"
+        done < /tmp/amethystora-layers-built

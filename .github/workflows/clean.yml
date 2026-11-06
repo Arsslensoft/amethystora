@@ -24,3 +24,28 @@ jobs:
           delete-orphaned-images: true
           keep-n-tagged: 7
           keep-n-untagged: 7
+
+  # The build's layers (plans/PLAN-build-layers.md), each kept as long as a build can still find it: the packages
+  # layers have a day's or a run's epoch, the crates an ISO week's, the rest change with what they are built from
+  delete-old-layers:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { packages: "amethystora-kernel,amethystora-packages,amethystora-packages-dx", older-than: "2 days", keep: 0 }
+          - { packages: "amethystora-apps,amethystora-assets", older-than: "30 days", keep: 5 }
+          - { packages: "amethystora-cargo", older-than: "14 days", keep: 0 }
+          - { packages: "amethystora-fprintd", older-than: "90 days", keep: 0 }
+    steps:
+      - name: Delete layers
+        uses: dataaxiom/ghcr-cleanup-action@d52806a0dc70b430571a37da1fde39733ffd640f # v1.2.2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          packages: ${{ matrix.packages }}
+          older-than: ${{ matrix.older-than }}
+          delete-orphaned-images: true
+          delete-untagged: true
+          keep-n-tagged: ${{ matrix.keep }}

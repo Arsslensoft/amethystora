@@ -13,9 +13,6 @@ export PATH="/tmp/scripts/helpers:$PATH"
 
 echo "::endgroup::"
 
-# Apply IP Forwarding before installing Docker to prevent messing with LXC networking
-sysctl -p
-
 # Load iptable_nat module for docker-in-docker.
 # See https://github.com/devcontainers/features/issues/1235
 mkdir -p /etc/modules-load.d
@@ -23,8 +20,11 @@ tee /etc/modules-load.d/ip_tables.conf <<EOF
 iptable_nat
 EOF
 
-# Install Packages and set up DX
-/ctx/build_files/dx/00-dx.sh
+# dx's packages are the packages-dx layer's (layers/packages-dx.sh, 00-dx.sh); what they need of system_files/dx is
+# enabled here, now that it is in place
+systemctl enable docker.socket
+systemctl enable podman.socket
+systemctl enable libvirt-workaround.service
 
 # Validate all repos are disabled before committing
 /ctx/build_files/shared/validate-repos.sh

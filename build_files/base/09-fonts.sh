@@ -10,6 +10,10 @@ set -eoux pipefail
 # /usr/share/licenses/google-fonts/<family>. The ones Fedora packages are in 04-packages.sh; Fira Code's package ships
 # no licence file, so its OFL.txt is pinned here without the font. A new commit is pinned by hand, with every sum
 # again.
+#
+# In two halves (plans/PLAN-build-layers.md): `make` in the assets layer (layers/assets.Containerfile) downloads under
+# ${ASSETS}, and `install` in the image, whose build copies the layer in (build.sh), adds Quicksand, builds the cache
+# and checks every theme's fonts
 GOOGLE_FONTS_COMMIT="6c1dbe27dcf7d817d4b62cec033ba77fa8e2a5ec"
 GOOGLE_FONTS_URL="https://raw.githubusercontent.com/google/fonts/${GOOGLE_FONTS_COMMIT}/ofl"
 
@@ -68,6 +72,8 @@ FONTS=(
     "victormono/OFL.txt 493589852331b4ea83f1d6b0cbdc157b002ffdb995cf2429acf0c9863bc8f3df"
 )
 
+if [[ "${1:-}" == make ]]; then
+[[ -n "${ASSETS:-}" ]]
 WORK="$(mktemp -d)"
 for entry in "${FONTS[@]}"; do
     path="${entry% *}"
@@ -79,12 +85,25 @@ for entry in "${FONTS[@]}"; do
     curl --fail --silent --show-error --location --retry 3 -o "${WORK}/${file}" "${GOOGLE_FONTS_URL}/${family}/${url_file}"
     echo "${sum}  ${WORK}/${file}" | sha256sum -c -
     if [[ ${file} == OFL.txt ]]; then
-        install -Dpm0644 "${WORK}/${file}" "/usr/share/licenses/google-fonts/${family}/OFL.txt"
+        install -Dpm0644 "${WORK}/${file}" "${ASSETS}/usr/share/licenses/google-fonts/${family}/OFL.txt"
     else
-        install -Dpm0644 "${WORK}/${file}" "/usr/share/fonts/amethystora/${family}/${file}"
+        install -Dpm0644 "${WORK}/${file}" "${ASSETS}/usr/share/fonts/amethystora/${family}/${file}"
     fi
 done
 rm -rf "${WORK}"
+echo "::endgroup::"
+exit 0
+fi
+[[ "${1:-}" == install ]]
+# Every font the layer made is in place
+for entry in "${FONTS[@]}"; do
+    path="${entry% *}"
+    if [[ ${path#*/} == OFL.txt ]]; then
+        test -s "/usr/share/licenses/google-fonts/${path%%/*}/OFL.txt"
+    else
+        test -s "/usr/share/fonts/amethystora/${path%%/*}/${path#*/}"
+    fi
+done
 
 # Quicksand, the wordmark's face, which the Amethystora theme writes in: the same file the apps carry (13-apps.sh)
 install -Dpm0644 /ctx/branding/fonts/QuicksandVariable.ttf /usr/share/fonts/amethystora/quicksand/QuicksandVariable.ttf

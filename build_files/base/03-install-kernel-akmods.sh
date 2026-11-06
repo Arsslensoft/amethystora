@@ -156,6 +156,7 @@ if [[ "${IMAGE_NAME}" =~ nvidia ]]; then
         mkdir -p "/usr/lib/systemd/system/${unit}.d"
         printf '[Unit]\nConditionPathExists=/sys/module/nvidia\n' >"/usr/lib/systemd/system/${unit}.d/10-amethystora-driver.conf"
     done
+    mkdir -p /usr/lib/bootc/kargs.d
     tee /usr/lib/bootc/kargs.d/00-nvidia.toml <<EOF
 kargs = ["rd.driver.blacklist=nouveau", "modprobe.blacklist=nouveau", "nvidia-drm.modeset=1", "initcall_blacklist=simpledrm_platform_driver_init"]
 EOF

@@ -133,9 +133,8 @@ if [[ "${#EXCLUDED_PACKAGES[@]}" -gt 0 ]]; then
     fi
 fi
 
-systemctl enable docker.socket
-systemctl enable podman.socket
-systemctl enable libvirt-workaround.service
+# docker.socket, podman.socket and libvirt-workaround.service, which comes from system_files/dx, are enabled by
+# build-dx.sh: this runs in the packages-dx layer (plans/PLAN-build-layers.md)
 
 # Disable RPM Fusion repos
 for i in /etc/yum.repos.d/rpmfusion-*.repo; do

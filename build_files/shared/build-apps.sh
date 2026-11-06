@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-# The Containerfile's apps stage: the Amethystora apps (apps/, a Cargo workspace), built with Fedora's Rust
+# The apps layer (layers/apps.Containerfile, plans/PLAN-build-layers.md): the Amethystora apps (apps/, a Cargo workspace), built with Fedora's Rust
 # on the same base image they run on, so that they link against the GTK and libadwaita the image has. The
 # tests run first: the shared crate's, which hold every date, number and list to what the Electron windows
 # wrote, and every app's, Notes' among them reading and writing the Electron window's own files. Only the
@@ -36,6 +36,14 @@ dnf5 -y install --repo=fedora --repo=updates --setopt=install_weak_deps=False \
 cp -a /ctx/apps /tmp/apps
 cd /tmp/apps
 export CARGO_TARGET_DIR=/tmp/target CARGO_HOME=/tmp/cargo CARGO_TERM_COLOR=never
+# The crates compiled by the last build of the same lock, this week (the cargo layer), when there is one: cargo
+# then compiles only the workspace's own crates. Those it tells apart by their files' times, which are made newer
+# than anything in the cache, so that a change is never taken for the build before it
+if [[ -d /cargo-cache/cargo/target ]]; then
+    cp -a /cargo-cache/cargo/target "${CARGO_TARGET_DIR}"
+    cp -a /cargo-cache/cargo/home "${CARGO_HOME}"
+    find /tmp/apps -exec touch {} +
+fi
 cargo fetch --locked
 
 # The AI agent's search ranks passages by meaning with potion-base-8M (MIT): its files at one revision of
@@ -53,6 +61,8 @@ for file in "${!MODEL[@]}"; do
     curl -fsSL --retry 3 -o "/out/model/${file}" "https://huggingface.co/minishlab/potion-base-8M/resolve/${MODEL_REVISION}/${file}"
     echo "${MODEL[${file}]}  /out/model/${file}" | sha256sum -c -
 done
+# The few files of system_files the tests compare the apps with (the layer's COPY lines). The golden questions skip
+# here, without the manual: 20-tests.sh asks every one of them of the image's own index
 export AMETHYSTORA_MODEL=/out/model AMETHYSTORA_ROOT=/ctx/system_files/shared
 
 # A tool a Vault test needs and the stage lacks fails the build, where it would otherwise skip with a line and pass
@@ -137,6 +147,34 @@ if ((${#missing[@]})); then
 fi
 ls -l /out
 echo "$(($(wc -l </out/licenses/CRATES) - 1)) crates, each with its licence"
+
+# The layer: /out, and the Node that 20-tests.sh runs from /apps-stage with its own libraries (not glibc's, which
+# the image has), and its whole ICU data
+mkdir -p /stage/usr/bin /stage/usr/lib64
+mv /out /stage/out
+NODE="$(readlink -f "$(command -v node)")"
+cp -L "${NODE}" /stage/usr/bin/node
+ldd "${NODE}" | awk '$3 ~ /^\// { print $3 }' | grep -Ev '/(libc|libm|libpthread|libdl|librt|ld-linux[^/]*)\.so' |
+    xargs -r cp -L -t /stage/usr/lib64
+for icu in /usr/share/node-*/icudata; do
+    mkdir -p "/stage${icu%/*}"
+    cp -a "${icu}" "/stage${icu}"
+done
+env LD_LIBRARY_PATH=/stage/usr/lib64 NODE_ICU_DATA="$(echo /stage/usr/share/node-*/icudata)" /stage/usr/bin/node \
+    -e 'if (new Intl.NumberFormat("de").format(1234.5) !== "1.234,5") process.exit(1)'
+
+# The crates compiled, for the cargo layer: the workspace's own crates are left out, which cargo compiles anyway
+if [[ -n "${CARGO_SAVE:-}" ]]; then
+    for crate in $(jq -r '.packages[] | select(.source == null) | .name' /tmp/metadata.json | tr - _ | sort -u); do
+        rm -rf "${CARGO_TARGET_DIR}"/release/deps/{,lib}"${crate}"-* "${CARGO_TARGET_DIR}"/release/.fingerprint/"${crate//_/-}"-* \
+            "${CARGO_TARGET_DIR}"/release/build/"${crate//_/-}"-*
+    done
+    rm -rf "${CARGO_TARGET_DIR}/release/incremental"
+    mkdir -p "${CARGO_SAVE}"
+    mv "${CARGO_TARGET_DIR}" "${CARGO_SAVE}/target"
+    mv "${CARGO_HOME}" "${CARGO_SAVE}/home"
+    du -sh "${CARGO_SAVE}"/*
+fi
 
 cd /
 rm -rf /tmp/apps /tmp/target /tmp/cargo /tmp/built.tsv /tmp/packages.tsv /tmp/metadata.json /tmp/amethystora-notes-test-*
