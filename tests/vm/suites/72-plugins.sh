@@ -15,9 +15,9 @@
 #   3. The same plugin granted a host that /etc/hosts points at 192.168.7.7: the proxy refuses it after resolving, a port other
 #      than 443, a host nobody granted, and an address.
 #   4. A block cuts what is open and survives an update; off is off (no process of the host, no bus name).
-# vmlab-paths: @sf/usr/libexec/amethystora-plugin* @sf/usr/libexec/amethystora-plugins @sf/usr/share/polkit-1/*/*plugins* @sf/usr/lib/systemd/user/amethystora-plugin-host.service @sf/usr/lib/tmpfiles.d/amethystora-plugins.conf
 #   5. A batch of updates kept to what was given, commit-dev kept to one plugin, and the bus methods any program may call (Hand,
 #      Ask, Focused) refusing what is not theirs.
+# vmlab-paths: @sf/usr/libexec/amethystora-plugin* @sf/usr/libexec/amethystora-plugins @sf/usr/share/polkit-1/*/*plugins* @sf/usr/lib/systemd/user/amethystora-plugin-host.service @sf/usr/lib/tmpfiles.d/amethystora-plugins.conf
 source "$(dirname "$0")/lib.sh"
 
 HERE="$(dirname "$0")"
