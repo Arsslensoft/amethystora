@@ -239,13 +239,13 @@ fn parse_action(action: &Value) -> Result<Action, String> {
         }
         (None, Some(ame)) => {
             if let Some(extra) = object.keys().find(|key| !matches!(key.as_str(), "ame" | "undo")) {
-                return Err(format!("an ame action has no {extra}"));
+                return Err(format!("an `ame` action has no {extra}"));
             }
             let undo = match object.get("undo") {
                 Some(undo) => parse_words(undo, "undo")?,
                 None => Vec::new(),
             };
-            Ok(Action { open: None, ame: parse_words(ame, "an ame action")?, undo })
+            Ok(Action { open: None, ame: parse_words(ame, "an `ame` action")?, undo })
         }
         _ => Err("an action is either open or ame".into()),
     }
@@ -812,7 +812,7 @@ mod tests {
 
     fn office() -> Value {
         json!({"name": "Office morning", "when": {"network": "Office Wi-Fi"},
-            "do": [{"open": "com.slack.Slack.desktop"}, {"ame": ["desktop", "volume", "mute"], "undo": ["desktop", "volume", "unmute"]}]})
+            "do": [{"open": "com.slack.Slack.desktop"}, {"ame": ["system", "sound", "mute"], "undo": ["system", "sound", "unmute"]}]})
     }
 
     fn refused(value: Value) -> String {
@@ -825,7 +825,7 @@ mod tests {
         assert_eq!(routine.id, "office-morning");
         assert_eq!(routine.when_words(), "When I join Office Wi-Fi");
         assert_eq!(routine.action_words()[0], "Open com.slack.Slack.desktop");
-        assert_eq!(routine.action_words()[1], "Run ame desktop volume mute (back: ame desktop volume unmute)");
+        assert_eq!(routine.action_words()[1], "Run ame system sound mute (back: ame system sound unmute)");
         // What is stored reads back the same
         assert_eq!(parse(&routine.to_value(), &yes).unwrap(), routine);
     }
@@ -848,7 +848,7 @@ mod tests {
         assert!(at(json!({})).is_err());
         // A screen that locks runs while it is locked, which has to be said
         assert!(at(json!({"screen": "locks"})).is_err());
-        let locked = parse(&json!({"name": "x", "when": {"screen": "locks"}, "while_locked": true, "do": [{"ame": ["desktop", "volume", "mute"]}]}), &yes).unwrap();
+        let locked = parse(&json!({"name": "x", "when": {"screen": "locks"}, "while_locked": true, "do": [{"ame": ["system", "sound", "mute"]}]}), &yes).unwrap();
         assert!(locked.while_locked);
     }
 
@@ -873,14 +873,14 @@ mod tests {
         for group in ["security", "vault", "agent", "plugin"] {
             assert!(with(json!({"ame": [group, "status"]})).is_err(), "{group}");
         }
-        assert!(with(json!({"ame": ["desktop", "volume", "mute"], "undo": ["security", "usb", "off"]})).is_err());
+        assert!(with(json!({"ame": ["system", "sound", "mute"], "undo": ["security", "usb", "off"]})).is_err());
         assert!(with(json!({"ame": vec!["a"; 9]})).is_err());
         // The duress feature is refused by the agent's never list, whatever it is called
         assert!(with(json!({"ame": ["system", "duress-x"]})).is_err());
         // Too many actions, and none
         assert!(parse(&json!({"name": "x", "when": {"network": "n"}, "do": vec![json!({"open": "a.desktop"}); 9]}), &yes).is_err());
         assert!(parse(&json!({"name": "x", "when": {"network": "n"}, "do": []}), &yes).is_err());
-        // An undo belongs to an ame action
+        // An undo belongs to an `ame` action
         assert!(with(json!({"open": "a.desktop", "undo": ["desktop", "x"]})).is_err());
     }
 
@@ -961,11 +961,11 @@ mod tests {
     fn a_run_stops_at_the_first_action_that_fails_and_undo_goes_backwards() {
         let routine = parse(
             &json!({"name": "x", "when": {"network": "n"}, "do": [
-                {"ame": ["a"], "undo": ["a-back"]}, {"ame": ["fail"]}, {"ame": ["never"], "undo": ["never-back"]}]}),
+                {"ame": ["a"], "undo": ["apps"]}, {"ame": ["fail"]}, {"ame": ["never"], "undo": ["update"]}]}),
             &yes,
         )
         .unwrap();
-        // `true` and `false` stand in for the programs that open an app and that run `ame`: `false` fails whatever it is given
+        // The undo words are real groups, since 20-tests.sh holds every `ame ...` in the sources to a command; `true` and `false` stand in for the programs that open an app and that run `ame`: `false` fails whatever it is given
         let ran = run_actions(&routine, "true", "true");
         assert!(ran.failed.is_none());
         assert_eq!(ran.results.len(), 3);
@@ -973,7 +973,7 @@ mod tests {
         assert_eq!(ran.results.len(), 1);
         assert!(ran.failed.unwrap().contains("did not work"));
         let back = undo_actions(&routine, "true", 3);
-        assert_eq!(back.iter().map(|r| r["what"].as_str().unwrap()).collect::<Vec<_>>(), ["ame never-back", "ame a-back"]);
+        assert_eq!(back.iter().map(|r| r["what"].as_str().unwrap()).collect::<Vec<_>>(), ["ame update", "ame apps"]);
     }
 
     #[test]
@@ -1016,13 +1016,13 @@ mod tests {
     fn undo_goes_back_only_over_what_ran() {
         let routine = parse(
             &json!({"name": "x", "when": {"network": "n"}, "do": [
-                {"ame": ["a"], "undo": ["a-back"]}, {"ame": ["b"], "undo": ["b-back"]}, {"ame": ["c"], "undo": ["c-back"]}]}),
+                {"ame": ["a"], "undo": ["apps"]}, {"ame": ["b"], "undo": ["desktop"]}, {"ame": ["c"], "undo": ["system"]}]}),
             &yes,
         )
         .unwrap();
         let said = |ran| undo_actions(&routine, "true", ran).iter().map(|r| r["what"].as_str().unwrap().to_string()).collect::<Vec<_>>();
-        assert_eq!(said(2), ["ame b-back", "ame a-back"]);
+        assert_eq!(said(2), ["ame desktop", "ame apps"]);
         assert_eq!(said(0), Vec::<String>::new());
-        assert_eq!(said(8), ["ame c-back", "ame b-back", "ame a-back"]);
+        assert_eq!(said(8), ["ame system", "ame desktop", "ame apps"]);
     }
 }

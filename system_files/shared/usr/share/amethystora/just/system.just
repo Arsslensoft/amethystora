@@ -329,7 +329,8 @@ bios-info:
     EOF
 
 # Sound put right, which the Help window's Something's wrong offers: an output as the default, by its number in `wpctl
-# status` (use ID), sound on and audible (unmute), or the sound programs started again (restart)
+# status` (use ID), sound on and audible (unmute), or off (mute, which a routine's undo takes back with unmute), or the
+# sound programs started again (restart)
 [positional-arguments]
 sound *ARGS:
     #!/usr/bin/bash
@@ -340,6 +341,9 @@ sound *ARGS:
         use)
             [[ "${2:-}" =~ ^[0-9]+$ ]] || { echo "usage: ame system sound use ID"; exit 64; }
             wpctl set-default "$2"
+            ;;
+        mute)
+            wpctl set-mute @DEFAULT_AUDIO_SINK@ 1
             ;;
         unmute)
             wpctl set-mute @DEFAULT_AUDIO_SINK@ 0
@@ -356,7 +360,7 @@ sound *ARGS:
             fi
             systemctl --user restart wireplumber.service pipewire.service pipewire-pulse.service
             ;;
-        *) echo "usage: ame system sound use ID|unmute|restart"; exit 64 ;;
+        *) echo "usage: ame system sound use ID|mute|unmute|restart"; exit 64 ;;
     esac
     echo "$(gettext "Done.")"
 

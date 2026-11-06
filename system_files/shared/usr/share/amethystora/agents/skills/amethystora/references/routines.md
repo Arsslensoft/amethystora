@@ -9,7 +9,7 @@ Write one JSON file, for example in `~/Documents` or a temporary folder, then ch
 {"name": "Office morning",
  "when": {"network": "Office Wi-Fi"},
  "do": [{"open": "org.gnome.Nautilus.desktop"},
-        {"ame": ["desktop", "volume", "mute"], "undo": ["desktop", "volume", "unmute"]}]}
+        {"ame": ["system", "sound", "mute"], "undo": ["system", "sound", "unmute"]}]}
 ```
 
 `ame agent routines check FILE` says what is wrong or reads the routine back in words. Then tell the user to run `ame agent routines add FILE`.

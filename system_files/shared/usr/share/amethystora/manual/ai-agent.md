@@ -204,7 +204,7 @@ command as words, with an optional `undo` command that puts it back:
 {"name": "Office morning",
  "when": {"network": "Office Wi-Fi"},
  "do": [{"open": "org.gnome.Nautilus.desktop"},
-        {"ame": ["desktop", "volume", "mute"], "undo": ["desktop", "volume", "unmute"]}]}
+        {"ame": ["system", "sound", "mute"], "undo": ["system", "sound", "unmute"]}]}
 ```
 
 Ask the agent to write one; it checks it with `ame agent routines check FILE`. **Keeping it is yours**:
