@@ -4,8 +4,12 @@ set -eoux pipefail
 
 echo "::group:: ===$(basename "$0")==="
 
-# Install tooling
-dnf5 -y install glib2-devel
+# Install tooling, unless the packages layer did (layers/packages.sh), in which case build.sh takes it out
+GLIB_DEVEL_ADDED=false
+if ! rpm -q glib2-devel >/dev/null; then
+    dnf5 -y install glib2-devel
+    GLIB_DEVEL_ADDED=true
+fi
 
 # Each extension installed below is added to the enabled-extensions list in zz0-amethystora-modifications,
 # so that installing one is enough to have it on. Adding one that is already in the list would enable
@@ -80,7 +84,9 @@ rm /usr/share/glib-2.0/schemas/gschemas.compiled
 glib-compile-schemas /usr/share/glib-2.0/schemas
 
 # Cleanup
-dnf5 -y remove glib2-devel
+if [[ "${GLIB_DEVEL_ADDED}" == true ]]; then
+    dnf5 -y remove glib2-devel
+fi
 rm -rf /usr/share/gnome-shell/extensions/tmp
 
 echo "::endgroup::"

@@ -180,6 +180,50 @@ build $image="amethystora" $tag="latest" $flavor="main" rechunk="0" ghcr="0" pip
 
     {{ just }} verify-container "brew:latest@${brew_image_sha}"
 
+    # Kernel module signing key, from the file AKMODS_PRIVKEY_FILE names, so that the key is never on a
+    # command line or in this trace. Without it (pull requests, local builds), evdi is signed with a
+    # throwaway key made here, whose certificate goes in beside it so that the signing is still tested;
+    # no machine trusts it, and CI publishes nothing built without the release key (reusable-build.yml).
+    # Only the kernel layer's build sees either (layers/kernel.Containerfile)
+    module_keys="$(mktemp -d)"
+    trap 'rm -rf "${module_keys}"' EXIT
+    KERNEL_LAYER_ARGS=(
+        --build-arg "AKMODS_FLAVOR=${akmods_flavor}"
+        --build-arg "AKMODS_DIGEST=${akmods_sha}"
+        --build-arg "AKMODS_ZFS_DIGEST=${akmods_zfs_sha}"
+        --build-arg "AKMODS_NVIDIA_DIGEST=${akmods_nvidia_sha}"
+        --build-arg "BASE_IMAGE_NAME=${base_image_name}"
+        --build-arg "KERNEL=${kernel_release}"
+        --build-arg "UBLUE_IMAGE_TAG=${tag}"
+    )
+    if [[ -s "${AKMODS_PRIVKEY_FILE:-}" ]]; then
+        echo "Adding kernel module signing key as build secret"
+        MODULE_KEY=release
+        KERNEL_LAYER_ARGS+=(--secret "id=AKMODS_PRIVKEY,src=${AKMODS_PRIVKEY_FILE}")
+    else
+        echo "No kernel module signing key: evdi is signed with a throwaway key and will not load with Secure Boot"
+        MODULE_KEY=throwaway
+        openssl req -new -x509 -newkey rsa:2048 -nodes -sha256 -days 1 \
+            -subj "/CN=Amethystora throwaway module key/" \
+            -keyout "${module_keys}/key" -outform DER -out "${module_keys}/cert.der" 2>/dev/null
+        KERNEL_LAYER_ARGS+=(--secret "id=AKMODS_PRIVKEY,src=${module_keys}/key")
+        KERNEL_LAYER_ARGS+=(--secret "id=AKMODS_CERT,src=${module_keys}/cert.der")
+    fi
+
+    # The layers the image builds on, found here, on GHCR or built (layers/lib.sh, plans/PLAN-build-layers.md).
+    # AMETHYSTORA_LAYERS=shared, flavor or fetch stops after them
+    echo "::endgroup::"
+    echo "::group:: Layers"
+    LAYER_REGISTRY="ghcr.io/{{ repo_organization }}"
+    REPO_ORGANIZATION="{{ repo_organization }}"
+    source layers/lib.sh
+    layers_run
+    echo "::endgroup::"
+    if [[ -n "${AMETHYSTORA_LAYERS:-}" ]]; then
+        exit 0
+    fi
+    echo "::group:: Build Prep"
+
     # Get Version
     if [[ "${tag}" =~ stable ]]; then
         ver="${fedora_version}.$(date +%Y%m%d)"
@@ -213,12 +257,10 @@ build $image="amethystora" $tag="latest" $flavor="main" rechunk="0" ghcr="0" pip
     if [[ "${image}" =~ dx ]]; then
         BUILD_ARGS+=("--build-arg" "IMAGE_FLAVOR=dx")
     fi
-    BUILD_ARGS+=("--build-arg" "AKMODS_FLAVOR=${akmods_flavor}")
-    BUILD_ARGS+=("--build-arg" "AKMODS_DIGEST=${akmods_sha}")
-    BUILD_ARGS+=("--build-arg" "AKMODS_ZFS_DIGEST=${akmods_zfs_sha}")
-    BUILD_ARGS+=("--build-arg" "AKMODS_NVIDIA_DIGEST=${akmods_nvidia_sha}")
+    BUILD_ARGS+=("--build-arg" "PACKAGES_IMAGE=${PACKAGES_REF}")
+    BUILD_ARGS+=("--build-arg" "APPS_IMAGE=${APPS_REF}")
+    BUILD_ARGS+=("--build-arg" "ASSETS_IMAGE=${ASSETS_REF}")
     BUILD_ARGS+=("--build-arg" "BASE_IMAGE_NAME=${base_image_name}")
-    BUILD_ARGS+=("--build-arg" "BASE_IMAGE_SHA=${base_image_sha}")
     BUILD_ARGS+=("--build-arg" "BASE_IMAGE_CREATED=${base_created}")
     BUILD_ARGS+=("--build-arg" "BREW_IMAGE={{ brew_image }}")
     BUILD_ARGS+=("--build-arg" "BREW_IMAGE_SHA=${brew_image_sha}")
@@ -266,25 +308,9 @@ build $image="amethystora" $tag="latest" $flavor="main" rechunk="0" ghcr="0" pip
     # Build Image
     PODMAN_BUILD_ARGS=("${BUILD_ARGS[@]}" "${LABELS[@]}" --tag localhost/"${image_name}:${tag}" --file Containerfile)
 
-    # Kernel module signing key, from the file AKMODS_PRIVKEY_FILE names, so that the key is never on a
-    # command line or in this trace. Without it (pull requests, local builds), evdi is signed with a
-    # throwaway key made here, whose certificate goes in beside it so that the signing is still tested;
-    # no machine trusts it, and CI publishes nothing built without the release key (reusable-build.yml).
-    module_keys="$(mktemp -d)"
-    trap 'rm -rf "${module_keys}"' EXIT
-    if [[ -s "${AKMODS_PRIVKEY_FILE:-}" ]]; then
-        echo "Adding kernel module signing key as build secret"
-        PODMAN_BUILD_ARGS+=(--secret "id=AKMODS_PRIVKEY,src=${AKMODS_PRIVKEY_FILE}")
-    else
-        echo "No kernel module signing key: evdi is signed with a throwaway key and will not load with Secure Boot"
-        openssl req -new -x509 -newkey rsa:2048 -nodes -sha256 -days 1 \
-            -subj "/CN=Amethystora throwaway module key/" \
-            -keyout "${module_keys}/key" -outform DER -out "${module_keys}/cert.der" 2>/dev/null
-        PODMAN_BUILD_ARGS+=(--secret "id=AKMODS_PRIVKEY,src=${module_keys}/key")
-        PODMAN_BUILD_ARGS+=(--secret "id=AKMODS_CERT,src=${module_keys}/cert.der")
-    fi
-
     ${PODMAN} build "${PODMAN_BUILD_ARGS[@]}" .
+    # The older tags of the layers it used, which a prune then reclaims
+    layers_untag_old
     echo "::endgroup::"
 
     # Rechunk

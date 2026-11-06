@@ -1,8 +1,8 @@
-ARG BASE_IMAGE_NAME="silverblue"
-ARG FEDORA_MAJOR_VERSION="42"
-ARG SOURCE_IMAGE="${BASE_IMAGE_NAME}-main"
-ARG BASE_IMAGE="ghcr.io/ublue-os/${SOURCE_IMAGE}"
-ARG BASE_IMAGE_SHA=""
+# The image, on its layers (plans/PLAN-build-layers.md), which the Justfile finds or builds first (layers/lib.sh):
+# the packages layer of the flavor (packages-dx's for a dx image), the apps and the assets
+ARG PACKAGES_IMAGE=""
+ARG APPS_IMAGE=""
+ARG ASSETS_IMAGE=""
 ARG BREW_IMAGE="ghcr.io/ublue-os/brew:latest"
 ARG BREW_IMAGE_SHA=""
 
@@ -21,41 +21,16 @@ COPY cosign.pub /system_files/shared/etc/pki/containers/amethystora.pub
 COPY /branding/fonts /branding/fonts
 # The shell programs' translations, compiled into /usr/share/locale (14-security.sh)
 COPY /po /po
-# The packages Amethystora rebuilds, built in their own stage below
-COPY /packaging /packaging
-# The Amethystora apps, in Rust, built in their own stage below
+# The apps' sources, which 20-tests.sh reads (their golden questions, their messages)
 COPY /apps /apps
 
-## fprintd with the duress finger's patches, built on the base it is installed into. Its build tools stay
-## in this stage: only the packages in /out reach the image (05-override-install.sh)
-FROM ${BASE_IMAGE}:${FEDORA_MAJOR_VERSION}@${BASE_IMAGE_SHA} AS fprintd
-# What the stage builds from, copied in only so that a change to it builds the stage again: the layer cache
-# does not look at what a bind mount holds, and took a stage built from older sources
-COPY --from=ctx /packaging/fprintd /usr/src/amethystora-build/fprintd
-COPY --from=ctx /build_files/shared/build-fprintd.sh /usr/src/amethystora-build/
-RUN --mount=type=cache,dst=/var/cache/libdnf5 \
-    --mount=type=bind,from=ctx,source=/,target=/ctx \
-    /ctx/build_files/shared/build-fprintd.sh
+FROM ${APPS_IMAGE} AS apps
 
-## The Amethystora apps (apps/), built on the base they run on. Rust and the crates stay in this stage:
-## only the programs, the agent's model and the crates' licences in /out reach the image (13-apps.sh). Its Node runs the
-## checks written in JavaScript (20-tests.sh), so that the image needs none of its own
-FROM ${BASE_IMAGE}:${FEDORA_MAJOR_VERSION}@${BASE_IMAGE_SHA} AS apps
-# As fprintd's: in the lab the cache took an apps stage built before a crate was added
-COPY --from=ctx /apps /usr/src/amethystora-build/apps
-COPY --from=ctx /build_files/shared/build-apps.sh /usr/src/amethystora-build/
-RUN --mount=type=cache,dst=/var/cache/libdnf5 \
-    --mount=type=bind,from=ctx,source=/,target=/ctx \
-    /ctx/build_files/shared/build-apps.sh
+FROM ${ASSETS_IMAGE} AS assets
 
 ## amethystora image section
-FROM ${BASE_IMAGE}:${FEDORA_MAJOR_VERSION}@${BASE_IMAGE_SHA} AS base
+FROM ${PACKAGES_IMAGE} AS base
 
-ARG AKMODS_FLAVOR="coreos-stable"
-# The kernel and module images, by the digests the Justfile checked
-ARG AKMODS_DIGEST=""
-ARG AKMODS_ZFS_DIGEST=""
-ARG AKMODS_NVIDIA_DIGEST=""
 # When the base image was built, in seconds since the epoch (00-image-info.sh)
 ARG BASE_IMAGE_CREATED=""
 ARG BASE_IMAGE_NAME="silverblue"
@@ -68,31 +43,14 @@ ARG UBLUE_IMAGE_TAG="stable"
 ARG VERSION=""
 ARG IMAGE_FLAVOR=""
 
-# Build, cleanup, lint. In three steps, so that the kernel module signing key is mounted only for the one
-# that builds and signs the modules, before any of the build's own third-party repositories is added
+# The build, cleanup and tests, which end with the /opt link (build.sh). The base image's preparation, the kernel
+# and the packages are the layers'
 RUN --mount=type=cache,dst=/var/cache/libdnf5 \
     --mount=type=cache,dst=/var/cache/rpm-ostree \
     --mount=type=bind,from=ctx,source=/,target=/ctx \
-    /ctx/build_files/shared/prepare.sh
-
-RUN --mount=type=cache,dst=/var/cache/libdnf5 \
-    --mount=type=cache,dst=/var/cache/rpm-ostree \
-    --mount=type=bind,from=ctx,source=/,target=/ctx \
-    --mount=type=secret,id=AKMODS_PRIVKEY \
-    --mount=type=secret,id=AKMODS_CERT \
-    /ctx/build_files/base/03-install-kernel-akmods.sh
-
-RUN --mount=type=cache,dst=/var/cache/libdnf5 \
-    --mount=type=cache,dst=/var/cache/rpm-ostree \
-    --mount=type=bind,from=ctx,source=/,target=/ctx \
-    --mount=type=bind,from=fprintd,source=/out,target=/fprintd \
     --mount=type=bind,from=apps,source=/,target=/apps-stage \
+    --mount=type=bind,from=assets,source=/,target=/assets \
     /ctx/build_files/shared/build.sh
-
-# Makes `/opt` writeable by default
-# Needs to be here to make the main image build strict (no /opt there)
-# This is for downstream images/stuff like k0s
-RUN rm -rf /opt && ln -s /var/opt /opt
 
 CMD ["/sbin/init"]
 

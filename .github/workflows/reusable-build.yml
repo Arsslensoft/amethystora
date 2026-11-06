@@ -29,8 +29,209 @@ concurrency:
 permissions: {}
 
 jobs:
+  # The packages layers' epoch (layers/lib.sh), worked out once so that every job of the run agrees on it: the UTC
+  # date on latest and beta, the run on stable
+  plan:
+    name: plan
+    runs-on: ubuntu-latest
+    outputs:
+      epoch: ${{ steps.epoch.outputs.epoch }}
+    steps:
+      - name: Epoch
+        id: epoch
+        env:
+          STREAM: ${{ inputs.stream_name }}
+        run: |
+          if [[ "${STREAM}" == stable ]]; then
+            echo "epoch=run${GITHUB_RUN_ID}" >> "$GITHUB_OUTPUT"
+          else
+            echo "epoch=$(date -u +%Y%m%d)" >> "$GITHUB_OUTPUT"
+          fi
+
+  # The build's layers (plans/PLAN-build-layers.md), built once here when their keys are new, pushed to GHCR and
+  # signed, for the six image jobs to pull. Only where the images publish: elsewhere each image job builds what it
+  # does not find, and publishes nothing. fprintd first, which the flavors' packages layers take
+  layers-fprintd:
+    name: layers (fprintd)
+    needs: [plan]
+    if: >-
+      ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' ||
+      github.event.merge_group.base_ref == 'refs/heads/main' ||
+      (inputs.stream_name == 'beta' && github.ref == 'refs/heads/beta')) }}
+    runs-on: ubuntu-26.04
+    environment: release
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Maximize build space
+        uses: ublue-os/remove-unwanted-software@695eb75bc387dbcd9685a8e72d23439d8686cba6 # master
+
+      - name: Install Just
+        uses: ./.github/actions/install-just
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # v3.10.1
+        with:
+          install-dir: /usr/local/bin
+          use-sudo: true
+
+      # The build step as the image's: no token, the module key as a file
+      - name: Build layers
+        shell: bash
+        env:
+          # The module key is the kernel layer's alone (the flavor jobs)
+          AKMODS_PRIVKEY: ""
+          EPOCH: ${{ needs.plan.outputs.epoch }}
+          LAYERS: fprintd
+        run: |
+          key_file="$(mktemp -p "${RUNNER_TEMP}")"
+          trap 'rm -f "${key_file}"' EXIT
+          if [[ -n "${AKMODS_PRIVKEY}" ]]; then
+            printenv AKMODS_PRIVKEY > "${key_file}"
+          elif [[ "${LAYERS}" == flavor ]]; then
+            echo "::error::AKMODS_PRIVKEY secret missing: the published kernel layer needs it"
+            exit 1
+          fi
+          sudo rm -f /tmp/amethystora-layers-built
+          sudo env AKMODS_PRIVKEY_FILE="${key_file}" AMETHYSTORA_LAYERS="${LAYERS}" AMETHYSTORA_PACKAGES_EPOCH="${EPOCH}" \
+               $(command -v just) build-ghcr "${{ inputs.brand_name }}" "${{ inputs.stream_name }}" main "${{ inputs.kernel_pin }}"
+
+      - name: Push and sign layers
+        uses: ./.github/actions/push-layers
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          signing-key: ${{ secrets.SIGNING_SECRET }}
+
+  layers-shared:
+    name: layers (apps, assets)
+    needs: [plan]
+    if: >-
+      ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' ||
+      github.event.merge_group.base_ref == 'refs/heads/main' ||
+      (inputs.stream_name == 'beta' && github.ref == 'refs/heads/beta')) }}
+    runs-on: ubuntu-26.04
+    environment: release
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Maximize build space
+        uses: ublue-os/remove-unwanted-software@695eb75bc387dbcd9685a8e72d23439d8686cba6 # master
+
+      - name: Install Just
+        uses: ./.github/actions/install-just
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # v3.10.1
+        with:
+          install-dir: /usr/local/bin
+          use-sudo: true
+
+      # The build step as the image's: no token, the module key as a file
+      - name: Build layers
+        shell: bash
+        env:
+          # The module key is the kernel layer's alone (the flavor jobs)
+          AKMODS_PRIVKEY: ""
+          EPOCH: ${{ needs.plan.outputs.epoch }}
+          LAYERS: shared
+        run: |
+          key_file="$(mktemp -p "${RUNNER_TEMP}")"
+          trap 'rm -f "${key_file}"' EXIT
+          if [[ -n "${AKMODS_PRIVKEY}" ]]; then
+            printenv AKMODS_PRIVKEY > "${key_file}"
+          elif [[ "${LAYERS}" == flavor ]]; then
+            echo "::error::AKMODS_PRIVKEY secret missing: the published kernel layer needs it"
+            exit 1
+          fi
+          sudo rm -f /tmp/amethystora-layers-built
+          sudo env AKMODS_PRIVKEY_FILE="${key_file}" AMETHYSTORA_LAYERS="${LAYERS}" AMETHYSTORA_PACKAGES_EPOCH="${EPOCH}" \
+               $(command -v just) build-ghcr "${{ inputs.brand_name }}" "${{ inputs.stream_name }}" main "${{ inputs.kernel_pin }}"
+
+      - name: Push and sign layers
+        uses: ./.github/actions/push-layers
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          signing-key: ${{ secrets.SIGNING_SECRET }}
+
+  layers-flavor:
+    name: layers (${{ matrix.image_flavor }})
+    needs: [plan, layers-fprintd]
+    if: >-
+      ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' ||
+      github.event.merge_group.base_ref == 'refs/heads/main' ||
+      (inputs.stream_name == 'beta' && github.ref == 'refs/heads/beta')) }}
+    runs-on: ubuntu-26.04
+    environment: release
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        image_flavor: ${{ fromJson(inputs.image_flavors) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Maximize build space
+        uses: ublue-os/remove-unwanted-software@695eb75bc387dbcd9685a8e72d23439d8686cba6 # master
+
+      - name: Install Just
+        uses: ./.github/actions/install-just
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # v3.10.1
+        with:
+          install-dir: /usr/local/bin
+          use-sudo: true
+
+      # The build step as the image's: no token, the module key as a file
+      - name: Build layers
+        shell: bash
+        env:
+          AKMODS_PRIVKEY: ${{ secrets.AKMODS_PRIVKEY }}
+          EPOCH: ${{ needs.plan.outputs.epoch }}
+          LAYERS: flavor
+        run: |
+          key_file="$(mktemp -p "${RUNNER_TEMP}")"
+          trap 'rm -f "${key_file}"' EXIT
+          if [[ -n "${AKMODS_PRIVKEY}" ]]; then
+            printenv AKMODS_PRIVKEY > "${key_file}"
+          elif [[ "${LAYERS}" == flavor ]]; then
+            echo "::error::AKMODS_PRIVKEY secret missing: the published kernel layer needs it"
+            exit 1
+          fi
+          sudo rm -f /tmp/amethystora-layers-built
+          sudo env AKMODS_PRIVKEY_FILE="${key_file}" AMETHYSTORA_LAYERS="${LAYERS}" AMETHYSTORA_PACKAGES_EPOCH="${EPOCH}" \
+               $(command -v just) build-ghcr "${{ inputs.brand_name }}" "${{ inputs.stream_name }}" "${{ matrix.image_flavor }}" "${{ inputs.kernel_pin }}"
+
+      - name: Push and sign layers
+        uses: ./.github/actions/push-layers
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          signing-key: ${{ secrets.SIGNING_SECRET }}
+
   build_container:
     name: image
+    # After the layers where they ran; where they did not (pull requests), each image builds its own
+    # After the layers where they ran, whatever came of them: an image job builds a layer it does not find. Where
+    # they did not run (pull requests), each image builds its own
+    needs: [plan, layers-shared, layers-flavor]
+    if: ${{ !cancelled() && needs.plan.result == 'success' }}
     runs-on: ubuntu-26.04
     permissions:
       contents: read
@@ -129,6 +330,23 @@ jobs:
           path: /var/tmp/buildah-cache-*
           key: ${{ runner.os }}-${{ runner.arch }}-buildah-${{ env.CACHE_NAME }}
 
+      # The layers the layers jobs pushed, pulled with a login (the build step has no token) once their signature
+      # checks out against cosign.pub (layers/lib.sh), so that the build finds them here
+      - name: Fetch layers
+        if: env.PUBLISH == 'true'
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EPOCH: ${{ needs.plan.outputs.epoch }}
+        run: |
+          auth="$(mktemp -d -p "${RUNNER_TEMP}")"
+          trap 'sudo rm -rf "${auth}"' EXIT
+          printenv GITHUB_TOKEN | sudo podman login --authfile "${auth}/config.json" ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
+          sudo env REGISTRY_AUTH_FILE="${auth}/config.json" DOCKER_CONFIG="${auth}" AMETHYSTORA_LAYERS=fetch \
+               AMETHYSTORA_PACKAGES_EPOCH="${EPOCH}" \
+               $(command -v just) build-ghcr "${{ matrix.base_name }}" "${{ matrix.stream_name }}" \
+                                             "${{ matrix.image_flavor }}" "${{ inputs.kernel_pin }}"
+
       - name: Build Image
         id: build-image
         shell: bash
@@ -136,6 +354,7 @@ jobs:
         env:
           # What does not publish builds with a throwaway module key (Justfile)
           AKMODS_PRIVKEY: ${{ env.PUBLISH == 'true' && secrets.AKMODS_PRIVKEY || '' }}
+          AMETHYSTORA_PACKAGES_EPOCH: ${{ needs.plan.outputs.epoch }}
         run: |
           if [[ -z "${AKMODS_PRIVKEY}" && "${PUBLISH}" == true ]]; then
             echo "::error::AKMODS_PRIVKEY secret missing: published images need it, or evdi (DisplayLink) will not load with Secure Boot"
@@ -148,7 +367,7 @@ jobs:
           if [[ -n "${AKMODS_PRIVKEY}" ]]; then
             printenv AKMODS_PRIVKEY > "${key_file}"
           fi
-          sudo env AKMODS_PRIVKEY_FILE="${key_file}" \
+          sudo env AKMODS_PRIVKEY_FILE="${key_file}" AMETHYSTORA_PACKAGES_EPOCH="${AMETHYSTORA_PACKAGES_EPOCH}" \
                $(command -v just) \
                     build-ghcr "${{ matrix.base_name }}" \
                                "${{ matrix.stream_name }}" \
@@ -456,7 +675,7 @@ jobs:
     name: Check all ${{ inputs.stream_name }} builds successful
     if: always()
     runs-on: ubuntu-latest
-    needs: [build_container]
+    needs: [layers-fprintd, layers-shared, layers-flavor, build_container]
     steps:
       - name: Check Jobs
         env:

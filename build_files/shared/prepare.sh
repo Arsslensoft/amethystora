@@ -1,10 +1,11 @@
 #!/usr/bin/bash
-# The first step of the build (Containerfile): what comes before the kernel. The kernel and its modules
-# are a step of their own, the only one the module signing key is mounted for, and build.sh is the rest.
+# The first step of the kernel layer (layers/kernel.Containerfile, plans/PLAN-build-layers.md): what comes before
+# the kernel. The kernel and its modules are a step of their own, the only one the module signing key is mounted
+# for. system_files is copied in by build.sh, over the packages.
 
 set -eoux pipefail
 
-echo "::group:: Copy Files"
+echo "::group:: Prepare"
 
 # Speeds up local builds
 dnf config-manager setopt keepcache=1
@@ -29,7 +30,7 @@ fi
 # stay where they are: os-release is rewritten for this image by 00-image-info.sh, which also takes
 # Fedora's name out of the rest, and the presets and the dist macros that came with Fedora's packages
 # are what the system is built on. Their rpm-ostree polkit rules are replaced by the image's own, from
-# system_files, which the rsync below copies over them.
+# system_files, which build.sh copies over them.
 readarray -t FEDORA_RELEASE < <(rpm -qa --queryformat '%{NAME}\n' 'fedora-release*')
 ((${#FEDORA_RELEASE[@]}))
 mkdir -p /tmp/generic-release
@@ -40,10 +41,4 @@ rm -rf /tmp/generic-release
 # What needs a release package still finds one, and dnf still knows which Fedora this is built on
 rpm -q --whatprovides system-release "system-release($(rpm -E %fedora))"
 
-# Copy Files to Container
-rsync -rvK /ctx/system_files/shared/ /
-
 echo "::endgroup::"
-
-# Generate image-info.json
-/ctx/build_files/base/00-image-info.sh

@@ -17,12 +17,23 @@ set -eoux pipefail
 # (nord, gruvbox, catppuccin and the rest) stay on adw-gtk3, which follows the GNOME accent colour
 # and so goes on matching whatever palette they set, where a purple theme would fight them.
 
+# In two halves (plans/PLAN-build-layers.md): `make` in the assets layer (layers/assets.Containerfile), which writes
+# the theme under ${ASSETS}, and `install` in the image, whose build copies the layer in (build.sh) and checks it
+if [[ "${1:-}" == install ]]; then
+    test -s /usr/share/themes/Amethystora/gtk-4.0/gtk-dark.css
+    test -s /usr/share/themes/Amethystora/gtk-3.0/gtk-dark.css
+    test -s /usr/share/licenses/amethystora-gtk-theme/LICENSE
+    echo "::endgroup::"
+    exit 0
+fi
+[[ "${1:-}" == make && -n "${ASSETS:-}" ]]
+
 SWEET_REPO="https://github.com/EliverLara/Sweet"
 # master as of 2026-08-13, with the SHA-256 of GitHub's archive of that commit, which nothing else
 # checks: bump both together
 SWEET_COMMIT="c405a6a73878ce3beb4323d26bc6fa674a485f36"
 SWEET_SHA256="8925007c837bc8b77a034b4bb90d0b8bd812b01b8fee625b939ba7326189b7d3"
-THEME_DIR=/usr/share/themes/Amethystora
+THEME_DIR="${ASSETS}/usr/share/themes/Amethystora"
 WORK=/tmp/sweet
 
 ghcurl "${SWEET_REPO}/archive/${SWEET_COMMIT}.tar.gz" --fail --retry 3 -o /tmp/sweet.tar.gz
@@ -37,7 +48,7 @@ grep -qx "Name=Sweet" "${WORK}/index.theme"
 test -s "${WORK}/gtk-4.0/gtk-dark.css"
 
 # GPL-3.0: the licence travels with the stylesheets
-install -Dpm0644 "${WORK}/LICENSE" /usr/share/licenses/amethystora-gtk-theme/LICENSE
+install -Dpm0644 "${WORK}/LICENSE" "${ASSETS}/usr/share/licenses/amethystora-gtk-theme/LICENSE"
 
 # The stylesheets reference ../assets, so the three have to stay siblings. Everything else in the
 # repository is for other desktops (Cinnamon, Xfwm, Metacity), the GNOME Shell theme, which needs
@@ -89,11 +100,7 @@ python3 /ctx/build_files/shared/recolor.py --band 30:56 --check "${SWITCHES[@]}"
 # The hue is given in ImageMagick's own units, where 100 is no rotation and the scale runs over two
 # turns, so a degree is 1/1.8 of a unit. 95 degrees is teal to amethyst, the same arc as above.
 ACCENT_ROTATION=152.7
-IMAGEMAGICK_ADDED=false
-if ! command -v magick >/dev/null; then
-    dnf5 -y install ImageMagick
-    IMAGEMAGICK_ADDED=true
-fi
+# ImageMagick is the assets layer's (layers/assets.Containerfile), never the image's
 ACCENT_ASSETS=(checkbox-checked radio-checked radio-selected selected- menuitem- calendar-selected
     grid-selection-checked qcheckbox-checked switch-slider-on switch-on scale-slider
     checkbox-mixed radio-mixed checkbox-unchecked-active checkbox-unchecked-hover radio-unchecked-active
@@ -108,11 +115,6 @@ done
 # mixed-state boxes and the hover and pressed rims of the unchecked ones stayed teal in the image until this
 # check was added. A bitmap still drawing a vivid colour in the band fails the build, while ImageMagick is here.
 python3 /ctx/build_files/shared/recolor.py --check-bitmaps "${THEME_DIR}"/assets/*.png
-# Only taken back out if this brought it in: removing something the image wanted would be worse
-# than leaving a build tool behind
-if [[ "${IMAGEMAGICK_ADDED}" == true ]]; then
-    dnf5 -y remove ImageMagick
-fi
 
 test -s "${THEME_DIR}/gtk-4.0/gtk-dark.css"
 test -s "${THEME_DIR}/gtk-3.0/gtk-dark.css"

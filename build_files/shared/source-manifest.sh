@@ -107,6 +107,14 @@ while IFS=$'\t' read -r vendor srpm family; do
 done < <(awk -F'\t' -v copyleft="${COPYLEFT}" '$4 != "Fedora Project" && $2 ~ copyleft {
     print $4 "\t" $3 "\t" ($2 ~ /GPL/ ? "gpl" : "other") }' "${PACKAGES}" | sort -u)
 
+# The packages layers fetch the source packages of what they installed, and leave SOURCES to the image's run
+# (plans/PLAN-build-layers.md)
+if [[ -n "${SOURCES_FETCH_ONLY:-}" ]]; then
+    rm -f "${PACKAGES}"
+    echo "::endgroup::"
+    exit 0
+fi
+
 {
     cat <<EOF
 # Sources of ${PRETTY_NAME}

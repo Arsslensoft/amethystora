@@ -5,7 +5,10 @@ The ublue-os base image, ublue-os/brew and the ublue COPR packages install files
 services and settings under their own names. This renames all of them to Amethystora and
 rewrites every reference, so the image carries no upstream names.
 
-    debrand.py          apply the changes (07-debrand.sh)
+    debrand.py          apply the changes (the packages layers, plans/PLAN-build-layers.md)
+    debrand.py --newer FILE
+                        the same, reading only the files changed since FILE was: the image's run
+                        (07-debrand.sh), after the packages layers read the rest
     debrand.py --check  report what is left and fail on anything renameable (20-tests.sh)
 
 Left alone on purpose:
@@ -161,11 +164,13 @@ def rpm_owned():
     return owned
 
 
-def files_in_scope(owned):
+def files_in_scope(owned, newer=None):
     for directory, _, filenames in walk():
         for name in filenames:
             full = os.path.join(directory, name)
             if os.path.islink(full) or LEGAL.match(name) or "/" + rel(full) in owned:
+                continue
+            if newer is not None and os.lstat(full).st_mtime <= newer:
                 continue
             yield full
 
@@ -237,9 +242,9 @@ def retarget_symlinks():
                 os.symlink(target, full)
 
 
-def rewrite_files(owned):
+def rewrite_files(owned, newer=None):
     count = 0
-    for full in files_in_scope(owned):
+    for full in files_in_scope(owned, newer):
         if os.path.getsize(full) > MAX_TEXT_SIZE:
             continue
         with open(full, "rb") as f:
@@ -301,10 +306,13 @@ def main():
     owned = rpm_owned()
     if sys.argv[1:] == ["--check"]:
         return check(owned)
+    newer = None
+    if sys.argv[1:2] == ["--newer"]:
+        newer = os.stat(sys.argv[2]).st_mtime
     drop_upstream_trust()
     rename_paths()
     retarget_symlinks()
-    rewrite_files(owned)
+    rewrite_files(owned, newer)
     return 0
 
 

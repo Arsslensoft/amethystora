@@ -14,6 +14,8 @@ systemctl mask flatpak-add-fedora-repos.service
 rm -f /usr/lib/systemd/system/flatpak-add-fedora-repos.service
 
 rm -rf /.gitkeep
+# What the packages layers left for the image's build (layers/packages.sh): the build tools' list, the debranding stamp
+rm -rf /usr/lib/amethystora-build
 find /var/* -maxdepth 0 -type d \! -name cache -exec rm -fr {} \;
 find /var/cache/* -maxdepth 0 -type d \! -name libdnf5 \! -name rpm-ostree -exec rm -fr {} \;
 rm -rf /tmp && mkdir -p -m 1777 /tmp

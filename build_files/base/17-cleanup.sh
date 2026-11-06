@@ -188,20 +188,7 @@ sed -n 's/^GPGKey=//p' "${FLATHUB_REPO}" | base64 -d >/tmp/flathub.gpg
 flatpak remote-add --system --if-not-exists flathub "${FLATHUB_REPO}"
 systemctl disable flatpak-add-fedora-repos.service
 
-# NOTE: With isolated COPR installation, most repos are never enabled globally.
-# We only need to clean up repos that were enabled during the build process.
-
-# Disable every repository but Fedora's own (validate-repos.sh checks it): COPRs, RPM Fusion, Tailscale,
-# Cisco's openh264 and fedora-multimedia, negativo17's, which left on outranks Fedora's repositories for
-# anything installed after this, here or by the user. The base image turns that one on in
-# /etc/dnf/repos.override.d, which dnf5 and rpm-ostree read after the repository files, wherever those are
-# (Fedora's own are in /usr/share/dnf5/repos.d from 45), so they are turned off there too, by setopt
-FEDORA_OWN_REPOS=(fedora updates updates-archive)
-[[ "${UBLUE_IMAGE_TAG:-}" == beta ]] && FEDORA_OWN_REPOS+=(updates-testing)
-REPO_IDS="$(dnf5 repo list --enabled --json | jq -r '.[].id')"
-readarray -t ENABLED_REPOS < <(grep -vxF -f <(printf '%s\n' "${FEDORA_OWN_REPOS[@]}") <<<"${REPO_IDS}")
-for repo in "${ENABLED_REPOS[@]}"; do
-    dnf5 config-manager setopt "${repo}.enabled=0"
-done
+# Every repository but Fedora's own off (copr-helpers.sh says why)
+disable_third_party_repos
 
 echo "::endgroup::"

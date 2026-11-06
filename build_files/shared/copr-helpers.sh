@@ -65,6 +65,22 @@ rpmfusion_master() {
     done
 }
 
+# Disable every repository but Fedora's own (validate-repos.sh checks it): COPRs, RPM Fusion, Tailscale,
+# Cisco's openh264 and fedora-multimedia, negativo17's, which left on outranks Fedora's repositories for
+# anything installed after this, here or by the user. The base image turns that one on in
+# /etc/dnf/repos.override.d, which dnf5 and rpm-ostree read after the repository files, wherever those are
+# (Fedora's own are in /usr/share/dnf5/repos.d from 45), so they are turned off there too, by setopt.
+# 17-cleanup.sh runs it, and the packages-dx layer before dx's packages (plans/PLAN-build-layers.md)
+disable_third_party_repos() {
+    local own=(fedora updates updates-archive) ids repo enabled
+    [[ "${UBLUE_IMAGE_TAG:-}" == beta ]] && own+=(updates-testing)
+    ids="$(dnf5 repo list --enabled --json | jq -r '.[].id')"
+    readarray -t enabled < <(grep -vxF -f <(printf '%s\n' "${own[@]}") <<<"${ids}")
+    for repo in "${enabled[@]}"; do
+        dnf5 config-manager setopt "${repo}.enabled=0"
+    done
+}
+
 # The fingerprint of each primary key in an OpenPGP key file, one per line
 key_fingerprints() {
     gpg --homedir "$(mktemp -d)" --show-keys --with-colons "$1" |
