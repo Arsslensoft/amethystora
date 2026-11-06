@@ -69,6 +69,8 @@
 
 /* Getting set: the card's tint, the ring in the accent's text colour, a line's circle filled in the accent when done */
 .amethystora-today .amethystora-today-getting { background-color: rgba({{ foreground_rgb }}, 0.05); }
+/* A plugin's card in the column (modules/plugins/today.js), as Getting set is drawn */
+.amethystora-today .amethystora-today-plugin { background-color: rgba({{ foreground_rgb }}, 0.05); }
 .amethystora-today .amethystora-today-getting-title,
 .amethystora-today .amethystora-today-getting-row { color: {{ foreground }}; }
 .amethystora-today .amethystora-today-getting-progress,

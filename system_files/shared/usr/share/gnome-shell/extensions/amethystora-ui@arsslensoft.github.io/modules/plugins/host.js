@@ -140,6 +140,11 @@ export class HostClient {
         return this._call('Pause', new GLib.Variant('(s)', [id])).catch(() => {});
     }
 
+    // The app in front, for the plugins granted events=focused-app (the module asks only while one is on)
+    focused(app) {
+        return this._call('Focused', new GLib.Variant('(s)', [app])).catch(() => {});
+    }
+
     resume(id) {
         return this._call('Resume', new GLib.Variant('(s)', [id])).catch(() => {});
     }

@@ -81,6 +81,13 @@
   padding: 10px 12px;
 }
 
+/* Plugins' cards (modules/plugins/today.js), one under the other */
+.amethystora-today-plugin {
+  border-radius: 14px;
+  padding: 10px 12px;
+  spacing: 4px;
+}
+
 .amethystora-today-heading {
   padding-bottom: 8px;
 }

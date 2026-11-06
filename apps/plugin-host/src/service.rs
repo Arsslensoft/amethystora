@@ -42,6 +42,8 @@ enum Msg {
     Over(String, String),
     /// A plugin asked the shell to open an address or copy a text, after a click: (id, kind, text)
     Asked(String, String, String),
+    /// A person said yes to giving a file from Files' menu to a plugin: (id, the file)
+    Handed(String, std::path::PathBuf),
 }
 
 struct State {
@@ -59,6 +61,8 @@ struct State {
     /// The plugins started, each with its interval's timer: a plugin turned off and on again before its timer ticked would
     /// otherwise have two, and every second run would fail as one too soon
     scheduled: RefCell<HashMap<String, Option<glib::SourceId>>>,
+    /// News waiting for a plugin's next run (`events`): the latest of it, and whether a run for it is already timed
+    news: RefCell<HashMap<String, (String, String)>>,
     clients: RefCell<HashSet<String>>,
     callers: RefCell<HashMap<String, bool>>,
     tx: Mutex<UnboundedSender<Msg>>,
@@ -100,13 +104,125 @@ impl State {
         reply.ok().and_then(|r| r.get::<(glib::Variant,)>()).and_then(|(v,)| v.get::<bool>()).unwrap_or(false)
     }
 
+    /// News from the system (plans/PLAN-plugins.md, the permissions: `events`): each plugin that is on and was granted `events=NAME`
+    /// runs once for it, with no click, and its `plugin event` says what happened. A burst of news is one run with the latest of it,
+    /// after the five seconds between runs; while the screen is locked only the unlock itself is news
+    fn event(self: &Rc<Self>, name: &str, value: &str) {
+        if name != "screen" && self.locked() {
+            return;
+        }
+        let wanted = format!("events={name}");
+        let ids: Vec<String> = self
+            .plugins
+            .borrow()
+            .iter()
+            .filter(|(id, p)| !self.paused.borrow().contains(*id) && p["granted"].as_array().is_some_and(|g| g.iter().any(|x| x.as_str() == Some(&wanted))))
+            .map(|(id, _)| id.clone())
+            .collect();
+        for id in ids {
+            let timed = self.news.borrow_mut().insert(id.clone(), (name.to_string(), value.to_string())).is_some();
+            if timed {
+                continue;
+            }
+            let wait = self.runner.gap_left(&id) + std::time::Duration::from_millis(300);
+            let weak = Rc::downgrade(self);
+            glib::timeout_add_local_once(wait, move || {
+                let Some(state) = weak.upgrade() else { return };
+                let Some((name, value)) = state.news.borrow_mut().remove(&id) else { return };
+                if !state.plugins.borrow().contains_key(&id) || state.paused.borrow().contains(&id) {
+                    return;
+                }
+                let (runner, tx) = (state.runner.clone(), state.tx.lock().unwrap().clone());
+                std::thread::spawn(move || {
+                    let result = runner.set_event(&id, &name, &value).and_then(|_| runner.run_as(&id, None, false));
+                    let _ = tx.unbounded_send(Msg::Ran(id, result, None));
+                });
+            });
+        }
+    }
+
+    /// Where the news comes from: NetworkManager's connectivity, UPower's battery, the screen's lock and the colour scheme. Only read, and
+    /// only while the host runs, which is while a plugin is on
+    fn listen(self: &Rc<Self>) -> (Vec<gio::SignalSubscription>, Option<gio::Settings>) {
+        let mut subscriptions = Vec::new();
+        let props = |v: &glib::Variant| -> Option<glib::VariantDict> { (v.n_children() >= 2).then(|| glib::VariantDict::new(Some(&v.child_value(1)))) };
+        if let Some(system) = &self.system_bus {
+            let weak = Rc::downgrade(self);
+            subscriptions.push(system.subscribe_to_signal(
+                Some("org.freedesktop.NetworkManager"),
+                Some("org.freedesktop.DBus.Properties"),
+                Some("PropertiesChanged"),
+                Some("/org/freedesktop/NetworkManager"),
+                None,
+                gio::DBusSignalFlags::NONE,
+                move |signal| {
+                    let Some(state) = weak.upgrade() else { return };
+                    if let Some(c) = props(signal.parameters).and_then(|d| d.lookup::<u32>("Connectivity").ok().flatten()) {
+                        state.event("network", match c { 4 => "online", 2 | 3 => "limited", 1 => "offline", _ => "unknown" });
+                    }
+                },
+            ));
+            let weak = Rc::downgrade(self);
+            subscriptions.push(system.subscribe_to_signal(
+                Some("org.freedesktop.UPower"),
+                Some("org.freedesktop.DBus.Properties"),
+                Some("PropertiesChanged"),
+                Some("/org/freedesktop/UPower"),
+                None,
+                gio::DBusSignalFlags::NONE,
+                move |signal| {
+                    let Some(state) = weak.upgrade() else { return };
+                    if let Some(on) = props(signal.parameters).and_then(|d| d.lookup::<bool>("OnBattery").ok().flatten()) {
+                        state.event("power", if on { "battery" } else { "mains" });
+                    }
+                },
+            ));
+        }
+        let weak = Rc::downgrade(self);
+        subscriptions.push(self.bus.subscribe_to_signal(
+            Some("org.gnome.ScreenSaver"),
+            Some("org.gnome.ScreenSaver"),
+            Some("ActiveChanged"),
+            Some("/org/gnome/ScreenSaver"),
+            None,
+            gio::DBusSignalFlags::NONE,
+            move |signal| {
+                let Some(state) = weak.upgrade() else { return };
+                if let Some((active,)) = signal.parameters.get::<(bool,)>() {
+                    state.event("screen", if active { "locked" } else { "unlocked" });
+                }
+            },
+        ));
+        // The colour scheme, which the theme and the Dark Style switch both set
+        let interface = gio::SettingsSchemaSource::default()
+            .and_then(|s| s.lookup("org.gnome.desktop.interface", true))
+            .map(|_| gio::Settings::new("org.gnome.desktop.interface"));
+        if let Some(settings) = &interface {
+            use gio::prelude::SettingsExt;
+            // GSettings reports a change only of a key read once
+            let _ = settings.string("color-scheme");
+            let weak = Rc::downgrade(self);
+            settings.connect_changed(Some("color-scheme"), move |settings, key| {
+                let Some(state) = weak.upgrade() else { return };
+                let scheme = settings.string(key);
+                state.event("theme", if scheme.contains("dark") { "dark" } else { "light" });
+            });
+        }
+        (subscriptions, interface)
+    }
+
     fn run(self: &Rc<Self>, id: &str, action: Option<String>) {
+        let click = action.is_some();
+        self.run_as(id, action, click);
+    }
+
+    fn run_as(self: &Rc<Self>, id: &str, action: Option<String>, click: bool) {
         if self.paused.borrow().contains(id) {
             return;
         }
         let (runner, id, tx) = (self.runner.clone(), id.to_string(), self.tx.lock().unwrap().clone());
         std::thread::spawn(move || {
-            let result = runner.run(&id, action.as_deref());
+            let result = runner.run_as(&id, action.as_deref(), click);
             let _ = tx.unbounded_send(Msg::Ran(id, result, action));
         });
     }
@@ -266,7 +382,21 @@ impl State {
                 self.changed(&id);
             }
             Msg::Over(id, host) => self.emit("OverLimit", (id.as_str(), host.as_str()).to_variant()),
+            // A notice's button pressed: the person's click, for an action the broker already held to the manifest
+            Msg::Asked(id, kind, text) if kind == "action" => {
+                if valid_action(&text) && self.plugins.borrow().contains_key(&id) {
+                    self.run(&id, Some(text));
+                }
+            }
             Msg::Asked(id, kind, text) => self.emit("Asked", (id.as_str(), kind.as_str(), text.as_str()).to_variant()),
+            Msg::Handed(id, path) => {
+                let action = self.plugins.borrow().get(&id).and_then(|p| p["places"]["files-menu"]["action"].as_str().map(str::to_string));
+                if let Some(action) = action.filter(|a| valid_action(a)) {
+                    if self.runner.hand(&id, path).is_ok() {
+                        self.run(&id, Some(action));
+                    }
+                }
+            }
         }
     }
 
@@ -351,6 +481,7 @@ pub fn serve(env: Env) -> ExitCode {
         recent: RefCell::default(),
         queued: RefCell::default(),
         scheduled: RefCell::default(),
+        news: RefCell::default(),
         clients: RefCell::default(),
         callers: RefCell::default(),
         tx: Mutex::new(tx),
@@ -363,6 +494,43 @@ pub fn serve(env: Env) -> ExitCode {
         .register_object(PATH, &interface)
         .method_call(move |_, sender, _, _, method, params, invocation| {
             let Some(state) = weak.upgrade() else { return invocation.return_dbus_error(NOT_AVAILABLE, "the host is stopping") };
+            // Hand is Files' menu, any program of the account's: nothing is given before the person says yes in a question the host itself
+            // asks, naming the plugin and the file
+            if method == "Hand" {
+                return match (id_arg(&params, 0), params.child_value(1).get::<String>()) {
+                    (Some(id), Some(path)) if path.starts_with('/') && path.len() < 4096 && std::path::Path::new(&path).is_file() => {
+                        let name = state.plugins.borrow().get(&id).filter(|p| p["places"]["files-menu"].is_object()).and_then(|p| p["name"].as_str().map(str::to_string));
+                        let Some(name) = name else {
+                            return invocation.return_dbus_error("org.freedesktop.DBus.Error.InvalidArgs", "not a plugin that is on and takes files");
+                        };
+                        let tx = state.tx.lock().unwrap().clone();
+                        std::thread::spawn(move || {
+                            let file = std::path::Path::new(&path).file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+                            let question = format!("Give “{}” to the plugin {}? It gets this file's contents, and nothing else of yours.", amethystora_plugin_host::output::clean(&file, 200), amethystora_plugin_host::output::clean(&name, 80));
+                            let yes = std::process::Command::new("timeout")
+                                .args(["120", "zenity", "--question", "--no-markup", "--title", "Give a file to a plugin", "--text", &question])
+                                .stdin(std::process::Stdio::null())
+                                .status()
+                                .is_ok_and(|s| s.success());
+                            if yes {
+                                let _ = tx.unbounded_send(Msg::Handed(id, path.into()));
+                            }
+                        });
+                        invocation.return_value(None)
+                    }
+                    _ => invocation.return_dbus_error("org.freedesktop.DBus.Error.InvalidArgs", "not a plugin that is on, or not a file"),
+                };
+            }
+            // Run is any program of the account's (`ame plugin run`, a script): it is no click, so it opens, copies and controls nothing
+            if method == "Run" {
+                return match (id_arg(&params, 0), params.child_value(1).get::<String>()) {
+                    (Some(id), Some(action)) if (action.is_empty() || valid_action(&action)) && state.plugins.borrow().contains_key(&id) => {
+                        state.run_as(&id, (!action.is_empty()).then_some(action), false);
+                        invocation.return_value(None)
+                    }
+                    _ => invocation.return_dbus_error("org.freedesktop.DBus.Error.InvalidArgs", "not a plugin that is on, or not an action"),
+                };
+            }
             if !state.caller_allowed(sender) {
                 return invocation.return_dbus_error(NOT_AVAILABLE, "caller not allowed");
             }
@@ -374,6 +542,14 @@ pub fn serve(env: Env) -> ExitCode {
                     let all: Vec<Value> = state.env.enabled().iter().map(|id| state.plugin_json(id)).collect();
                     invocation.return_value(Some(&(Value::Array(all).to_string(),).to_variant()));
                 }
+                // The app in front, which only the shell knows, told only while a plugin that is on was granted events=focused-app
+                "Focused" => match params.child_value(0).get::<String>() {
+                    Some(app) if app.len() <= 255 && app.bytes().all(|b| b.is_ascii_alphanumeric() || b"._-".contains(&b)) => {
+                        state.event("focused-app", &app);
+                        invocation.return_value(None);
+                    }
+                    _ => invocation.return_dbus_error("org.freedesktop.DBus.Error.InvalidArgs", "not an app's id"),
+                },
                 "Action" => match (id_arg(&params, 0), params.child_value(1).get::<String>()) {
                     (Some(id), Some(action)) if valid_action(&action) && state.plugins.borrow().contains_key(&id) => {
                         state.run(&id, Some(action));
@@ -453,6 +629,7 @@ pub fn serve(env: Env) -> ExitCode {
             quit.quit();
         });
     }
+    let _listening = state.listen();
     state.rescan();
     main_loop.run();
     if *lost.borrow() { ExitCode::FAILURE } else { ExitCode::SUCCESS }

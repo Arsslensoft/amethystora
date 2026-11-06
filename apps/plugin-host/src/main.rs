@@ -97,6 +97,8 @@ fn summary(env: &Env, id: &str, grant: &Grant) -> Value {
         "draft": false,
         "since": env.store.history(env.uid).iter().find(|l| l["id"].as_str() == Some(id)).and_then(|l| l["t"].as_u64()),
         "actions": manifest.as_ref().map(|m| m.actions.clone()).unwrap_or_default(),
+        // What its manifest declares a person may set (never a value), for Control's form
+        "settings": manifest.as_ref().map(|m| m.settings.iter().map(|s| json!({"name": s.name, "label": s.label, "secret": s.secret})).collect::<Vec<_>>()).unwrap_or_default(),
     })
 }
 

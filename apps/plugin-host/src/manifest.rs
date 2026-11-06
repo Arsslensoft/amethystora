@@ -10,7 +10,7 @@ pub const MAX_MANIFEST: usize = 64 * 1024;
 /// What a host may be sent in an hour when the manifest asks for no more, and the most it may ask for
 pub const DEFAULT_LIMIT: u64 = 1 << 20;
 pub const MAX_LIMIT: u64 = 64 << 20;
-const SURFACES: &[&str] = &["pill", "bar", "desktop", "search", "tile", "dock", "today", "menu"];
+const SURFACES: &[&str] = &["pill", "bar", "desktop", "search", "tile", "dock", "today", "menu", "files-menu"];
 const TOP: &[&str] = &["schema", "id", "name", "version", "license", "author", "command", "interval", "contributes", "needs", "actions", "settings"];
 /// Names `state`, `control` and `events` may list (the broker's, a later phase; the names are the plan's table)
 const STATES: &[&str] = &["clock", "disk", "media", "do-not-disturb", "network", "power", "screen", "theme", "battery", "volume"];
@@ -181,6 +181,15 @@ fn surface_options(surface: &str, m: &Map<String, Value>) -> Result<Value, Strin
             }
             out.insert("app".into(), app.into());
         }
+        // Files' Scripts menu: the files a person gives it there reach the action named, through `plugin pick` (it needs `pick`)
+        "files-menu" => {
+            only(m, &["action"], &what)?;
+            let action = text(m.get("action").unwrap_or(&Value::Null), "files-menu.action", 32)?;
+            if !valid_action(&action) {
+                return Err("\"files-menu.action\" has to be one of the plugin's actions".into());
+            }
+            out.insert("action".into(), action.into());
+        }
         _ => only(m, &[], &what)?,
     }
     Ok(Value::Object(out))
@@ -304,6 +313,17 @@ impl Manifest {
             None => (Vec::new(), Vec::new()),
             Some(n) => parse_needs(object(n, "needs")?)?,
         };
+        // A surface that runs an action names one the manifest declares, and one that hands over a file needs `pick`
+        for (surface, options) in &places {
+            if let Some(action) = options.get("action").and_then(Value::as_str) {
+                if !actions.iter().any(|a| a == action) {
+                    return Err(format!("\"contributes.{surface}.action\" is {action:?}, which is not in \"actions\""));
+                }
+            }
+        }
+        if places.contains_key("files-menu") && !needs.iter().any(|n| n.perm == "pick") {
+            return Err("\"files-menu\" hands a file over, which needs \"pick\" in \"needs\"".into());
+        }
         Ok(Manifest { id, name, version, license, command, interval, contributes, places, author, settings, actions, needs, limits })
     }
 
@@ -519,6 +539,22 @@ mod tests {
         ] {
             assert!(edited(surface, options.clone()).is_err(), "{surface} {options}");
         }
+    }
+
+    #[test]
+    fn the_files_menu_names_an_action_of_its_own_and_needs_pick() {
+        let files = |needs_pick: bool, action: &str| {
+            Manifest::parse(&with(|v| {
+                v["contributes"]["files-menu"] = serde_json::json!({"action": action});
+                if needs_pick {
+                    v["needs"]["pick"] = serde_json::json!({"why": "Reads the file you give it"});
+                }
+            }))
+        };
+        assert_eq!(files(true, "open-page").unwrap().places["files-menu"]["action"], "open-page");
+        assert!(files(false, "open-page").is_err(), "without pick");
+        assert!(files(true, "not-declared").is_err(), "an action the manifest does not declare");
+        assert!(files(true, "Bad Action").is_err());
     }
 
     #[test]

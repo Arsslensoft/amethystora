@@ -184,6 +184,12 @@ pub fn policy_of(env: &Env, id: &str) -> Policy {
     };
     Policy {
         allowed: grant.perms.iter().filter_map(|p| p.strip_prefix("network=")).map(str::to_string).collect(),
+        local: grant
+            .perms
+            .iter()
+            .filter_map(|p| p.strip_prefix("network-local="))
+            .filter_map(|p| p.rsplit_once(':').and_then(|(h, port)| Some((h.to_string(), port.parse().ok()?))))
+            .collect(),
         blocked_all: grant.blocked,
         blocked_hosts: grant.blocked_hosts,
         limits: grant.limits,
@@ -280,6 +286,23 @@ impl Runner {
         Ok((dir, broker))
     }
 
+    /// The news a run is started for (`events`), which its `plugin event` reads, forgotten as the run ends
+    pub fn set_event(&self, id: &str, name: &str, value: &str) -> Result<(), String> {
+        *self.broker(id)?.1.event.lock().unwrap() = Some(serde_json::json!({"name": name, "value": value}));
+        Ok(())
+    }
+
+    /// How long until a run that is no click may start: the five seconds between runs, less what has passed
+    pub fn gap_left(&self, id: &str) -> Duration {
+        self.last.lock().unwrap().get(id).map(|t| MIN_GAP.saturating_sub(t.elapsed())).unwrap_or_default()
+    }
+
+    /// The file a person gave the plugin in Files' menu, for its next run's `plugin pick` (spent by it, or forgotten as the run ends)
+    pub fn hand(&self, id: &str, path: PathBuf) -> Result<(), String> {
+        *self.broker(id)?.1.handed.lock().unwrap() = Some(path);
+        Ok(())
+    }
+
     /// The folder holding this plugin's proxy socket, started the first time a plugin with a network permission runs
     fn proxy_dir(&self, id: &str) -> Result<PathBuf, String> {
         let dir = self.env.runtime.join(id);
@@ -327,10 +350,10 @@ impl Runner {
             let (path, mode) = perm.rsplit_once(':').ok_or("a files permission has a mode")?;
             mounts.push((files::resolve(&env.home, path, mode == "rw")?, mode == "rw"));
         }
-        let has_network = perms.iter().any(|p| p.starts_with("network="));
+        let has_network = perms.iter().any(|p| p.starts_with("network=") || p.starts_with("network-local="));
         let proxy_dir = if has_network && with_proxy { Some(self.proxy_dir(&loaded.id)?) } else if has_network { Some(env.runtime.join(&loaded.id)) } else { None };
         // Anything a plugin may ask the host for needs the socket, and a draft has it to be answered from samples
-        let asks = loaded.draft || perms.iter().any(|p| p.starts_with("state=") || p.starts_with("control=") || p == "notify" || p == "open" || p == "clipboard-write");
+        let asks = loaded.draft || perms.iter().any(|p| p.starts_with("state=") || p.starts_with("control=") || p.starts_with("events=") || p.starts_with("change=") || p == "notify" || p == "open" || p == "clipboard-write" || p == "pick");
         let broker_dir = if asks && with_proxy { Some(self.broker(&loaded.id)?.0) } else if asks { Some(env.runtime.join("broker").join(&loaded.id)) } else { None };
         std::fs::create_dir_all(&env.runtime).map_err(|e| e.to_string())?;
         let passwd = env.runtime.join("passwd");
@@ -357,6 +380,12 @@ impl Runner {
 
     /// One run: the sandbox, its budgets, 30 seconds, and what it printed, checked
     pub fn run(&self, id: &str, action: Option<&str>) -> Result<Value, String> {
+        self.run_as(id, action, action.is_some())
+    }
+
+    /// A run, saying whether a person's click started it: only a click lets it open, copy or control anything. `ame plugin run` and
+    /// the agent's tools run an action with none
+    pub fn run_as(&self, id: &str, action: Option<&str>, click: bool) -> Result<Value, String> {
         let loaded = load(&self.env, id)?;
         if !self.running.lock().unwrap().insert(id.to_string()) {
             return Err("it is still running from the last time".into());
@@ -365,8 +394,8 @@ impl Runner {
         let _sent = SentGuard(self, id.to_string());
         {
             let mut last = self.last.lock().unwrap();
-            // A person's click is not made to wait for the timer's gap; a flood of them is the update rule's (service.rs)
-            if action.is_none() && last.get(id).is_some_and(|t| t.elapsed() + GAP_SLACK < MIN_GAP) {
+            // A person's click is not made to wait for the timer's gap (a flood of them is the update rule's, service.rs); a run with no click is
+            if !click && last.get(id).is_some_and(|t| t.elapsed() + GAP_SLACK < MIN_GAP) {
                 return Err("it ran a moment ago: a plugin runs at most once in five seconds".into());
             }
             last.insert(id.to_string(), Instant::now());
@@ -375,7 +404,7 @@ impl Runner {
         // A person's click is what lets a run change anything outside the sandbox; the next run on the timer has none
         let _click = ClickGuard(self.brokers.lock().unwrap().get(id).cloned());
         if let Some(b) = &_click.0 {
-            b.clicked.store(action.is_some(), Ordering::Relaxed);
+            b.clicked.store(click, Ordering::Relaxed);
         }
         // The settings a person gave it come on a pipe, never in the environment: a closed Vault stops the run and says why
         let settings = if !loaded.draft && !loaded.manifest.settings.is_empty() { Some(settings_pipe(&self.env, id)?) } else { None };
@@ -500,6 +529,8 @@ impl Drop for ClickGuard {
     fn drop(&mut self) {
         if let Some(b) = &self.0 {
             b.clicked.store(false, Ordering::Relaxed);
+            b.handed.lock().unwrap().take();
+            b.event.lock().unwrap().take();
         }
     }
 }

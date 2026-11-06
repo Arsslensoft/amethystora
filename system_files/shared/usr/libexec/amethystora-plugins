@@ -14,6 +14,8 @@
 #   make REQUEST | change ID | fix ID         the agent writes a draft (R7-02), changes it, or fixes a plugin that paused (R7-09)
 #   examples | new ID [EXAMPLE]               the examples to start from (an agent or a person), and a draft made from one
 #   try ID [ACTION]                           run a plugin or a draft once in its sandbox and print what the shell would be given
+#   run ID [ACTION]                           run a plugin that is on now, as a script may: no click, so it opens, copies and controls nothing
+#   hand -- FILE                              Files' "Give to a plugin": the host asks first, then the plugin's files-menu action gets it
 #   remove-agent-made                         every plugin and draft the agent made, after asking
 #   draft ID [--by me]                        a draft the agent wrote is checked, marked as the agent's and shown (it has no permissions)
 #   keep ID | discard ID                      a draft: keep it as a plugin (the same consent as any) or throw it away
@@ -163,6 +165,7 @@ units() {
     else
         systemctl --user disable --now amethystora-plugin-host.service 2>/dev/null || true
     fi
+    files_menu
 }
 
 cmd_onoff() {
@@ -571,6 +574,55 @@ cmd_fix() {
     exec amethystora-agent ask -- "The plugin $1 paused itself (it failed, ran too long or went over its limits). Find out why with: ame plugin show $1, then ame plugin off $1 and ame plugin try $1 (a plugin that is on cannot be tried), read its folder, and fix it, as a draft if it must change: ame plugin check, ame plugin draft. You cannot give it more permissions."
 }
 
+# Files' Scripts menu has "Give to a plugin" while a plugin that is on takes files (contributes files-menu), and not otherwise. The entry is
+# written as 24-files-menu.sh writes its own, marked, and only a marked file is ever written over or taken away
+FILES_MENU_MARK='# amethystora-files-menu 1. Written by ame plugin (amethystora-plugins) while a plugin that is on takes files; it goes when none does.'
+files_menu() {
+    local scripts="${XDG_DATA_HOME:-${HOME}/.local/share}/nautilus/scripts" entry temporary
+    # Translators: an entry of Files' Scripts menu, which gives the file picked to a plugin that takes files, after asking
+    entry="${scripts}/$(gettext "Give to a plugin" | tr -d '/\n')"
+    [[ "${entry##*/}" != .* && -n "${entry##*/}" ]] || entry="${scripts}/Give to a plugin"
+    if "${HOST}" list --json | jq -e 'any(.[]; .enabled and (.places | has("files-menu")))' >/dev/null 2>&1; then
+        [[ -e "${entry}" || -L "${entry}" ]] && return 0
+        mkdir -p -- "${scripts}" || return 0
+        temporary="$(mktemp "${scripts}/.files-menu.XXXXXX")" || return 0
+        printf '#!/bin/sh\n%s\nexec /usr/libexec/amethystora-plugins hand -- "$@"\n' "${FILES_MENU_MARK}" >"${temporary}"
+        chmod 0755 "${temporary}" && mv -f -- "${temporary}" "${entry}" || rm -f -- "${temporary}"
+    else
+        for entry in "${scripts}"/*; do
+            [[ -f "${entry}" && ! -L "${entry}" && "$(sed -n 2p "${entry}")" == "${FILES_MENU_MARK}" ]] && rm -f -- "${entry}"
+        done
+    fi
+    return 0
+}
+
+# Files' menu: the first file picked goes to a plugin that takes files (the one, or the one chosen), which the host asks the person about
+# first, naming the plugin and the file
+cmd_hand() {
+    [[ "${1:-}" == -- ]] && shift
+    local path="${1:-}" choices id
+    [[ -f "${path}" ]] || { gettext "Choose one file to give to a plugin."; echo; exit 1; }
+    path="$(realpath -- "${path}")"
+    mapfile -t choices < <("${HOST}" list --json | jq -r '.[] | select(.enabled and (.places | has("files-menu"))) | .id, .name')
+    case "${#choices[@]}" in
+        0) zenity --info --no-markup --text "$(gettext "No plugin that is on takes files.")" 2>/dev/null; exit 1 ;;
+        2) id="${choices[0]}" ;;
+        *) id="$(zenity --list --no-markup --title "$(gettext "Give to a plugin")" --column id --column "$(gettext "Plugin")" --hide-column 1 \
+            --print-column 1 "${choices[@]}" 2>/dev/null)" || exit 0 ;;
+    esac
+    valid_id "${id}" || exit 1
+    busctl --user call org.amethystora.Plugins /org/amethystora/Plugins org.amethystora.Plugins Hand ss "${id}" "${path}" >/dev/null
+}
+
+# One run of a plugin that is on, of one of its actions or of itself, as any program of the account may ask: it is no click, so it opens,
+# copies and controls nothing, and it waits for the five seconds between runs. What it printed shows where the plugin shows
+cmd_run() {
+    valid_id "${1:-}" || usage
+    [[ -z "${2:-}" || "${2}" =~ ^[a-z0-9-]{1,32}$ ]] || usage
+    busctl --user call org.amethystora.Plugins /org/amethystora/Plugins org.amethystora.Plugins Run ss "$1" "${2:-}" >/dev/null ||
+        { gettext "It runs only while it is on: ame plugin on ID"; echo; exit 1; }
+}
+
 cmd_settings() {
     valid_id "${1:-}" || usage
     exec "${HOST}" settings "$@"
@@ -642,6 +694,8 @@ case "${1:-}" in
     fix) shift; cmd_fix "$@" ;;
     settings) shift; cmd_settings "$@" ;;
     set) shift; cmd_set "$@" ;;
+    run) shift; cmd_run "$@" ;;
+    hand) shift; cmd_hand "$@" ;;
     open) shift; cmd_open "$@" ;;
     share) shift; cmd_share "$@" ;;
     examples) cmd_examples ;;

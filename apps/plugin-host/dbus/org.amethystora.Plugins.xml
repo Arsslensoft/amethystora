@@ -28,6 +28,24 @@
       <arg type="s" name="id" direction="in"/>
       <arg type="s" name="action" direction="in"/>
     </method>
+    <!-- One run now, of an action or ("") of the plugin itself, for any program of the account (`ame plugin run`): unlike Action it
+         is no click, so the run can open, copy and control nothing. Its result comes as Updated -->
+    <method name="Run">
+      <arg type="s" name="id" direction="in"/>
+      <arg type="s" name="action" direction="in"/>
+    </method>
+    <!-- Files' menu: a file for a plugin that contributes "files-menu", for any program of the account. The host asks the person
+         first, in a question of its own naming the plugin and the file; on yes, the plugin's files-menu action runs as a click and its
+         `plugin pick` gets that file's contents. Returns at once -->
+    <method name="Hand">
+      <arg type="s" name="id" direction="in"/>
+      <arg type="s" name="path" direction="in"/>
+    </method>
+    <!-- The app in front (its id, "" for none), which the shell tells only while a plugin that is on was granted events=focused-app:
+         each such plugin runs once with it as its news (`plugin event`) -->
+    <method name="Focused">
+      <arg type="s" name="app" direction="in"/>
+    </method>
     <!-- Stops a plugin running until Resume. Nothing is granted or taken away by it -->
     <method name="Pause">
       <arg type="s" name="id" direction="in"/>

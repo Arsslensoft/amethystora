@@ -116,6 +116,11 @@ fix ID:
 settings ID *ARGS:
     @/usr/libexec/amethystora-plugins settings "$@"
 
+# Run a plugin that is on now, or one of its actions: as a script may, so it opens, copies and controls nothing
+[positional-arguments]
+run ID *ACTION:
+    @/usr/libexec/amethystora-plugins run "$@"
+
 # Give a plugin one of its settings; what you type is not shown, and a secret goes into the Vault and nowhere in the clear
 [positional-arguments]
 set ID NAME:

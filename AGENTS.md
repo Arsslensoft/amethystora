@@ -1371,7 +1371,7 @@ between paints and shows a stale one after a partial redraw (Focus's desaturate 
 context's redraw-clip region from GJS (`get_extents()`, `get_rectangle()`: the shell dies on signal 11); testing it for null
 is safe. `Clutter.Event.add_filter` never sees a press on a Wayland window: Mutter's filter takes it first. A new
 `themed/shell-<module>.css.tpl` reaches an existing account only when its theme is applied again: raise `11-theme.sh`'s
-version (17 for round 4, 23 for rounds 5 and 6, 25 with round 7, 26 with its second wave). GNOME 51 dropped `St.BoxLayout`'s `vertical`: write `orientation`.
+version (17 for round 4, 23 for rounds 5 and 6, 25 with round 7, 26 with its second wave, 27 for plugins in Today). GNOME 51 dropped `St.BoxLayout`'s `vertical`: write `orientation`.
 
 The modules, and what each replaced:
 
@@ -1805,8 +1805,18 @@ crate (no GTK; only the host's `service.rs` links GLib) with two programs: `amet
   made while that file exists `"approval": "none"` and tells the account; the agent may only turn it on, and no image may ship it off. `amethystora-sends` has
   a row for each plugin given a host, with what its proxy counted this hour (the host writes `sent.json` as a run ends). Security's Apps page lists the account's
   plugins (`list --json`) with Block its network and Take back what it was given (`pkexec amethystora-plugin-root block|revoke ID`, no password),
-  only for a plugin the list just read. Not built yet: Control's settings form for a plugin (`ame plugin set` is the way), `pick`, `change`, `events`, `network-local`, panels, Files' menu, keybindings
-  and the agent's tools from a plugin.
+  only for a plugin the list just read. Phases 3 and 4's rest is built
+  too: Today (`plugins/today.js`, under GNOME's events) and the logo menu (`plugins/menu.js`, a section added to the logo menu extension's menu);
+  a notice's one button (`plugin notify T B ACTION LABEL`, `notify-send --wait`, the press a click); Control's form (a "Set …" action per declared setting,
+  `ame plugin set` in a terminal); `ame plugin run ID [ACTION]` (the bus method `Run`, any program of the account's, **no click**: it opens, copies and
+  changes nothing, and waits for the gap); `pick` (`plugin pick FILE`: the bytes over the broker socket after a zenity chooser the host shows, 8 MiB at
+  most, never a path or a mount) and Files' `files-menu` (`ame plugin hand`, written into Files' Scripts menu by `ame plugin on|off` only while such a
+  plugin is on; the bus method `Hand` asks the person in a zenity question of the host's own before anything is given); `events` (`listen()` in
+  `service.rs`: NetworkManager's connectivity, UPower's battery, the screen's lock, the colour scheme, and `focused-app` from the shell's `Focused`
+  call, made only while such a plugin is on; one run per burst after the gap, `plugin event`); `network-local` (the proxy's local branch: host and
+  port exactly, every address private or link-local, and the route's interface in `amethystora-home` by firewalld, read-only); and `change`
+  (`amethystora-agent-tools plugin-change`, control-core and `never.rs`, recorded with its way back, no terminal entry; the agent is refused that
+  command). Not built yet: panels (`window`), keybindings, the agent's tools from a plugin and data-only plugins.
 
 ### Plugins in the shell
 

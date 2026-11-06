@@ -6,6 +6,8 @@
 //!   amethystora-agent-tools state TOPIC [FILTER]
 //!   amethystora-agent-tools history [ID]
 //!   amethystora-agent-tools undo ID                  the tools' own undo of one change, for the live pill's Undo
+//!   amethystora-agent-tools plugin-change PLUGIN ENTRY VALUE
+//!                                                    a plugin's change of a Control entry it was granted (the plugin host's)
 //!   amethystora-agent-tools manual-search [-k N] -- WORDS...
 //!                                                    the manual's pages that answer WORDS, as JSON, for the
 //!                                                    desktop's search: no policy asked, nothing recorded
@@ -173,6 +175,23 @@ fn main() -> ExitCode {
             let said = server.call("undo", &json!({"id": rest[0]}));
             server.jobs.wait_all(std::time::Duration::from_secs(3600));
             say(said)
+        }
+        // A plugin's change (the plugin host asks, for an entry it was granted and after a click): no terminal, the never list, recorded
+        "plugin-change" if rest.len() == 3 => {
+            let valid = rest[0].len() <= 128 && rest[0].bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'.' || b == b'-');
+            if !valid {
+                return ExitCode::from(64);
+            }
+            match amethystora_agent_tools::act::plugin_change(&rest[0], &rest[1], &rest[2]) {
+                Ok(said) => {
+                    println!("{said}");
+                    ExitCode::SUCCESS
+                }
+                Err(why) => {
+                    eprintln!("{why}");
+                    ExitCode::FAILURE
+                }
+            }
         }
         "conf" => match policy::change_conf(std::path::Path::new(policy::CONF), rest) {
             Ok(conf) => {

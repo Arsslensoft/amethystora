@@ -1806,6 +1806,7 @@ plugin_rows() {
         --arg w_agent "${ gettext "Made by the agent"; }" --arg w_image "${ gettext "Made for Amethystora"; }" --arg w_you "${ gettext "Added by you"; }" \
         --arg a_keep "${ gettext "Keep…"; }" --arg a_throw "${ gettext "Throw away"; }" --arg a_change "${ gettext "Change…"; }" --arg a_fix "${ gettext "Fix…"; }" \
         --arg a_pause "${ gettext "Pause"; }" --arg a_resume "${ gettext "Turn on"; }" --arg a_remove "${ gettext "Remove"; }" \
+        --arg a_set "${ gettext "Set %s…"; }" \
         --arg changed "${ gettext "Its files are not what you approved: it is stopped."; }" '
         def place: {"pill": $p_pill, "bar": $p_bar, "desktop": $p_desktop, "tile": $p_tile, "search": $p_search, "dock": $p_dock}[.] // empty;
         def day: if .since then (.since | strflocaltime("%Y-%m-%d")) else empty end;
@@ -1825,6 +1826,9 @@ plugin_rows() {
                     [(if .enabled then {id: "off", title: $a_pause, terminal: false, command: ["ame", "plugin", "off", .id]}
                       else {id: "on", title: $a_resume, terminal: false, command: ["ame", "plugin", "on", .id]} end)]
                     + (if $agentic then [{id: "fix", title: $a_fix, terminal: true, command: ["ame", "plugin", "fix", .id]}] else [] end)
+                    # Its declared settings, each typed in a terminal, unseen, a secret going into the Vault (ame plugin set)
+                    + [(.settings // [])[] | select(.name | test("^[a-z][a-z0-9_-]{0,31}$"))
+                        | {id: ("set-" + .name), title: ($a_set | sub("%s"; .label)), terminal: true, command: ["ame", "plugin", "set", $p.id, .name]}]
                     + [{id: "remove", title: $a_remove, terminal: true, command: ["ame", "plugin", "remove", .id]}]
                 end)
         }] as $rows | {rows: $rows, count: ($rows | length)}' <<<"${PLUGINS_LIST}" 2>/dev/null

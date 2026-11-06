@@ -4123,6 +4123,10 @@ msgid "Remove"
 msgstr ""
 
 #: usr/libexec/amethystora-control-list
+msgid "Set %s…"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
 msgid "Its files are not what you approved: it is stopped."
 msgstr ""
 
@@ -9374,6 +9378,27 @@ msgstr ""
 
 #: usr/libexec/amethystora-plugins
 msgid "The AI agent is off. Turn it on with: ame agent toggle on"
+msgstr ""
+
+#. Translators: an entry of Files' Scripts menu, which gives the file picked to a plugin that takes files, after asking
+#: usr/libexec/amethystora-plugins
+msgid "Give to a plugin"
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+msgid "Choose one file to give to a plugin."
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+msgid "No plugin that is on takes files."
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+msgid "Plugin"
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+msgid "It runs only while it is on: ame plugin on ID"
 msgstr ""
 
 #: usr/libexec/amethystora-plugins

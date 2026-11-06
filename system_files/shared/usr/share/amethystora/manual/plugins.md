@@ -18,6 +18,13 @@ One plugin can ask for several places, and an agent learns one format to reach a
 - **Search** (`Super+Space`): an answer when you type the plugin's prefix. What you type never reaches the plugin.
 - **The dock**: a number on a pinned app's icon, and a bar along its bottom.
 - **The desktop**: a small card on the wallpaper, while *Plugins on the desktop* is on in [Control](control.md).
+- **Today**, the calendar menu: a card under your events.
+- **The logo menu**: a line at its end, which runs the plugin's own action when you click it.
+- **Files**: *Give to a plugin* in the Scripts menu of a file, while a plugin that takes files is on. Your computer asks you first, naming
+  the plugin and the file, and the plugin gets that file's contents and nothing else.
+- **Notifications**, under the plugin's name, at most one a minute, with one button of the plugin's own.
+
+A plugin's **settings** are in its row in [Control](control.md): each one you set is typed unseen, and a secret goes into the Vault.
 
 Nothing in it can look like the system: a plugin has no call, recording, battery or agent look, no markup, no picture from a file and no
 field to type in. A plugin whose output the desktop cannot draw is paused, not drawn.
@@ -114,9 +121,12 @@ anything is installed. Nothing updates by itself.
 | `network` | HTTPS to named hosts, and only those. No other address, no other port |
 | `files` | One place under your home folder, read-only unless it says otherwise. Never the home itself, a hidden folder or the private folder |
 | `notify`, `open`, `clipboard-write`, `pick` | A notice under its name, an address to open after a click, text for the clipboard after a click, a file you choose |
-| `state`, `control`, `events` | What the system says of the clock, the disk, what plays, and the few controls the desktop offers |
+| `state`, `control` | What the system says of the clock, the disk, what plays, and the few controls the desktop offers |
+| `events` | Runs when the network, the power, the screen's lock, the light or dark style, or (asked for on its own) the app in front changes |
+| `network-local` | One service on your home network, by name and port, only while you are on a network you named home |
+| `change` | Settings of Control's it names, after a click, each recorded with its way back as the agent's changes are |
 
-Some are only listed so far: the plugin may ask for them, and the parts of the system that would answer come later. Never
+`window` is only listed so far: a plugin may ask for it, and the part of the system that would answer comes later. Never
 grantable: root, a raw bus, the whole home, another plugin's data, the keyring, the screen or microphone, and input.
 
 Two permissions together are said aloud: `files` with `network` means the plugin can send those files to those hosts. An allowed
@@ -135,6 +145,7 @@ ame plugin unblock ID        # an administrator approves, so that nothing runnin
 ame plugin grant ID          # allow more of what it asked for: asks in a terminal, and an administrator approves
 ame plugin rollback ID       # the version before its last update, with no more than you allowed
 ame plugin on ID             # run it, within what it was given
+ame plugin run ID [ACTION]   # one run now, as a script may: it opens, copies and changes nothing
 ame plugin off ID
 ame plugin remove ID         # gone, with what it kept
 ame plugin check FOLDER      # what installing would refuse, for a plugin's author

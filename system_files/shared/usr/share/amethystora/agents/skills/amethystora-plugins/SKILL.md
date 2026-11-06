@@ -39,10 +39,13 @@ or `amethystora-plugin-root`: they are refused, and they are the person's. A plu
 - `command[0]` is `./file` in the plugin's folder. `interval` is seconds, 5 to 86400 (none: it runs once). A plugin runs at most once in 5 seconds, 30 seconds a run, 256 MB.
 - `contributes` is **where it shows**, one or several: `pill` (live, after everything the system shows; never the call, recording, battery or agent looks), `bar`, `desktop` (a card; needs
   the person to have desktop plugins on), `tile` (quick settings: the first `switch` is its switch), `search` (an answer for the typed prefix; **what is typed never reaches you**),
-  `dock` (a number in `text` is the badge, `progress` the bar, on the app named). One format, every place.
+  `dock` (a number in `text` is the badge, `progress` the bar, on the app named), `today` (a card in the calendar menu), `menu` (a line in the logo menu; its `click` runs),
+  `files-menu` (`{"action": "x"}`: Files' Give to a plugin hands the file the person picks to that action, which reads it with `plugin pick`; needs `pick`). One format, every place.
 - `needs` is **what it reaches**, each with a `why` the person reads: `network` (named hosts only, `*.example.org` allowed, never an address), `files` (`~/Documents/x`, read-only
   unless `"mode": "rw"`, no dot-folders), `state` (`{"names": ["clock","disk","media","do-not-disturb"], "why"}`), `control` (`media`, `do-not-disturb`; only after a click), `notify`,
-  `open`, `clipboard-write` (both only after a click). Ask for the least. A draft is given none of it until the person keeps it.
+  `open`, `clipboard-write` (both only after a click), `pick` (one file the person chooses, after a click), `events` (`{"names": ["network","power","screen","theme","focused-app"], "why"}`:
+  each runs it once, with no click), `network-local` (`[{"host": "ha.home.arpa", "port": 8123, "why"}]`, a service on the home network, only while on a network named home),
+  `change` (`{"names": [Control entry ids], "why"}`, after a click). Ask for the least. A draft is given none of it until the person keeps it.
 - `settings` are what the person gives it. Every setting is kept in the Vault (a token is `"secret": true`, which also refuses it where there is no Vault), never in a file or the environment, and arrives on **descriptor 10** as one JSON object:
   `read -r -u 10 settings; repo=$(jq -r .repo <<<"$settings")`. Never put a secret in a command line (`ps` shows it): give curl a config from `<(printf ...)`.
 
@@ -66,7 +69,11 @@ bar or desktop (a tile and a search answer stay). A card has at most 20 elements
 ## Inside the sandbox
 
 There is no bus, so `gsettings`, `busctl`, `gdbus` and `notify-send` find nothing: ask the host with `plugin state clock|disk|media|do-not-disturb`, `plugin control media next` (only
-in an action run), `plugin notify TITLE [BODY]` (once a minute), `plugin open URL` and `plugin clipboard TEXT` (only after a click). In a draft they answer from samples.
+in an action run), `plugin notify TITLE [BODY [ACTION LABEL]]` (once a minute; with an action of the manifest's, the notice has that button, and pressing it runs the action as a
+click), `plugin open URL` and `plugin clipboard TEXT` (only after a click), `plugin pick FILE` (the file the person chooses, or gave it in Files, written to FILE in `/tmp`; its
+name is printed), `plugin event` (what started this run: `{"name","value"}`, or nothing for its timer) and `plugin change ENTRY VALUE` (after a click). In a draft they answer from
+samples. A home service (`network-local`) is reached through the same proxy: `curl -p -x "$HTTPS_PROXY" http://ha.home.arpa:8123/api/` (`-p` tunnels plain HTTP too).
+`ame plugin run ID [ACTION]` runs one that is on from a script, as no click.
 `$PLUGIN_STATE` is the plugin's own folder for what it remembers (never run or source a file from it). Never write into its own folder: it is read-only.
 
 ## When it paused

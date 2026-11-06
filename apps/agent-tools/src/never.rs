@@ -39,6 +39,9 @@ const PATHS: &[&str] = &[
     "amethystora-vault", "org.amethystora.vault", "/run/amethystora/vault", "/var/lib/amethystora/vault",
     // The plugin system's root helper and its polkit actions, in any spelling (plans/PLAN-plugins.md): installing and widening are a person's
     "amethystora-plugin-root", "org.amethystora.plugins",
+    // A plugin's change goes through the agent's tools without the agent's level (the plugin host asks, for what the plugin was granted):
+    // the agent changes a setting with its own change tool, which its level and the person decide
+    "plugin-change",
     // Move to this computer (R7-25) and Bring everything from your old computer (R7-48) copy a person's folders between machines: only the person starts them
     "amethystora-move", "amethystora-bring-over",
     // The backup to another computer and the recovery key (R7-35, R7-55): the keys, the pairing and the way back from nothing are the person's alone
@@ -583,6 +586,7 @@ mod tests {
             "/usr/libexec/amethystora-plugin-root commit dev.example.x 00 notify",
             "pkexec /usr/libexec/amethystora-plugin-root commit-shipped amethystora.clock",
             "amethystora-plugin-root unblock x",
+            "/usr/libexec/amethystora-agent-tools plugin-change dev.example.x theme dark",
             "amethystora-plugins grant dev.example.x",
             "python3 /usr/libexec/amethystora-plugins grant dev.example.x",
             "bash /usr/libexec/amethystora-plugins unblock dev.example.x",

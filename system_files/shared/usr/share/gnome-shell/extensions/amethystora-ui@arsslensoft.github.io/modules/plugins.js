@@ -10,6 +10,7 @@
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import Shell from 'gi://Shell';
 import St from 'gi://St';
 
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
@@ -19,10 +20,12 @@ import * as Util from 'resource:///org/gnome/shell/misc/util.js';
 import {BarButton} from './plugins/bar.js';
 import {plugin as clampPlugin} from './plugins/clamp.js';
 import {DockBadges} from './plugins/dock.js';
+import {MenuPlugins} from './plugins/menu.js';
 import {HostClient} from './plugins/host.js';
 import {ExtraMark} from './plugins/pill.js';
 import {Scripts} from './plugins/script.js';
 import {PluginTile} from './plugins/tile.js';
+import {TodayPlugins} from './plugins/today.js';
 import {shownAddress} from './pill/text.js';
 
 const SCHEMA = 'org.gnome.shell.extensions.amethystora-ui.plugins';
@@ -121,6 +124,7 @@ export class Plugins {
         this._unlistenCapture?.();
         this._unlistenCapture = null;
         this._clearSurfaces();
+        this._watchFocus(false);
         this._plugins = null;
         this._ui = null;
     }
@@ -135,6 +139,10 @@ export class Plugins {
         this._tiles?.clear();
         this._badges?.clear();
         this._badges = null;
+        this._today?.destroy();
+        this._today = null;
+        this._menu?.destroy();
+        this._menu = null;
         this._tellListeners();
     }
 
@@ -254,6 +262,9 @@ export class Plugins {
         this._renderBars(plugins.filter(p => p.places.bar));
         this._renderTiles(plugins.filter(p => p.places.tile));
         this._renderDock(plugins.filter(p => p.places.dock));
+        this._watchFocus(plugins.some(p => !p.paused && p.granted.includes('events=focused-app')));
+        this._renderPlaced('today', plugins, () => (this._today ??= new TodayPlugins(this._ui)));
+        this._renderPlaced('menu', plugins, () => (this._menu ??= new MenuPlugins(this._ui)));
         this._tellListeners();
     }
 
@@ -389,6 +400,43 @@ export class Plugins {
         }
     }
 
+    // The app in front, told to the host only while a plugin that is on was granted events=focused-app, at most once a second and only when
+    // it changes: an app's id, never a window's title
+    _watchFocus(wanted) {
+        if (wanted && !this._focusWatched) {
+            this._focusWatched = true;
+            global.display.connectObject('notify::focus-window', () => {
+                if (this._focusTimer)
+                    return;
+                this._focusTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
+                    this._focusTimer = 0;
+                    const window = global.display.focus_window;
+                    const app = window ? Shell.WindowTracker.get_default().get_window_app(window)?.get_id()?.replace(/\.desktop$/, '') ?? '' : '';
+                    if (this._focusWatched && app !== this._lastFocused) {
+                        this._lastFocused = app;
+                        this._host?.focused(app);
+                    }
+                    return GLib.SOURCE_REMOVE;
+                });
+            }, this);
+        } else if (!wanted && this._focusWatched) {
+            this._focusWatched = false;
+            global.display.disconnectObject(this);
+            if (this._focusTimer)
+                GLib.source_remove(this._focusTimer);
+            this._focusTimer = 0;
+            this._lastFocused = null;
+        }
+    }
+
+    // Today's column and the logo menu: each plugin's card or line, while it runs and has said something
+    _renderPlaced(place, plugins, surface) {
+        const items = plugins.filter(p => p.places[place] && !p.paused).map(p => ({plugin: p, output: this._output(p)}))
+            .filter(({output}) => output && !output.hidden);
+        if (items.length || (place === 'today' ? this._today : this._menu))
+            surface().sync(items);
+    }
+
     _renderDock(plugins) {
         const launcher = this._ext.modules?.get('dock')?.launcher ?? null;
         if (!launcher) {
@@ -502,6 +550,8 @@ export class Plugins {
             pill: this._extra?.text ?? null,
             bars: [...this._bars?.keys() ?? []],
             tiles: [...this._tiles?.keys() ?? []],
+            today: this._today?._section?.get_n_children() ?? 0,
+            menu: this._menu?._section?.numMenuItems ?? 0,
             scripts: (this._scripts?.pills ?? []).map(s => s.name),
         };
     }

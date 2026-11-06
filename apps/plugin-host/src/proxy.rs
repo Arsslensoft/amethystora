@@ -64,6 +64,8 @@ fn forbidden_v6(a: Ipv6Addr) -> bool {
 #[derive(Clone, Debug, Default)]
 pub struct Policy {
     pub allowed: Vec<String>,
+    /// `network-local=HOST:PORT`: a service on the home network (Home Assistant and the like), only while the route to it is home
+    pub local: Vec<(String, u16)>,
     pub blocked_all: bool,
     pub blocked_hosts: Vec<String>,
     pub limits: BTreeMap<String, u64>,
@@ -84,9 +86,45 @@ impl Policy {
         port == 443 && valid_host(host) && !host.starts_with("*.") && self.entry_for(host).is_some()
     }
 
+    /// A service on the home network the plugin was granted: the host and port exactly, no wildcard
+    pub fn allows_local(&self, host: &str, port: u16) -> bool {
+        !self.machine_off && !self.blocked_all && !self.blocked_hosts.iter().any(|b| b == host) && self.local.iter().any(|(h, p)| h == host && *p == port)
+    }
+
     pub fn limit_for(&self, host: &str) -> u64 {
         self.allowed.iter().filter(|e| host_matches(e, host)).find_map(|e| self.limits.get(e)).copied().unwrap_or(DEFAULT_LIMIT)
     }
+}
+
+/// An address of a network of the home's own: private, link-local or a unique-local IPv6 one. The machine itself (loopback) and
+/// anything public are never one
+pub fn local_ip(ip: IpAddr) -> bool {
+    match ip {
+        IpAddr::V4(a) => a.is_private() || a.is_link_local(),
+        IpAddr::V6(a) => {
+            let s = a.segments();
+            (s[0] & 0xfe00) == 0xfc00 || (s[0] & 0xffc0) == 0xfe80 || a.to_ipv4_mapped().is_some_and(|v4| v4.is_private() || v4.is_link_local())
+        }
+    }
+}
+
+/// Whether the route to an address leaves through an interface in the firewall's `amethystora-home` zone (the networks the person named
+/// home): `ip route get`, then firewalld, read-only. Anything that cannot be asked is not home
+pub type HomeCheck = Box<dyn Fn(&IpAddr) -> bool + Send + Sync>;
+
+pub fn at_home(ip: &IpAddr) -> bool {
+    let run = |program: &str, args: &[&str]| -> Option<String> {
+        let out = std::process::Command::new("timeout").arg("2").arg(program).args(args).stdin(std::process::Stdio::null()).stderr(std::process::Stdio::null()).output().ok()?;
+        out.status.success().then(|| String::from_utf8_lossy(&out.stdout).into_owned())
+    };
+    let Some(route) = run("ip", &["-o", "route", "get", &ip.to_string()]) else { return false };
+    let mut words = route.split_whitespace();
+    let Some(dev) = words.by_ref().skip_while(|w| *w != "dev").nth(1) else { return false };
+    if !dev.bytes().all(|b| b.is_ascii_alphanumeric() || b"._-@".contains(&b)) {
+        return false;
+    }
+    run("busctl", &["--system", "call", "org.fedoraproject.FirewallD1", "/org/fedoraproject/FirewallD1", "org.fedoraproject.FirewallD1.zone", "getZoneOfInterface", "s", dev])
+        .is_some_and(|out| out.trim() == "s \"amethystora-home\"")
 }
 
 /// `CONNECT host:port HTTP/1.1` and its headers, as (host, port). Anything else is no request this proxy answers
@@ -119,6 +157,8 @@ pub struct Proxy {
     over_limit: Told,
     sent: Mutex<HashMap<String, (Instant, u64)>>,
     over: Mutex<HashSet<String>>,
+    /// Whether an address of the home network is reached through a network named home (network-local)
+    home: HomeCheck,
     /// The last few refusals, for a log: a plugin that is refused over and over must not grow the host
     pub refused: Mutex<Vec<String>>,
     active: AtomicUsize,
@@ -134,13 +174,30 @@ struct Conn {
 
 impl Proxy {
     pub fn new(load: Loader, resolve: Resolver, dial: Dialer, over_limit: Told) -> Arc<Proxy> {
-        Arc::new(Proxy { load, resolve, dial, over_limit, sent: Mutex::new(HashMap::new()), over: Mutex::new(HashSet::new()), refused: Mutex::new(Vec::new()), active: AtomicUsize::new(0) })
+        Arc::new(Proxy {
+            load,
+            resolve,
+            dial,
+            over_limit,
+            sent: Mutex::new(HashMap::new()),
+            over: Mutex::new(HashSet::new()),
+            home: Box::new(|_| false),
+            refused: Mutex::new(Vec::new()),
+            active: AtomicUsize::new(0),
+        })
+    }
+
+    /// The same, with how it tells that the home network is reached through a network named home
+    pub fn with_home(load: Loader, resolve: Resolver, dial: Dialer, over_limit: Told, home: HomeCheck) -> Arc<Proxy> {
+        let mut proxy = Arc::into_inner(Proxy::new(load, resolve, dial, over_limit)).expect("just made");
+        proxy.home = home;
+        Arc::new(proxy)
     }
 
     /// The real one: the system's resolver (which refuses nothing itself) and a connection with a 10 second limit
     pub fn system(load: Loader, over_limit: Told) -> Arc<Proxy> {
         use std::net::ToSocketAddrs;
-        Proxy::new(
+        Proxy::with_home(
             load,
             Box::new(|host, port| Ok((host, port).to_socket_addrs()?.map(|a| a.ip()).collect())),
             Box::new(|ips, port| {
@@ -154,6 +211,7 @@ impl Proxy {
                 Err(last)
             }),
             over_limit,
+            Box::new(at_home),
         )
     }
 
@@ -172,8 +230,9 @@ impl Proxy {
         self.sent.lock().unwrap().iter().map(|(h, (_, n))| (h.clone(), *n)).collect()
     }
 
-    fn blocked_now(&self, entry: &str, host: &str) -> bool {
-        self.over.lock().unwrap().contains(entry) || !(self.load)().allows(host, 443)
+    fn blocked_now(&self, entry: &str, host: &str, port: u16) -> bool {
+        let policy = (self.load)();
+        self.over.lock().unwrap().contains(entry) || !(policy.allows(host, port) || policy.allows_local(host, port))
     }
 
     /// Answers one connection from the sandbox's forwarder, to the end
@@ -218,14 +277,18 @@ Connection: close
             return refuse(&mut client, "not a CONNECT".into());
         };
         let policy = (self.load)();
-        let entry = policy.entry_for(&host).cloned().unwrap_or_default();
-        if !policy.allows(&host, port) || self.over.lock().unwrap().contains(&entry) {
+        // A service of the home network (network-local) is its own entry, host and port, and is counted and limited like any
+        let local = !policy.allows(&host, port) && policy.allows_local(&host, port);
+        let entry = if local { format!("{host}:{port}") } else { policy.entry_for(&host).cloned().unwrap_or_default() };
+        if !(policy.allows(&host, port) || local) || self.over.lock().unwrap().contains(&entry) {
             return refuse(&mut client, format!("{host}:{port} is not allowed"));
         }
-        // Resolved here, once, and the connection goes to what was checked: a host that answers with a private address is refused
+        // Resolved here, once, and the connection goes to what was checked: a host that answers with a private address is refused, and
+        // a home service that answers with anything but the home network's, or is not reached through a network named home
         let ips = match (self.resolve)(&host, port) {
-            Ok(ips) if !ips.is_empty() && !ips.iter().any(|ip| forbidden_ip(*ip)) => ips,
-            _ => return refuse(&mut client, format!("{host} does not resolve to a public address")),
+            Ok(ips) if local && !ips.is_empty() && ips.iter().all(|ip| local_ip(*ip) && (self.home)(ip)) => ips,
+            Ok(ips) if !local && !ips.is_empty() && !ips.iter().any(|ip| forbidden_ip(*ip)) => ips,
+            _ => return refuse(&mut client, format!("{host} does not resolve where it may")),
         };
         let Ok(upstream) = (self.dial)(&ips, port) else {
             return refuse(&mut client, format!("{host} did not answer"));
@@ -247,12 +310,12 @@ Connection: close
         }) else { return };
         // Watch: a block, or the limit, cuts what is open at once
         let watch = std::thread::Builder::new().spawn({
-            let (proxy, conn, host, entry) = (self.clone(), conn.clone(), host.clone(), entry.clone());
+            let (proxy, conn, host, entry, port) = (self.clone(), conn.clone(), host.clone(), entry.clone(), port);
             let (client, upstream) = (client.try_clone(), upstream.try_clone());
             move || {
                 while !conn.done.load(Ordering::Relaxed) {
                     std::thread::sleep(Duration::from_millis(250));
-                    if proxy.blocked_now(&entry, &host) {
+                    if proxy.blocked_now(&entry, &host, port) {
                         if let (Ok(c), Ok(u)) = (&client, &upstream) {
                             let _ = c.shutdown(Shutdown::Both);
                             let _ = u.shutdown(Shutdown::Both);
@@ -344,6 +407,10 @@ mod tests {
 
     /// A proxy whose upstream is a local echo server, whatever name is asked, with the resolver saying `answer`
     fn rig(policy: Policy, answer: &'static str) -> (Arc<Proxy>, Arc<Mutex<Vec<String>>>) {
+        rig_home(policy, answer, false)
+    }
+
+    fn rig_home(policy: Policy, answer: &'static str, home: bool) -> (Arc<Proxy>, Arc<Mutex<Vec<String>>>) {
         let echo = TcpListener::bind("127.0.0.1:0").unwrap();
         let port = echo.local_addr().unwrap().port();
         std::thread::spawn(move || {
@@ -361,11 +428,12 @@ mod tests {
         let told = Arc::new(Mutex::new(Vec::new()));
         let t = told.clone();
         let shared = Arc::new(Mutex::new(policy));
-        let proxy = Proxy::new(
+        let proxy = Proxy::with_home(
             Box::new(move || shared.lock().unwrap().clone()),
             Box::new(move |_, _| Ok(vec![answer.parse().unwrap()])),
             Box::new(move |_, _| TcpStream::connect(("127.0.0.1", port))),
             Box::new(move |h| t.lock().unwrap().push(h.to_string())),
+            Box::new(move |_| home),
         );
         (proxy, told)
     }
@@ -398,6 +466,23 @@ mod tests {
         assert!(ask(&rebinding, "CONNECT a.example.com:443 HTTP/1.1\r\n\r\n").1.starts_with("HTTP/1.1 403"), "DNS pointing at the router");
         let (v6, _) = rig(allowing("a.example.com"), "::ffff:10.0.0.1");
         assert!(ask(&v6, "CONNECT a.example.com:443 HTTP/1.1\r\n\r\n").1.starts_with("HTTP/1.1 403"));
+    }
+
+    #[test]
+    fn a_home_service_only_at_home_and_only_on_the_home_network() {
+        let local = Policy { local: vec![("ha.home.arpa".into(), 8123)], ..Policy::default() };
+        let (home, _) = rig_home(local.clone(), "192.168.1.20", true);
+        assert!(ask(&home, "CONNECT ha.home.arpa:8123 HTTP/1.1\r\n\r\n").1.starts_with("HTTP/1.1 200"));
+        assert!(ask(&home, "CONNECT ha.home.arpa:22 HTTP/1.1\r\n\r\n").1.starts_with("HTTP/1.1 403"), "another port");
+        assert!(ask(&home, "CONNECT router.home.arpa:8123 HTTP/1.1\r\n\r\n").1.starts_with("HTTP/1.1 403"), "another host");
+        let (away, _) = rig_home(local.clone(), "192.168.1.20", false);
+        assert!(ask(&away, "CONNECT ha.home.arpa:8123 HTTP/1.1\r\n\r\n").1.starts_with("HTTP/1.1 403"), "not a network named home");
+        let (public, _) = rig_home(local.clone(), "8.8.8.8", true);
+        assert!(ask(&public, "CONNECT ha.home.arpa:8123 HTTP/1.1\r\n\r\n").1.starts_with("HTTP/1.1 403"), "a name that leads off the home network");
+        let (machine, _) = rig_home(local.clone(), "127.0.0.1", true);
+        assert!(ask(&machine, "CONNECT ha.home.arpa:8123 HTTP/1.1\r\n\r\n").1.starts_with("HTTP/1.1 403"), "the machine itself");
+        let (blocked, _) = rig_home(Policy { blocked_all: true, ..local }, "192.168.1.20", true);
+        assert!(ask(&blocked, "CONNECT ha.home.arpa:8123 HTTP/1.1\r\n\r\n").1.starts_with("HTTP/1.1 403"), "blocked");
     }
 
     #[test]

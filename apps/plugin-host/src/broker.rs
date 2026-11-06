@@ -6,9 +6,16 @@
 //!
 //!   {"op":"state","name":"clock"}              {"ok":true,"data":{...}}      needs state=clock
 //!   {"op":"control","name":"media","arg":"next"}                              needs control=media, and a click on the plugin's own element
-//!   {"op":"notify","title":"...","body":"..."} needs notify, once a minute at most
+//!   {"op":"notify","title":"...","body":"..."} needs notify, once a minute at most; with "action" (one of the manifest's) and
+//!                                              "label", the notice has that button, and pressing it is a click that runs the action
 //!   {"op":"open","url":"https://..."}          needs open, and a click; the shell says the address
 //!   {"op":"clipboard","text":"..."}            needs clipboard-write, and a click; there is no clipboard read
+//!   {"op":"change","entry":"...","value":"..."} needs change=ENTRY, and a click: Control's entry set as the agent's change sets it
+//!                                              (amethystora-agent-tools plugin-change: no terminal, the never list, recorded)
+//!   {"op":"event"}                             needs events=NAME: what started this run, {"name","value"}, or null for a run of the timer
+//!   {"op":"pick"}                              needs pick, and a click: the file a person chose (in a chooser the host shows, or the one
+//!                                              they gave the plugin in Files), as {"ok":true,"data":{"name","size"}} and then exactly
+//!                                              that many bytes. The plugin never sees a path or anything beside the file
 //!   anything refused                           {"ok":false,"why":"..."}
 //!
 //! "A click" is a run the person started from the plugin's own element (an action): a run on the plugin's timer never changes
@@ -44,7 +51,16 @@ pub struct Broker {
     pub clicked: AtomicBool,
     last_notify: Mutex<Option<Instant>>,
     told: Told,
+    /// The file a person gave the plugin in Files' menu for the run in progress, which its `pick` takes without a chooser
+    pub handed: Mutex<Option<std::path::PathBuf>>,
+    /// The news that started the run in progress, if it was news (`events`): {"name", "value"}
+    pub event: Mutex<Option<Value>>,
 }
+
+/// The largest file a plugin is given
+pub const PICK_BYTES: u64 = 8 * 1024 * 1024;
+/// How long the chooser waits for a person: less than a run's 30 seconds
+const PICK_SECONDS: &str = "25";
 
 fn tool(program: &str, args: &[&str]) -> Option<String> {
     let out = Command::new("timeout").arg(TOOL_SECONDS).arg(program).args(args).stdin(Stdio::null()).stderr(Stdio::null()).output().ok()?;
@@ -147,7 +163,7 @@ fn control(name: &str, arg: &str) -> Result<(), String> {
 
 impl Broker {
     pub fn new(env: Arc<Env>, id: &str, told: Told) -> Arc<Broker> {
-        Arc::new(Broker { env, id: id.into(), clicked: AtomicBool::new(false), last_notify: Mutex::new(None), told })
+        Arc::new(Broker { env, id: id.into(), clicked: AtomicBool::new(false), last_notify: Mutex::new(None), told, handed: Mutex::new(None), event: Mutex::new(None) })
     }
 
     /// The permissions it holds now, read again for every request (a revoke applies at once), and whether it is a draft
@@ -160,6 +176,47 @@ impl Broker {
 
     fn name_of(&self) -> String {
         crate::host::load(&self.env, &self.id).map(|l| l.manifest.name).unwrap_or_else(|_| self.id.clone())
+    }
+
+    /// `pick`: the file handed over, or one the person chooses now, read here (a plain file, never past PICK_BYTES). The run's click
+    /// is spent by it, as by an open
+    pub fn pick(&self) -> Result<(String, Vec<u8>), String> {
+        let (perms, draft) = self.held();
+        if draft || !perms.iter().any(|p| p == "pick") {
+            return Err("it was not allowed to ask for a file".into());
+        }
+        if !self.clicked.swap(false, Ordering::Relaxed) {
+            return Err("a file is only asked for after a click on the plugin's own element, once for each click".into());
+        }
+        let path = match self.handed.lock().unwrap().take() {
+            Some(path) => path,
+            None => {
+                let title = format!("{}: choose one file to give it", self.name_of());
+                let out = Command::new("timeout")
+                    .args([PICK_SECONDS, "zenity", "--file-selection", "--title", &title])
+                    .stdin(Stdio::null())
+                    .stderr(Stdio::null())
+                    .output()
+                    .map_err(|_| "no file chooser could be shown".to_string())?;
+                let chosen = String::from_utf8_lossy(&out.stdout).trim_end_matches('\n').to_string();
+                if !out.status.success() || chosen.is_empty() {
+                    return Err("no file was chosen".into());
+                }
+                std::path::PathBuf::from(chosen)
+            }
+        };
+        let file = std::fs::File::open(&path).map_err(|e| format!("the file cannot be read: {e}"))?;
+        let meta = file.metadata().map_err(|e| e.to_string())?;
+        if !meta.is_file() || meta.len() > PICK_BYTES {
+            return Err("only a plain file of at most 8 MiB is given to a plugin".into());
+        }
+        let mut data = Vec::with_capacity(meta.len() as usize);
+        file.take(PICK_BYTES + 1).read_to_end(&mut data).map_err(|e| e.to_string())?;
+        if data.len() as u64 > PICK_BYTES {
+            return Err("only a plain file of at most 8 MiB is given to a plugin".into());
+        }
+        let name = clean(&path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default(), 200);
+        Ok((name, data))
     }
 
     /// One request's answer
@@ -178,7 +235,36 @@ impl Broker {
                 }
                 state(&self.env, name)
             }
-            op @ ("control" | "open" | "clipboard" | "notify") if draft => Err(format!("a draft cannot {op}: it has no permissions until you keep it")),
+            "event" => {
+                if draft {
+                    return Ok(Value::Null);
+                }
+                if !perms.iter().any(|p| p.starts_with("events=")) {
+                    return Err("it was not allowed any news".into());
+                }
+                Ok(self.event.lock().unwrap().clone().unwrap_or(Value::Null))
+            }
+            "change" if !draft => {
+                let (entry, value) = (request["entry"].as_str().unwrap_or(""), request["value"].as_str().unwrap_or(""));
+                let shaped = |t: &str, max: usize| !t.is_empty() && t.len() <= max && t.bytes().all(|b| b.is_ascii_alphanumeric() || b"._:-".contains(&b));
+                if !shaped(entry, 64) || !shaped(value, 64) {
+                    return Err("a change names an entry and one of its values".into());
+                }
+                if !has(&format!("change={entry}")) {
+                    return Err(format!("it was not allowed to change {entry}"));
+                }
+                if !self.clicked.swap(false, Ordering::Relaxed) {
+                    return Err("a change is only made after a click on the plugin's own element, once for each click".into());
+                }
+                let out = Command::new("/usr/libexec/amethystora-agent-tools")
+                    .args(["plugin-change", &self.id, entry, value])
+                    .stdin(Stdio::null())
+                    .output()
+                    .map_err(|_| "the change could not be made".to_string())?;
+                let said = clean(&String::from_utf8_lossy(if out.status.success() { &out.stdout } else { &out.stderr }), 200);
+                if out.status.success() { Ok(Value::String(said)) } else { Err(said) }
+            }
+            op @ ("control" | "open" | "clipboard" | "notify" | "change") if draft => Err(format!("a draft cannot {op}: it has no permissions until you keep it")),
             "control" => {
                 let name = request["name"].as_str().unwrap_or("");
                 if !has(&format!("control={name}")) {
@@ -206,7 +292,41 @@ impl Broker {
                 let name = self.name_of();
                 // GNOME draws a notice's body as markup: what a plugin wrote is text, so its angle brackets and ampersands are escaped
                 let esc = |t: &str| t.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;");
-                let _ = Command::new("notify-send").args(["--app-name", &name, "--", &esc(&format!("{name}: {title}")), &esc(&body)]).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).status();
+                let mut args = vec!["--app-name".to_string(), name.clone()];
+                // One button, which can only name an action of the plugin's own manifest: notify-send waits for the answer on a thread
+                // of its own, and the press reaches the host as a click on the plugin's element would
+                let action = request["action"].as_str().unwrap_or("").to_string();
+                let button = if action.is_empty() {
+                    None
+                } else {
+                    let actions = crate::host::load(&self.env, &self.id).map(|l| l.manifest.actions).unwrap_or_default();
+                    if !actions.contains(&action) {
+                        return Err(format!("{action:?} is not one of the plugin's actions"));
+                    }
+                    let label = text("label", 40);
+                    if label.is_empty() {
+                        return Err("a notice's button has a label".into());
+                    }
+                    args.extend(["--wait".to_string(), format!("--action={action}={}", esc(&label))]);
+                    Some(action)
+                };
+                args.extend(["--".to_string(), esc(&format!("{name}: {title}")), esc(&body)]);
+                let mut command = Command::new("notify-send");
+                command.args(&args).stdin(Stdio::null()).stderr(Stdio::null());
+                match button {
+                    None => {
+                        let _ = command.stdout(Stdio::null()).status();
+                    }
+                    Some(action) => {
+                        let (told, id) = (self.told.clone(), self.id.clone());
+                        let _ = std::thread::Builder::new().spawn(move || {
+                            let Ok(out) = command.stdout(Stdio::piped()).output() else { return };
+                            if String::from_utf8_lossy(&out.stdout).trim() == action {
+                                told(&id, "action", &action);
+                            }
+                        });
+                    }
+                }
                 Ok(Value::Null)
             }
             "open" | "clipboard" => {
@@ -242,8 +362,22 @@ impl Broker {
             return;
         }
         let request: Value = serde_json::from_slice(&line).unwrap_or(Value::Null);
-        let answer = self.handle(&request);
         let mut stream = stream;
+        if request["op"] == "pick" {
+            // The chooser waits for a person, longer than a request's usual five seconds
+            let _ = stream.set_write_timeout(Some(Duration::from_secs(30)));
+            match self.pick() {
+                Ok((name, data)) => {
+                    let _ = stream.write_all(format!("{}\n", json!({"ok": true, "data": {"name": name, "size": data.len()}})).as_bytes());
+                    let _ = stream.write_all(&data);
+                }
+                Err(why) => {
+                    let _ = stream.write_all(format!("{}\n", json!({"ok": false, "why": why})).as_bytes());
+                }
+            }
+            return;
+        }
+        let answer = self.handle(&request);
         let _ = stream.write_all(format!("{answer}\n").as_bytes());
     }
 
@@ -256,18 +390,56 @@ impl Broker {
     }
 }
 
+/// `plugin pick FILE` inside the sandbox: the file a person chose, written to FILE (in /tmp or the plugin's state), and its name printed
+fn pick_into(target: &str) -> i32 {
+    if target.is_empty() {
+        eprintln!("usage: plugin pick FILE (where the chosen file is written, such as /tmp/picked)");
+        return 64;
+    }
+    let socket = std::env::var("PLUGIN_BROKER").unwrap_or_else(|_| "/broker/broker.sock".into());
+    let Ok(mut stream) = UnixStream::connect(&socket) else {
+        eprintln!("plugin: this plugin was given nothing to ask for");
+        return 2;
+    };
+    let _ = stream.set_read_timeout(Some(Duration::from_secs(30)));
+    let _ = stream.write_all(b"{\"op\":\"pick\"}\n");
+    let mut reader = BufReader::new(stream);
+    let mut line = String::new();
+    let _ = reader.read_line(&mut line);
+    let answer: Value = serde_json::from_str(&line).unwrap_or(Value::Null);
+    if answer["ok"] != true {
+        eprintln!("plugin: {}", answer["why"].as_str().unwrap_or("no answer"));
+        return 1;
+    }
+    let size = answer["data"]["size"].as_u64().unwrap_or(0).min(PICK_BYTES);
+    let mut data = Vec::new();
+    if reader.take(size).read_to_end(&mut data).is_err() || data.len() as u64 != size {
+        eprintln!("plugin: the file did not arrive whole");
+        return 1;
+    }
+    if let Err(e) = std::fs::write(target, &data) {
+        eprintln!("plugin: {target}: {e}");
+        return 1;
+    }
+    println!("{}", answer["data"]["name"].as_str().unwrap_or(""));
+    0
+}
+
 /// `plugin ...` inside the sandbox: asks the socket one thing and prints the answer, or says why it was refused
 pub fn client(args: &[String]) -> i32 {
     let Some(op) = args.first().map(String::as_str) else {
-        eprintln!("usage: plugin state NAME | control NAME ARG | notify TITLE [BODY] | open URL | clipboard TEXT");
+        eprintln!("usage: plugin state NAME | control NAME ARG | notify TITLE [BODY [ACTION LABEL]] | open URL | clipboard TEXT | pick FILE | event | change ENTRY VALUE");
         return 64;
     };
     let arg = |n: usize| args.get(n).cloned().unwrap_or_default();
     let request = match op {
         "state" => json!({"op": "state", "name": arg(1)}),
         "control" => json!({"op": "control", "name": arg(1), "arg": arg(2)}),
-        "notify" => json!({"op": "notify", "title": arg(1), "body": arg(2)}),
+        "notify" => json!({"op": "notify", "title": arg(1), "body": arg(2), "action": arg(3), "label": arg(4)}),
         "open" => json!({"op": "open", "url": arg(1)}),
+        "event" => json!({"op": "event"}),
+        "change" => json!({"op": "change", "entry": arg(1), "value": arg(2)}),
+        "pick" => return pick_into(&arg(1)),
         "clipboard" => {
             let mut text = arg(1);
             if text == "-" {

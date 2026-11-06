@@ -147,6 +147,39 @@ fn change_to(cache: &Cache, jobs: &Jobs, entry: &str, value: &str, undoing: Opti
     Ok(said)
 }
 
+/// A plugin's `plugin change ENTRY VALUE` (plans/PLAN-plugins.md, the permissions: `change`), which the plugin host asks only for an
+/// entry the plugin was granted and after a click on the plugin's own element: Control's entry set as the agent's change sets it, held
+/// to the same never list and recorded with its way back, under the plugin's name. An entry that asks something in a terminal is
+/// refused: a plugin cannot answer, and the person did not ask for the question
+pub fn plugin_change(plugin: &str, entry: &str, value: &str) -> Result<String, String> {
+    let cache = Cache::default();
+    let list = read_list(&cache)?;
+    let item = list.find(entry).ok_or_else(|| format!("there is no setting {entry}"))?.clone();
+    let before = item.state.clone();
+    let planned = amethystora_control_core::change(Some(&list), entry, value).map_err(|_| format!("{value} is not one of {entry}'s values now"))?;
+    if planned.terminal {
+        return Err(format!("{entry} asks something in a terminal, which a plugin cannot answer"));
+    }
+    if let Some(why) = never::refusal(&planned.argv) {
+        return Err(format!("refused: {why}"));
+    }
+    let undo = before
+        .as_deref()
+        .filter(|before| *before != value)
+        .filter(|before| item.kind == "range" || item.choices.iter().any(|choice| choice.value == *before))
+        .map(|before| json!({"tool": "change", "entry": entry, "value": before}));
+    let id = history::new_id();
+    let mut record = history::started(&id, "change", json!({"entry": entry, "value": value, "before": before, "argv": planned.argv, "by": format!("plugin {plugin}")}));
+    if let Some(undo) = &undo {
+        record["undo"] = undo.clone();
+    }
+    let argv: Vec<&str> = planned.argv.iter().map(String::as_str).collect();
+    let output = run::run(&argv, Duration::from_secs(120));
+    record["result"] = json!(if output.ok() { "ok" } else { "failed" });
+    history::record(&record)?;
+    if output.ok() { Ok(format!("{} is {value}", item.title)) } else { Err(format!("{} was not set", item.title)) }
+}
+
 // --- software ---------------------------------------------------------------------------------------------
 
 fn flatpak_id(id: &str) -> bool {
