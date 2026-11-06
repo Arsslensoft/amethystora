@@ -71,10 +71,13 @@ pub fn answer(server: &Server, policy: &dyn Fn() -> Policy, line: &str) -> Optio
             if !server.tools(crate::policy::Level::Act).iter().any(|tool| tool["name"] == name) {
                 return Some(error(id, -32602, &format!("Unknown tool: {name}")));
             }
+            // The live pill says what is being read, by the tool's own name (R7-13), and takes it back when it is done
+            crate::history::working(name, args.get("topic").and_then(Value::as_str));
             let (text, is_error) = match server.call_as(&policy, name, &args) {
                 Ok(text) => (text, false),
                 Err(text) => (text, true),
             };
+            crate::history::worked();
             result(id, json!({"content": [{"type": "text", "text": text}], "isError": is_error}))
         }
         _ => error(id, -32601, &format!("Method not found: {method}")),

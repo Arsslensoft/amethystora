@@ -355,6 +355,25 @@ export class Pill {
         this._activities?.update('agent');
     }
 
+    // The agent's own question and the questions its tools ask (modules/agent/ask.js), or null
+    setAsk(activity) {
+        if (this._activities && this._activities.get('ask') !== activity)
+            this._activities.set('ask', activity);
+    }
+
+    askChanged() {
+        this._activities?.update('ask');
+    }
+
+    // Whether there is a pill with a card to ask in
+    canAsk() {
+        return !!this._clock;
+    }
+
+    openCard(id) {
+        this._clock?.openCard(id);
+    }
+
     // A flat battery about to close the computer (modules/power/flat.js), or null
     setFlat(activity) {
         if (this._activities && this._activities.get('flat') !== activity)

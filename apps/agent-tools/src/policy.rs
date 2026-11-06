@@ -253,8 +253,15 @@ pub struct Policy {
 }
 
 impl Policy {
+    /// The policy now. A server started with AMETHYSTORA_READ_ONLY=1 (an agent asked a question in the pill, which changes nothing:
+    /// `amethystora-agent ask-here`) never has the tools that change things, whatever the account turned on: the variable can only
+    /// lower the level, so a program that sets it gains nothing.
     pub fn current() -> Policy {
-        Policy::load(Path::new(CONF), &config_dir(), account())
+        let mut policy = Policy::load(Path::new(CONF), &config_dir(), account());
+        if std::env::var_os("AMETHYSTORA_READ_ONLY").is_some_and(|value| value == "1") {
+            policy.level2 = false;
+        }
+        policy
     }
 
     pub fn load(conf: &Path, config: &Path, account: String) -> Policy {

@@ -54,3 +54,30 @@
   background-color: rgba({{ foreground_rgb }}, 0.08);
   border-color: rgba({{ foreground_rgb }}, 0.14);
 }
+
+/* Ask right there and Yes or no (modules/agent/ask.js): the field and the exact command on a darker well, the answer on the
+   card's own tint */
+#uiGroup .amethystora-pill-card .amethystora-agent-field {
+  background-color: rgba({{ foreground_rgb }}, 0.08);
+  border-color: rgba({{ foreground_rgb }}, 0.16);
+  color: {{ foreground }};
+  caret-color: {{ foreground }};
+  selection-background-color: {{ accent_bg }};
+  selected-color: {{ accent_fg }};
+}
+#uiGroup .amethystora-pill-card .amethystora-agent-field StLabel.hint-text { color: rgba({{ foreground_rgb }}, 0.55); }
+#uiGroup .amethystora-pill-card .amethystora-agent-command {
+  background-color: rgba({{ background_rgb }}, 0.5);
+  color: rgba({{ foreground_rgb }}, 0.9);
+}
+#uiGroup .amethystora-pill-card .amethystora-agent-answer {
+  background-color: rgba({{ foreground_rgb }}, 0.06);
+  color: {{ foreground }};
+}
+#uiGroup .amethystora-pill-card .amethystora-agent-ask-part .amethystora-agent-card-title,
+#uiGroup .amethystora-pill-card .amethystora-agent-question .amethystora-agent-card-title { color: {{ foreground }}; }
+#uiGroup .amethystora-pill-card .amethystora-agent-ask-part .amethystora-pill-button:not(.amethystora-pill-button-primary),
+#uiGroup .amethystora-pill-card .amethystora-agent-question .amethystora-pill-button:not(.amethystora-pill-button-primary) {
+  background-color: rgba({{ foreground_rgb }}, 0.08);
+  border-color: rgba({{ foreground_rgb }}, 0.14);
+}

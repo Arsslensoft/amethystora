@@ -15,5 +15,20 @@
       <summary>The agent's changes in the live pill</summary>
       <description>While the agent may make changes and runs, the live pill lists each change its tools make, each with Undo, and Stop.</description>
     </key>
+    <key name="ask-here" type="as">
+      <default><![CDATA[['<Super>slash']]]></default>
+      <summary>Ask the agent in the pill</summary>
+      <description>Opens a field in the live pill's card: the chosen agent answers there, with Amethystora's tools that only read and no terminal. Only while the agentic features are on, and only for an agent that has a mode that changes nothing. An empty list turns it off. Super+Shift+Space is the next keyboard layout, so this is Super+/.</description>
+    </key>
+    <key name="ask-questions" type="b">
+      <default>true</default>
+      <summary>The agent's questions in the pill</summary>
+      <description>The agent's tools ask before they run a command for you: the question comes as a card in the live pill, with the exact command, Allow and Not now. Off, they ask in a terminal as before. A root command's password is asked by sudo either way.</description>
+    </key>
+    <key name="doing" type="b">
+      <default>true</default>
+      <summary>One line in the pill about what the agent is reading</summary>
+      <description>While the agent's tools read (search, read, state, logs, history), the live pill says which one in a few words, with a tick when it is done. Only the tool's name is shown, never what it read.</description>
+    </key>
   </schema>
 </schemalist>

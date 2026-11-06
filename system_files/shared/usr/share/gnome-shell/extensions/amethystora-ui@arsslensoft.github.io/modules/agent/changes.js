@@ -20,6 +20,7 @@ import * as Util from 'resource:///org/gnome/shell/misc/util.js';
 
 import {buttonRow, cardButton, retire} from '../pill/clock.js';
 import {plain, timeOfDay} from '../pill/text.js';
+import {lingerLeft, parse, phrase, pick, rows} from './doingmodel.js';
 import {output} from './status.js';
 
 const AGENT = 'amethystora-agent';
@@ -39,6 +40,7 @@ const TICKS = 100;
 
 Gio._promisify(Gio.File.prototype, 'query_info_async');
 Gio._promisify(Gio.File.prototype, 'read_async');
+Gio._promisify(Gio.File.prototype, 'load_contents_async');
 Gio._promisify(Gio.InputStream.prototype, 'read_bytes_async');
 
 // A small file the kernel makes up when asked (/proc), read at once: it never waits for a disk
@@ -72,11 +74,14 @@ function words(argv) {
 }
 
 export class AgentChanges {
-    // pill: the pill module (setAgent, agentChanged); agentTitle(): the chosen agent's name; gicon: the agent's mark
-    constructor(pill, agentTitle, gicon) {
+    // pill: the pill module (setAgent, agentChanged); agentTitle(): the chosen agent's name; gicon: the agent's mark;
+    // what: {changes, doing}, which of the two it shows: the changes its tools make (level 2) and the one line saying
+    // which read tool runs (R7-13, level 1 as well)
+    constructor(pill, agentTitle, gicon, what = {changes: true, doing: false}) {
         this._pill = pill;
         this._agentTitle = agentTitle;
         this._gicon = gicon;
+        this.what = what;
         this.id = 'agent';
         this.plate = 'agent';
     }
@@ -92,6 +97,8 @@ export class AgentChanges {
         this._offset = 0;
         this._pending = new Uint8Array(0);
         this._titles = null;
+        this._notes = new Map();
+        this._picked = null;
         this._cancellable = new Gio.Cancellable();
         // Whose processes count as this account's, and when the machine started (a process's start is counted from it)
         this._uid = Gio.File.new_for_path('/proc/self').query_info('unix::uid', Gio.FileQueryInfoFlags.NONE, null)
@@ -106,14 +113,18 @@ export class AgentChanges {
         this._log = Gio.File.new_for_path(GLib.build_filenamev([state, 'actions.jsonl']));
         this._sessions = Gio.File.new_for_path(sessions);
         try {
-            this._logMonitor = this._log.monitor_file(Gio.FileMonitorFlags.NONE, this._cancellable);
-            this._logMonitor.connect('changed', () => this._readLog());
+            // The record of changes is read only for what shows changes
+            if (this.what.changes) {
+                this._logMonitor = this._log.monitor_file(Gio.FileMonitorFlags.NONE, this._cancellable);
+                this._logMonitor.connect('changed', () => this._readLog());
+            }
             this._sessionMonitor = this._sessions.monitor_directory(Gio.FileMonitorFlags.NONE, this._cancellable);
-            this._sessionMonitor.connect('changed', () => this._readSessions());
+            this._sessionMonitor.connect('changed', () => this._sessionsChanged());
         } catch (e) {
             console.warn(`Amethystora UI: the agent's changes cannot be watched: ${e.message}`);
         }
-        this._readLog();
+        if (this.what.changes)
+            this._readLog();
         this._readSessions();
     }
 
@@ -130,6 +141,13 @@ export class AgentChanges {
         if (this._recheck)
             GLib.source_remove(this._recheck);
         this._recheck = 0;
+        if (this._queued)
+            GLib.source_remove(this._queued);
+        this._queued = 0;
+        if (this._lingerTimer)
+            GLib.source_remove(this._lingerTimer);
+        this._lingerTimer = 0;
+        this._breathe(false);
         this._show(false);
         this._records = null;
     }
@@ -221,6 +239,56 @@ export class AgentChanges {
         }
     }
 
+    // A tool call writes the session's file twice (and its new name once each): the folder is read once for the burst
+    _sessionsChanged() {
+        if (this._queued || !this._records)
+            return;
+        this._queued = GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
+            this._queued = 0;
+            this._readSessions();
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    // What each running server says it is doing (R7-13): its file's `now` and `recent`, read off the shell's thread. Only the
+    // tools' own names are taken from it (doingmodel.js)
+    async _readNotes(pids) {
+        if (!this.what.doing)
+            return;
+        const cancellable = this._cancellable;
+        const serial = this._noteSerial = (this._noteSerial ?? 0) + 1;
+        const notes = new Map();
+        await Promise.all(pids.map(async pid => {
+            try {
+                const [bytes] = await this._sessions.get_child(pid).load_contents_async(cancellable);
+                notes.set(pid, parse(decoder.decode(bytes)));
+            } catch {}
+        }));
+        if (!this._records || serial !== this._noteSerial)
+            return;
+        this._notes = notes;
+        this._noted();
+    }
+
+    // The line to say now, and the one timer that ends a finished step's tick
+    _noted() {
+        const at = Math.floor(Date.now() / 1000);
+        this._picked = pick([...this._notes.values()], at);
+        if (this._lingerTimer)
+            GLib.source_remove(this._lingerTimer);
+        this._lingerTimer = 0;
+        const left = lingerLeft(this._picked, at);
+        if (left > 0) {
+            this._lingerTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, Math.ceil(left * 1000) + 50, () => {
+                this._lingerTimer = 0;
+                this._noted();
+                return GLib.SOURCE_REMOVE;
+            });
+        }
+        this._sync();
+        this.onNoted?.();
+    }
+
     // The tool servers running now: each named by a file in the runtime folder (an in-memory folder, read at once), and
     // still the live process it names. A server that ended by a signal it could not answer leaves its name behind; it
     // is found gone here, which runs at every change of the folder or the record and when the card opens
@@ -238,6 +306,11 @@ export class AgentChanges {
         } catch {}
         const before = this._servers.size;
         this._servers = servers;
+        this._readNotes([...servers.keys()]);
+        if (servers.size === 0 && this._notes.size > 0) {
+            this._notes = new Map();
+            this._noted();
+        }
         if (servers.size > 0) {
             const start = Math.min(...servers.values());
             if (before === 0 || start < this._sessionStart || this._finished)
@@ -270,7 +343,7 @@ export class AgentChanges {
 
     // This session's changes, as their last records say, oldest first: not the undoing of another, and not reads
     get changes() {
-        if (!this._sessionStart || !this._records)
+        if (!this.what.changes || !this._sessionStart || !this._records)
             return [];
         return this._order.map(id => this._records.get(id))
             .filter(r => r && !r.of && ['change', 'software', 'run'].includes(r.tool) && Number(r.time) >= this._sessionStart);
@@ -317,7 +390,22 @@ export class AgentChanges {
         this._fillCard();
     }
 
+    // 'ask' and 'done' about the changes, 'work' while the session has made some, and 'doing': one of the read tools runs, or
+    // did a moment ago (R7-13)
     get state() {
+        const base = this._changesState();
+        // While the pill answers a question (agent/ask.js) its own activity says what is read: this one keeps to the changes
+        if (this._picked && this.what.doing && !this.hush && (!base || (base === 'work' && this._picked.running)))
+            return 'doing';
+        return base;
+    }
+
+    // The words for the read tool that runs now, or null: the pill's Ask right there says them in its own line
+    get doingText() {
+        return this._picked?.running ? `${phrase(this._picked.step, true, _)}…` : null;
+    }
+
+    _changesState() {
         if (this.changes.length === 0)
             return null;
         if (this._servers.size === 0)
@@ -334,10 +422,11 @@ export class AgentChanges {
         this.plate = {ask: 'agent-ask', done: 'agent-done'}[state] ?? 'agent';
         this._show(state !== null);
         if (state !== null) {
-            if (!this._titles)
+            if (!this._titles && this.what.changes)
                 this._loadTitles();
             if (this._label)
                 this._label.text = this.text;
+            this._mark();
             this._pill?.agentChanged?.();
             this._fillCard();
         }
@@ -353,8 +442,10 @@ export class AgentChanges {
             if (this._content)
                 this._pill?.clock?.forget(this._content);
             retire(this._content);
+            this._breathe(false);
             this._content = null;
             this._label = null;
+            this._icon = null;
             this._cardBody = null;
         }
     }
@@ -367,6 +458,8 @@ export class AgentChanges {
         }
         if (state === 'ask')
             return this.asking?.root ? _('Agent asks for root') : _('Agent asks you');
+        if (state === 'doing' && this._picked)
+            return this._picked.running ? `${phrase(this._picked.step, true, _)}…` : phrase(this._picked.step, false, _);
         const last = this.changes.at(-1);
         if (last?.tool === 'software' && last.result === 'running')
             return last.action === 'remove' ? _('Agent · removing an app') : _('Agent · installing an app');
@@ -379,6 +472,36 @@ export class AgentChanges {
         return this.text;
     }
 
+    // The mark: a tick once a step is done, the agent's own mark otherwise, and breathing while a tool runs (R7-13). The
+    // breathing is one slow fade of the mark, started only while a step runs and only with animations on
+    _mark() {
+        const icon = this._icon;
+        if (!icon)
+            return;
+        const done = this.state === 'doing' && this._picked && !this._picked.running;
+        if (done)
+            icon.icon_name = 'object-select-symbolic';
+        else
+            icon.gicon = this._gicon;
+        this._breathe(this.state === 'doing' && !done);
+    }
+
+    _breathe(on) {
+        const icon = this._icon;
+        if (!on || !icon) {
+            if (this._breathing && icon) {
+                icon.remove_transition('opacity');
+                icon.opacity = 255;
+            }
+            this._breathing = false;
+            return;
+        }
+        if (this._breathing || !St.Settings.get().enable_animations || this._pill?._reduce?.())
+            return;
+        this._breathing = true;
+        icon.ease({opacity: 110, duration: 1100, mode: Clutter.AnimationMode.EASE_IN_OUT_SINE, autoReverse: true, repeatCount: -1});
+    }
+
     get row() {
         return {icon: this._gicon, text: this.text};
     }
@@ -386,10 +509,12 @@ export class AgentChanges {
     pill() {
         if (!this._content) {
             this._content = new St.BoxLayout({style_class: 'amethystora-pill-content amethystora-agent-pill'});
-            this._content.add_child(new St.Icon({gicon: this._gicon, icon_size: 13, y_align: Clutter.ActorAlign.CENTER}));
+            this._icon = new St.Icon({gicon: this._gicon, icon_size: 13, y_align: Clutter.ActorAlign.CENTER});
+            this._content.add_child(this._icon);
             this._label = new St.Label({text: this.text, y_align: Clutter.ActorAlign.CENTER});
             this._label.clutter_text.use_markup = false;
             this._content.add_child(this._label);
+            this._mark();
         }
         return this._content;
     }
@@ -422,10 +547,13 @@ export class AgentChanges {
         const head = new St.BoxLayout({style_class: 'amethystora-agent-card-head'});
         const title = state === 'done'
             ? _('Finished at %s').format(timeOfDay(new Date(this._finished * 1000)))
-            : state === 'ask' ? _('Waiting for you') : _('Changes so far');
+            : state === 'ask' ? _('Waiting for you') : state === 'doing' ? _('What it is doing') : _('Changes so far');
         head.add_child(new St.Label({style_class: 'amethystora-agent-card-title', text: title, x_expand: true, y_align: Clutter.ActorAlign.END}));
         head.add_child(new St.Label({style_class: 'amethystora-agent-card-who', text: this._agentTitle(), y_align: Clutter.ActorAlign.END}));
         body.add_child(head);
+
+        if (state === 'doing')
+            this._fillSteps(body);
 
         const asking = this.asking;
         for (const record of this.changes.filter(r => r !== asking).slice(-ROWS))
@@ -451,6 +579,23 @@ export class AgentChanges {
         });
         row.add_child(history);
         body.add_child(row);
+    }
+
+    // The steps of the read tools, oldest first: what is done says Done, what runs says Now (R7-13)
+    _fillSteps(body) {
+        const {done, now} = rows([...this._notes.values()], Math.floor(Date.now() / 1000));
+        for (const [item, running] of [...done.map(d => [d, false]), ...(now ? [[now, true]] : [])]) {
+            const row = new St.BoxLayout({style_class: 'amethystora-agent-act', x_expand: true});
+            const column = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
+            const what = new St.Label({style_class: 'amethystora-agent-act-what', text: phrase(item, running, _)});
+            what.clutter_text.use_markup = false;
+            what.clutter_text.ellipsize = Pango.EllipsizeMode.END;
+            column.add_child(what);
+            row.add_child(column);
+            row.add_child(new St.Label({style_class: 'amethystora-agent-act-state', text: running ? _('Now') : _('Done'),
+                y_align: Clutter.ActorAlign.CENTER}));
+            body.add_child(row);
+        }
     }
 
     _canUndo(record) {
@@ -609,6 +754,7 @@ export class AgentChanges {
     get status() {
         return {
             shown: !!this._shown, state: this.state, text: this._shown ? this.text : '', servers: this._servers?.size ?? 0,
+            doing: this._picked ? {running: this._picked.running, tool: this._picked.step.tool, topic: this._picked.step.topic} : null,
             changes: this.changes.map(r => ({id: r.id, what: this._what(r), undo: this._canUndo(r), undone: this._undone(r),
                 said: this._said.get(r.id) ?? null})),
             asking: this.asking?.id ?? null, show: this.asking?.result === 'opened' && !!this._terminal(), plate: this.plate,

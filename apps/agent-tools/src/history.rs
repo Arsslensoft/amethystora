@@ -177,15 +177,68 @@ extern "C" fn session_ended(signal: libc::c_int) {
     unsafe { libc::_exit(128 + signal) };
 }
 
+/// What this server is doing, for the live pill's one line (R7-13): the read tool it runs and the topic of `state`, both from
+/// fixed lists and never an argument, and the last few it finished. Written into the session's own file, in the account's
+/// runtime folder (memory), by a rename, so that the pill's file monitor never reads half of it.
+struct Notes {
+    path: PathBuf,
+    started: u64,
+    now: Option<Value>,
+    recent: Vec<Value>,
+}
+
+static NOTES: Mutex<Option<Notes>> = Mutex::new(None);
+/// How many finished steps the file keeps
+const RECENT: usize = 3;
+
+fn write_notes(notes: &Notes) -> std::io::Result<()> {
+    let body = json!({"pid": std::process::id(), "started": notes.started, "now": notes.now, "recent": notes.recent});
+    let new = notes.path.with_extension("new");
+    let mut file = std::fs::OpenOptions::new().create(true).truncate(true).write(true).mode(0o600).open(&new)?;
+    writeln!(file, "{body}")?;
+    std::fs::rename(&new, &notes.path)
+}
+
+fn step(tool: &str, topic: Option<&str>) -> Value {
+    json!({"tool": tool, "topic": topic, "at": now()})
+}
+
+/// A read tool starts: only the names the tools themselves have, and `state`'s topic from its own list
+pub fn working(tool: &str, topic: Option<&str>) {
+    if !crate::server::READ_ONLY.contains(&tool) {
+        return;
+    }
+    let topic = topic.filter(|topic| tool == "state" && crate::state::TOPICS.contains(topic));
+    if let Some(notes) = NOTES.lock().expect("not poisoned").as_mut() {
+        notes.now = Some(step(tool, topic));
+        let _ = write_notes(notes);
+    }
+}
+
+/// The tool that was running has finished, or failed
+pub fn worked() {
+    if let Some(notes) = NOTES.lock().expect("not poisoned").as_mut() {
+        if let Some(done) = notes.now.take() {
+            notes.recent.push(done);
+            if notes.recent.len() > RECENT {
+                notes.recent.remove(0);
+            }
+        }
+        let _ = write_notes(notes);
+    }
+}
+
 impl Session {
     pub fn start() -> Session {
         let dir = sessions_dir();
         let path = dir.join(std::process::id().to_string());
+        let started = now();
         let written = std::fs::DirBuilder::new().recursive(true).mode(0o700).create(&dir).and_then(|_| {
             let mut file = std::fs::OpenOptions::new().create(true).truncate(true).write(true).mode(0o600).open(&path)?;
-            writeln!(file, "{}", json!({"pid": std::process::id(), "started": now()}))
+            writeln!(file, "{}", json!({"pid": std::process::id(), "started": started, "now": null, "recent": []}))
         });
         if written.is_ok() {
+            *NOTES.lock().expect("not poisoned") = Some(Notes { path: path.clone(), started, now: None, recent: Vec::new() });
             if let Ok(name) = std::ffi::CString::new(path.as_os_str().as_encoded_bytes()) {
                 let _ = SESSION_FILE.set(name);
                 for signal in [libc::SIGTERM, libc::SIGHUP, libc::SIGINT] {
@@ -200,7 +253,9 @@ impl Session {
 impl Drop for Session {
     fn drop(&mut self) {
         if let Some(path) = &self.0 {
+            *NOTES.lock().expect("not poisoned") = None;
             let _ = std::fs::remove_file(path);
+            let _ = std::fs::remove_file(path.with_extension("new"));
         }
     }
 }
@@ -234,6 +289,38 @@ mod tests {
         assert!(line(&running).ends_with("undo of ef56 -> running"));
         running["server"] = json!(u32::MAX);
         assert!(line(&running).ends_with("undo of ef56 -> did not finish"));
+    }
+
+    #[test]
+    fn the_session_file_says_which_read_tool_runs() {
+        let dir = std::env::temp_dir().join(format!("amethystora-notes-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("4242");
+        *NOTES.lock().unwrap() = Some(Notes { path: path.clone(), started: 7, now: None, recent: Vec::new() });
+        let read = || serde_json::from_str::<Value>(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        // A topic outside the list, and a tool that changes things, are never written: only fixed names are
+        working("state", Some("drivers; rm"));
+        assert_eq!(read()["now"]["tool"], "state");
+        assert_eq!(read()["now"]["topic"], Value::Null);
+        working("state", Some("updates"));
+        assert_eq!(read()["now"]["topic"], "updates");
+        worked();
+        assert_eq!(read()["now"], Value::Null);
+        assert_eq!(read()["recent"][0]["topic"], "updates");
+        working("software", None);
+        assert_eq!(read()["now"], Value::Null);
+        working("search", Some("updates"));
+        assert_eq!(read()["now"]["topic"], Value::Null);
+        for _ in 0..5 {
+            worked();
+            working("read", None);
+        }
+        worked();
+        assert_eq!(read()["recent"].as_array().unwrap().len(), RECENT);
+        // Never anything of what was asked for or read
+        assert!(!read().to_string().contains("rm"));
+        *NOTES.lock().unwrap() = None;
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]
