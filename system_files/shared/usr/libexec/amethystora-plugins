@@ -195,6 +195,8 @@ cmd_remove() {
     pkexec "${ROOT}" remove "$1" >/dev/null
     units
     rm -rf -- "${STATE:?}/$1"
+    # What it was given: its settings, and its key in the Vault, so that nothing sealed under it can be read again
+    "${HOST}" forget "$1" || true
     export id="$1"
     eval_gettext "\${id} was removed, with what it kept."
     echo
@@ -530,6 +532,7 @@ cmd_remove_agent_made() {
             "${HOST}" disable "${id}" || true
             pkexec "${ROOT}" remove "${id}" >/dev/null || true
             rm -rf -- "${STATE:?}/${id}"
+            "${HOST}" forget "${id}" || true
         fi
     done <<<"${ids}"
     units

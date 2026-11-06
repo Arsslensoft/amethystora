@@ -88,10 +88,15 @@ pub fn set(env: &Env, id: &str, name: &str, value: &str, secret: bool) -> Result
     }
 }
 
-/// Takes the settings away with the plugin (and the key's data, which nothing can read without the file)
+/// Takes the settings away with the plugin: the files, and the plugin's key in the Vault (best effort: a closed Vault keeps it for the next time, and
+/// without the file nothing is left to read with it)
 pub fn forget(env: &Env, id: &str) {
+    let had_secrets = sealed_file(env, id).exists();
     let _ = std::fs::remove_file(sealed_file(env, id));
     let _ = std::fs::remove_file(plain_file(env, id));
+    if had_secrets {
+        let _ = amethystora_vault_client::forget_at(&env.vault_socket, &purpose(id));
+    }
 }
 
 #[cfg(test)]
@@ -103,6 +108,72 @@ mod tests {
         let (a, b) = (purpose("dev.example.a"), purpose("dev.example.b"));
         assert!(a.len() <= 40 && a.bytes().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == b'-'));
         assert_ne!(a, b);
+    }
+
+    /// A Vault that seals by wrapping and opens by unwrapping, over the same socket protocol (apps/vault-client): enough to see what is sealed and where
+    fn stand_in_vault(socket: &std::path::Path) -> std::thread::JoinHandle<()> {
+        use base64::Engine;
+        use std::io::{BufRead, BufReader, Write};
+        let listener = std::os::unix::net::UnixListener::bind(socket).unwrap();
+        std::thread::spawn(move || {
+            let engine = base64::engine::general_purpose::STANDARD;
+            // Seal and open, a few times; the test ends the thread by connecting once more with nothing
+            for stream in listener.incoming().flatten().take(6) {
+                let mut line = String::new();
+                if BufReader::new(stream.try_clone().unwrap()).read_line(&mut line).unwrap_or(0) == 0 {
+                    break;
+                }
+                let request: serde_json::Value = serde_json::from_str(&line).unwrap();
+                let data = engine.decode(request["data"].as_str().unwrap_or("")).unwrap_or_default();
+                let out: Vec<u8> = match request["op"].as_str() {
+                    Some("seal") => {
+                        let mut sealed = b"AVs1:".to_vec();
+                        sealed.extend_from_slice(request["purpose"].as_str().unwrap().as_bytes());
+                        sealed.push(b':');
+                        sealed.extend(data.iter().map(|b| b ^ 0x5a));
+                        sealed
+                    }
+                    _ => data.splitn(3, |b| *b == b':').nth(2).unwrap_or_default().iter().map(|b| b ^ 0x5a).collect(),
+                };
+                (&stream).write_all(format!("{}\n", serde_json::json!({"ok": true, "data": engine.encode(out)})).as_bytes()).unwrap();
+            }
+        })
+    }
+
+    #[test]
+    fn a_secret_goes_into_the_vault_and_nowhere_in_the_clear_and_comes_back_for_the_pipe() {
+        let dir = std::env::temp_dir().join(format!("amethystora-secrets-vault-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let env = crate::host::Env {
+            store: crate::store::Store { root: dir.clone(), shipped: dir.join("s") },
+            uid: 1000,
+            home: dir.clone(),
+            runtime: dir.join("run"),
+            state_root: dir.join("state"),
+            conf_path: dir.join("c"),
+            seccomp: dir.join("b"),
+            drafts_root: dir.join("d"),
+            vault_socket: dir.join("vault.sock"),
+        };
+        let vault = stand_in_vault(&env.vault_socket);
+        set(&env, "dev.example.t", "token", "CANARY-TOKEN-1234", true).unwrap();
+        set(&env, "dev.example.t", "city", "Lyon", false).unwrap();
+        assert!(has_secrets(&env, "dev.example.t"));
+        // Nothing of the secret is a file in the clear, and the plain setting is only the plain one
+        for entry in std::fs::read_dir(&env.state_root).unwrap().flatten() {
+            let bytes = std::fs::read(entry.path()).unwrap();
+            assert!(!String::from_utf8_lossy(&bytes).contains("CANARY"), "{}", entry.path().display());
+        }
+        assert!(!std::fs::read_to_string(dir.join("state/dev.example.t.settings.json")).unwrap().contains("token"));
+        // What the pipe is given: both, as one object
+        let all = all(&env, "dev.example.t").unwrap();
+        assert_eq!((all["token"].as_str(), all["city"].as_str()), ("CANARY-TOKEN-1234", "Lyon"));
+        // The sealed file is 0600
+        use std::os::unix::fs::MetadataExt;
+        assert_eq!(std::fs::metadata(dir.join("state/dev.example.t.secrets")).unwrap().mode() & 0o777, 0o600);
+        drop(vault);
+        std::fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]

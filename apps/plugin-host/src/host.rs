@@ -27,6 +27,9 @@ use crate::files;
 
 pub const RUN_LIMIT: Duration = Duration::from_secs(30);
 pub const MIN_GAP: Duration = Duration::from_secs(5);
+/// A timer that fires every five seconds counts from when each run started, a few milliseconds after its tick: without this the timer of a
+/// plugin with `interval: 5` would be refused every other time
+const GAP_SLACK: Duration = Duration::from_millis(250);
 /// What a plugin's state folder may hold before it stops running
 pub const STATE_LIMIT: u64 = 8 << 20;
 
@@ -80,6 +83,7 @@ impl Env {
                 env.store = Store { root: dir.join("store-root"), shipped: dir.join("shipped") };
                 env.seccomp = dir.join("seccomp.bpf");
                 env.conf_path = dir.join("plugins.conf");
+                env.vault_socket = dir.join("vault.sock");
             }
         }
         Ok(env)
@@ -361,7 +365,7 @@ impl Runner {
         {
             let mut last = self.last.lock().unwrap();
             // A person's click is not made to wait for the timer's gap; a flood of them is the update rule's (service.rs)
-            if action.is_none() && last.get(id).is_some_and(|t| t.elapsed() < MIN_GAP) {
+            if action.is_none() && last.get(id).is_some_and(|t| t.elapsed() + GAP_SLACK < MIN_GAP) {
                 return Err("it ran a moment ago: a plugin runs at most once in five seconds".into());
             }
             last.insert(id.to_string(), Instant::now());

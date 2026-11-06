@@ -210,6 +210,7 @@ name = "amethystora-plugin-host"
 version = "1.0.0"
 dependencies = [
  "amethystora-vault-client",
+ "base64",
  "futures-channel",
  "futures-util",
  "gio",

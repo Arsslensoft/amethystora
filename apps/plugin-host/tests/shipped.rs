@@ -63,7 +63,12 @@ fn every_example_passes_the_check_and_has_a_sample_the_shell_could_draw() {
 fn write_grants_for_a_trial() {
     let Some(file) = std::env::var_os("AMETHYSTORA_PLUGIN_TEST_GRANTS") else { return };
     let mut plugins = serde_json::Map::new();
-    for folder in folders("plugins") {
+    let mut all = folders("plugins");
+    // More folders to give grants (a plugin of the trial's own), in AMETHYSTORA_PLUGIN_TEST_SHIPPED
+    if let Some(extra) = std::env::var_os("AMETHYSTORA_PLUGIN_TEST_SHIPPED") {
+        all.extend(std::fs::read_dir(extra).unwrap().flatten().map(|e| e.path()).filter(|p| p.is_dir()));
+    }
+    for folder in all {
         let manifest = Manifest::parse_with(&std::fs::read_to_string(folder.join("manifest.json")).unwrap(), true).unwrap();
         let entries = amethystora_plugin_host::tree::read_dir(&folder).unwrap();
         let perms: Vec<String> = manifest.permissions().into_iter().collect();

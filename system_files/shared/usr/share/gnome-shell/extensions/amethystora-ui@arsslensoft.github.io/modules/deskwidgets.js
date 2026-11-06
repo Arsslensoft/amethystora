@@ -72,26 +72,27 @@ class Card {
         const out = this.output;
         const colour = this._module.palette[plugin.paused ? 'color3' : CLASS_COLORS[out?.class]] ?? null;
         this.actor.destroy_all_children();
-        this.actor.visible = Boolean(out) && !out.hidden;
-        if (out) {
-            const text = out.lines.slice(0, MOST_LINES);
-            const rows = plugin.draft ? [`${_('Draft')}`, ...text] : text;
-            if (rows.length === 0)
-                rows.push(plugin.name);
-            rows.forEach((line, i) => {
-                const label = textLabel(line, i === 0 ? 'amethystora-deskwidgets-title' : 'amethystora-deskwidgets-line');
-                if (colour && i === rows.length - 1)
-                    label.style = `color: ${colour};`;
-                if (i === 0 && out.icon) {
-                    const row = new St.BoxLayout({style_class: 'amethystora-deskwidgets-head'});
-                    row.add_child(new St.Icon({gicon: new Gio.ThemedIcon({name: out.icon}), icon_size: 16, y_align: Clutter.ActorAlign.CENTER}));
-                    row.add_child(label);
-                    this.actor.add_child(row);
-                } else {
-                    this.actor.add_child(label);
-                }
-            });
-        }
+        // A plugin that failed and has nothing to show says so, as the widgets' warning card did
+        const failed = !out && plugin.error !== '';
+        this.actor.visible = failed || (Boolean(out) && !out.hidden);
+        const rows = failed ? [plugin.name, plugin.error] : out ? (plugin.draft ? [_('Draft'), ...out.lines.slice(0, MOST_LINES)] : out.lines.slice(0, MOST_LINES)) : [];
+        if (this.actor.visible && rows.length === 0)
+            rows.push(plugin.name);
+        const warn = failed ? this._module.palette.color3 ?? null : null;
+        rows.forEach((line, i) => {
+            const label = textLabel(line, i === 0 ? 'amethystora-deskwidgets-title' : 'amethystora-deskwidgets-line');
+            if ((colour || warn) && i === rows.length - 1)
+                label.style = `color: ${warn ?? colour};`;
+            const symbol = failed ? 'dialog-warning-symbolic' : out?.icon;
+            if (i === 0 && symbol) {
+                const row = new St.BoxLayout({style_class: 'amethystora-deskwidgets-head'});
+                row.add_child(new St.Icon({gicon: new Gio.ThemedIcon({name: symbol}), icon_size: 16, y_align: Clutter.ActorAlign.CENTER}));
+                row.add_child(label);
+                this.actor.add_child(row);
+            } else {
+                this.actor.add_child(label);
+            }
+        });
         const items = [...out?.menu ?? []];
         for (const e of out?.card ?? []) {
             if (e.type === 'button' && e.action)

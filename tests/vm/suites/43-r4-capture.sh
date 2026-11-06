@@ -12,7 +12,7 @@
 #     the pins; a share blurs pins and a thumbnail;
 #   - Widgets on the desktop (R4-19): off runs nothing; on, a card in its corner, right under the windows after a restack
 #     and over a workspace's own picture, its size, class and six lines, a click and a menu; a broken one and its folder;
-#     the bar leaves it alone; the widgets extension off stops them;
+#     the bar leaves it alone; the plugins module off stops them;
 #   - the light theme and a theme switch;
 #   - ten disables and enables with everything on, nothing left behind, and nothing thrown.
 # vmlab-paths: @ui/extension.js @ui/*present* @ui/*deskwidgets* @ui/*screenshot* @ui/*pill* @ui/*tiling/backgrounds* @ui/*focus/picture* @sf/*themed/shell-present* @sf/*themed/shell-deskwidgets* @sf/*themed/shell-screenshot* @sf/usr/share/gnome-shell/extensions/amethystora-widgets@* @sf/usr/libexec/amethystora-control-list @sf/*just/desktop.just @sf/usr/libexec/amethystora-cover-private
@@ -134,33 +134,19 @@ app.connect('activate', () => {
 });
 app.run([]);
 EOF
-# Three widgets on the desktop (one with a menu and a long text) and one for the bar
-for id in vmlab-clock vmlab-build vmlab-menu vmlab-bar; do install -d -o "${TEST_USER}" -g "${TEST_USER}" "${WIDGETS}/${id}"; done
-# What an earlier run in the same machine left (20 asks whether the clock ever ran)
-rm -rf "${HOME_DIR}/.local/state/amethystora/widgets/"vmlab-*
-echo '{"name": "Clock", "command": "./widget.sh", "interval": 60, "place": "desktop", "position": "top-left", "size": "large"}' \
-    >"${WIDGETS}/vmlab-clock/widget.json"
-# The JSON's \n stays two characters: the widgets' scripts are written through here-documents
-cat >"${WIDGETS}/vmlab-clock/widget.sh" <<'EOF'
-#!/usr/bin/bash
-date +%s >>"$WIDGET_STATE/runs"
-jq -cn --arg t "$(date +%H:%M)" '{text: ($t + "\nToday")}'
-EOF
-echo '{"name": "Build", "command": "./widget.sh", "interval": 60, "place": "desktop", "position": "top-right"}' \
-    >"${WIDGETS}/vmlab-build/widget.json"
-cat >"${WIDGETS}/vmlab-build/widget.sh" <<EOF
-#!/usr/bin/bash
-echo '{"text": "Build status\\nmain · green", "class": "good", "click": ["touch", "${LAB}/vmlab-build-clicked"]}'
-EOF
-echo '{"name": "Menu", "command": "./widget.sh", "interval": 60, "place": "desktop", "position": "bottom-left"}' \
-    >"${WIDGETS}/vmlab-menu/widget.json"
-cat >"${WIDGETS}/vmlab-menu/widget.sh" <<'EOF'
-#!/usr/bin/bash
-echo '{"text": "1\n2\n3\n4\n5\n6\n7\n8", "menu": [{"label": "A line"}, {"label": "Folder", "open": "~"}]}'
-EOF
-echo '{"name": "Bar", "command": "./widget.sh", "interval": 60}' >"${WIDGETS}/vmlab-bar/widget.json"
-printf '#!/usr/bin/bash\necho bar\n' >"${WIDGETS}/vmlab-bar/widget.sh"
-chmod +x "${WIDGETS}"/vmlab-*/widget.sh
+# Three plugins on the desktop (one with a menu and a long text) and one for the bar: the lab has no host, so the plugins module is handed what the
+# host would hand it (_list), and its host is a stand-in whose Action leaves a file (what a click asked for)
+PL="${UI}.get('plugins')"
+inject_plugins() {
+    ev "(() => { const m = ${PL}; const gio = imports.gi.GLib;
+        m._host = {stop() {}, pause() {}, resume() {}, action(id, a) { gio.file_set_contents('${LAB}/vmlab-' + id.split('.')[1] + '-clicked', a); }};
+        m._list([
+            {id: 'vmlab.clock', name: 'Clock', places: {desktop: {corner: 'top-left'}}, output: {text: '12:00 Today', lines: ['12:00', 'Today']}},
+            {id: 'vmlab.build', name: 'Build', places: {desktop: {corner: 'top-right'}}, actions: ['clicked'], output: {text: 'Build status main green', lines: ['Build status', 'main · green'], class: 'good', click: 'clicked'}},
+            {id: 'vmlab.menu', name: 'Menu', places: {desktop: {corner: 'bottom-left'}}, actions: ['go'], output: {text: '1 2 3 4 5 6 7 8', lines: ['1', '2', '3', '4', '5', '6', '7', '8'], menu: [{label: 'A line'}, {label: 'Go', action: 'go'}]}},
+            {id: 'vmlab.bar', name: 'Bar', places: {bar: {position: 'right'}}, output: {text: 'bar'}},
+        ]); return 'injected'; })()" >/dev/null
+}
 chown -R "${TEST_USER}:" "${HOME_DIR}/.config/amethystora" "${HOME_DIR}/.local/share"
 enabled="$(user_bus gsettings get org.gnome.shell enabled-extensions)"
 [[ ${enabled} == *vmlab-eval@lab* ]] || user_bus gsettings set org.gnome.shell enabled-extensions "${enabled%]*}, 'vmlab-eval@lab']"
@@ -465,21 +451,22 @@ gs set "${SHOT}" capture-pin true
 
 # --- R4-19 Widgets on the desktop ----------------------------------------------------------------------------------------
 sleep 3
-same "20 off: no card, never run, and the bar leaves them alone" \
-    "$(ev "JSON.stringify(${W}.cards())") $(test -e "${HOME_DIR}/.local/state/amethystora/widgets/vmlab-clock/runs" && echo ran || echo never) $(ev "Object.keys(Main.panel.statusArea).filter(k => k.startsWith('amethystora-widget-vmlab')).join(',')")" \
-    "[] never amethystora-widget-vmlab-bar"
+inject_plugins
+same "20 off: no card, and the bar draws only the bar's plugin" \
+    "$(ev "JSON.stringify(${W}.cards())") $(ev "Object.keys(Main.panel.statusArea).filter(k => k.startsWith('amethystora-plugin-vmlab')).join(',')")" \
+    "[] amethystora-plugin-vmlab.bar"
 in_session "ame desktop desktop-widgets on" >/dev/null
 cards_up() { [[ "$(ev "${W}.cards().filter(c => c.text !== null).length")" == 3 ]]; }
 check "21 on: the three cards drawn within 10 s" wait_for 10 cards_up
 same "21 the clock top left and the build top right, 16 px in" \
-    "$(ev "(() => { const a = Main.layoutManager.getWorkAreaForMonitor(Main.layoutManager.primaryIndex); const c = ${W}.cards(); const clock = c.find(x => x.id === 'vmlab-clock'); const build = c.find(x => x.id === 'vmlab-build'); return [clock.x - a.x, clock.y - a.y, a.x + a.width - build.x - build.width, build.y - a.y].join(' '); })()")" \
+    "$(ev "(() => { const a = Main.layoutManager.getWorkAreaForMonitor(Main.layoutManager.primaryIndex); const c = ${W}.cards(); const clock = c.find(x => x.id === 'vmlab.clock'); const build = c.find(x => x.id === 'vmlab.build'); return [clock.x - a.x, clock.y - a.y, a.x + a.width - build.x - build.width, build.y - a.y].join(' '); })()")" \
     "16 16 16 16"
 right_under_windows() {
     [[ "$(ev "(() => { const g = global.window_group.get_children(); const i = g.indexOf(${W}._layer); const first = g.findIndex(c => c instanceof imports.gi.Meta.WindowActor); return String(first < 0 ? i === g.length - 1 : i === first - 1); })()")" == true ]]
 }
 check "21 the cards' layer is right under the first window" right_under_windows
 under() {
-    ev "(() => { const b = ${W}.cards().find(x => x.id === 'vmlab-build'); const hit = global.stage.get_actor_at_pos(imports.gi.Clutter.PickMode.REACTIVE, b.x + 10, b.y + 10); return String(hit?.constructor.name); })()"
+    ev "(() => { const b = ${W}.cards().find(x => x.id === 'vmlab.build'); const hit = global.stage.get_actor_at_pos(imports.gi.Clutter.PickMode.REACTIVE, b.x + 10, b.y + 10); return String(hit?.constructor.name); })()"
 }
 ev "(() => { const w = global.display.list_all_windows().find(w => w.title === 'org.vmlab.Capture'); w.unminimize(); const a = Main.layoutManager.getWorkAreaForMonitor(0); w.move_frame(true, a.x + a.width - 600, a.y); w.activate(global.get_current_time()); return 'moved'; })()" >/dev/null
 sleep 1
@@ -493,12 +480,12 @@ check "21 and the layer is right under the first window again" right_under_windo
 # Both windows out of the way: the cards sit on the wallpaper, under every window
 ev "global.display.list_all_windows().filter(w => ['org.vmlab.Capture', 'org.vmlab.Other'].includes(w.title)).forEach(w => w.minimize()); 'minimized'" >/dev/null
 sleep 1
-same "22 large: the clock's first line is drawn large, the second as a line" \
-    "$(ev "(() => { const c = ${W}._cards.get('vmlab-clock').actor.get_children(); return [c[0].has_style_class_name('amethystora-deskwidgets-large'), c[1].has_style_class_name('amethystora-deskwidgets-line')].join(' '); })()")" \
+same "22 the clock's first line is drawn as a title, the second as a line" \
+    "$(ev "(() => { const c = ${W}._cards.get('vmlab.clock').actor.get_children(); return [c[0].has_style_class_name('amethystora-deskwidgets-title'), c[1].has_style_class_name('amethystora-deskwidgets-line')].join(' '); })()")" \
     "true true"
 same "22 the build's last line is in the palette's green" \
-    "$(ev "${W}._cards.get('vmlab-build').actor.get_children().at(-1).style")" "color: $(sed -n 's/^color2 = "\(.*\)"/\1/p' "${HOME_DIR}/.config/amethystora/current/theme/colors.toml");"
-same "22 at most six lines of a long text" "$(ev "${W}._cards.get('vmlab-menu').actor.get_n_children()")" 6
+    "$(ev "${W}._cards.get('vmlab.build').actor.get_children().at(-1).style")" "color: $(sed -n 's/^color2 = "\(.*\)"/\1/p' "${HOME_DIR}/.config/amethystora/current/theme/colors.toml");"
+same "22 at most six lines of a long text" "$(ev "${W}._cards.get('vmlab.menu').actor.get_n_children()")" 6
 rm -f "${LAB}/vmlab-build-clicked"
 card_centre() { ev "(() => { const b = ${W}.cards().find(x => x.id === '$1'); return Math.round(b.x + b.width / 2) + ' ' + Math.round(b.y + b.height / 2); })()"; }
 # What the pointer meets at a card's centre, and the modal count: says why when a click there does nothing
@@ -510,23 +497,19 @@ reaches() {
         return [hit === card || card.contains(hit), hit?.constructor.name, hit?.name ?? '', Main.modalCount, win?.meta_window?.get_title() ?? '', win?.meta_window?.minimized ?? ''].join(' '); })()")"
     if [[ ${r} == "true "*" 0 "* ]]; then ok "22 a click on $1 reaches its card"; else not_ok "22 a click on $1 reaches its card" "found: ${r}"; fi
 }
-reaches vmlab-build
-reaches vmlab-menu
+reaches vmlab.build
+reaches vmlab.menu
 # shellcheck disable=SC2046
-click $(card_centre vmlab-build)
+click $(card_centre vmlab.build)
 check "22 a click runs its click" wait_for 5 test -e "${LAB}/vmlab-build-clicked"
 # shellcheck disable=SC2046
-click $(card_centre vmlab-menu)
-same "22 a click on a card with a menu opens it" "$(ev "String(${W}._cards.get('vmlab-menu')._menu?.isOpen ?? false)")" true
+click $(card_centre vmlab.menu)
+same "22 a click on a card with a menu opens it" "$(ev "String(${W}._cards.get('vmlab.menu')._menu?.isOpen ?? false)")" true
 keys Escape
-echo '{"name": "Build", "command": "./widget.sh", "place": "desktop", "position": "middle"}' >"${WIDGETS}/vmlab-build/widget.json"
-broken() { [[ "$(ev "${W}.cards().find(x => x.id === 'vmlab-build')?.error ?? ''")" == *position* ]]; }
-check "23 a broken widget.json shows its warning card" wait_for 5 broken
-same "23 whose menu opens its folder" "$(ev "String(${W}._cards.get('vmlab-build')._items.some(i => i.label === 'Open its folder'))")" true
-same "24 the check passes a desktop widget and refuses a bar position there" \
-    "$(in_session "gjs -m /usr/share/gnome-shell/extensions/amethystora-widgets@arsslensoft.github.io/check.js ${WIDGETS}/vmlab-clock >/dev/null 2>&1 && echo pass; gjs -m /usr/share/gnome-shell/extensions/amethystora-widgets@arsslensoft.github.io/check.js ${WIDGETS}/vmlab-build >/dev/null 2>&1 || echo refused")" \
-    "pass
-refused"
+ev "(() => { ${PL}._list([{id: 'vmlab.build', name: 'Build', places: {desktop: {corner: 'top-right'}}, error: 'it printed nothing', output: null}, {id: 'vmlab.clock', name: 'Clock', places: {desktop: {corner: 'top-left'}}, output: {text: 'x', lines: ['x']}}]); return 'broken'; })()" >/dev/null
+broken() { [[ "$(ev "${W}.cards().find(x => x.id === 'vmlab.build')?.error ?? ''")" == *printed* ]]; }
+check "23 a plugin that failed shows its warning card" wait_for 5 broken
+inject_plugins
 # A workspace's own picture: the cards stay over it (with the tiling on, which draws it)
 gs set org.gnome.shell.extensions.amethystora-ui.tiling enabled true
 picture="$(find /usr/share/backgrounds -name '*.jpg' -o -name '*.png' 2>/dev/null | head -n 1)"
@@ -536,11 +519,13 @@ same "21 over a workspace's own picture" \
     "$(ev "(() => { const g = global.window_group.get_children(); const pictures = ${UI}.get('tiling')?.engine?.backgrounds?.layer; return String(!pictures || g.indexOf(${W}._layer) > g.indexOf(pictures)); })()")" true
 gs reset org.gnome.shell.extensions.amethystora-ui.tiling workspace-backgrounds
 gs set org.gnome.shell.extensions.amethystora-ui.tiling enabled false
-# The widgets extension off: the cards go, on again: they come back
-ev "Main.extensionManager.disableExtension('amethystora-widgets@arsslensoft.github.io'); 'off'" >/dev/null
+# Plugins off in the shell: the cards go, on again and handed their list once more: they come back
+gs set org.gnome.shell.extensions.amethystora-ui.plugins show false
 sleep 2
-same "24 with the widgets extension off, no card runs" "$(ev "${W}.cards().length")" 0
-ev "Main.extensionManager.enableExtension('amethystora-widgets@arsslensoft.github.io'); 'on'" >/dev/null
+same "24 with plugins not drawn, no card" "$(ev "${W}.cards().length")" 0
+gs set org.gnome.shell.extensions.amethystora-ui.plugins show true
+sleep 1
+inject_plugins
 cards_back() { [[ "$(ev "${W}.cards().length")" -gt 0 ]]; }
 check "24 and with it on again, they are back" wait_for 10 cards_back
 

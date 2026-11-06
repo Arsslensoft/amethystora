@@ -13,6 +13,7 @@
 //!   enable ID | disable ID    whether it is on, which the account decides (it can only stay inside what was approved)
 //!   settings ID [--json]      the settings its manifest declares, and whether each was given (never a value)
 //!   setting-set ID NAME       gives one a value, read from standard input: a secret goes into the Vault and nowhere in the clear
+//!   forget ID                 what a plugin was given (its settings, and its key in the Vault): `ame plugin remove` ends with it
 //!   discard ID                an agent's draft: turned off and its folder deleted (an installed plugin is `ame plugin remove`)
 //!   plugin STATE|CONTROL|...  (run as `plugin`, inside a sandbox) asks the host for what the plugin was allowed
 //!   shim SOCKET -- COMMAND    inside a sandbox: a forwarder to the host's proxy (sandbox.rs starts it)
@@ -344,7 +345,7 @@ fn main() -> ExitCode {
             Some(at) if at == 1 && rest.len() > 2 => ExitCode::from(shim::run(&rest[0], &rest[at + 1..]).clamp(0, 255) as u8),
             _ => usage(),
         },
-        Some(cmd @ ("list" | "show" | "verify" | "history" | "sandbox" | "try" | "enable" | "disable" | "settings" | "setting-set" | "discard")) => {
+        Some(cmd @ ("list" | "show" | "verify" | "history" | "sandbox" | "try" | "enable" | "disable" | "settings" | "setting-set" | "discard" | "forget")) => {
             let env = match Env::production() {
                 Ok(env) => env,
                 Err(e) => return fail(&e),
@@ -362,6 +363,10 @@ fn main() -> ExitCode {
                         "show" => cmd_show(&env, &id, json_out),
                         "settings" => cmd_settings(&env, &id, json_out),
                         "discard" => cmd_discard(&env, &id),
+                        "forget" => {
+                            amethystora_plugin_host::secrets::forget(&env, &id);
+                            ExitCode::SUCCESS
+                        }
                         "setting-set" => match positional.get(1) {
                             Some(name) => cmd_setting_set(&env, &id, name),
                             None => usage(),
