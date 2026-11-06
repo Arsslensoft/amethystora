@@ -294,7 +294,8 @@ signing service, with its key on a card or in the service's own hardware.
 
 `ame vault pdf sign FILE` (or **Sign a PDF** in the window) signs a copy of the file, named `FILE (signed).pdf` beside it, and
 never over anything. It asks first, once for each PDF, and the key never leaves the vault: the file's fingerprint goes in, and a
-signature comes out.
+signature comes out. In Files, select a PDF and pick **Scripts › Sign a PDF** ([Files](desktop.md#sign-a-pdf)):
+a card says first what a reader makes of it.
 
 What a signed PDF tells whoever opens it: **the signer's name, your name in the CA, and a number that identifies this computer.**
 That is what lets someone check it, and it also means two documents can be seen to come from one computer.

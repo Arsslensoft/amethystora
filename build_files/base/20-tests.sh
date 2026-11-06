@@ -409,11 +409,19 @@ bash -n /usr/libexec/amethystora-back-in-time
 # picture's metadata for it
 test -x /usr/libexec/amethystora-clean-copy
 bash -n /usr/libexec/amethystora-clean-copy
-grep -q "^version-script files-menu user 4 " /usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh
+grep -q "^version-script files-menu user 6 " /usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh
 grep -q '"Copy without hidden data")" /usr/libexec/amethystora-clean-copy$' /usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh
 grep -vh '^ *#' /usr/libexec/amethystora-clean-copy | grep -qE 'NAUTILUS_SCRIPT_|eval |bash -c|sh -c|--inplace' && false
 grep -q 'mv -n -- ' /usr/libexec/amethystora-clean-copy
 [[ "$(/usr/libexec/amethystora-clean-copy /tmp/x >/dev/null 2>&1; echo $?)" == 64 ]]
+# Sign a PDF (R7-42): Files' entry over the Vault's own `pdf sign`, with a card that says a reader calls the signer unknown. It
+# reads argv only, runs no shell on a path and never signs without the card
+test -x /usr/libexec/amethystora-pdf-sign
+bash -n /usr/libexec/amethystora-pdf-sign
+grep -q '"Sign a PDF")" /usr/libexec/amethystora-pdf-sign$' /usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh
+grep -vh '^ *#' /usr/libexec/amethystora-pdf-sign | grep -qE 'NAUTILUS_SCRIPT_|eval |bash -c|sh -c' && false
+[[ "$(/usr/libexec/amethystora-pdf-sign /tmp/x >/dev/null 2>&1; echo $?)" == 64 ]]
+bash /ctx/build_files/shared/test-pdf-sign.sh
 rpm -q mat2 perl-Image-ExifTool >/dev/null
 mat2 -l | grep -q 'image/jpeg'
 # ...and every icon pack draws the six colours (the packs' equal counts are held below)

@@ -1992,6 +1992,17 @@ taken out (*Removed: place, camera, time*). The original is never changed. It is
 What the content itself shows or says stays: a face, a street sign, words in a picture, a name typed in a
 document, and the file's own name. A file of another kind is left as it was, and the notification says so.
 
+### Sign a PDF
+
+Select a PDF and pick **Scripts › Sign a PDF**: a card first, then a signed copy named `NAME (signed).pdf` beside the
+original, which is never touched. The signature is digital, made with a certificate of yours that stays in the
+[Vault](vault.md#signing-a-pdf), and the Vault asks you to approve each one. **Before you sign, know what a reader
+makes of it:** no authority issued the certificate, this computer did, so a PDF reader calls the signer unknown until it
+trusts this machine's root certificate. The readers on this account trust it once you have signed. On another computer
+it stays unknown until you give it the root (`ame vault root`) and it chooses to trust it. With no vault, or a closed one, or
+no certificate for documents yet, the card says so and offers the command that fixes it. Several PDFs at once are signed one
+after the other, each approved by you.
+
 ### What is using this?
 
 When a stick will not eject or a file will not go, select it (or the stick's folder) and pick **Scripts › What is

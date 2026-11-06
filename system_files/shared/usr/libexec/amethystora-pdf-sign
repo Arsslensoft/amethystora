@@ -1,0 +1,161 @@
+#!/usr/bin/bash
+# Sign a PDF, from Files' scripts menu (Scripts › Sign a PDF, written by user-setup.hooks.d/24-files-menu.sh; R7-42): the
+# vault's own `pdf sign`, with a card first that says what a reader will make of the signature. The signature is digital,
+# made with a PDF certificate of the account's own that lives in the Vault (the key never leaves it, and each signature asks
+# the person to approve it), and the signed copy is saved beside the original as NAME (signed).pdf, which is never touched.
+#
+#   amethystora-pdf-sign -- PATH...
+#
+# The paths are Files' arguments (relative to the folder it shows), read from argv only, each whole: never from the
+# NAUTILUS_SCRIPT_* variables, and always after `--`. Nothing here runs a shell on one. A file that is not a PDF is left alone.
+# The card is shown before anything is signed, and it says that a reader on another computer calls the signer unknown until
+# it trusts this machine's root certificate: that is the cost of a certificate no authority issued, and it is said, not
+# hidden. When the vault is closed or the account has none yet, it says so and offers the one command that fixes it.
+
+set -uo pipefail
+
+export TEXTDOMAIN=amethystora
+# shellcheck source=/dev/null
+source gettext.sh
+
+# The command line of the Vault and the terminal (the tests put stand-ins here)
+CLI="${AMETHYSTORA_VAULT_CLI:-/usr/libexec/amethystora-vault-cli}"
+TERMINAL="${AMETHYSTORA_IN_TERMINAL:-/usr/libexec/amethystora-in-terminal}"
+
+usage() {
+    echo "usage: amethystora-pdf-sign -- PATH..." >&2
+    exit 64
+}
+
+[[ "${1:-}" == -- ]] || usage
+shift
+(($# > 0)) || usage
+
+say() { # TITLE BODY
+    notify-send --app-name=Files --icon=document-sign -- "$1" "$2" 2>/dev/null
+}
+
+# What a file's name is when it is shown: its author chose it, so without what could disguise it
+shown() {
+    /usr/libexec/amethystora-security-text --max 120 -- "$1"
+}
+
+# The one command that fixes what stopped it, offered in a terminal (the Vault asks its own questions there)
+offer() { # QUESTION COMMAND...
+    local question="$1"
+    shift
+    zenity --question --no-markup --title="$(gettext "Sign a PDF")" --text="${question}" --width=420 2>/dev/null &&
+        "${TERMINAL}" "$@" >/dev/null 2>&1
+}
+
+# Only a plain PDF: its first bytes say what it is, not its name
+pdfs=() others=0
+for path in "$@"; do
+    [[ "${path}" == /* ]] || path="${PWD}/${path}"
+    if [[ -f "${path}" && ! -L "${path}" && -r "${path}" && "$(head -c 5 -- "${path}" 2>/dev/null)" == "%PDF-" ]]; then
+        pdfs+=("${path}")
+    else
+        others=$((others + 1))
+    fi
+done
+if ((${#pdfs[@]} == 0)); then
+    say "$(gettext "Sign a PDF")" "$(gettext "That is not a PDF, so it was left as it is.")"
+    exit 1
+fi
+
+# The account's certificates for documents: id, name, kind (the Vault's own list; a closed or missing vault says so by its code)
+listed="$(timeout 20 "${CLI}" cert list 2>/dev/null)"
+case "$?" in
+    0) ;;
+    2)
+        offer "$(gettext "The vault is closed. Open it now?")" ame vault open
+        exit 1
+        ;;
+    3)
+        offer "$(gettext "There is no vault on this account yet. Set one up now?")" ame vault setup
+        exit 1
+        ;;
+    *)
+        say "$(gettext "Sign a PDF")" "$(gettext "The vault did not answer, so nothing was signed.")"
+        exit 1
+        ;;
+esac
+ids=() names=()
+while IFS=$'\t' read -r id name kind _; do
+    [[ "${kind}" == pdf && "${id}" =~ ^[A-Za-z0-9_-]+$ ]] || continue
+    ids+=("${id}")
+    names+=("${name}")
+done <<<"${listed}"
+if ((${#ids[@]} == 0)); then
+    zenity --info --no-markup --title="$(gettext "Sign a PDF")" --width=420 --text="$(gettext "You have no certificate for signing documents yet. Make one with this command, then sign again:
+
+ame vault cert new NAME pdf")" 2>/dev/null
+    exit 1
+fi
+
+# The card: said before anything is signed
+if ((${#pdfs[@]} == 1)); then
+    name="$(shown "${pdfs[0]##*/}")"
+    title="$(eval_gettext "Sign \${name} with your certificate?")"
+else
+    count="${#pdfs[@]}"
+    title="$(eval_ngettext "Sign \$count PDF with your certificate?" "Sign \$count PDFs with your certificate?" "${count}")"
+fi
+card="${title}
+
+$(gettext "The signature is digital, made with a certificate of yours that stays in the Vault. The Vault asks you to approve each one. A signed copy is saved beside the original, which is never touched.")
+
+$(gettext "A PDF reader calls the signer unknown until it trusts this machine's root certificate. Readers on this account trust it once you have signed. On another computer, it stays unknown until that computer trusts the root that this command prints:
+
+ame vault root")"
+chosen="${ids[0]}"
+if ((${#ids[@]} == 1)); then
+    zenity --question --no-markup --title="$(gettext "Sign a PDF")" --width=460 --ok-label="$(gettext "Sign")" \
+        --cancel-label="$(gettext "Cancel")" --text="${card}" 2>/dev/null || exit 1
+else
+    rows=()
+    for i in "${!ids[@]}"; do
+        rows+=("${ids[i]}" "$(shown "${names[i]}")")
+    done
+    chosen="$(zenity --list --hide-column=1 --print-column=1 --title="$(gettext "Sign a PDF")" --width=460 --height=420 \
+        --ok-label="$(gettext "Sign")" --cancel-label="$(gettext "Cancel")" --text="${card}" \
+        --column=id --column="$(gettext "Certificate")" "${rows[@]}" 2>/dev/null)" || exit 1
+    [[ "${chosen}" =~ ^[A-Za-z0-9_-]+$ ]] || exit 1
+fi
+
+signed=0 refused=0 last=""
+for path in "${pdfs[@]}"; do
+    out="$(timeout 180 "${CLI}" pdf sign "${path}" "${chosen}" 2>/dev/null)"
+    code=$?
+    if ((code == 0)) && [[ -n "${out}" ]]; then
+        signed=$((signed + 1))
+        last="${out##*/}"
+    elif ((code == 2)); then
+        offer "$(gettext "The vault closed meanwhile. Open it now?")" ame vault open
+        break
+    else
+        refused=$((refused + 1))
+    fi
+done
+
+if ((signed == 1)); then
+    title="$(shown "${last}")"
+elif ((signed > 1)); then
+    count="${signed}"
+    title="$(eval_ngettext "\$count PDF signed" "\$count PDFs signed" "${signed}")"
+else
+    title="$(gettext "Nothing was signed")"
+fi
+body=""
+((signed > 0)) && body="$(gettext "Saved beside the original.")"
+if ((refused > 0)); then
+    count="${refused}"
+    body+="${body:+ }$(eval_ngettext "\$count PDF was not signed: it was refused or could not be read." \
+        "\$count PDFs were not signed: they were refused or could not be read." "${refused}")"
+fi
+if ((others > 0)); then
+    count="${others}"
+    body+="${body:+ }$(eval_ngettext "\$count file was left as it was: not a PDF." "\$count files were left as they were: not PDFs." "${others}")"
+fi
+say "${title}" "${body}"
+((signed > 0))

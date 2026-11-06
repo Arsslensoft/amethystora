@@ -158,7 +158,9 @@ these commands in the agent's own shell, as the user. Read before writing, chang
   (`gio info -a metadata::custom-icon-name DIR`), set by `/usr/libexec/amethystora-folder-colour COLOUR -- DIR...`;
   each icon pack draws the six. **Back in time** is `/usr/libexec/amethystora-back-in-time -- PATH`, which opens
   `amethystora-backups FOLDER` for a folder in the home only. **Earlier versions** is the same helper with `--versions`,
-  which opens `amethystora-backups --versions=FILE` (`ame desktop earlier-versions`).
+  which opens `amethystora-backups --versions=FILE` (`ame desktop earlier-versions`). **Sign a PDF** is
+  `/usr/libexec/amethystora-pdf-sign -- FILE...`, the Vault's `pdf sign` behind a card that says a reader calls the signer unknown
+  until it trusts this machine's root; a person's own approval for each signature, never the agent's.
 - A file nothing opens: `zz-amethystora-open-anything.desktop` claims every kind no launcher in the image claims, and every
   other launcher comes before it, so anything installed takes its kinds from it. It looks the type up in Flathub's list already on the
   machine (`ame desktop open-anything off` hides it for the account). `Space` in Files is GNOME's previewer,
