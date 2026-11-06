@@ -13,7 +13,7 @@ const SECURITY_ON: &[&str] = &[
     "app-sandbox", "audit-locked", "block-automount", "block-bluetooth", "block-user-extensions", "block-webcam",
     "block-xwayland", "blocked-modules", "bluetooth-privacy", "brew-attestations", "browser", "failed-logins", "firewall",
     "firewall-away", "firewire", "flathub-verified", "flatpak-password", "ipv6-privacy", "locked-poweroff", "lockout", "mac",
-    "network-daemons", "no-coredumps", "noexec-temp", "package-cooldown", "ransomware", "signed-updates", "ssh-settings",
+    "network-daemons", "no-coredumps", "noexec-temp", "package-cooldown", "plugin-approval", "ransomware", "signed-updates", "ssh-settings",
     "time", "usb", "virtual-input", "vscodium-extensions", "walk-away",
 ];
 

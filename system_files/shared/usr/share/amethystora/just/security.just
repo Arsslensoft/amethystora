@@ -1191,6 +1191,11 @@ flathub-verified ACTION="":
 flatpak-password ACTION="":
     @/usr/libexec/amethystora-hardening ask flatpak-password "${1:-}"
 
+# An administrator's approval to install a plugin: off, installing one asks nobody
+[positional-arguments]
+plugin-approval ACTION="":
+    @/usr/libexec/amethystora-hardening ask plugin-approval "${1:-}"
+
 # Nothing started from /tmp, /var/tmp or /dev/shm
 [positional-arguments]
 noexec-temp ACTION="":

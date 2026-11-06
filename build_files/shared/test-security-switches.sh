@@ -228,7 +228,8 @@ for rel in sysctl.d/61-amethystora-strict.conf modprobe.d/61-amethystora-strict.
     modprobe.d/61-amethystora-no-bluetooth.conf modprobe.d/61-amethystora-no-webcam.conf \
     dconf/db/local.d/60-amethystora-automount dconf/db/local.d/locks/60-amethystora-user-extensions \
     systemd/user/org.gnome.Shell@.service.d/60-amethystora-no-x11.conf \
-    polkit-1/rules.d/49-amethystora-flatpak-password.rules systemd/coredump.conf.d/60-amethystora-off.conf \
+    polkit-1/rules.d/49-amethystora-flatpak-password.rules polkit-1/rules.d/49-amethystora-plugin-approval.rules \
+    systemd/coredump.conf.d/60-amethystora-off.conf \
     environment.d/60-amethystora-cooldown.conf profile.d/amethystora-brew-attestations.sh; do
     [[ -n "$("${HARDENING}" expected "${rel}")" ]] || fail "nothing expected at /etc/${rel}"
 done

@@ -1797,9 +1797,15 @@ crate (no GTK; only the host's `service.rs` links GLib) with two programs: `amet
   `list`, `show`.
 - **Tests:** cargo (manifest, output, tar refusals, proxy address rules, the helper's flow), `build_files/shared/test-plugins.sh` (from
   `20-tests.sh`), and `tests/vm/suites/72-plugins.sh` with `tests/vm/fixtures/hostile` (a hostile plugin and a hostile account; the suite
-  was written and has not been run). Phases 2 and 3 are built (2026-11-06, round 7's plugins group): see the next section. Not built yet: Control's settings form for a plugin
-  (`ame plugin set` is the way), Security's section and report check, `plugin-approval`, the watcher and `amethystora-sends`, `pick`, `change`, `events`,
-  `network-local`, panels, Files' menu, keybindings and the agent's tools from a plugin.
+  was written and has not been run). Phases 2 and 3 are built (2026-11-06, round 7's plugins group): see the next section. **Security's half of phase 4 is built**: `PLUGINS` (detection, off) has the watcher run `amethystora-plugin-host audit --json` as root
+  (`audit.rs`: files against the approved digest, `grants.json` against the hash every history line carries, the store's owners and modes, an account
+  folder's stray files, a process in a plugin's mount namespace outside `amethystora-plugins.slice`, and each commit made with approval off), said once each and
+  never allowed; the report's `plugins` check counts it. `plugin-approval` (`amethystora-hardening`, on until off) writes
+  `polkit-1/rules.d/49-amethystora-plugin-approval.rules`, yes for `commit` only, for wheel in the active local session; the root helper marks each commit
+  made while that file exists `"approval": "none"` and tells the account; the agent may only turn it on, and no image may ship it off. `amethystora-sends` has
+  a row for each plugin given a host, with what its proxy counted this hour (the host writes `sent.json` as a run ends). Not built yet: Security's Apps
+  section, Control's settings form for a plugin (`ame plugin set` is the way), `pick`, `change`, `events`, `network-local`, panels, Files' menu, keybindings
+  and the agent's tools from a plugin.
 
 ### Plugins in the shell
 

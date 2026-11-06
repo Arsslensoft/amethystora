@@ -42,7 +42,8 @@ KARGS=/usr/lib/bootc/kargs.d/10-amethystora-hardening.toml
 KARGS_PENDING=/run/amethystora/kargs-pending
 # On until turned off
 NAMES=(kernel blocked-modules firewire kernel-args firewall failed-logins lockout app-sandbox virtual-input
-    ssh-settings signed-updates ipv6-privacy bluetooth-privacy countme connectivity-check firmware-metadata)
+    ssh-settings signed-updates ipv6-privacy bluetooth-privacy countme connectivity-check firmware-metadata
+    plugin-approval)
 # What a switch governs that sends something off the machine by itself: to whom. The report's "What this machine
 # sends" group says the rest (when, what stops working) beside the switch's command.
 declare -A SENDS=([countme]="Fedora" [connectivity-check]="Fedora" [firmware-metadata]="LVFS" [time]="time servers"
@@ -63,7 +64,8 @@ declare -A GROUP=([kernel]=system [blocked-modules]=system [firewire]=devices [k
     [block-webcam]=devices [block-automount]=devices [block-user-extensions]=apps [block-xwayland]=apps
     [flathub-verified]=apps [flatpak-password]=apps [noexec-temp]=system [no-coredumps]=system [package-cooldown]=apps
     [brew-attestations]=apps [boot-password]=system [locked-poweroff]=logins [audit-locked]=audit
-    [vscodium-extensions]=apps [guest-login]=logins [remote-screen]=network [backup-store]=network)
+    [vscodium-extensions]=apps [guest-login]=logins [remote-screen]=network [backup-store]=network
+    [plugin-approval]=apps)
 # The switches with a level above on, and their levels
 declare -A LEVELS=([kernel]="off standard strict" [package-cooldown]="off on strict")
 # Kernel arguments a switch adds one by one, off until turned on, each with what it puts on the command line
@@ -104,6 +106,8 @@ EXTENSIONS=dconf/db/local.d/60-amethystora-user-extensions
 EXTENSIONS_LOCK=dconf/db/local.d/locks/60-amethystora-user-extensions
 NO_X11=systemd/user/org.gnome.Shell@.service.d/60-amethystora-no-x11.conf
 FLATPAK_PASSWORD=polkit-1/rules.d/49-amethystora-flatpak-password.rules
+# Off, a plugin is installed with nobody asked (plans/PLAN-plugins.md, How a person approves); amethystora-plugin-root looks for it
+PLUGIN_APPROVAL=polkit-1/rules.d/49-amethystora-plugin-approval.rules
 COREDUMP=systemd/coredump.conf.d/60-amethystora-off.conf
 COOLDOWN_ENV=environment.d/60-amethystora-cooldown.conf
 COOLDOWN_PROFILE=profile.d/amethystora-cooldown.sh
@@ -262,6 +266,7 @@ expected() {
         "${EXTENSIONS_LOCK}") cat "${SHARE}/dconf-user-extensions-locks" ;;
         "${NO_X11}") cat "${SHARE}/${NO_X11##*/}" ;;
         "${FLATPAK_PASSWORD}") cat "${SHARE}/${FLATPAK_PASSWORD##*/}" ;;
+        "${PLUGIN_APPROVAL}") cat "${SHARE}/${PLUGIN_APPROVAL##*/}" ;;
         "${COREDUMP}") cat "${SHARE}/coredump-off.conf" ;;
         "${COOLDOWN_ENV}") cooldown env ;;
         "${COOLDOWN_PROFILE}") cooldown profile ;;
@@ -333,6 +338,7 @@ managed() {
     is_off ipv6-privacy && printf '%s\tfile\n' "${IP6_PRIVACY}"
     is_off bluetooth-privacy && printf '%s\tfile\n' "${BLUEZ}"
     is_off connectivity-check && printf '%s\tfile\n' "${CONNECTIVITY}"
+    is_off plugin-approval && printf '%s\tfile\n' "${PLUGIN_APPROVAL}"
     local unit
     if is_off countme; then for unit in "${COUNTME_UNITS[@]}"; do printf 'systemd/system/%s\tmask\n' "${unit}"; done; fi
     if is_off firmware-metadata; then for unit in "${FIRMWARE_UNITS[@]}"; do printf 'systemd/system/%s\tmask\n' "${unit}"; done; fi
@@ -751,6 +757,13 @@ set_switch() {
             # Only apps whose makers Flathub verified; installed ones from anyone else stop updating
             flatpak remote-modify --system --subset="$([[ "${switched}" == on ]] && echo verified)" flathub || return 1
             ;;
+        plugin-approval)
+            if [[ "${switched}" == off ]]; then
+                place "${PLUGIN_APPROVAL}" || return 1
+            else
+                place "${PLUGIN_APPROVAL}" remove
+            fi
+            ;;
         flatpak-password)
             if [[ "${switched}" == on ]]; then
                 place "${FLATPAK_PASSWORD}" || return 1
@@ -869,6 +882,7 @@ words() {
         [block-xwayland]="$(gettext "No X11 apps")"
         [flathub-verified]="$(gettext "Verified Flathub apps only")"
         [flatpak-password]="$(gettext "A password for app installs")"
+        [plugin-approval]="$(gettext "Plugin approval")"
         [noexec-temp]="$(gettext "Nothing runs from temporary folders")"
         [no-coredumps]="$(gettext "No core dumps")"
         [package-cooldown]="$(gettext "Package release cooldown")"
@@ -907,6 +921,7 @@ words() {
         [block-user-extensions]="$(gettext "GNOME extensions cannot be installed from extensions.gnome.org or Extension Manager. An extension runs inside the desktop and sees every key and pixel. The image's own extensions are not affected.")"
         [block-xwayland]="$(gettext "Xwayland does not start, so no app can use X11, where any app reads the keys typed into another. Steam, Wine, Proton and older apps stop working. From your next login.")"
         [flathub-verified]="$(gettext "Bazaar and flatpak show only the Flathub apps whose makers Flathub verified. Installed apps from anyone else stay but stop updating.")"
+        [plugin-approval]="$(gettext "Installing a plugin, or giving one more, asks an administrator through GNOME's own dialog, with a finger or a security key where the machine has one. Off, installing asks nobody: any program running as an administrator on this computer, an AI agent's own shell included, could then install a plugin and give it any permission without asking you. Each time is recorded and said, afterwards.")"
         [flatpak-password]="$(gettext "Installing or removing a Flatpak app for the whole machine asks for an administrator's password, so a program running as you cannot do it unseen. Updates still need none.")"
         [noexec-temp]="$(gettext "Programs cannot be started from /tmp, /var/tmp and /dev/shm, where downloaded malware likes to run from. Some installers, build scripts and go test stop working. A script run through its interpreter still runs.")"
         [no-coredumps]="$(gettext "A program that crashes leaves no copy of its memory on disk, where passwords and keys in it could be read later. Crashes cannot be diagnosed from one either.")"
@@ -948,6 +963,7 @@ words() {
         [block-xwayland]="$(gettext "From your next login.")"
         [flathub-verified]="$(gettext "At once.")"
         [flatpak-password]="$(gettext "At once.")"
+        [plugin-approval]="$(gettext "At once.")"
         [noexec-temp]="$(gettext "At once for /tmp and /dev/shm, from the next restart for all three.")"
         [no-coredumps]="$(gettext "At once.")"
         [package-cooldown]="$(gettext "In new terminals, and for every app from your next login.")"

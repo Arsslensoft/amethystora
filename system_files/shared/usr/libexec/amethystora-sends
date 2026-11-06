@@ -259,6 +259,30 @@ if [[ -d "${PHOTOS_DIR}" ]]; then
         "ame desktop search photos"
 fi
 
+# Each plugin of the account's that was given a host (plans/PLAN-plugins.md): only while it runs, only to those hosts, through the
+# plugins' proxy, which counts what goes out and stops it at the hour's limit. Its name and hosts are its own words, cleaned; the
+# count is the host's, kept in the account's sent.json as each run ends.
+SENT="${XDG_STATE_HOME:-${HOME:-/nonexistent}/.local/state}/amethystora/plugins/sent.json"
+if [[ -x /usr/libexec/amethystora-plugin-host ]]; then
+    while IFS=$'\x1f' read -r plugin name hosts blocked counted; do
+        [[ "${plugin}" =~ ^[a-z0-9][a-z0-9.-]{0,127}$ ]] || continue
+        name="$(/usr/libexec/amethystora-security-text --max 80 "${name}")"
+        hosts="$(/usr/libexec/amethystora-security-text --max 400 "${hosts}")"
+        state=on
+        [[ "${blocked}" == true ]] && state=off
+        details=()
+        [[ -n "${counted}" ]] && details+=("$(eval_gettext "Sent this hour: \${counted}")")
+        row "plugin-${plugin}" "${state}" "$(eval_gettext "Plugin \${name}")" \
+            "$(eval_gettext "Each time it runs, it may send to \${hosts}, through the plugins' proxy, which counts what goes out and stops it at the hour's limit (1 MiB unless you allowed more).")" \
+            "ame plugin block ${plugin}" "${details[@]}"
+    done < <(timeout 20 /usr/libexec/amethystora-plugin-host list --json 2>/dev/null | jq -r --slurpfile sent <(cat "${SENT}" 2>/dev/null || echo '{}') \
+        '.[]? | select(.draft != true) | [.granted[]? | select(startswith("network=")) | sub("^network="; "")] as $hosts
+        | select($hosts | length > 0) | ($sent[0][.id].hour // {}) as $hour
+        | [.id, .name, ($hosts | join(", ")), (.blocked | tostring),
+           ([$hour | to_entries[] | select(.value > 0) | "\(.key) \(.value) B"] | join(", "))]
+        | map(tostring | gsub("[[:cntrl:]]"; " ")) | join("\u001f")' 2>/dev/null)
+fi
+
 if command -v firefox >/dev/null; then
     row firefox on "$(gettext "Firefox")" \
         "$(gettext "Firefox has its own settings for what it sends, under Privacy & Security in its settings.")" \

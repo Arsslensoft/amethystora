@@ -1339,6 +1339,64 @@ msgid_plural "No app can leave its sandbox or read what you type into another ($
 msgstr[0] ""
 msgstr[1] ""
 
+#: usr/libexec/amethystora-security-status usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/providers.js
+msgid "Plugins"
+msgstr ""
+
+#: usr/libexec/amethystora-security-status
+msgid "Plugins are not checked against what you approved"
+msgstr ""
+
+#: usr/libexec/amethystora-security-status
+msgid "A plugin whose files changed still does not run, but nothing tells you, nor of a change to what a plugin may do made outside its helper. Check them at each of the watcher's runs with:"
+msgstr ""
+
+#: usr/libexec/amethystora-security-status
+msgid "Plugins have not been checked against what you approved yet"
+msgstr ""
+
+#: usr/libexec/amethystora-security-status
+msgid "The security watcher checks them at its next run."
+msgstr ""
+
+#: usr/libexec/amethystora-security-status
+#, sh-format
+msgid "${N} thing in the plugins changed outside their helper"
+msgid_plural "${N} things in the plugins changed outside their helper"
+msgstr[0] ""
+msgstr[1] ""
+
+#: usr/libexec/amethystora-security-status
+msgid "A plugin that changed does not run. See what was found with:"
+msgstr ""
+
+#: usr/libexec/amethystora-security-status
+#, sh-format
+msgid "${COUNT} plugin checked on ${WHEN}, as you approved it"
+msgid_plural "${COUNT} plugins checked on ${WHEN}, as you approved them"
+msgstr[0] ""
+msgstr[1] ""
+
+#: usr/libexec/amethystora-security-status usr/libexec/amethystora-hardening
+msgid "Plugin approval"
+msgstr ""
+
+#: usr/libexec/amethystora-security-status
+msgid "Plugins are given permissions without asking an administrator"
+msgstr ""
+
+#: usr/libexec/amethystora-security-status
+msgid "Any program running as an administrator on this computer, an AI agent's own shell included, can install a plugin and give it any permission. Each time is recorded and said, afterwards."
+msgstr ""
+
+#: usr/libexec/amethystora-security-status
+msgid "A rule lets plugins be given permissions without asking, but plugin approval is on"
+msgstr ""
+
+#: usr/libexec/amethystora-security-status
+msgid "It was not written by ame security plugin-approval. Take it away with:"
+msgstr ""
+
 #: usr/libexec/amethystora-security-status
 msgid "Files it finds are moved to quarantine. See what it found with:"
 msgstr ""
@@ -3869,10 +3927,6 @@ msgstr ""
 
 #: usr/libexec/amethystora-control-list
 msgid "“pdf from last week” or “big videos” finds files by their kind, date and size, from GNOME's own file index."
-msgstr ""
-
-#: usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/providers.js
-msgid "Plugins"
 msgstr ""
 
 #: usr/libexec/amethystora-control-list
@@ -6824,6 +6878,10 @@ msgid "Installed apps checked against their updates"
 msgstr ""
 
 #: usr/libexec/amethystora-security-config
+msgid "Plugins checked against what you approved"
+msgstr ""
+
+#: usr/libexec/amethystora-security-config
 msgid "Startup hooks in developer tools"
 msgstr ""
 
@@ -7009,6 +7067,10 @@ msgstr ""
 
 #: usr/libexec/amethystora-security-config
 msgid "Once a day, and after each change to the system's apps, the system's own files and every Flatpak app's are compared with what their signed updates installed, and a launcher with the app it starts: whatever changed outside an update is critical. Only what changed since the last check is read. Each account's own apps are read as that account, for the accounts with a session in the last day."
+msgstr ""
+
+#: usr/libexec/amethystora-security-config
+msgid "At each of the watcher's runs, every plugin's files are compared with the digest you approved, what each may do with what its helper recorded, the store's files with whose they must be, and the plugins' processes with the limits they run under: anything changed outside the plugin helper is critical. Approvals made while plugin approval is off are said too."
 msgstr ""
 
 #: usr/libexec/amethystora-security-config
@@ -7321,6 +7383,10 @@ msgstr ""
 
 #: usr/libexec/amethystora-hardening
 msgid "Bazaar and flatpak show only the Flathub apps whose makers Flathub verified. Installed apps from anyone else stay but stop updating."
+msgstr ""
+
+#: usr/libexec/amethystora-hardening
+msgid "Installing a plugin, or giving one more, asks an administrator through GNOME's own dialog, with a finger or a security key where the machine has one. Off, installing asks nobody: any program running as an administrator on this computer, an AI agent's own shell included, could then install a plugin and give it any permission without asking you. Each time is recorded and said, afterwards."
 msgstr ""
 
 #: usr/libexec/amethystora-hardening
@@ -8974,6 +9040,21 @@ msgstr ""
 
 #: usr/libexec/amethystora-sends
 msgid "The model that understands pictures and words was downloaded once from huggingface.co and its content network (cdn.hf.co). Your photos are read on this computer, and what is worked out is sealed in the Vault. Nothing is sent."
+msgstr ""
+
+#: usr/libexec/amethystora-sends
+#, sh-format
+msgid "Sent this hour: ${counted}"
+msgstr ""
+
+#: usr/libexec/amethystora-sends
+#, sh-format
+msgid "Plugin ${name}"
+msgstr ""
+
+#: usr/libexec/amethystora-sends
+#, sh-format
+msgid "Each time it runs, it may send to ${hosts}, through the plugins' proxy, which counts what goes out and stops it at the hour's limit (1 MiB unless you allowed more)."
 msgstr ""
 
 #: usr/libexec/amethystora-sends

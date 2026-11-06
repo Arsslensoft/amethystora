@@ -34,7 +34,7 @@ NOTES_KEPT=200
 KEYS=(WATCHER ON_BATTERY REALTIME_WATCH AUDIT_LOG IDENTITY PRIVILEGE PERSISTENCE HARDENING MODULES INPUT_CAPTURE
     USER_PROGRAMS JOURNAL IMAGE_DRIFT SETUID_SWEEP LISTENERS USER_PATHS
     # What looks for new threats, off as the image ships
-    APP_PERMISSIONS APP_INTEGRITY PROCESSES SELINUX_DENIALS SNAPSHOT_WATCH AGENT_CLIS AGENT_CONFIG DEV_HOOKS BPF_PROGRAMS
+    APP_PERMISSIONS APP_INTEGRITY PLUGINS PROCESSES SELINUX_DENIALS SNAPSHOT_WATCH AGENT_CLIS AGENT_CONFIG DEV_HOOKS BPF_PROGRAMS
     CREDENTIALS DECOY INJECTION EXEC_WATCH BEHAVIOUR CHAINS
     VIRUS_SCAN REALTIME_SCAN YARA_ELASTIC YARA_SIGNATURE_BASE YARA_FORGE ON_DETECTION SETTINGS_AUDIT
     NETWORK NETWORK_FEEDS NETWORK_HUNTING DNS_NAMES NOTIFY REPORT_ALERTS
@@ -54,6 +54,7 @@ declare -A DEFAULTS=(
     # What looks for new threats: each off until it is turned on, alone or with a profile
     [APP_PERMISSIONS]=off [DEV_HOOKS]=off
     [APP_INTEGRITY]=off
+    [PLUGINS]=off
     [SELINUX_DENIALS]=off
     [PROCESSES]=off
     [BPF_PROGRAMS]=off
@@ -87,6 +88,7 @@ declare -A ALLOWED=(
     [SETUID_SWEEP]="off on" [LISTENERS]="off record on" [USER_PATHS]="off record on" [REPORT_ALERTS]="off on"
     [APP_PERMISSIONS]="off record on"
     [APP_INTEGRITY]="off on"
+    [PLUGINS]="off on"
     [DEV_HOOKS]="off record on"
     [SELINUX_DENIALS]="off record on"
     [PROCESSES]="off record on"
@@ -124,6 +126,7 @@ declare -A APPLIES=(
     [REPORT_ALERTS]="run" [APP_PERMISSIONS]="run"
     [DEV_HOOKS]="run"
     [APP_INTEGRITY]="run"
+    [PLUGINS]="run"
     [VIRUS_SCAN]="restart:clamav-freshclam.service restart:clamd@scan.socket restart:amethystora-clamav-onaccess.service"
     [REALTIME_SCAN]="restart:amethystora-clamav-onaccess.service"
     [ON_DETECTION]="now" [SETTINGS_AUDIT]="now" [NOTIFY]="now"
@@ -160,6 +163,7 @@ declare -A GROUP=(
     [SETTINGS_AUDIT]=scans [NETWORK]=network [NOTIFY]=notices [REPORT_ALERTS]=notices
     [APP_PERMISSIONS]=detection [DEV_HOOKS]=detection
     [APP_INTEGRITY]=detection
+    [PLUGINS]=detection
     [SELINUX_DENIALS]=detection
     [PROCESSES]=detection
     [BPF_PROGRAMS]=detection
@@ -262,14 +266,14 @@ write() {
 # chosen on its own, after its explanation.
 declare -A PROFILE_LIGHT=([PROCESSES]=record [SELINUX_DENIALS]=record [SNAPSHOT_WATCH]=on [AGENT_CLIS]=record
     [AGENT_CONFIG]=on [DEV_HOOKS]=record [APP_PERMISSIONS]=on [APP_INTEGRITY]=on
-    [INJECTION]=record)
+    [PLUGINS]=on [INJECTION]=record)
 declare -A PROFILE_BALANCED=([PROCESSES]=on [SELINUX_DENIALS]=on [SNAPSHOT_WATCH]=on [AGENT_CLIS]=on [AGENT_CONFIG]=on
     [DEV_HOOKS]=on [APP_PERMISSIONS]=on [BPF_PROGRAMS]=record [CREDENTIALS]=record [EXEC_WATCH]=record [CHAINS]=on
-    [NETWORK_FEEDS]=daily [APP_INTEGRITY]=on [INJECTION]=on)
+    [NETWORK_FEEDS]=daily [APP_INTEGRITY]=on [PLUGINS]=on [INJECTION]=on)
 declare -A PROFILE_THOROUGH=([PROCESSES]=on [SELINUX_DENIALS]=on [SNAPSHOT_WATCH]=on [AGENT_CLIS]=on [AGENT_CONFIG]=on
     [DEV_HOOKS]=on [APP_PERMISSIONS]=on [BPF_PROGRAMS]=on [CREDENTIALS]=on [DECOY]=on [EXEC_WATCH]=on [CHAINS]=on
     [NETWORK_FEEDS]=hourly [NETWORK_HUNTING]=record [DNS_NAMES]=record [YARA_ELASTIC]=on [YARA_SIGNATURE_BASE]=on
-    [YARA_FORGE]=on [BEHAVIOUR]=record [APP_INTEGRITY]=on [INJECTION]=on)
+    [YARA_FORGE]=on [BEHAVIOUR]=record [APP_INTEGRITY]=on [PLUGINS]=on [INJECTION]=on)
 PROFILES="off default light balanced thorough"
 
 # Whether KEY sends something to somebody else, or is a lock of the person's own (walk-away lock): no profile but
@@ -393,6 +397,7 @@ list() {
         [REPORT_ALERTS]="$(gettext "Report alerts")"
         [APP_PERMISSIONS]="$(gettext "Apps that gain permissions")"
         [APP_INTEGRITY]="$(gettext "Installed apps checked against their updates")"
+        [PLUGINS]="$(gettext "Plugins checked against what you approved")"
         [DEV_HOOKS]="$(gettext "Startup hooks in developer tools")"
         [SELINUX_DENIALS]="$(gettext "SELinux denials")"
         [PROCESSES]="$(gettext "Odd processes")"
@@ -443,6 +448,7 @@ list() {
         [REPORT_ALERTS]="$(gettext "Says when a check of the report turns bad: the firewall, signed updates, the audit log.")"
         [APP_PERMISSIONS]="$(gettext "A Flatpak app that gains a way out of its sandbox, through an update, an override or another app in its place. Read as each account with a session in the last day, and said to that account.")"
         [APP_INTEGRITY]="$(gettext "Once a day, and after each change to the system's apps, the system's own files and every Flatpak app's are compared with what their signed updates installed, and a launcher with the app it starts: whatever changed outside an update is critical. Only what changed since the last check is read. Each account's own apps are read as that account, for the accounts with a session in the last day.")"
+        [PLUGINS]="$(gettext "At each of the watcher's runs, every plugin's files are compared with the digest you approved, what each may do with what its helper recorded, the store's files with whose they must be, and the plugins' processes with the limits they run under: anything changed outside the plugin helper is critical. Approvals made while plugin approval is off are said too.")"
         [DEV_HOOKS]="$(gettext "Code put where a developer tool runs it by itself: Python's .pth files, git's hooks and fsmonitor, SSH's ProxyCommand, npm's script shell, and new editor extensions. Read as each account with a session in the last day, and said to that account.")"
         [SELINUX_DENIALS]="$(gettext "A confined service doing what its policy never let it, which is often what an exploit looks like: each different denial said the first time. Needs the audit log.")"
         [PROCESSES]="$(gettext "A program running from a deleted file, from memory alone, or from a temporary or download folder; one disguised as a kernel thread; a network tool or AI agent started by an npm package's install script; an AI agent run with its own checks off; a library from outside the system loaded into a program with LD_PRELOAD; and a session whose own environment has every program it starts load code from outside the system. Each said the first time for that program.")"

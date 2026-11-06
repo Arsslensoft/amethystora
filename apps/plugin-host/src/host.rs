@@ -362,6 +362,7 @@ impl Runner {
             return Err("it is still running from the last time".into());
         }
         let _running = Running(&self.running, id.to_string());
+        let _sent = SentGuard(self, id.to_string());
         {
             let mut last = self.last.lock().unwrap();
             // A person's click is not made to wait for the timer's gap; a flood of them is the update rule's (service.rs)
@@ -466,6 +467,28 @@ impl Runner {
             }
             Some(s) if !s.success() => Err(format!("it ended with {s}")),
             _ => output::parse(&text, &loaded.manifest.actions),
+        }
+    }
+}
+
+/// Writes, as a run ends, what the plugin's proxy counted going out to each allowed host this hour into the account's
+/// `sent.json`, which `amethystora-sends` reads (a count, never what was sent)
+struct SentGuard<'a>(&'a Runner, String);
+
+static SENT_WRITE: Mutex<()> = Mutex::new(());
+
+impl Drop for SentGuard<'_> {
+    fn drop(&mut self) {
+        let Some(proxy) = self.0.proxies.lock().unwrap().get(&self.1).cloned() else { return };
+        let _one = SENT_WRITE.lock().unwrap();
+        let path = self.0.env.state_root.join("sent.json");
+        let mut all: serde_json::Map<String, Value> = std::fs::read(&path).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default();
+        let enabled = self.0.env.enabled();
+        all.retain(|id, _| enabled.contains(id));
+        all.insert(self.1.clone(), serde_json::json!({"t": crate::store::now(), "hour": proxy.bytes_sent()}));
+        let temp = path.with_extension("json.new");
+        if std::fs::write(&temp, Value::Object(all).to_string()).is_ok() {
+            let _ = std::fs::rename(&temp, &path);
         }
     }
 }

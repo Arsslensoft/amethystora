@@ -30,7 +30,13 @@ pub struct Ctx {
     pub store: Store,
     /// pkexec's PKEXEC_UID: the account that asked
     pub uid: Option<u32>,
+    /// The polkit rule `ame security plugin-approval off` writes is in place: what gives more went through with no one asked,
+    /// which the history and a notice say
+    pub approval_off: bool,
 }
+
+/// The rule plugin-approval off writes (amethystora-hardening): yes for what gives a plugin more, for wheel at the machine
+pub const APPROVAL_OFF_RULE: &str = "/etc/polkit-1/rules.d/49-amethystora-plugin-approval.rules";
 
 fn id_arg(arg: Option<&String>, system: bool) -> Result<&str, String> {
     let id = arg.map(String::as_str).ok_or("an id is missing")?;
@@ -217,7 +223,7 @@ impl Ctx {
             Grant { digest: digest.into(), previous: previous.clone(), perms: perms.clone(), shipped: false, blocked: old.blocked, blocked_hosts: old.blocked_hosts, limits },
         );
         self.store.write_grants(uid, &grants)?;
-        self.store.append_history(uid, json!({"action": "commit", "id": id, "digest": digest, "previous": previous, "perms": perms}))?;
+        self.given(uid, json!({"action": "commit", "id": id, "digest": digest, "previous": previous, "perms": perms}))?;
         let _ = std::fs::remove_dir_all(&ticket.dir);
         self.gc();
         Ok(())
@@ -315,6 +321,33 @@ impl Ctx {
         self.store.append_history(uid, json!({"action": "rollback", "id": id, "digest": previous, "from": from, "perms": now_perms}))
     }
 
+    /// The history line of a commit. With plugin-approval off its rule lets a commit through with nobody asked (grant, unblock and
+    /// rollback still ask): the line says so, and the account is told, which only notices afterwards (plans/PLAN-plugins.md, How a
+    /// person approves)
+    fn given(&self, uid: u32, mut line: serde_json::Value) -> Result<(), String> {
+        if !self.approval_off {
+            return self.store.append_history(uid, line);
+        }
+        line["approval"] = "none".into();
+        self.store.append_history(uid, line.clone())?;
+        if let Some(name) = crate::audit::account_name(uid) {
+            let id = line["id"].as_str().unwrap_or("");
+            let what = line["perms"].as_array().map(|p| p.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>().join(", ")).unwrap_or_default();
+            let body = if what.is_empty() {
+                format!("Plugin {id} was installed, with no approval asked: plugin-approval is off.")
+            } else {
+                format!("Plugin {id} was installed and given {what}, with no approval asked: plugin-approval is off.")
+            };
+            let _ = std::process::Command::new("/usr/libexec/amethystora-notify-users")
+                .args(["--security", "--user", &name, "A plugin was given more", &body])
+                .stdin(std::process::Stdio::null())
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .spawn();
+        }
+        Ok(())
+    }
+
     /// Folders of the store that no account's grants name any more
     fn gc(&self) {
         let used = self.store.referenced();
@@ -354,7 +387,7 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("plugin-root-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
-        (Ctx { store: Store { root: dir.clone(), shipped: dir.join("shipped") }, uid: Some(1000) }, dir)
+        (Ctx { store: Store { root: dir.clone(), shipped: dir.join("shipped") }, uid: Some(1000), approval_off: false }, dir)
     }
 
     fn call(ctx: &Ctx, words: &str, stdin: &[u8]) -> Result<String, String> {
@@ -381,7 +414,7 @@ mod tests {
         assert!(call(&ctx, &format!("commit dev.example.t {digest} notify;open"), b"").is_err());
         assert!(call(&ctx, &format!("commit dev.example.t {} notify", "0".repeat(64)), b"").is_err());
         // Another account cannot take it
-        let other = Ctx { store: ctx.store.clone(), uid: Some(1001) };
+        let other = Ctx { store: ctx.store.clone(), uid: Some(1001), approval_off: false };
         assert!(call(&other, &format!("commit dev.example.t {digest} notify"), b"").is_err());
         assert!(call(&other, &format!("inspect {ticket}"), b"").is_err());
         call(&ctx, &format!("commit dev.example.t {digest} notify network=api.example.com"), b"").unwrap();
@@ -418,6 +451,18 @@ mod tests {
         call(&ctx, "rollback dev.example.t", b"").unwrap();
         assert_eq!(ctx.store.grants(1000).unwrap().plugins["dev.example.t"].digest, digest);
         assert!(ctx.store.history(1000).len() >= 8);
+        // Each line names the grants.json it left, which the watcher's audit holds the file to
+        assert_eq!(ctx.store.history(1000).last().unwrap()["grants"].as_str(), ctx.store.grants_hash(1000).as_deref());
+        assert!(crate::audit::store(&ctx.store, unsafe { libc::getuid() }).0.iter().all(|f| !f.id.starts_with("plugin-grants-changed")));
+        assert!(ctx.store.history(1000).iter().all(|l| l.get("approval").is_none()));
+        // With plugin-approval off, what gives more says nobody was asked; what takes away does not
+        let unasked = Ctx { store: ctx.store.clone(), uid: Some(1000), approval_off: true };
+        call(&unasked, "unblock dev.example.t api.example.com", b"").unwrap();
+        let out = call(&unasked, "prepare", &archive(&v2)).unwrap();
+        call(&unasked, &format!("commit dev.example.t {} notify", field(&out, "digest")), b"").unwrap();
+        let history = ctx.store.history(1000);
+        assert!(history[history.len() - 2].get("approval").is_none());
+        assert_eq!(history[history.len() - 1]["approval"], "none");
         call(&ctx, "remove dev.example.t", b"").unwrap();
         assert!(ctx.store.grants(1000).unwrap().plugins.is_empty());
         assert!(!ctx.store.store_dir(&digest).exists(), "an unreferenced folder is cleared");
@@ -427,9 +472,9 @@ mod tests {
     #[test]
     fn refuses_what_it_must() {
         let (ctx, dir) = setup("refuse");
-        let none = Ctx { store: ctx.store.clone(), uid: None };
+        let none = Ctx { store: ctx.store.clone(), uid: None, approval_off: false };
         assert!(call(&none, "prepare", &archive(&manifest_with("{}"))).is_err(), "no pkexec");
-        let root = Ctx { store: ctx.store.clone(), uid: Some(0) };
+        let root = Ctx { store: ctx.store.clone(), uid: Some(0), approval_off: false };
         assert!(call(&root, "prepare", &archive(&manifest_with("{}"))).is_err());
         assert!(call(&ctx, "frobnicate", b"").is_err());
         assert!(call(&ctx, "commit amethystora.x 00", b"").is_err());

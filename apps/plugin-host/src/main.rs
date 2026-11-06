@@ -7,6 +7,7 @@
 //!   list [--json]             the account's plugins
 //!   show ID [--json]          one of them: what it may do, what it asked for, its files, its sandbox
 //!   verify [ID]               every file of what is installed against the digest that was approved
+//!   audit [--json]            (root) every account's store, its history and the plugins' processes, for the security watcher
 //!   history [ID] [--json]     what was installed, granted, blocked and removed
 //!   sandbox ID [ACTION]       the command line it runs under, printed and never run
 //!   try ID [ACTION]           one run in the sandbox, with what it printed as the shell would be given it
@@ -324,6 +325,27 @@ fn cmd_discard(env: &Env, id: &str) -> ExitCode {
     }
 }
 
+/// The store and the plugins' processes as the security watcher reads them (audit.rs), as root: every account's grants and every
+/// file they name. Nothing is changed. Without --json, one finding a line
+fn cmd_audit(json_out: bool) -> ExitCode {
+    use amethystora_plugin_host::audit;
+    use amethystora_plugin_host::store::Store;
+    // SAFETY: geteuid has no arguments and cannot fail
+    if unsafe { libc::geteuid() } != 0 {
+        return fail("audit reads every account's plugins and processes, so it runs as root");
+    }
+    let (mut found, summary) = audit::store(&Store::production(), 0);
+    found.extend(audit::escaped(Path::new("/proc")));
+    if json_out {
+        println!("{}", json!({"summary": summary, "findings": found.iter().map(audit::Finding::to_json).collect::<Vec<_>>()}));
+    } else {
+        for f in &found {
+            println!("{}\t{}", f.level, f.text);
+        }
+    }
+    ExitCode::SUCCESS
+}
+
 fn main() -> ExitCode {
     // Run as `plugin` (a link inside the sandbox): the plugin asking the host for what it was allowed
     if std::env::args().next().is_some_and(|a| a.rsplit('/').next() == Some("plugin")) {
@@ -341,6 +363,7 @@ fn main() -> ExitCode {
         },
         Some("check") => cmd_check(rest),
         Some("pack") => cmd_pack(rest),
+        Some("audit") => cmd_audit(json_out),
         Some("shim") => match rest.iter().position(|a| a == "--") {
             Some(at) if at == 1 && rest.len() > 2 => ExitCode::from(shim::run(&rest[0], &rest[at + 1..]).clamp(0, 255) as u8),
             _ => usage(),

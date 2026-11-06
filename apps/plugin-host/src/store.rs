@@ -115,12 +115,21 @@ impl Store {
         Ok(())
     }
 
-    /// One line in the account's history. `fields` is an object; the time and uid are added here
+    /// The SHA-256 of the account's grants.json as it is on disk, which each line of the history carries: the watcher's
+    /// audit takes a grants.json that is not the one the last line names as changed outside this helper
+    pub fn grants_hash(&self, uid: u32) -> Option<String> {
+        use sha2::{Digest, Sha256};
+        let bytes = std::fs::read(self.account_dir(uid).join("grants.json")).ok()?;
+        Some(Sha256::digest(&bytes).iter().map(|b| format!("{b:02x}")).collect())
+    }
+
+    /// One line in the account's history. `fields` is an object; the time, the uid and the grants' hash are added here
     pub fn append_history(&self, uid: u32, mut fields: Value) -> Result<(), String> {
         let dir = self.account_dir(uid);
         std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
         fields["t"] = now().into();
         fields["uid"] = uid.into();
+        fields["grants"] = self.grants_hash(uid).into();
         let mut file = std::fs::OpenOptions::new().append(true).create(true).open(dir.join("history.jsonl")).map_err(|e| e.to_string())?;
         file.write_all(format!("{fields}\n").as_bytes()).and_then(|_| file.sync_all()).map_err(|e| e.to_string())
     }

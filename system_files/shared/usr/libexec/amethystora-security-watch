@@ -2015,6 +2015,44 @@ integrity_status() {
             else {level, account, app, ref, origin, installation} end]}' "${INTEGRITY}/last.json" 2>/dev/null || echo null
 }
 
+# --- Plugins against what was approved -----------------------------------------------------------------------
+
+# What the plugins' audit found (PLUGINS, amethystora-plugin-host audit, at each run): a plugin's files changed after a person
+# approved them, a grants.json the helper's history does not record, a file of the store others may write or that is not
+# root's, something in an account's folder the helper never writes, a plugin's process outside the scope that holds its limits,
+# and each approval made while plugin-approval was off. Said once each while it lasts, to the administrators and to the account
+# whose plugin it is. None can be allowed: the store is root's, and the way out is putting it back (ame plugin add, or remove).
+PLUGIN_AUDIT=null
+read_plugins() {
+    local seen="${STATE}/plugins.seen" out audit new id level text account tactic
+    local -a facts
+    [[ -x /usr/libexec/amethystora-plugin-host && -d "${ROOT}/var/lib/amethystora/plugins" ]] || { rm -f "${seen}"; return 0; }
+    audit="$(timeout 60 /usr/libexec/amethystora-plugin-host audit --json 2>/dev/null)" || return 0
+    jq -e 'type == "object"' <<<"${audit}" >/dev/null 2>&1 || return 0
+    touch "${seen}"
+    out="$(jq -rc '.findings[] | select((.id | type == "string") and (.text | type == "string"))
+        | [.id, (.level // "critical"), .text, (.account // "-")] | map(tostring | gsub("[[:cntrl:]]"; " ")) | join("\u001f")' \
+        <<<"${audit}")"
+    new="$(cut -d$'\x1f' -f1 <<<"${out}" | grep . | grep -vxF -f "${seen}")"
+    while IFS=$'\x1f' read -r id level text account; do
+        [[ -n "${id}" ]] && grep -qxF -- "${id}" <<<"${new}" || continue
+        [[ "${level}" =~ ^(critical|normal)$ ]] || level=critical
+        case "${id}" in
+            plugin-escaped:*) tactic="Defense Evasion" ;;
+            plugin-unapproved:*) tactic=- ;;
+            *) tactic=Persistence ;;
+        esac
+        facts=()
+        [[ "${account}" != - ]] && facts=("tell=${account}")
+        add "${level}" plugins "${account}" "${tactic}" "${text}" "${facts[@]}"
+    done <<<"${out}"
+    cut -d$'\x1f' -f1 <<<"${out}" | grep . >"${seen}"
+    # For the report: how many, and how many found, never whose
+    PLUGIN_AUDIT="$(jq -c --argjson time "${NOW}" '.summary + {$time, problems: ([.findings[] | select(.level == "critical")] | length),
+        unapproved: ([.findings[] | select(.id | startswith("plugin-unapproved:"))] | length)}' <<<"${audit}")"
+    return 0
+}
+
 # --- The behaviour sensor -----------------------------------------------------------------------------------
 
 # What Falco saw (BEHAVIOUR, amethystora-behaviour.service): its rules match what processes do as the kernel
@@ -2262,6 +2300,8 @@ for key in "${!READERS[@]}"; do
 done
 [[ "${SETTING[APP_INTEGRITY]:-off}" == off ]] && rm -f "${STATE}/integrity.seen"
 timed APP_INTEGRITY switched APP_INTEGRITY read_integrity
+[[ "${SETTING[PLUGINS]:-off}" == off ]] && rm -f "${STATE}/plugins.seen"
+timed PLUGINS switched PLUGINS read_plugins
 
 # What the report reads, world-readable: it names files and ports, not what is in them, of network
 # protection only how much it blocked, and of the audit log how many events it dropped
@@ -2282,9 +2322,10 @@ write_status() {
         --argjson setuid "${SETUID}" --argjson listeners "${LISTENING}" \
         --argjson network "$(network_status)" --argjson audit "${AUDIT:-null}" --argjson disk_unlock "${DISK_UNLOCK:-null}" \
         --argjson duress "${DURESS:-null}" --argjson sensor "${SENSOR_STATE:-null}" --argjson integrity "${INTEGRITY_STATE:-null}" \
+        --argjson plugins "${PLUGIN_AUDIT:-null}" \
         --argjson timings "$(for key in "${!TIMINGS[@]}"; do printf '%s\t%s\n' "${key}" "${TIMINGS[${key}]}"; done |
             jq -R 'split("\t") | {(.[0]): (.[1] | tonumber)}' | jq -s 'add // {}')" \
-        '{$checked, $swept, $drift, $setuid, $listeners, $network, $audit, $disk_unlock, $duress, $sensor, $integrity, $timings}' >"${STATUS}.new" &&
+        '{$checked, $swept, $drift, $setuid, $listeners, $network, $audit, $disk_unlock, $duress, $sensor, $integrity, $plugins, $timings}' >"${STATUS}.new" &&
         chmod 0644 "${STATUS}.new" && mv "${STATUS}.new" "${STATUS}"
 }
 # Written before the report runs, which reads it, and again after with the report's own time

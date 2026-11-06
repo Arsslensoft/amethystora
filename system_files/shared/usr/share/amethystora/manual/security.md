@@ -393,6 +393,7 @@ the Settings page and as a command that says what it changes before it does:
 | `ame security signed-updates` | Switching this machine back to signature-checked updates at every start | The machine stays on what it follows now; turned on again, from the next start. For an image of your own, `ame system trust-image` is the answer |
 | `ame security ipv6-privacy` | A temporary IPv6 address that changes, on every connection | From each network's next connection |
 | `ame security bluetooth-privacy` | Bluetooth's random address, and visible and pairable for 30 seconds at a time | At once; Bluetooth restarts |
+| `ame security plugin-approval` | An administrator approves installing a [plugin](plugins.md), in the system's own dialog | At once. Off, any program running as an administrator, an AI agent's shell included, can install a plugin and give it what it asks for; each time is recorded and said afterwards. Widening, unblocking and rolling back still ask |
 
 `ame security lockdown` and the protections that are off until you turn them on, below, are switches
 already. Something with root can change any of this, but not quietly: each change is recorded by the
@@ -537,6 +538,15 @@ checks now, and `ame security app-integrity repair` puts each app it named back 
 fetching its files again, or only the app named after it (`repair org.mozilla.firefox`), named or not; what the app keeps in `~/.var/app` stays. Homebrew, `~/.local/bin`, the AI agents,
 editor and browser extensions and containers keep no signed record of what they installed, so they are not
 checked this way: the watcher looks at where they start from instead.
+
+### Plugins
+
+A [plugin](plugins.md) runs only while its files are the ones you approved, whatever this check says. With **Plugins** on
+(`ame security settings plugins on`, and in every profile), the watcher also tells you, at each of its runs, when something
+changed them anyway: a plugin's files no longer matching what you approved, what a plugin may do changed without the plugin
+helper recording it, a file of the plugins' store that is not the system's alone, a plugin's process that left the limits it
+runs under, and each plugin installed while [plugin approval](#switches) was off. Only something with administrator rights
+can make most of these changes, so none of them can be allowed: put the plugin back with `ame plugin add`, or remove it.
 
 ### Stricter settings
 

@@ -76,6 +76,23 @@ if grep -nE '(>|tee|cp|mv|rm|install|ln|chmod|chown) .*/var/lib/amethystora/plug
     fail "${COMMAND} writes the store itself"
 fi
 
+# plugin-approval off (amethystora-hardening) is the one rule that lets anything through, and only a commit, only for wheel at the
+# machine: it is shipped in the hardening folder, never in rules.d, the switch is on as the image ships, and no image can turn it off
+APPROVAL=/usr/share/amethystora/hardening/49-amethystora-plugin-approval.rules
+test -s "${APPROVAL}" || fail "${APPROVAL} is missing"
+[[ "$(grep -o 'org\.amethystora\.plugins\.[a-z-]*' "${APPROVAL}" | sort -u)" == org.amethystora.plugins.commit ]] ||
+    fail "the plugin-approval rule names an action other than commit"
+grep -q 'subject.local && subject.active' "${APPROVAL}" && grep -q 'isInGroup("wheel")' "${APPROVAL}" ||
+    fail "the plugin-approval rule lets through more than an administrator at the machine"
+test ! -e /usr/share/polkit-1/rules.d/49-amethystora-plugin-approval.rules -a ! -e /etc/polkit-1/rules.d/49-amethystora-plugin-approval.rules ||
+    fail "the image ships plugin-approval off"
+/usr/libexec/amethystora-hardening is-on plugin-approval || fail "plugin-approval is off as the image ships"
+grep -q 'APPROVAL_OFF_RULE: &str = "/etc/polkit-1/rules.d/49-amethystora-plugin-approval.rules"' "${SRC}/plugin-host/src/rootcmd.rs" ||
+    fail "the root helper does not look for the rule plugin-approval off writes"
+if grep -A3 '^BUILD_SAFE_OFF=' /usr/libexec/amethystora-image-policy | grep -q plugin-approval; then
+    fail "an image may turn plugin-approval off"
+fi
+
 # --- The host's unit: nothing that needs a namespace, and nobody has it enabled ----------------------------------------------------
 if grep -qE '^(ProtectSystem|ProtectHome|ReadWritePaths|ReadOnlyPaths|PrivateTmp|PrivateDevices|PrivateNetwork|PrivateUsers|ProtectKernel[A-Za-z]*|ProtectControlGroups|ProtectClock|ProtectHostname|ProtectProc|CapabilityBoundingSet|RestrictNamespaces|MemoryDenyWriteExecute|SystemCallFilter)=' "${UNIT}"; then
     fail "the host's unit has a setting that needs a namespace, and the host could no longer tell the shell from a stranger"

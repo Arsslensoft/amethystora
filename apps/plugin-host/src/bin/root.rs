@@ -8,7 +8,7 @@
 
 use std::process::ExitCode;
 
-use amethystora_plugin_host::rootcmd::Ctx;
+use amethystora_plugin_host::rootcmd::{APPROVAL_OFF_RULE, Ctx};
 use amethystora_plugin_host::store::Store;
 
 fn main() -> ExitCode {
@@ -21,7 +21,8 @@ fn main() -> ExitCode {
     // SAFETY: umask has no failure mode
     unsafe { libc::umask(0o022) };
     let uid = std::env::var("PKEXEC_UID").ok().and_then(|u| u.parse::<u32>().ok());
-    let ctx = Ctx { store: Store::production(), uid };
+    let approval_off = std::path::Path::new(APPROVAL_OFF_RULE).exists();
+    let ctx = Ctx { store: Store::production(), uid, approval_off };
     let args: Vec<String> = std::env::args().skip(1).collect();
     match ctx.run(&args, std::io::stdin().lock(), &mut std::io::stdout().lock()) {
         Ok(()) => ExitCode::SUCCESS,

@@ -1203,6 +1203,57 @@ if [[ ${EUID} -ne 0 ]] && command -v flatpak >/dev/null; then
     fi
 fi
 
+# Plugins against what a person approved (PLUGINS, plans/PLAN-plugins.md): the security watcher's audit of the store, of
+# which only how many and how many it found reach this report (each finding is said, to whom it is about, in the events).
+# The account's own plugins, and what each may reach, are its own `ame plugin list`, read as it.
+PLUGINS_SEEN="$(jq -c '.plugins // empty' "${WATCH_STATUS}" 2>/dev/null)"
+PLUGIN_TIME="$(jq -r '.time // empty' <<<"${PLUGINS_SEEN:-null}" 2>/dev/null)"
+MINE=()
+if [[ ${EUID} -ne 0 && -x /usr/libexec/amethystora-plugin-host ]]; then
+    mapfile -t MINE < <(timeout 20 /usr/libexec/amethystora-plugin-host list --json 2>/dev/null |
+        jq -r '.[]? | select(.draft != true) | "\(.name): \([.granted[]? | select(startswith("network=") or startswith("files="))
+            | sub("^network="; "") | sub("^files="; "")] | if length == 0 then "nothing outside its sandbox" else join(", ") end)"' 2>/dev/null |
+        /usr/libexec/amethystora-security-text --lines --max 200)
+    [[ -n "${MINE[0]:-}" ]] || MINE=()
+fi
+if [[ "${SETTING[PLUGINS]}" != on ]]; then
+    COMMAND="ame security settings plugins on"
+    report apps plugins info "$(gettext "Plugins")" \
+        "$(gettext "Plugins are not checked against what you approved")" "${MINE[@]}" \
+        "$(gettext "A plugin whose files changed still does not run, but nothing tells you, nor of a change to what a plugin may do made outside its helper. Check them at each of the watcher's runs with:")"
+elif [[ ! "${PLUGIN_TIME}" =~ ^[0-9]+$ ]]; then
+    report apps plugins info "$(gettext "Plugins")" \
+        "$(gettext "Plugins have not been checked against what you approved yet")" "${MINE[@]}" \
+        "$(gettext "The security watcher checks them at its next run.")"
+else
+    N="$(jq -r '.problems // 0' <<<"${PLUGINS_SEEN}")"
+    COUNT="$(jq -r '.plugins // 0' <<<"${PLUGINS_SEEN}")"
+    WHEN="$(date -d "@${PLUGIN_TIME}" '+%a %-d %b, %H:%M')"
+    if [[ "${N}" =~ ^[1-9][0-9]*$ ]]; then
+        COMMAND="ame security events"
+        report apps plugins off "$(gettext "Plugins")" \
+            "$(eval_ngettext "\${N} thing in the plugins changed outside their helper" "\${N} things in the plugins changed outside their helper" "${N}")" \
+            "${MINE[@]}" "$(gettext "A plugin that changed does not run. See what was found with:")"
+    else
+        report apps plugins ok "$(gettext "Plugins")" \
+            "$(eval_ngettext "\${COUNT} plugin checked on \${WHEN}, as you approved it" "\${COUNT} plugins checked on \${WHEN}, as you approved them" "${COUNT:-0}")" \
+            "${MINE[@]}"
+    fi
+fi
+# Plugin approval (amethystora-hardening's plugin-approval): off, giving a plugin more asks nobody, which the history and a notice
+# say afterwards. The rule it writes, there while the switch says on, was put there some other way
+PLUGIN_RULE=/etc/polkit-1/rules.d/49-amethystora-plugin-approval.rules
+if hardening_off plugin-approval; then
+    COMMAND="ame security plugin-approval on"
+    turned_off apps plugin-approval "$(gettext "Plugin approval")" "$(gettext "Plugins are given permissions without asking an administrator")" \
+        "$(gettext "Any program running as an administrator on this computer, an AI agent's own shell included, can install a plugin and give it any permission. Each time is recorded and said, afterwards.")"
+elif [[ -e "${PLUGIN_RULE}" ]]; then
+    COMMAND="sudo rm ${PLUGIN_RULE}"
+    report apps plugin-approval check "$(gettext "Plugin approval")" \
+        "$(gettext "A rule lets plugins be given permissions without asking, but plugin approval is on")" \
+        "$(gettext "It was not written by ame security plugin-approval. Take it away with:")"
+fi
+
 # --- Scans --------------------------------------------------------------------------------------------
 
 # /var/log is traversable, so the size of the root-owned 0600 findings file is visible here even

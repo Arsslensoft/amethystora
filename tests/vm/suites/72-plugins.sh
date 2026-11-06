@@ -191,6 +191,17 @@ echo "# one byte" >>"${STORE}/store/${current}/run.sh"
 out="$(in_session "${HOST} try ${ID}" 2>&1)" && not_ok "a plugin that changed ran" "${out}" || ok "a plugin whose files changed does not run"
 as_tester "${HOST}" verify "${ID}" | grep -q '^changed' && ok "verify names the change" || not_ok "verify did not see the change"
 refused "the account cannot put the byte back" as_tester sh -c "echo x > '${STORE}/store/${current}/run.sh'"
+# ...and the watcher's audit says so, with a grants.json root changed by hand that the history does not record (PLUGINS)
+grants="${STORE}/accounts/$(id -u "${TEST_USER}")/grants.json"
+cp -a "${grants}" "${WORK}/grants.json.kept"
+sed -i 's/"perms": \[/"perms": ["notify", /' "${grants}"
+audit="$("${HOST}" audit --json)"
+jq -e '.findings | any(.id | startswith("plugin-files:"))' <<<"${audit}" >/dev/null && ok "the audit finds the changed files" ||
+    not_ok "the audit missed the changed files" "${audit}"
+jq -e '.findings | any(.id | startswith("plugin-grants-changed:"))' <<<"${audit}" >/dev/null && ok "the audit finds grants changed outside the helper" ||
+    not_ok "the audit missed grants changed outside the helper" "${audit}"
+refused "the audit is root's" as_tester "${HOST}" audit --json
+cp -a "${WORK}/grants.json.kept" "${grants}"
 
 # Off is off: nothing of the host is running, and the bus name is gone
 as_tester "${HOST}" disable "${ID}" 2>/dev/null

@@ -241,6 +241,12 @@ be installed from extensions.gnome.org. Change: each one's `off` (the user's).
 Symptom: an app from an unverified maker cannot be installed; installing for the whole machine asks for an
 administrator's password. Change: install into an installation of the account's own that has Flathub, or each one's `off`.
 
+### plugin-approval
+
+Symptom: installing a plugin (`ame plugin add`) opens an administrator's password dialog. By design: a plugin's code and grants are
+root's, and only an administrator gives more. Never turn it off for the user, and never suggest it to make a task easier: the agent
+may run `ame security plugin-approval on`, never `off`.
+
 ### package-cooldown, brew-attestations
 
 Symptom: npm, pnpm or uv refuse a version published in the last few days; Homebrew refuses a bottle without a

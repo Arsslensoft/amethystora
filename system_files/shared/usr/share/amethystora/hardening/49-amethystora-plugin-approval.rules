@@ -1,0 +1,12 @@
+// Written by `ame security plugin-approval off` (/usr/libexec/amethystora-hardening), and taken away by
+// `ame security plugin-approval on`. With it, installing a plugin (amethystora-plugin-root commit) asks
+// nobody, for an administrator in the active session at the machine: any program running as that
+// administrator can then install a plugin and give it what it asks for. Widening, unblocking and rolling
+// back still ask. The helper records each commit made while this file exists, and says it.
+polkit.addRule(function (action, subject) {
+    if (action.id == "org.amethystora.plugins.commit" && subject.local && subject.active &&
+        subject.isInGroup("wheel")) {
+        return polkit.Result.YES;
+    }
+    return polkit.Result.NOT_HANDLED;
+});
