@@ -367,7 +367,7 @@ grep -qE '^(MemoryMax|TasksMax|LimitNOFILE)=' /usr/lib/systemd/user/amethystora-
 # pair too, off (plans/beyond/spec-r4-later.md A.2), and music from either side and the phone as a slide clicker, both off
 # (plans/ui-ideas/spec-phone.md)
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys org.amethystora.Connect | sort | paste -sd ' ')" == \
-    "clicker clipboard-receive clipboard-send codes computers device-name music photo-folder" ]]
+    "ask-first clicker clipboard-receive clipboard-send codes computers device-name music photo photo-folder" ]]
 for key in music clicker; do
     [[ "$(GSETTINGS_BACKEND=memory gsettings get org.amethystora.Connect "${key}")" == false ]]
     grep -q "item desktop phone-${key} switch" /usr/libexec/amethystora-control-list
@@ -567,7 +567,7 @@ done
 # row's keys swap a workspace with its neighbour, which collide with nothing GNOME binds, and name a space after its
 # main app (auto-names, the motion plan's), and saved sets in its menu (sets, phase 7's).
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys org.gnome.shell.extensions.amethystora-ui.workspaces | sort | paste -sd ' ')" == \
-    "auto-names move-workspace-left move-workspace-right resume sets" ]]
+    "auto-names move-workspace-left move-workspace-right put-away resume sets" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.workspaces move-workspace-left)" == \
     "['<Control><Alt><Super>Left']" ]]
 # The tiling: a switch (the classic layout is it off) and the settings its preferences window changes, under the
@@ -892,7 +892,7 @@ fi
 # them), the module between today's and the dock, its recipe; it quits an app only by asking it (request_quit), and runs
 # nothing. The flat battery's own files block nothing (its rule is checked by node, with the saved sets, below).
 POWER=org.gnome.shell.extensions.amethystora-ui.power
-[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${POWER}" | sort | paste -sd ' ')" == "battery-details busy-app device-batteries flat-battery flat-hold sleep-report" ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${POWER}" | sort | paste -sd ' ')" == "battery-details busy-app charge-by-leaving device-batteries flat-battery flat-hold sleep-report" ]]
 # Not yet from the keyboard, bound only while the flat battery's card shows: a key nobody else binds
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${POWER}" flat-hold)" == "['<Super><Shift>n']" ]]
 for key in battery-details busy-app device-batteries flat-battery sleep-report; do
