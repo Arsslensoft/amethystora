@@ -26,7 +26,9 @@ if [[ "${1:-}" == install ]]; then
     echo "::endgroup::"
     exit 0
 fi
-[[ "${1:-}" == make && -n "${ASSETS:-}" ]]
+# Without an argument (the lab's delta.sh), the make half into / itself
+[[ "${1:-make}" == make ]]
+ASSETS="${ASSETS:-}"
 
 SWEET_REPO="https://github.com/EliverLara/Sweet"
 # master as of 2026-08-13, with the SHA-256 of GitHub's archive of that commit, which nothing else

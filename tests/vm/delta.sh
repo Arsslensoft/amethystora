@@ -2,7 +2,7 @@
 # delta.sh BASE TAG CTX [APPS]: in the lab, an image of the source tree at CTX built FROM BASE (the image a kept VM
 # runs) without a whole build: its system_files copied over, and only the build steps those files feed run again
 # (live.sh delta, .claude/skills/run-tests/live-fix.md). CTX/.live-changed lists the paths that changed since BASE's
-# commit. APPS is the apps stage of a build of the same tree, for apps/; without it the apps stay BASE's. The result
+# commit. APPS is the apps layer of a build of the same tree (localhost/amethystora-apps), for apps/; without it the apps stay BASE's. The result
 # is localhost/amethystora-delta:TAG, pushed to the lab's registry (localhost:5000), from which the guest switches.
 set -euo pipefail
 
@@ -14,7 +14,7 @@ changed '^system_files/.*/(gnome-shell/extensions|glib-2\.0/schemas)/|^build_fil
 changed '^build_files/(base/09-emoji\.sh|shared/emoji-data\.py)' && steps+=(build_files/base/09-emoji.sh)
 changed '^build_files/base/12-login-screen\.sh|amethystora-login-background|backgrounds/amethystora/amethystora-login' &&
     steps+=(build_files/base/12-login-screen.sh)
-if changed '^apps/' && [[ -z "${APPS}" ]]; then echo "delta: apps/ changed, but no apps stage was given: the apps stay the base's" >&2; fi
+if changed '^apps/' && [[ -z "${APPS}" ]]; then echo "delta: apps/ changed, but no apps layer was given: the apps stay the base's" >&2; fi
 [[ -z "${APPS}" ]] || steps+=(build_files/base/13-apps.sh)
 changed '^po/|^build_files/base/14-security\.sh|^build_files/shared/ips-config\.py' && steps+=(build_files/base/14-security.sh)
 # The agent's index is of the image as it is: anything in system_files may change it

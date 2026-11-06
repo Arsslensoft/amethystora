@@ -60,7 +60,7 @@ jobs:
             local image="$1" to="$2" mnt
             mnt="$(sudo podman image mount "${image}")"
             sudo find "${mnt}" -xdev -mindepth 1 -printf '%P\t%y\t%m\t%U:%G\t%l\n' | LC_ALL=C sort >"${to}.list"
-            (cd "${mnt}" && sudo find . -xdev -type f -print0 | sudo xargs -0 -r sha256sum) | LC_ALL=C sort -k2 >"${to}.sha"
+            sudo sh -c 'cd "$1" && find . -xdev -type f -print0 | xargs -0 -r sha256sum' sh "${mnt}" | LC_ALL=C sort -k2 >"${to}.sha"
             sudo podman image umount "${image}"
             sudo podman run --rm "${image}" rpm -qa --queryformat '%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}\n' | LC_ALL=C sort >"${to}.rpms"
             sudo podman run --rm "${image}" sh -c 'lsinitrd /usr/lib/modules/*/initramfs.img' |
