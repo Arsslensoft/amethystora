@@ -237,8 +237,11 @@ fn words_make_one_buffer_of_the_right_size() {
     let longest = list.lines().filter_map(|l| l.split('\t').nth(1)).map(str::len).max().unwrap();
     assert_eq!(LONGEST_WORD, longest);
     for separator in ['-', 'é', '😀'] {
+        // Four words of the list hold a hyphen (t-shirt...), each adding one to the separators between the 20 words
+        let inside = list.lines().filter_map(|l| l.split('\t').nth(1)).any(|w| w.contains(separator));
         let (made, _, allocations) = measured(|| words(20, separator).unwrap());
-        assert_eq!(made.password.as_str().matches(separator).count(), 19);
+        let count = made.password.as_str().matches(separator).count();
+        assert!(if inside { (19..=39).contains(&count) } else { count == 19 }, "{separator}: {count}");
         // A vector of the chosen words beside the buffer was a second one, and left their places unwiped
         assert_eq!(allocations, 1, "{separator}");
     }
