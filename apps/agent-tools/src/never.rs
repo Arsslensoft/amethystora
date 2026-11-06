@@ -120,7 +120,7 @@ pub fn refusal(argv: &[String]) -> Option<String> {
     // A code from your phone reads each text as it arrives: turning it on is the user's, by whichever spelling (turning it
     // off, or back to its default, is not refused)
     if codes_on(program, argv, &lower) {
-        return Some("a code from your phone reads the phone's texts as they arrive: the user turns it on, with ame desktop phone codes on".into());
+        return Some("a code from your phone, the phone's camera and files arriving with no Accept are the user's to turn on or off: they read the phone's texts, open its camera, or let files in".into());
     }
     // The live pill's list of what the agent changes, and the desktop's other ways in to the agent: the person's view
     // of the agent, which the agent may not turn off or move, however the command spells it
@@ -150,19 +150,23 @@ fn dconf_reaches(args: &[String], keys: &str) -> bool {
 /// The phone link's own keys (org.amethystora.Connect), where `codes` is
 const CONNECT_KEYS: &str = "/org/amethystora/Connect/";
 
-/// Whether a gsettings or dconf command turns the phone link's `codes` on (R7-23): the key by its schema, by its path, or
-/// a load that reaches the folder it is in. A value of false, and a reset, turn it off and pass
+/// Whether a gsettings or dconf command loosens the phone link's own protections: turns `codes` (R7-23) or `photo` (R7-69) on, or
+/// makes files arrive with no Accept (`ask-first` never, R7-27): the key by its schema, by its path, or a load that reaches the
+/// folder it is in. A value of false, a stricter value, and a reset pass
 fn codes_on(program: &str, argv: &[String], lower: &[String]) -> bool {
-    let off = lower.last().is_some_and(|last| matches!(last.as_str(), "false" | "'false'"));
+    let last = lower.last().map(String::as_str).unwrap_or("");
+    let off = matches!(last, "false" | "'false'");
+    let never = matches!(last, "never" | "'never'");
+    let loosens = |key: &str| (key == "ask-first" && never) || (matches!(key, "codes" | "photo") && !off);
     match program {
         "gsettings" => {
             lower.iter().any(|arg| arg == "set")
                 && lower.iter().any(|arg| arg.starts_with("org.amethystora.connect"))
-                && lower.iter().any(|arg| arg == "codes")
-                && !off
+                && lower.iter().any(|arg| matches!(arg.as_str(), "codes" | "photo" | "ask-first") && loosens(arg))
         }
         "dconf" => {
-            (lower.get(1).map(String::as_str) == Some("write") && lower.get(2).is_some_and(|key| key.ends_with("/org/amethystora/connect/codes")) && !off)
+            (lower.get(1).map(String::as_str) == Some("write")
+                && lower.get(2).is_some_and(|key| key.strip_prefix("/org/amethystora/connect/").is_some_and(loosens)))
                 || (matches!(argv.get(1).map(String::as_str), Some("load" | "compile" | "update"))
                     && argv[2..].iter().any(|arg| arg.starts_with('/') && arg.ends_with('/') && CONNECT_KEYS.starts_with(arg.as_str())))
         }
@@ -268,6 +272,10 @@ fn ame_refusal(args: &[String]) -> Option<String> {
         ["desktop", "phone", "codes"] | ["desktop", "phone", "codes", "on", ..] => {
             Some("a person turns this on themselves: it reads the phone's texts".into())
         }
+        // Files that arrive with no Accept, and the phone's camera: the person's
+        ["desktop", "phone", "ask-first", "never", ..] | ["desktop", "phone", "photo"] | ["desktop", "phone", "photo", "on", ..] => {
+            Some("a person decides this themselves: it lets files in with no Accept, or opens the phone's camera".into())
+        }
         ["desktop", "screen-brightness"] | ["desktop", "screen-brightness", "on", ..] => {
             Some("giving the displays' i2c buses to the person at the machine is the owner's choice: the user turns it on".into())
         }
@@ -344,6 +352,11 @@ mod tests {
             "ame apps aur on",
             "ame desktop phone codes on",
             "ame desktop phone codes",
+            "ame desktop phone ask-first never",
+            "ame desktop phone photo on",
+            "gsettings set org.amethystora.Connect ask-first never",
+            "gsettings set org.amethystora.Connect photo true",
+            "dconf write /org/amethystora/Connect/ask-first 'never'",
             "gsettings set org.amethystora.Connect codes true",
             "gsettings set org.amethystora.Connect:/org/amethystora/Connect/ codes true",
             "gsettings --schemadir /usr/share/glib-2.0/schemas set org.amethystora.Connect codes true",
@@ -574,6 +587,11 @@ mod tests {
             "amethystora-if-found status",
             "ame desktop text-shortcuts off",
             "ame desktop phone codes off",
+            "ame desktop phone ask-first computers",
+            "ame desktop phone ask-first all",
+            "ame desktop phone photo off",
+            "gsettings set org.amethystora.Connect ask-first 'all'",
+            "gsettings set org.amethystora.Connect photo false",
             "gsettings set org.amethystora.Connect codes false",
             "gsettings reset org.amethystora.Connect codes",
             "gsettings get org.amethystora.Connect codes",

@@ -53,6 +53,11 @@
       <summary>A code from your phone</summary>
       <description>A one-time code in a text from a paired phone shows in the live pill for a minute, to copy. It means the phone link looks at each text as it arrives, in memory only, and tells the desktop the digits of a code and nothing else: never written, never in the clipboard's history, hidden while the screen is shared and while locked. Turned on only by ame desktop phone codes on, which says so first.</description>
     </key>
+    <key name="photo" type="b">
+      <default>false</default>
+      <summary>Snap with your phone</summary>
+      <description>This computer lists the photo request, and a phone whose app takes it is offered Snap with your phone: a button in the Phone app that asks it to open its camera, and the picture comes back as a file. A current KDE Connect app has no such request, so for it nothing is offered. A request is made only by the button, waits 120 seconds, and the picture is at most 64 MiB. Off as the image ships.</description>
+    </key>
     <key name="clicker" type="b">
       <default>false</default>
       <summary>The phone as a slide clicker</summary>

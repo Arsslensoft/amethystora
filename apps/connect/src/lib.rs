@@ -22,6 +22,7 @@ pub mod pairing;
 pub mod players;
 pub mod plugins;
 pub mod payload;
+pub mod photo;
 pub mod service;
 pub mod share;
 pub mod sms;

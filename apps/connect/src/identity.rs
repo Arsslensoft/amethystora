@@ -50,8 +50,8 @@ pub const OUTGOING: &[&str] = &[
 
 /// What this computer advertises now (plans/ui-ideas/spec-phone.md 1): the lists above, ringing the phone always,
 /// the media packets both ways while music from either side is on, and the presenter's packet while the clicker is
-/// on. Off, the phone's own app shows neither feature for this computer.
-pub fn advertised(music: bool, clicker: bool) -> (Vec<String>, Vec<String>) {
+/// on, and the photo request while Snap with your phone is on. Off, the phone's own app shows none of them for this computer.
+pub fn advertised(music: bool, clicker: bool, photo: bool) -> (Vec<String>, Vec<String>) {
     let mut incoming: Vec<String> = INCOMING.iter().map(|s| s.to_string()).collect();
     let mut outgoing: Vec<String> = OUTGOING.iter().map(|s| s.to_string()).collect();
     outgoing.push(crate::media::RING.to_string());
@@ -63,6 +63,11 @@ pub fn advertised(music: bool, clicker: bool) -> (Vec<String>, Vec<String>) {
     }
     if clicker {
         incoming.push(crate::media::PRESENTER.to_string());
+    }
+    // Snap with your phone (photo.rs): listed only while the person has chosen it
+    if photo {
+        incoming.push(crate::photo::PHOTO.to_string());
+        outgoing.push(crate::photo::REQUEST.to_string());
     }
     (incoming, outgoing)
 }
@@ -183,7 +188,7 @@ pub struct Local {
 
 impl Local {
     pub fn new(device_id: &str, name: &str, kind: &str) -> Local {
-        let (incoming, outgoing) = advertised(false, false);
+        let (incoming, outgoing) = advertised(false, false, false);
         Local { device_id: device_id.to_string(), name: name.to_string(), kind: kind.to_string(), incoming, outgoing }
     }
 

@@ -112,6 +112,7 @@ fn main() -> ExitCode {
             music: s.boolean("music"),
             clicker: s.boolean("clicker"),
             codes: s.boolean("codes"),
+            photo: s.boolean("photo"),
             ask_first: AskFirst::from_key(&s.string("ask-first")),
         },
         None => Settings::default(),
@@ -142,6 +143,7 @@ fn main() -> ExitCode {
                 service.set_computers(s.boolean("computers"));
                 service.set_media_switches(s.boolean("music"), s.boolean("clicker"));
                 service.codes.set(s.boolean("codes"));
+                service.set_photo(s.boolean("photo"));
                 service.ask_first.set(AskFirst::from_key(&s.string("ask-first")));
                 service.set_name(&s.string("device-name"), pretty_host().as_deref());
             }

@@ -78,6 +78,8 @@ pub struct Asking {
     held: Vec<Held>,
     /// Which card the held offers belong to; a later one is a new question
     round: u64,
+    /// How many offers the card on the screen said when it was last drawn: an Accept covers those, and not what came after
+    shown: usize,
     allow: Option<Allow>,
 }
 
@@ -128,21 +130,30 @@ impl Service {
             round = st.asking.round;
             st.asking.held.push(Held { packet: p.clone(), link: link.clone(), name: name.to_string(), modified, batch });
         }
+        {
+            let mut st = dev.st.borrow_mut();
+            st.asking.shown = st.asking.held.len();
+        }
         self.raise_ask(dev, round);
         if first {
-            let service = self.clone();
-            let id = dev.id.clone();
-            self.spawn_task(async move {
-                glib::timeout_future(WAIT).await;
-                if let Some(dev) = service.device(&id) {
-                    // Only the question this timer was started for; a later one has a timer of its own
-                    if dev.st.borrow().asking.round == round {
-                        service.answer_ask(&dev, round, false);
-                    }
-                }
-            });
+            self.start_ask_timer(dev, round);
         }
         true
+    }
+
+    /// A card is answered, by the person or by the minute, only once
+    fn start_ask_timer(self: &Rc<Self>, dev: &Rc<Device>, round: u64) {
+        let service = self.clone();
+        let id = dev.id.clone();
+        self.spawn_task(async move {
+            glib::timeout_future(WAIT).await;
+            if let Some(dev) = service.device(&id) {
+                // Only the question this timer was started for; a later one has a timer of its own
+                if dev.st.borrow().asking.round == round {
+                    service.answer_ask(&dev, round, false);
+                }
+            }
+        });
     }
 
     fn raise_ask(&self, dev: &Rc<Device>, round: u64) {
@@ -186,21 +197,35 @@ impl Service {
 
     /// Accept fetches what is held; anything else sends the senders away. Only for the question it was asked of.
     fn answer_ask(self: &Rc<Self>, dev: &Rc<Device>, round: u64, accept: bool) {
-        let held = {
+        let (held, left) = {
             let mut st = dev.st.borrow_mut();
             if st.asking.round != round || st.asking.held.is_empty() {
                 return;
             }
-            let held = std::mem::take(&mut st.asking.held);
+            // Accept covers what the card said; offers that came while it was up wait for a card of their own. No answers all.
+            let cut = if accept { st.asking.shown.clamp(1, st.asking.held.len()) } else { st.asking.held.len() };
+            let later = st.asking.held.split_off(cut);
+            let held = std::mem::replace(&mut st.asking.held, later);
+            let left = st.asking.held.len();
             if accept {
                 // The rest of the batch the sender announced is covered, and nothing else
                 let announced = held.first().and_then(|h| h.batch).map_or(0, |b| b.files);
-                let rest = announced.saturating_sub(held.len() as u32);
+                let rest = announced.saturating_sub((held.len() + left) as u32);
                 st.asking.allow = (rest > 0).then(|| Allow { remaining: rest, until: Instant::now() + COVER });
             }
-            held
+            (held, left)
         };
         self.notifier.close(&format!("ask:{}:{round}", dev.id));
+        if left > 0 {
+            let next = self.next_id();
+            {
+                let mut st = dev.st.borrow_mut();
+                st.asking.round = next;
+                st.asking.shown = left;
+            }
+            self.raise_ask(dev, next);
+            self.start_ask_timer(dev, next);
+        }
         for h in held {
             if accept {
                 self.receive_file_now(dev, &h.link, &h.packet, h.name, h.modified, h.batch);

@@ -14,3 +14,6 @@ amethystora-con 173[9]
 amethystora-con 174[0-9]
 amethystora-con 175[0-9]
 amethystora-con 176[0-4]
+# Move to this computer (amethystora-move, cut to fifteen characters): the new computer's port while `ame system move receive`
+# waits, for ten minutes at most. The firewall opens it at home only
+amethystora-mov 4793

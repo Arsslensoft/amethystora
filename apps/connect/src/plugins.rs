@@ -67,6 +67,7 @@ impl Service {
             "kdeconnect.notification" => self.on_notification(dev, link, packet),
             "kdeconnect.share.request" => self.on_share(dev, link, packet),
             "kdeconnect.share.request.update" => {}
+            "kdeconnect.photo" => self.on_photo(dev, link, packet),
             "kdeconnect.clipboard" => self.on_clipboard(dev, &packet),
             "kdeconnect.clipboard.connect" => self.on_clipboard_connect(dev, &packet),
             "kdeconnect.contacts.response_uids_timestamps" => self.on_contact_times(dev, &packet),

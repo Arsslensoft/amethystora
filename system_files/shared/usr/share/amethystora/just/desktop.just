@@ -1797,6 +1797,7 @@ missing-command ACTION="":
 # service is enabled. `phone clipboard send|receive [on|off]` shares the clipboard one way or the other, both off;
 # `phone photos [pictures|downloads]` says where pictures a phone sends go, Pictures/Phone as the image ships;
 # `phone computers [on|off]` lets other computers with the phone link pair too, for files and the clipboard, off;
+# `phone photo [on|off]` lists the photo request for a phone whose app takes one (off; a current KDE Connect app has none);
 # `phone ask-first [computers|all|never]` says whose files wait for a card with Accept (computers, as the image ships);
 # `phone ring` rings the paired phones, even on silent; `phone music [on|off]` shows the music of either side on the
 # other, and `phone clicker [on|off]` lets a phone go to the next or previous slide while Present mode presents, both off;
@@ -1856,6 +1857,24 @@ phone *ARGS:
                 ;;
             *)
                 echo "usage: ame desktop phone photos [pictures|downloads]"
+                exit 64
+                ;;
+        esac
+        exit 0
+    fi
+    # Snap with your phone (R7-69): this computer lists the photo request, for a phone whose app takes it (a current KDE Connect app does not)
+    if [[ "${1:-}" == photo ]]; then
+        case "$(flip "${2:-}" "$(gsettings get org.amethystora.Connect photo)")" in
+            on)
+                gsettings set org.amethystora.Connect photo true
+                echo "$(gettext "A phone whose app takes a photo request is offered Snap with your phone in the Phone app. A current KDE Connect app has none, so most phones are offered nothing: take the picture on the phone and share it here.")"
+                ;;
+            off)
+                gsettings set org.amethystora.Connect photo false
+                echo "$(gettext "No photo request is listed or sent.")"
+                ;;
+            *)
+                echo "usage: ame desktop phone photo [on|off]"
                 exit 64
                 ;;
         esac

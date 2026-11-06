@@ -114,6 +114,8 @@ pub struct Settings {
     pub clicker: bool,
     /// A code from your phone (the key codes): each new text is looked at for one, off as the image ships
     pub codes: bool,
+    /// Snap with your phone (the key photo), off as the image ships
+    pub photo: bool,
     /// Whose files wait for Accept (the key ask-first)
     pub ask_first: crate::ask::AskFirst,
 }
@@ -185,6 +187,8 @@ pub struct Service {
     pub clicker: Cell<bool>,
     /// Whether a new text is looked at for a one-time code (R7-23); only its digits are ever sent to the module
     pub codes: Cell<bool>,
+    /// Whether this computer lists the photo request and offers Snap with your phone (photo.rs)
+    pub photo: Cell<bool>,
     /// Whose files wait for the person's Accept (ask.rs)
     pub ask_first: Cell<crate::ask::AskFirst>,
     /// This computer's players while a phone is shown them (players.rs)
@@ -245,7 +249,7 @@ impl Service {
         store::private_dir(&cfg.state_dir).map_err(|e| format!("{}: {e}", cfg.state_dir.display()))?;
         let name = identity::default_name(&settings.name, pretty_host.as_deref(), &glib::host_name());
         let mut local = Local::new(&me.device_id, &name, &cfg.kind);
-        (local.incoming, local.outgoing) = identity::advertised(settings.music, settings.clicker);
+        (local.incoming, local.outgoing) = identity::advertised(settings.music, settings.clicker, settings.photo);
         if let Some((incoming, outgoing)) = &cfg.capabilities {
             local.incoming = incoming.clone();
             local.outgoing = outgoing.clone();
@@ -274,6 +278,7 @@ impl Service {
             music: Cell::new(settings.music),
             clicker: Cell::new(settings.clicker),
             codes: Cell::new(settings.codes),
+            photo: Cell::new(settings.photo),
             ask_first: Cell::new(settings.ask_first),
             players: RefCell::default(),
             presenters: RefCell::default(),
@@ -397,7 +402,7 @@ impl Service {
             }
         }
         let dev = Device::with_policy(id, path, name, kind, protocol, self.cfg.show_silent, self.cfg.show_ongoing);
-        dev.st.borrow_mut().offers = device::Offers { music: self.music.get(), clicker: self.clicker.get() };
+        dev.st.borrow_mut().offers = device::Offers { music: self.music.get(), clicker: self.clicker.get(), photo: self.photo.get() };
         self.devices.borrow_mut().insert(id.to_string(), dev.clone());
         crate::dbus::register_device(&self.weak.upgrade().expect("the service is alive"), &dev);
         dev
@@ -1052,7 +1057,11 @@ impl Service {
             }
             if (paired && authenticated) || (!paired && !pending) {
                 st.name = name;
-                st.kind = kind;
+                // A paired computer stays one whatever it says on a later connection: what waits for Accept (ask.rs) is decided
+                // by what it was, and a device's word is not a reason to let its files arrive by themselves
+                if !(paired && identity::is_computer(&st.kind) && !identity::is_computer(&kind)) {
+                    st.kind = kind;
+                }
                 st.protocol = protocol;
                 st.incoming = identity.incoming.clone().unwrap_or_default();
                 st.outgoing = identity.outgoing.clone().unwrap_or_default();
@@ -1549,6 +1558,7 @@ impl Service {
                 let _ = self.mute_ringer(id);
             }
             ("got", Some(what)) | ("batch", Some(what)) => self.on_received_event(rest, what),
+            ("photo", Some("cancel")) => self.cancel_photo(&dev, rest),
             // Dismissing the card is a no, as Decline is
             ("ask", what) => self.on_ask_event(&dev, rest, what.unwrap_or("decline")),
             ("text", Some(what)) => self.on_text_event(&dev, rest, what),
@@ -1624,14 +1634,14 @@ impl Service {
         self.clicker.set(clicker);
         if self.cfg.capabilities.is_none() {
             let mut local = self.local.borrow_mut();
-            (local.incoming, local.outgoing) = identity::advertised(music, clicker);
+            (local.incoming, local.outgoing) = identity::advertised(music, clicker, self.photo.get());
         }
         let devices: Vec<Rc<Device>> = self.devices.borrow().values().cloned().collect();
         let mut reconnect = Vec::new();
         for dev in &devices {
             {
                 let mut st = dev.st.borrow_mut();
-                st.offers = device::Offers { music, clicker };
+                st.offers = device::Offers { music, clicker, photo: self.photo.get() };
                 if !music {
                     st.players.clear();
                 }
@@ -1643,6 +1653,40 @@ impl Service {
         }
         self.sync_players();
         // Each connection's reading ends with it, and says the phone went; the phone is then called at once
+        if !reconnect.is_empty() {
+            for link in &reconnect {
+                link.close();
+            }
+            self.look_again();
+        }
+    }
+
+    /// The switch photo: this computer lists the photo request, and a phone that takes it is offered Snap with your phone. Like
+    /// music, what is listed changes, so each connected phone is let go and called again.
+    pub fn set_photo(self: &Rc<Self>, on: bool) {
+        if self.photo.get() == on {
+            return;
+        }
+        self.photo.set(on);
+        if self.cfg.capabilities.is_none() {
+            let mut local = self.local.borrow_mut();
+            (local.incoming, local.outgoing) = identity::advertised(self.music.get(), self.clicker.get(), on);
+        }
+        let devices: Vec<Rc<Device>> = self.devices.borrow().values().cloned().collect();
+        let mut reconnect = Vec::new();
+        for dev in &devices {
+            {
+                let mut st = dev.st.borrow_mut();
+                st.offers.photo = on;
+                if !on {
+                    st.photo = Default::default();
+                }
+            }
+            if dev.paired() && dev.connected() && self.cfg.capabilities.is_none() {
+                reconnect.extend(dev.st.borrow().links.iter().filter(|l| !l.is_closed()).cloned());
+            }
+            crate::dbus::props_changed(self, dev);
+        }
         if !reconnect.is_empty() {
             for link in &reconnect {
                 link.close();

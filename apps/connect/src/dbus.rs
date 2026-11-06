@@ -485,6 +485,7 @@ fn device_method(service: &Rc<Service>, id: &str, method: &str, params: &glib::V
             "SendMessage" => service.send_message(id, &arg::<Vec<String>>(params, 0)?, &arg::<String>(params, 1)?, arg::<i64>(params, 2)?).map(|_| None)?,
             "MuteRinger" => service.mute_ringer(id).map(|_| None)?,
             "Ring" => service.ring(id).map(|_| None)?,
+            "RequestPhoto" => service.request_photo(id).map(|_| None)?,
             "MediaAction" => service.media_action(id, &arg::<String>(params, 0)?, &arg::<String>(params, 1)?).map(|_| None)?,
             _ => return Err(ApiError::InvalidArgs("no such method".into())),
         })

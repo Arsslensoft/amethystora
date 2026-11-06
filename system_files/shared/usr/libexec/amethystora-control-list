@@ -476,6 +476,7 @@ gsettings_read clipboard-receive org.amethystora.Connect clipboard-receive
 gsettings_read phone-photos org.amethystora.Connect photo-folder
 gsettings_read phone-computers org.amethystora.Connect computers
 gsettings_read phone-ask-first org.amethystora.Connect ask-first
+gsettings_read phone-photo org.amethystora.Connect photo
 gsettings_read phone-music org.amethystora.Connect music
 gsettings_read phone-clicker org.amethystora.Connect clicker
 gsettings_read phone-codes org.amethystora.Connect codes
@@ -2748,6 +2749,13 @@ switch_choices true ame desktop phone codes
 USAGE="ame desktop phone codes on|off"
 item desktop phone-codes switch "${ gettext "A code from your phone"; }" \
     "${ gettext "A one-time code in a text shows in the clock's pill for 60 seconds, to copy. The phone link looks at each text as it arrives, on this computer, and only the code goes on; nothing is kept."; }" "${CHOSEN}" phone#a-code-from-your-phone
+
+# Snap with your phone (R7-69), off: only a phone whose app takes a photo request is offered it, which a current KDE Connect app does not
+if [[ "${ ended phone-photo; }" == 0 && "${ said phone-photo; }" == true ]]; then CHOSEN=on; else CHOSEN=off; fi
+switch_choices false ame desktop phone photo
+USAGE="ame desktop phone photo on|off"
+item desktop phone-photo switch "${ gettext "Snap with your phone"; }" \
+    "${ gettext "A button in the Phone app asks a phone to open its camera, and the picture comes back as a file. Only a phone whose app still takes that request is offered it; a current KDE Connect app does not, and then you take the picture on the phone and share it here."; }" "${CHOSEN}" phone#snap-with-your-phone
 
 # The clipboard goes between this computer and a phone only when chosen, one way at a time: a phone that can paste
 # into a password field is a risk the person takes on knowingly

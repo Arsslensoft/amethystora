@@ -64,6 +64,7 @@ pub fn features(incoming: &[String], outgoing: &[String]) -> Vec<&'static str> {
 pub struct Offers {
     pub music: bool,
     pub clicker: bool,
+    pub photo: bool,
 }
 
 fn offered(offers: Offers, incoming: &[String], outgoing: &[String]) -> Vec<&'static str> {
@@ -75,6 +76,10 @@ fn offered(offers: Offers, incoming: &[String], outgoing: &[String]) -> Vec<&'st
     }
     if offers.clicker && (sends(media::KEYS) || sends(media::PRESENTER)) {
         out.push("clicker");
+    }
+    // Only a phone that says it takes the request is offered it (photo.rs)
+    if offers.photo && takes(crate::photo::REQUEST) {
+        out.push("photo");
     }
     out
 }
@@ -129,6 +134,8 @@ pub struct State {
     pub last_click: Option<Instant>,
     /// Files offered and not yet accepted, and how many more the person's Accept covers (ask.rs)
     pub asking: crate::ask::Asking,
+    /// The photo asked of this phone and not yet answered (photo.rs)
+    pub photo: crate::photo::Pending,
 }
 
 pub struct Device {
@@ -178,6 +185,7 @@ impl Device {
                 players: media::Phone::default(),
                 last_click: None,
                 asking: Default::default(),
+                photo: Default::default(),
             }),
         })
     }
@@ -316,10 +324,15 @@ mod tests {
         let outgoing = caps(&[media::MPRIS, media::KEYS, media::PRESENTER]);
         // Music and the clicker only while chosen
         assert!(offered(Offers::default(), &incoming, &outgoing).is_empty());
-        assert_eq!(offered(Offers { music: true, clicker: false }, &incoming, &outgoing), vec!["music"]);
-        assert_eq!(offered(Offers { music: true, clicker: true }, &incoming, &outgoing), vec!["music", "clicker"]);
+        assert_eq!(offered(Offers { music: true, clicker: false, photo: false }, &incoming, &outgoing), vec!["music"]);
+        assert_eq!(offered(Offers { music: true, clicker: true, photo: false }, &incoming, &outgoing), vec!["music", "clicker"]);
         // A phone that sends no keys and no presenter is no clicker
-        assert!(offered(Offers { music: false, clicker: true }, &incoming, &caps(&[media::MPRIS])).is_empty());
+        assert!(offered(Offers { music: false, clicker: true, photo: false }, &incoming, &caps(&[media::MPRIS])).is_empty());
+        // Snap with your phone: only a phone that lists the request, and only while the switch is on
+        let takes = caps(&[crate::photo::REQUEST]);
+        assert_eq!(offered(Offers { photo: true, ..Offers::default() }, &takes, &outgoing), vec!["photo"]);
+        assert!(offered(Offers { photo: false, ..Offers::default() }, &takes, &outgoing).is_empty());
+        assert!(offered(Offers { photo: true, ..Offers::default() }, &incoming, &outgoing).is_empty(), "a current app has no such request");
     }
 
     #[test]

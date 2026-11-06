@@ -495,6 +495,11 @@ impl Link {
         self.on_device(id, "Ring", None).await.map(|_| ())
     }
 
+    /// Asks a phone whose app takes the request to open its camera (Snap with your phone): only from a button
+    pub async fn request_photo(&self, id: &str) -> Result<(), Failure> {
+        self.on_device(id, "RequestPhoto", None).await.map(|_| ())
+    }
+
     /// Sends files (file: addresses); the ids of their transfers
     pub async fn send_files(&self, id: &str, uris: &[String]) -> Result<Vec<String>, Failure> {
         let reply = self.on_device(id, "SendFiles", Some((uris.to_vec(),).to_variant())).await?;

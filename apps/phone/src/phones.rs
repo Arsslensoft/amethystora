@@ -47,6 +47,7 @@ enum Do {
     Unpair,
     Ping,
     Ring,
+    Photo,
 }
 
 /// "Expires in 20 seconds"
@@ -68,6 +69,10 @@ impl Phone {
         let computers = self.link.computers();
         head.append(&widgets::heading(&if computers { t!("Phones and computers") } else { t!("Phones") }, "h1"));
         head.append(&ui::label(&t!("Pair a phone that has the KDE Connect app to see its notifications, read its texts and send files and links back and forth."), &["lead"]));
+        // No phone can be asked for a photo (a current KDE Connect app cannot): say what does work, once, and only where a phone could be sent to
+        if devices.iter().any(|d| d.situation() == Situation::Ready && d.has("share")) && !devices.iter().any(|d| d.has("photo")) {
+            head.append(&ui::label(&t!("To add a photo from a phone, take it on the phone and share it to this computer."), &["faint", "small"]));
+        }
         if computers {
             head.append(&ui::label(&t!("Another computer pairs the same way once Pair with other computers is on on both."), &["lead"]));
         }
@@ -323,6 +328,10 @@ impl Phone {
                 if device.has("ring") {
                     buttons.push(act(t!("Ring"), Look { icon: Some("phone"), ..Default::default() }, Do::Ring));
                 }
+                // Only for a phone whose app takes the photo request, which a current KDE Connect app does not (R7-69)
+                if device.has("photo") {
+                    buttons.push(act(t!("Snap with your phone"), Look { icon: Some("phone"), ..Default::default() }, Do::Photo));
+                }
                 buttons.push(act(t!("Unpair…"), Look { icon: Some("unlink"), ..Default::default() }, Do::Unpair));
             }
             Situation::Away => {
@@ -370,6 +379,7 @@ impl Phone {
                 Do::Unpair => this.link.unpair(&id).await,
                 Do::Ping => this.link.ping(&id).await,
                 Do::Ring => this.link.ring(&id).await,
+                Do::Photo => this.link.request_photo(&id).await,
             };
             this.state.borrow_mut().busy.remove(&id);
             this.render();
@@ -378,6 +388,7 @@ impl Phone {
                 (Ok(()), Do::Accept) => this.say(false, t!("Paired with {phone}.", phone = name)),
                 (Ok(()), Do::Unpair) => this.say(false, t!("{phone} is unpaired.", phone = name)),
                 (Ok(()), Do::Ping) => this.say(false, t!("Pinged {phone}.", phone = name)),
+                (Ok(()), Do::Photo) => this.say(false, t!("Asked {phone} to open its camera. Take the picture there; it arrives here as a file.", phone = name)),
                 (Ok(()), Do::Ring) => this.say(false, t!("Ringing {phone}. It rings until Found it is pressed on it.", phone = name)),
                 (Ok(()), _) => {}
             }

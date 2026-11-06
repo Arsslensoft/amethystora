@@ -100,3 +100,7 @@ pub const BATCH_QUIET: Duration = Duration::from_secs(60);
 
 /// The phone as a slide clicker: at most one click in this long (plans/ui-ideas/spec-phone.md 4)
 pub const CLICK_SPACING: Duration = Duration::from_millis(150);
+
+/// Snap with your phone (photo.rs): how long a request waits for its photo, and the largest photo taken
+pub const PHOTO_WAIT: Duration = Duration::from_secs(120);
+pub const PHOTO_MAX: u64 = 64 * 1024 * 1024;

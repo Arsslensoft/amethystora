@@ -125,8 +125,8 @@
          SignalStrength is -1 -->
     <property name="NetworkType" type="s" access="read"/>
     <!-- What can be done now with this phone, from what both sides advertised: any of "ping", "battery", "notifications",
-         "share", "clipboard", "sms", "telephony", "connectivity", "ring", and, while the person chose them, "music" and
-         "clicker". Empty while it is not connected and paired -->
+         "share", "clipboard", "sms", "telephony", "connectivity", "ring", and, while the person chose them, "music", "clicker"
+         and "photo". Empty while it is not connected and paired -->
     <property name="Features" type="as" access="read"/>
     <!-- The phone's media players while the GSettings key music is on (music from either side): a{sv} each, in the phone's
          order, with "player", "title", "artist", "album" (s), "playing", "can_play", "can_pause", "can_next",
@@ -228,6 +228,17 @@
       <arg name="player" type="s" direction="in"/>
       <arg name="action" type="s" direction="in"/>
     </method>
+    <!-- Snap with your phone (R7-69, plans/amethystora-connect/spec-photo.md): asks the phone to open its camera. Only the app calls it,
+         only from a button the person pressed, only while the GSettings key photo is on and only for a phone whose Features
+         has "photo" (it lists the request among what it takes: a current KDE Connect app does not, so for it there is no such
+         thing). One request waits per phone, for 120 seconds; fails with NotAvailable otherwise. The photo, if the person takes
+         one, arrives as a file (Transfer signals) in the folder every picture from a phone goes to, 64 MiB at most -->
+    <method name="RequestPhoto"/>
+    <!-- state: "asked" (the request was sent; this says nothing of the phone's camera), "received" (the photo is in), "cancelled"
+         (the person left the camera, or Cancel here), "timeout" (120 seconds passed) -->
+    <signal name="Photo">
+      <arg name="state" type="s"/>
+    </signal>
     <signal name="Call">
       <arg name="state" type="s"/>
       <arg name="number" type="s"/>

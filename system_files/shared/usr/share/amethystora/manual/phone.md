@@ -121,8 +121,27 @@ ame desktop phone photos downloads   # or pictures, to put them back in Pictures
 
 or **Photos from the phone go to** on [Control](control.md)'s **Desktop** page.
 
-There is no button to take a photo on the phone from here: the phone's app no longer offers it. Take the picture on
-the phone and share it with this computer.
+To add a photo, take it on the phone and share it to this computer from the phone's share menu; it arrives like any picture.
+There is no button for this in the KDE Connect app any more, so this computer cannot make a current phone open its camera: the
+phone link says only what it has established. See [Snap with your phone](#snap-with-your-phone) for the one case where there is.
+
+## Snap with your phone
+
+KDE Connect once had a request that opened the phone's camera and sent the picture back, and removed it from the phone's app in
+2023. A phone that still lists that request (an old install of the app, or a fork) can be asked, and only such a phone. It is
+**off**:
+
+```bash
+ame desktop phone photo on    # or off
+```
+
+or **Snap with your phone** on [Control](control.md)'s **Desktop** page. On, a phone that takes the request has a **Snap with your
+phone** button on its card in the Phone app; every other phone has nothing, and the page says to take the picture on the phone and
+share it here. Pressing the button asks the phone to open its camera (this computer cannot know that it did, and says only that it
+asked), and a notification waits for the picture with **Cancel**, which only forgets the request here: it cannot close the camera
+on the phone. One request waits for each phone, for two minutes; a picture that arrives when none was asked for is refused, and one
+over 64 MiB too. The picture lands where the phone's other pictures go ([Photos](#photos)), never over a file, and nothing opens by
+itself. Nothing but that button can make a phone's camera open: the agent and other programs of your account cannot.
 
 ## Texts
 
