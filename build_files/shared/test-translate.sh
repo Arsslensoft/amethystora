@@ -151,6 +151,11 @@ python3 "${HELPER}" fetch xy zz >/dev/null 2>&1 || fail "the fetch failed"
 [[ "$(python3 "${HELPER}" size xy zz | jq -r '.bytes')" == 0 ]] || fail "a second fetch would download again"
 [[ "$(python3 "${HELPER}" status zz | jq -c .from)" == '["en","xy"]' ]] || fail "status: $(python3 "${HELPER}" status zz)"
 
+# Without the translator the models are no use: the answer says so, and a person is not left waiting for it
+rm "${ENGINE}"
+jq -e '.error == "no-model"' <<<"$(echo hi | python3 "${HELPER}" text xy zz || true)" >/dev/null || fail "an answer without the translator"
+install_engine
+
 # Through English, one direction after another, and the lines of a paragraph joined
 PNG="${T}/p.png"
 base64 -d >"${PNG}" <<<'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAEBgIApD5fRAAAAABJRU5ErkJggg=='

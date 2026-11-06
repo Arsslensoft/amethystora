@@ -359,7 +359,7 @@ def answer(record):
 def run(frm, to, picture):
     models = table()
     route = directions(frm, to)
-    if not all(direction_here(name) for name in route) or not reading_here(models, frm):
+    if not all(direction_here(name) for name in route) or not reading_here(models, frm) or not os.access(engine_path(), os.X_OK):
         return answer({'error': 'no-model'})
     try:
         source = clean(read_picture(models, frm) if picture else sys.stdin.read())
