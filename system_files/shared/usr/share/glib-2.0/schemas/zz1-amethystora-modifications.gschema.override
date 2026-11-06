@@ -115,15 +115,15 @@ remove-old-temp-files=true
 old-files-age=uint32 30
 
 [org.gnome.shell.keybindings]
-switch-to-application-1=['<Alt>1']
-switch-to-application-2=['<Alt>2']
-switch-to-application-3=['<Alt>3']
-switch-to-application-4=['<Alt>4']
-switch-to-application-5=['<Alt>5']
-switch-to-application-6=['<Alt>6']
-switch-to-application-7=['<Alt>7']
-switch-to-application-8=['<Alt>8']
-switch-to-application-9=['<Alt>9']
+switch-to-application-1=['<Control><Alt>1']
+switch-to-application-2=['<Control><Alt>2']
+switch-to-application-3=['<Control><Alt>3']
+switch-to-application-4=['<Control><Alt>4']
+switch-to-application-5=['<Control><Alt>5']
+switch-to-application-6=['<Control><Alt>6']
+switch-to-application-7=['<Control><Alt>7']
+switch-to-application-8=['<Control><Alt>8']
+switch-to-application-9=['<Control><Alt>9']
 
 # Super+. is the emoji picker's (Amethystora UI's emoji module). IBus, which every text field types through, would
 # take Super+. and Super+; for its own emoji panel first, and the picker never opened there

@@ -1,7 +1,7 @@
 // Folders of pinned apps (spec 1.9). Hold one pinned app over the middle of another until it lights up and let go: the
 // two become a folder, named Folder (Folder 2, Folder 3...). An app dropped the same way on a folder joins it. A folder
 // stands where its first app stood; a click opens it as a card of its apps with its name under them, and a click on
-// the name renames it. Its menu takes it apart again. The apps stay pinned, in GNOME's order, so that Alt+1..9, the
+// the name renames it. Its menu takes it apart again. The apps stay pinned, in GNOME's order, so that Ctrl+Alt+1..9, the
 // app grid's Unpin and the setup file go on as before: a folder only groups them on the dock.
 
 import Clutter from 'gi://Clutter';

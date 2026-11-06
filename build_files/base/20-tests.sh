@@ -1671,7 +1671,7 @@ fi
 # As a GNOME session reads it: GNOME Shell's override has a section for that desktop alone
 [[ "$(XDG_CURRENT_DESKTOP=GNOME GSETTINGS_BACKEND=memory gsettings get org.gnome.mutter dynamic-workspaces)" == "false" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.desktop.wm.keybindings switch-to-workspace-6)" == "['<Super>6']" ]]
-[[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.keybindings switch-to-application-1)" == "['<Alt>1']" ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.keybindings switch-to-application-1)" == "['<Control><Alt>1']" ]]
 # custom-keybindings in zz0-amethystora-modifications lists every custom keybinding GNOME reads, the
 # Amethystora ones in 06-amethystora-keybindings included
 CUSTOM_KEYBINDINGS="$(GSETTINGS_BACKEND=memory gsettings get org.gnome.settings-daemon.plugins.media-keys custom-keybindings)"
@@ -1689,6 +1689,12 @@ grep -A2 -x "\[org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/c
 # Theme switching: the CLI, its library, the templates every theme renders, and the themes themselves
 test -x /usr/bin/amethystora-theme
 test -x /usr/bin/amethystora-menu
+# gum 2's filter prints a preselected entry on Enter whatever was typed, which left the theme picker
+# (Super+Ctrl+Shift+Space) applying the current theme again: its choose() is gum filter, so no --selected
+if grep -n -- '| choose .*--selected\|gum filter.*--selected' /usr/bin/amethystora-menu; then
+    echo "amethystora-menu passes --selected to gum filter, which then ignores the choice" >&2
+    exit 1
+fi
 
 # Web apps: a launcher that reopens the site through amethystora-webapp, in Firefox by default, with
 # the window class GNOME needs to show it under its own name; anything but http(s) is refused. Firefox

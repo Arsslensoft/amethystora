@@ -10,7 +10,7 @@ Written for AI agents, so that the agent can explain to the user what it may do 
   and `undo`. Each asks the user in the agent's own prompt, every time.
 - Both are off as the image ships, for every account; each account turns them on for itself, in Control's
   AI agent page or with those commands. The agent never turns its own levels on.
-- The tools exist only while the agent was started through `amethystora-agent` (or, for Cursor CLI and
+- The tools exist only while the agent was started through `amethystora-agent` or `ame agent` (or, for Cursor CLI and
   Antigravity CLI, while the features are on). An agent started with its own checks off gets no tool that
   changes anything.
 

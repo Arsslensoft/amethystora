@@ -54,7 +54,8 @@ theme_menu() {
     local current choice
     current="$(theme_current || true)"
     heading "Theme"
-    choice="$(theme_list | choose "Current: ${current:-none}" --selected "${current}" || true)"
+    # No --selected: gum 2's filter prints a preselected entry on Enter whatever was typed or highlighted
+    choice="$(theme_list | choose "Current: ${current:-none}" || true)"
     [[ -n ${choice} ]] || back
     amethystora-theme set "${choice}"
     back

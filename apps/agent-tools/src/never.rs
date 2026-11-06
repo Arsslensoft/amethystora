@@ -221,6 +221,8 @@ fn recipe_words(args: &[String]) -> Result<(Vec<String>, Option<String>), String
 fn ame_refusal(args: &[String]) -> Option<String> {
     let args: Vec<&str> = args.iter().map(String::as_str).collect();
     match args.as_slice() {
+        // `ame agent`, alone, `ask` and `diagnose` are amethystora-agent opening an agent: never the agent's to start
+        ["agent"] | ["agent", "open" | "ask" | "diagnose", ..] => Some("the agent may not start another agent".into()),
         ["agent", "lock" | "root", ..] => Some("the agent may not change its own lock or root mode".into()),
         ["agent", "tools" | "toggle", "on", ..] => Some("only the user turns the agent's levels on".into()),
         // The live pill's list of the agent's changes is how the person sees them: only the person turns it off
@@ -413,6 +415,10 @@ mod tests {
             "amethystora-agent-root session",
             "passwd root",
             // The live pill's list of the agent's changes, and the agent's other desktop keys, however spelled
+            "ame agent",
+            "ame agent ask why is it slow",
+            "ujust agent::diagnose",
+            "just -f /usr/share/amethystora/just/agent.just",
             "ame agent pill off",
             "ame agent pill",
             "ame -q agent::pill off",
@@ -554,6 +560,8 @@ mod tests {
             "flatpak override --user --socket=x11 com.example.App",
             "ame agent pill on",
             "ame agent history",
+            "ame agent status",
+            "ame agent search updates",
             "amethystora-changes list --json",
             "just -f /usr/share/amethystora/just/security.just status",
             "just -f /usr/share/amethystora/just/agent.just history",

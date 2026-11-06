@@ -354,7 +354,8 @@ listed a kitty icon under Open With. Files' Open in Console asks only for `org.g
 ### Agentic features
 
 Every image, base and dx, ships `amethystora-agent`, the launcher behind `Super+Ctrl+Shift+A` and
-the menu's "Ask an agent". The agents it offers, Claude Code, Opencode, Codex, Antigravity CLI (`agy`),
+the menu's "Ask an agent"; `ame agent` alone opens it too (the group's `[default]` recipe, so `agent.just` has no
+`default-list`), and `ame agent ask|diagnose|list|status|search|read|state` pass to it, the first three on the never list. The agents it offers, Claude Code, Opencode, Codex, Antigravity CLI (`agy`),
 Copilot CLI and Cursor CLI (`AGENTS` in the launcher, which `amethystora-agent list` prints for Control), are
 deliberately not in the image: they release far more often than it does, so the launcher installs the
 chosen one into the user's home with its maker's installer on first launch (or `ame agent install`),
