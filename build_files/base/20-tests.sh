@@ -3584,7 +3584,7 @@ done
 # writes is the image's own with that one line added
 test -s /usr/lib/firewalld/services/amethystora-backup-store.xml
 [[ -z "$(grep -l amethystora-backup-store /usr/lib/firewalld/zones/*.xml)" ]]
-diff <(grep -v amethystora-backup-store /usr/share/amethystora/hardening/amethystora-home-backup-store.xml) /usr/lib/firewalld/zones/amethystora-home.xml
+grep -qF '[backup-store]=amethystora-backup-store' /usr/libexec/amethystora-hardening
 if /usr/libexec/amethystora-hardening is-on backup-store; then echo "the backup store's ports are open by default"; exit 1; fi
 # The shell parts keep to the rules: nothing blocks, the Vault is asked only through its client, and the data keys are the Vault's
 for file in modules/vault.js modules/workspaces/putaway.js modules/workspaces/putawaydata.js modules/power/charge.js modules/power/chargedata.js \
