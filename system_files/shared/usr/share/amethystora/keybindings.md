@@ -54,7 +54,7 @@ the top bar on the left.
 | `Ctrl+Alt+Shift+Left` / `Right` / `Up` / `Down` | Move this monitor's workspace to the monitor in that direction |
 | `Super+Ctrl+Alt+Left` / `Right` | Swap this workspace with the one beside it, windows and name included |
 | `` Super+Ctrl+` `` | Take the window to the workspace you were on before; each further press goes one more back, round again at the end |
-| `Alt+1` … `Alt+9` | Go to the pinned app in that dock slot |
+| `Ctrl+Alt+1` … `Ctrl+Alt+9` | Go to the pinned app in that dock slot |
 | `Super+Tab` / `Alt+Tab` | Switch application / window; type to filter (classic layout) |
 | `` Super+` `` | Switch between the windows of the app you are in |
 | `Super+Z` | Snap layouts for the focused window (classic layout) |

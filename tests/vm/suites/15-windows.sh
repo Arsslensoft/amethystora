@@ -322,7 +322,7 @@ ev "Main.overview.hide(); global.get_window_actors().map(a => a.meta_window).fil
 same "the card's rows are this machine's shortcuts" \
     "$(ev "${W}.hold.rows().map(([n, k]) => n + '=' + k.join('+')).join(';')")" \
     "Search=Super+Space;Terminal=Super+Return;Manual=Super+F1;Emoji=Super+.;Clipboard=Super+Shift+V;Window layouts=Super+Z;Screenshot=Print;Lock the screen=Super+L;Control=Super+Ctrl+Shift+C"
-check "its footer names Alt" test "$(ev "${W}.hold.footerText")" == "Alt+1 … 9"
+check "its footer names Ctrl+Alt" test "$(ev "${W}.hold.footerText")" == "Ctrl+Alt+1 … 9"
 # Quoted once more for the shell in_session runs it in
 gs set org.gnome.shell.extensions.amethystora-clipboard toggle-menu "\"['<Super><Shift>c']\""
 sleep 1

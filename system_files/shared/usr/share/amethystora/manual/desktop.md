@@ -1336,7 +1336,7 @@ ame desktop hints reset    # the tips you have seen can come again
 ## The dock
 
 The dock holds your pinned apps, the ones that are running, the last few you used, your folders and the trash.
-`Alt+1` to `Alt+9` switch to the pinned app in that place, and open it if it is not running; hold `Super` for a
+`Ctrl+Alt+1` to `Ctrl+Alt+9` switch to the pinned app in that place, and open it if it is not running; hold `Super` for a
 second to see the numbers on the dock. Right-click an app to pin or unpin it, or drag it off the dock: it dissolves,
 and stays in the app grid. Right-clicking one of Amethystora's own apps also offers its pages: **Hotkeys** in the
 Manual, **Tasks** in Notes, **Crashes** and **Apps and Services** in Logs, **Backup Status** in Backups, **Virus

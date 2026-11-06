@@ -67,7 +67,7 @@ The Manual, Security, System Updates, Logs, Notes, Control and Backups, the secu
 
 Windows tile on their own: each workspace is a strip of windows side by side that scrolls to keep the focused one in view. `Super` and an arrow moves between windows, `Super+Ctrl` and an arrow moves the window, `Super+R` steps its width and `Super+F` fills the screen. `Super+Shift+V` opens the clipboard history.
 
-There are six fixed workspaces on `Super+1` to `Super+6`, `Super+Shift+N` takes the window with you, and `Alt+1` to `Alt+9` reach the pinned apps in the dock. `Super+Return` opens a terminal (kitty), `Super+W` closes a window, `Super+Space` searches.
+There are six fixed workspaces on `Super+1` to `Super+6`, `Super+Shift+N` takes the window with you, and `Ctrl+Alt+1` to `Ctrl+Alt+9` reach the pinned apps in the dock. `Super+Return` opens a terminal (kitty), `Super+W` closes a window, `Super+Space` searches.
 
 `Super+Alt+Space` opens the Amethystora menu, which reaches all of this from the keyboard. The full list is in `ame desktop keybindings`.
 
