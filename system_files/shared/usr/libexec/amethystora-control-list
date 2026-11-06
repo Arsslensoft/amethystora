@@ -1949,6 +1949,13 @@ item desktop send-to-tv switch "${ gettext "Send to the TV"; }" \
     "${ gettext "A tile in quick settings opens Network Displays, an app from Flathub that looks for TVs nearby, fetched only after you say yes. Nothing has been tried with a real TV yet, and a TV that needs a direct Wi-Fi link is not expected to work."; }" \
     "${ quick_onoff send-to-tv; }" desktop#send-your-screen-to-a-tv
 
+# Send to anyone (R7-66), offered and off: Files' Scripts entry, which says where the file passes before it fetches Warp
+if [[ -e "${CONFIG_DIR}/send-anyone" ]]; then SEND_ANYONE=on; else SEND_ANYONE=off; fi
+switch_choices false ame desktop send-anyone
+USAGE="ame desktop send-anyone on|off"
+item desktop send-anyone switch "${ gettext "Send to anyone"; }" \
+    "${ gettext "Files' Scripts menu gets Send to anyone: three words read out, and a file arrives far away. It goes through a public relay of the Magic Wormhole project, encrypted end to end, and that is said first. Warp, from Flathub, is fetched only after you say yes."; }" "${SEND_ANYONE}" moving#send-to-anyone
+
 # The live pill, the privacy dots, the glow, quiet and the digest (org.gnome.shell.extensions.amethystora-ui.pill)
 PILL="${ said pill; }"
 pill_key() { value_of "${PILL}" "$1" "(.*)\$"; }

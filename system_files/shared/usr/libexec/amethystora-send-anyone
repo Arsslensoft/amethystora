@@ -1,0 +1,131 @@
+#!/usr/bin/bash
+# Send to anyone, anywhere (R7-66): a file for somebody far away, with three words read out and no account. The sending is Warp,
+# from Flathub, which uses Magic Wormhole; this is the part that says first where the file passes, fetches the app only after a yes,
+# and opens it. Offered and off: nothing is added to Files, installed or run until `ame desktop send-anyone on`, and Warp itself is
+# fetched the first time it is used, in a terminal, after the question below.
+#
+#   amethystora-send-anyone menu on|off     adds or takes away Files' Scripts entry "Send to anyone" (ame desktop send-anyone on|off)
+#   amethystora-send-anyone send [--] [FILE...]
+#                                            says the relay, fetches Warp if it is not here (after a yes), and opens it
+#   amethystora-send-anyone setup            fetches Warp now, the same way
+#   amethystora-send-anyone status           whether the entry is on and whether Warp is here
+#
+# Warp takes no file on its command line (its launcher opens `wormhole-transfer` links), so it opens and the person chooses the
+# file in it: this says which. Nothing here reads a file, and nothing is sent by this script: Warp sends, when asked in its window.
+
+set -uo pipefail
+
+export TEXTDOMAIN=amethystora
+# shellcheck source=/dev/null
+source gettext.sh
+
+APP=app.drey.Warp
+ASK="${AMETHYSTORA_FLATPAK_ASK:-/usr/libexec/amethystora-flatpak-ask}"
+CONFIG="${XDG_CONFIG_HOME:-${HOME}/.config}/amethystora"
+MARKER="${CONFIG}/send-anyone"
+SCRIPTS="${XDG_DATA_HOME:-${HOME}/.local/share}/nautilus/scripts"
+MARK='# amethystora-send-anyone 1. Written by ame desktop send-anyone on; take it away with ame desktop send-anyone off.'
+
+installed() { flatpak info "${APP}" >/dev/null 2>&1; }
+
+# Where the file passes, and what that costs in privacy: said before anything is fetched, and again before each send
+relay() {
+    echo "$(gettext "Warp sends a file with Magic Wormhole. The three words are agreed through a public server of the Magic Wormhole project, which sees that two computers made contact and their addresses, and cannot read the file. The file itself goes straight to the other computer when they can reach each other, and through a public relay of the same project when they cannot: the relay sees how much passes and between which addresses, and the file is encrypted end to end, so it cannot read it.")"
+    echo "$(gettext "Nothing is kept: the words work once, and there is no account and no link that lives on. Warp's own preferences name the servers and let you choose your own.")"
+}
+
+need_terminal() {
+    if [[ ! -t 0 || ! -t 1 ]]; then
+        echo "amethystora-send-anyone: needs a terminal, with a person at it" >&2
+        exit 64
+    fi
+}
+
+setup() {
+    need_terminal
+    if installed; then
+        echo "$(gettext "Warp is already installed.")"
+        return 0
+    fi
+    echo "$(gettext "Warp is an app from Flathub, about 5 MB, and the GNOME runtime it needs if you do not have it, about 1 GB shared with other apps. It has network access, and reads the folders you choose in its window.")"
+    relay
+    if ! gum confirm "$(gettext "Install Warp from Flathub?")"; then
+        return 1
+    fi
+    # A click of the person's, and polkit may have to ask them: the one place an install is made
+    if ! "${ASK}" install --system flathub "app/${APP}/$(uname -m)/stable"; then
+        echo "$(gettext "Warp could not be installed.")" >&2
+        return 1
+    fi
+    echo "$(gettext "Warp is installed.")"
+}
+
+send() {
+    need_terminal
+    [[ "${1:-}" == -- ]] && shift
+    installed || setup || exit 1
+    echo
+    relay
+    if [[ $# -gt 0 ]]; then
+        echo "$(gettext "In Warp, press Send File and choose:")"
+        for file in "$@"; do
+            printf '  %s\n' "$(printf '%s' "${file##*/}" | tr -d '[:cntrl:]')"
+        done
+    else
+        echo "$(gettext "In Warp, press Send File and choose the file.")"
+    fi
+    echo "$(gettext "Warp then shows three words: read them to the other person, who types them into Warp or Warp's counterpart on their computer.")"
+    flatpak run "${APP}"
+}
+
+marked() { [[ -f "$1" && ! -L "$1" && "$(sed -n 2p "$1")" == "# amethystora-send-anyone "* ]]; }
+
+menu() {
+    local written
+    case "${1:-}" in
+        on)
+            mkdir -p -- "${CONFIG}" "${SCRIPTS}"
+            local name path temporary
+            name="$(printf '%s' "$(gettext "Send to anyone")" | tr -d '/\n')"
+            [[ -n "${name}" && "${name}" != .* ]] || name="Send to anyone"
+            path="${SCRIPTS}/${name}"
+            if [[ -e "${path}" || -L "${path}" ]] && ! marked "${path}"; then
+                echo "$(gettext "A script of yours has that name in Files, and is left as it is.")"
+            else
+                temporary="$(mktemp "${SCRIPTS}/.send-anyone.XXXXXX")" || exit 1
+                printf '#!/bin/sh\n%s\nexec /usr/libexec/amethystora-in-terminal /usr/libexec/amethystora-send-anyone send -- "$@"\n' "${MARK}" >"${temporary}"
+                chmod 0755 "${temporary}" && mv -f -- "${temporary}" "${path}" || { rm -f -- "${temporary}"; exit 1; }
+                printf '%s\n' "${path}" >"${MARKER}"
+            fi
+            [[ -e "${MARKER}" ]] || : >"${MARKER}"
+            echo "$(gettext "Files' Scripts menu has Send to anyone. Nothing is fetched or run until you use it, and it says first where the file passes.")"
+            ;;
+        off)
+            if [[ -s "${MARKER}" ]]; then
+                written="$(head -n1 -- "${MARKER}")"
+                # Only the entry this wrote, and only where it is still ours
+                [[ "${written}" == "${SCRIPTS}/"* && "${written}" != *..* ]] && marked "${written}" && rm -f -- "${written}"
+            fi
+            rm -f -- "${MARKER}"
+            echo "$(gettext "Send to anyone is gone from Files. Warp, if you installed it, stays until you remove it in Bazaar.")"
+            ;;
+        *)
+            echo "usage: ame desktop send-anyone on|off"
+            exit 64
+            ;;
+    esac
+}
+
+case "${1:-}" in
+    menu) menu "${2:-}" ;;
+    send) shift; send "$@" ;;
+    setup) setup ;;
+    status)
+        [[ -e "${MARKER}" ]] && echo on || echo off
+        installed && echo installed || echo "not installed"
+        ;;
+    *)
+        echo "usage: amethystora-send-anyone menu on|off | send [FILE...] | setup | status" >&2
+        exit 64
+        ;;
+esac

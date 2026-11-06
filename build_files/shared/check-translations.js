@@ -336,6 +336,8 @@ const SHELL = ['usr/libexec/amethystora-security-status', 'usr/libexec/amethysto
     // Files' scripts menu: its entries' names, and what the three scripts say
     'usr/libexec/amethystora-folder-colour', 'usr/libexec/amethystora-back-in-time', 'usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh',
     'usr/libexec/amethystora-clean-copy', 'usr/libexec/amethystora-start-times',
+    // Send to anyone, which says where a file passes before it fetches Warp (R7-66)
+    'usr/libexec/amethystora-send-anyone',
     // Restart while you are away: its notice of a night that did not restart
     'usr/libexec/amethystora-night-restart',
     // Files' New Document menu: the templates' names

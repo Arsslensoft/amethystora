@@ -1190,6 +1190,29 @@ send-to-tv VALUE="":
             ;;
     esac
 
+# Send to anyone, anywhere (R7-66): Files' Scripts menu gets Send to anyone, which says where the file passes (a public relay of the
+# Magic Wormhole project, encrypted end to end), fetches Warp from Flathub after a yes the first time, and opens it, where three
+# words are read out to the other person (ACTION: on, off or setup; without it, it flips). Off, nothing is added, fetched or run;
+# `setup` fetches Warp now, the same way
+[positional-arguments]
+send-anyone ACTION="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    helper=/usr/libexec/amethystora-send-anyone
+    marker="${XDG_CONFIG_HOME:-${HOME}/.config}/amethystora/send-anyone"
+    action="${1:-}"
+    if [[ -z "${action}" ]]; then
+        if [[ -e "${marker}" ]]; then action=off; else action=on; fi
+    fi
+    case "${action}" in
+        on | off) exec "${helper}" menu "${action}" ;;
+        setup) exec "${helper}" setup ;;
+        *)
+            echo "usage: ame desktop send-anyone on|off|setup"
+            exit 64
+            ;;
+    esac
+
 # Saving data: on a connection that counts data, the pill says so and lists what waits for another network (VALUE: on
 # or off; without it, it flips). The waiting is the connection's metered flag, which Settings switches per network.
 [positional-arguments]

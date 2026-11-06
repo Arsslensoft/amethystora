@@ -223,6 +223,16 @@ if [[ -n "${SYNC_ADDRESS}" ]]; then
         "$(gettext "Without it, the server's copy stops being updated and nothing else changes: the vault is the source.")"
 fi
 
+# Warp, once Send to anyone was turned on or Warp was fetched (R7-66): nothing is sent by itself. When a file is sent in its window, a
+# public server of the Magic Wormhole project learns that two computers made contact, and a public relay of the same project sees the
+# addresses and the size when the two cannot reach each other; the file is encrypted end to end and neither can read it.
+if [[ -e "${XDG_CONFIG_HOME:-${HOME:-/nonexistent}/.config}/amethystora/send-anyone" ]] || { command -v flatpak >/dev/null && flatpak info app.drey.Warp >/dev/null 2>&1; }; then
+    row warp off "$(gettext "Warp (Send to anyone)")" \
+        "$(gettext "Only when you send a file in Warp's window: the three words are agreed through a public server of the Magic Wormhole project, which sees that two computers made contact and their addresses, and the file goes straight to the other computer or, when they cannot reach each other, through a public relay of the same project, which sees the addresses and how much passes. The file is encrypted end to end: neither can read it. Nothing is kept, and Warp's preferences let you choose your own servers.")" \
+        "ame desktop send-anyone off" \
+        "$(gettext "Without Send to anyone, Warp is not offered in Files, and nothing is ever fetched or run.")"
+fi
+
 if command -v firefox >/dev/null; then
     row firefox on "$(gettext "Firefox")" \
         "$(gettext "Firefox has its own settings for what it sends, under Privacy & Security in its settings.")" \

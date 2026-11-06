@@ -1586,6 +1586,10 @@ test -x /usr/libexec/amethystora-move
 grep -q '^move \*ARGS:' /usr/share/amethystora/just/system.just
 test -x /usr/libexec/amethystora-bring-over
 bash /ctx/build_files/shared/test-bring-over.sh /usr/libexec/amethystora-bring-over
+# Send to anyone (R7-66): offered and off; Warp only after a yes, from Flathub, by the one helper that installs; the relay said first
+test -x /usr/libexec/amethystora-send-anyone
+grep -q '^send-anyone ACTION="":' /usr/share/amethystora/just/desktop.just
+bash /ctx/build_files/shared/test-send-anyone.sh /usr/libexec/amethystora-send-anyone
 # Every Gio.Settings the shell code of our extensions makes is kept and run_dispose()d on the main thread at disable,
 # never left to the collector: GJS sweeping one while dconf's worker dispatches a change to it deadlocks the shell
 env LD_LIBRARY_PATH=/apps-stage/usr/lib64 NODE_ICU_DATA="$(echo /apps-stage/usr/share/node-*/icudata)" /apps-stage/usr/bin/node /ctx/build_files/shared/test-settings-disposed.mjs \

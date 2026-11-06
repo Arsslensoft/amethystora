@@ -78,3 +78,31 @@ What it promises, and how it is kept:
 - It runs at the lowest disk and processor priority, so you can go on using the computer.
 
 It is a command you start, not something that watches for disks: nothing runs until you do. The agent cannot start it.
+
+## Send to anyone
+
+A file too big for email, to somebody far away: **three words** read out over the phone, and it arrives. No account, and no link
+that lives on. It is **offered and off**: turn it on in Control's **Desktop** page (**Send to anyone**) or
+
+```bash
+ame desktop send-anyone on
+```
+
+and Files' **Scripts** menu on a file has **Send to anyone**. The first time, it says where the file passes and asks before it
+fetches anything; the sending is **Warp**, from Flathub (about 5 MB, and the GNOME runtime if you do not have it), which uses
+Magic Wormhole. Then Warp opens: press **Send File**, choose the file, and read the three words it shows to the other person, who
+types them into Warp (or another Magic Wormhole app) on their computer. Warp takes no file from outside, so you choose it in
+its own window; the terminal says which.
+
+**Where the file passes, and what that costs:**
+
+- The three words are agreed through a **public server of the Magic Wormhole project**. It sees that two computers made contact,
+  and their addresses. It cannot read the file.
+- The file goes **straight to the other computer** when the two can reach each other, and otherwise through **a public relay of the
+  same project**. The relay sees the two addresses and how much passes, and cannot read the file: it is encrypted from your computer to
+  theirs.
+- Nothing is kept: the words work once. Warp's own preferences name the servers and let you choose your own.
+
+It is listed under [what this machine sends](security.md) once it is on or Warp is installed, and it sends nothing until you
+send a file in Warp's window. `ame desktop send-anyone off` takes the entry away; Warp, if installed, stays until you remove it in
+Bazaar.
