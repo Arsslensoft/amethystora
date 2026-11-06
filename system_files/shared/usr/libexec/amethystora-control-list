@@ -1226,7 +1226,7 @@ if [[ "${ said tiling; }" == false ]]; then LAYOUT=classic; else LAYOUT=tiling; 
 choice tiling "${ gettext "Tiling"; }" \
     "${ gettext "Windows open side by side on a strip that scrolls, arranged for you"; }" false ame desktop layout tiling
 choice classic "${ gettext "Classic"; }" \
-    "${ gettext "Windows float and overlap, and you move and size them, as on Windows and macOS"; }" false ame desktop layout classic
+    "${ gettext "Windows float and overlap, and you move and size them, as on most desktops"; }" false ame desktop layout classic
 GROUP="${ gettext "Windows"; }"
 USAGE="ame desktop layout tiling|classic"
 item desktop layout choice "${ gettext "Window layout"; }" "${ gettext "How windows are arranged."; }" "${LAYOUT}" \

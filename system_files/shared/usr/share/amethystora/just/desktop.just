@@ -927,7 +927,7 @@ pointer-dense STATE="":
             ;;
     esac
 
-# Pick how windows are arranged: tiling, side by side on a strip, or classic, floating as on Windows and macOS
+# Pick how windows are arranged: tiling, side by side on a strip, or classic, floating as on most desktops
 [positional-arguments]
 layout STYLE="":
     #!/usr/bin/bash
@@ -940,7 +940,7 @@ layout STYLE="":
     style="${1:-}"
     if [[ -z "${style}" ]]; then
         echo "tiling   $(gettext "Windows open side by side on a strip that scrolls, arranged for you")"
-        echo "classic  $(gettext "Windows float and overlap, and you move and size them, as on Windows and macOS")"
+        echo "classic  $(gettext "Windows float and overlap, and you move and size them, as on most desktops")"
         style="$(gum choose --header "$(eval_gettext "Layout (current: \${current})")" --selected "${current}" tiling classic)" || exit 0
     fi
     case "${style}" in

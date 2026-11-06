@@ -115,7 +115,7 @@ function windowsPage(settings) {
 
     const tiling = group(page, _('Tiling'));
     tiling.add(switchRow(settings, 'enabled', _('Tile windows'),
-        _('Off is the classic layout: windows float and overlap, as on Windows and macOS')));
+        _('Off is the classic layout: windows float and overlap, as on most desktops')));
 
     const gaps = group(page, _('Gaps'), _('In pixels.'));
     gaps.header_suffix = resetButton(settings,

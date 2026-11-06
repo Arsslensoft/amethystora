@@ -1565,7 +1565,7 @@ and the shortcuts in `org.gnome.shell.extensions.amethystora-ui.tiling.keybindin
 
 ### Classic windows
 
-If you would rather have windows that float and overlap, as on Windows and macOS, switch to the
+If you would rather have windows that float and overlap, as on most desktops, switch to the
 classic layout:
 
 ```bash
