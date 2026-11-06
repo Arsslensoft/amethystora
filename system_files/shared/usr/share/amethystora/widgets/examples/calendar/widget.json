@@ -1,8 +1,0 @@
-{
-  "name": "Calendar",
-  "description": "Today's date and the week's number",
-  "command": "./widget.sh",
-  "interval": 0,
-  "place": "desktop",
-  "position": "top-right"
-}

@@ -1,0 +1,10 @@
+{
+  "text": "EXMP 123.45",
+  "icon": "emblem-money-symbolic",
+  "class": "good",
+  "menu": [
+    {
+      "label": "Change today: 0.8%"
+    }
+  ]
+}

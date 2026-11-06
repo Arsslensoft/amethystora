@@ -476,32 +476,26 @@ jq -e '.["shell-version"] | index("50") and index("51")' \
     /usr/share/gnome-shell/extensions/amethystora-transitions@arsslensoft.github.io/metadata.json
 grep -q "'amethystora-transitions@arsslensoft.github.io'" /usr/share/glib-2.0/schemas/zz0-amethystora-modifications.gschema.override
 [[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-transitions style)" == "'grow'" ]]
-# Amethystora Widgets, also written for this image: enabled, claiming this GNOME, and every example
-# amethystora-widgets new copies passing the same check as amethystora-widgets run. The check runs in a
-# home of its own, with settings in memory as there is no session here
-WIDGETS_EXTENSION=/usr/share/gnome-shell/extensions/amethystora-widgets@arsslensoft.github.io
-jq -e --arg shell "${GNOME_MAJOR}" '.["shell-version"] | index($shell)' "${WIDGETS_EXTENSION}/metadata.json"
-grep -q "'amethystora-widgets@arsslensoft.github.io'" /usr/share/glib-2.0/schemas/zz0-amethystora-modifications.gschema.override
+# Widgets are plugins now (plans/PLAN-plugins.md): the extension that ran them unsandboxed is gone, the image's own are plugins in
+# /usr/share/amethystora/plugins (read-only, in the sandbox of everyone's), and none holds a permission that reaches outside the machine
+# (a click is all it takes to add one, with no administrator). amethystora-widgets stays as a name, over amethystora-plugins
+test ! -e /usr/share/gnome-shell/extensions/amethystora-widgets@arsslensoft.github.io
+! grep -q "amethystora-widgets@arsslensoft" /usr/share/glib-2.0/schemas/zz0-amethystora-modifications.gschema.override
 test -x /usr/bin/amethystora-widgets
-WIDGETS_HOME="$(mktemp -d)"
-for example in /usr/share/amethystora/widgets/examples/*/; do
-    test -x "${example}widget.sh"
-    HOME="${WIDGETS_HOME}" GSETTINGS_BACKEND=memory gjs -m "${WIDGETS_EXTENSION}/check.js" "${example}"
+for plugin in /usr/share/amethystora/plugins/*/; do
+    id="$(basename "${plugin}")"
+    test -x "${plugin}run.sh"
+    /usr/libexec/amethystora-plugin-host check "${plugin}" >/dev/null
+    [[ "$(jq -r .id "${plugin}manifest.json")" == "${id}" ]]
+    # What the helper refuses to a shipped plugin (rootcmd.rs shipped_refuses)
+    ! jq -e '.needs // {} | has("network") or has("network-local") or has("files") or has("window") or has("change")' "${plugin}manifest.json" >/dev/null
 done
-# A widget on the desktop (plans/beyond/spec-r4-capture.md, R4-19): the same check passes it, a bar position there fails,
-# the bar leaves it to Amethystora UI's deskwidgets module, which runs it with this extension's own runner
-DESK_WIDGET="${WIDGETS_HOME}/desk"
-mkdir -p "${DESK_WIDGET}"
-printf '#!/usr/bin/bash\necho "14:32"\n' >"${DESK_WIDGET}/widget.sh"
-chmod +x "${DESK_WIDGET}/widget.sh"
-echo '{"name": "Clock", "command": "./widget.sh", "place": "desktop", "position": "top-left", "size": "large"}' \
-    >"${DESK_WIDGET}/widget.json"
-HOME="${WIDGETS_HOME}" GSETTINGS_BACKEND=memory gjs -m "${WIDGETS_EXTENSION}/check.js" "${DESK_WIDGET}" >/dev/null
-echo '{"name": "Clock", "command": "./widget.sh", "place": "desktop", "position": "left"}' >"${DESK_WIDGET}/widget.json"
-HOME="${WIDGETS_HOME}" GSETTINGS_BACKEND=memory gjs -m "${WIDGETS_EXTENSION}/check.js" "${DESK_WIDGET}" >/dev/null 2>&1 && false
-grep -q "widget.manifest?.place === 'desktop'" "${WIDGETS_EXTENSION}/extension.js"
-grep -q "get_child('runner.js')" /usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/deskwidgets.js
-rm -rf "${WIDGETS_HOME}"
+for example in /usr/share/amethystora/plugin-examples/*/; do
+    test -x "${example}run.sh"
+    /usr/libexec/amethystora-plugin-host check "${example}" >/dev/null
+done
+# The desktop's cards are drawn from what the plugins module hands them: no runner, no widgets folder
+! grep -q "runner.js\|WIDGETS_DIR\|widgets@" /usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/deskwidgets.js
 # Amethystora Clipboard, Clipboard Indicator's copy that seals its history: enabled, claiming this GNOME, its
 # settings where gsettings finds them and Control's command for keep-history there, nothing of Clipboard
 # Indicator left, and the sealing tried with a stand-in for the keyring (test-clipboard.sh)
@@ -1092,15 +1086,14 @@ done
 test -x /usr/bin/ffprobe
 grep -q "^const TRIM = '/usr/bin/amethystora-trim';$" "${UI_EXTENSION}/modules/screenshot/trim.js"
 grep -q "^NoDisplay=true" /usr/share/applications/amethystora-trim.desktop
-# The gallery of widgets (R6-29): every widget it offers is an example that ships, and none is on for an account
-for example in clock calendar now-playing system pomodoro do-not-disturb; do
-    test -d "/usr/share/amethystora/widgets/examples/${example}"
-    grep -q "^gallery ${example} " /usr/libexec/amethystora-control-list
+# The gallery (R6-29), now the plugins the image ships: each of the six widgets is one, and none is added for an account
+for plugin in clock calendar now-playing system pomodoro do-not-disturb; do
+    test -d "/usr/share/amethystora/plugins/amethystora.${plugin}"
 done
 grep -q '^    add) add_widget "${2:-}" "${3:-}" ;;$' /usr/bin/amethystora-widgets
 [[ ! -e /etc/skel/.config/amethystora/widgets ]]
 # Nothing they show is markup, nothing they run is a shell: the present module spawns nothing, the desktop's widgets
-# run only through the widgets extension's runner
+# draw only what the plugins module passes
 grep -rqE "use_markup = true|set_use_markup\(true\)" "${UI_EXTENSION}/modules/present.js" "${UI_EXTENSION}/modules/present" \
     "${UI_EXTENSION}/modules/deskwidgets.js" "${UI_EXTENSION}/modules/screenshot/pins.js" && false
 grep -rqE "Util\.spawn|Subprocess|spawn_command_line" "${UI_EXTENSION}/modules/present.js" "${UI_EXTENSION}/modules/present" \
@@ -2366,10 +2359,10 @@ grep -rhvE '^[[:space:]]*//' /ctx/apps/control/src /ctx/apps/control-core/src |
 TRUST_RULE="$(sed -n 's/^\[\[ "\${REPOSITORY}" =~ \(.*\) \]\] ||$/\1/p' /usr/libexec/amethystora-trust-image)"
 [[ -n "${TRUST_RULE}" ]]
 grep -qF "r\"${TRUST_RULE}\"" /ctx/apps/control-core/src/lib.rs
-# The helpers it reads: the images and streams the rebase helper offers, the widgets and the web apps
+# The helpers it reads: the images and streams the rebase helper offers, the plugins and the web apps
 jq -e '(.images | length) == 6 and (.streams | length) > 0' <<<"$(/usr/bin/amethystora-rollback-helper --choices)" >/dev/null
 CONTROL_HOME="$(mktemp -d)"
-jq -e '(.bar | type) == "boolean" and .widgets == []' <<<"$(HOME="${CONTROL_HOME}" amethystora-widgets list --json)" >/dev/null
+jq -e '. == []' <<<"$(HOME="${CONTROL_HOME}" /usr/libexec/amethystora-plugins list --json)" >/dev/null
 jq -e '. == []' <<<"$(HOME="${CONTROL_HOME}" amethystora-webapp list --json)" >/dev/null
 # A switch says what it wants: on or off sets the one thing it names, and running it twice changes nothing
 # more. Without an argument it still flips, as it did before Control. One command a line, so that set -e
@@ -5205,7 +5198,7 @@ ame --show system::doctor >/dev/null
 # The launcher gives an agent the tools only while the features are on, and with options none of which turns
 # the agent's own checks off (agent-cli-flags, as the watcher matches them). Cursor CLI and Antigravity CLI,
 # which take no such option, have the entry in their settings only while the features are on.
-for skill in amethystora-tools amethystora-widgets; do
+for skill in amethystora-tools amethystora-plugins; do
     grep -qx "name: ${skill}" "/usr/share/amethystora/agents/skills/${skill}/SKILL.md"
 done
 (

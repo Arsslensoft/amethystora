@@ -381,7 +381,7 @@ read_in_background grub amethystora-grub-theme status
 read_in_background agent amethystora-agent status
 read_in_background agents amethystora-agent list
 read_in_background policy amethystora-agent policy --json
-read_in_background widgets amethystora-widgets list --json
+read_in_background plugins amethystora-plugins list --json
 read_in_background webapps amethystora-webapp list --json
 read_in_background image /usr/bin/amethystora-rollback-helper --choices
 read_in_background bling amethystora-bling status
@@ -431,6 +431,7 @@ gsettings_read focus org.gnome.shell.extensions.amethystora-ui.focus
 gsettings_read present org.gnome.shell.extensions.amethystora-ui.present
 gsettings_read screenshot org.gnome.shell.extensions.amethystora-ui.screenshot
 gsettings_read deskwidgets org.gnome.shell.extensions.amethystora-ui.deskwidgets enabled
+gsettings_read pluginsshow org.gnome.shell.extensions.amethystora-ui.plugins show
 gsettings_read shelf org.gnome.shell.extensions.amethystora-ui.shelf shelf
 gsettings_read desks org.gnome.shell.extensions.amethystora-ui.desks
 gsettings_read agent-ui org.gnome.shell.extensions.amethystora-ui.agent
@@ -1765,64 +1766,107 @@ item desktop trash choice "${ gettext "Empty the trash"; }" \
     "${ gettext "What was deleted longer ago than this leaves the trash by itself, checked every hour while you are logged in. The snapshots and the backup still have it."; }" \
     "${TRASH}" desktop#the-trash
 
-# The widgets, and the commands for each: the window puts a listed widget's id, or a new one it checked
-# against the rule amethystora-widgets has for ids, in the place of {id}
+# Plugins (ame plugin): everything that was added, what the agent made, and what the image ships. A plugin runs in a sandbox of its own and
+# reaches only what was allowed; its words are its own, shown as they come
 if [[ "${ ended agent; }" == 0 ]]; then AGENTIC=true; else AGENTIC=false; fi
-if [[ "${ ended widgets; }" == 0 ]] && jq -e . "${WORK}/widgets" >/dev/null 2>&1; then
-    WIDGETS="${ said widgets; }"
-    # Said once the jq below knows whether the bar shows them
-    BAR_OFF="${ gettext "The bar is not showing widgets: the extension that shows them is off."; }"
+if [[ "${ ended plugins; }" == 0 ]] && jq -e 'type == "array"' "${WORK}/plugins" >/dev/null 2>&1; then
+    PLUGINS_LIST="${ said plugins; }"
 else
-    WIDGETS='{"bar": true, "widgets": []}'
-    BAR_OFF=""
-    REASON="${ gettext "The widgets could not be listed."; }"
+    PLUGINS_LIST='[]'
+    REASON="${ gettext "The plugins could not be listed."; }"
 fi
-# The gallery (R6-29): the examples that ship, each with its words and the places it may be added to in one click
-# (ame desktop widgets add EXAMPLE bar|desktop); only those the image has
-GALLERY=()
-gallery() {
-    [[ -d "/usr/share/amethystora/widgets/examples/$1" ]] || return 0
-    # One record for the jq below, its fields apart by the unit separator: no jq of its own for each
-    local IFS=$'\x1f'
-    GALLERY+=("$*")
+# One row for each plugin or draft (the filter: all, or the ones the agent made): where it shows, whose it is, when, and what can be done
+plugin_rows() {
+    jq -c --argjson agentic "${AGENTIC}" --arg filter "$1" \
+        --arg t_draft "${ gettext "Draft"; }" --arg t_changed "${ gettext "Changed"; }" --arg t_on "${ gettext "On"; }" --arg t_off "${ gettext "Off"; }" \
+        --arg p_pill "${ gettext "Pill"; }" --arg p_bar "${ gettext "Top bar"; }" --arg p_desktop "${ gettext "Desktop"; }" --arg p_tile "${ gettext "Quick settings"; }" \
+        --arg p_search "${ gettext "Search"; }" --arg p_dock "${ gettext "Dock"; }" \
+        --arg w_agent "${ gettext "Made by the agent"; }" --arg w_image "${ gettext "Made for Amethystora"; }" --arg w_you "${ gettext "Added by you"; }" \
+        --arg a_keep "${ gettext "Keep…"; }" --arg a_throw "${ gettext "Throw away"; }" --arg a_change "${ gettext "Change…"; }" --arg a_fix "${ gettext "Fix…"; }" \
+        --arg a_pause "${ gettext "Pause"; }" --arg a_resume "${ gettext "Turn on"; }" --arg a_remove "${ gettext "Remove"; }" \
+        --arg changed "${ gettext "Its files are not what you approved: it is stopped."; }" '
+        def place: {"pill": $p_pill, "bar": $p_bar, "desktop": $p_desktop, "tile": $p_tile, "search": $p_search, "dock": $p_dock}[.] // empty;
+        def day: if .since then (.since | strflocaltime("%Y-%m-%d")) else empty end;
+        [.[] | select($filter == "all" or .author == "Agent")
+            | . as $p | {
+            id: .id,
+            title: .name,
+            text: ([(.contributes | map(place) | join(", ")), (if .draft and .author == "Agent" or .author == "Agent" then $w_agent elif .shipped then $w_image else $w_you end), day,
+                    (if .verified == false then $changed else empty end)] | map(select(. != "")) | join(" · ")),
+            state: (if .verified == false then "check" else "plain" end),
+            tag: (if .draft then $t_draft elif .verified == false then $t_changed elif .enabled then $t_on else $t_off end),
+            actions: (if .draft then
+                    [{id: "keep", title: $a_keep, terminal: true, command: ["ame", "plugin", "keep", .id]}]
+                    + (if $agentic then [{id: "change", title: $a_change, terminal: true, command: ["ame", "plugin", "change", .id]}] else [] end)
+                    + [{id: "discard", title: $a_throw, terminal: false, command: ["ame", "plugin", "discard", .id]}]
+                else
+                    [(if .enabled then {id: "off", title: $a_pause, terminal: false, command: ["ame", "plugin", "off", .id]}
+                      else {id: "on", title: $a_resume, terminal: false, command: ["ame", "plugin", "on", .id]} end)]
+                    + (if $agentic then [{id: "fix", title: $a_fix, terminal: true, command: ["ame", "plugin", "fix", .id]}] else [] end)
+                    + [{id: "remove", title: $a_remove, terminal: false, command: ["ame", "plugin", "remove", .id]}]
+                end)
+        }] as $rows | {rows: $rows, count: ($rows | length)}' <<<"${PLUGINS_LIST}" 2>/dev/null
 }
-gallery clock "${ gettext "Clock"; }" "${ gettext "The time in big type, with the day under it"; }" "desktop bar"
-gallery calendar "${ gettext "Calendar"; }" "${ gettext "Today's date and the week's number"; }" "desktop bar"
-gallery now-playing "${ gettext "Now playing"; }" "${ gettext "What a player plays, with its buttons"; }" "bar desktop"
-gallery system "${ gettext "System"; }" "${ gettext "How busy the processor is, the memory and the disk"; }" "bar desktop"
-gallery pomodoro "${ gettext "Pomodoro"; }" "${ gettext "A 25-minute focus timer: click it to start"; }" "bar"
-gallery do-not-disturb "${ gettext "Do not disturb"; }" "${ gettext "Shown while notifications are silenced, with a switch that brings them back"; }" "bar"
-# Whether the bar shows them (true as jq -r prints it), then the entry, from one jq
-EXAMPLES="${ find /usr/share/amethystora/widgets/examples -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null | sort; }"
-mapfile -t WIDGETS_SAID < <(jq -nc --argjson list "${WIDGETS}" --argjson agentic "${AGENTIC}" \
-    --arg examples "${EXAMPLES}" --arg gallery "${ printf '%s\n' "${GALLERY[@]}"; }" \
-    '($list.bar == true or $list.bar == "true"),
-    {widgets: $list.widgets, bar: $list.bar, examples: ($examples | split("\n") | map(select(. != ""))), $agentic,
-      gallery: ($gallery | split("\n") | map(select(. != "") | split("\u001f")
-          | {example: .[0], name: .[1], text: .[2], places: (.[3] | split(" "))})),
-      commands: {
-        add: {terminal: false, command: ["ame", "desktop", "widgets", "add", "{example}", "{place}"]},
-        on: {terminal: false, command: ["ame", "desktop", "widgets", "on", "{id}"]},
-        off: {terminal: false, command: ["ame", "desktop", "widgets", "off", "{id}"]},
-        remove: {terminal: false, command: ["ame", "desktop", "widgets", "remove", "{id}"]},
-        new: {terminal: false, command: ["ame", "desktop", "widgets", "new", "{id}", "{example}"]},
-        restart: {terminal: false, command: ["ame", "desktop", "widgets", "restart"]},
-        make: {terminal: true, command: ["ame", "desktop", "widgets", "make"]},
-        fix: {terminal: true, command: ["ame", "desktop", "widgets", "fix", "{id}"]}}}')
-[[ -z "${BAR_OFF}" || "${WIDGETS_SAID[0]:-}" == true ]] || DETAIL="${BAR_OFF}"
-EXTRA="${WIDGETS_SAID[1]:-}"
-GROUP="${ gettext "Top bar"; }"
-USAGE="ame desktop widgets"
-item desktop widgets widgets "${ gettext "Top bar widgets"; }" \
-    "${ gettext "Small commands whose output the top bar shows. Each runs as you, with everything you have: keep only the ones you have read."; }" \
-    "" widgets
+GROUP="${ gettext "Plugins"; }"
+if EXTRA="${ plugin_rows all; }" && [[ -n "${EXTRA}" ]]; then
+    count="${EXTRA##*\"count\":}"
+    count="${count%\}}"
+    DETAIL="${ eval_ngettext "\${count} plugin" "\${count} plugins" "${count:-0}"; }"
+else
+    EXTRA='{"rows": []}'
+fi
+USAGE="ame plugin list|add|keep|remove|on|off"
+item desktop plugins rows "${ gettext "Plugins"; }" \
+    "${ gettext "Everything that shows in the pill, the top bar, quick settings, search, the dock and the desktop. Each runs in a sandbox and reaches only what you allowed."; }" \
+    "" plugins
+if EXTRA="${ plugin_rows agent; }" && [[ -n "${EXTRA}" ]]; then
+    count="${EXTRA##*\"count\":}"
+    count="${count%\}}"
+    DETAIL="${ eval_ngettext "\${count} thing the agent made" "\${count} things the agent made" "${count:-0}"; }"
+else
+    EXTRA='{"rows": []}'
+fi
+USAGE="ame plugin make REQUEST"
+item desktop plugins-agent rows "${ gettext "Made by the agent"; }" \
+    "${ gettext "What the AI agent wrote for you, who made it and when. A draft runs with nothing allowed until you keep it. Nothing the agent makes stays without you."; }" \
+    "" plugins#made-by-the-agent
+if [[ "${AGENTIC}" == true ]]; then
+    COMMAND=(ame plugin remove-agent-made)
+    TERMINAL=true
+    BUTTON="${ gettext "Remove all…"; }"
+    USAGE="ame plugin remove-agent-made"
+    item desktop plugins-remove-agent action "${ gettext "Remove everything the agent made"; }" \
+        "${ gettext "Each plugin and draft it wrote, with what they kept. Asks first, in a terminal."; }" "" plugins#made-by-the-agent
+fi
+# The plugins the image ships, not added yet: one click each, after you read what it asks for
+SHIPPED_ROWS="${ jq -c --argjson list "${PLUGINS_LIST}" --arg add "${ gettext "Add…"; }" --arg tag "${ gettext "Ready"; }" \
+    --arg you "${ gettext "Made for Amethystora. None is on until you add it."; }" -n '
+    [inputs] | map(select(. as $m | $list | map(.id) | index($m.id) | not))
+    | {rows: map({id: .id, title: .name, text: $you, state: "plain", tag: $tag,
+        actions: [{id: "add", title: $add, terminal: true, command: ["ame", "plugin", "add", .id]}]})}' \
+    /usr/share/amethystora/plugins/*/manifest.json 2>/dev/null; }"
+EXTRA="${SHIPPED_ROWS}"
+[[ -n "${EXTRA}" ]] || EXTRA='{"rows": []}'
+USAGE="ame plugin shipped"
+item desktop plugins-shipped rows "${ gettext "Ready to add"; }" \
+    "${ gettext "The plugins that come with Amethystora: its own code, which cannot change. You read what each asks for before it is added."; }" \
+    "" plugins
+# Whether plugins are drawn at all (org.gnome.shell.extensions.amethystora-ui.plugins)
+if [[ "${ said pluginsshow; }" == false ]]; then PLUGINS_SHOW=off; else PLUGINS_SHOW=on; fi
+[[ "${ ended pluginsshow; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
+switch_choices false ame desktop plugins
+USAGE="ame desktop plugins on|off"
+item desktop plugins-show switch "${ gettext "Show plugins"; }" \
+    "${ gettext "Draw what plugins and scripts show: in the live pill, the top bar, quick settings, search, the dock and on the desktop. Off, nothing of them is drawn."; }" \
+    "${PLUGINS_SHOW}" plugins
+GROUP="${ gettext "Plugins"; }"
 # Widgets on the desktop (offered, off; org.gnome.shell.extensions.amethystora-ui.deskwidgets)
 if [[ "${ said deskwidgets; }" == true ]]; then DESK_WIDGETS=on; else DESK_WIDGETS=off; fi
 [[ "${ ended deskwidgets; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
 switch_choices false ame desktop desktop-widgets
 USAGE="ame desktop desktop-widgets on|off"
-item desktop desktop-widgets switch "${ gettext "Widgets on the desktop"; }" \
-    "${ gettext "Widgets placed on the desktop in their widget.json are drawn on the wallpaper, under the windows."; }" \
+item desktop desktop-widgets switch "${ gettext "Plugins on the desktop"; }" \
+    "${ gettext "Plugins that ask for a place on the desktop are drawn on the wallpaper, under the windows."; }" \
     "${DESK_WIDGETS}" widgets#on-the-desktop
 # The resting screen (R6-06, offered, off) and when it comes
 REST="${ said rest; }"

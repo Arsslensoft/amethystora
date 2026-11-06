@@ -10,6 +10,15 @@
 #   grant ID [PERMISSION...]                  more of what an installed plugin asks for
 #   revoke ID [PERMISSION...] | block ID [HOST] | unblock ID [HOST] | remove ID | rollback ID
 #   on ID | off ID                            whether it runs, which stays inside what was approved
+#   shipped                                   the plugins the image ships (add one with: add ID; it needs a click and no administrator)
+#   make REQUEST | change ID | fix ID         the agent writes a draft (R7-02), changes it, or fixes a plugin that paused (R7-09)
+#   examples | new ID [EXAMPLE]               the examples to start from (an agent or a person), and a draft made from one
+#   try ID [ACTION]                           run a plugin or a draft once in its sandbox and print what the shell would be given
+#   remove-agent-made                         every plugin and draft the agent made, after asking
+#   draft ID [--by me]                        a draft the agent wrote is checked, marked as the agent's and shown (it has no permissions)
+#   keep ID | discard ID                      a draft: keep it as a plugin (the same consent as any) or throw it away
+#   settings ID | set ID NAME                 what a plugin asks you for, and giving it a value (a secret goes into the Vault)
+#   open FILE                                 what a .amethystora-pill file does: add it (you read what it runs and reaches first)
 set -euo pipefail
 # shellcheck source=/dev/null
 source gettext.sh
@@ -18,6 +27,9 @@ export TEXTDOMAIN=amethystora
 HOST=/usr/libexec/amethystora-plugin-host
 ROOT=/usr/libexec/amethystora-plugin-root
 STATE="${XDG_STATE_HOME:-${HOME}/.local/state}/amethystora/plugins"
+DRAFTS="${XDG_DATA_HOME:-${HOME}/.local/share}/amethystora/plugin-drafts"
+SHIPPED=/usr/share/amethystora/plugins
+EXAMPLES=/usr/share/amethystora/plugin-examples
 ID_PATTERN='^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$'
 WORK=""
 trap '[[ -z "${WORK}" ]] || rm -rf -- "${WORK}"' EXIT
@@ -28,7 +40,7 @@ die() {
 }
 
 usage() {
-    echo "usage: ame plugin list|show|add|update|remove|check|verify|history|rollback|on|off|grant|revoke|block|unblock" >&2
+    echo "usage: ame plugin list|show|add|update|remove|check|verify|history|rollback|on|off|grant|revoke|block|unblock|shipped|examples|new|try|make|change|fix|draft|keep|discard|remove-agent-made|settings|set|open" >&2
     exit 64
 }
 
@@ -56,14 +68,15 @@ cmd_list() {
     if [[ "${1:-}" == --json ]]; then
         exec "${HOST}" list --json
     fi
-    local found=0 id version state name
-    while IFS=$'\t' read -r id version state name; do
+    local found=0 id version state name kind
+    while IFS=$'\t' read -r id version state name kind; do
         found=1
         case "${state}" in
             on) state="$(gettext "on")" ;;
             changed) state="$(gettext "changed")" ;;
             *) state="$(gettext "off")" ;;
         esac
+        [[ "${kind}" != draft ]] || name="${name} ($(gettext "draft"))"
         printf '%-40s %-9s %-8s %s\n' "${id}" "${version}" "${state}" "${name}"
     done < <("${HOST}" list)
     if ((!found)); then
@@ -94,6 +107,10 @@ cmd_show() {
 
 cmd_check() {
     [[ -n "${1:-}" ]] || usage
+    # A draft by its id
+    if [[ ! -e "$1" ]] && valid_id "$1" && [[ -d "${DRAFTS}/$1" ]]; then
+        set -- "${DRAFTS}/$1" "${@:2}"
+    fi
     if [[ "${2:-}" == --json ]]; then
         exec "${HOST}" check "$1" --json
     fi
@@ -304,6 +321,11 @@ cmd_add() {
     local source="${1:-}" want=""
     [[ -n "${source}" ]] || usage
     shift
+    # An id the image ships is added from the image, with a click
+    if [[ "${source}" =~ ${ID_PATTERN} && ! -e "${source}" && -d "${SHIPPED}/${source}" ]]; then
+        add_shipped "${source}"
+        return
+    fi
     while (($#)); do
         case "$1" in
             --digest) want="${2:-}"; shift 2 || usage ;;
@@ -356,6 +378,216 @@ cmd_grant() {
     echo
 }
 
+
+# ---- Shipped plugins ----
+
+cmd_shipped() {
+    local dir id name
+    for dir in "${SHIPPED}"/*/; do
+        [[ -f "${dir}manifest.json" ]] || continue
+        id="$(basename "${dir}")"
+        name="$(jq -r '.name' "${dir}manifest.json" 2>/dev/null || echo "${id}")"
+        printf '%-36s %s\n' "${id}" "${name}"
+    done
+}
+
+# One of the image's own plugins: its code is the signed image's and cannot change, so a click is all it takes, after the permissions are read
+add_shipped() {
+    local id="$1" folder="${SHIPPED}/$1" key a b
+    [[ -f "${folder}/manifest.json" ]] || die "$(gettext "The image ships no such plugin.")"
+    need_terminal
+    local out
+    out="$("${HOST}" check "${folder}")" || die "$(gettext "That plugin did not pass its own check.")"
+    while IFS=$'\t' read -r key a b; do
+        case "${key}" in
+            name) export name="${a}" ;;
+            perm) export perm="${a}" reason="${b}"; eval_gettext "  It will be allowed \${perm}: \${reason}"; echo ;;
+        esac
+    done <<<"${out}"
+    export id
+    eval_gettext "\${name} (\${id}) is part of this image: its code is signed and cannot change."
+    echo
+    ask "$(gettext "Add it with what it asks for?")" || { gettext "Nothing was added."; echo; return 1; }
+    pkexec "${ROOT}" commit-shipped "${id}" >/dev/null
+    "${HOST}" enable "${id}"
+    units
+    eval_gettext "\${id} is added and on."
+    echo
+}
+
+# ---- Drafts: what an agent wrote and nobody has kept ----
+
+draft_dir() {
+    valid_id "${1:-}" || usage
+    [[ -d "${DRAFTS}/$1" ]] || die "$(gettext "There is no such draft.")"
+    echo "${DRAFTS}/$1"
+}
+
+cmd_draft() {
+    local id="${1:-}" by=agent dir
+    shift || true
+    [[ "${1:-}" != --by ]] || { [[ "${2:-}" == me ]] && by=me; }
+    dir="$(draft_dir "${id}")"
+    "${HOST}" check "${dir}" >/dev/null || { "${HOST}" check "${dir}" | awk -F'\t' '$1 == "error" { print $2 }' >&2; die "$(gettext "It did not pass the check, so it was not shown.")"; }
+    if [[ "${by}" == agent ]]; then
+        local manifest="${dir}/manifest.json" temp
+        temp="$(mktemp "${dir}/.manifest.XXXXXX")"
+        jq '.author = "Agent"' "${manifest}" >"${temp}" && mv -f -- "${temp}" "${manifest}"
+        printf '{"by": "agent", "when": %s}\n' "$(date +%s)" >"${dir}/origin.json"
+    else
+        printf '{"by": "me", "when": %s}\n' "$(date +%s)" >"${dir}/origin.json"
+    fi
+    # Turned off and on again, so that the host reads a changed draft again
+    "${HOST}" disable "${id}" || true
+    "${HOST}" enable "${id}"
+    units
+    export id
+    eval_gettext "\${id} is a draft now, running with nothing allowed. Look at it, then keep it, change it or throw it away."
+    echo
+}
+
+cmd_discard() {
+    valid_id "${1:-}" || usage
+    "${HOST}" discard "$1"
+    units
+    export id="$1"
+    eval_gettext "The draft \${id} was thrown away."
+    echo
+}
+
+cmd_keep() {
+    local dir id="${1:-}" copy
+    dir="$(draft_dir "${id}")"
+    need_terminal
+    WORK="$(mktemp -d)"
+    copy="${WORK}/draft"
+    mkdir -p "${copy}"
+    # What was written for the pill's sake is not part of the plugin
+    cp -a -- "${dir}/." "${copy}/"
+    rm -f -- "${copy}/origin.json" "${copy}/sample.json"
+    install_from "${copy}" "" ""
+    rm -rf -- "${dir:?}"
+    "${HOST}" disable "${id}" || true
+    "${HOST}" enable "${id}"
+    units
+}
+
+
+cmd_examples() {
+    local dir name
+    for dir in "${EXAMPLES}"/*/ "${SHIPPED}"/*/; do
+        [[ -f "${dir}manifest.json" ]] || continue
+        name="$(basename "${dir}")"
+        printf '%-28s %s\n' "${name#amethystora.}" "$(jq -r '.name' "${dir}manifest.json" 2>/dev/null || echo "${name}")"
+    done
+}
+
+# A draft from an example, under a name of your own (a name with no dot gets local. in front): a draft runs with nothing allowed
+cmd_new() {
+    local id="${1:-}" example="${2:-hello}" from
+    [[ -n "${id}" ]] || usage
+    [[ "${id}" == *.* ]] || id="local.${id}"
+    valid_id "${id}" && [[ "${id}" != amethystora.* ]] || die "$(gettext "A name is lower case letters, digits and dashes, as in my-widget or dev.example.my-widget.")" 64
+    for from in "${EXAMPLES}/${example}" "${SHIPPED}/amethystora.${example}" "${SHIPPED}/${example}"; do
+        [[ -f "${from}/manifest.json" ]] && break
+        from=""
+    done
+    [[ -n "${from}" ]] || die "$(gettext "There is no such example. See them with: ame plugin examples")"
+    [[ ! -e "${DRAFTS}/${id}" ]] || die "$(gettext "There is a draft of that name already.")"
+    mkdir -p "${DRAFTS}"
+    cp -a -- "${from}" "${DRAFTS}/${id}"
+    local manifest="${DRAFTS}/${id}/manifest.json" temp title
+    title="${id##*.}"
+    title="${title//-/ }"
+    temp="$(mktemp "${DRAFTS}/${id}/.manifest.XXXXXX")"
+    jq --arg id "${id}" --arg name "${title^}" '.id = $id | .name = $name | del(.author)' "${manifest}" >"${temp}" && mv -f -- "${temp}" "${manifest}"
+    chmod 0644 "${manifest}"
+    export id
+    eval_gettext "Started \${id} from the example \${example}, in \${DRAFTS}/\${id}. Change its files, then: ame plugin draft \${id} --by me"
+    echo
+}
+
+cmd_try() {
+    valid_id "${1:-}" || usage
+    exec "${HOST}" try "$@"
+}
+
+cmd_remove_agent_made() {
+    need_terminal
+    local ids id
+    ids="$("${HOST}" list --json | jq -r '.[] | select(.author == "Agent") | .id + "\t" + (.draft | tostring)')"
+    [[ -n "${ids}" ]] || { gettext "The agent made nothing that is still here."; echo; return 0; }
+    local draft
+    while IFS=$'\t' read -r id draft; do
+        echo "  ${id}"
+    done <<<"${ids}"
+    ask "$(gettext "Remove all of these, with what they kept?")" || { gettext "Nothing was removed."; echo; return 1; }
+    while IFS=$'\t' read -r id draft; do
+        if [[ "${draft}" == true ]]; then
+            "${HOST}" discard "${id}" || true
+        else
+            "${HOST}" disable "${id}" || true
+            pkexec "${ROOT}" remove "${id}" >/dev/null || true
+            rm -rf -- "${STATE:?}/${id}"
+        fi
+    done <<<"${ids}"
+    units
+    gettext "Removed."
+    echo
+}
+
+# ---- The agent ----
+
+agent_available() {
+    amethystora-agent status >/dev/null 2>&1 || die "$(gettext "The AI agent is off. Turn it on with: ame agent toggle on")"
+}
+
+cmd_make() {
+    (($#)) || usage
+    agent_available
+    local request="$*"
+    [[ -n "${request// /}" ]] || request="whatever I tell you (ask me what it should show)"
+    exec amethystora-agent ask -- "Make a plugin for the Amethystora pill: ${request}. Read the amethystora-plugins skill first. Write it as a draft folder under ${DRAFTS}/<reverse.domain.id>/ with manifest.json, an executable command and a sample.json of what it would print. It has no permissions until the person keeps it, so ask for only what it needs, each with a why. Run: ame plugin check ${DRAFTS}/<id>, and when it passes: ame plugin draft <id>. Never run grant, add or keep: the person does."
+}
+
+cmd_change() {
+    local dir
+    dir="$(draft_dir "${1:-}")"
+    agent_available
+    exec amethystora-agent ask -- "Change the draft plugin in ${dir}: ask me what to change. Keep it passing: ame plugin check ${dir}, then ame plugin draft $1. Never run grant, add or keep."
+}
+
+cmd_fix() {
+    valid_id "${1:-}" || usage
+    agent_available
+    local why
+    why="$("${HOST}" show "$1" 2>/dev/null | awk -F'\t' '$1 == "verified" { print $2 }')"
+    exec amethystora-agent ask -- "The plugin $1 paused itself (it failed, ran too long or went over its limits). Find out why with: ame plugin show $1 and ame plugin try $1, read its folder, and fix it, as a draft if it must change: ame plugin check, ame plugin draft. It cannot be given more permissions by you. ${why}"
+}
+
+cmd_settings() {
+    valid_id "${1:-}" || usage
+    exec "${HOST}" settings "$@"
+}
+
+cmd_set() {
+    valid_id "${1:-}" && [[ -n "${2:-}" ]] || usage
+    need_terminal
+    local value
+    read -r -s -p "$(gettext "Value (it is not shown): ")" value
+    echo
+    # On standard input, never as an argument: a secret goes into the Vault and nowhere in the clear
+    printf '%s' "${value}" | "${HOST}" setting-set "$1" "$2"
+    export name="$2"
+    eval_gettext "\${name} is set."
+    echo
+}
+
+cmd_open() {
+    [[ -f "${1:-}" ]] || usage
+    install_from "$1" "" ""
+}
+
 case "${1:-}" in
     list) shift; cmd_list "$@" ;;
     show) shift; cmd_show "$@" ;;
@@ -369,5 +601,19 @@ case "${1:-}" in
     grant) shift; cmd_grant "$@" ;;
     revoke | block | unblock | rollback) cmd_root "$@" ;;
     remove) shift; cmd_remove "$@" ;;
+    shipped) cmd_shipped ;;
+    draft) shift; cmd_draft "$@" ;;
+    discard) shift; cmd_discard "$@" ;;
+    keep) shift; cmd_keep "$@" ;;
+    make) shift; cmd_make "$@" ;;
+    change) shift; cmd_change "$@" ;;
+    fix) shift; cmd_fix "$@" ;;
+    settings) shift; cmd_settings "$@" ;;
+    set) shift; cmd_set "$@" ;;
+    open) shift; cmd_open "$@" ;;
+    examples) cmd_examples ;;
+    new) shift; cmd_new "$@" ;;
+    try) shift; cmd_try "$@" ;;
+    remove-agent-made) cmd_remove_agent_made ;;
     *) usage ;;
 esac

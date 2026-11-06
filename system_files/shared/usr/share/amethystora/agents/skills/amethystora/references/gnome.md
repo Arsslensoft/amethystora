@@ -12,9 +12,9 @@
   turns back on.
 - The trash empties itself of what was deleted more than 30 days ago: `ame desktop privacy trash
   DAYS|off` changes it, not `gsettings set`, which the running session would not read until the next login.
-- Something to show in the top bar (a widget, an indicator, a timer, a status, a switch): follow the
-  `amethystora-widgets` skill, which makes it a folder in `~/.config/amethystora/widgets`. Never write
-  a GNOME Shell extension for it.
+- Something to show in the pill, the top bar, quick settings, search, the dock or on the desktop (a widget, an indicator, a timer, a status, a
+  switch): follow the `amethystora-plugins` skill, which makes it a draft plugin that runs in a sandbox with nothing allowed until the person
+  keeps it. Never write a GNOME Shell extension for it.
 - The terminal is kitty, **Terminal** in the app grid (Ptyxis is the second choice, with no launcher: run `ptyxis`; Files' Open in Console opens kitty through `/usr/libexec/amethystora-terminal-here`). Its settings are `/etc/xdg/kitty/kitty.conf`, over which the
   account's `~/.config/kitty/kitty.conf` wins; `amethystora-theme` renders its colours on every theme switch and
   asks the open windows to read them again.

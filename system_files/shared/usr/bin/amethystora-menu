@@ -144,7 +144,7 @@ main_menu() {
             # Escape goes back; Enter on an empty line has the agent ask
             idea="$(gum input --width 80 \
                 --placeholder "What should it show in the top bar? Empty, and the agent asks you")" || back
-            exec amethystora-widgets make "${idea}"
+            exec /usr/libexec/amethystora-plugins make "${idea}"
             ;;
         Theme) theme_menu ;;
         Background) background_menu ;;

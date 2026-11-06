@@ -1,6 +1,0 @@
-{
-  "name": "Pomodoro",
-  "description": "A 25-minute focus timer: click it to start",
-  "command": "./widget.sh",
-  "interval": 1
-}

@@ -16,6 +16,11 @@ pub const HOST_EXE: &str = "/usr/libexec/amethystora-plugin-host";
 pub const PLUGIN_DIR: &str = "/plugin";
 pub const STATE_DIR: &str = "/state";
 pub const PROXY_DIR: &str = "/proxy";
+/// The broker's socket folder, and the folder holding `plugin`, the program a plugin asks the host with
+pub const BROKER_DIR: &str = "/broker";
+pub const BIN_DIR: &str = "/plugin-bin";
+/// The pipe a plugin's settings come on (and nothing else does): read once, `read -r -u 10 settings`
+pub const SETTINGS_FD: i32 = 10;
 pub const SHIM_PORT: u16 = 3128;
 /// The most /tmp may hold
 const TMP_BYTES: &str = "16777216";
@@ -31,6 +36,8 @@ pub struct Spec<'a> {
     pub files: &'a [(PathBuf, bool)],
     /// The folder the host's proxy socket is in; given only to a plugin that holds a network permission
     pub proxy_dir: Option<&'a Path>,
+    /// The folder the host's broker socket is in; given to a plugin that may ask for anything, and to a draft (which is answered from samples)
+    pub broker_dir: Option<&'a Path>,
     /// A one-line /etc/passwd of the account's, so that programs asking who they are get an answer
     pub passwd: &'a Path,
     /// The only environment it keeps (see `kept_env`)
@@ -72,7 +79,7 @@ pub fn bwrap_args(spec: &Spec) -> Vec<String> {
         a.extend([if *writable { "--bind" } else { "--ro-bind" }.into(), p(path), p(path)]);
     }
     let mut env: Vec<(String, String)> = vec![
-        (s("PATH"), s("/usr/bin")),
+        (s("PATH"), format!("{BIN_DIR}:/usr/bin")),
         (s("HOME"), s(STATE_DIR)),
         (s("PLUGIN_ID"), s(spec.id)),
         (s("PLUGIN_DIR"), s(PLUGIN_DIR)),
@@ -83,6 +90,11 @@ pub fn bwrap_args(spec: &Spec) -> Vec<String> {
         env.push((s("PLUGIN_ACTION"), s(action)));
     }
     env.extend(spec.env.iter().cloned());
+    if let Some(dir) = spec.broker_dir {
+        // `plugin` is the host's own program, which finds its socket in PLUGIN_BROKER and says nothing else of the machine
+        a.extend(["--ro-bind".into(), p(dir), s(BROKER_DIR), "--symlink".into(), s(HOST_EXE), format!("{BIN_DIR}/plugin")]);
+        env.push((s("PLUGIN_BROKER"), format!("{BROKER_DIR}/broker.sock")));
+    }
     let mut command: Vec<String> = Vec::new();
     if let Some(dir) = spec.proxy_dir {
         // The network namespace has only loopback: a forwarder inside it takes HTTPS_PROXY's connections to the host's socket
@@ -141,6 +153,7 @@ mod tests {
             command,
             files,
             proxy_dir: proxy,
+            broker_dir: None,
             passwd: Path::new("/run/user/1000/amethystora/plugins/passwd"),
             env,
             action,
@@ -189,6 +202,19 @@ mod tests {
         assert_eq!(&line[..3], ["systemd-run", "--user", "--scope"]);
         assert!(line.iter().any(|x| *x == format!("--slice={SLICE}")));
         assert!(has(&line, &["-p", "MemoryMax=256M", "-p", "MemorySwapMax=0", "-p", "OOMPolicy=continue", "-p", "CPUQuota=25%", "-p", "TasksMax=64"]) && has(&line, &["bwrap", "--unshare-all"]));
+    }
+
+    #[test]
+    fn the_broker_is_a_socket_and_one_program() {
+        let command = vec!["./run.sh".to_string()];
+        let mut sp = spec(&command, &[], None, &[], None);
+        sp.broker_dir = Some(Path::new("/run/user/1000/amethystora/plugins/broker/dev.example.t"));
+        let a = bwrap_args(&sp);
+        assert!(has(&a, &["--ro-bind", "/run/user/1000/amethystora/plugins/broker/dev.example.t", "/broker"]));
+        assert!(has(&a, &["--symlink", HOST_EXE, "/plugin-bin/plugin"]) && has(&a, &["--setenv", "PLUGIN_BROKER", "/broker/broker.sock"]));
+        let remount = a.iter().position(|x| x == "--remount-ro").unwrap();
+        assert!(a.iter().position(|x| x == "/broker").unwrap() < remount);
+        assert!(!bwrap_args(&spec(&command, &[], None, &[], None)).iter().any(|x| x.contains("broker")), "a plugin with nothing to ask has no socket");
     }
 
     #[test]

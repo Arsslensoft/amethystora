@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "id": "example.ci-build",
+  "version": "1.0.0",
+  "license": "Apache-2.0",
+  "command": [
+    "./run.sh"
+  ],
+  "name": "CI build",
+  "interval": 60,
+  "contributes": {
+    "pill": {},
+    "tile": {}
+  },
+  "actions": [
+    "open-run"
+  ],
+  "needs": {
+    "network": [
+      {
+        "host": "api.github.com",
+        "why": "Reads the status of your repository's latest workflow run"
+      }
+    ],
+    "open": {
+      "why": "Opens the run's page when you click"
+    }
+  },
+  "settings": [
+    {
+      "name": "repo",
+      "label": "Repository (owner/name)"
+    },
+    {
+      "name": "token",
+      "label": "Access token, only for a private repository",
+      "secret": true
+    }
+  ]
+}

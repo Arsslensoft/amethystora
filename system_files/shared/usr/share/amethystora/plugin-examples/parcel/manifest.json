@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "id": "example.parcel",
+  "version": "1.0.0",
+  "license": "Apache-2.0",
+  "command": [
+    "./run.sh"
+  ],
+  "name": "A parcel on its way",
+  "interval": 300,
+  "contributes": {
+    "pill": {}
+  },
+  "needs": {
+    "network": [
+      {
+        "host": "api.example.org",
+        "why": "Asks your carrier where the parcel is (replace this with the carrier's own host)"
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "number",
+      "label": "Tracking number"
+    }
+  ]
+}

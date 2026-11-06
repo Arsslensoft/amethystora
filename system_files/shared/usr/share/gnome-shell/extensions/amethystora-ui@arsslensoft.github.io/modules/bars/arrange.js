@@ -37,14 +37,15 @@ export const ITEMS = {
 // Never hidden: what tells the time and opens the system's own settings
 export const FIXED = ['clock', 'system'];
 export const ZONES = ['left', 'center', 'right'];
-const WIDGET = /^widget-([a-z0-9][a-z0-9-]{0,39})$/;
+// A plugin in the bar is plugin-ID (its reverse-domain id): modules/plugins.js adds it to the status area as amethystora-plugin-ID
+const PLUGIN = /^plugin-([a-z0-9][a-z0-9.-]{0,63})$/;
 
 // The roles an item's id stands for, or null for an id this image does not know
 export function rolesOf(id) {
     if (ITEMS[id])
         return ITEMS[id];
-    const widget = WIDGET.exec(id);
-    return widget ? [`amethystora-widget-${widget[1]}`] : null;
+    const plugin = PLUGIN.exec(id);
+    return plugin ? [`amethystora-plugin-${plugin[1]}`] : null;
 }
 
 // The layout as the key has it: the three boxes and hidden, each a list of known ids, an id in one list only (the

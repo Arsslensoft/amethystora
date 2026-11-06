@@ -98,7 +98,7 @@ method=auto
 EOF
         cat >"${files}/policy/desktop.json" <<'EOF'
 {"version": 1, "set": {"idle-delay": 600, "camera-off": true, "clock-format": "24h", "login-banner": "Vmlab only."},
- "lock": ["idle-delay", "camera-off"], "extensions-off": ["amethystora-widgets@arsslensoft.github.io"]}
+ "lock": ["idle-delay", "camera-off"], "extensions-off": ["amethystora-transitions@arsslensoft.github.io"]}
 EOF
 
         dir="${REPO}/tmp/vmlab-image-setup"

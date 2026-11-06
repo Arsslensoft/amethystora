@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "id": "amethystora.clock",
+  "name": "Clock",
+  "version": "1.0.0",
+  "license": "Apache-2.0",
+  "command": ["./run.sh"],
+  "interval": 10,
+  "contributes": {"desktop": {"corner": "top-right"}},
+  "needs": {"state": {"names": ["clock"], "why": "Shows the time the way your clock is set to (24 or 12 hours)"}}
+}

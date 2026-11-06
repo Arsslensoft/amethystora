@@ -1,12 +1,87 @@
 # Plugins
 
-A plugin adds something of its own to the desktop: a build's status, a package on its way, a door that is open. It runs in a
-*sandbox*, as a program of its own, and only describes what to show. It cannot do more than you let it, and nothing it was
-approved with can change without an administrator's approval.
+A plugin adds something of its own to the desktop: a build's status in the pill, a package on its way, a door that is open, a timer, a
+number on a dock icon. It runs in a *sandbox*, as a program of its own, and only describes what to show; the desktop draws it. It cannot do
+more than you let it, and nothing it was approved with can change without an administrator's approval. The widgets of earlier images are
+plugins now: see [widgets](widgets.md).
 
-This page says what works today. A plugin cannot be seen on the desktop yet: the pill, the top bar and the other places that will
-draw one are still to come. What you can do now is the part that keeps you safe: add a plugin, read what it asks for, allow each
-part you choose, run it in its sandbox, and take back what you gave.
+## Where a plugin shows
+
+One plugin can ask for several places, and an agent learns one format to reach all of them:
+
+- **The live pill.** After everything the system shows, so that a call, a recording, a link from your phone or the battery's question is never
+  hidden by a plugin. The one that changed last is in the pill, the others are rows in its card, and the card ends with the plugin's name, what
+  it may reach and a **Pause** button, drawn by the desktop whatever the plugin said. A countdown is counted by the desktop, so it costs no
+  process, and a plugin can mark its words **private**: they hide while your screen is shared.
+- **The top bar**, as a label, an icon and a menu.
+- **Quick settings**, as a tile with a switch and a value.
+- **Search** (`Super+Space`): an answer when you type the plugin's prefix. What you type never reaches the plugin.
+- **The dock**: a number on a pinned app's icon, and a bar along its bottom.
+- **The desktop**: a small card on the wallpaper, while *Plugins on the desktop* is on in [Control](control.md).
+
+Nothing in it can look like the system: a plugin has no call, recording, battery or agent look, no markup, no picture from a file and no
+field to type in. A plugin whose output the desktop cannot draw is paused, not drawn.
+
+## A script, live in the pill
+
+Any script, cron job or Makefile can be live in the pill with no folder and no setup:
+
+```bash
+ame pill start "Backup" --progress 0.1
+ame pill update "Backup" --progress 0.4 --text "Copying photos"
+ame pill end "Backup"
+```
+
+`--until` takes a time (seconds since 1970, or `+SECONDS` from now) which the desktop counts down, `--icon` a theme icon's name, and
+`--private` hides it while your screen is shared. The pill is tied to the script that started it, so it goes when the script ends, even if
+the script forgets to end it. It is your own script: nothing about it is sandboxed and nothing is asked, but what it says is drawn only as
+text, a few at once, and a script that updates more than ten times a second has its pill ended.
+
+## Made by the agent
+
+With [the agent](ai-agent.md) on, ask it in words:
+
+```bash
+ame plugin make "show my GitHub build in the pill"
+```
+
+The agent writes a **draft**. It passes the same check as every plugin and appears in the pill at once, running with *nothing allowed* (no
+network, no files) and marked **Draft** wherever it shows, with the agent's own sample of what it will print. Its card has **Keep**,
+**Change** and **Throw away**. Nothing stays until you say so, and the agent can never give a draft anything: **Keep** asks you, in a
+terminal, what each permission is for, as for any plugin, and an administrator approves.
+
+[Control](control.md), **Desktop**, lists *Made by the agent*: every plugin and draft it wrote, when, and where it shows, each with **Fix**,
+**Pause** or **Remove**, and **Remove all**. Nothing piles up behind your back.
+
+## When one stops itself
+
+A plugin is paused, and says so once, when it fails five runs in a row, takes the whole 30 seconds three times, goes over its memory twice or
+updates too often. Nothing else is affected, and the pill's notice offers **Ask the agent to fix it** while the agent is on (`ame plugin fix ID`).
+A plugin whose secret settings are in a closed [Vault](vault.md) waits and says so; it carries on once the Vault is open.
+
+## Share one as a file
+
+A plugin is a folder, and a folder can be sent as a file:
+
+```bash
+ame plugin open site-deploy.amethystora-pill
+```
+
+Double-clicking such a file opens a terminal that shows exactly what it runs and reaches, then asks. Nothing runs before you say yes, and
+nobody's signature stands in for reading it.
+
+## Settings and secrets
+
+A plugin may ask you for settings, such as a repository or an access token. `ame plugin settings ID` says which, and `ame plugin set ID NAME`
+asks for the value without showing it. A secret one (a token) is kept in your [Vault](vault.md) and nowhere in the clear, and reaches the
+plugin on a pipe, never in a command line or an environment variable.
+
+## The examples
+
+`ame plugin shipped` lists the plugins that come with Amethystora (a clock, a calendar, the system's load, a pomodoro timer in the pill,
+Do Not Disturb, what plays, hello); adding one takes a click, you read what it asks for first, and none is on until you add it.
+`ame plugin examples` lists more to start from, which reach a service (a GitHub build, a parcel, a game's score, a Home Assistant door, a
+stock): `ame plugin new my-build ci-build` makes a draft of your own from one.
 
 ## Add one
 

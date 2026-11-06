@@ -1,0 +1,12 @@
+{
+  "text": "Front door open",
+  "icon": "changes-allow-symbolic",
+  "class": "warning",
+  "card": [
+    {
+      "type": "switch",
+      "label": "Door open",
+      "on": true
+    }
+  ]
+}

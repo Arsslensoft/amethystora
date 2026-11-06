@@ -76,3 +76,70 @@ block ID *HOST:
 [positional-arguments]
 unblock ID *HOST:
     @/usr/libexec/amethystora-plugins unblock "$@"
+
+# The plugins the image ships (add one with: ame plugin add ID, which needs a click and no administrator)
+shipped:
+    @/usr/libexec/amethystora-plugins shipped
+
+# Ask the AI agent to make a plugin from your words ("show my GitHub build in the pill"): it appears as a draft that runs with nothing allowed, and you keep it, change it or throw it away
+[positional-arguments]
+make +REQUEST:
+    @/usr/libexec/amethystora-plugins make "$@"
+
+# Show a draft folder as a draft: it is checked, marked as the agent's, and runs with nothing allowed (the agent runs this when it is done; --by me for your own)
+[positional-arguments]
+draft ID *ARGS:
+    @/usr/libexec/amethystora-plugins draft "$@"
+
+# Keep a draft as a plugin: you read what it asks for and allow each part, as for any plugin, and an administrator approves
+[positional-arguments]
+keep ID:
+    @/usr/libexec/amethystora-plugins keep "$@"
+
+# Throw a draft away, with what it kept
+[positional-arguments]
+discard ID:
+    @/usr/libexec/amethystora-plugins discard "$@"
+
+# Ask the AI agent to change a draft
+[positional-arguments]
+change ID:
+    @/usr/libexec/amethystora-plugins change "$@"
+
+# Ask the AI agent to find out why a plugin paused itself and fix it
+[positional-arguments]
+fix ID:
+    @/usr/libexec/amethystora-plugins fix "$@"
+
+# What a plugin asks you to give it (a name, or a secret such as a token), and whether you did (--json for a program)
+[positional-arguments]
+settings ID *ARGS:
+    @/usr/libexec/amethystora-plugins settings "$@"
+
+# Give a plugin one of its settings; what you type is not shown, and a secret goes into the Vault and nowhere in the clear
+[positional-arguments]
+set ID NAME:
+    @/usr/libexec/amethystora-plugins set "$@"
+
+# Open a .amethystora-pill file: you read what it runs and reaches, then keep it or not
+[positional-arguments]
+open FILE:
+    @/usr/libexec/amethystora-plugins open "$@"
+
+# The examples to start from: the image's own plugins, and a few that reach a service (a build's status, a door) for you to give your own address and token
+examples:
+    @/usr/libexec/amethystora-plugins examples
+
+# Start a draft from an example under a name of your own, to change its files (it runs with nothing allowed until you keep it)
+[positional-arguments]
+new ID EXAMPLE="hello":
+    @/usr/libexec/amethystora-plugins new "$@"
+
+# Run a plugin or a draft once in its sandbox and print what the shell would be given (ACTION: as a click on one of its own buttons)
+[positional-arguments]
+try ID *ACTION:
+    @/usr/libexec/amethystora-plugins try "$@"
+
+# Remove everything the AI agent made, plugins and drafts, with what they kept; asks first
+remove-agent-made:
+    @/usr/libexec/amethystora-plugins remove-agent-made

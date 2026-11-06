@@ -1,0 +1,11 @@
+{
+  "text": "Lions 2-1 Bears",
+  "icon": "applications-games-symbolic",
+  "card": [
+    {
+      "type": "row",
+      "label": "Minute",
+      "value": "63"
+    }
+  ]
+}

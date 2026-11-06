@@ -127,9 +127,6 @@ WATCH_DIRS=(
     # sees every key pressed
     .local/share/dbus-1/services
     .local/share/gnome-shell/extensions
-    # A top-bar widget, whose command runs as soon as its folder appears, without a login in between: a
-    # Flatpak with the home folder can put one there (the widgets keep what they write elsewhere)
-    .config/amethystora/widgets
 )
 # ...and those watched only where they are, since an account without them has no use for them: SSH's keys
 # that let someone log in, its rc and its config (ProxyCommand runs a command), and fish's startup folders

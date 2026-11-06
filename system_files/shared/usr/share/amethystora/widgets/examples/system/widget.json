@@ -1,6 +1,0 @@
-{
-  "name": "System",
-  "description": "How busy the processor is, the memory and the disk",
-  "command": "./widget.sh",
-  "interval": 5
-}

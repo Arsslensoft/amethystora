@@ -11,7 +11,7 @@ pub const MAX_MANIFEST: usize = 64 * 1024;
 pub const DEFAULT_LIMIT: u64 = 1 << 20;
 pub const MAX_LIMIT: u64 = 64 << 20;
 const SURFACES: &[&str] = &["pill", "bar", "desktop", "search", "tile", "dock", "today", "menu"];
-const TOP: &[&str] = &["schema", "id", "name", "version", "license", "command", "interval", "contributes", "needs", "actions"];
+const TOP: &[&str] = &["schema", "id", "name", "version", "license", "author", "command", "interval", "contributes", "needs", "actions", "settings"];
 /// Names `state`, `control` and `events` may list (the broker's, a later phase; the names are the plan's table)
 const STATES: &[&str] = &["clock", "disk", "media", "do-not-disturb", "network", "power", "screen", "theme", "battery", "volume"];
 const CONTROLS: &[&str] = &["media", "do-not-disturb"];
@@ -24,6 +24,13 @@ pub struct Need {
     pub why: String,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct Setting {
+    pub name: String,
+    pub label: String,
+    pub secret: bool,
+}
+
 #[derive(Debug, Clone)]
 pub struct Manifest {
     pub id: String,
@@ -33,6 +40,12 @@ pub struct Manifest {
     pub command: Vec<String>,
     pub interval: Option<u64>,
     pub contributes: Vec<String>,
+    /// Where each surface is drawn, with its own options, as the shell reads them: `{"bar": {"position": "right"}, "pill": {}}`
+    pub places: Map<String, Value>,
+    /// What the maker says of itself (shown as the plugin's own words, never trusted): the agent's drafts say "Agent"
+    pub author: String,
+    /// Settings a person gives it: a name, and whether it is a secret, which is kept under a data key in the Vault
+    pub settings: Vec<Setting>,
     pub actions: Vec<String>,
     pub needs: Vec<Need>,
     /// Bytes an hour a host may be sent, for the hosts that asked for more than the default
@@ -124,6 +137,51 @@ fn text(value: &Value, what: &str, max: usize) -> Result<String, String> {
     Ok(s.trim().to_string())
 }
 
+/// What a surface may say about where it is drawn: nothing else is read, so nothing else can be asked for
+fn surface_options(surface: &str, m: &Map<String, Value>) -> Result<Value, String> {
+    let what = format!("contributes.{surface}");
+    let pick = |key: &str, allowed: &[&str]| -> Result<Option<String>, String> {
+        match m.get(key) {
+            None => Ok(None),
+            Some(v) => match v.as_str() {
+                Some(s) if allowed.contains(&s) => Ok(Some(s.to_string())),
+                _ => Err(format!("\"{what}.{key}\" has to be one of {}", allowed.join(", "))),
+            },
+        }
+    };
+    let mut out = Map::new();
+    match surface {
+        "bar" => {
+            only(m, &["position", "order"], &what)?;
+            out.insert("position".into(), pick("position", &["left", "center", "right"])?.unwrap_or_else(|| "right".into()).into());
+            let order = m.get("order").map(|v| v.as_i64().filter(|n| (-100..=100).contains(n)).ok_or("\"order\" has to be a whole number from -100 to 100")).transpose()?;
+            out.insert("order".into(), order.unwrap_or(0).into());
+        }
+        "desktop" => {
+            only(m, &["corner"], &what)?;
+            out.insert("corner".into(), pick("corner", &["top-left", "top-right", "bottom-left", "bottom-right"])?.unwrap_or_else(|| "top-right".into()).into());
+        }
+        "search" => {
+            only(m, &["prefix"], &what)?;
+            let prefix = m.get("prefix").map(|v| text(v, "search.prefix", 16)).transpose()?.unwrap_or_default();
+            if !prefix.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b":-_".contains(&b)) {
+                return Err("a search prefix uses lower-case letters, digits, : - and _".into());
+            }
+            out.insert("prefix".into(), prefix.into());
+        }
+        "dock" => {
+            only(m, &["app"], &what)?;
+            let app = text(m.get("app").unwrap_or(&Value::Null), "dock.app", 128)?;
+            if !app.ends_with(".desktop") || !app.bytes().all(|b| b.is_ascii_alphanumeric() || b"._-".contains(&b)) || app.starts_with('.') {
+                return Err("\"dock.app\" has to be an app's launcher, such as org.gnome.Nautilus.desktop".into());
+            }
+            out.insert("app".into(), app.into());
+        }
+        _ => only(m, &[], &what)?,
+    }
+    Ok(Value::Object(out))
+}
+
 fn object<'a>(value: &'a Value, what: &str) -> Result<&'a Map<String, Value>, String> {
     value.as_object().ok_or_else(|| format!("\"{what}\" has to be an object"))
 }
@@ -200,13 +258,32 @@ impl Manifest {
             },
         };
         let mut contributes = Vec::new();
+        let mut places = Map::new();
         if let Some(c) = top.get("contributes") {
             for (surface, value) in object(c, "contributes")? {
                 if !SURFACES.contains(&surface.as_str()) {
                     return Err(format!("\"contributes\" has no surface called \"{surface}\" (one of {})", SURFACES.join(", ")));
                 }
-                object(value, &format!("contributes.{surface}"))?;
+                places.insert(surface.clone(), surface_options(surface, object(value, &format!("contributes.{surface}"))?)?);
                 contributes.push(surface.clone());
+            }
+        }
+        let author = match top.get("author") {
+            None => String::new(),
+            Some(v) => text(v, "author", 80)?,
+        };
+        let mut settings = Vec::new();
+        if let Some(list) = top.get("settings") {
+            let list = list.as_array().filter(|l| l.len() <= 8).ok_or("\"settings\" has to be a list of at most eight")?;
+            for item in list {
+                let m = object(item, "a setting")?;
+                only(m, &["name", "label", "secret"], "a setting")?;
+                let name = text(m.get("name").unwrap_or(&Value::Null), "setting name", 32)?;
+                if !valid_action(&name) {
+                    return Err("a setting's name uses lower-case letters, digits and hyphens".into());
+                }
+                let label = text(m.get("label").unwrap_or(&Value::Null), "setting label", 60)?;
+                settings.push(Setting { name, label, secret: m.get("secret").and_then(Value::as_bool).unwrap_or(false) });
             }
         }
         let mut actions = Vec::new();
@@ -223,7 +300,7 @@ impl Manifest {
             None => (Vec::new(), Vec::new()),
             Some(n) => parse_needs(object(n, "needs")?)?,
         };
-        Ok(Manifest { id, name, version, license, command, interval, contributes, actions, needs, limits })
+        Ok(Manifest { id, name, version, license, command, interval, contributes, places, author, settings, actions, needs, limits })
     }
 
     /// The normal forms of everything it asks for, sorted: what consent lists, and what a grant is a subset of
@@ -406,6 +483,37 @@ mod tests {
         }
         assert!(Manifest::parse("[]").is_err());
         assert!(Manifest::parse(&" ".repeat(MAX_MANIFEST + 1)).is_err());
+    }
+
+    #[test]
+    fn surfaces_carry_only_what_the_shell_reads() {
+        let m = Manifest::parse(GOOD).unwrap();
+        assert_eq!(m.places["bar"]["position"], "right");
+        assert!(m.places["pill"].as_object().unwrap().is_empty());
+        let edited = |surface: &str, options: Value| Manifest::parse(&with(|v| v["contributes"] = serde_json::json!({ surface: options.clone() })));
+        assert_eq!(edited("dock", serde_json::json!({"app": "org.gnome.Nautilus.desktop"})).unwrap().places["dock"]["app"], "org.gnome.Nautilus.desktop");
+        assert_eq!(edited("search", serde_json::json!({"prefix": "ci:"})).unwrap().places["search"]["prefix"], "ci:");
+        assert_eq!(edited("desktop", serde_json::json!({})).unwrap().places["desktop"]["corner"], "top-right");
+        for (surface, options) in [
+            ("dock", serde_json::json!({})),
+            ("dock", serde_json::json!({"app": "../x.desktop"})),
+            ("dock", serde_json::json!({"app": "x"})),
+            ("search", serde_json::json!({"prefix": "A B"})),
+            ("bar", serde_json::json!({"position": "under"})),
+            ("pill", serde_json::json!({"plate": "link"})),
+            ("tile", serde_json::json!({"x": 1})),
+            ("desktop", serde_json::json!({"corner": "middle"})),
+        ] {
+            assert!(edited(surface, options.clone()).is_err(), "{surface} {options}");
+        }
+    }
+
+    #[test]
+    fn a_secret_setting_is_declared_and_named() {
+        let m = Manifest::parse(&with(|v| v["settings"] = serde_json::json!([{"name": "token", "label": "Access token", "secret": true}]))).unwrap();
+        assert_eq!(m.settings, [Setting { name: "token".into(), label: "Access token".into(), secret: true }]);
+        assert!(Manifest::parse(&with(|v| v["settings"] = serde_json::json!([{"name": "Tok en", "label": "x"}]))).is_err());
+        assert_eq!(Manifest::parse(&with(|v| v["author"] = "Agent".into())).unwrap().author, "Agent");
     }
 
     #[test]

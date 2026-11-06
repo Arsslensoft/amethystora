@@ -34,6 +34,8 @@ export class LauncherEntries extends EventEmitter {
     start() {
         // By the launcher's ID, without the protocol's scheme
         this._entries = new Map();
+        // What plugins say about an app (modules/plugins/dock.js), by the plugin that said it
+        this._plugins = new Map();
         this._watches = new Map();
         // Silencing notifications, or letting them through again, changes what every app shows (null: every app)
         this._banners = new Gio.Settings({schema_id: 'org.gnome.desktop.notifications'});
@@ -70,6 +72,7 @@ export class LauncherEntries extends EventEmitter {
         for (const entry of this._entries?.values() ?? [])
             this._dropMenu(entry);
         this._entries = null;
+        this._plugins = null;
         this._menus = null;
     }
 
@@ -82,9 +85,28 @@ export class LauncherEntries extends EventEmitter {
     get(id) {
         if (this.quiet)
             return null;
-        const entry = this._entries?.get(id) ?? null;
+        let entry = this._entries?.get(id) ?? null;
+        // A plugin's badge on this app, as if the app had said it itself: its count and its bar
+        for (const [, said] of this._plugins ?? []) {
+            if (said.app === id)
+                entry = {...entry, countVisible: said.count > 0, count: said.count, progressVisible: said.progress !== null, progress: said.progress ?? 0};
+        }
         // Grey only: unlike an app saying it is updating, this does not stop it starting (dock/flatpak.js)
         return this.updates?.has(id) ? {...entry, greyed: true} : entry;
+    }
+
+    // A plugin's badge for an app (null: it says nothing now). Only an app this machine has gets one, and a plugin has one at a time
+    setPlugin(owner, app, said) {
+        if (!this._plugins)
+            return;
+        const before = this._plugins.get(owner)?.app ?? null;
+        if (said && LAUNCHER_ID.test(app) && Shell.AppSystem.get_default().lookup_app(app))
+            this._plugins.set(owner, {app, count: said.count, progress: said.progress});
+        else
+            this._plugins.delete(owner);
+        for (const id of new Set([before, app]))
+            if (id)
+                this.emit('changed', id);
     }
 
     // The app's own menu entries as they are now: [{label, enabled, separator, activate()}]

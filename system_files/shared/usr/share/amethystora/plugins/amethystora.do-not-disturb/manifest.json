@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "id": "amethystora.do-not-disturb",
+  "name": "Do Not Disturb",
+  "version": "1.0.0",
+  "license": "Apache-2.0",
+  "command": ["./run.sh"],
+  "interval": 5,
+  "contributes": {"bar": {"position": "right"}},
+  "actions": ["toggle"],
+  "needs": {
+    "state": {"names": ["do-not-disturb"], "why": "Knows whether your notifications are silenced"},
+    "control": {"names": ["do-not-disturb"], "why": "Lets you bring them back with a click"}
+  }
+}

@@ -1616,7 +1616,7 @@ privacy WHAT="" VALUE="":
         echo "$(gettext "What it empties stays in the snapshots and the backup, where they are on.")"
     fi
 
-# The top bar's widgets, which the AI agent can make: list, make, new, run, fix, on, off, remove (amethystora-widgets)
+# The old name of `ame plugin` for widgets: list, make, new, run, fix, on, off, remove (amethystora-widgets)
 [no-cd]
 [no-exit-message]
 [positional-arguments]
@@ -4876,7 +4876,34 @@ screenshot WHAT="" STATE="":
         *) usage ;;
     esac
 
-# Widgets on the desktop (offered, off): widgets whose widget.json says "place": "desktop" drawn on the wallpaper, under the windows
+# Draw what plugins and scripts show (on): in the live pill, the top bar, quick settings, search, the dock and on the desktop; off, nothing of them is drawn
+[positional-arguments]
+plugins STATE="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.plugins
+    state="${1:-}"
+    if [[ -z "${state}" ]]; then
+        if [[ "$(gsettings get "${schema}" show)" == true ]]; then state=off; else state=on; fi
+    fi
+    case "${state}" in
+        on)
+            gsettings set "${schema}" show true
+            echo "$(gettext "Plugins are drawn: in the live pill, the top bar, quick settings, search, the dock and on the desktop.")"
+            ;;
+        off)
+            gsettings set "${schema}" show false
+            echo "$(gettext "Plugins are not drawn. Scripts in the pill (ame pill) are not shown either.")"
+            ;;
+        *)
+            echo "usage: ame desktop plugins on|off"
+            exit 64
+            ;;
+    esac
+
+# Plugins on the desktop (offered, off): plugins that ask for a corner of the desktop drawn on the wallpaper, under the windows
 [positional-arguments]
 desktop-widgets STATE="":
     #!/usr/bin/bash
@@ -4891,11 +4918,11 @@ desktop-widgets STATE="":
     case "${state}" in
         on)
             gsettings set "${schema}" enabled true
-            echo "$(gettext "Widgets on the desktop: on. A widget placed on the desktop in its widget.json is drawn on the wallpaper.")"
+            echo "$(gettext "Plugins on the desktop: on. A plugin that asks for a corner of the desktop is drawn on the wallpaper.")"
             ;;
         off)
             gsettings set "${schema}" enabled false
-            echo "$(gettext "Widgets on the desktop: off. Their commands do not run.")"
+            echo "$(gettext "Plugins on the desktop: off. They are drawn nowhere there.")"
             ;;
         *)
             echo "usage: ame desktop desktop-widgets on|off"

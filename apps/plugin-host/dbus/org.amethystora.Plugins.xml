@@ -15,8 +15,11 @@
 -->
 <node>
   <interface name="org.amethystora.Plugins">
-    <!-- A JSON array, one object for each plugin that is on: {"id", "name", "version", "output", "error", "paused"}. "output" is
-         what its last run printed, as the host passed it, or null; "error" says why the last run failed, or is empty -->
+    <!-- A JSON array, one object for each plugin that is on: {"id", "name", "version", "output", "error", "paused", "reason",
+         "waiting", "places", "author", "draft", "shipped", "granted", "actions", "sample"}. "output" is what its last run printed, as the host
+         passed it, or null; "error" says why the last run failed, or is empty; "places" is where it is drawn (the manifest's "contributes",
+         each surface with its options); "draft" is an agent's draft, which runs with nothing granted and shows "sample" when its run finds
+         nothing to reach; "waiting" is "vault" while its secret settings are in a closed Vault -->
     <method name="List">
       <arg type="s" name="plugins" direction="out"/>
     </method>
@@ -36,6 +39,19 @@
     <signal name="Updated">
       <arg type="s" name="id"/>
       <arg type="s" name="plugin"/>
+    </signal>
+    <!-- A plugin paused itself, once, and why: "crash" (five runs in a row failed), "slow" (three hit the 30 seconds), "memory" (two went
+         over their memory), "updates" (more than 30 results in a minute). A person's own Pause says "person" in List and sends nothing -->
+    <signal name="Paused">
+      <arg type="s" name="id"/>
+      <arg type="s" name="reason"/>
+    </signal>
+    <!-- A plugin asked, after a click on its own element and with the permission, for the shell to do what only it can: kind "open" (a web
+         address, which the shell shows before it opens) or "clipboard" (a text, written once; there is no clipboard read) -->
+    <signal name="Asked">
+      <arg type="s" name="id"/>
+      <arg type="s" name="kind"/>
+      <arg type="s" name="text"/>
     </signal>
     <!-- Sending to a host passed its limit and it is blocked until a person decides (Keep blocked, or Allow, which asks for an
          administrator's approval) -->

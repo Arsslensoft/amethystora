@@ -59,6 +59,11 @@
       <summary>Clipboard history</summary>
       <description>Shows what was copied when clip: is typed first, and only then.</description>
     </key>
+    <key name="plugins" type="b">
+      <default>true</default>
+      <summary>Plugins in search</summary>
+      <description>An answer from each plugin that contributes search, shown for its prefix. What is typed never goes to a plugin.</description>
+    </key>
     <key name="agent" type="b">
       <default>true</default>
       <summary>Ask the agent</summary>

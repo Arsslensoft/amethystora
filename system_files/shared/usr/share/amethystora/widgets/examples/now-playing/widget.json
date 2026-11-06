@@ -1,6 +1,0 @@
-{
-  "name": "Now playing",
-  "description": "What a player plays, with its buttons",
-  "command": "./widget.sh",
-  "interval": 5
-}

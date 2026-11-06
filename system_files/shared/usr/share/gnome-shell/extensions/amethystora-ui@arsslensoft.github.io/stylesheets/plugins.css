@@ -1,0 +1,22 @@
+/* What plugins draw (modules/plugins.js): the card's elements, the tiles of its progress and meter, and the lines the shell adds under every
+   plugin (its name, what it may reach). Neutral colours: the pill's own card colours come from the theme (shell-pill.css.tpl). */
+
+.amethystora-plugin-card { spacing: 8px; min-width: 240px; }
+.amethystora-plugin-kind { font-size: 11px; color: rgba(239, 228, 255, 0.62); }
+.amethystora-plugin-reach { font-size: 11px; color: rgba(239, 228, 255, 0.62); }
+.amethystora-plugin-elements { spacing: 8px; }
+.amethystora-plugin-element { spacing: 3px; }
+.amethystora-plugin-row { spacing: 12px; }
+.amethystora-plugin-label { font-weight: 700; font-size: 12px; }
+.amethystora-plugin-value { font-feature-settings: "tnum"; }
+.amethystora-plugin-list { spacing: 2px; }
+.amethystora-plugin-track {
+  height: 6px;
+  min-width: 120px;
+  border-radius: 3px;
+  background-color: rgba(255, 255, 255, 0.16);
+}
+.amethystora-plugin-fill {
+  border-radius: 3px;
+  background-color: rgba(205, 170, 255, 0.95);
+}

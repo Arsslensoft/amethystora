@@ -1,6 +1,0 @@
-{
-  "name": "Hello",
-  "description": "A starting point: how long the computer has been on, and a menu",
-  "command": "./widget.sh",
-  "interval": 60
-}

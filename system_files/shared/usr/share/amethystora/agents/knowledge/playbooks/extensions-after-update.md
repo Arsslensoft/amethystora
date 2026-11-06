@@ -30,9 +30,9 @@ floating ones, a theme change freezes the screen for a moment, or a top-bar widg
    `org.gnome.shell.extensions.amethystora-ui.tiling`, which an update leaves as it is. Tell: that key is
    `true` although the user wanted floating windows; the extension back in `list --enabled`.
 3. **Amethystora's own extensions.** `amethystora-transitions@arsslensoft.github.io` reveals a new theme or
-   wallpaper and holds the screen for five seconds at most; `amethystora-widgets@arsslensoft.github.io` runs
-   the widgets in `~/.config/amethystora/widgets`. Tell: their uuid in the JS errors. A widget whose
-   command fails shows that in the bar, not as a GNOME error.
+   wallpaper and holds the screen for five seconds at most. Plugins (what were widgets) are not an extension: their code runs in a
+   sandbox of the plugin host, and Amethystora UI's `plugins` module only draws what it passes. Tell: a plugin that fails is paused
+   and says so, not a GNOME error.
 4. **New extensions are blocked** (`block-user-extensions`, off as shipped). Extension Manager cannot
    install or update from extensions.gnome.org; the image's extensions are not affected. Tell:
    `gsettings get org.gnome.shell allow-extension-installation` is false, and
@@ -59,9 +59,8 @@ Wayland ends every open app.
 ### 3. Amethystora's own
 
 - Transitions: `change` `transition` `none` (`ame desktop transition none`).
-- Widgets: `amethystora-widgets run ID` runs one as the bar does and checks what it prints;
-  `amethystora-widgets off ID` hides it; `amethystora-widgets restart` starts every widget again. The
-  `amethystora-widgets` skill explains the format.
+- Plugins: `ame plugin try ID` runs one once in its sandbox and prints what the shell would be given; `ame plugin off ID` turns it off;
+  `ame plugin show ID` says what it may reach. The `amethystora-plugins` skill explains the format.
 - Report an error of either at https://github.com/arsslensoft/amethystora/issues, with `gnome-shell --version`
   and the error lines, if the user agrees.
 
@@ -86,6 +85,6 @@ image, `sudo bootc rollback` (root) (restart).
 - `gnome-extensions enable UUID`.
 - `change` `layout` `tiling` (`ame desktop layout tiling`); `change` `transition` back to the style
   `state settings` showed before, or `undo` with the change's record.
-- `amethystora-widgets on ID`.
+- `ame plugin on ID`.
 - Blocked again: `ame security block-user-extensions on` (root).
 - A rollback: the next `ame update` brings the newest image back (restart).

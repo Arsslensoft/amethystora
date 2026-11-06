@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "id": "amethystora.system",
+  "name": "System",
+  "version": "1.0.0",
+  "license": "Apache-2.0",
+  "command": ["./run.sh"],
+  "interval": 5,
+  "contributes": {"bar": {"position": "right"}},
+  "needs": {"state": {"names": ["disk"], "why": "Shows how full your disk is"}}
+}

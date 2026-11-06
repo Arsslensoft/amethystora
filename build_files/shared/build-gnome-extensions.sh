@@ -28,11 +28,6 @@ enable_extension() {
 install -Dpm0644 /usr/share/licenses/amethystora/LICENSE /usr/share/licenses/amethystora-transitions@arsslensoft.github.io/LICENSE
 enable_extension "amethystora-transitions@arsslensoft.github.io"
 
-# Amethystora Widgets: the top bar's widgets from ~/.config/amethystora/widgets (amethystora-widgets).
-# Written for this image too, in system_files and under the image's licence. It has no settings.
-install -Dpm0644 /usr/share/licenses/amethystora/LICENSE /usr/share/licenses/amethystora-widgets@arsslensoft.github.io/LICENSE
-enable_extension "amethystora-widgets@arsslensoft.github.io"
-
 # Amethystora Clipboard: the clipboard history on Super+Shift+V. A copy of Clipboard Indicator v71 (MIT, by
 # Yotam Bar-On and its contributors, https://github.com/Tudmotu/gnome-shell-extension-clipboard-indicator at
 # c880c7fb88dc7232a61a5864d125989a4f375daa) that seals its history with /usr/libexec/amethystora-clipboard-seal

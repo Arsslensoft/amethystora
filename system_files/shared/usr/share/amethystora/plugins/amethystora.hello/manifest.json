@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "id": "amethystora.hello",
+  "name": "Hello",
+  "version": "1.0.0",
+  "license": "Apache-2.0",
+  "command": ["./run.sh"],
+  "interval": 60,
+  "contributes": {"bar": {"position": "right"}}
+}

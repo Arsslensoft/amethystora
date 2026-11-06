@@ -1,6 +1,0 @@
-{
-  "name": "Do Not Disturb",
-  "description": "Shown while notifications are silenced, with a switch that brings them back",
-  "command": "./widget.sh",
-  "interval": 0
-}

@@ -4,7 +4,7 @@
 # printed; with a baseline beside this file (71-r7-cost.baseline, the numbers of an image without round 7) they are held
 # to the plan's limits. Only the maintainer raises a limit. R7_COST_IDLE: seconds at rest (default 300).
 # The lab renders in software, so frame times are the real machine's to check; memory and wakeups count here.
-# vmlab-paths: @sf/usr/share/gnome-shell/extensions/amethystora-ui@*/* @sf/usr/share/gnome-shell/extensions/amethystora-widgets@*/* @sf/usr/lib/systemd/user/amethystora-*
+# vmlab-paths: @sf/usr/share/gnome-shell/extensions/amethystora-ui@*/* @sf/usr/lib/systemd/user/amethystora-*
 source "$(dirname "$0")/lib.sh"
 
 IDLE="${R7_COST_IDLE:-300}"

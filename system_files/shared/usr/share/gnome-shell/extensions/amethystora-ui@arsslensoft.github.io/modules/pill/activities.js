@@ -46,7 +46,7 @@
 // steps back behind what plays and what is ready (printing-stuck), still in the card.
 
 export const ORDER = ['call', 'recording', 'flat', 'present', 'meeting', 'link', 'code', 'battery', 'ask', 'agent', 'routine', 'waiting', 'drop', 'hello', 'stick',
-    'reading', 'timer', 'timer2', 'printing', 'resume', 'news', 'media', 'moving', 'update', 'printing-stuck', 'through', 'saving', 'quiet', 'focus'];
+    'reading', 'timer', 'timer2', 'printing', 'resume', 'news', 'media', 'moving', 'update', 'printing-stuck', 'through', 'saving', 'extra', 'quiet', 'focus'];
 
 // At most this many others are listed in a card
 const OTHERS = 3;

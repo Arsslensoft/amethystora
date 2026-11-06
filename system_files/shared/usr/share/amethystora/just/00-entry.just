@@ -15,6 +15,9 @@ mod apps
 # The theme, the wallpaper and how it changes, widgets, the keybindings, the boot menu and the terminal greeting
 mod desktop
 
+# Put what a script is doing in the live pill: start, update and end
+mod pill
+
 # Plugins: add them, read what each asks for, allow or block it, turn it on or off. Each runs in a sandbox and reaches only what you allowed
 mod plugin
 

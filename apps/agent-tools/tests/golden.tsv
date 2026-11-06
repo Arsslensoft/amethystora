@@ -53,7 +53,10 @@ parental controls allowed hours	manual/security#parental-controls|knowledge/by-d
 a disk of my raid pool died	manual/hardware#when-a-disk-fails|manual/troubleshooting#a-disk-of-a-pool-failed
 play windows games	manual/games#games|manual/faq#can-i-play-games|manual/faq#can-i-run-windows-software
 run android apps	manual/games#android-apps|manual/faq#can-i-run-android-apps
-make a widget for the top bar	manual/widgets*|skill/amethystora-widgets*
+make a widget for the top bar	manual/widgets*|skill/amethystora-plugins*
+show my build status live in the pill	manual/plugins*|skill/amethystora-plugins*
+make a script show its progress in the pill	manual/plugins*|skill/amethystora-plugins*
+why did my plugin pause itself	manual/plugins*|skill/amethystora-plugins*
 save my setup to a file	manual/setup#saving-it|manual/setup
 let the agent run commands as root	manual/ai-agent#root-commands|knowledge/agent#root-commands
 turn the ai agent off for my kid's account	manual/ai-agent#the-lock|knowledge/agent#the-lock|control/agent-lock|ame/agent/lock

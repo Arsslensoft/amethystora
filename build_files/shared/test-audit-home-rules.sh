@@ -76,7 +76,8 @@ for folder in .local .local/share .local/share/flatpak; do
     [[ "$(stat -c %u "${A}/${folder}")" == 4202 ]] || { echo "not given back: ${folder}"; false; }
 done
 grep -qxF -- "-w ${A}/.local/share/flatpak/overrides/ -p wa -k persistence" "${RULES}"
-grep -qxF -- "-w ${A}/.config/amethystora/widgets/ -p wa -k persistence" "${RULES}"
+# Widgets are plugins, run by the host from the root's store: nothing in the home runs by itself any more
+grep -qF -- ".config/amethystora/widgets" "${RULES}" && { echo "the old widgets folder is still watched"; false; }
 grep -qxF -- "-w ${A}/dotfiles/autostart/ -p wa -k persistence" "${RULES}"
 grep -qxF -- "-w ${A}/dotfiles/bashrc -p wa -k persistence" "${RULES}"
 grep -qxF -- "-w ${A}/.local/bin/ -p wa -k user-programs" "${RULES}"

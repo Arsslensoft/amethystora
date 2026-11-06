@@ -1,8 +1,0 @@
-{
-  "gettext-domain": "amethystora",
-  "uuid": "amethystora-widgets@arsslensoft.github.io",
-  "name": "Amethystora Widgets",
-  "description": "The widgets in ~/.config/amethystora/widgets, in the top bar: small commands whose output becomes a label, an icon and a menu, made by hand or by the AI agent with amethystora-widgets.",
-  "shell-version": ["48", "49", "50", "51"],
-  "url": "https://github.com/arsslensoft/amethystora"
-}

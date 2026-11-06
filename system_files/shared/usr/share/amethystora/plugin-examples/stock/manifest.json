@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "id": "example.stock",
+  "version": "1.0.0",
+  "license": "Apache-2.0",
+  "command": [
+    "./run.sh"
+  ],
+  "name": "A stock",
+  "interval": 300,
+  "contributes": {
+    "bar": {
+      "position": "right"
+    },
+    "search": {
+      "prefix": "stock"
+    }
+  },
+  "needs": {
+    "network": [
+      {
+        "host": "quotes.example.org",
+        "why": "Reads a price from a quotes service (replace this with the one you use)"
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "symbol",
+      "label": "Which stock"
+    }
+  ]
+}

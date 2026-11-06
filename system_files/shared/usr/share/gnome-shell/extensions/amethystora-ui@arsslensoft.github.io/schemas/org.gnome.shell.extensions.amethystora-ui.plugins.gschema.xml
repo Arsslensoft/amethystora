@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Plugins in the shell (modules/plugins.js, plans/PLAN-plugins.md): the pill's extra place, the bar, a tile, search and a dock badge, drawn from
+     what the plugin host passes. A plugin's code never runs in the shell. Written by ame desktop plugins, Control and the setup file. -->
+<schemalist>
+  <schema id="org.gnome.shell.extensions.amethystora-ui.plugins" path="/org/gnome/shell/extensions/amethystora-ui/plugins/">
+    <key name="show" type="b">
+      <default>true</default>
+      <summary>Show plugins</summary>
+      <description>Draw what plugins and scripts (ame pill) show: in the live pill, the top bar, quick settings, search, the dock and on the desktop. Off, nothing is connected: not even the wait for the plugin host. A plugin runs only when it is on and was approved (ame plugin).</description>
+    </key>
+  </schema>
+</schemalist>

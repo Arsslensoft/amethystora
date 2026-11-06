@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- The key of the deskwidgets module (modules/deskwidgets.js): widgets on the desktop, offered and off as the image
+<!-- The key of the deskwidgets module (modules/deskwidgets.js): plugins on the desktop, offered and off as the image
      ships. -->
 <schemalist gettext-domain="amethystora">
   <schema id="org.gnome.shell.extensions.amethystora-ui.deskwidgets" path="/org/gnome/shell/extensions/amethystora-ui/deskwidgets/">
     <key name="enabled" type="b">
       <default>false</default>
-      <summary>Widgets on the desktop</summary>
-      <description>Widgets whose widget.json says "place": "desktop" are drawn on the wallpaper, under the windows, by the same runner as the top bar's. Off, they are drawn nowhere and their commands do not run.</description>
+      <summary>Plugins on the desktop</summary>
+      <description>Plugins whose manifest contributes "desktop" are drawn as cards on the wallpaper, under the windows, from what the plugin host passes the plugins module. Off, they are drawn nowhere there.</description>
     </key>
   </schema>
 </schemalist>

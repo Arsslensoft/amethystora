@@ -380,6 +380,17 @@ export class Pill {
         this._clock?.openCard(id);
     }
 
+    // What plugins and scripts show (modules/plugins.js), or null: the pill's last place before quiet, which no plugin can hide a system
+    // activity from
+    setExtra(activity) {
+        if (this._activities && this._activities.get('extra') !== activity)
+            this._activities.set('extra', activity);
+    }
+
+    extraChanged() {
+        this._activities?.update('extra');
+    }
+
     // A flat battery about to close the computer (modules/power/flat.js), or null
     setFlat(activity) {
         if (this._activities && this._activities.get('flat') !== activity)

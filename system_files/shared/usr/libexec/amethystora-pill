@@ -1,0 +1,142 @@
+#!/usr/bin/bash
+# What `ame pill` runs (R7-03): any script is live in the pill, with no folder and no manifest.
+#
+#   start NAME [--text TEXT] [--progress 0..1] [--until EPOCH|+SECONDS] [--icon ICON] [--private] [--pid PID]
+#   update NAME [the same]       change what it says (what is left out stays as it was)
+#   end NAME                     take it away
+#
+# It writes one small file for each pill in $XDG_RUNTIME_DIR/amethystora/pill, which Amethystora UI watches, and a waiter takes it away
+# when the script that started it ends, even if the script forgets (the script is the one that called `ame pill`, found through just;
+# --pid names another process). It is the account's own program: nothing is sandboxed, nothing is asked for, and what it says is
+# only ever drawn as text, with the plugins' rules (no system plate, a few pills at once, no flood). It needs no host and runs nothing.
+set -euo pipefail
+# shellcheck source=/dev/null
+source gettext.sh
+export TEXTDOMAIN=amethystora
+
+DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/amethystora/pill"
+
+die() {
+    echo "$1" >&2
+    exit "${2:-1}"
+}
+
+usage() {
+    echo "usage: ame pill start|update NAME [--text TEXT] [--progress 0..1] [--until EPOCH|+SECONDS] [--icon ICON] [--private]  |  ame pill end NAME" >&2
+    exit 64
+}
+
+# A file name for a pill: its name's letters and digits, and a sum so that two names never share one
+file_of() {
+    local slug sum
+    slug="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9' '-' | sed -e 's/--*/-/g' -e 's/^-//' -e 's/-$//' | cut -c1-40)"
+    sum="$(printf '%s' "$1" | sha1sum | cut -c1-8)"
+    echo "${DIR}/${slug:+${slug}-}${sum}.json"
+}
+
+parent_of() {
+    awk '/^PPid:/ { print $2 }' "/proc/$1/status" 2>/dev/null || true
+}
+
+comm_of() {
+    cat "/proc/$1/comm" 2>/dev/null || true
+}
+
+# The program that called ame: the parent of the just that runs this recipe
+owner_pid() {
+    local pid="$$"
+    while [[ -n "${pid}" && "${pid}" -gt 1 ]]; do
+        if [[ "$(comm_of "${pid}")" == just ]]; then
+            parent_of "${pid}"
+            return
+        fi
+        pid="$(parent_of "${pid}")"
+    done
+    parent_of "$$"
+}
+
+valid_number() {
+    [[ "$1" =~ ^[0-9]+(\.[0-9]+)?$ ]]
+}
+
+write_pill() {
+    local mode="$1" name="$2"
+    shift 2
+    local text="" progress="" until="" icon="" private="" pid="" have_text=0 have_progress=0 have_until=0 have_icon=0
+    while (($#)); do
+        case "$1" in
+            --text) text="${2-}"; have_text=1; shift 2 || usage ;;
+            --progress) progress="${2-}"; have_progress=1; shift 2 || usage ;;
+            --until) until="${2-}"; have_until=1; shift 2 || usage ;;
+            --icon) icon="${2-}"; have_icon=1; shift 2 || usage ;;
+            --private) private=true; shift ;;
+            --pid) pid="${2-}"; shift 2 || usage ;;
+            *) usage ;;
+        esac
+    done
+    [[ -n "${name}" && ${#name} -le 40 ]] || die "$(gettext "A pill's name is one to 40 characters.")" 64
+    if ((have_progress)); then
+        valid_number "${progress}" || die "$(gettext "Give --progress a number from 0 to 1.")" 64
+    fi
+    if ((have_until)); then
+        if [[ "${until}" == +* ]]; then
+            valid_number "${until#+}" || die "$(gettext "Give --until a time in seconds since 1970, or +SECONDS from now.")" 64
+            until=$(($(date +%s) + ${until#+}))
+        fi
+        [[ "${until}" =~ ^[0-9]+$ ]] || die "$(gettext "Give --until a time in seconds since 1970, or +SECONDS from now.")" 64
+    fi
+    ((!have_icon)) || [[ "${icon}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]] || die "$(gettext "Give --icon the name of an icon in the theme.")" 64
+    [[ -z "${pid}" ]] || [[ "${pid}" =~ ^[0-9]+$ && -d "/proc/${pid}" ]] || die "$(gettext "Give --pid a running process.")" 64
+
+    mkdir -p -m 0700 "${DIR}"
+    local file previous="{}" owner
+    file="$(file_of "${name}")"
+    if [[ -f "${file}" ]]; then
+        previous="$(cat -- "${file}" 2>/dev/null || echo '{}')"
+    elif [[ "${mode}" == update ]]; then
+        die "$(gettext "There is no such pill. Start it with: ame pill start NAME")" 1
+    fi
+    owner="${pid:-$(jq -r '.owner // empty' <<<"${previous}" 2>/dev/null || true)}"
+    [[ -n "${owner}" ]] || owner="$(owner_pid)"
+    local new
+    new="$(jq -c --arg name "${name}" --arg text "${text}" --argjson h_text "${have_text}" --arg progress "${progress:-0}" --argjson h_progress "${have_progress}" \
+        --arg until "${until:-0}" --argjson h_until "${have_until}" --arg icon "${icon}" --argjson h_icon "${have_icon}" --arg private "${private}" \
+        --argjson owner "${owner:-0}" --argjson now "$(date +%s)" '
+        . as $old | {
+            name: $name,
+            text: (if $h_text == 1 then $text else ($old.text // "") end),
+            progress: (if $h_progress == 1 then ($progress | tonumber) else ($old.progress // null) end),
+            until: (if $h_until == 1 then ($until | tonumber) else ($old.until // null) end),
+            icon: (if $h_icon == 1 then $icon else ($old.icon // "") end),
+            private: ($private == "true" or ($old.private // false)),
+            owner: $owner,
+            started: ($old.started // $now)
+        }' <<<"${previous}")"
+    printf '%s\n' "${new}" >"${DIR}/.new.$$"
+    mv -f -- "${DIR}/.new.$$" "${file}"
+    # A waiter for the script, started once: it takes the pill away when the script ends, if it is still that script's
+    if [[ "${mode}" == start && "${owner}" -gt 1 ]]; then
+        setsid -f bash -c 'tail --pid="$1" -s 2 -f /dev/null >/dev/null 2>&1; "$3" reap "$2" "$1"' _ "${owner}" "${name}" "$(readlink -f -- "$0")" >/dev/null 2>&1 </dev/null || true
+    fi
+}
+
+end_pill() {
+    rm -f -- "$(file_of "$1")"
+}
+
+# The waiter's end: only the script's own pill, not one a later script made under the same name
+reap_pill() {
+    local file owner
+    file="$(file_of "$1")"
+    [[ -f "${file}" ]] || return 0
+    owner="$(jq -r '.owner // empty' "${file}" 2>/dev/null || true)"
+    [[ "${owner}" == "$2" ]] && rm -f -- "${file}"
+    return 0
+}
+
+case "${1:-}" in
+    start | update) (($# >= 2)) || usage; mode="$1"; shift; write_pill "${mode}" "$@" ;;
+    end) (($# == 2)) || usage; end_pill "$2" ;;
+    reap) (($# == 3)) || usage; reap_pill "$2" "$3" ;;
+    *) usage ;;
+esac

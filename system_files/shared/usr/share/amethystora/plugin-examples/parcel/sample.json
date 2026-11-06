@@ -1,0 +1,13 @@
+{
+  "text": "Out for delivery",
+  "icon": "mail-send-symbolic",
+  "progress": 0.8,
+  "until": 1893456000,
+  "card": [
+    {
+      "type": "row",
+      "label": "Status",
+      "value": "Out for delivery"
+    }
+  ]
+}

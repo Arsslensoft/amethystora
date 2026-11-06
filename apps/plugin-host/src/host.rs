@@ -16,6 +16,7 @@ use std::time::{Duration, Instant};
 
 use serde_json::Value;
 
+use crate::broker::{self, Broker};
 use crate::conf::{Allow, CONF, Conf};
 use crate::manifest::Manifest;
 use crate::output::{self, MAX_OUTPUT};
@@ -40,6 +41,10 @@ pub struct Env {
     pub state_root: PathBuf,
     pub conf_path: PathBuf,
     pub seccomp: PathBuf,
+    /// ~/.local/share/amethystora/plugin-drafts: what an agent wrote and nobody kept yet. A draft has no permissions and no store
+    pub drafts_root: PathBuf,
+    /// The Vault's socket, which keeps a plugin's secret settings under a key of its own
+    pub vault_socket: PathBuf,
 }
 
 impl Env {
@@ -54,7 +59,9 @@ impl Env {
             .filter(|dir| std::fs::metadata(dir).is_ok_and(|m| std::os::unix::fs::MetadataExt::uid(&m) == uid))
             .unwrap_or_else(|| format!("/run/user/{uid}").into());
         let state = std::env::var_os("XDG_STATE_HOME").map(PathBuf::from).unwrap_or_else(|| home.join(".local/state"));
-        Ok(Env {
+        let data = std::env::var_os("XDG_DATA_HOME").map(PathBuf::from).unwrap_or_else(|| home.join(".local/share"));
+        #[allow(unused_mut)]
+        let mut env = Env {
             store: Store::production(),
             uid,
             home,
@@ -62,7 +69,20 @@ impl Env {
             state_root: state.join("amethystora/plugins"),
             conf_path: CONF.into(),
             seccomp: SECCOMP_FILE.into(),
-        })
+            drafts_root: data.join("amethystora/plugin-drafts"),
+            vault_socket: amethystora_vault_client::SOCKET.into(),
+        };
+        // Only a build for trying the host on a machine that has no image yet (a debug build): a release build has no such seam
+        #[cfg(debug_assertions)]
+        {
+            if let Some(dir) = std::env::var_os("AMETHYSTORA_PLUGIN_TEST_IMAGE") {
+                let dir = PathBuf::from(dir);
+                env.store = Store { root: dir.join("store-root"), shipped: dir.join("shipped") };
+                env.seccomp = dir.join("seccomp.bpf");
+                env.conf_path = dir.join("plugins.conf");
+            }
+        }
+        Ok(env)
     }
 
     pub fn conf(&self) -> Conf {
@@ -97,6 +117,8 @@ impl Env {
 }
 
 pub struct Loaded {
+    /// An agent's draft: no permissions, no store, wears "Draft" wherever it shows
+    pub draft: bool,
     pub id: String,
     pub folder: PathBuf,
     pub manifest: Manifest,
@@ -111,12 +133,22 @@ impl Loaded {
     }
 }
 
-/// A plugin as installed, and only if its files are exactly what was approved
+/// A plugin as installed, and only if its files are exactly what was approved. One that is not installed may be a draft in the
+/// account's own folder: it runs with nothing granted, whatever its manifest asks for
 pub fn load(env: &Env, id: &str) -> Result<Loaded, String> {
-    if env.conf().allow == Allow::Off {
+    let conf = env.conf();
+    if conf.allow == Allow::Off {
         return Err("plugins are turned off on this machine (ALLOW=off in /etc/amethystora/plugins.conf)".into());
     }
-    let grant = env.store.grants(env.uid)?.plugins.remove(id).ok_or_else(|| format!("{id} is not installed"))?;
+    let Some(grant) = env.store.grants(env.uid)?.plugins.remove(id) else {
+        let folder = env.drafts_root.join(id);
+        let text = std::fs::read_to_string(folder.join("manifest.json")).map_err(|_| format!("{id} is not installed"))?;
+        let manifest = Manifest::parse_with(&text, false)?;
+        if manifest.id != id {
+            return Err("the manifest's id is not the one of the draft's folder".into());
+        }
+        return Ok(Loaded { draft: true, id: id.into(), folder, manifest, grant: Grant::default() });
+    };
     let folder = env.store.folder_of(id, &grant);
     env.store.verify(&folder, &grant.digest).map_err(|e| format!("{e}; it is stopped until you decide what to do"))?;
     let text = std::fs::read_to_string(folder.join("manifest.json")).map_err(|e| e.to_string())?;
@@ -124,7 +156,20 @@ pub fn load(env: &Env, id: &str) -> Result<Loaded, String> {
     if manifest.id != id {
         return Err("the manifest's id is not the one installed".into());
     }
-    Ok(Loaded { id: id.into(), folder, manifest, grant })
+    Ok(Loaded { draft: false, id: id.into(), folder, manifest, grant })
+}
+
+/// The drafts the account has: folders with a manifest, by id
+pub fn drafts(env: &Env) -> Vec<String> {
+    let mut found: Vec<String> = std::fs::read_dir(&env.drafts_root)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .filter_map(|e| e.file_name().into_string().ok())
+        .filter(|id| crate::manifest::valid_id(id, false).is_ok() && env.drafts_root.join(id).join("manifest.json").is_file())
+        .collect();
+    found.sort();
+    found
 }
 
 /// What the proxy may let one plugin reach, from the grants as they are now and the machine's conf
@@ -165,6 +210,10 @@ pub struct Runner {
     pub env: Arc<Env>,
     last: Mutex<HashMap<String, Instant>>,
     proxies: Mutex<HashMap<String, Arc<Proxy>>>,
+    /// The broker of each plugin that may ask for anything, started the first time it runs
+    brokers: Mutex<HashMap<String, Arc<Broker>>>,
+    /// What the shell is asked to do for a plugin (open an address, copy a text), which only it can: (id, kind, text)
+    requests: Mutex<Option<broker::Told>>,
     /// Called with the plugin's id and the host when sending passes the limit
     over_limit: Told,
     /// Plugins with a run in progress: a second run of one is refused, so that budgets and read-write mounts are never doubled
@@ -190,7 +239,41 @@ fn persist_block(id: &str, host: &str) {
 
 impl Runner {
     pub fn new(env: Arc<Env>, over_limit: Told) -> Runner {
-        Runner { env, last: Mutex::new(HashMap::new()), proxies: Mutex::new(HashMap::new()), over_limit, running: Mutex::new(Default::default()) }
+        Runner {
+            env,
+            last: Mutex::new(HashMap::new()),
+            proxies: Mutex::new(HashMap::new()),
+            brokers: Mutex::new(HashMap::new()),
+            requests: Mutex::new(None),
+            over_limit,
+            running: Mutex::new(Default::default()),
+        }
+    }
+
+    /// Where the shell is told what a plugin asked it to do
+    pub fn with_requests(self, told: broker::Told) -> Runner {
+        *self.requests.lock().unwrap() = Some(told);
+        self
+    }
+
+    /// The folder holding this plugin's broker socket, and the broker, started the first time it runs
+    fn broker(&self, id: &str) -> Result<(PathBuf, Arc<Broker>), String> {
+        let dir = self.env.runtime.join("broker").join(id);
+        let mut brokers = self.brokers.lock().unwrap();
+        if let Some(b) = brokers.get(id) {
+            return Ok((dir, b.clone()));
+        }
+        std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+        std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700)).map_err(|e| e.to_string())?;
+        let socket = dir.join("broker.sock");
+        let _ = std::fs::remove_file(&socket);
+        let listener = std::os::unix::net::UnixListener::bind(&socket).map_err(|e| e.to_string())?;
+        let told = self.requests.lock().unwrap().clone().unwrap_or_else(|| Arc::new(|_, _, _| {}));
+        let broker = Broker::new(self.env.clone(), id, told);
+        let serving = broker.clone();
+        std::thread::spawn(move || serving.serve(listener));
+        brokers.insert(id.to_string(), broker.clone());
+        Ok((dir, broker))
     }
 
     /// The folder holding this plugin's proxy socket, started the first time a plugin with a network permission runs
@@ -242,6 +325,9 @@ impl Runner {
         }
         let has_network = perms.iter().any(|p| p.starts_with("network="));
         let proxy_dir = if has_network && with_proxy { Some(self.proxy_dir(&loaded.id)?) } else if has_network { Some(env.runtime.join(&loaded.id)) } else { None };
+        // Anything a plugin may ask the host for needs the socket, and a draft has it to be answered from samples
+        let asks = loaded.draft || perms.iter().any(|p| p.starts_with("state=") || p.starts_with("control=") || p == "notify" || p == "open" || p == "clipboard-write");
+        let broker_dir = if asks && with_proxy { Some(self.broker(&loaded.id)?.0) } else if asks { Some(env.runtime.join("broker").join(&loaded.id)) } else { None };
         std::fs::create_dir_all(&env.runtime).map_err(|e| e.to_string())?;
         let passwd = env.runtime.join("passwd");
         let user = std::env::var("USER").ok().filter(|u| u.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_')).unwrap_or_else(|| "user".into());
@@ -257,6 +343,7 @@ impl Runner {
             command: &loaded.manifest.command,
             files: &mounts,
             proxy_dir: proxy_dir.as_deref(),
+            broker_dir: broker_dir.as_deref(),
             passwd: &passwd,
             env: &kept,
             action,
@@ -279,10 +366,18 @@ impl Runner {
             last.insert(id.to_string(), Instant::now());
         }
         let line = self.command_line(&loaded, action, true)?;
+        // A person's click is what lets a run change anything outside the sandbox; the next run on the timer has none
+        let _click = ClickGuard(self.brokers.lock().unwrap().get(id).cloned());
+        if let Some(b) = &_click.0 {
+            b.clicked.store(action.is_some(), Ordering::Relaxed);
+        }
+        // The settings a person gave it come on a pipe, never in the environment: a closed Vault stops the run and says why
+        let settings = if !loaded.draft && !loaded.manifest.settings.is_empty() { Some(settings_pipe(&self.env, id)?) } else { None };
         let filter = std::fs::File::open(&self.env.seccomp).map_err(|_| format!("{} is missing, so nothing is run", self.env.seccomp.display()))?;
         let mut command = Command::new(&line[0]);
         command.args(&line[1..]).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null());
         let fd = filter.as_raw_fd();
+        let settings_fd = settings.as_ref().map(|f| f.as_raw_fd());
         // SAFETY: only dup2 and fcntl, which are async-signal-safe, between fork and exec
         unsafe {
             command.pre_exec(move || {
@@ -294,6 +389,11 @@ impl Runner {
                 }
                 if libc::dup2(fd, SECCOMP_FD) < 0 || (fd == SECCOMP_FD && libc::fcntl(fd, libc::F_SETFD, 0) < 0) {
                     return Err(std::io::Error::last_os_error());
+                }
+                if let Some(read) = settings_fd {
+                    if libc::dup2(read, sandbox::SETTINGS_FD) < 0 || (read == sandbox::SETTINGS_FD && libc::fcntl(read, libc::F_SETFD, 0) < 0) {
+                        return Err(std::io::Error::last_os_error());
+                    }
                 }
                 Ok(())
             });
@@ -352,6 +452,52 @@ impl Runner {
             Some(s) if !s.success() => Err(format!("it ended with {s}")),
             _ => output::parse(&text, &loaded.manifest.actions),
         }
+    }
+}
+
+/// Ends a run's click: whatever the run did, the next one starts without it
+struct ClickGuard(Option<Arc<Broker>>);
+
+impl Drop for ClickGuard {
+    fn drop(&mut self) {
+        if let Some(b) = &self.0 {
+            b.clicked.store(false, Ordering::Relaxed);
+        }
+    }
+}
+
+/// The read end of a pipe holding the plugin's settings as one JSON object, already written (a few KiB fit a pipe's buffer, so
+/// nothing waits), with the write end closed
+fn settings_pipe(env: &Env, id: &str) -> Result<std::fs::File, String> {
+    use std::io::Write;
+    use std::os::fd::FromRawFd;
+    let all = crate::secrets::all(env, id)?;
+    let text = serde_json::to_vec(&all).map_err(|e| e.to_string())?;
+    if text.len() > 32 * 1024 {
+        return Err("its settings are larger than a pipe holds".into());
+    }
+    let mut ends = [0i32; 2];
+    // SAFETY: pipe2 fills the two descriptors it is given, which this function then owns
+    if unsafe { libc::pipe2(ends.as_mut_ptr(), libc::O_CLOEXEC) } != 0 {
+        return Err(std::io::Error::last_os_error().to_string());
+    }
+    // SAFETY: both descriptors are new and owned here
+    let (read, mut write) = unsafe { (std::fs::File::from_raw_fd(ends[0]), std::fs::File::from_raw_fd(ends[1])) };
+    write.write_all(&text).map_err(|e| e.to_string())?;
+    Ok(read)
+}
+
+/// What kind of stop a failed run was, for the rules that pause a plugin: `slow` (it hit the 30 seconds), `memory`, `vault` (its secret
+/// settings are in a closed Vault, which is waited for and not a fault), or `other`
+pub fn classify(failure: &str) -> &'static str {
+    if failure.starts_with("vault-closed") {
+        "vault"
+    } else if failure.contains("longer than 30 seconds") {
+        "slow"
+    } else if failure.contains("memory limit") || failure.contains("state folder grew") {
+        "memory"
+    } else {
+        "other"
     }
 }
 

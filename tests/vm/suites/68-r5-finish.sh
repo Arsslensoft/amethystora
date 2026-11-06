@@ -7,7 +7,7 @@
 #   recording; 10 ten disables and enables leaving nothing; 11 Control, the recipes and the setup file; 12 nothing threw.
 # The lab renders in software: GNOME turns its animations off there, so the parts that move are checked with
 # global.force_animations set, and put back after.
-# vmlab-paths: @ui/extension.js @ui/*workspaces* @ui/*pill* @ui/*dock* @ui/*glass* @ui/*rest* @ui/*living* @ui/*screenshot* @ui/*deskwidgets* @sf/*themed/shell-dock* @sf/*themed/shell-living* @sf/*widgets* @sf/usr/bin/amethystora-trim @sf/*amethystora-trim* apps/trim apps/control apps/control-core @sf/usr/libexec/amethystora-control-list @sf/usr/libexec/amethystora-setup* @sf/*just/desktop.just
+# vmlab-paths: @ui/extension.js @ui/*workspaces* @ui/*pill* @ui/*dock* @ui/*glass* @ui/*rest* @ui/*living* @ui/*screenshot* @ui/*deskwidgets* @sf/*themed/shell-dock* @sf/*themed/shell-living* @sf/*widgets* @sf/usr/bin/amethystora-trim @sf/*amethystora-trim* apps/trim apps/control apps/control-core @sf/usr/libexec/amethystora-control-list @sf/usr/libexec/amethystora-setup* @sf/*just/desktop.just @ui/*plugins* @sf/usr/share/amethystora/plugins/* @sf/usr/libexec/amethystora-plugins
 source "$(dirname "$0")/lib.sh"
 
 UUID=amethystora-ui@arsslensoft.github.io
@@ -210,32 +210,20 @@ for key in blur tint; do in_session "ame desktop glass-strength ${key} reset" >/
 in_session "ame desktop glass-strength tint reset ${other}" >/dev/null
 same "5 reset, the glass's own again" "$(ev "${G}.materialFor('glass').tint === ${own}[1]")" true
 
-# --- 6: the gallery of widgets (R6-29) ------------------------------------------------------------------------------
+# --- 6: the gallery of widgets (R6-29), now the plugins the image ships ----------------------------------------------
 control="$(in_session "/usr/libexec/amethystora-control-list --json" 2>/dev/null)"
-same "6 Control's gallery" "$(jq -r '.items[] | select(.id == "widgets") | [.gallery[].example] | join(",")' <<<"${control}")" \
-    "clock,calendar,now-playing,system,pomodoro,do-not-disturb"
-same "6 none is on" "$(in_session "ls ~/.config/amethystora/widgets 2>/dev/null | grep -cE '^(clock|calendar|now-playing|system)$'" 2>/dev/null)" 0
-for example in clock calendar now-playing system; do
-    check "6 ${example} passes the widgets' check" in_session \
-        "WIDGET_STATE=\$(mktemp -d) gjs -m /usr/share/gnome-shell/extensions/amethystora-widgets@arsslensoft.github.io/check.js /usr/share/amethystora/widgets/examples/${example}"
+same "6 Control's gallery" "$(jq -r '.items[] | select(.id == "plugins-shipped") | [.rows[].id] | sort | join(",")' <<<"${control}")" \
+    "amethystora.calendar,amethystora.clock,amethystora.do-not-disturb,amethystora.hello,amethystora.now-playing,amethystora.pomodoro,amethystora.system"
+same "6 none is added" "$(in_session "/usr/libexec/amethystora-plugins list --json | jq length" 2>/dev/null)" 0
+for example in /usr/share/amethystora/plugins/*/; do
+    check "6 $(basename "${example}") passes the plugins' check" in_session "/usr/libexec/amethystora-plugin-host check ${example}"
 done
-in_session "ame desktop widgets add clock desktop" >/dev/null
-same "6 one click puts the clock on the desktop" \
-    "$(jq -r .place "${HOME_DIR}/.config/amethystora/widgets/clock/widget.json")" desktop
-same "6 and turns widgets on the desktop on" "$(gs get "${DESK}" enabled)" true
-check "6 the desktop shows it" wait_for 30 is "!!${UI}.get('deskwidgets')?._cards?.has('clock')" true
-in_session "ame desktop widgets add clock bar" >/dev/null
-same "6 again, under a name of its own, in the bar" \
-    "$(jq -r '[.place, .position, has("size")] | join(",")' "${HOME_DIR}/.config/amethystora/widgets/clock-2/widget.json")" "bar,right,false"
-in_session "ame desktop widgets add system" >/dev/null
-same "6 the bar by default for the system widget" "$(jq -r .place "${HOME_DIR}/.config/amethystora/widgets/system/widget.json")" bar
 if in_session "ame desktop widgets add nothing-such bar" >/dev/null 2>&1; then
     not_ok "6 an example that is not there is refused"
 else
     ok "6 an example that is not there is refused"
 fi
-rm -rf "${HOME_DIR}/.config/amethystora/widgets/"{clock,clock-2,system}
-gs reset "${DESK}" enabled
+same "6 nothing is read from the old widgets folder" "$(in_session "ls ~/.config/amethystora/widgets 2>/dev/null | wc -l" 2>/dev/null)" 0
 
 # --- 7: the resting screen (R6-06) ----------------------------------------------------------------------------------
 same "7 off as the image ships, and nothing watched" "$(ev "JSON.stringify([${R}.state().enabled, ${R}.state().watching])")" \

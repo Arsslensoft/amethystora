@@ -1,9 +1,0 @@
-/* A label as long as a sentence would push the rest of the bar aside */
-.amethystora-widget-label {
-  max-width: 20em;
-}
-
-/* Lines of information in a widget's menu wrap instead of widening it */
-.amethystora-widget-line {
-  max-width: 28em;
-}

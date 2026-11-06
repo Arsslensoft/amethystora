@@ -1,0 +1,22 @@
+{
+  "text": "Build \u00b7 in_progress",
+  "icon": "emblem-synchronizing-symbolic",
+  "class": "accent",
+  "card": [
+    {
+      "type": "row",
+      "label": "Branch",
+      "value": "main"
+    },
+    {
+      "type": "row",
+      "label": "Run",
+      "value": "#128"
+    },
+    {
+      "type": "button",
+      "label": "Open the run",
+      "action": "open-run"
+    }
+  ]
+}

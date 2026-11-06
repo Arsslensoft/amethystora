@@ -1,9 +1,0 @@
-{
-  "name": "Clock",
-  "description": "The time in big type, with the day under it",
-  "command": "./widget.sh",
-  "interval": 0,
-  "place": "desktop",
-  "position": "top-right",
-  "size": "large"
-}

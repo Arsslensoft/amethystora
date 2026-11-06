@@ -18,7 +18,7 @@ use gio::prelude::*;
 use glib::variant::ToVariant;
 use serde_json::{Value, json};
 
-use amethystora_plugin_host::host::{Env, Runner, load};
+use amethystora_plugin_host::host::{Env, Runner, classify, load};
 use amethystora_plugin_host::manifest::{valid_action, valid_id};
 
 const BUS_NAME: &str = "org.amethystora.Plugins";
@@ -28,12 +28,19 @@ const NOT_AVAILABLE: &str = "org.amethystora.Plugins.Error.NotAvailable";
 const XML: &str = include_str!("../dbus/org.amethystora.Plugins.xml");
 /// The programs that may call: the shell's module, and the two windows that show a plugin's reach
 const CALLERS: &[&str] = &["/usr/bin/gnome-shell", "/usr/lib/amethystora-control/amethystora-control", "/usr/lib/amethystora-security/amethystora-security"];
-/// A plugin that fails this many runs in a row is paused, and says so
+/// The rules that pause a plugin by itself (R7-09), each said once with its reason: this many runs of one kind in a row. A run that
+/// waits for the Vault is no fault and counts for none. Too many updates cannot come from a timer (a plugin runs at most once in five
+/// seconds), but a click storm or a script's flood can, so more than UPDATES results in a minute pauses it too
 const FAILURES: u32 = 5;
+const SLOW: u32 = 3;
+const MEMORY: u32 = 2;
+const UPDATES: usize = 30;
 
 enum Msg {
     Ran(String, Result<Value, String>),
     Over(String, String),
+    /// A plugin asked the shell to open an address or copy a text, after a click: (id, kind, text)
+    Asked(String, String, String),
 }
 
 struct State {
@@ -43,7 +50,9 @@ struct State {
     system_bus: Option<gio::DBusConnection>,
     plugins: RefCell<HashMap<String, Value>>,
     paused: RefCell<HashSet<String>>,
-    failures: RefCell<HashMap<String, u32>>,
+    failures: RefCell<HashMap<String, (String, u32)>>,
+    /// When each plugin's results arrived in the last minute
+    recent: RefCell<HashMap<String, std::collections::VecDeque<std::time::Instant>>>,
     /// The plugins started, each with its interval's timer: a plugin turned off and on again before its timer ticked would
     /// otherwise have two, and every second run would fail as one too soon
     scheduled: RefCell<HashMap<String, Option<glib::SourceId>>>,
@@ -101,6 +110,7 @@ impl State {
 
     /// Starts a plugin's timer: one run now, then one each interval while it stays on
     fn start(self: &Rc<Self>, id: &str) {
+        // (below)
         if self.scheduled.borrow().contains_key(id) {
             return;
         }
@@ -113,6 +123,16 @@ impl State {
             if let Ok(l) = &loaded {
                 entry["name"] = l.manifest.name.clone().into();
                 entry["version"] = l.manifest.version.clone().into();
+                entry["places"] = Value::Object(l.manifest.places.clone());
+                entry["author"] = l.manifest.author.clone().into();
+                entry["draft"] = l.draft.into();
+                entry["shipped"] = l.grant.shipped.into();
+                entry["granted"] = l.perms().into();
+                entry["actions"] = l.manifest.actions.clone().into();
+                if l.draft {
+                    // What the agent said it would show, for the run that finds nothing to reach
+                    entry["sample"] = std::fs::read_to_string(l.folder.join("sample.json")).ok().and_then(|t| crate::output::parse(&t, &l.manifest.actions).ok()).unwrap_or(Value::Null);
+                }
             } else if let Err(e) = &loaded {
                 entry["error"] = e.clone().into();
             }
@@ -162,31 +182,69 @@ impl State {
                 if !self.plugins.borrow().contains_key(&id) {
                     return;
                 }
-                let mut failures = self.failures.borrow_mut();
-                let count = failures.entry(id.clone()).or_default();
+                let mut pause = None;
                 {
                     let mut plugins = self.plugins.borrow_mut();
                     let entry = plugins.get_mut(&id).unwrap();
+                    let mut failures = self.failures.borrow_mut();
                     match result {
                         Ok(output) => {
-                            *count = 0;
+                            failures.remove(&id);
                             entry["output"] = output;
                             entry["error"] = "".into();
+                            entry["waiting"] = Value::Null;
+                            // More than UPDATES results in a minute: not a plugin, a flood
+                            let mut recent = self.recent.borrow_mut();
+                            let seen = recent.entry(id.clone()).or_default();
+                            let now = std::time::Instant::now();
+                            seen.push_back(now);
+                            while seen.front().is_some_and(|t| now.duration_since(*t).as_secs() >= 60) {
+                                seen.pop_front();
+                            }
+                            if seen.len() > UPDATES {
+                                pause = Some("updates");
+                            }
                         }
                         Err(why) => {
-                            *count += 1;
-                            entry["error"] = why.into();
-                            if *count >= FAILURES {
-                                self.paused.borrow_mut().insert(id.clone());
-                                entry["paused"] = true.into();
+                            let kind = classify(&why);
+                            entry["error"] = why.clone().into();
+                            if kind == "vault" {
+                                // Waits, and tries again at the next tick: nothing is paused for a closed Vault
+                                entry["waiting"] = "vault".into();
+                            } else {
+                                let count = match failures.get_mut(&id) {
+                                    Some((k, n)) if k == kind => {
+                                        *n += 1;
+                                        *n
+                                    }
+                                    _ => {
+                                        failures.insert(id.clone(), (kind.to_string(), 1));
+                                        1
+                                    }
+                                };
+                                pause = match kind {
+                                    "slow" if count >= SLOW => Some("slow"),
+                                    "memory" if count >= MEMORY => Some("memory"),
+                                    "other" if count >= FAILURES => Some("crash"),
+                                    _ => None,
+                                };
                             }
                         }
                     }
+                    if let Some(reason) = pause {
+                        entry["paused"] = true.into();
+                        entry["reason"] = reason.into();
+                    }
                 }
-                drop(failures);
+                if let Some(reason) = pause {
+                    self.paused.borrow_mut().insert(id.clone());
+                    // Said once, when it happens: the shell shows it with Ask the agent to fix it
+                    self.emit("Paused", (id.as_str(), reason).to_variant());
+                }
                 self.changed(&id);
             }
             Msg::Over(id, host) => self.emit("OverLimit", (id.as_str(), host.as_str()).to_variant()),
+            Msg::Asked(id, kind, text) => self.emit("Asked", (id.as_str(), kind.as_str(), text.as_str()).to_variant()),
         }
     }
 
@@ -247,12 +305,18 @@ pub fn serve(env: Env) -> ExitCode {
     let (tx, mut rx) = unbounded::<Msg>();
     let over = Mutex::new(tx.clone());
     let env = Arc::new(env);
-    let runner = Arc::new(Runner::new(
-        env.clone(),
-        Arc::new(move |id, host| {
-            let _ = over.lock().unwrap().unbounded_send(Msg::Over(id.to_string(), host.to_string()));
-        }),
-    ));
+    let asked = Mutex::new(tx.clone());
+    let runner = Arc::new(
+        Runner::new(
+            env.clone(),
+            Arc::new(move |id, host| {
+                let _ = over.lock().unwrap().unbounded_send(Msg::Over(id.to_string(), host.to_string()));
+            }),
+        )
+        .with_requests(Arc::new(move |id, kind, text| {
+            let _ = asked.lock().unwrap().unbounded_send(Msg::Asked(id.to_string(), kind.to_string(), text.to_string()));
+        })),
+    );
     let main_loop = glib::MainLoop::new(None, false);
     let state = Rc::new(State {
         env: env.clone(),
@@ -262,6 +326,7 @@ pub fn serve(env: Env) -> ExitCode {
         plugins: RefCell::default(),
         paused: RefCell::default(),
         failures: RefCell::default(),
+        recent: RefCell::default(),
         scheduled: RefCell::default(),
         clients: RefCell::default(),
         callers: RefCell::default(),
@@ -300,9 +365,11 @@ pub fn serve(env: Env) -> ExitCode {
                         } else {
                             state.paused.borrow_mut().remove(&id);
                             state.failures.borrow_mut().remove(&id);
+                            state.recent.borrow_mut().remove(&id);
                         }
                         if let Some(entry) = state.plugins.borrow_mut().get_mut(&id) {
                             entry["paused"] = (method == "Pause").into();
+                            entry["reason"] = if method == "Pause" { "person".into() } else { Value::Null };
                         }
                         state.changed(&id);
                         invocation.return_value(None);

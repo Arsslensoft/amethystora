@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "id": "example.score",
+  "version": "1.0.0",
+  "license": "Apache-2.0",
+  "command": [
+    "./run.sh"
+  ],
+  "name": "A game's score",
+  "interval": 30,
+  "contributes": {
+    "pill": {}
+  },
+  "needs": {
+    "network": [
+      {
+        "host": "api.example.org",
+        "why": "Reads the score from a scores service (replace this with the one you use)"
+      }
+    ]
+  },
+  "settings": [
+    {
+      "name": "game",
+      "label": "Which game"
+    }
+  ]
+}

@@ -93,7 +93,7 @@ pub fn refusal(argv: &[String]) -> Option<String> {
     }
     // The plugin commands that install, update or widen what a plugin may do are the person's, behind an administrator's approval
     // ...however it is started, by its name or as the file an interpreter is given
-    if argv.iter().position(|a| base(a) == "amethystora-plugins").is_some_and(|at| matches!(argv.get(at + 1).map(String::as_str), Some("grant" | "unblock" | "add" | "update" | "rollback" | "dev"))) {
+    if argv.iter().position(|a| base(a) == "amethystora-plugins").is_some_and(|at| matches!(argv.get(at + 1).map(String::as_str), Some("grant" | "unblock" | "add" | "update" | "rollback" | "dev" | "keep" | "open"))) {
         return Some("installing a plugin and widening what it may do are the user's, with an administrator's approval".into());
     }
     if program == "amethystora-if-found" && argv.get(1).map(String::as_str) != Some("status") {
@@ -250,7 +250,7 @@ fn ame_refusal(args: &[String]) -> Option<String> {
         ["vault", ..] => Some("the Vault is the user's alone: the agent neither reads nor changes it".into()),
         // Installing a plugin, giving it more, lifting a block and going back to older code each take an administrator's approval: the agent never
         // asks for one, however it is spelled (taking away, blocking and switching off stay open to it)
-        ["plugin", "grant" | "unblock" | "add" | "update" | "rollback" | "dev", ..] => {
+        ["plugin", "grant" | "unblock" | "add" | "update" | "rollback" | "dev" | "keep" | "open", ..] => {
             Some("installing a plugin and widening what it may do are the user's, with an administrator's approval".into())
         }
         // External screens' brightness gives the person at the machine the displays' i2c buses, which reach other chips
@@ -495,6 +495,9 @@ mod tests {
             "ame plugin add https://example.org/p.git",
             "ame plugin update dev.example.x",
             "ame plugin rollback dev.example.x",
+            "ame plugin keep dev.example.x",
+            "amethystora-plugins keep dev.example.x",
+            "ame plugin open /tmp/site.amethystora-pill",
             "ame -q plugin::dev dev.example.x",
             "ame -q plugin::grant dev.example.x",
             "ame Plugin Grant dev.example.x",
@@ -569,6 +572,9 @@ mod tests {
             "ame -q system raid status",
             "ame plugin list",
             "ame plugin show dev.example.x",
+            "ame plugin draft dev.example.x",
+            "ame plugin discard dev.example.x",
+            "ame pill start Backup --progress 0.1",
             "ame plugin check /tmp/p",
             "ame plugin verify",
             "ame plugin history",

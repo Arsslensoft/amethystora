@@ -35,6 +35,7 @@ import {NotesProvider} from './notes.js';
 import {MeaningProvider} from './meaning.js';
 import {WordsProvider} from './wordsProvider.js';
 import {RememberedProvider} from './rememberProvider.js';
+import {PluginsProvider} from './plugins.js';
 
 // The key that turns each on, its place, and how many rows it shows at most; GNOME's own come between 4 and 6
 const PROVIDERS = [
@@ -54,6 +55,8 @@ const PROVIDERS = [
     {key: 'notes', rank: 5, max: 5},
     {key: 'bookmarks', rank: 5, max: 5},
     {key: 'meaning', rank: 5, max: 3},
+    // What plugins that contribute `search` last printed (modules/plugins.js)
+    {key: 'plugins', rank: 5, max: 4},
     {key: 'agent', rank: 7, max: 1},
 ];
 const GNOME_RANK = 4;
@@ -129,6 +132,7 @@ export class Providers {
         case 'meaning': return new MeaningProvider();
         case 'old-words': return new WordsProvider();
         case 'remembered': return new RememberedProvider();
+        case 'plugins': return new PluginsProvider(this._ext);
         }
         return null;
     }
@@ -151,6 +155,7 @@ export class Providers {
             bookmarks: {title: _('Bookmarks'), note: _('From a copy of Firefox’s bookmarks, never its history.')},
             notes: {title: _('Notes'), tag: _('While Notes is unlocked')},
             meaning: {title: _('Files by meaning'), tag: _('On this computer')},
+            plugins: {title: _('Plugins'), tag: _('What each last printed')},
             agent: {title: _('The agent'), tag: _('Only while it is on')},
         }[key];
     }

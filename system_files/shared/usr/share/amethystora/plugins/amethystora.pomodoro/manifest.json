@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "id": "amethystora.pomodoro",
+  "name": "Pomodoro",
+  "version": "1.0.0",
+  "license": "Apache-2.0",
+  "command": [
+    "./run.sh"
+  ],
+  "interval": 10,
+  "contributes": {
+    "pill": {},
+    "tile": {},
+    "search": {
+      "prefix": "pomodoro"
+    }
+  },
+  "actions": [
+    "start",
+    "stop"
+  ],
+  "needs": {
+    "notify": {
+      "why": "Tells you when the 25 minutes are over"
+    }
+  }
+}

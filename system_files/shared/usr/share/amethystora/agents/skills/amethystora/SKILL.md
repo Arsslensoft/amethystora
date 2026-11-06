@@ -93,6 +93,6 @@ Read the one you need, when you need it:
 | A routine for something the desktop should do by itself (when I join a network, at a time) | `/usr/share/amethystora/agents/skills/amethystora/references/routines.md` |
 
 To find out why something crashed or stopped working, follow the `amethystora-diagnose` skill. For
-something in the top bar, follow the `amethystora-widgets` skill.
+something in the top bar, follow the `amethystora-plugins` skill.
 
 Turning these instructions off is `ame agent toggle off`.

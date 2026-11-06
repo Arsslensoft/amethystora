@@ -11,6 +11,10 @@
 //!   sandbox ID [ACTION]       the command line it runs under, printed and never run
 //!   try ID [ACTION]           one run in the sandbox, with what it printed as the shell would be given it
 //!   enable ID | disable ID    whether it is on, which the account decides (it can only stay inside what was approved)
+//!   settings ID [--json]      the settings its manifest declares, and whether each was given (never a value)
+//!   setting-set ID NAME       gives one a value, read from standard input: a secret goes into the Vault and nowhere in the clear
+//!   discard ID                an agent's draft: turned off and its folder deleted (an installed plugin is `ame plugin remove`)
+//!   plugin STATE|CONTROL|...  (run as `plugin`, inside a sandbox) asks the host for what the plugin was allowed
 //!   shim SOCKET -- COMMAND    inside a sandbox: a forwarder to the host's proxy (sandbox.rs starts it)
 
 mod service;
@@ -20,7 +24,8 @@ use std::process::ExitCode;
 use std::sync::Arc;
 
 use amethystora_plugin_host::check;
-use amethystora_plugin_host::host::{Env, Runner, load};
+use amethystora_plugin_host::broker;
+use amethystora_plugin_host::host::{Env, Runner, drafts, load};
 use amethystora_plugin_host::manifest::{Manifest, valid_id};
 use amethystora_plugin_host::shim;
 use amethystora_plugin_host::store::Grant;
@@ -85,8 +90,44 @@ fn summary(env: &Env, id: &str, grant: &Grant) -> Value {
         "blocked_hosts": grant.blocked_hosts,
         "limits": grant.limits,
         "contributes": manifest.as_ref().map(|m| m.contributes.clone()).unwrap_or_default(),
+        "places": manifest.as_ref().map(|m| Value::Object(m.places.clone())).unwrap_or_default(),
+        "author": manifest.as_ref().map(|m| m.author.as_str()).unwrap_or(""),
+        "draft": false,
+        "since": env.store.history(env.uid).iter().find(|l| l["id"].as_str() == Some(id)).and_then(|l| l["t"].as_u64()),
         "actions": manifest.as_ref().map(|m| m.actions.clone()).unwrap_or_default(),
     })
+}
+
+/// An agent's draft, in the shape of an installed plugin's summary: nothing granted, nothing in the store, and who made it and when
+fn draft_summary(env: &Env, id: &str) -> Option<Value> {
+    let folder = env.drafts_root.join(id);
+    let manifest = Manifest::parse(&std::fs::read_to_string(folder.join("manifest.json")).ok()?).ok();
+    let origin: Value = std::fs::read_to_string(folder.join("origin.json")).ok().and_then(|t| serde_json::from_str(&t).ok()).unwrap_or(Value::Null);
+    Some(json!({
+        "id": id,
+        "name": manifest.as_ref().map(|m| m.name.as_str()).unwrap_or(id),
+        "version": manifest.as_ref().map(|m| m.version.as_str()).unwrap_or(""),
+        "license": manifest.as_ref().map(|m| m.license.as_str()).unwrap_or(""),
+        "digest": "",
+        "previous": null,
+        "shipped": false,
+        "enabled": env.enabled().iter().any(|e| e == id),
+        "verified": true,
+        "problem": null,
+        "granted": [],
+        "asked": manifest.as_ref().map(|m| m.permissions().into_iter().collect::<Vec<_>>()).unwrap_or_default(),
+        "why": manifest.as_ref().map(|m| m.needs.iter().map(|n| (n.perm.clone(), Value::from(n.why.clone()))).collect::<serde_json::Map<_, _>>()).unwrap_or_default(),
+        "blocked": false,
+        "blocked_hosts": [],
+        "limits": {},
+        "contributes": manifest.as_ref().map(|m| m.contributes.clone()).unwrap_or_default(),
+        "places": manifest.as_ref().map(|m| Value::Object(m.places.clone())).unwrap_or_default(),
+        "author": manifest.as_ref().map(|m| m.author.as_str()).unwrap_or(""),
+        "actions": manifest.as_ref().map(|m| m.actions.clone()).unwrap_or_default(),
+        "draft": true,
+        "made_by": origin["by"].as_str().unwrap_or(""),
+        "since": origin["when"].as_u64(),
+    }))
 }
 
 fn cmd_check(args: &[String]) -> ExitCode {
@@ -122,13 +163,16 @@ fn cmd_list(env: &Env, json_out: bool) -> ExitCode {
         Ok(g) => g,
         Err(e) => return fail(&e),
     };
-    let all: Vec<Value> = grants.plugins.iter().map(|(id, g)| summary(env, id, g)).collect();
+    let mut all: Vec<Value> = grants.plugins.iter().map(|(id, g)| summary(env, id, g)).collect();
+    // A draft of the same id as one installed is the installed one's next version, not a second plugin
+    all.extend(drafts(env).iter().filter(|id| !grants.plugins.contains_key(*id)).filter_map(|id| draft_summary(env, id)));
     if json_out {
         println!("{}", Value::Array(all));
     } else {
         for p in &all {
             let state = if p["verified"] == false { "changed" } else if p["enabled"] == true { "on" } else { "off" };
-            println!("{}\t{}\t{}\t{}", p["id"].as_str().unwrap_or(""), p["version"].as_str().unwrap_or(""), state, p["name"].as_str().unwrap_or(""));
+            let kind = if p["draft"] == true { "draft" } else if p["shipped"] == true { "shipped" } else { "kept" };
+            println!("{}\t{}\t{}\t{}\t{}", p["id"].as_str().unwrap_or(""), p["version"].as_str().unwrap_or(""), state, p["name"].as_str().unwrap_or(""), kind);
         }
     }
     ExitCode::SUCCESS
@@ -139,7 +183,28 @@ fn cmd_show(env: &Env, id: &str, json_out: bool) -> ExitCode {
         Ok(g) => g,
         Err(e) => return fail(&e),
     };
-    let Some(grant) = grants.plugins.get(id) else { return fail(&format!("{id} is not installed")) };
+    let Some(grant) = grants.plugins.get(id) else {
+        // An agent's draft, which holds nothing granted
+        let Some(p) = draft_summary(env, id) else { return fail(&format!("{id} is not installed")) };
+        let sandbox = load(env, id).ok().and_then(|l| Runner::new(Arc::new(env.clone()), Arc::new(|_, _| {})).command_line(&l, None, false).ok());
+        if json_out {
+            let mut p = p;
+            p["sandbox"] = sandbox.map(|s| s.join(" ")).into();
+            println!("{p}");
+        } else {
+            for key in ["id", "name", "version", "license"] {
+                println!("{key}\t{}", p[key].as_str().unwrap_or(""));
+            }
+            println!("draft\tyes\nenabled\t{}\nverified\tyes", p["enabled"]);
+            for perm in p["asked"].as_array().into_iter().flatten() {
+                println!("asked\t{}\t{}", perm.as_str().unwrap_or(""), p["why"][perm.as_str().unwrap_or("")].as_str().unwrap_or(""));
+            }
+            if let Some(line) = sandbox {
+                println!("sandbox\t{}", line.join(" "));
+            }
+        }
+        return ExitCode::SUCCESS;
+    };
     let p = summary(env, id, grant);
     // The command line it would run under, without starting anything
     let sandbox = load(env, id).ok().and_then(|l| Runner::new(Arc::new(env.clone()), Arc::new(|_, _| {})).command_line(&l, None, false).ok());
@@ -208,7 +273,62 @@ fn cmd_history(env: &Env, only: Option<&String>, json_out: bool) -> ExitCode {
     ExitCode::SUCCESS
 }
 
+fn cmd_settings(env: &Env, id: &str, json_out: bool) -> ExitCode {
+    let Ok(l) = load(env, id) else { return fail(&format!("{id} is not installed")) };
+    let set = amethystora_plugin_host::secrets::all(env, id).ok();
+    let items: Vec<Value> = l
+        .manifest
+        .settings
+        .iter()
+        // Whether it was given, never what it is; a closed Vault says "unknown" for a secret
+        .map(|s| json!({"name": s.name, "label": s.label, "secret": s.secret, "set": set.as_ref().map(|m| m.contains_key(&s.name))}))
+        .collect();
+    if json_out {
+        println!("{}", Value::Array(items));
+    } else {
+        for i in &items {
+            println!("{}\t{}\t{}\t{}", i["name"].as_str().unwrap_or(""), i["label"].as_str().unwrap_or(""), if i["secret"] == true { "secret" } else { "plain" }, i["set"]);
+        }
+    }
+    ExitCode::SUCCESS
+}
+
+fn cmd_setting_set(env: &Env, id: &str, name: &str) -> ExitCode {
+    let Ok(l) = load(env, id) else { return fail(&format!("{id} is not installed")) };
+    let Some(setting) = l.manifest.settings.iter().find(|s| s.name == name) else { return fail("its manifest declares no such setting") };
+    // The value comes on standard input, never as an argument, which `ps` and the audit log would keep
+    let mut value = String::new();
+    let _ = std::io::Read::read_to_string(&mut std::io::Read::take(std::io::stdin(), 4097), &mut value);
+    let value = value.trim_end_matches(['\n', '\r']);
+    match amethystora_plugin_host::secrets::set(env, id, name, value, setting.secret) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => fail(e.strip_prefix("vault-closed: ").unwrap_or(&e)),
+    }
+}
+
+/// A draft thrown away: off, its folder and what it kept gone. Installed plugins are removed through the store, never here
+fn cmd_discard(env: &Env, id: &str) -> ExitCode {
+    if env.store.grants(env.uid).is_ok_and(|g| g.plugins.contains_key(id)) {
+        return fail("that is an installed plugin: remove it with ame plugin remove");
+    }
+    if !drafts(env).iter().any(|d| d == id) {
+        return fail("that is not a draft");
+    }
+    let _ = env.set_enabled(id, false);
+    amethystora_plugin_host::secrets::forget(env, id);
+    let _ = std::fs::remove_dir_all(env.state_dir(id));
+    match std::fs::remove_dir_all(env.drafts_root.join(id)) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => fail(&e.to_string()),
+    }
+}
+
 fn main() -> ExitCode {
+    // Run as `plugin` (a link inside the sandbox): the plugin asking the host for what it was allowed
+    if std::env::args().next().is_some_and(|a| a.rsplit('/').next() == Some("plugin")) {
+        let args: Vec<String> = std::env::args().skip(1).collect();
+        return ExitCode::from(broker::client(&args).clamp(0, 255) as u8);
+    }
     let args: Vec<String> = std::env::args().skip(1).collect();
     let rest = args.get(1..).unwrap_or(&[]);
     let json_out = rest.iter().any(|a| a == "--json");
@@ -224,7 +344,7 @@ fn main() -> ExitCode {
             Some(at) if at == 1 && rest.len() > 2 => ExitCode::from(shim::run(&rest[0], &rest[at + 1..]).clamp(0, 255) as u8),
             _ => usage(),
         },
-        Some(cmd @ ("list" | "show" | "verify" | "history" | "sandbox" | "try" | "enable" | "disable")) => {
+        Some(cmd @ ("list" | "show" | "verify" | "history" | "sandbox" | "try" | "enable" | "disable" | "settings" | "setting-set" | "discard")) => {
             let env = match Env::production() {
                 Ok(env) => env,
                 Err(e) => return fail(&e),
@@ -240,6 +360,12 @@ fn main() -> ExitCode {
                     };
                     match cmd {
                         "show" => cmd_show(&env, &id, json_out),
+                        "settings" => cmd_settings(&env, &id, json_out),
+                        "discard" => cmd_discard(&env, &id),
+                        "setting-set" => match positional.get(1) {
+                            Some(name) => cmd_setting_set(&env, &id, name),
+                            None => usage(),
+                        },
                         "sandbox" => match load(&env, &id).and_then(|l| Runner::new(Arc::new(env.clone()), Arc::new(|_, _| {})).command_line(&l, positional.get(1).map(String::as_str), false)) {
                             Ok(line) => {
                                 println!("{}", line.join(" "));
@@ -255,7 +381,7 @@ fn main() -> ExitCode {
                             Err(e) => fail(&e),
                         },
                         // On is the account's, and only for what was approved: the host runs nothing that is not granted
-                        _ => match env.store.grants(env.uid).map(|g| g.plugins.contains_key(&id)) {
+                        _ => match env.store.grants(env.uid).map(|g| g.plugins.contains_key(&id) || drafts(&env).contains(&id)) {
                             Ok(true) => env.set_enabled(&id, cmd == "enable").map_or_else(|e| fail(&e), |_| ExitCode::SUCCESS),
                             Ok(false) if cmd == "disable" => env.set_enabled(&id, false).map_or_else(|e| fail(&e), |_| ExitCode::SUCCESS),
                             Ok(false) => fail(&format!("{id} is not installed")),

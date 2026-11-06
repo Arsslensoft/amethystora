@@ -7,7 +7,7 @@
 #   amethystora-bar-layout unhide ITEM                 ITEM back from hidden, where the image has it among the right's
 #   amethystora-bar-layout reset                       the bar as the image arranges it
 #
-# The items are the bar's own, by id; a widget is widget-NAME. The clock and the system menu are never hidden. The key
+# The items are the bar's own, by id; a plugin in the bar is plugin-ID. The clock and the system menu are never hidden. The key
 # is written whole each time, every known item in one list, so that what Control shows is what the bar does.
 
 set -euo pipefail
@@ -16,14 +16,13 @@ export TEXTDOMAIN=amethystora
 source gettext.sh
 
 SCHEMA=org.gnome.shell.extensions.amethystora-ui.bars
-WIDGETS="${XDG_CONFIG_HOME:-${HOME}/.config}/amethystora/widgets"
+HOST=/usr/libexec/amethystora-plugin-host
 ZONES=(left center right hidden)
 FIXED=(clock system)
 # The image's arrangement, as the bar is when nothing was changed (20-tests.sh holds the ids to arrange.js)
 DEFAULT_LEFT=(logo workspaces tiling)
 DEFAULT_CENTER=(clock)
 DEFAULT_RIGHT=(busy processor memory network tray clipboard shield phone a11y keyboard system)
-ID_RE='^[a-z0-9][a-z0-9-]{0,39}$'
 
 usage() {
     sed -n 's/^#   amethystora-bar-layout /usage: amethystora-bar-layout /p' "$0" >&2
@@ -51,17 +50,10 @@ name_of() {
     esac
 }
 
-# The top bar's widgets, as id and name: those whose widget.json does not put them on the desktop
-widgets() {
-    local dir id
-    shopt -s nullglob
-    for dir in "${WIDGETS}"/*/; do
-        id="$(basename "${dir}")"
-        [[ "${id}" =~ ${ID_RE} && -f "${dir}widget.json" ]] || continue
-        jq -r --arg id "${id}" 'select((.place // "bar") == "bar")
-            | "widget-\($id)\t\(.name // $id | tostring | gsub("[\\u0000-\\u001f]"; "") | .[0:40])"' \
-            "${dir}widget.json" 2>/dev/null || true
-    done
+# The plugins that ask for a place in the top bar, as id and name (the host's list, which reads the store and nothing of the plugins' own)
+plugins() {
+    "${HOST}" list --json 2>/dev/null | jq -r '.[] | select(.places.bar != null)
+        | "plugin-\(.id)\t\(.name | tostring | gsub("[\\u0000-\\u001f]"; "") | .[0:40])"' 2>/dev/null || true
 }
 
 # Every known item as JSON lines {id, name, fixed, zone}, the zone the image gives it
@@ -78,7 +70,7 @@ known() {
     while IFS=$'\t' read -r id name; do
         [[ -n "${id}" ]] || continue
         jq -nc --arg id "${id}" --arg name "${name}" '{id: $id, name: $name, fixed: false, zone: "right"}'
-    done < <(widgets)
+    done < <(plugins)
 }
 
 # The key as JSON: GSettings writes it as {'left': ['a', 'b'], ...}, and the ids hold no quote

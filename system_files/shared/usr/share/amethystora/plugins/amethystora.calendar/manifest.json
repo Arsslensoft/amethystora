@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "id": "amethystora.calendar",
+  "name": "Calendar",
+  "version": "1.0.0",
+  "license": "Apache-2.0",
+  "command": ["./run.sh"],
+  "interval": 600,
+  "contributes": {"desktop": {"corner": "top-right"}}
+}
