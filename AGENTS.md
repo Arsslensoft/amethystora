@@ -1168,6 +1168,14 @@ report's `backup-runs` check reads `status`. Never work out a point, a path or a
   backed it up on a schedule is told once, after it is gone (`user-setup.hooks.d/19-deja-dup.sh`). There is
   no retire hook: a machine that kept Déjà Dup keeps backing up with it.
 
+**Restore from nothing, and the other computer** (R7-55, R7-35; `plans/ui-ideas/r7/spec-keep.md`). `ame backup recovery-key` (`amethystora-backup-recovery`, the only place
+that runs `restic key add`) makes a second key shown once and kept nowhere; `ame backup restore-from` (`amethystora-start-from-backup`, offered by the first look's **Have a backup?**)
+brings files (through `amethystora-restore put-back`, which reads settings from `AMETHYSTORA_BACKUP_ENV` there and stays read-only), setup and Vault back with that key alone,
+for a backup of the same home path. `ame backup other-computer` pairs two home computers (`amethystora-backup-pair`: six digits with a commitment, certificates each way) so that the
+daily run also goes, as its own unit (`amethystora-backup-other.timer`, `amethystora-backup --other`), to the other one, which runs `rclone serve restic --append-only` over TLS 1.3 for
+the computers paired (`ame backup store`); its two ports are opened in the home zone by the security switch `ame security backup-store`, off. The password and client key are sealed in the
+Vault under `background` (`amethystora-backup-secret`, `/usr/lib/amethystora/backup-secrets.sh`) and never in a file. `never.rs` refuses all of it.
+
 Its manual section is `security.md#backups`. The sidebar draws the same wordmark as Security; the app grid's icon is the icon packs' (`amethystora-backups`), with the tile `generate.mjs` draws (`amethystora-backups.svg`) for other themes.
 
 ### The Help window
@@ -1457,6 +1465,14 @@ The modules, and what each replaced:
 - `power` (on): the battery's health, cycles and heaviest apps in its quick-settings menu (`battery-details`), and a chip
   naming an app that kept the processor at 70 % for two minutes (`busy-app`), at most once an hour, on the meters' own 5 s
   reading; a terminal is never offered Quit.
+- `workspaces/putaway.js` and `pill/putaway.js` (R7-34, `put-away`, on; `plans/ui-ideas/r7/spec-keep.md`): **Put this workspace away** in the workspace
+  menu asks in the pill (`putaway`, then the mark `putaway-kept`, a MARK), closes the windows the way their close button does and seals the list (a saved set's
+  shape, at most eight: names and app IDs, never a title or file) in the Vault (`modules/vault.js`, purpose `put-away`) into `put-away.avs`. The Vault is asked only
+  after a click; closed or not set up, it stays in memory (module scope) and the card says so. `power/charge.js` (R7-70, `charge-by-leaving`, off): the battery
+  waits at UPower's charge limit overnight and is released 75 minutes before the leaving time learnt from the person's own unplugging (sealed `charge-pattern`, the time
+  itself in memory only, so a restart charges fully); the keeper outlives a lock, a hold this part made is taken off when it ends, a limit the person set is never touched
+  (`amethystora-charge-limit support` reads sysfs, UPower is the actuator). A new file there keeps `modules/vault.js` as the one way to the Vault from the shell and
+  `amethystora-vault-keep` from a script.
 - The pill's **Later and Mute** (`pill/later.js`, on; `later`, `later-times`): a snoozed notification stays in GNOME's
   list, marked seen, and comes back as GNOME's own; a mute holds an app's banners as quiet does. Everything held is in
   memory, GNOME's Do Not Disturb is never written, and calls, alarms and urgent banners always pass. **What's new**

@@ -3561,6 +3561,42 @@ grep -qF "get('workspaces')?.arriving?.(window)" "${UI_EXTENSION}/modules/motion
 "${NODE[@]}" /ctx/build_files/shared/test-sets.mjs
 "${NODE[@]}" /ctx/build_files/shared/test-flat-battery.mjs
 "${NODE[@]}" /ctx/build_files/shared/test-desk-layouts.mjs
+# Keep (plans/ui-ideas/r7/spec-keep.md): put a workspace away (R7-34), charged by the time you leave (R7-70), start from your backup (R7-55) and back up to
+# your other computer (R7-35). What is private is sealed in the Vault and never written in the clear (the stand-in Vault in test-vault-stand-in.py really
+# encrypts); the data of the first two has no GNOME in it and is checked under node; the backup's tests run the real restic and rclone over loopback
+"${NODE[@]}" /ctx/build_files/shared/test-put-away.mjs
+"${NODE[@]}" /ctx/build_files/shared/test-charge-by.mjs
+HELPER=/usr/libexec/amethystora-charge-limit bash /ctx/build_files/shared/test-charge-limit.sh
+bash /ctx/build_files/shared/test-vault-keep.sh
+bash /ctx/build_files/shared/test-start-from-backup.sh
+bash /ctx/build_files/shared/test-backup-other.sh
+for helper in amethystora-vault-keep amethystora-charge-limit amethystora-backup-pair amethystora-backup-secret amethystora-backup-recovery \
+    amethystora-backup-store amethystora-backup-other amethystora-backup-other-ready amethystora-start-from-backup; do
+    test -x "/usr/libexec/${helper}"
+done
+test -s /usr/lib/amethystora/backup-secrets.sh
+for unit in amethystora-backup-store.service amethystora-backup-other.service amethystora-backup-other.timer; do
+    test -s "/usr/lib/systemd/user/${unit}"
+    # Nothing enables them for every account: ame backup other-computer and ame backup store do, per account
+    [[ -z "$(find /etc/systemd/user /usr/lib/systemd/user -path "*.wants/${unit}" 2>/dev/null)" ]]
+done
+# The store's ports are opened in the home zone only, by a switch that is off: the image's zones do not name the service, and the zone the switch
+# writes is the image's own with that one line added
+test -s /usr/lib/firewalld/services/amethystora-backup-store.xml
+[[ -z "$(grep -l amethystora-backup-store /usr/lib/firewalld/zones/*.xml)" ]]
+diff <(grep -v amethystora-backup-store /usr/share/amethystora/hardening/amethystora-home-backup-store.xml) /usr/lib/firewalld/zones/amethystora-home.xml
+if /usr/libexec/amethystora-hardening is-on backup-store; then echo "the backup store's ports are open by default"; exit 1; fi
+# The shell parts keep to the rules: nothing blocks, the Vault is asked only through its client, and the data keys are the Vault's
+for file in modules/vault.js modules/workspaces/putaway.js modules/workspaces/putawaydata.js modules/power/charge.js modules/power/chargedata.js \
+    modules/pill/putaway.js modules/pill/chargeby.js modules/search/putawayProvider.js; do
+    [[ -z "$(grep -nE '[a-z0-9]_sync\(|file_get_contents|use_markup *= *true|\.communicate|Gio\.Settings|run_dispose' "${UI_EXTENSION}/${file}")" ]]
+done
+grep -qF "from '../vault.js'" "${UI_EXTENSION}/modules/workspaces/putaway.js"
+grep -qF "from '../vault.js'" "${UI_EXTENSION}/modules/power/charge.js"
+# ...and write nothing readable: the put-away list and the charge pattern go to disk only as what the Vault sealed
+[[ -z "$(grep -nE "JSON\.stringify|encode\(" "${UI_EXTENSION}/modules/workspaces/putaway.js" "${UI_EXTENSION}/modules/power/charge.js" | grep -vE "Vault\.seal|encode\(items\)|encode\(keeper\.list\)|TextEncoder")" ]]
+# The recovery key is made by its own helper alone: amethystora-restore stays read-only
+[[ -z "$(grep -lE 'restic[^#]* key (add|remove|passwd)' /usr/libexec/amethystora-restore /usr/libexec/amethystora-restore-setup /usr/libexec/amethystora-start-from-backup)" ]]
 test -s /usr/share/amethystora/themed/shell-motion.css.tpl
 # The droplet's frames are the design board's at twice its size (plans/beyond/spec-motion.md, H1): path.js has no
 # GNOME in it, so node works them out

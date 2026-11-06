@@ -8,7 +8,7 @@
 #   - Glance on a file Files found, the keys turning each part off at once, the overview, ten disables and enables,
 #     and nothing left running once the card is closed.
 # The lab draws without a GPU, where GNOME turns animations off by itself: the motion steps are suite 33's.
-# vmlab-paths: @ui/extension.js @ui/*search* @ui/*fuzzy* @sf/*themed/shell-search* @sf/*just/desktop.just @sf/usr/libexec/amethystora-file-find @sf/usr/share/glib-2.0/schemas/zz1* @ui/modules/search/photos.js @sf/usr/libexec/amethystora-photos
+# vmlab-paths: @ui/extension.js @ui/*search* @ui/*fuzzy* @sf/*themed/shell-search* @sf/*just/desktop.just @sf/usr/libexec/amethystora-file-find @sf/usr/share/glib-2.0/schemas/zz1* @ui/modules/search/photos.js @sf/usr/libexec/amethystora-photos @ui/modules/search/putawayProvider.js
 source "$(dirname "$0")/lib.sh"
 
 UUID=amethystora-ui@arsslensoft.github.io

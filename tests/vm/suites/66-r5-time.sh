@@ -10,7 +10,7 @@
 #   - kitty's notify_on_cmd_finish and `ame desktop command-done`;
 #   - a missing command in bash, zsh and fish, off as shipped;
 #   - ten disables and enables leaving nothing, Control's entries and the setup file.
-# vmlab-paths: @ui/extension.js @ui/*search* @ui/*pill* @sf/usr/libexec/amethystora-meeting-link @sf/usr/libexec/amethystora-missing-command @sf/etc/xdg/kitty/kitty.conf @sf/etc/zsh/zshrc @sf/etc/profile.d/zz-amethystora-missing-command.sh @sf/*fish/vendor_conf.d/amethystora-missing-command.fish @sf/*user-setup.hooks.d/28-kitty-options.sh apps/notes/* build_files/shared/build-missing-command-index.sh @sf/usr/libexec/amethystora-control-list @sf/*just/desktop.just @sf/usr/libexec/amethystora-mirror
+# vmlab-paths: @ui/extension.js @ui/*search* @ui/*pill* @sf/usr/libexec/amethystora-meeting-link @sf/usr/libexec/amethystora-missing-command @sf/etc/xdg/kitty/kitty.conf @sf/etc/zsh/zshrc @sf/etc/profile.d/zz-amethystora-missing-command.sh @sf/*fish/vendor_conf.d/amethystora-missing-command.fish @sf/*user-setup.hooks.d/28-kitty-options.sh apps/notes/* build_files/shared/build-missing-command-index.sh @sf/usr/libexec/amethystora-control-list @sf/*just/desktop.just @sf/usr/libexec/amethystora-mirror @ui/*power*
 source "$(dirname "$0")/lib.sh"
 
 UUID=amethystora-ui@arsslensoft.github.io

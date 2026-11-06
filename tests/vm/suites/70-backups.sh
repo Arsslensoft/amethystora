@@ -8,7 +8,7 @@
 # a stale and a failed backup, the agent, setting up, Security, and opening it on a folder as Files does.
 # `bootc install to-disk` makes no home subvolume, so phase 1 makes one, as the installer would have, and
 # restarts.
-# vmlab-paths: @ui/modules/pill/moving.js apps/backups/* @sf/usr/libexec/amethystora-restore @sf/usr/libexec/amethystora-backup* @sf/usr/libexec/amethystora-home-snapshot @sf/*just/backup.just @sf/usr/share/user-tmpfiles.d/amethystora-restore.conf @sf/usr/libexec/amethystora-changes
+# vmlab-paths: @ui/modules/pill/moving.js apps/backups/* @sf/usr/libexec/amethystora-restore @sf/usr/libexec/amethystora-backup* @sf/usr/libexec/amethystora-home-snapshot @sf/*just/backup.just @sf/usr/share/user-tmpfiles.d/amethystora-restore.conf @sf/usr/libexec/amethystora-changes @sf/usr/libexec/amethystora-start-from-backup @sf/usr/lib/amethystora/backup-secrets.sh @sf/usr/lib/systemd/user/amethystora-backup-* @sf/usr/lib/firewalld/services/amethystora-backup-store.xml
 source "$(dirname "$0")/lib.sh"
 cd /
 

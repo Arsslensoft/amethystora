@@ -794,6 +794,45 @@ the containers again and install what was in them; turn the extensions back on; 
 for the setup saved next from that machine; without one, it offers the newest few. Your files themselves come back in Backups. To
 keep your setup in a file of your own as well, in git, see [Your setup in a file](setup.md).
 
+### Starting from your backup
+
+A stolen laptop should be an afternoon, not a lost month. **The recovery key** makes that true: `ame backup recovery-key`
+adds a second key to your backup's repository (it needs the credentials the backup already runs on), shows it once as five
+groups of five letters and digits to write on paper, and keeps it nowhere: not on this computer, not in your [Vault](vault.md).
+It opens the backup on any computer, with nothing else, so losing the laptop, and the Vault that held the backup's own
+password, costs you nothing. Anyone who has the key and can reach the backup can read it, so keep the paper apart from the computer.
+
+On a new computer, the first look's **Have a backup?** (or `ame backup restore-from`, or **Start from your backup** in
+[Control](control.md)) asks where the backup is: a backup disk it finds when you plug it in, an address, or your other computer
+(below). It asks for the recovery key (typed, held in a private file only until it is finished), says what the newest backup holds
+("Your files, from Tuesday; your setup, with its apps") and lets you choose each step. **Your files** come back with Backups' own
+putting back: what is missing is added, a file that is here and differs is kept beside the old one, and nothing is replaced or
+deleted. **Your apps and setup** is `ame restore-setup`, which asks again before each part, and **your Vault** comes back from the
+sealed backup that was with your files, asking for the Vault's own recovery key. Files come back only for a backup of the same
+home folder (the same account name as before). Nothing is set up to back up from the new computer until you run `ame backup`:
+starting from a backup never changes how this computer backs up.
+
+### Back up to your other computer
+
+Two computers at home can look after each other: no disk to remember, no cloud, no subscription. On the computer that will
+**keep** the backup (the store), turn on **Be another computer's backup store** in Security (`ame security backup-store on`), which opens two
+ports in the zone of the networks you named home and nowhere else, then `ame backup store on` and `ame backup store pair`.
+On the computer to back up, `ame backup other-computer setup NAME` pairs with it: **both screens show six digits, and you say
+whether they are the same**. That is what makes a pairing safe against someone else on the network: a stranger in the middle would
+make the two screens differ, and nothing is kept on either side then. Your Vault must be set up, because the backup's password
+and this computer's key for the store are **sealed in it** under its background key, which works with the vault closed so that a night's
+backup needs no one (the Vault's setup says what that gives up). The command also makes a recovery key, above.
+
+After that each hour that both computers are at home, the other answers, and the last run is more than twenty hours old, the same backup as
+`ame backup` runs there too (`ame backup other-computer now` runs it at once, `status` says where it stands, `off` and `on` turn the
+nightly run off and on, `forget` takes this computer's settings and keys away). If the Vault is closed and has no background key, the night waits and
+a notice says so once a day. The store holds **only encrypted data**, because restic encrypts before it sends; it is `rclone serve restic
+--append-only` over TLS 1.3 and answers only computers it was paired with, each shown to it by a certificate, so no password crosses the network
+and **this computer can add and read its own backups but can never delete from them**: what was backed up before it was taken over is still
+there afterwards. Old snapshots are thinned from the store itself, with credentials the other computer does not hold. `ame backup store clients`
+lists the computers it accepts, and `ame backup store forget FINGERPRINT` stops accepting one. A computer that is paired with a store by
+mistake changes nothing else about backups: the backup in `ame backup` and the Backups window go on as before.
+
 ### Your backup disk
 
 When your backup goes to a USB drive (a repository on a disk, as `ame backup setup` set it up), plugging that disk in

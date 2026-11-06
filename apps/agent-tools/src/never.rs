@@ -41,6 +41,9 @@ const PATHS: &[&str] = &[
     "amethystora-plugin-root", "org.amethystora.plugins",
     // Move to this computer (R7-25) and Bring everything from your old computer (R7-48) copy a person's folders between machines: only the person starts them
     "amethystora-move", "amethystora-bring-over",
+    // The backup to another computer and the recovery key (R7-35, R7-55): the keys, the pairing and the way back from nothing are the person's alone
+    "amethystora-backup-secret", "amethystora-backup-recovery", "amethystora-backup-pair", "amethystora-backup-store", "amethystora-backup-other",
+    "amethystora-start-from-backup", "backup-other/", "backup-store/",
 ];
 
 fn base(path: &str) -> &str {
@@ -279,6 +282,10 @@ fn ame_refusal(args: &[String]) -> Option<String> {
         ["apps", "aur", ..] => Some("turning the AUR on is the user's choice alone".into()),
         // Anyone holding the computer reads it at the login and lock screens: its words are chosen by the person
         ["system", "if-found", ..] => Some("the line on the login and lock screens is the user's own words: the user writes it".into()),
+        // The recovery key opens the whole backup, and the other computer's pairing and the way back onto a new computer are the person's alone
+        ["backup", "recovery-key" | "restore-from" | "other-computer" | "store", ..] => {
+            Some("the backup's recovery key, its other computer and starting from it on a new computer are the user's alone".into())
+        }
         // Every command of the Vault is the person's: it holds what the agent must never see, and each one may prompt for them
         ["vault", ..] => Some("the Vault is the user's alone: the agent neither reads nor changes it".into()),
         // Installing a plugin, giving it more, lifting a block and going back to older code each take an administrator's approval: the agent never
@@ -594,6 +601,13 @@ mod tests {
             "systemctl stop amethystora-vault.socket",
             "pkcheck --action-id org.amethystora.vault.open --process 1",
             "ame vault sync now",
+            "ame backup recovery-key",
+            "ame backup restore-from",
+            "ame backup other-computer setup desk.local",
+            "ame backup store pair",
+            "ame security backup-store on",
+            "/usr/libexec/amethystora-backup-secret password",
+            "amethystora-start-from-backup --repository /mnt/x",
             "ame vault backup",
             "ame vault restore backup.avb",
             "ame vault tls trust browsers on",

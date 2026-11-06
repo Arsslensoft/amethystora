@@ -35,7 +35,7 @@ python3 -I "${HELPER}" support --folder "${LAPTOP}" >/dev/null
 NONE="${ROOT}/none"
 supply "${NONE}" BAT0 Battery
 check "no threshold" "$(jq -r '[.supported, .why] | join(" ")' <<<"$(json "${NONE}")")" "false no-threshold"
-! python3 -I "${HELPER}" support --folder "${NONE}" >/dev/null
+if python3 -I "${HELPER}" support --folder "${NONE}" >/dev/null; then echo "FAIL a firmware without a limit was called limitable"; exit 1; fi
 
 # A limit the kernel shows and will not take a change to
 RO="${ROOT}/readonly"
@@ -78,5 +78,5 @@ python3 -I "${HELPER}" support --json --folder "${LAPTOP}" >/dev/null
 [[ "$(find "${LAPTOP}" -type f -exec sha256sum {} + | sort)" == "${before}" ]]
 
 # Anything else is a usage error
-! python3 -I "${HELPER}" set 80 2>/dev/null
+if python3 -I "${HELPER}" set 80 2>/dev/null; then echo "FAIL the helper took a command that writes"; exit 1; fi
 echo "test-charge-limit: ok"
