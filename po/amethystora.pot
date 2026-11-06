@@ -2903,7 +2903,7 @@ msgid "Classic"
 msgstr ""
 
 #: usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just
-msgid "Windows float and overlap, and you move and size them, as on Windows and macOS"
+msgid "Windows float and overlap, and you move and size them, as on most desktops"
 msgstr ""
 
 #: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/prefs.js
@@ -20874,7 +20874,7 @@ msgid "Tile windows"
 msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/prefs.js
-msgid "Off is the classic layout: windows float and overlap, as on Windows and macOS"
+msgid "Off is the classic layout: windows float and overlap, as on most desktops"
 msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/prefs.js
