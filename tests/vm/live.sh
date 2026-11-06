@@ -17,7 +17,7 @@
 #   live.sh round [REV]             push-diff, then the affected suites: one fix round
 #   live.sh delta REV               for what a push cannot reach: an image FROM the VM's own (DELTA_BASE, default
 #                                   localhost/amethystora-live:DISK) with the working tree's system_files and only the
-#                                   build steps they feed since REV (delta.sh; DELTA_APPS=an apps stage for apps/),
+#                                   build steps they feed since REV (delta.sh; DELTA_APPS=an apps layer for apps/),
 #                                   then the VM switched to it (bootc switch, a soft reboot when it allows one)
 #   live.sh relogin                 the test account's session started again
 #   live.sh suite(s) NAME...        the checkout's suites put in and those run in turn (11, 11-dock); logs and

@@ -22,7 +22,9 @@ if [[ "${1:-}" == install ]]; then
     echo "::endgroup::"
     exit 0
 fi
-[[ "${1:-}" == make && -n "${ASSETS:-}" ]]
+# Without an argument (the lab's delta.sh), the make half into / itself
+[[ "${1:-make}" == make ]]
+ASSETS="${ASSETS:-}"
 
 CLDR_URL="https://raw.githubusercontent.com/unicode-org/cldr/release-47"
 UNICODETOOLS_URL="https://raw.githubusercontent.com/unicode-org/unicodetools/final-17.0-20250910/unicodetools/data"

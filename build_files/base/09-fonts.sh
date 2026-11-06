@@ -72,8 +72,8 @@ FONTS=(
     "victormono/OFL.txt 493589852331b4ea83f1d6b0cbdc157b002ffdb995cf2429acf0c9863bc8f3df"
 )
 
-if [[ "${1:-}" == make ]]; then
-[[ -n "${ASSETS:-}" ]]
+if [[ "${1:-make}" == make ]]; then
+ASSETS="${ASSETS:-}"
 WORK="$(mktemp -d)"
 for entry in "${FONTS[@]}"; do
     path="${entry% *}"
@@ -91,10 +91,12 @@ for entry in "${FONTS[@]}"; do
     fi
 done
 rm -rf "${WORK}"
-echo "::endgroup::"
-exit 0
+# The make half alone in the assets layer; without an argument (the lab's delta.sh) the install half follows
+if [[ "${1:-}" == make ]]; then
+    echo "::endgroup::"
+    exit 0
 fi
-[[ "${1:-}" == install ]]
+fi
 # Every font the layer made is in place
 for entry in "${FONTS[@]}"; do
     path="${entry% *}"
