@@ -17,6 +17,17 @@ assert.equal(clamp.line('<b>bold</b>'), '<b>bold</b>', 'markup stays text');
 assert.equal(clamp.icon('weather-clear-symbolic'), 'weather-clear-symbolic');
 for (const bad of ['/etc/passwd', '../x', '.hidden', 'a/b', 'file:///x', 'x y', '', 'a'.repeat(65), 7]) assert.equal(clamp.icon(bad), '', String(bad));
 
+// The system's own icons are never a plugin's to draw
+for (const bad of ['media-record-symbolic', 'camera-web-symbolic', 'microphone-sensitivity-high-symbolic', 'call-start-symbolic', 'battery-caution-symbolic',
+    'software-update-available-symbolic', 'security-high-symbolic', 'dialog-password-symbolic', 'org.amethystora.Vault', 'amethystora-security',
+    'network-wireless-symbolic', 'system-run-symbolic']) assert.equal(clamp.icon(bad), '', bad);
+assert.equal(clamp.icon('alarm-symbolic'), 'alarm-symbolic');
+// Nor a count on Amethystora's own launchers or Settings
+for (const bad of ['amethystora-security.desktop', 'org.amethystora.Vault.desktop', 'org.gnome.Settings.desktop']) assert.equal(clamp.dockApp(bad), false, bad);
+assert.equal(clamp.dockApp('org.gnome.Nautilus.desktop'), true);
+assert.equal(clamp.script({name: 'a', file: '../x.json'}).file, '');
+assert.equal(clamp.script({name: 'a', file: 'a-1.json'}).file, 'a-1.json');
+
 // An output: a card of at most twenty, numbers inside their range, an action only from the manifest
 const out = clamp.output({
     text: 'T\u0000', icon: '/x', class: 'system', progress: 7, until: 1e15, hidden: 1, private: true,

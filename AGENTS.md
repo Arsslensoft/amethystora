@@ -7,7 +7,7 @@ This document provides essential information for coding agents working with the 
 **Amethystora** is a cloud-native desktop operating system, based on Universal Blue and maintained by Arsslen Idadi (@iarsslen). It is an OS built on Fedora Linux using container technologies with atomic updates.
 
 - **Type**: Container-based Linux distribution build system
-- **Base**: `ghcr.io/ublue-os/silverblue-main` (Fedora with the GNOME desktop and GDM) + Universal Blue infrastructure; GNOME Shell extensions are kept in `system_files/shared/usr/share/gnome-shell/extensions` and set up by `build_files/shared/build-gnome-extensions.sh`: `amethystora-transitions@arsslensoft.github.io` (see The transitions), `amethystora-widgets@arsslensoft.github.io` (see Widgets), `amethystora-logo-menu@arsslensoft.github.io` (see The logo menu), `amethystora-clipboard@arsslensoft.github.io` (a modified copy of Clipboard Indicator, see `NOTICE`) and `amethystora-ui@arsslensoft.github.io` (see Amethystora UI); none is a git submodule any more
+- **Base**: `ghcr.io/ublue-os/silverblue-main` (Fedora with the GNOME desktop and GDM) + Universal Blue infrastructure; GNOME Shell extensions are kept in `system_files/shared/usr/share/gnome-shell/extensions` and set up by `build_files/shared/build-gnome-extensions.sh`: `amethystora-transitions@arsslensoft.github.io` (see The transitions), `amethystora-logo-menu@arsslensoft.github.io` (see The logo menu), `amethystora-clipboard@arsslensoft.github.io` (a modified copy of Clipboard Indicator, see `NOTICE`) and `amethystora-ui@arsslensoft.github.io` (see Amethystora UI); none is a git submodule any more
 - **Languages**: Bash scripts, JSON configuration, Python utilities
 - **Build System**: Just (command runner), Podman/Docker containers, GitHub Actions
 - **Target**: desktop OS with two variants (base + developer experience)
@@ -1782,7 +1782,7 @@ the bar (`bar.js`, status area `amethystora-plugin-ID`, layout id `plugin-ID` in
 (`dock/launcher.js` `setPlugin`, a number in `text` is the count) and the desktop (`deskwidgets.js`). `hidden: true` hides only the pill, the bar and the
 desktop; a tile and a search answer stay. Every card ends with the plugin's name, what it may reach and Pause, drawn by the shell.
 
-**The host** (`apps/plugin-host`) gained: surfaces in the manifest, `author` and `settings` (a secret one is sealed with `vault-client` under purpose
+**The host** (`apps/plugin-host`) gained: surfaces in the manifest, `author` and `settings` (every one is sealed with `vault-client` under purpose
 `plugin-<16 hex of sha256(id)>` and reaches the sandbox on descriptor 10, `secrets.rs`; a closed Vault makes the plugin wait, never pause), drafts
 (`~/.local/share/amethystora/plugin-drafts/ID`: run with nothing granted, with `sample.json` shown when the run finds nothing to reach, `ame plugin draft|keep|
 discard|make|change|fix|new|examples|try|settings|set|open`), the broker (`broker.rs`: a socket per plugin that may ask for anything, `/broker/broker.sock` and

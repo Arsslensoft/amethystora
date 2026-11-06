@@ -35,7 +35,7 @@ ame pill end "Backup"
 `--until` takes a time (seconds since 1970, or `+SECONDS` from now) which the desktop counts down, `--icon` a theme icon's name, and
 `--private` hides it while your screen is shared. The pill is tied to the script that started it, so it goes when the script ends, even if
 the script forgets to end it. It is your own script: nothing about it is sandboxed and nothing is asked, but what it says is drawn only as
-text, a few at once, and a script that updates more than ten times a second has its pill ended.
+text, a few at once, and a script that changes its pill more than four times a second, for a minute, has its pill ended.
 
 ## Made by the agent
 
@@ -74,7 +74,7 @@ nobody's signature stands in for reading it.
 ## Settings and secrets
 
 A plugin may ask you for settings, such as a repository or an access token. `ame plugin settings ID` says which, and `ame plugin set ID NAME`
-asks for the value without showing it. A secret one (a token) is kept in your [Vault](vault.md) and nowhere in the clear, and reaches the
+asks for the value without showing it. Every one, a token or a tracking number, is kept in your [Vault](vault.md) and nowhere in the clear (an account with no Vault keeps only the plain ones in a file, and refuses a secret), and reaches the
 plugin on a pipe, never in a command line or an environment variable.
 
 ## The examples

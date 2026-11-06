@@ -43,7 +43,7 @@ or `amethystora-plugin-root`: they are refused, and they are the person's. A plu
 - `needs` is **what it reaches**, each with a `why` the person reads: `network` (named hosts only, `*.example.org` allowed, never an address), `files` (`~/Documents/x`, read-only
   unless `"mode": "rw"`, no dot-folders), `state` (`{"names": ["clock","disk","media","do-not-disturb"], "why"}`), `control` (`media`, `do-not-disturb`; only after a click), `notify`,
   `open`, `clipboard-write` (both only after a click). Ask for the least. A draft is given none of it until the person keeps it.
-- `settings` are what the person gives it. A token is `"secret": true`: it is kept in the Vault, never in a file or the environment, and arrives on **descriptor 10** as one JSON object:
+- `settings` are what the person gives it. Every setting is kept in the Vault (a token is `"secret": true`, which also refuses it where there is no Vault), never in a file or the environment, and arrives on **descriptor 10** as one JSON object:
   `read -r -u 10 settings; repo=$(jq -r .repo <<<"$settings")`. Never put a secret in a command line (`ps` shows it): give curl a config from `<(printf ...)`.
 
 ## What it prints

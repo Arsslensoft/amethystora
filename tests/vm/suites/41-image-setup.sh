@@ -172,7 +172,7 @@ EOF
             "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.login-screen banner-message-enable) $(GSETTINGS_BACKEND=memory gsettings get org.gnome.login-screen banner-message-text)" \
             "true 'Vmlab only.'"
         extensions="$(fresh gsettings get org.gnome.shell enabled-extensions)"
-        grep -qF widgets <<<"${extensions}" && not_ok "the widgets the image turned off are on" "${extensions}" ||
+        grep -qF amethystora-transitions <<<"${extensions}" && not_ok "the extension the image turned off is on" "${extensions}" ||
             ok "the extension the image turned off is off"
         # The image's own /etc, which a machine's own changes of earlier suites would win over in /etc
         check "the agent's limits are the image's" grep -qx "ALLOW=know" /usr/etc/amethystora/agent.conf

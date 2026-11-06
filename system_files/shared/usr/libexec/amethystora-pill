@@ -80,7 +80,7 @@ write_pill() {
     fi
     if ((have_until)); then
         if [[ "${until}" == +* ]]; then
-            valid_number "${until#+}" || die "$(gettext "Give --until a time in seconds since 1970, or +SECONDS from now.")" 64
+            [[ "${until#+}" =~ ^[0-9]+$ ]] || die "$(gettext "Give --until a time in seconds since 1970, or +SECONDS from now.")" 64
             until=$(($(date +%s) + ${until#+}))
         fi
         [[ "${until}" =~ ^[0-9]+$ ]] || die "$(gettext "Give --until a time in seconds since 1970, or +SECONDS from now.")" 64
@@ -91,10 +91,11 @@ write_pill() {
     mkdir -p -m 0700 "${DIR}"
     local file previous="{}" owner
     file="$(file_of "${name}")"
-    if [[ -f "${file}" ]]; then
+    # A link in the folder is never followed; and a start is a new pill, owned by the script that starts it, whatever was there under that name
+    [[ ! -L "${file}" ]] || rm -f -- "${file}"
+    if [[ "${mode}" == update ]]; then
+        [[ -f "${file}" ]] || die "$(gettext "There is no such pill. Start it with: ame pill start NAME")" 1
         previous="$(cat -- "${file}" 2>/dev/null || echo '{}')"
-    elif [[ "${mode}" == update ]]; then
-        die "$(gettext "There is no such pill. Start it with: ame pill start NAME")" 1
     fi
     owner="${pid:-$(jq -r '.owner // empty' <<<"${previous}" 2>/dev/null || true)}"
     [[ -n "${owner}" ]] || owner="$(owner_pid)"
@@ -124,6 +125,12 @@ end_pill() {
     rm -f -- "$(file_of "$1")"
 }
 
+# By the file's own name, which is what the desktop knows a pill by (its name there is cut and cleaned): the card's Stop showing
+end_file() {
+    [[ "$1" =~ ^[a-z0-9][a-z0-9-]{0,60}\.json$ ]] || usage
+    rm -f -- "${DIR}/$1"
+}
+
 # The waiter's end: only the script's own pill, not one a later script made under the same name
 reap_pill() {
     local file owner
@@ -137,6 +144,7 @@ reap_pill() {
 case "${1:-}" in
     start | update) (($# >= 2)) || usage; mode="$1"; shift; write_pill "${mode}" "$@" ;;
     end) (($# == 2)) || usage; end_pill "$2" ;;
+    end-file) (($# == 2)) || usage; end_file "$2" ;;
     reap) (($# == 3)) || usage; reap_pill "$2" "$3" ;;
     *) usage ;;
 esac

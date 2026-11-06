@@ -1697,6 +1697,8 @@ search_item old-words "${ gettext "Words you already know"; }" \
     "${ gettext "Everyday words such as “recycle bin” or “task manager” lead to the thing that does that here."; }"
 search_item remembered "${ gettext "Files by what you remember"; }" \
     "${ gettext "“pdf from last week” or “big videos” finds files by their kind, date and size, from GNOME's own file index."; }"
+search_item plugins "${ gettext "Plugins"; }" \
+    "${ gettext "What each plugin that asks for search last printed, when you type its prefix. What you type never goes to a plugin."; }"
 # Offered and off (plans/ui-ideas/spec-later.md): bookmarks, Notes while unlocked, and files by meaning
 search_item bookmarks "${ gettext "Bookmarks"; }" \
     "${ gettext "Firefox's bookmarks, never its history, read from a copy of its bookmarks file. Firefox is left as it is."; }"
@@ -1803,7 +1805,7 @@ plugin_rows() {
                     [(if .enabled then {id: "off", title: $a_pause, terminal: false, command: ["ame", "plugin", "off", .id]}
                       else {id: "on", title: $a_resume, terminal: false, command: ["ame", "plugin", "on", .id]} end)]
                     + (if $agentic then [{id: "fix", title: $a_fix, terminal: true, command: ["ame", "plugin", "fix", .id]}] else [] end)
-                    + [{id: "remove", title: $a_remove, terminal: false, command: ["ame", "plugin", "remove", .id]}]
+                    + [{id: "remove", title: $a_remove, terminal: true, command: ["ame", "plugin", "remove", .id]}]
                 end)
         }] as $rows | {rows: $rows, count: ($rows | length)}' <<<"${PLUGINS_LIST}" 2>/dev/null
 }

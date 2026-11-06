@@ -96,6 +96,12 @@ pub fn refusal(argv: &[String]) -> Option<String> {
     if argv.iter().position(|a| base(a) == "amethystora-plugins").is_some_and(|at| matches!(argv.get(at + 1).map(String::as_str), Some("grant" | "unblock" | "add" | "update" | "rollback" | "dev" | "keep" | "open"))) {
         return Some("installing a plugin and widening what it may do are the user's, with an administrator's approval".into());
     }
+    // The widgets' old name does the same: adding one of the image's plugins takes no administrator, so it is only ever the person's click
+    if (program == "amethystora-widgets" && argv.get(1).map(String::as_str) == Some("add"))
+        || argv.iter().position(|a| base(a) == "amethystora-plugins").is_some_and(|at| argv.get(at + 1).map(String::as_str) == Some("draft") && argv[at + 2..].iter().any(|a| a == "--by"))
+    {
+        return Some("adding a plugin is the user's, and the agent's drafts carry the agent's own mark: it does not choose it".into());
+    }
     if program == "amethystora-if-found" && argv.get(1).map(String::as_str) != Some("status") {
         return Some("the line on the login and lock screens is the user's own words: the user writes it".into());
     }
@@ -250,9 +256,11 @@ fn ame_refusal(args: &[String]) -> Option<String> {
         ["vault", ..] => Some("the Vault is the user's alone: the agent neither reads nor changes it".into()),
         // Installing a plugin, giving it more, lifting a block and going back to older code each take an administrator's approval: the agent never
         // asks for one, however it is spelled (taking away, blocking and switching off stay open to it)
-        ["plugin", "grant" | "unblock" | "add" | "update" | "rollback" | "dev" | "keep" | "open", ..] => {
+        ["plugin", "grant" | "unblock" | "add" | "update" | "rollback" | "dev" | "keep" | "open", ..] | ["desktop", "widgets", "add", ..] => {
             Some("installing a plugin and widening what it may do are the user's, with an administrator's approval".into())
         }
+        // A draft is marked as the agent's by the command itself: choosing the mark (--by) would let it pass for the person's
+        ["plugin", "draft", rest @ ..] if rest.iter().any(|a| a == "--by") => Some("the agent's drafts carry the agent's own mark: it does not choose it".into()),
         // External screens' brightness gives the person at the machine the displays' i2c buses, which reach other chips
         // of the graphics card too: an access grant only the machine's owner makes (taking it back is fine)
         ["desktop", "phone", "codes"] | ["desktop", "phone", "codes", "on", ..] => {
@@ -496,6 +504,11 @@ mod tests {
             "ame plugin update dev.example.x",
             "ame plugin rollback dev.example.x",
             "ame plugin keep dev.example.x",
+            "amethystora-widgets add clock",
+            "/usr/bin/amethystora-widgets add clock desktop",
+            "ame desktop widgets add clock bar",
+            "ame plugin draft dev.example.x --by me",
+            "amethystora-plugins draft dev.example.x --by me",
             "amethystora-plugins keep dev.example.x",
             "ame plugin open /tmp/site.amethystora-pill",
             "ame -q plugin::dev dev.example.x",
@@ -573,6 +586,8 @@ mod tests {
             "ame plugin list",
             "ame plugin show dev.example.x",
             "ame plugin draft dev.example.x",
+            "amethystora-widgets list",
+            "amethystora-widgets new mine hello",
             "ame plugin discard dev.example.x",
             "ame pill start Backup --progress 0.1",
             "ame plugin check /tmp/p",

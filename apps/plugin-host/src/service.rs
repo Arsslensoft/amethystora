@@ -37,7 +37,8 @@ const MEMORY: u32 = 2;
 const UPDATES: usize = 30;
 
 enum Msg {
-    Ran(String, Result<Value, String>),
+    /// A run ended: the plugin, what it printed or why not, and the action it was run for (a person's click), if any
+    Ran(String, Result<Value, String>, Option<String>),
     Over(String, String),
     /// A plugin asked the shell to open an address or copy a text, after a click: (id, kind, text)
     Asked(String, String, String),
@@ -53,6 +54,8 @@ struct State {
     failures: RefCell<HashMap<String, (String, u32)>>,
     /// When each plugin's results arrived in the last minute
     recent: RefCell<HashMap<String, std::collections::VecDeque<std::time::Instant>>>,
+    /// A click that found the plugin's run still going: the latest, for each plugin
+    queued: RefCell<HashMap<String, String>>,
     /// The plugins started, each with its interval's timer: a plugin turned off and on again before its timer ticked would
     /// otherwise have two, and every second run would fail as one too soon
     scheduled: RefCell<HashMap<String, Option<glib::SourceId>>>,
@@ -104,7 +107,7 @@ impl State {
         let (runner, id, tx) = (self.runner.clone(), id.to_string(), self.tx.lock().unwrap().clone());
         std::thread::spawn(move || {
             let result = runner.run(&id, action.as_deref());
-            let _ = tx.unbounded_send(Msg::Ran(id, result));
+            let _ = tx.unbounded_send(Msg::Ran(id, result, action));
         });
     }
 
@@ -174,6 +177,7 @@ impl State {
             self.paused.borrow_mut().remove(&id);
             self.failures.borrow_mut().remove(&id);
             self.recent.borrow_mut().remove(&id);
+            self.queued.borrow_mut().remove(&id);
         }
         if on.is_empty() {
             self.main_loop.quit();
@@ -182,9 +186,19 @@ impl State {
 
     fn handle(self: &Rc<Self>, msg: Msg) {
         match msg {
-            Msg::Ran(id, result) => {
+            Msg::Ran(id, result, action) => {
                 if !self.plugins.borrow().contains_key(&id) {
                     return;
+                }
+                // A click that came while a run was going waits for it (one at a time, the latest), and goes when that run is over
+                if result.as_ref().is_err_and(|why| why.starts_with("it is still running")) {
+                    if let Some(a) = action {
+                        self.queued.borrow_mut().insert(id.clone(), a);
+                    }
+                    return;
+                }
+                if let Some(a) = self.queued.borrow_mut().remove(&id) {
+                    self.run(&id, Some(a));
                 }
                 // A run that was refused for coming too soon changed nothing: it is neither an error nor a result
                 if result.as_ref().is_err_and(|why| classify(why) == "gap") {
@@ -335,6 +349,7 @@ pub fn serve(env: Env) -> ExitCode {
         paused: RefCell::default(),
         failures: RefCell::default(),
         recent: RefCell::default(),
+        queued: RefCell::default(),
         scheduled: RefCell::default(),
         clients: RefCell::default(),
         callers: RefCell::default(),

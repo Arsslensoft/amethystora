@@ -46,14 +46,16 @@ export class ExtraMark {
         return until ? Math.max(0, until - Date.now() / 1000) : null;
     }
 
+    // The plugin's name always comes first, beside its words: whatever it prints, it is drawn as its own and never as the system's. The bubble has room
+    // for the name alone
     _words(brief = false) {
         const top = this._top;
-        if (this._ui.hidden(top))
-            return _('Private');
-        const left = this._countdown();
-        const base = top.output?.text || (brief ? '' : top.name);
-        const words = left === null ? base : [base, clock(left)].filter(Boolean).join(' · ');
-        return top.kind === 'draft' && !brief ? `${_('Draft')} · ${words}` : words;
+        const hidden = this._ui.hidden(top);
+        const base = hidden ? _('Private') : (top.output?.text ?? '');
+        const left = hidden ? null : this._countdown();
+        const body = left === null ? base : [base, clock(left)].filter(Boolean).join(' · ');
+        const name = top.kind === 'draft' ? `${_('Draft')} ${top.name}` : top.name;
+        return brief ? name : [name, body].filter(Boolean).join(' · ');
     }
 
     get text() {
@@ -149,6 +151,8 @@ export class ExtraMark {
             buttons.push(cardButton(_('Keep'), () => this._then(api, () => this._ui.keep(top)), {primary: true}));
         } else if (top.kind === 'script') {
             buttons.push(cardButton(_('Stop showing'), () => this._then(api, () => this._ui.stopScript(top))));
+        } else if (top.plugin?.paused) {
+            buttons.push(cardButton(_('Resume'), () => this._then(api, () => this._ui.resume(top)), {primary: true}));
         } else {
             buttons.push(cardButton(_('Pause'), () => this._then(api, () => this._ui.pause(top))));
         }

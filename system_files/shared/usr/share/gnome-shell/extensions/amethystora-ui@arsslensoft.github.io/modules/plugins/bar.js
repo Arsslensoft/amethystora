@@ -61,22 +61,26 @@ class AmethystoraPluginButton extends PanelMenu.Button {
         // A plugin that failed or paused with nothing to show is a warning sign with a menu that says why and can resume it
         const failed = !shown && (plugin.paused || plugin.error !== '');
         const out = shown ?? EMPTY;
-        this.visible = failed || (Boolean(shown) && !shown.hidden && !this._ui.hidden({output: shown}));
+        this.visible = failed || (Boolean(shown) && !shown.hidden);
         if (!shown && !failed)
             return;
-        const symbol = failed ? 'dialog-warning-symbolic' : out.icon;
+        const hidden = !failed && this._ui.hidden({output: out});
+        const symbol = failed ? 'dialog-warning-symbolic' : hidden ? '' : out.icon;
         this._icon.visible = symbol !== '';
         if (symbol)
             this._icon.gicon = new Gio.ThemedIcon({name: symbol});
-        const words = plugin.draft && !failed ? `${_('Draft')} ${out.text}`.trim() : out.text;
+        // Its name beside its words: whatever it prints is drawn as its own
+        const words = failed ? '' : [plugin.draft ? `${_('Draft')} ${plugin.name}` : plugin.name, hidden ? _('Private') : out.text].filter(Boolean).join(' · ');
         this._label.visible = words !== '';
         this._label.text = words;
         const colour = this._ui.palette[plugin.paused || failed ? 'color3' : CLASS_COLORS[out.class]];
         this._box.style = colour ? `color: ${colour};` : null;
-        const key = JSON.stringify([out.menu, out.card, plugin.paused, plugin.reason, plugin.error, plugin.granted, plugin.waiting]);
+        // While the screen is shared a private plugin's menu and card say nothing
+        const drawn = hidden ? EMPTY : out;
+        const key = JSON.stringify([drawn.menu, drawn.card, plugin.paused, plugin.reason, plugin.error, plugin.granted, plugin.waiting]);
         if (key !== this._key) {
             this._key = key;
-            this._fill(out);
+            this._fill(drawn);
         }
     }
 
@@ -119,10 +123,11 @@ class AmethystoraPluginButton extends PanelMenu.Button {
     }
 
     // A plugin with a "click" and an empty menu runs it, instead of opening a menu with only what the shell says
+    // A secondary press always opens the menu, which holds the shell's own lines (its name, what it may reach, Pause)
     vfunc_event(event) {
         const type = event.type();
         const out = this.plugin.output;
-        if (out?.click && out.menu.length === 0 && out.card.length === 0 &&
+        if (out?.click && out.menu.length === 0 && out.card.length === 0 && event.get_button?.() !== 3 &&
             (type === Clutter.EventType.BUTTON_PRESS || type === Clutter.EventType.TOUCH_BEGIN)) {
             this._ui.act({key: this.plugin.id}, out.click);
             return Clutter.EVENT_STOP;

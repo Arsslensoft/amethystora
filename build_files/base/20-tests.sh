@@ -96,6 +96,8 @@ grep -rq "org.mozilla.firefox" /usr/share/flatpak/preinstall.d && false
 # once (user-setup.hooks.d/19-deja-dup.sh), in its own language (po/)
 grep -rq "org.gnome.DejaDup" /usr/share/flatpak/preinstall.d && false
 test -x /usr/libexec/amethystora-deja-dup-notice
+test -x /usr/libexec/amethystora-widgets-moved-notice
+test -x /usr/share/amethystora/user-setup.hooks.d/30-widgets-moved.sh
 # Mozilla lets Firefox be redistributed only unaltered, so the image adds no policy to it, and with
 # no policy no extension
 test ! -e /etc/firefox/policies/policies.json
@@ -602,7 +604,7 @@ rm -rf "${UI_RENDER}"
 # The search box is on Super+Space alone, which GNOME's input-source switch must not take (zz0 moves it to
 # Shift+Super+Space): on a base without that line the box never opened
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys org.gnome.shell.extensions.amethystora-ui.search | sort | paste -sd ' ')" == \
-    "agent answers bookmarks clipboard glance manual meaning notes old-words open remembered reminders settings timers times windows" ]]
+    "agent answers bookmarks clipboard glance manual meaning notes old-words open plugins remembered reminders settings timers times windows" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.search open)" == "['<Super>space']" ]]
 # Search that answers (plans/beyond/spec-search.md): each part on, the emoji picker on Super+. in the yellow tone
 for key in answers times reminders timers settings manual windows clipboard agent glance old-words remembered; do

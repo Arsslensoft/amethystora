@@ -30,6 +30,7 @@ const THEME_DIR = GLib.build_filenamev([GLib.get_user_config_dir(), 'amethystora
 const PLUGINS = '/usr/libexec/amethystora-plugins';
 const PILL = '/usr/libexec/amethystora-pill';
 const IN_TERMINAL = '/usr/libexec/amethystora-in-terminal';
+const EMPTY_OUTPUT = {text: '', icon: '', class: '', click: null, hidden: false, private: false, progress: null, until: null, menu: [], card: [], lines: []};
 
 function spawn(argv) {
     try {
@@ -81,13 +82,14 @@ export class Plugins {
         this._extra = null;
         this._ui = {
             hidden: item => this._hidden(item),
+            hiddenOutput: output => this.hiddenOutput(output),
             act: (item, action) => this._act(item, action),
             pause: item => this._host?.pause(item.key),
             resume: item => this._host?.resume(item.key),
             keep: item => spawn([IN_TERMINAL, PLUGINS, 'keep', item.key]),
             change: item => spawn([PLUGINS, 'change', item.key]),
             discard: item => spawn([PLUGINS, 'discard', item.key]),
-            stopScript: item => spawn([PILL, 'end', item.key]),
+            stopScript: item => item.file && spawn([PILL, 'end-file', item.file]),
             changed: () => this._pill?.extraChanged?.(),
             pausedWords: p => this._pausedWords(p),
         };
@@ -186,7 +188,8 @@ export class Plugins {
         if (!plugin)
             return;
         if (kind === 'open') {
-            const address = shownAddress(text);
+            // The host only passes a web address; the shell, which opens it, checks again
+            const address = /^https?:\/\//.test(text) ? shownAddress(text) : null;
             if (!address)
                 return;
             this._said(_('%s opened %s').format(plugin.name, address));
@@ -229,7 +232,12 @@ export class Plugins {
     }
 
     _hidden(item) {
-        return Boolean(item.output?.private) && Boolean(this._pill?.capture?.active);
+        return this.hiddenOutput(item.output);
+    }
+
+    // Whether an output's words are private and the screen is being shared, so that no surface shows them
+    hiddenOutput(output) {
+        return Boolean(output?.private) && Boolean(this._pill?.capture?.active);
     }
 
     _act(item, action) {
@@ -240,6 +248,8 @@ export class Plugins {
         if (!this._plugins)
             return;
         const plugins = [...this._plugins.values()];
+        // Private words hide on every surface while the screen is shared, so the capture is watched while any of them is private
+        this._watchCapture(plugins.some(p => this._output(p)?.private) || (this._scripts?.pills ?? []).some(s => s.private));
         this._renderPill(plugins);
         this._renderBars(plugins.filter(p => p.places.bar));
         this._renderTiles(plugins.filter(p => p.places.tile));
@@ -252,20 +262,28 @@ export class Plugins {
         const items = [];
         for (const p of plugins) {
             const output = this._output(p);
-            if (!p.places.pill || !output || output.hidden || p.paused)
+            if (!p.places.pill)
+                continue;
+            // One that paused itself stays in the pill, saying so, with Resume in its card: it is not silently gone. One a person paused does not
+            const stopped = (p.paused && p.reason !== 'person') || p.waiting !== '';
+            if (stopped) {
+                items.push({key: p.id, kind: 'plugin', name: p.name, plugin: p, at: this._order.get(p.id) ?? 0,
+                    output: {...EMPTY_OUTPUT, text: this._pausedWords(p), icon: 'media-playback-pause-symbolic', class: 'warning'}});
+                continue;
+            }
+            if (!output || output.hidden || p.paused)
                 continue;
             items.push({key: p.id, kind: p.draft ? 'draft' : 'plugin', name: p.name, output, plugin: p, at: this._order.get(p.id) ?? 0});
         }
         for (const s of this._scripts?.pills ?? []) {
             const at = this._scriptAt(s);
             items.push({
-                key: s.name, kind: 'script', name: s.name, at,
+                key: s.name, file: s.file, kind: 'script', name: s.name, at,
                 output: {text: s.text, icon: s.icon, class: '', click: null, hidden: false, private: s.private, progress: s.progress, until: s.until, menu: [], card: []},
                 plugin: null,
             });
         }
         items.sort((a, b) => b.at - a.at);
-        this._watchCapture(items.some(i => i.output.private));
         if (items.length === 0) {
             this._setExtra(null);
             return;
@@ -317,8 +335,12 @@ export class Plugins {
                 this._bars.delete(id);
             }
         }
-        if (plugins.length && !this._themeMonitor)
+        if (plugins.length && !this._themeMonitor) {
             this._watchTheme();
+        } else if (!plugins.length && this._themeMonitor) {
+            this._themeMonitor.cancel();
+            this._themeMonitor = null;
+        }
         let added = false;
         for (const plugin of plugins) {
             const bar = this._bars.get(plugin.id);
@@ -392,7 +414,8 @@ export class Plugins {
             });
         };
         try {
-            this._themeMonitor = Gio.File.new_for_path(THEME_DIR).monitor_directory(Gio.FileMonitorFlags.NONE, null);
+            // The palette is current/theme/colors.toml: the folder it is in, and the one that is swapped
+            this._themeMonitor = Gio.File.new_for_path(GLib.build_filenamev([THEME_DIR, 'theme'])).monitor_directory(Gio.FileMonitorFlags.NONE, null);
             this._themeMonitor.connect('changed', () => read());
         } catch {}
         read();
@@ -417,6 +440,18 @@ export class Plugins {
 
     act(id, action) {
         this._host?.action(id, action);
+    }
+
+    resume(id) {
+        this._host?.resume(id);
+    }
+
+    pause(id) {
+        this._host?.pause(id);
+    }
+
+    hidden(output) {
+        return this.hiddenOutput(output);
     }
 
     pausedWords(plugin) {
@@ -455,7 +490,7 @@ export class Plugins {
     _answer(plugin, output) {
         const action = output.click ?? output.card.find(e => e.action)?.action ?? null;
         return {
-            id: plugin.id, name: plugin.name, text: output.text, icon: output.icon, draft: plugin.draft, action,
+            id: plugin.id, name: plugin.name, text: this.hiddenOutput(output) ? '' : output.text, icon: output.icon, draft: plugin.draft, action,
             run: action ? () => this.act(plugin.id, action) : null,
         };
     }

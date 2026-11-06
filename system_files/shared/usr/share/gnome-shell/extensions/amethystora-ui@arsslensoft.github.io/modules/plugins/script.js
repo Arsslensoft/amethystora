@@ -115,45 +115,65 @@ export class Scripts {
             });
     }
 
+    // Opened once, without following a link and without waiting for a writer (a FIFO put there reads as empty), and read through that one
+    // descriptor, at most MOST_BYTES + 1: what was checked when the folder was listed is not what is trusted, only what is opened here
     _read(name, cancellable, serial, done) {
-        this._folder.get_child(name).load_contents_async(cancellable, (file, result) => {
+        const path = GLib.build_filenamev([pillFolder(), name]);
+        // O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC
+        const fd = GLib.open(path, 0o400000 | 0o4000 | 0o2000000, 0);
+        if (fd < 0) {
+            this._finish(name, null, null, serial, done);
+            return;
+        }
+        const stream = Gio.UnixInputStream.new(fd, true);
+        stream.read_bytes_async(MOST_BYTES + 1, GLib.PRIORITY_DEFAULT, cancellable, (s, result) => {
             let pill = null;
             try {
-                const [, bytes] = file.load_contents_finish(result);
-                pill = script(JSON.parse(new TextDecoder().decode(bytes)));
+                const bytes = s.read_bytes_finish(result);
+                if (bytes.get_size() <= MOST_BYTES)
+                    pill = script({...JSON.parse(new TextDecoder().decode(bytes.toArray())), file: name});
             } catch {}
-            if (serial !== this._serial)
-                return;
-            const now = Date.now() / 1000;
-            if (!pill || (pill.started && now - pill.started > MOST_AGE)) {
-                this._remove(name, file);
-                done(this._pills.delete(name));
-                return;
-            }
-            const before = JSON.stringify(this._pills.get(name) ?? null);
-            if (before === JSON.stringify(pill)) {
-                done(false);
-                return;
-            }
-            // A flood: more than a person could read, so it is not a pill any more. Only a change counts: every file is read at each event
-            const seen = this._updates.get(name) ?? [];
-            seen.push(now);
-            while (seen.length && now - seen[0] > 60)
-                seen.shift();
-            this._updates.set(name, seen);
-            if (seen.length > MAX_SCRIPT_UPDATES) {
-                this._remove(name, file);
-                this._told?.(pill.name);
-                done(this._pills.delete(name));
-                return;
-            }
-            if (!this._pills.has(name) && this._pills.size >= MAX_SCRIPTS) {
-                done(false);
-                return;
-            }
-            this._pills.set(name, pill);
-            done(true);
+            try {
+                s.close(null);
+            } catch {}
+            this._finish(name, pill, path, serial, done);
         });
+    }
+
+    _finish(name, pill, path, serial, done) {
+        if (serial !== this._serial)
+            return;
+        const file = Gio.File.new_for_path(path ?? GLib.build_filenamev([pillFolder(), name]));
+        const now = Date.now() / 1000;
+        if (!pill || (pill.started && now - pill.started > MOST_AGE)) {
+            this._remove(name, file);
+            done(this._pills.delete(name));
+            return;
+        }
+        const before = JSON.stringify(this._pills.get(name) ?? null);
+        if (before === JSON.stringify(pill)) {
+            done(false);
+            return;
+        }
+        // A flood: more than a person could read, so it is not a pill any more. The folder is read at most about eight times a second, so the limit
+        // is a count of changes well under that. Only a change counts: every file is read at each event
+        const seen = this._updates.get(name) ?? [];
+        seen.push(now);
+        while (seen.length && now - seen[0] > 60)
+            seen.shift();
+        this._updates.set(name, seen);
+        if (seen.length > MAX_SCRIPT_UPDATES) {
+            this._remove(name, file);
+            this._told?.(pill.name);
+            done(this._pills.delete(name));
+            return;
+        }
+        if (!this._pills.has(name) && this._pills.size >= MAX_SCRIPTS) {
+            done(false);
+            return;
+        }
+        this._pills.set(name, pill);
+        done(true);
     }
 
     _remove(name, file) {

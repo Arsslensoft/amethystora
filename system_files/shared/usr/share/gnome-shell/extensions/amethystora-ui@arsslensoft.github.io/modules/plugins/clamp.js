@@ -30,8 +30,20 @@ export function lines(value, max = 6, each = 80) {
     return value.split('\n').map(l => line(l, each)).filter(l => l !== '').slice(0, max);
 }
 
+// Icons that say something only the system says: a recording, a camera or microphone in use, a call, the battery, an update, security, a
+// password, the network, and Amethystora's own apps. A plugin never draws them (the host refuses them too)
+const SYSTEM_ICONS = ['amethystora', 'org.amethystora.', 'media-record', 'camera-', 'microphone-', 'call-', 'battery-', 'security-', 'dialog-password',
+    'system-', 'software-update', 'network-', 'audio-input', 'screen-shared', 'screen-recording'];
+
 export function icon(value) {
-    return typeof value === 'string' && ICON.test(value) && !value.endsWith('.') ? value : '';
+    return typeof value === 'string' && ICON.test(value) && !value.endsWith('.') && !SYSTEM_ICONS.some(p => value.startsWith(p)) ? value : '';
+}
+
+// A launcher a plugin may put a count on: never one of Amethystora's own apps (Security, Updates, the Vault...) or Settings, whose badge would pass
+// for the system's
+export function dockApp(value) {
+    return typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,120}\.desktop$/.test(value) && !value.startsWith('amethystora-') &&
+        !value.startsWith('org.amethystora.') && value !== 'org.gnome.Settings.desktop';
 }
 
 export function number(value, low, high, fallback = null) {
@@ -120,7 +132,7 @@ export function plugin(raw) {
             places.search = {prefix: typeof o.prefix === 'string' && /^[a-z0-9:_-]{0,16}$/.test(o.prefix) ? o.prefix : ''};
             break;
         case 'dock':
-            if (typeof o.app === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,120}\.desktop$/.test(o.app))
+            if (dockApp(o.app))
                 places.dock = {app: o.app};
             break;
         }
@@ -170,6 +182,8 @@ export function script(raw) {
         until: Number.isSafeInteger(raw.until) && raw.until > 0 && raw.until < 2 ** 40 ? raw.until : null,
         icon: icon(raw.icon),
         owner: Number.isSafeInteger(raw.owner) && raw.owner > 1 ? raw.owner : 0,
+        // The file it came from, which the card's Stop showing names (the name here is cut and cleaned)
+        file: typeof raw.file === 'string' && /^[a-z0-9][a-z0-9-]{0,60}\.json$/.test(raw.file) ? raw.file : '',
         started: number(raw.started, 0, 2 ** 40, 0),
         private: raw.private === true,
     };
@@ -177,4 +191,4 @@ export function script(raw) {
 
 // The most script pills at once, and the most updates a script may send in a minute before its pill is ended
 export const MAX_SCRIPTS = 8;
-export const MAX_SCRIPT_UPDATES = 600;
+export const MAX_SCRIPT_UPDATES = 240;

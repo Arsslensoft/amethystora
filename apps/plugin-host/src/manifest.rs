@@ -175,6 +175,10 @@ fn surface_options(surface: &str, m: &Map<String, Value>) -> Result<Value, Strin
             if !app.ends_with(".desktop") || !app.bytes().all(|b| b.is_ascii_alphanumeric() || b"._-".contains(&b)) || app.starts_with('.') {
                 return Err("\"dock.app\" has to be an app's launcher, such as org.gnome.Nautilus.desktop".into());
             }
+            // A count on Amethystora's own apps (Security, Updates, the Vault) or on Settings would pass for the system's
+            if app.starts_with("amethystora-") || app.starts_with("org.amethystora.") || app == "org.gnome.Settings.desktop" {
+                return Err("\"dock.app\" cannot be one of Amethystora's own apps or Settings: a badge there would pass for the system's".into());
+            }
             out.insert("app".into(), app.into());
         }
         _ => only(m, &[], &what)?,
@@ -504,6 +508,9 @@ mod tests {
             ("dock", serde_json::json!({})),
             ("dock", serde_json::json!({"app": "../x.desktop"})),
             ("dock", serde_json::json!({"app": "x"})),
+            ("dock", serde_json::json!({"app": "amethystora-security.desktop"})),
+            ("dock", serde_json::json!({"app": "org.amethystora.Vault.desktop"})),
+            ("dock", serde_json::json!({"app": "org.gnome.Settings.desktop"})),
             ("search", serde_json::json!({"prefix": "A B"})),
             ("bar", serde_json::json!({"position": "under"})),
             ("pill", serde_json::json!({"plate": "link"})),

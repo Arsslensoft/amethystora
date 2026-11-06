@@ -204,7 +204,9 @@ impl Broker {
                 }
                 // Under the plugin's name, never the system's
                 let name = self.name_of();
-                let _ = Command::new("notify-send").args(["--app-name", &name, "--", &format!("{name}: {title}"), &body]).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).status();
+                // GNOME draws a notice's body as markup: what a plugin wrote is text, so its angle brackets and ampersands are escaped
+                let esc = |t: &str| t.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;");
+                let _ = Command::new("notify-send").args(["--app-name", &name, "--", &esc(&format!("{name}: {title}")), &esc(&body)]).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).status();
                 Ok(Value::Null)
             }
             "open" | "clipboard" => {
@@ -212,8 +214,9 @@ impl Broker {
                 if !has(perm) {
                     return Err(format!("it was not allowed to {perm}"));
                 }
-                if !self.clicked.load(Ordering::Relaxed) {
-                    return Err("this is only done after a click on the plugin's own element".into());
+                // One click is one open or one copy: the flag is spent by the first, so a loop cannot open tabs or rewrite the clipboard
+                if !self.clicked.swap(false, Ordering::Relaxed) {
+                    return Err("this is only done after a click on the plugin's own element, once for each click".into());
                 }
                 let value = text(key, if kind == "open" { 500 } else { 2000 });
                 if kind == "open" && !(value.starts_with("https://") || value.starts_with("http://")) {
@@ -354,8 +357,12 @@ mod tests {
         assert!(seen.lock().unwrap().is_empty());
         b.clicked.store(true, Ordering::Relaxed);
         assert_eq!(b.handle(&json!({"op": "open", "url": "https://example.org/a"}))["ok"], true);
+        // One click, one open: the second asks again
+        assert_eq!(b.handle(&json!({"op": "open", "url": "https://example.org/a"}))["ok"], false);
+        b.clicked.store(true, Ordering::Relaxed);
         assert_eq!(b.handle(&json!({"op": "open", "url": "file:///etc/shadow"}))["ok"], false);
         assert_eq!(b.handle(&json!({"op": "open", "url": "javascript:1"}))["ok"], false);
+        b.clicked.store(true, Ordering::Relaxed);
         assert_eq!(b.handle(&json!({"op": "clipboard", "text": "a\u{202e}b"}))["ok"], true);
         assert_eq!(*seen.lock().unwrap(), [("open".to_string(), "https://example.org/a".to_string()), ("clipboard".to_string(), "ab".to_string())]);
         std::fs::remove_dir_all(dir).unwrap();

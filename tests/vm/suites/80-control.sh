@@ -7,7 +7,7 @@
 # phases, in seven starts:
 #   1. The list: its speed, its commands, what it reads without root (the boot menu, sched_ext); the hotkey
 #      against every other key of GNOME and its extensions; custom29 in the setup file; every direct card
-#      (theme, wallpaper, transition and its length, layout, the clipboard history, the trash, widgets, greeting, terminal tools, phone pairing,
+#      (theme, wallpaper, transition and its length, layout, the clipboard history, the trash, plugins, greeting, terminal tools, phone pairing,
 #      the agent and which one, the AUR off, web apps removed, also by names with spaces and a leading dash, the
 #      setup file saved).
 #   2. The window, opened with its hotkey: a switch clicked, a terminal opened and closed, the list read again
@@ -365,16 +365,16 @@ EOF
     set_direct agent on
     set_direct aur off "[[ ! -e ${CONFIG}/aur ]]"
 
-    # Widgets: one made from an example, turned off and on, and moved to the trash, by the list's commands
-    widget() { jq -c --arg id vmlab-clock '.widgets[] | select(.id == $id)' <<<"$(item widgets)"; }
-    mapfile -t argv < <(named_argv widgets new vmlab-clock hello)
-    run_argv "a widget made from the hello example: ${argv[*]}" "widget | jq -e .on" -- "${argv[@]}"
-    mapfile -t argv < <(named_argv widgets off vmlab-clock)
-    run_argv "and turned off: ${argv[*]}" "widget | jq -e '.on | not'" -- "${argv[@]}"
-    mapfile -t argv < <(named_argv widgets on vmlab-clock)
-    run_argv "and on again: ${argv[*]}" "widget | jq -e .on" -- "${argv[@]}"
-    mapfile -t argv < <(named_argv widgets remove vmlab-clock)
-    run_argv "and removed: ${argv[*]}" "[[ -z \"\$(widget)\" ]]" "[[ ! -e ${CONFIG}/widgets/vmlab-clock ]]" -- "${argv[@]}"
+    # Plugins: a draft made from an example, turned off and on, and thrown away, by the commands the list gives each row
+    as_window ame plugin new vmlab-clock hello >/dev/null 2>&1
+    as_window ame plugin draft local.vmlab-clock --by me >/dev/null 2>&1
+    read_list
+    plugin_row() { jq -c --arg id local.vmlab-clock '.rows[] | select(.id == $id)' <<<"$(item plugins)"; }
+    row_argv() { jq -r --arg a "$1" '.actions[] | select(.id == $a) | .command[]' <<<"$(plugin_row)"; }
+    json_holds "a draft made from the hello example is a row, with Keep and Throw away" "$(plugin_row)" \
+        '.tag == "Draft" and ([.actions[].id] | contains(["keep", "discard"]))'
+    mapfile -t argv < <(row_argv discard)
+    run_argv "and thrown away by its row's command: ${argv[*]}" "read_list; [[ -z \"\$(plugin_row)\" ]]" "[[ ! -e ${HOME_DIR}/.local/share/amethystora/plugin-drafts/local.vmlab-clock ]]" -- "${argv[@]}"
 
     # Verify: web apps removed by the names the list gives, a name with spaces and one starting with - among them
     for name in "Vmlab Notes" "Vmlab  Two  Spaces" "-vmlab dash"; do

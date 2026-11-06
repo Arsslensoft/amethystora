@@ -35,9 +35,22 @@ pub fn clean(text: &str, max: usize) -> String {
     out.trim().to_string()
 }
 
+/// Icons that say something only the system says: a recording, a camera or microphone in use, a call, the battery, an update, security, a
+/// password, the network, and Amethystora's own apps. A plugin never draws them, so that nothing it shows can pass for the system
+const SYSTEM_ICONS: &[&str] = &[
+    "amethystora", "org.amethystora.", "media-record", "camera-", "microphone-", "call-", "battery-", "security-", "dialog-password", "system-", "software-update",
+    "network-", "audio-input", "screen-shared", "screen-recording",
+];
+
+/// Whether an icon's name is one of the system's (see SYSTEM_ICONS)
+pub fn system_icon(name: &str) -> bool {
+    SYSTEM_ICONS.iter().any(|p| name.starts_with(p))
+}
+
 /// A theme icon's name, never a path: letters, digits, hyphens and dots
 fn icon(value: &Value) -> Result<String, String> {
     match value.as_str() {
+        Some(name) if system_icon(name) => Err(format!("the icon {name:?} is the system's own (a recording, a call, the battery, security, the network, Amethystora's apps...): pick another")),
         Some(name) if name.len() <= 64 && !name.is_empty() && !name.starts_with('.') && name.bytes().all(|b| b.is_ascii_alphanumeric() || b"-_.".contains(&b)) => Ok(name.into()),
         _ => Err("\"icon\" has to be the name of an icon in the theme, never a path".into()),
     }
@@ -207,6 +220,11 @@ mod tests {
         assert_eq!(parse(&format!("{{\"text\":\"{}\"}}", "x".repeat(900)), &[]).unwrap()["text"].as_str().unwrap().len(), 200);
         // Markup is text: nothing is interpreted, and the shell draws it as it is
         assert_eq!(parse(r#"{"text":"<b>x</b>"}"#, &[]).unwrap()["text"], "<b>x</b>");
+        // The system's own icons are never a plugin's to draw
+        for name in ["media-record-symbolic", "camera-web-symbolic", "microphone-sensitivity-high-symbolic", "call-start-symbolic", "battery-caution-symbolic", "software-update-available-symbolic", "security-high-symbolic", "dialog-password-symbolic", "org.amethystora.Vault", "amethystora-security", "network-wireless-symbolic", "system-run-symbolic"] {
+            assert!(parse(&format!("{{\"icon\":\"{name}\"}}"), &[]).is_err(), "{name}");
+        }
+        assert!(parse(r#"{"icon":"alarm-symbolic"}"#, &[]).is_ok());
     }
 
     #[test]

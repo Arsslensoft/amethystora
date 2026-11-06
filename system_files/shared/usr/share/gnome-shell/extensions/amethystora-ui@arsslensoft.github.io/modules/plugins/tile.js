@@ -22,6 +22,11 @@ export class PluginTile {
         this.tile = new QuickToggle({title: plugin.name, iconName: 'applications-system-symbolic', toggleMode: false});
         this.tile._amethystoraQuickId = tileName(plugin.id);
         this.tile.connect('clicked', () => {
+            // A tile of a plugin that stopped itself resumes it
+            if (this.plugin.paused) {
+                this._ui.resume({key: this.plugin.id});
+                return;
+            }
             const out = this.plugin.output ?? this.plugin.sample;
             const action = out?.card.find(e => e.type === 'switch' && e.action)?.action ?? out?.click;
             if (action)
@@ -40,7 +45,7 @@ export class PluginTile {
         this.tile.visible = Boolean(out) && !this._ui.hidden({output: out});
         if (!out)
             return;
-        this.tile.subtitle = plugin.paused ? this._ui.pausedWords(plugin) : out.text;
+        this.tile.subtitle = plugin.paused ? `${this._ui.pausedWords(plugin)}. ${_('Press to resume')}` : this._ui.hidden({output: out}) ? _('Private') : out.text;
         this.tile.gicon = new Gio.ThemedIcon({name: out.icon || 'applications-system-symbolic'});
         this.tile.checked = out.card.find(e => e.type === 'switch')?.on === true;
     }

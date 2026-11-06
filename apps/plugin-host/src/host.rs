@@ -381,8 +381,18 @@ impl Runner {
         let filter = std::fs::File::open(&self.env.seccomp).map_err(|_| format!("{} is missing, so nothing is run", self.env.seccomp.display()))?;
         let mut command = Command::new(&line[0]);
         command.args(&line[1..]).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null());
-        let fd = filter.as_raw_fd();
-        let settings_fd = settings.as_ref().map(|f| f.as_raw_fd());
+        // Both are moved above the two descriptors they are to become, so that dup2 onto one can never overwrite the other (a pipe made
+        // while descriptor 9 was free would be 9, and the filter would land on it)
+        let high = |fd: i32| -> Result<std::os::fd::OwnedFd, String> {
+            use std::os::fd::FromRawFd;
+            // SAFETY: F_DUPFD_CLOEXEC returns a new descriptor this function owns, or -1
+            let moved = unsafe { libc::fcntl(fd, libc::F_DUPFD_CLOEXEC, 20) };
+            if moved < 0 { Err(std::io::Error::last_os_error().to_string()) } else { Ok(unsafe { std::os::fd::OwnedFd::from_raw_fd(moved) }) }
+        };
+        let filter_high = high(filter.as_raw_fd())?;
+        let settings_high = settings.as_ref().map(|f| high(f.as_raw_fd())).transpose()?;
+        let fd = filter_high.as_raw_fd();
+        let settings_fd = settings_high.as_ref().map(|f| f.as_raw_fd());
         // SAFETY: only dup2 and fcntl, which are async-signal-safe, between fork and exec
         unsafe {
             command.pre_exec(move || {
@@ -392,11 +402,11 @@ impl Runner {
                 if libc::setrlimit(libc::RLIMIT_FSIZE, &limit) < 0 {
                     return Err(std::io::Error::last_os_error());
                 }
-                if libc::dup2(fd, SECCOMP_FD) < 0 || (fd == SECCOMP_FD && libc::fcntl(fd, libc::F_SETFD, 0) < 0) {
+                if libc::dup2(fd, SECCOMP_FD) < 0 {
                     return Err(std::io::Error::last_os_error());
                 }
                 if let Some(read) = settings_fd {
-                    if libc::dup2(read, sandbox::SETTINGS_FD) < 0 || (read == sandbox::SETTINGS_FD && libc::fcntl(read, libc::F_SETFD, 0) < 0) {
+                    if libc::dup2(read, sandbox::SETTINGS_FD) < 0 {
                         return Err(std::io::Error::last_os_error());
                     }
                 }

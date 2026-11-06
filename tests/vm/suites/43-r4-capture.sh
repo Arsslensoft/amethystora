@@ -15,7 +15,7 @@
 #     the bar leaves it alone; the plugins module off stops them;
 #   - the light theme and a theme switch;
 #   - ten disables and enables with everything on, nothing left behind, and nothing thrown.
-# vmlab-paths: @ui/extension.js @ui/*present* @ui/*deskwidgets* @ui/*screenshot* @ui/*pill* @ui/*tiling/backgrounds* @ui/*focus/picture* @sf/*themed/shell-present* @sf/*themed/shell-deskwidgets* @sf/*themed/shell-screenshot* @sf/usr/share/gnome-shell/extensions/amethystora-widgets@* @sf/usr/libexec/amethystora-control-list @sf/*just/desktop.just @sf/usr/libexec/amethystora-cover-private
+# vmlab-paths: @ui/extension.js @ui/*present* @ui/*deskwidgets* @ui/*screenshot* @ui/*pill* @ui/*tiling/backgrounds* @ui/*focus/picture* @sf/*themed/shell-present* @sf/*themed/shell-deskwidgets* @sf/*themed/shell-screenshot* @sf/usr/share/gnome-shell/extensions/amethystora-widgets@* @sf/usr/libexec/amethystora-control-list @sf/*just/desktop.just @sf/usr/libexec/amethystora-cover-private @ui/*plugins*
 source "$(dirname "$0")/lib.sh"
 
 UUID=amethystora-ui@arsslensoft.github.io
@@ -485,7 +485,7 @@ same "22 the clock's first line is drawn as a title, the second as a line" \
     "true true"
 same "22 the build's last line is in the palette's green" \
     "$(ev "${W}._cards.get('vmlab.build').actor.get_children().at(-1).style")" "color: $(sed -n 's/^color2 = "\(.*\)"/\1/p' "${HOME_DIR}/.config/amethystora/current/theme/colors.toml");"
-same "22 at most six lines of a long text" "$(ev "${W}._cards.get('vmlab.menu').actor.get_n_children()")" 6
+same "22 the name and at most six lines of a long text" "$(ev "${W}._cards.get('vmlab.menu').actor.get_n_children()")" 7
 rm -f "${LAB}/vmlab-build-clicked"
 card_centre() { ev "(() => { const b = ${W}.cards().find(x => x.id === '$1'); return Math.round(b.x + b.width / 2) + ' ' + Math.round(b.y + b.height / 2); })()"; }
 # What the pointer meets at a card's centre, and the modal count: says why when a click there does nothing

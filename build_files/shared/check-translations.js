@@ -327,7 +327,7 @@ const PYTHON = ['usr/libexec/amethystora-text-shortcuts',
     'usr/libexec/amethystora-wrong', 'usr/libexec/amethystora-changes'];
 const SHELL = ['usr/libexec/amethystora-security-status', 'usr/libexec/amethystora-app-permissions', 'usr/libexec/amethystora-layout-offer',
     'usr/libexec/amethystora-control-list', 'usr/libexec/amethystora-security-config', 'usr/libexec/amethystora-hardening',
-    'usr/libexec/amethystora-phone-link-notice', 'usr/libexec/amethystora-deja-dup-notice',
+    'usr/libexec/amethystora-phone-link-notice', 'usr/libexec/amethystora-deja-dup-notice', 'usr/libexec/amethystora-widgets-moved-notice',
     // The notice that the computer went back by itself from an update that did not start (R7-52)
     'usr/libexec/amethystora-update-alert',
     'usr/libexec/amethystora-agentic-off-notice', 'usr/libexec/amethystora-private-folder', 'usr/libexec/amethystora-windows-program',

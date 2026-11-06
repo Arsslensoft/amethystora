@@ -191,6 +191,11 @@ cmd_root() {
 
 cmd_remove() {
     valid_id "${1:-}" || usage
+    # Control opens this in a terminal: what is removed goes with its settings and its key in the Vault, so it is asked first
+    if [[ -t 0 && -t 1 ]]; then
+        export id="$1"
+        ask "$(eval_gettext "Remove \${id}, with what it kept?")" || { gettext "Nothing was removed."; echo; return 1; }
+    fi
     "${HOST}" disable "$1" || true
     pkexec "${ROOT}" remove "$1" >/dev/null
     units
@@ -400,7 +405,7 @@ add_shipped() {
     [[ -f "${folder}/manifest.json" ]] || die "$(gettext "The image ships no such plugin.")"
     need_terminal
     local out
-    out="$("${HOST}" check "${folder}")" || die "$(gettext "That plugin did not pass its own check.")"
+    out="$("${HOST}" check "${folder}" --system)" || die "$(gettext "That plugin did not pass its own check.")"
     while IFS=$'\t' read -r key a b; do
         case "${key}" in
             name) export name="${a}" ;;
@@ -547,7 +552,6 @@ agent_available() {
 }
 
 cmd_make() {
-    (($#)) || usage
     agent_available
     local request="$*"
     [[ -n "${request// /}" ]] || request="whatever I tell you (ask me what it should show)"
@@ -564,9 +568,7 @@ cmd_change() {
 cmd_fix() {
     valid_id "${1:-}" || usage
     agent_available
-    local why
-    why="$("${HOST}" show "$1" 2>/dev/null | awk -F'\t' '$1 == "verified" { print $2 }')"
-    exec amethystora-agent ask -- "The plugin $1 paused itself (it failed, ran too long or went over its limits). Find out why with: ame plugin show $1 and ame plugin try $1, read its folder, and fix it, as a draft if it must change: ame plugin check, ame plugin draft. It cannot be given more permissions by you. ${why}"
+    exec amethystora-agent ask -- "The plugin $1 paused itself (it failed, ran too long or went over its limits). Find out why with: ame plugin show $1, then ame plugin off $1 and ame plugin try $1 (a plugin that is on cannot be tried), read its folder, and fix it, as a draft if it must change: ame plugin check, ame plugin draft. You cannot give it more permissions."
 }
 
 cmd_settings() {

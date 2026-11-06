@@ -378,7 +378,9 @@ fn main() -> ExitCode {
                             }
                             Err(e) => fail(&e),
                         },
-                        "try" => match Runner::new(Arc::new(env.clone()), Arc::new(|_, _| {})).run(&id, positional.get(1).map(String::as_str)) {
+                        "try" if env.enabled().contains(&id) => fail("it is on, and a second run would share its state with the host's: turn it off first (ame plugin off ID)"),
+                        // Its own sockets and files: the service's proxy and broker for the same plugin are never unlinked and bound again
+                        "try" => match Runner::new(Arc::new(Env { runtime: env.runtime.join("try"), ..env.clone() }), Arc::new(|_, _| {})).run(&id, positional.get(1).map(String::as_str)) {
                             Ok(out) => {
                                 println!("{out}");
                                 ExitCode::SUCCESS

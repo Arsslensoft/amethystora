@@ -1,0 +1,15 @@
+#!/usr/bin/bash
+# Said once, a minute into an account's login, to one that had widgets of its own in ~/.config/amethystora/widgets
+# (user-setup.hooks.d/30-widgets-moved.sh): widgets are plugins now, run in a sandbox, and its own no longer run.
+
+set -uo pipefail
+
+export TEXTDOMAIN=amethystora
+# shellcheck source=/dev/null
+source gettext.sh
+
+notify-send --app-name=Amethystora --icon=dialog-information-symbolic \
+    "$(gettext "Your widgets are plugins now")" \
+    "$(gettext "Widgets run in a sandbox now, and the ones in ~/.config/amethystora/widgets no longer run. Their folders are untouched. Start a plugin from one with: ame plugin new NAME, add the ones that come with the image with: ame plugin shipped, or ask the agent: ame plugin make.")" \
+    2>/dev/null
+exit 0

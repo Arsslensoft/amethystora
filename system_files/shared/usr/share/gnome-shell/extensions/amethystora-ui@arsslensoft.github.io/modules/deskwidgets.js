@@ -18,6 +18,9 @@ import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js'
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
+import {reachWords} from './plugins/card.js';
+import {reach} from './plugins/clamp.js';
+
 const SCHEMA = 'org.gnome.shell.extensions.amethystora-ui.deskwidgets';
 const CLASS_COLORS = {accent: 'accent', good: 'color2', warning: 'color3', critical: 'color1'};
 // From the work area's edges, and between two cards in a corner
@@ -74,16 +77,17 @@ class Card {
         this.actor.destroy_all_children();
         // A plugin that failed and has nothing to show says so, as the widgets' warning card did
         const failed = !out && plugin.error !== '';
+        const hidden = !failed && this._module.hiddenOutput(out);
         this.actor.visible = failed || (Boolean(out) && !out.hidden);
-        const rows = failed ? [plugin.name, plugin.error] : out ? (plugin.draft ? [_('Draft'), ...out.lines.slice(0, MOST_LINES)] : out.lines.slice(0, MOST_LINES)) : [];
-        if (this.actor.visible && rows.length === 0)
-            rows.push(plugin.name);
+        // The plugin's name is always the first line, so that nothing it prints passes for the system's; then its lines
+        const name = plugin.draft ? `${_('Draft')} ${plugin.name}` : plugin.name;
+        const rows = !this.actor.visible ? [] : failed ? [name, plugin.error] : hidden ? [name, _('Private')] : [name, ...out.lines.slice(0, MOST_LINES)];
         const warn = failed ? this._module.palette.color3 ?? null : null;
         rows.forEach((line, i) => {
             const label = textLabel(line, i === 0 ? 'amethystora-deskwidgets-title' : 'amethystora-deskwidgets-line');
-            if ((colour || warn) && i === rows.length - 1)
+            if ((colour || warn) && i === rows.length - 1 && i > 0)
                 label.style = `color: ${warn ?? colour};`;
-            const symbol = failed ? 'dialog-warning-symbolic' : out?.icon;
+            const symbol = failed ? 'dialog-warning-symbolic' : hidden ? '' : out?.icon;
             if (i === 0 && symbol) {
                 const row = new St.BoxLayout({style_class: 'amethystora-deskwidgets-head'});
                 row.add_child(new St.Icon({gicon: new Gio.ThemedIcon({name: symbol}), icon_size: 16, y_align: Clutter.ActorAlign.CENTER}));
@@ -93,13 +97,18 @@ class Card {
                 this.actor.add_child(label);
             }
         });
-        const items = [...out?.menu ?? []];
-        for (const e of out?.card ?? []) {
+        const items = hidden ? [] : [...out?.menu ?? []];
+        for (const e of hidden ? [] : out?.card ?? []) {
             if (e.type === 'button' && e.action)
                 items.push({label: e.label, action: e.action, icon: ''});
         }
-        if (plugin.paused)
-            items.unshift({label: this._module.pausedWords(plugin), action: null, icon: ''});
+        // What the shell says of it, whatever the plugin printed: its words if it stopped, what it may reach, and Pause or Resume
+        if (plugin.paused || plugin.waiting)
+            items.unshift({label: this._module.pausedWords(plugin), action: null, icon: ''}, {separator: true});
+        items.push({separator: true}, {label: reachWords(reach(plugin.granted)), action: null, icon: ''},
+            plugin.paused ? {label: _('Resume'), run: () => this._module.resume(plugin.id)} : {label: _('Pause'), run: () => this._module.pause(plugin.id)});
+        // What the plugin itself offered (the shell's own lines excepted): a card with none runs its click on a press
+        this._own = (hidden ? 0 : (out?.menu.length ?? 0) + (out?.card.filter(e => e.type === 'button' && e.action).length ?? 0));
         const key = JSON.stringify(items);
         if (key !== this._menuKey) {
             this._menuKey = key;
@@ -112,7 +121,7 @@ class Card {
 
     _clicked() {
         const out = this.output;
-        if (out?.click && this._items.length === 0) {
+        if (out?.click && !this._own) {
             this._module.act(this.plugin.id, out.click);
             return;
         }
@@ -134,13 +143,13 @@ class Card {
                 menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
                 continue;
             }
-            const inert = !item.action;
+            const inert = !item.action && !item.run;
             const entry = new PopupMenu.PopupMenuItem(item.label, inert ? {reactive: false, can_focus: false} : {});
             entry.label.clutter_text.use_markup = false;
             if (inert)
                 entry.remove_style_class_name('popup-inactive-menu-item');
             else
-                entry.connect('activate', () => this._module.act(this.plugin.id, item.action));
+                entry.connect('activate', () => (item.run ? item.run() : this._module.act(this.plugin.id, item.action)));
             menu.addMenuItem(entry);
         }
         Main.uiGroup.add_child(menu.actor);
@@ -204,6 +213,18 @@ export class DeskWidgets {
 
     act(id, action) {
         this._plugins?.act(id, action);
+    }
+
+    hiddenOutput(output) {
+        return this._plugins?.hiddenOutput(output) ?? false;
+    }
+
+    resume(id) {
+        this._plugins?.resume(id);
+    }
+
+    pause(id) {
+        this._plugins?.pause(id);
     }
 
     _sync() {
