@@ -104,6 +104,11 @@ pub fn refusal(argv: &[String]) -> Option<String> {
     {
         return Some("adding a plugin is the user's, and the agent's drafts carry the agent's own mark: it does not choose it".into());
     }
+    // Sharing the screen, or lending it to a second screen, lets another computer see it: the person at the machine turns it on,
+    // by the helper's name, by GNOME's own tool, and by the recipes below
+    if matches!(program, "amethystora-share-screen" | "grdctl") && argv.get(1).map(String::as_str) != Some("status") {
+        return Some("sharing the screen is the user's: it lets another computer see it".into());
+    }
     if program == "amethystora-if-found" && argv.get(1).map(String::as_str) != Some("status") {
         return Some("the line on the login and lock screens is the user's own words: the user writes it".into());
     }
@@ -276,6 +281,9 @@ fn ame_refusal(args: &[String]) -> Option<String> {
         ["desktop", "phone", "ask-first", "never", ..] | ["desktop", "phone", "photo"] | ["desktop", "phone", "photo", "on", ..] => {
             Some("a person decides this themselves: it lets files in with no Accept, or opens the phone's camera".into())
         }
+        ["desktop", "second-screen", rest @ ..] | ["desktop", "help-me", rest @ ..] if rest.first() != Some(&"status") => {
+            Some("sharing the screen, or lending it to another computer, is the user's: the other side sees what is on it".into())
+        }
         ["desktop", "screen-brightness"] | ["desktop", "screen-brightness", "on", ..] => {
             Some("giving the displays' i2c buses to the person at the machine is the owner's choice: the user turns it on".into())
         }
@@ -357,6 +365,13 @@ mod tests {
             "gsettings set org.amethystora.Connect ask-first never",
             "gsettings set org.amethystora.Connect photo true",
             "dconf write /org/amethystora/Connect/ask-first 'never'",
+            "ame desktop second-screen on",
+            "ame desktop second-screen",
+            "ame desktop help-me on",
+            "ame desktop help-me control on",
+            "ame -q desktop::help-me on",
+            "amethystora-share-screen help on",
+            "grdctl rdp enable",
             "gsettings set org.amethystora.Connect codes true",
             "gsettings set org.amethystora.Connect:/org/amethystora/Connect/ codes true",
             "gsettings --schemadir /usr/share/glib-2.0/schemas set org.amethystora.Connect codes true",
@@ -592,6 +607,10 @@ mod tests {
             "ame desktop phone photo off",
             "gsettings set org.amethystora.Connect ask-first 'all'",
             "gsettings set org.amethystora.Connect photo false",
+            "ame desktop second-screen status",
+            "ame desktop help-me status",
+            "amethystora-share-screen status",
+            "grdctl status",
             "gsettings set org.amethystora.Connect codes false",
             "gsettings reset org.amethystora.Connect codes",
             "gsettings get org.amethystora.Connect codes",

@@ -1,0 +1,491 @@
+#!/usr/bin/python3 -I
+# Your photos, by what is in them (R7-63, offered and off): describe a photo and find it among the pictures of Pictures. A small
+# model that understands pictures and words together (CLIP, MIT) reads each photo once on this computer, while the computer is
+# on mains power and left alone, and keeps one short vector for it: the vectors and the photos' names are sealed under a key in
+# the Vault, never in the clear, so the index is readable only while the vault is open. No photo leaves the machine, and
+# the only connection is the models' download, which the `ame desktop search photos` recipe says and asks about first.
+#
+#   amethystora-photos status          as JSON: the models, how many photos are known, whether the vault answers
+#   amethystora-photos fetch           downloads the models once, each checked against its pinned SHA-256
+#   amethystora-photos remove          deletes the models, forgets the vault's key and with it every sealed file
+#   amethystora-photos index           one reading: new and changed photos, until the computer is no longer idle or on mains
+#   amethystora-photos search WORD...  the photos nearest what was described, as JSON [{"path", "score"}]
+#
+# Photos are read through GdkPixbuf, which reads every kind through glycin's sandboxed loaders: a picture somebody sent cannot
+# run code here. Nothing is opened in Private, in a folder that starts with a dot or through a link, and no file name is ever
+# logged or put in an error.
+
+import base64
+import hashlib
+import json
+import os
+import re
+import socket
+import subprocess
+import sys
+import time
+
+ROOT = os.environ.get('AMETHYSTORA_PHOTOS_ROOT', '')
+TABLE = f'{ROOT}/usr/share/amethystora/photos/models.json'
+CURL = f'{ROOT}/usr/bin/curl'
+SOCKET = os.environ.get('AMETHYSTORA_VAULT_SOCKET', '/run/amethystora/vault.sock')
+PURPOSE = 'photo-index'
+# What one seal carries (the Vault's limit is 1 MiB): a shard holds this many photos
+SHARD = 300
+KINDS = {'.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif', '.avif', '.tif', '.tiff', '.bmp', '.gif'}
+MOST_BYTES = 80 * 1024 * 1024
+# The computer must have been left alone this long, in milliseconds, for each photo read
+IDLE_MS = 30000
+# Between two seals of the index while it grows
+FLUSH = 100
+HITS = 30
+# CLIP's cosines: below this nothing in the picture is what was described
+LEAST = 0.18
+SIZE = 224
+MEAN = (0.48145466, 0.4578275, 0.40821073)
+STD = (0.26862954, 0.26130258, 0.27577711)
+
+
+def table():
+    with open(TABLE, encoding='utf-8') as f:
+        return json.load(f)
+
+
+def data_folder():
+    data = os.environ.get('XDG_DATA_HOME', '')
+    if not os.path.isabs(data):
+        data = os.path.join(os.path.expanduser('~'), '.local', 'share')
+    return os.path.join(data, 'amethystora', 'photos')
+
+
+def pictures_folder():
+    folder = os.environ.get('AMETHYSTORA_PHOTOS_FOLDER', '')
+    if folder:
+        return folder
+    import gi
+    from gi.repository import GLib
+    chosen = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_PICTURES)
+    home = os.path.realpath(os.path.expanduser('~'))
+    if not chosen or os.path.realpath(chosen) == home or not os.path.isdir(chosen):
+        return None
+    return os.path.realpath(chosen)
+
+
+# --- The vault: sealing and opening, one line of JSON each way (apps/vault-client's contract) ------------------------------
+
+
+class Vault:
+    class Refused(Exception):
+        def __init__(self, why):
+            super().__init__(why)
+            self.why = why
+
+    def call(self, op, record='', data=b''):
+        request = {'v': 1, 'op': op, 'purpose': PURPOSE}
+        if op != 'forget':
+            request.update({'record': record, 'data': base64.b64encode(data).decode()})
+        try:
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+                s.settimeout(10)
+                s.connect(SOCKET)
+                s.sendall(json.dumps(request).encode() + b'\n')
+                line = b''
+                while not line.endswith(b'\n') and len(line) < (1 << 21):
+                    block = s.recv(1 << 16)
+                    if not block:
+                        break
+                    line += block
+            answer = json.loads(line)
+        except (OSError, ValueError):
+            raise Vault.Refused('failed')
+        if answer.get('ok') is not True:
+            raise Vault.Refused(str(answer.get('why', 'failed')))
+        return base64.b64decode(answer.get('data', '')) if op != 'forget' else b''
+
+    def seal(self, record, data):
+        return self.call('seal', record, data)
+
+    def open(self, record, data):
+        return self.call('open', record, data)
+
+    def forget(self):
+        self.call('forget')
+
+
+class Index:
+    """path -> (modified, size, vector as 512 float16 bytes), kept as sealed shards in the data folder"""
+
+    def __init__(self, vault):
+        self.vault = vault
+        self.entries = {}
+
+    def folder(self):
+        return os.path.join(data_folder(), 'index')
+
+    def shards(self):
+        try:
+            return sorted(name for name in os.listdir(self.folder()) if re.fullmatch(r'[0-9]{4}', name))
+        except OSError:
+            return []
+
+    def load(self):
+        for name in self.shards():
+            with open(os.path.join(self.folder(), name), 'rb') as f:
+                plain = self.vault.open(name, f.read())
+            for path, modified, size, vector in json.loads(plain):
+                self.entries[path] = (modified, size, base64.b64decode(vector))
+
+    def save(self):
+        os.makedirs(self.folder(), mode=0o700, exist_ok=True)
+        items = [[path, m, s, base64.b64encode(v).decode()] for path, (m, s, v) in self.entries.items()]
+        wanted = set()
+        for number in range(0, len(items), SHARD):
+            name = f'{number // SHARD:04d}'
+            wanted.add(name)
+            sealed = self.vault.seal(name, json.dumps(items[number:number + SHARD]).encode())
+            temporary = os.path.join(self.folder(), f'.{name}.new')
+            with open(temporary, 'wb') as f:
+                f.write(sealed)
+            os.replace(temporary, os.path.join(self.folder(), name))
+        for name in self.shards():
+            if name not in wanted:
+                os.unlink(os.path.join(self.folder(), name))
+
+
+# --- Status, the models --------------------------------------------------------------------------------------------------
+
+
+def models_here():
+    return all(os.path.isfile(os.path.join(data_folder(), item['name'])) for item in table()['files'])
+
+
+def vault_state():
+    try:
+        Vault().seal('probe', b'x')
+        return 'open'
+    except Vault.Refused as e:
+        return e.why
+
+
+def status():
+    count = 0
+    try:
+        with open(os.path.join(data_folder(), 'state.json'), encoding='utf-8') as f:
+            count = int(json.load(f).get('photos', 0))
+    except (OSError, ValueError, TypeError):
+        pass
+    models = table()
+    print(json.dumps({'models': models_here(), 'photos': count, 'vault': vault_state(),
+                      'bytes': sum(item['size'] for item in models['files']), 'host': models['host']}))
+    return 0
+
+
+def sha256(path):
+    digest = hashlib.sha256()
+    with open(path, 'rb') as f:
+        for block in iter(lambda: f.read(1 << 20), b''):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def fetch():
+    models = table()
+    folder = data_folder()
+    os.makedirs(folder, mode=0o700, exist_ok=True)
+    os.chmod(folder, 0o700)
+    override = os.environ.get('AMETHYSTORA_PHOTOS_URL', '')
+    protocols = '=https,http,file' if override else '=https'
+    made = []
+    try:
+        for item in models['files']:
+            if os.path.isfile(os.path.join(folder, item['name'])):
+                continue
+            part = os.path.join(folder, f'.{item["name"]}.part')
+            made.append(part)
+            url = override.rstrip('/') + '/' + item['name'] if override else item['url']
+            subprocess.run([CURL, '--proto', protocols, '--proto-redir', protocols, '--tlsv1.2', '-fL',
+                            '--max-filesize', str(item['size'] + 1024 * 1024), '--retry', '2', '--progress-bar',
+                            '-o', part, '--', url], check=True)
+            if sha256(part) != item['sha256']:
+                raise ValueError(f'{item["name"]} is not the file that was pinned')
+            os.replace(part, os.path.join(folder, item['name']))
+        return 0
+    except (OSError, ValueError, subprocess.CalledProcessError) as e:
+        print(f'amethystora-photos: {e}', file=sys.stderr)
+        return 1
+    finally:
+        for part in made:
+            if os.path.exists(part):
+                os.unlink(part)
+
+
+def remove():
+    # The key first: whatever is left of the index is then unreadable, even if a file is
+    try:
+        Vault().forget()
+    except Vault.Refused:
+        pass
+    import shutil
+    shutil.rmtree(data_folder(), ignore_errors=True)
+    return 0
+
+
+# --- The model ------------------------------------------------------------------------------------------------------------
+
+
+def session(name):
+    import onnxruntime
+    options = onnxruntime.SessionOptions()
+    options.intra_op_num_threads = options.inter_op_num_threads = 1
+    return onnxruntime.InferenceSession(os.path.join(data_folder(), name), options, providers=['CPUExecutionProvider'])
+
+
+def picture_vector(model, path, np):
+    """One photo's vector, or None for a file that is not a picture this can read. Read through glycin."""
+    import gi
+    gi.require_version('GdkPixbuf', '2.0')
+    from gi.repository import GdkPixbuf
+    pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(path, 2 * SIZE, 2 * SIZE, True)
+    pixbuf = pixbuf.apply_embedded_orientation() or pixbuf
+    if pixbuf.get_has_alpha():
+        pixbuf = pixbuf.composite_color_simple(pixbuf.get_width(), pixbuf.get_height(), GdkPixbuf.InterpType.NEAREST, 255, 8,
+                                               0xffffffff, 0xffffffff)
+    width, height = pixbuf.get_width(), pixbuf.get_height()
+    # The shortest side to 224, then the middle 224 x 224, as CLIP was trained
+    factor = SIZE / min(width, height)
+    small = pixbuf.scale_simple(max(SIZE, round(width * factor)), max(SIZE, round(height * factor)), GdkPixbuf.InterpType.BILINEAR)
+    stride, w, h = small.get_rowstride(), small.get_width(), small.get_height()
+    # The last row has no padding after it: one is added, so that every row is a whole stride
+    pixels = np.frombuffer(small.get_pixels() + bytes(stride), dtype=np.uint8)
+    rows = pixels[:h * stride].reshape(h, stride)[:, :w * 3].reshape(h, w, 3)
+    top, left = (h - SIZE) // 2, (w - SIZE) // 2
+    crop = rows[top:top + SIZE, left:left + SIZE].astype(np.float32) / 255.0
+    x = ((crop - np.array(MEAN, dtype=np.float32)) / np.array(STD, dtype=np.float32)).transpose(2, 0, 1)[None]
+    out = model.run(None, {'pixel_values': x})[0][0]
+    out = out / max(float(np.linalg.norm(out)), 1e-9)
+    return out.astype(np.float16).tobytes()
+
+
+def mains():
+    """On mains power, or with no battery at all"""
+    base = f'{ROOT}/sys/class/power_supply'
+    try:
+        names = os.listdir(base)
+    except OSError:
+        return True
+    battery = online = False
+    for name in names:
+        try:
+            with open(os.path.join(base, name, 'type'), encoding='utf-8') as f:
+                kind = f.read().strip()
+            if kind == 'Battery':
+                battery = True
+            elif kind == 'Mains':
+                with open(os.path.join(base, name, 'online'), encoding='utf-8') as f:
+                    online = online or f.read().strip() == '1'
+        except OSError:
+            pass
+    return online or not battery
+
+
+def idle_ms():
+    """How long since the last key or touch, from Mutter's idle monitor on the session bus; None when it cannot say"""
+    override = os.environ.get('AMETHYSTORA_PHOTOS_IDLE', '')
+    if override:
+        return int(override)
+    try:
+        import gi
+        from gi.repository import Gio
+        proxy = Gio.DBusProxy.new_for_bus_sync(Gio.BusType.SESSION, Gio.DBusProxyFlags.DO_NOT_LOAD_PROPERTIES, None,
+                                               'org.gnome.Mutter.IdleMonitor', '/org/gnome/Mutter/IdleMonitor/Core',
+                                               'org.gnome.Mutter.IdleMonitor', None)
+        return int(proxy.call_sync('GetIdletime', None, Gio.DBusCallFlags.NONE, 1000, None).unpack()[0])
+    except Exception:
+        return None
+
+
+def left_alone():
+    idle = idle_ms()
+    return mains() and idle is not None and idle >= IDLE_MS
+
+
+def candidates():
+    """(path, modified, size) of every picture under Pictures, in a stable order"""
+    folder = pictures_folder()
+    if not folder:
+        return []
+    found = []
+    for here, folders, files in os.walk(folder, followlinks=False):
+        # Nothing hidden, nothing private, nothing through a link
+        folders[:] = sorted(name for name in folders if not name.startswith('.') and name != 'Private' and
+                            not os.path.islink(os.path.join(here, name)))
+        for name in sorted(files):
+            path = os.path.join(here, name)
+            if name.startswith('.') or os.path.splitext(name)[1].lower() not in KINDS or os.path.islink(path):
+                continue
+            try:
+                info = os.stat(path)
+            except OSError:
+                continue
+            if 0 < info.st_size <= MOST_BYTES:
+                found.append((path, int(info.st_mtime), info.st_size))
+    return found
+
+
+def write_state(count):
+    folder = data_folder()
+    os.makedirs(folder, mode=0o700, exist_ok=True)
+    with open(os.path.join(folder, 'state.json.new'), 'w', encoding='utf-8') as f:
+        json.dump({'photos': count}, f)
+    os.replace(os.path.join(folder, 'state.json.new'), os.path.join(folder, 'state.json'))
+
+
+def index():
+    if not models_here():
+        return 1
+    if not left_alone():
+        return 0
+    vault = Vault()
+    stored = Index(vault)
+    try:
+        stored.load()
+        if not stored.entries:
+            vault.seal('probe', b'x')
+    except Vault.Refused as e:
+        # Closed, not set up or refused: nothing is read and nothing is kept in the clear. Try again at the next run
+        print(f'amethystora-photos: the vault is {e.why}', file=sys.stderr)
+        return 75
+    here = candidates()
+    known = {path: (modified, size) for path, modified, size in here}
+    # What is gone from Pictures is gone from the index, and what changed is read again
+    gone = [path for path in stored.entries if path not in known or stored.entries[path][:2] != known[path]]
+    for path in gone:
+        del stored.entries[path]
+    todo = [item for item in here if item[0] not in stored.entries]
+    changed = bool(gone)
+    if todo:
+        import numpy
+        model = session(table()['files'][0]['name'])
+        done = 0
+        for path, modified, size in todo:
+            if not left_alone():
+                break
+            try:
+                stored.entries[path] = (modified, size, picture_vector(model, path, numpy))
+            except Exception:
+                # Not a picture this can read: remembered with an empty vector, so that it is not tried every run
+                stored.entries[path] = (modified, size, b'')
+            done += 1
+            changed = True
+            if done % FLUSH == 0:
+                stored.save()
+    if changed:
+        try:
+            stored.save()
+        except Vault.Refused as e:
+            print(f'amethystora-photos: the vault is {e.why}', file=sys.stderr)
+            return 75
+    write_state(sum(1 for item in stored.entries.values() if item[2]))
+    return 0
+
+
+# --- Searching ------------------------------------------------------------------------------------------------------------
+
+
+class Tokenizer:
+    """CLIP's byte pair encoding, from its vocabulary and merges: text in, ids out, between the start and end marks"""
+
+    PATTERN = re.compile(r"<\|startoftext\|>|<\|endoftext\|>|'s|'t|'re|'ve|'m|'ll|'d|[^\W\d_]+|\d|[^\s\w]+", re.IGNORECASE)
+
+    def __init__(self):
+        folder = data_folder()
+        with open(os.path.join(folder, 'vocab.json'), encoding='utf-8') as f:
+            self.vocab = json.load(f)
+        with open(os.path.join(folder, 'merges.txt'), encoding='utf-8') as f:
+            merges = f.read().split('\n')[1:49152 - 256 - 2 + 1]
+        self.ranks = {tuple(pair.split()): rank for rank, pair in enumerate(merges)}
+        # Each byte as a printable character, as the vocabulary writes it
+        kept = list(range(ord('!'), ord('~') + 1)) + list(range(0xa1, 0xad)) + list(range(0xae, 0x100))
+        names, extra = kept[:], 0
+        for byte in range(256):
+            if byte not in kept:
+                kept.append(byte)
+                names.append(256 + extra)
+                extra += 1
+        self.bytes = dict(zip(kept, map(chr, names)))
+        self.cache = {}
+
+    def bpe(self, word):
+        if word in self.cache:
+            return self.cache[word]
+        parts = list(word[:-1]) + [word[-1] + '</w>']
+        while len(parts) > 1:
+            pairs = {(parts[i], parts[i + 1]) for i in range(len(parts) - 1)}
+            best = min(pairs, key=lambda pair: self.ranks.get(pair, 1 << 30))
+            if best not in self.ranks:
+                break
+            merged, i = [], 0
+            while i < len(parts):
+                if i < len(parts) - 1 and (parts[i], parts[i + 1]) == best:
+                    merged.append(parts[i] + parts[i + 1])
+                    i += 2
+                else:
+                    merged.append(parts[i])
+                    i += 1
+            parts = merged
+        self.cache[word] = parts
+        return parts
+
+    def encode(self, text):
+        ids = [self.vocab['<|startoftext|>']]
+        for token in self.PATTERN.findall(' '.join(text.lower().split())):
+            word = ''.join(self.bytes[b] for b in token.encode('utf-8'))
+            ids += [self.vocab[piece] for piece in self.bpe(word) if piece in self.vocab]
+        # The text model reads at most 77 marks, the last of them the end mark
+        return ids[:76] + [self.vocab['<|endoftext|>']]
+
+
+def search(words):
+    if not models_here():
+        print(json.dumps({'error': 'no-models'}))
+        return 0
+    text = ' '.join(words)[:200]
+    stored = Index(Vault())
+    try:
+        stored.load()
+    except Vault.Refused as e:
+        # Said in the answer, which the search reads: a closed vault is not a failure
+        print(json.dumps({'error': e.why}))
+        return 0
+    import numpy as np
+    ids = np.array([Tokenizer().encode(text)], dtype=np.int64)
+    out = session(table()['files'][1]['name']).run(None, {'input_ids': ids})[0][0]
+    out = out / max(float(np.linalg.norm(out)), 1e-9)
+    paths = [path for path, entry in stored.entries.items() if entry[2]]
+    if not paths:
+        print(json.dumps([]))
+        return 0
+    matrix = np.stack([np.frombuffer(stored.entries[path][2], dtype=np.float16) for path in paths]).astype(np.float32)
+    scores = matrix @ out
+    order = np.argsort(-scores)[:HITS]
+    print(json.dumps([{'path': paths[i], 'score': round(float(scores[i]), 3)} for i in order if scores[i] >= LEAST],
+                     ensure_ascii=False))
+    return 0
+
+
+def usage():
+    print('usage: amethystora-photos status|fetch|remove|index|search WORD...', file=sys.stderr)
+    return 64
+
+
+def main(argv):
+    words = argv[1:]
+    if words in (['status'], ['fetch'], ['remove'], ['index']):
+        return {'status': status, 'fetch': fetch, 'remove': remove, 'index': index}[words[0]]()
+    if len(words) >= 2 and words[0] == 'search':
+        return search(words[1:])
+    return usage()
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv))

@@ -4,7 +4,7 @@
 # and Ctrl+E (keys.py, as a person's hands), with a language file in Gradia's data folder, and the clipboard
 # then holds the sentence. The language file is the image's own English pack, so that this needs no download;
 # the download Gradia offers in its place is only checked to still be where it fetches it.
-# vmlab-paths: @ui/*screenshot* @sf/usr/libexec/amethystora-cover-private
+# vmlab-paths: @ui/*screenshot* @sf/usr/libexec/amethystora-cover-private @sf/usr/libexec/amethystora-translate @sf/usr/share/amethystora/translate/*
 source "$(dirname "$0")/lib.sh"
 
 GRADIA=be.alexandervanhee.gradia

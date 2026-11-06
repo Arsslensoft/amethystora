@@ -297,7 +297,7 @@ done
 # The search's switches, the emoji picker's skin tone and the not-responding question likewise, each schema less its
 # keybinding (open, emoji-picker, force-quit), which the keybindings part keeps, and the audio module's switches less
 # presets, which name this machine's outputs; and the manifest saves the same keys
-for part in "SEARCH org.gnome.shell.extensions.amethystora-ui.search open|meaning" \
+for part in "SEARCH org.gnome.shell.extensions.amethystora-ui.search open|meaning|photos" \
     "EMOJI org.gnome.shell.extensions.amethystora-ui.emoji emoji-picker" \
     "QUIT org.gnome.shell.extensions.amethystora-ui.quit force-quit" \
     "AUDIO org.gnome.shell.extensions.amethystora-ui.audio presets"; do
@@ -367,7 +367,7 @@ saved="$(sed -n 's/^FOCUS_KEYS=(\(.*\))$/\1/p' "$(dirname "${SETUP}")/amethystor
 for table in 'ACCESS:org.gnome.shell.extensions.amethystora-ui.access:filter-on|ruler-shown|.*-key' \
     'TOUCH:org.gnome.shell.extensions.amethystora-ui.touch:filter-on|ruler-shown|.*-key' \
     PRESENT:org.gnome.shell.extensions.amethystora-ui.present:scribble \
-    SCREENSHOT:org.gnome.shell.extensions.amethystora-ui.screenshot:tool-settings \
+    'SCREENSHOT:org.gnome.shell.extensions.amethystora-ui.screenshot:tool-settings|translate-to' \
     DESKWIDGETS:org.gnome.shell.extensions.amethystora-ui.deskwidgets:- \
     REST:org.gnome.shell.extensions.amethystora-ui.rest:- \
     HELLO:org.gnome.shell.extensions.amethystora-ui.hello:- \

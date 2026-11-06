@@ -18,6 +18,7 @@ import {
 } from './marks.js';
 import {Toolbar} from './toolbar.js';
 import {Cover} from './cover.js';
+import {Translate} from './translate.js';
 
 // The keys that choose the tools, in the toolbar's order: the number row, the same row of a French or Belgian
 // keyboard without Shift, and a letter each
@@ -140,6 +141,7 @@ export class Session {
         }
         this.syncPin(false);
         this.syncCover(false);
+        this.syncTranslate(false);
 
         for (const button of [ui._selectionButton, ui._screenButton, ui._windowButton, ui._castButton])
             button.connectObject('notify::checked', () => this._sync(), this);
@@ -172,6 +174,11 @@ export class Session {
         this._coverTip?.destroy();
         this._cover?.destroy();
         this._coverTip = this._cover = null;
+        this._translator?.destroy();
+        this._translator = null;
+        this._translateTip?.destroy();
+        this._translate?.destroy();
+        this._translateTip = this._translate = null;
         this._ui._panel.set_style(null);
         this._toolbarBin.destroy();
         this._overlay.destroy();
@@ -246,6 +253,7 @@ export class Session {
             });
             this._cover.connect('clicked', () => {
                 this._closeEntry(true);
+                this._translator?.close();
                 this._coverer?.run().catch(logError);
             });
             ui._showPointerButtonContainer.insert_child_below(this._cover, this._compact);
@@ -263,6 +271,41 @@ export class Session {
             this._coverTip?.destroy();
             this._cover.destroy();
             this._coverTip = this._cover = null;
+        }
+        if (resync)
+            this._sync();
+    }
+
+    // Any language (R7-47): only once a language was chosen, made or taken away as the key changes; as Hide what's private
+    // it reads what will be in the picture, without the marks
+    syncTranslate(resync = true) {
+        const ui = this._ui;
+        const to = this._module.translateTo;
+        if (to && !this._translate) {
+            this._translate = new St.Button({
+                style_class: 'screenshot-ui-show-pointer-button amethystora-screenshot-compact',
+                child: new St.Icon({gicon: this._module.icon('translate'), icon_size: 16}),
+                accessible_name: _('Read it in your language'),
+            });
+            this._translate.connect('clicked', () => {
+                this._closeEntry(true);
+                this._coverer?.closeCard();
+                this._translator?.run(this._module.translateTo).catch(logError);
+            });
+            ui._showPointerButtonContainer.insert_child_below(this._translate, this._compact);
+            this._translateTip = new ScreenshotUI.Tooltip(this._translate, {
+                text: _('Read it in your language'),
+                style_class: 'screenshot-ui-tooltip',
+                visible: false,
+            });
+            ui.add_child(this._translateTip);
+            this._translator = new Translate(ui, this._overlay);
+        } else if (!to && this._translate) {
+            this._translator?.destroy();
+            this._translator = null;
+            this._translateTip?.destroy();
+            this._translate.destroy();
+            this._translateTip = this._translate = null;
         }
         if (resync)
             this._sync();
@@ -347,6 +390,13 @@ export class Session {
                 this._coverer?.uncover();
             this._cover.reactive = live;
             this._cover.ease({opacity: live ? 255 : 80, duration: 200, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
+        }
+        if (this._translate) {
+            // An area or the screen, as Hide what's private
+            const live = !this._portal && this._ui._shotButton.checked &&
+                (this._ui._selectionButton.checked || this._ui._screenButton.checked);
+            this._translate.reactive = live;
+            this._translate.ease({opacity: live ? 255 : 80, duration: 200, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
         }
         this._syncWidth();
     }

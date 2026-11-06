@@ -1,0 +1,10 @@
+{
+ "model": {
+  "name": "PP-HumanSeg 2023mar (OpenCV model zoo, from PaddleSeg)",
+  "licence": "Apache-2.0",
+  "url": "https://media.githubusercontent.com/media/opencv/opencv_zoo/48b10fa505aeb51fbd127fc60a5c660040e823b7/models/human_segmentation_pphumanseg/human_segmentation_pphumanseg_2023mar.onnx",
+  "host": "media.githubusercontent.com",
+  "sha256": "552d8a984054e59b5d773d24b9b12022b22046ceb2bbc4c9aaeaceb36a9ddf24",
+  "size": 6163938
+ }
+}

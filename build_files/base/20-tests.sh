@@ -612,7 +612,7 @@ rm -rf "${UI_RENDER}"
 # The search box is on Super+Space alone, which GNOME's input-source switch must not take (zz0 moves it to
 # Shift+Super+Space): on a base without that line the box never opened
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys org.gnome.shell.extensions.amethystora-ui.search | sort | paste -sd ' ')" == \
-    "agent answers bookmarks clipboard glance manual meaning notes old-words open plugins remembered reminders settings timers times windows" ]]
+    "agent answers bookmarks clipboard glance manual meaning notes old-words open photos plugins remembered reminders settings timers times windows" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.search open)" == "['<Super>space']" ]]
 # Search that answers (plans/beyond/spec-search.md): each part on, the emoji picker on Super+. in the yellow tone
 for key in answers times reminders timers settings manual windows clipboard agent glance old-words remembered; do
@@ -656,11 +656,11 @@ bash /ctx/build_files/shared/test-file-find.sh
 # GNOME's file index never reads the Private folder (zz1): its names and text would sit in the index's plain database
 [[ "$(GSETTINGS_BACKEND=memory gsettings get org.freedesktop.Tracker3.Miner.Files ignored-directories)" == *"'Private'"* ]]
 # Opening a file or a place from the search does not wait on the compositor's thread, and logs no file name
-for file in wordsProvider rememberProvider meaning; do
+for file in wordsProvider rememberProvider meaning photos; do
     grep -q "launch_default_for_uri_async" "${UI_EXTENSION}/modules/search/${file}.js"
     [[ -z "$(grep -n 'launch_default_for_uri(' "${UI_EXTENSION}/modules/search/${file}.js")" ]]
 done
-[[ -z "$(grep -n 'e\.message' "${UI_EXTENSION}/modules/search/rememberProvider.js" "${UI_EXTENSION}/modules/search/meaning.js")" ]]
+[[ -z "$(grep -n 'e\.message' "${UI_EXTENSION}/modules/search/rememberProvider.js" "${UI_EXTENSION}/modules/search/meaning.js" "${UI_EXTENSION}/modules/search/photos.js")" ]]
 for file in words wordsProvider remember rememberProvider; do
     [[ -z "$(grep -nE '_sync\(|file_get_contents' "${UI_EXTENSION}/modules/search/${file}.js")" ]]
 done
@@ -1327,7 +1327,7 @@ grep -q -- "'flatpak', 'run', GRADIA, \`--ocr-file=" "${UI_EXTENSION}/modules/sc
 grep -q "^export const GRADIA = 'be.alexandervanhee.gradia';$" "${UI_EXTENSION}/modules/screenshot/capture.js"
 test -s "${UI_EXTENSION}/icons/screenshot/extract-symbolic.svg"
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys org.gnome.shell.extensions.amethystora-ui.screenshot | sort | paste -sd ' ')" == \
-    "capture-pin capture-thumbnail hide-private recording-trim tool-settings" ]]
+    "capture-pin capture-thumbnail hide-private recording-trim tool-settings translate-to" ]]
 # Pin a capture (R4-17): the thumbnail and pinning on as the image ships, the bar's Pin button and Ctrl+P, the pin's two
 # icons drawn for the extension, at most six pinned, and a pinned picture never saved by itself
 for key in capture-thumbnail capture-pin; do
@@ -1361,6 +1361,48 @@ test -s "${UI_EXTENSION}/icons/screenshot/cover-symbolic.svg"
 test -x /usr/libexec/amethystora-cover-private
 command -v tesseract >/dev/null
 bash /ctx/build_files/shared/test-cover-private.sh
+# Any language (R7-47): off until a language is chosen. The translator is NOT in the image (building it would add about twenty
+# minutes to every image build, and the image has no compiler): `amethystora-translate engine build` compiles it on the
+# person's machine, from the script shipped here, in a container of this Fedora release pinned by digest. Here: the script, the
+# release the image is on being one the table has an image for, podman to run it, the licence flags, the table's limit, and
+# every word only in memory. Never in the setup file: a shared file must not start a download or a build
+[[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.screenshot translate-to)" == "''" ]]
+test ! -e /usr/libexec/amethystora-bergamot
+test -x /usr/share/amethystora/translate/build-engine.sh
+bash -n /usr/share/amethystora/translate/build-engine.sh
+grep -q -- '-DEIGEN_MPL2_ONLY' /usr/share/amethystora/translate/build-engine.sh
+# A release the table has no image for only turns the translation's build off on that image, so it is said, not failed
+jq -e --arg v "$(. /etc/os-release; echo "${VERSION_ID}")" '.engine.images[$v] | type == "string"' /usr/share/amethystora/translate/models.json >/dev/null ||
+    echo "::warning::translate/models.json has no engine image for this Fedora release: the translator cannot be built here"
+command -v podman >/dev/null
+test -s /usr/bin/zstd
+grep -q "bergamot-translator" /usr/share/licenses/amethystora/NOTICE
+grep -q 'translate-to' /usr/libexec/amethystora-setup && { echo "the translator's key is in the setup file"; exit 1; }
+bash /ctx/build_files/shared/test-translate.sh
+# Your photos, by what is in them (R7-63): offered and off, read through GdkPixbuf (glycin's sandbox), the index only ever sealed in
+# the Vault, a reading unit at the lowest priority with no network, and a timer nothing enables for every account
+test -x /usr/libexec/amethystora-photos
+python3 -I -c 'import ast, sys; ast.parse(open(sys.argv[1]).read())' /usr/libexec/amethystora-photos
+grep -q 'new_from_file_at_scale' /usr/libexec/amethystora-photos
+grep -vh '^ *#' /usr/libexec/amethystora-photos | grep -qE 'PIL|Image\.open' && false
+[[ "$(systemctl --global is-enabled amethystora-photos.timer 2>/dev/null)" != enabled ]]
+bash /ctx/build_files/shared/test-photos.sh
+# Another screen from what you have, and help from someone you trust (R7-26, R7-50): GNOME's remote desktop, the one port in the home
+# zone alone and for now only, a new code every time, view only for a help, and nothing for the agent to turn on
+test -x /usr/libexec/amethystora-share-screen
+bash -n /usr/libexec/amethystora-share-screen
+command -v grdctl >/dev/null
+test -f /usr/lib/firewalld/services/ms-wbt.xml
+grep -q 'amethystora-home' /usr/libexec/amethystora-share-screen
+! grep -q 'ms-wbt' /usr/lib/firewalld/zones/amethystora*.xml
+[[ "$(/usr/libexec/amethystora-share-screen >/dev/null 2>&1; echo $?)" == 64 ]]
+bash /ctx/build_files/shared/test-share-screen.sh
+# Look good in every call (R7-68): offered and off, a helper of its own, its unit enabled for nobody, and the programs that run
+# its model in the image. It is switched by a recipe and no key; its video is never written
+test -x /usr/libexec/amethystora-camera
+python3 -c "import numpy, onnxruntime, PIL, gi"
+test ! -e /etc/systemd/user/graphical-session.target.wants/amethystora-camera.service
+bash /ctx/build_files/shared/test-camera.sh
 # Uninstalling from an app's menu: Flatpak's own command, as the account, and Bazaar for the details
 grep -qF "['uninstall', user ? '--user' : (extra ? installation : '--system'), '-y', id]" "${UI_EXTENSION}/modules/bazaar.js"
 grep -qF 'appstream:' "${UI_EXTENSION}/modules/bazaar.js"
@@ -3214,7 +3256,7 @@ grep -q "Gio.Subprocess.new(\[HELPER, 'dictate', language\]," "${UI_EXTENSION}/m
 grep -q "Main.wm.addKeybinding(KEY, this._settings" "${UI_EXTENSION}/modules/captions/dictation.js"
 [[ -z "$(grep -nE 'use_markup = true|use_markup: true|set_markup\(' "${UI_EXTENSION}/modules/captions/dictation.js")" ]]
 grep -q '^dictation ACTION="":' /usr/share/amethystora/just/desktop.just
-for key in bookmarks notes meaning; do
+for key in bookmarks notes meaning photos; do
     [[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.search "${key}")" == false ]]
     test -s "${UI_EXTENSION}/modules/search/${key}.js"
 done

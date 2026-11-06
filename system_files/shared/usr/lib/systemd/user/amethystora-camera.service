@@ -1,0 +1,30 @@
+[Unit]
+Description=Amethystora camera effects (blur and even light for every app)
+Documentation=file:///usr/share/amethystora/manual/desktop.md
+# Not enabled for anyone as the image ships: `ame desktop camera on` enables and starts it for the account that asks (after
+# the cost check and the model), `ame desktop camera off` stops and disables it. While it runs it holds the virtual camera
+# open and does nothing else; only while an app uses that camera does it open the real one and load the model.
+PartOf=graphical-session.target
+After=graphical-session.target pipewire.service
+
+[Service]
+ExecStart=/usr/libexec/amethystora-camera run
+Restart=on-failure
+RestartSec=5
+# The share of the computer it may take, so that it can never take the desktop with it: the cost the plan allows is 15 % of
+# one core at 720p, and `ame desktop camera on` offers it only where it measured under that
+CPUQuota=40%
+CPUWeight=20
+Nice=10
+MemoryMax=400M
+TasksMax=64
+# No namespace settings (a user's manager can only have them in a user namespace, which would hide the camera's device
+# nodes' permissions): as the account, without new privileges, and no video leaves: no network
+NoNewPrivileges=yes
+RestrictAddressFamilies=AF_UNIX
+LockPersonality=yes
+UMask=0077
+LimitCORE=0
+
+[Install]
+WantedBy=graphical-session.target

@@ -1708,6 +1708,15 @@ search_item notes "${ gettext "Notes"; }" \
     "${ gettext "The titles of your notes and tasks, only while Notes is open and unlocked. Locked, it says nothing."; }"
 search_item meaning "${ gettext "Files by meaning"; }" \
     "${ gettext "Finds files in Documents by what they are about, from the text GNOME's indexer already read, on this computer. It reads them once a day on mains power."; }"
+# Your photos, by what is in them (R7-63): on opens a terminal, which says what it downloads and asks; off deletes what it kept
+[[ "${ ended search; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
+choice on "${ON}" "" true ame desktop search photos on
+choice off "${OFF}" "" false ame desktop search photos off
+GROUP="${ gettext "Search"; }"
+USAGE="ame desktop search photos on|off"
+item desktop search-photos switch "${ gettext "Your photos, by what is in them"; }" \
+    "${ gettext "Type photo: and a few words to find a picture by what it shows. A small model reads each photo once on this computer, on mains power while you are away; what it works out is kept sealed in the Vault, and no photo leaves."; }" \
+    "${ [[ "${SEARCH}" == *" photos true"* ]] && echo on || echo off; }" desktop#your-photos-by-what-is-in-them
 GROUP=""
 
 # The skin tone of the hands and people in the emoji picker (Super+.)
@@ -2464,6 +2473,41 @@ USAGE="ame desktop screenshot private on|off"
 item desktop screenshot-private switch "${ gettext "Hide what's private"; }" \
     "${ gettext "A button in the screenshot bar covers addresses, card, phone and account numbers with solid boxes, read on this computer. It can miss things, and says so."; }" \
     "${ onoff_of "${SCREENSHOT}" hide-private; }" desktop#hide-whats-private
+# Any language (R7-47, off until a language was chosen): on opens a terminal, which says what it downloads and asks
+ui_reason screenshot
+choice on "${ON}" "" true ame desktop translate on
+choice off "${OFF}" "" false ame desktop translate off
+USAGE="ame desktop translate on|off"
+if [[ "${ value_of "${SCREENSHOT}" translate-to "'?([^']*)'?\$"; }" == "" ]]; then TRANSLATE=off; else TRANSLATE=on; fi
+item desktop screenshot-translate switch "${ gettext "Read the screen in your language"; }" \
+    "${ gettext "A button in the screenshot bar reads what a box holds and translates it on this computer. Choosing languages downloads their models once, and nothing you translate leaves."; }" \
+    "${TRANSLATE}" desktop#read-it-in-your-language
+# Look good in every call (R7-68, offered and off): on opens a terminal, which says what it downloads, measures what 720p costs on
+# this computer and turns it on only under the limit
+GROUP="${ gettext "Camera"; }"
+choice on "${ON}" "" true ame desktop camera on
+choice off "${OFF}" "" false ame desktop camera off
+USAGE="ame desktop camera on|off"
+if [[ -L "${HOME}/.config/systemd/user/graphical-session.target.wants/amethystora-camera.service" ]]; then CAMERA=on; else CAMERA=off; fi
+item desktop camera switch "${ gettext "Look good in every call"; }" \
+    "${ gettext "Blur what is behind you and even out the light in every app at once, made on this computer. It runs only while an app uses the camera, and is offered only where it costs little."; }" \
+    "${CAMERA}" desktop#look-good-in-every-call
+# Another screen from what you have, and help from someone you trust (R7-26, R7-50; off): each opens a terminal, which says what
+# it opens, asks, and shows the code
+GROUP="${ gettext "Sharing"; }"
+choice on "${ON}" "" true ame desktop second-screen on
+choice off "${OFF}" "" false ame desktop second-screen off
+USAGE="ame desktop second-screen on|off"
+item desktop second-screen switch "${ gettext "Another screen from what you have"; }" \
+    "${ gettext "An old laptop or tablet becomes a second screen over your home network, with any remote desktop (RDP) app and a code shown here. Off until you turn it on."; }" \
+    "${ [[ "$(cat "${HOME}/.local/state/amethystora/share-screen/mode" 2>/dev/null)" == second-screen ]] && echo on || echo off; }" desktop#another-screen-from-what-you-have
+choice on "${ON}" "" true ame desktop help-me on
+choice off "${OFF}" "" false ame desktop help-me off
+USAGE="ame desktop help-me on|off"
+item desktop help-me switch "${ gettext "Help from someone you trust"; }" \
+    "${ gettext "Someone on your home network sees your screen, and cannot touch anything unless you allow it, with a new code each time. It ends when you lock the screen."; }" \
+    "${ [[ "$(cat "${HOME}/.local/state/amethystora/share-screen/mode" 2>/dev/null)" == help ]] && echo on || echo off; }" desktop#help-from-someone-you-trust
+GROUP="${ gettext "Screenshots"; }"
 # Trim a recording (R6-19, offered, off)
 ui_reason screenshot
 switch_choices false ame desktop screenshot trim

@@ -1,0 +1,418 @@
+#!/usr/bin/python3 -I
+# Any language, on your screen (R7-47): what is in a box drawn round the screen, read and translated on this computer.
+# Tesseract reads the picture and Bergamot translates through English, each as a process of its own that ends when it has
+# answered, so that nothing stays in memory and neither ever holds more than the 300 MB /usr/share/amethystora/translate/
+# models.json was measured to. Bergamot is not in the image (Fedora does not package it, and building it into every image costs
+# about twenty minutes of every build): `engine build` compiles it once, here, from source at a pinned commit, inside the pinned
+# Fedora container of this machine's own release (/usr/share/amethystora/translate/build-engine.sh), and keeps the program in
+# ~/.local/share/amethystora/translate/engine. Run as the account.
+#
+#   amethystora-translate status TO          as JSON: whether the engine is here, and the languages here to read into TO
+#   amethystora-translate engine status      as JSON: whether the translator is here, and whether it can be built on this machine
+#   amethystora-translate engine build       builds it (twenty minutes or so), after the caller has said so and asked
+#   amethystora-translate engine remove      deletes the translator; the models stay
+#   amethystora-translate languages          the languages offered, as JSON: code, name
+#   amethystora-translate size FROM TO       what fetching would download, in bytes, and its hosts
+#   amethystora-translate fetch FROM TO      downloads what FROM into TO needs, once, each file checked against its pinned
+#                                            SHA-256, into ~/.local/share/amethystora/translate; nothing is kept when it fails
+#   amethystora-translate remove             deletes the models and the reading data, and the translator too if all is given
+#   amethystora-translate read FROM TO       a PNG on stdin; {"source", "text", "cut"} or {"error"} on stdout
+#   amethystora-translate text FROM TO       the same from plain text on stdin
+#
+# The picture and the words travel through pipes alone: nothing here writes them, logs them or sends them. The only
+# connection is `fetch`, which the `ame desktop translate` recipe says and asks about first, and which never carries
+# anything of the person's: fixed addresses, public models.
+
+import ctypes
+import hashlib
+import json
+import os
+import re
+import resource
+import shutil
+import signal
+import subprocess
+import sys
+
+ROOT = os.environ.get('AMETHYSTORA_TRANSLATE_ROOT', '')
+PODMAN = f'{ROOT}/usr/bin/podman'
+BUILD_SCRIPT = f'{ROOT}/usr/share/amethystora/translate/build-engine.sh'
+TESSERACT = f'{ROOT}/usr/bin/tesseract'
+CURL = f'{ROOT}/usr/bin/curl'
+ZSTD = f'{ROOT}/usr/bin/zstd'
+TABLE = f'{ROOT}/usr/share/amethystora/translate/models.json'
+# As much as one box is translated; a screen of text is under it. One worker: each more adds an arena
+MOST_TEXT = 4000
+MOST_ANSWER = 1 << 20
+STEP_S = 60
+READ_S = 25
+# A picture narrower than this is doubled for the reading, as Hide what's private does: Tesseract misreads small text
+MOST_ENLARGED = 1500
+# English is the bridge: every model goes to or from it
+BRIDGE = 'en'
+# Tesseract puts spaces between the characters of scripts that have none
+CJK_GAP = re.compile(r'(?<=[぀-ヿ㐀-鿿])\s+(?=[぀-ヿ㐀-鿿])')
+ENV = {'OMP_THREAD_LIMIT': '2', 'LC_ALL': 'C.UTF-8', 'PATH': '/usr/bin'}
+CONFIG = """models:
+  - {model}
+vocabs:
+  - {source}
+  - {target}
+shortlist:
+  - {lex}
+  - false
+beam-size: 1
+normalize: 1.0
+word-penalty: 0
+max-length-break: 128
+mini-batch-words: 1024
+max-length-factor: 2.0
+skip-cost: true
+cpu-threads: 0
+quiet: true
+quiet-translation: true
+gemm-precision: int8shiftAlphaAll
+alignment: soft
+"""
+
+
+def die_with_parent():
+    """Run in the child before it starts: it is killed with this process, so that a cancelled box leaves no engine behind"""
+    ctypes.CDLL(None, use_errno=True).prctl(1, signal.SIGKILL)  # PR_SET_PDEATHSIG
+
+
+def table():
+    with open(TABLE, encoding='utf-8') as f:
+        return json.load(f)
+
+
+def folder():
+    data = os.environ.get('XDG_DATA_HOME', '')
+    if not os.path.isabs(data):
+        data = os.path.join(os.path.expanduser('~'), '.local', 'share')
+    return os.path.join(data, 'amethystora', 'translate')
+
+
+def engine_path():
+    return os.path.join(folder(), 'engine', 'amethystora-bergamot')
+
+
+def known(models, code):
+    return code == BRIDGE or code in models['languages']
+
+
+def directions(frm, to):
+    """The models FROM into TO goes through: none between one language and itself, one with English, else two."""
+    if frm == to:
+        return []
+    if BRIDGE in (frm, to):
+        return [f'{frm}-{to}']
+    return [f'{frm}-{BRIDGE}', f'{BRIDGE}-{to}']
+
+
+def direction_here(name):
+    return os.path.isfile(os.path.join(folder(), name, 'config.yml'))
+
+
+def reading_here(models, code):
+    """English is in the image; any other language's reading comes with its models."""
+    if code == BRIDGE:
+        return True
+    return os.path.isfile(os.path.join(folder(), 'tessdata', models['languages'][code]['reading']['name']))
+
+
+def status(to):
+    models = table()
+    frm = [code for code in [BRIDGE, *models['languages']]
+           if code != to and reading_here(models, code) and all(direction_here(name) for name in directions(code, to))]
+    print(json.dumps({'engine': os.access(engine_path(), os.X_OK) and os.access(TESSERACT, os.X_OK), 'from': frm}))
+    return 0
+
+
+def languages():
+    models = table()
+    print(json.dumps([{'code': BRIDGE, 'name': 'English'}] +
+                     [{'code': code, 'name': item['name']} for code, item in models['languages'].items()],
+                     ensure_ascii=False))
+    return 0
+
+
+def wanted(models, frm, to):
+    """What FROM into TO still needs: [(folder, file record)]"""
+    files = []
+    for name in directions(frm, to):
+        if not direction_here(name):
+            files += [(name, record) for record in models['directions'][name]['files']]
+    if frm != BRIDGE and not reading_here(models, frm):
+        files.append(('tessdata', models['languages'][frm]['reading']))
+    return files
+
+
+def size(frm, to):
+    models = table()
+    print(json.dumps({'bytes': sum(record['size'] for _, record in wanted(models, frm, to)),
+                      'hosts': models['hosts']}))
+    return 0
+
+
+def sha256(path):
+    digest = hashlib.sha256()
+    with open(path, 'rb') as f:
+        for block in iter(lambda: f.read(1 << 20), b''):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def download(models, record, path):
+    url = record.get('url') or models['models_url'] + record['location']
+    protocols = '=https'
+    # The VM lab and the build's test hand over a copy they keep. What makes that safe is the pinned SHA-256: whatever the
+    # address, only the file's own bytes are kept, and anything else is deleted
+    override = os.environ.get('AMETHYSTORA_TRANSLATE_URL', '')
+    if override:
+        url = override.rstrip('/') + '/' + os.path.basename(url)
+        protocols = '=https,http,file'
+    # A redirect is held to the same protocols as the first request (curl's own default lets one go to http)
+    subprocess.run([CURL, '--proto', protocols, '--proto-redir', protocols, '--tlsv1.2', '-fL',
+                    '--max-filesize', str(record['size'] + 1024 * 1024), '--retry', '2', '--progress-bar',
+                    '-o', path, '--', url], check=True)
+    if sha256(path) != record['sha256']:
+        raise ValueError(f'{record["name"]} is not the file that was pinned')
+
+
+def fetch(frm, to):
+    models = table()
+    base = folder()
+    os.makedirs(base, mode=0o700, exist_ok=True)
+    os.chmod(base, 0o700)
+    fresh = {}
+    try:
+        for name, record in wanted(models, frm, to):
+            if name == 'tessdata':
+                target = os.path.join(base, name)
+                os.makedirs(target, mode=0o700, exist_ok=True)
+                part = os.path.join(target, f'.{record["name"]}.part')
+                download(models, record, part)
+                os.replace(part, os.path.join(target, record['name']))
+                continue
+            into = fresh.setdefault(name, os.path.join(base, f'.fetching-{name}'))
+            os.makedirs(into, mode=0o700, exist_ok=True)
+            packed = os.path.join(into, f'{record["name"]}.zst')
+            download(models, record, packed)
+            # zstd's output is checked as well: what the engine parses is exactly what was measured
+            subprocess.run([ZSTD, '-dfq', '--rm', '--', packed], check=True)
+            if sha256(os.path.join(into, record['name'])) != record['unpacked_sha256']:
+                raise ValueError(f'{record["name"]} did not unpack to the file that was pinned')
+        for name, into in fresh.items():
+            by_type = {record['type']: os.path.join(base, name, record['name'])
+                       for record in models['directions'][name]['files']}
+            vocab = by_type.get('vocab')
+            # JSON strings are YAML strings, so a home's path cannot break the file
+            with open(os.path.join(into, 'config.yml'), 'w', encoding='utf-8') as f:
+                f.write(CONFIG.format(model=json.dumps(by_type['model']), lex=json.dumps(by_type['lex']),
+                                      source=json.dumps(by_type.get('srcvocab', vocab)),
+                                      target=json.dumps(by_type.get('trgvocab', vocab))))
+            shutil.rmtree(os.path.join(base, name), ignore_errors=True)
+            os.rename(into, os.path.join(base, name))
+        return 0
+    except (OSError, ValueError, KeyError, subprocess.CalledProcessError) as e:
+        print(f'amethystora-translate: {e}', file=sys.stderr)
+        return 1
+    finally:
+        for into in fresh.values():
+            shutil.rmtree(into, ignore_errors=True)
+        reading = os.path.join(base, 'tessdata')
+        for name in os.listdir(reading) if os.path.isdir(reading) else []:
+            if name.endswith('.part'):
+                os.unlink(os.path.join(reading, name))
+
+
+def remove(everything):
+    base = folder()
+    for name in os.listdir(base) if os.path.isdir(base) else []:
+        if name != 'engine' or everything:
+            path = os.path.join(base, name)
+            shutil.rmtree(path, ignore_errors=True) if os.path.isdir(path) else os.unlink(path)
+    if everything:
+        shutil.rmtree(base, ignore_errors=True)
+    return 0
+
+
+def fedora():
+    try:
+        with open(f'{ROOT}/etc/os-release', encoding='utf-8') as f:
+            return next((line.split('=', 1)[1].strip().strip('"') for line in f if line.startswith('VERSION_ID=')), '')
+    except OSError:
+        return ''
+
+
+def build_jobs():
+    """The compile jobs: four at most, and none more than a gigabyte and a half of the memory there is to spare allows"""
+    try:
+        with open('/proc/meminfo', encoding='utf-8') as f:
+            free = next(int(line.split()[1]) for line in f if line.startswith('MemAvailable:'))
+    except (OSError, StopIteration, ValueError):
+        free = 0
+    return max(1, min(4, os.cpu_count() or 1, free // (1536 * 1024)))
+
+
+def engine_status():
+    models = table()
+    image = models['engine']['images'].get(fedora(), '')
+    print(json.dumps({'here': os.access(engine_path(), os.X_OK),
+                      'buildable': bool(image) and os.access(PODMAN, os.X_OK) and os.path.isfile(BUILD_SCRIPT),
+                      'image': image.split('@')[0],
+                      'megabytes': models['engine']['download_mb'], 'minutes': models['engine']['minutes'],
+                      'hosts': models['engine']['hosts']}))
+    return 0
+
+
+def engine_build():
+    """Compiles the translator in the pinned Fedora container of this release and keeps the program and its licences. Nothing
+    is kept when it fails, and the container's image is taken away again unless it was here before."""
+    models = table()
+    image = models['engine']['images'].get(fedora(), '')
+    if not image or not os.access(PODMAN, os.X_OK):
+        print('amethystora-translate: the translator cannot be built on this machine', file=sys.stderr)
+        return 1
+    base = folder()
+    os.makedirs(base, mode=0o700, exist_ok=True)
+    work = os.path.join(base, '.building')
+    shutil.rmtree(work, ignore_errors=True)
+    os.makedirs(work, mode=0o700)
+    had = subprocess.run([PODMAN, 'image', 'exists', image], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+    try:
+        # Pulled by its digest, so neither the tag nor the policy's catch-all can put another image in its place
+        subprocess.run([PODMAN, 'pull', '--quiet', image], check=True, stdout=subprocess.DEVNULL)
+        subprocess.run(['nice', '-n', '10', PODMAN, 'run', '--rm', '--security-opt', 'label=disable',
+                        '-v', f'{BUILD_SCRIPT}:/build.sh:ro', '-v', f'{work}:/out',
+                        '-e', f'EXPECT_TREE={models["engine"]["tree_sha256"]}', '-e', f'JOBS={build_jobs()}',
+                        image, 'bash', '/build.sh'], check=True)
+        program = os.path.join(work, 'amethystora-bergamot')
+        # Run once here, so that a build that is not for this machine's libraries is found now and not at the first box
+        subprocess.run([program, '--version'], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
+        target = os.path.join(base, 'engine')
+        shutil.rmtree(target, ignore_errors=True)
+        os.rename(work, target)
+        return 0
+    except (OSError, subprocess.SubprocessError) as e:
+        print(f'amethystora-translate: the translator was not built: {type(e).__name__}', file=sys.stderr)
+        return 1
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+        if not had:
+            subprocess.run([PODMAN, 'rmi', '--force', image], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def clean(ocr):
+    """The reading's lines, joined back into paragraphs: a line break in a box is rarely a sentence's end"""
+    paragraphs = []
+    for block in re.split(r'\n\s*\n', ocr.replace('\f', '\n')):
+        lines = [line.strip() for line in block.splitlines() if line.strip()]
+        if lines:
+            paragraphs.append(CJK_GAP.sub('', ' '.join(lines)))
+    return '\n\n'.join(paragraphs)
+
+
+def enlarged(png):
+    import gi
+    gi.require_version('GdkPixbuf', '2.0')
+    from gi.repository import GdkPixbuf
+    loader = GdkPixbuf.PixbufLoader.new_with_type('png')
+    loader.write(png)
+    loader.close()
+    picture = loader.get_pixbuf()
+    width, height = picture.get_width(), picture.get_height()
+    if width > MOST_ENLARGED:
+        return png
+    large = picture.scale_simple(width * 2, height * 2, GdkPixbuf.InterpType.BILINEAR)
+    return large.save_to_bufferv('png', [], [])[1]
+
+
+def read_picture(models, frm):
+    env = dict(ENV)
+    code = 'eng'
+    # English's data is the image's, where Tesseract looks by itself
+    if frm != BRIDGE:
+        code = models['languages'][frm]['reading']['name'].removesuffix('.traineddata')
+        env['TESSDATA_PREFIX'] = os.path.join(folder(), 'tessdata')
+    done = subprocess.run([TESSERACT, 'stdin', 'stdout', '-l', code, '--psm', '6'], input=enlarged(sys.stdin.buffer.read()),
+                          stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env, timeout=READ_S, check=True,
+                          preexec_fn=die_with_parent)
+    return done.stdout[:MOST_ANSWER].decode('utf-8', 'replace')
+
+
+def translated(name, text):
+    config = os.path.join(folder(), name, 'config.yml')
+    done = subprocess.run([engine_path(), '--model-config-paths', config, '--cpu-threads', '1', '--log-level', 'off'],
+                          input=text.encode('utf-8') + b'\n', stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=ENV,
+                          timeout=STEP_S, check=True, preexec_fn=die_with_parent)
+    return done.stdout[:MOST_ANSWER].decode('utf-8', 'replace').strip()
+
+
+def answer(record):
+    print(json.dumps(record, ensure_ascii=False))
+    # Nothing about why: an error never names what the picture holds
+    return 0 if 'error' not in record else 1
+
+
+def run(frm, to, picture):
+    models = table()
+    route = directions(frm, to)
+    if not all(direction_here(name) for name in route) or not reading_here(models, frm):
+        return answer({'error': 'no-model'})
+    try:
+        source = clean(read_picture(models, frm) if picture else sys.stdin.read())
+        if not source:
+            return answer({'error': 'no-text'})
+        cut = len(source) > MOST_TEXT
+        source = source[:MOST_TEXT]
+        text = source
+        for name in route:
+            text = translated(name, text)
+    except (OSError, ValueError, subprocess.SubprocessError) as e:
+        return answer({'error': 'unreadable', 'why': type(e).__name__})
+    except Exception as e:  # GLib's error, which only exists once a picture has been opened
+        if type(e).__module__.startswith('gi'):
+            return answer({'error': 'unreadable', 'why': 'picture'})
+        raise
+    return answer({'source': source, 'text': text, 'cut': cut})
+
+
+def main(argv):
+    # A core dump would hold the picture and the words
+    resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
+    commands = {'status': 1, 'languages': 0, 'remove': 0, 'size': 2, 'fetch': 2, 'read': 2, 'text': 2, 'engine': 1}
+    usage = ('usage: amethystora-translate status TO|languages|remove [all]|size FROM TO|fetch FROM TO|read FROM TO|text FROM TO'
+             '|engine status|build|remove')
+    if len(argv) < 2 or argv[1] not in commands:
+        print(usage, file=sys.stderr)
+        return 64
+    if argv[1] == 'remove' and len(argv) in (2, 3) and argv[2:] in ([], ['all']):
+        return remove(len(argv) == 3)
+    if argv[1] == 'engine' and len(argv) == 3 and argv[2] in ('status', 'build', 'remove'):
+        if argv[2] == 'remove':
+            shutil.rmtree(os.path.dirname(engine_path()), ignore_errors=True)
+            return 0
+        return engine_status() if argv[2] == 'status' else engine_build()
+    if argv[1] in ('remove', 'engine') or len(argv) != 2 + commands[argv[1]]:
+        print(usage, file=sys.stderr)
+        return 64
+    if argv[1] == 'languages':
+        return languages()
+    models = table()
+    if not all(known(models, code) for code in argv[2:]) or (len(argv) == 4 and argv[2] == argv[3]):
+        print('amethystora-translate: not a language offered', file=sys.stderr)
+        return 64
+    if argv[1] == 'status':
+        return status(argv[2])
+    frm, to = argv[2], argv[3]
+    if argv[1] == 'size':
+        return size(frm, to)
+    if argv[1] == 'fetch':
+        return fetch(frm, to)
+    return run(frm, to, argv[1] == 'read')
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv))

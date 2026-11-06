@@ -1,0 +1,419 @@
+#!/usr/bin/python3 -I
+# Look good in every call (R7-68, offered and off): the camera's picture with the background blurred and the light evened out,
+# made on this computer and handed to every app at once as a camera of its own (the v4l2loopback device the image already
+# carries). Video stays here: frames are never written, logged or sent, and nothing leaves but the one model's download.
+#
+#   amethystora-camera status               as JSON: the model, the two effects, the cameras found, whether it runs
+#   amethystora-camera fetch                downloads the one model, once, checked against its pinned SHA-256
+#   amethystora-camera remove               deletes the model and the settings
+#   amethystora-camera set blur|light on|off
+#   amethystora-camera bench                as JSON: what 720p at 30 pictures a second costs on this computer, in percent of
+#                                           one core, against the limit of 15: it is offered only under it
+#   amethystora-camera run                  the effects: holds the virtual camera, and while an app uses it reads the real one
+#                                           (the user unit amethystora-camera.service, which `ame desktop camera on` starts)
+#
+# Only while an app uses the virtual camera does it open the real camera or hold the model in memory: PipeWire says when
+# (`pw-dump --monitor`), and ten idle seconds later both are let go. Blocking the webcam in Security removes the real camera
+# from the system, so there is nothing for it to read. The model is PP-HumanSeg from OpenCV's model zoo (Apache-2.0).
+
+import hashlib
+import json
+import os
+import re
+import signal
+import subprocess
+import sys
+import time
+
+ROOT = os.environ.get('AMETHYSTORA_CAMERA_ROOT', '')
+TABLE = f'{ROOT}/usr/share/amethystora/camera/models.json'
+CURL = f'{ROOT}/usr/bin/curl'
+SYS = f'{ROOT}/sys/class/video4linux'
+# The cost the plan allows: percent of one core at 1280 x 720, 30 pictures a second
+LIMIT = 15.0
+WIDTH, HEIGHT, RATE = 1280, 720, 30
+# The model sees 192 x 192 pictures, and not every frame: a mask that is a third of a second old still hides the kitchen
+INPUT = 192
+STRIDE = 3
+IDLE_S = 10
+DEVICE = re.compile(r'^/dev/video[0-9]{1,3}$')
+
+
+def table():
+    with open(TABLE, encoding='utf-8') as f:
+        return json.load(f)
+
+
+def data_folder():
+    data = os.environ.get('XDG_DATA_HOME', '')
+    if not os.path.isabs(data):
+        data = os.path.join(os.path.expanduser('~'), '.local', 'share')
+    return os.path.join(data, 'amethystora', 'camera')
+
+
+def config_file():
+    config = os.environ.get('XDG_CONFIG_HOME', '')
+    if not os.path.isabs(config):
+        config = os.path.join(os.path.expanduser('~'), '.config')
+    return os.path.join(config, 'amethystora', 'camera')
+
+
+def model_path():
+    return os.path.join(data_folder(), 'model.onnx')
+
+
+def settings():
+    """blur and light, on unless the file says off: the file only exists once a person chose"""
+    chosen = {'blur': True, 'light': True}
+    try:
+        with open(config_file(), encoding='utf-8') as f:
+            for line in f:
+                key, _, value = line.strip().partition('=')
+                if key in chosen and value in ('on', 'off'):
+                    chosen[key] = value == 'on'
+    except OSError:
+        pass
+    return chosen
+
+
+def cameras():
+    """[(path, virtual)] of the capture devices: a loopback device lies under /sys/devices/virtual, a metadata node of a real
+    camera has an index above 0"""
+    found = []
+    try:
+        names = sorted(os.listdir(SYS), key=lambda name: (len(name), name))
+    except OSError:
+        return found
+    for name in names:
+        if not re.fullmatch(r'video[0-9]{1,3}', name):
+            continue
+        try:
+            with open(os.path.join(SYS, name, 'index'), encoding='utf-8') as f:
+                if f.read().strip() != '0':
+                    continue
+        except OSError:
+            pass
+        found.append((f'/dev/{name}', '/devices/virtual/' in os.path.realpath(os.path.join(SYS, name))))
+    return found
+
+
+def running():
+    return subprocess.run([f'{ROOT}/usr/bin/systemctl', '--user', 'is-active', '--quiet', 'amethystora-camera.service'],
+                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+
+
+def status():
+    found = cameras()
+    print(json.dumps({'model': os.path.isfile(model_path()), **settings(),
+                      'real': [path for path, virtual in found if not virtual],
+                      'virtual': [path for path, virtual in found if virtual], 'running': running(),
+                      'bytes': table()['model']['size'], 'host': table()['model']['host']}))
+    return 0
+
+
+def sha256(path):
+    digest = hashlib.sha256()
+    with open(path, 'rb') as f:
+        for block in iter(lambda: f.read(1 << 20), b''):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def fetch():
+    model = table()['model']
+    folder = data_folder()
+    os.makedirs(folder, mode=0o700, exist_ok=True)
+    os.chmod(folder, 0o700)
+    part = os.path.join(folder, '.model.part')
+    url = model['url']
+    protocols = '=https'
+    # The build's test hands over a copy it keeps: what makes that safe is the pinned SHA-256, whatever the address
+    override = os.environ.get('AMETHYSTORA_CAMERA_URL', '')
+    if override:
+        url, protocols = override, '=https,http,file'
+    try:
+        subprocess.run([CURL, '--proto', protocols, '--proto-redir', protocols, '--tlsv1.2', '-fL',
+                        '--max-filesize', str(model['size'] + 1024 * 1024), '--retry', '2', '--progress-bar',
+                        '-o', part, '--', url], check=True)
+        if sha256(part) != model['sha256']:
+            raise ValueError('the model is not the file that was pinned')
+        os.replace(part, model_path())
+        return 0
+    except (OSError, ValueError, subprocess.CalledProcessError) as e:
+        print(f'amethystora-camera: {e}', file=sys.stderr)
+        return 1
+    finally:
+        if os.path.exists(part):
+            os.unlink(part)
+
+
+def remove():
+    for path in (model_path(), config_file()):
+        if os.path.exists(path):
+            os.unlink(path)
+    try:
+        os.rmdir(data_folder())
+    except OSError:
+        pass
+    return 0
+
+
+def choose(key, value):
+    if key not in ('blur', 'light') or value not in ('on', 'off'):
+        return usage()
+    chosen = settings()
+    chosen[key] = value == 'on'
+    path = config_file()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path + '.new', 'w', encoding='utf-8') as f:
+        f.write(''.join(f'{name}={"on" if on else "off"}\n' for name, on in chosen.items()))
+    os.replace(path + '.new', path)
+    return 0
+
+
+# --- The effects ------------------------------------------------------------------------------------------------------
+
+
+class Effects:
+    """Blur what is behind a person and even out the light. Frames come in as RGB and go out as RGB; nothing is kept but the
+    last mask and a smoothed gain."""
+
+    def __init__(self, blur, light):
+        import numpy
+        import onnxruntime
+        from PIL import Image, ImageFilter
+        self.np, self.Image, self.ImageFilter = numpy, Image, ImageFilter
+        options = onnxruntime.SessionOptions()
+        # One thread: the cost is one core's share and nothing spins on the others
+        options.intra_op_num_threads = options.inter_op_num_threads = 1
+        self.session = onnxruntime.InferenceSession(model_path(), options, providers=['CPUExecutionProvider'])
+        self.blur, self.light = blur, light
+        self.count = 0
+        self.mask = None
+        self.gain = 1.0
+
+    def segment(self, picture):
+        np = self.np
+        small = picture.resize((INPUT, INPUT), self.Image.BILINEAR)
+        x = (np.asarray(small, dtype=np.float32) / 127.5 - 1.0).transpose(2, 0, 1)[None]
+        out = self.session.run(None, {'x': x})[0][0]
+        # Two classes, background and person: the person's share of the two, as a soft mask
+        shares = np.exp(out - out.max(axis=0))
+        person = shares[1] / shares.sum(axis=0)
+        mask = self.Image.fromarray((person * 255).astype(np.uint8), 'L').resize(picture.size, self.Image.BILINEAR)
+        # Blended with the last one, so that the edge does not flicker between frames
+        if self.mask is not None:
+            mask = self.Image.blend(self.mask, mask, 0.6)
+        self.mask = mask
+
+    def frame(self, data, width, height):
+        Image, np = self.Image, self.np
+        picture = Image.frombuffer('RGB', (width, height), data, 'raw', 'RGB', 0, 1)
+        if self.blur and self.count % STRIDE == 0:
+            self.segment(picture)
+        self.count += 1
+        if self.light:
+            # The picture's average brightness, read from a thumbnail, moved a little each frame toward a middle grey
+            thumb = np.asarray(picture.reduce(16).convert('L'), dtype=np.float32)
+            wanted = min(1.6, max(0.8, 118.0 / max(thumb.mean(), 1.0)))
+            self.gain += (wanted - self.gain) * 0.05
+            lut = [min(255, int(i * self.gain + 0.5)) for i in range(256)] * 3
+            picture = picture.point(lut)
+        if self.blur and self.mask is not None:
+            background = picture.reduce(4).filter(self.ImageFilter.GaussianBlur(5)).resize((width, height), Image.BILINEAR)
+            picture = Image.composite(picture, background, self.mask)
+        return picture.tobytes()
+
+
+def gst():
+    import gi
+    gi.require_version('Gst', '1.0')
+    gi.require_version('GstApp', '1.0')
+    from gi.repository import GLib, Gst, GstApp  # noqa: F401  (GstApp gives the sinks their pull methods)
+    Gst.init(None)
+    return Gst, GLib
+
+
+def real_source(device):
+    """The camera as the system has it: a motion-JPEG or raw picture at 720p, decoded, as RGB"""
+    return (f'v4l2src device={device} ! image/jpeg,width={WIDTH},height={HEIGHT},framerate={RATE}/1 ! jpegdec ! videoconvert ! '
+            f'video/x-raw,format=RGB,width={WIDTH},height={HEIGHT} ! queue max-size-buffers=2 leaky=downstream ! '
+            'appsink name=sink emit-signals=true max-buffers=2 drop=true sync=false')
+
+
+def sink_for(device):
+    return (f'appsrc name=src format=time is-live=true caps=video/x-raw,format=RGB,width={WIDTH},height={HEIGHT},'
+            f'framerate={RATE}/1 ! videoconvert ! video/x-raw,format=YUY2 ! v4l2sink device={device} sync=false')
+
+
+def bench():
+    """720p at 30 pictures a second, through every step this does, from motion-JPEG pictures held in memory: the process's own
+    CPU time over the run, which no other load changes much, as a share of one core"""
+    if not os.path.isfile(model_path()):
+        print(json.dumps({'error': 'no-model'}))
+        return 1
+    Gst, GLib = gst()
+    pictures = []
+    made = Gst.parse_launch(f'videotestsrc num-buffers=12 pattern=ball ! video/x-raw,format=I420,width={WIDTH},height={HEIGHT} ! '
+                            'jpegenc ! appsink name=sink emit-signals=false sync=false')
+    made.set_state(Gst.State.PLAYING)
+    sink = made.get_by_name('sink')
+    while True:
+        sample = sink.try_pull_sample(Gst.SECOND * 5)
+        if sample is None:
+            break
+        ok, info = sample.get_buffer().map(Gst.MapFlags.READ)
+        pictures.append(bytes(info.data))
+        sample.get_buffer().unmap(info)
+    made.set_state(Gst.State.NULL)
+    if not pictures:
+        print(json.dumps({'error': 'no-pictures'}))
+        return 1
+    effects = Effects(settings()['blur'], settings()['light'])
+    decode = Gst.parse_launch(f'appsrc name=src format=time caps=image/jpeg,width={WIDTH},height={HEIGHT},framerate={RATE}/1 ! '
+                              f'jpegdec ! videoconvert ! video/x-raw,format=RGB ! appsink name=sink max-buffers=1 sync=false')
+    encode = Gst.parse_launch(sink_for('/dev/null').replace('v4l2sink device=/dev/null', 'fakesink'))
+    src, out = decode.get_by_name('src'), encode.get_by_name('src')
+    got = decode.get_by_name('sink')
+    decode.set_state(Gst.State.PLAYING)
+    encode.set_state(Gst.State.PLAYING)
+    # Warm up (the model's first runs build its plan), then count
+    frames = 150
+    for turn in range(10 + frames):
+        if turn == 10:
+            started, wall = time.process_time(), time.perf_counter()
+        buffer = Gst.Buffer.new_wrapped(pictures[turn % len(pictures)])
+        src.emit('push-buffer', buffer)
+        sample = got.try_pull_sample(Gst.SECOND * 5)
+        ok, info = sample.get_buffer().map(Gst.MapFlags.READ)
+        data = effects.frame(bytes(info.data), WIDTH, HEIGHT)
+        sample.get_buffer().unmap(info)
+        out.emit('push-buffer', Gst.Buffer.new_wrapped(data))
+    cpu = time.process_time() - started
+    decode.set_state(Gst.State.NULL)
+    encode.set_state(Gst.State.NULL)
+    # What this took for `frames` pictures is what 30 pictures a second take in frames / 30 seconds
+    percent = cpu / (frames / RATE) * 100
+    print(json.dumps({'cpu_percent': round(percent, 1), 'limit': LIMIT, 'ok': percent <= LIMIT,
+                      'ms_per_picture': round(cpu / frames * 1000, 1)}))
+    return 0
+
+
+def readers(dump):
+    """True when PipeWire's dump (a list of objects) has a video source of the virtual camera that an app is reading"""
+    for item in dump if isinstance(dump, list) else []:
+        info = item.get('info', {}) if isinstance(item, dict) else {}
+        props = info.get('props', {}) if isinstance(info, dict) else {}
+        if props.get('media.class') == 'Video/Source' and info.get('state') == 'running':
+            return True
+    return False
+
+
+def run():
+    if not os.path.isfile(model_path()):
+        print('amethystora-camera: no model: run ame desktop camera on', file=sys.stderr)
+        return 1
+    found = cameras()
+    real = [path for path, virtual in found if not virtual]
+    virtual = [path for path, virtual in found if virtual]
+    if not real or not virtual or not all(DEVICE.match(path) for path in real + virtual):
+        print('amethystora-camera: needs a camera and the virtual camera', file=sys.stderr)
+        return 1
+    Gst, GLib = gst()
+    loop = GLib.MainLoop()
+    state = {'capture': None, 'effects': None, 'idle': None, 'readers': False}
+    output = Gst.parse_launch(sink_for(virtual[0]))
+    src = output.get_by_name('src')
+    # Holding the loopback device open is what makes it show as a camera to the apps
+    output.set_state(Gst.State.PLAYING)
+    black = Gst.Buffer.new_wrapped(bytes(WIDTH * HEIGHT * 3))
+    src.emit('push-buffer', black)
+
+    def stop_capture():
+        if state['capture']:
+            state['capture'].set_state(Gst.State.NULL)
+        state['capture'] = state['effects'] = None
+
+    def on_sample(sink):
+        sample = sink.emit('pull-sample')
+        ok, info = sample.get_buffer().map(Gst.MapFlags.READ)
+        try:
+            data = state['effects'].frame(bytes(info.data), WIDTH, HEIGHT)
+        finally:
+            sample.get_buffer().unmap(info)
+        src.emit('push-buffer', Gst.Buffer.new_wrapped(data))
+        return Gst.FlowReturn.OK
+
+    def start_capture():
+        chosen = settings()
+        state['effects'] = Effects(chosen['blur'], chosen['light'])
+        state['capture'] = Gst.parse_launch(real_source(real[0]))
+        state['capture'].get_by_name('sink').connect('new-sample', on_sample)
+        state['capture'].set_state(Gst.State.PLAYING)
+
+    def let_go():
+        state['idle'] = None
+        if not state['readers']:
+            stop_capture()
+        return GLib.SOURCE_REMOVE
+
+    def changed(active):
+        state['readers'] = active
+        if active:
+            if state['idle']:
+                GLib.source_remove(state['idle'])
+                state['idle'] = None
+            if not state['capture']:
+                start_capture()
+        elif state['capture'] and not state['idle']:
+            state['idle'] = GLib.timeout_add_seconds(IDLE_S, let_go)
+
+    watch = subprocess.Popen([f'{ROOT}/usr/bin/pw-dump', '--monitor'], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                             text=True)
+    buffer = ''
+
+    def on_dump(_fd, _condition):
+        nonlocal buffer
+        chunk = os.read(watch.stdout.fileno(), 1 << 16).decode('utf-8', 'replace')
+        if not chunk:
+            loop.quit()
+            return False
+        buffer += chunk
+        # pw-dump prints one JSON array after another, each starting with "[" at the start of a line
+        parts = re.split(r'(?m)^(?=\[)', buffer)
+        buffer = parts.pop() if parts else ''
+        for part in parts:
+            try:
+                changed(readers(json.loads(part)))
+            except ValueError:
+                pass
+        return True
+
+    GLib.io_add_watch(watch.stdout.fileno(), GLib.PRIORITY_DEFAULT, GLib.IOCondition.IN | GLib.IOCondition.HUP, on_dump)
+    for number in (signal.SIGTERM, signal.SIGINT):
+        GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, number, loop.quit)
+    try:
+        loop.run()
+    finally:
+        watch.terminate()
+        stop_capture()
+        output.set_state(Gst.State.NULL)
+    return 0
+
+
+def usage():
+    print('usage: amethystora-camera status|fetch|remove|bench|run|set blur|light on|off', file=sys.stderr)
+    return 64
+
+
+def main(argv):
+    words = argv[1:]
+    if words in (['status'], ['fetch'], ['remove'], ['bench'], ['run']):
+        return {'status': status, 'fetch': fetch, 'remove': remove, 'bench': bench, 'run': run}[words[0]]()
+    if len(words) == 3 and words[0] == 'set':
+        return choose(words[1], words[2])
+    return usage()
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv))

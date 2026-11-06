@@ -335,7 +335,7 @@ const SHELL = ['usr/libexec/amethystora-security-status', 'usr/libexec/amethysto
     'usr/libexec/amethystora-agentic-off-notice', 'usr/libexec/amethystora-private-folder', 'usr/libexec/amethystora-windows-program',
     // Files' scripts menu: its entries' names, and what the three scripts say
     'usr/libexec/amethystora-folder-colour', 'usr/libexec/amethystora-back-in-time', 'usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh',
-    'usr/libexec/amethystora-clean-copy', 'usr/libexec/amethystora-start-times', 'usr/libexec/amethystora-pdf-sign',
+    'usr/libexec/amethystora-clean-copy', 'usr/libexec/amethystora-start-times', 'usr/libexec/amethystora-pdf-sign', 'usr/libexec/amethystora-share-screen',
     // Send to anyone, which says where a file passes before it fetches Warp (R7-66)
     'usr/libexec/amethystora-send-anyone',
     // Restart while you are away: its notice of a night that did not restart

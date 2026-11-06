@@ -1990,6 +1990,242 @@ phone *ARGS:
             ;;
     esac
 
+# Read the screen in your language, in the screenshot bar (R7-47; off until a language is chosen)
+[positional-arguments]
+translate *ARGS:
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.screenshot
+    helper=/usr/libexec/amethystora-translate
+    usage() {
+        echo "usage: ame desktop translate [on [FROM [TO]]|off|remove [all]|languages]"
+        exit 64
+    }
+    [[ $# -le 3 ]] || usage
+    action="${1:-}"
+    to="$(gsettings get "${schema}" translate-to | tr -d "'")"
+    # A language chosen from the helper's list, by name, on a terminal
+    pick() {
+        local prompt="$1" name
+        name="$("${helper}" languages | jq -r '.[].name' | gum filter --header "${prompt}")"
+        "${helper}" languages | jq -r --arg name "${name}" '.[] | select(.name == $name) | .code'
+    }
+    case "${action}" in
+        "")
+            if [[ -n "${to}" ]]; then
+                echo "$(eval_gettext "The screenshot bar reads boxes into \${to}. These are on this computer to read from:")"
+                "${helper}" status "${to}" | jq -r '.from | join(" ")'
+            else
+                echo "$(gettext "The screenshot bar does not translate. ame desktop translate on chooses the languages.")"
+            fi
+            ;;
+        languages)
+            [[ $# -eq 1 ]] || usage
+            "${helper}" languages | jq -r '.[] | "\(.code)\t\(.name)"'
+            ;;
+        off)
+            [[ $# -eq 1 ]] || usage
+            gsettings set "${schema}" translate-to ''
+            echo "$(gettext "The screenshot bar does not translate. What was downloaded stays until ame desktop translate remove.")"
+            ;;
+        remove)
+            [[ $# -eq 1 || "${2:-}" == all ]] || usage
+            gsettings set "${schema}" translate-to ''
+            if [[ "${2:-}" == all ]]; then
+                "${helper}" remove all
+                echo "$(gettext "The models and the translator were deleted, and the screenshot bar does not translate.")"
+            else
+                "${helper}" remove
+                echo "$(gettext "The models were deleted, and the screenshot bar does not translate. The translator stays: ame desktop translate remove all takes it away too.")"
+            fi
+            ;;
+        on)
+            from="${2:-}"
+            into="${3:-${to}}"
+            # The translator is not in the image: it is built here once, from source, when it is asked for
+            engine="$("${helper}" engine status)"
+            if [[ "$(jq -r .here <<<"${engine}")" != true ]]; then
+                if [[ "$(jq -r .buildable <<<"${engine}")" != true ]]; then
+                    echo "$(gettext "The translator is built on this computer from its source, and this one cannot build it: it needs podman and a Fedora release this image knows.")"
+                    exit 1
+                fi
+                megabytes="$(jq -r .megabytes <<<"${engine}")"
+                minutes="$(jq -r .minutes <<<"${engine}")"
+                hosts="$(jq -r '.hosts | join(", ")' <<<"${engine}")"
+                echo "$(gettext "The translator is not part of the image, since building it into every image would cost every build twenty minutes. It is built here once, from its source, in a Fedora container that is removed again afterwards.")"
+                echo "$(eval_gettext "This takes about \${minutes} minutes of up to four cores and downloads about \${megabytes} MB from \${hosts}. It sends nothing of yours.")"
+                gum confirm "$(gettext "Build it now?")" || exit 1
+                if ! "${helper}" engine build; then
+                    echo "$(gettext "The translator was not built, and nothing was kept.")"
+                    exit 1
+                fi
+            fi
+            [[ -n "${from}" ]] || from="$(pick "$(gettext "Which language do you want to read from?")")"
+            [[ -n "${into}" ]] || into="$(pick "$(gettext "Which language do you read in?")")"
+            size="$("${helper}" size "${from}" "${into}" | jq -r '.bytes / 1048576 | round')"
+            if [[ "${size}" != 0 ]]; then
+                hosts="$("${helper}" size "${from}" "${into}" | jq -r '.hosts | join(" and ")')"
+                echo "$(eval_gettext "This downloads \${size} MiB once, from \${hosts}. It sends nothing of yours, and what you translate never leaves this computer.")"
+                echo "$(gettext "A box takes a few seconds and up to 300 MB of memory, given back as soon as the card shows.")"
+                gum confirm "$(gettext "Download it now?")" || exit 1
+                if ! "${helper}" fetch "${from}" "${into}"; then
+                    echo "$(gettext "The download failed, and nothing was kept.")"
+                    exit 1
+                fi
+            fi
+            gsettings set "${schema}" translate-to "${into}"
+            echo "$(gettext "Done. The screenshot bar has a button that reads a box in your language.")"
+            ;;
+        *) usage ;;
+    esac
+
+# An old laptop or a tablet as a second screen over the home network (R7-26; off): GNOME's own remote desktop, which draws a
+# virtual monitor next to this one for whatever RDP client connects. `on` shows a new code for the other side to type; the one port is
+# open in the firewall's home zone only, for as long as this lasts (STATE: on, off or status; without it, status)
+[positional-arguments]
+second-screen STATE="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    helper=/usr/libexec/amethystora-share-screen
+    case "${1:-status}" in
+        status)
+            if [[ "$("${helper}" status | jq -r .mode)" == second-screen ]]; then
+                echo "$(gettext "Second screen: on.")"
+            else
+                echo "$(gettext "Second screen: off.")"
+            fi
+            ;;
+        on)
+            echo "$(gettext "This opens the remote desktop port for the networks you named home, and only while it is on. The other computer connects with any RDP client and the code below, and gets a second screen next to this one. Across the internet it cannot work: that needs a relay, which Amethystora does not run.")"
+            gum confirm "$(gettext "Turn it on now?")" || exit 1
+            "${helper}" second-screen on
+            ;;
+        off) "${helper}" second-screen off ;;
+        *)
+            echo "usage: ame desktop second-screen [on|off|status]"
+            exit 64
+            ;;
+    esac
+
+# Help from someone you trust (R7-50; off): they see this screen and nothing more, with a new code each time, on the home network
+# only, until you stop it, lock the screen or an hour goes by. `control on` lets them use the mouse and keyboard too
+# (ACTION: on, off, control on|off or status; without it, status)
+[positional-arguments]
+help-me *ARGS:
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    helper=/usr/libexec/amethystora-share-screen
+    usage() {
+        echo "usage: ame desktop help-me [on|off|control on|off|status]"
+        exit 64
+    }
+    case "${1:-status}" in
+        status)
+            [[ $# -le 1 ]] || usage
+            if [[ "$("${helper}" status | jq -r .mode)" == help ]]; then
+                echo "$(gettext "Help from someone you trust: on, until you stop it, lock the screen or an hour has gone.")"
+            else
+                echo "$(gettext "Help from someone you trust: off.")"
+            fi
+            ;;
+        on)
+            [[ $# -eq 1 ]] || usage
+            echo "$(gettext "The other person sees this screen and cannot touch anything, until you let them. Private windows stay covered, the code is new each time, and it ends when you lock the screen. It works on the networks you named home: across the internet it needs a relay, which Amethystora does not run.")"
+            gum confirm "$(gettext "Start it now?")" || exit 1
+            "${helper}" help on
+            ;;
+        off)
+            [[ $# -eq 1 ]] || usage
+            "${helper}" help off
+            ;;
+        control)
+            [[ $# -eq 2 ]] || usage
+            "${helper}" help control "$2"
+            ;;
+        *) usage ;;
+    esac
+
+# Look good in every call (R7-68; off): blur what is behind you and even out the light, for every app at once, made on this
+# computer and handed to the apps as a camera of their own. `on` fetches the one model after saying so, measures what 720p
+# costs here and turns it on only under 15 % of one core. ACTION: on, off, blur, light, remove or status; without it, status
+[positional-arguments]
+camera *ARGS:
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    helper=/usr/libexec/amethystora-camera
+    unit=amethystora-camera.service
+    usage() {
+        echo "usage: ame desktop camera [on|off|blur on|off|light on|off|remove|status]"
+        exit 64
+    }
+    [[ $# -le 3 ]] || usage
+    is_on() { [[ "$(systemctl --user is-enabled "${unit}" 2>/dev/null)" == enabled ]]; }
+    case "${1:-status}" in
+        status)
+            if is_on; then echo "$(gettext "Camera effects: on.")"; else echo "$(gettext "Camera effects: off.")"; fi
+            if [[ "$("${helper}" status | jq -r .model)" == true ]]; then
+                "${helper}" status | jq -r '"blur: \(if .blur then "on" else "off" end), light: \(if .light then "on" else "off" end)"'
+            fi
+            ;;
+        on)
+            [[ $# -eq 1 ]] || usage
+            info="$("${helper}" status)"
+            if [[ "$(jq -r '.real | length' <<<"${info}")" == 0 || "$(jq -r '.virtual | length' <<<"${info}")" == 0 ]]; then
+                echo "$(gettext "No camera was found, or the virtual camera is missing. Nothing was turned on.")"
+                exit 1
+            fi
+            if [[ "$(jq -r .model <<<"${info}")" != true ]]; then
+                size="$(jq -r '.bytes / 1048576 | round' <<<"${info}")"
+                host="$(jq -r .host <<<"${info}")"
+                echo "$(eval_gettext "This downloads one model of \${size} MiB once, from \${host}. Your video stays on this computer: it is never written, logged or sent.")"
+                gum confirm "$(gettext "Download it now?")" || exit 1
+                "${helper}" fetch || { echo "$(gettext "The download failed, and nothing was kept.")"; exit 1; }
+            fi
+            echo "$(gettext "Measuring what 720p video costs on this computer...")"
+            result="$("${helper}" bench)"
+            percent="$(jq -r .cpu_percent <<<"${result}")"
+            limit="$(jq -r .limit <<<"${result}")"
+            if [[ "$(jq -r .ok <<<"${result}")" != true ]]; then
+                echo "$(eval_gettext "Here it would take \${percent}% of one processor core, and it is offered only under \${limit}%. Nothing was turned on.")"
+                exit 1
+            fi
+            echo "$(eval_gettext "Here it takes \${percent}% of one processor core, and only while an app uses the camera.")"
+            echo "$(gettext "Apps then show a second camera, the virtual one: choose it in each app. Blocking the webcam in Security still blocks this.")"
+            systemctl --user enable --now "${unit}"
+            ;;
+        off)
+            [[ $# -eq 1 ]] || usage
+            systemctl --user disable --now "${unit}" 2>/dev/null || true
+            echo "$(gettext "Camera effects: off. The model stays until ame desktop camera remove.")"
+            ;;
+        blur | light)
+            [[ "${2:-}" == on || "${2:-}" == off ]] && [[ $# -eq 2 ]] || usage
+            "${helper}" set "$1" "$2"
+            systemctl --user try-restart "${unit}" 2>/dev/null || true
+            state="$2"
+            if [[ "$1" == blur ]]; then
+                echo "$(eval_gettext "Blur what is behind you: \${state}.")"
+            else
+                echo "$(eval_gettext "Even out the light: \${state}.")"
+            fi
+            ;;
+        remove)
+            [[ $# -eq 1 ]] || usage
+            systemctl --user disable --now "${unit}" 2>/dev/null || true
+            "${helper}" remove
+            echo "$(gettext "The model was deleted, and camera effects are off.")"
+            ;;
+        *) usage ;;
+    esac
+
 # Live captions: words under the speech this computer plays, made on this computer by the Vosk recognizer
 # (ACTION: on, off, remove, status or language; without it, it flips). `on` fetches the speech model of the captions'
 # language once, after saying what it downloads and asking; `remove` turns captions and dictation off and deletes every
@@ -3745,9 +3981,9 @@ dock *ARGS:
 # What the search (Super+Space, and the overview's) finds besides GNOME's own: sums and units, the time in other places,
 # reminders into Notes, Control's settings, the manual, open windows, the clipboard after clip:, the agent row, Glance
 # on a file, the words people already know, files by what is remembered of them, and, offered and off, Firefox's
-# bookmarks, Notes while it is unlocked and files by meaning (WHAT: answers, times, reminders, timers, settings, manual, windows,
-# clipboard, agent, glance, old-words, remembered, plugins, bookmarks, notes or meaning; STATE: on or off).
-# Without STATE it says what WHAT is; without WHAT, all sixteen
+# bookmarks, Notes while it is unlocked, files by meaning and your photos by what is in them after `photo:` (WHAT: answers, times,
+# reminders, timers, settings, manual, windows, clipboard, agent, glance, old-words, remembered, plugins, bookmarks, notes, meaning or
+# photos; STATE: on or off). Without STATE it says what WHAT is; without WHAT, all seventeen
 [positional-arguments]
 search WHAT="" STATE="":
     #!/usr/bin/bash
@@ -3755,9 +3991,9 @@ search WHAT="" STATE="":
     # shellcheck source=/dev/null
     source gettext.sh
     schema=org.gnome.shell.extensions.amethystora-ui.search
-    parts=(answers times reminders timers settings manual windows clipboard agent glance old-words remembered plugins bookmarks notes meaning)
+    parts=(answers times reminders timers settings manual windows clipboard agent glance old-words remembered plugins bookmarks notes meaning photos)
     usage() {
-        echo "usage: ame desktop search [answers|times|reminders|timers|settings|manual|windows|clipboard|agent|glance|old-words|remembered|plugins|bookmarks|notes|meaning] [on|off]"
+        echo "usage: ame desktop search [answers|times|reminders|timers|settings|manual|windows|clipboard|agent|glance|old-words|remembered|plugins|bookmarks|notes|meaning|photos] [on|off]"
         exit 2
     }
     state_of() {
@@ -3788,20 +4024,47 @@ search WHAT="" STATE="":
         bookmarks) title="$(gettext "Bookmarks")" ;;
         notes) title="$(gettext "Notes")" ;;
         meaning) title="$(gettext "Files by meaning")" ;;
+        photos) title="$(gettext "Your photos, by what is in them")" ;;
         *) usage ;;
     esac
+    # Photos need a model that is downloaded once, and a vault to keep what is worked out in (R7-63)
+    photos_on() {
+        local helper=/usr/libexec/amethystora-photos info size host
+        info="$("${helper}" status)"
+        if [[ "$(jq -r .models <<<"${info}")" != true ]]; then
+            size="$(jq -r '.bytes / 1048576 | round' <<<"${info}")"
+            host="$(jq -r .host <<<"${info}")"
+            echo "$(eval_gettext "This downloads a model of \${size} MiB once, from \${host}. It reads your photos on this computer, while it is on mains power and left alone. What it works out is kept sealed in the Vault, and no photo ever leaves.")"
+            gum confirm "$(gettext "Download it now?")" || return 1
+            "${helper}" fetch || { echo "$(gettext "The download failed, and nothing was kept.")"; return 1; }
+        fi
+        if [[ "$(jq -r .vault <<<"${info}")" != open ]]; then
+            echo "$(gettext "The index is kept in the Vault, which is closed or not set up. It is read only while the vault is open: open it with ame vault open.")"
+        fi
+        systemctl --user enable --now amethystora-photos.timer
+        systemctl --user start --no-block amethystora-photos.service
+    }
     case "${state}" in
         "") state_of "${what}" ;;
         on)
             gsettings set "${schema}" "${what}" true
             # Files by meaning reads Documents' text from the indexer once a day on mains power, starting now
             [[ "${what}" != meaning ]] || /usr/libexec/amethystora-file-meaning on
+            if [[ "${what}" == photos ]] && ! photos_on; then
+                gsettings set "${schema}" photos false
+                exit 1
+            fi
             echo "${title}: $(gettext "On")"
             ;;
         off)
             gsettings set "${schema}" "${what}" false
             # ...and off, its daily reading stops and what it worked out is deleted
             [[ "${what}" != meaning ]] || /usr/libexec/amethystora-file-meaning off
+            # ...and the photos' reading stops, and the index, its key and the model are deleted
+            if [[ "${what}" == photos ]]; then
+                systemctl --user disable --now amethystora-photos.timer 2>/dev/null || true
+                /usr/libexec/amethystora-photos remove
+            fi
             echo "${title}: $(gettext "Off")"
             ;;
         *) usage ;;

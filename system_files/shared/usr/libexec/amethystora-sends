@@ -233,6 +233,32 @@ if [[ -e "${XDG_CONFIG_HOME:-${HOME:-/nonexistent}/.config}/amethystora/send-any
         "$(gettext "Without Send to anyone, Warp is not offered in Files, and nothing is ever fetched or run.")"
 fi
 
+# Only once translation for the screenshot bar was set up (R7-47): the translator was built here from its source (Fedora's
+# container and packages, and its source from GitHub), and each language came once, when it was chosen. What is translated
+# goes nowhere
+TRANSLATE_DIR="${XDG_DATA_HOME:-${HOME:-/nonexistent}/.local/share}/amethystora/translate"
+if [[ -d "${TRANSLATE_DIR}" ]]; then
+    row translate off "$(gettext "Translation in the screenshot bar")" \
+        "$(gettext "The translator was built on this computer once, from Fedora's container and packages and its source on GitHub. Its models were each downloaded once from Mozilla's servers (firefox-settings-attachments.cdn.mozilla.net), and the data to read another script from GitHub (raw.githubusercontent.com), when a language was chosen. What you translate goes nowhere.")" \
+        "ame desktop translate"
+fi
+
+# Only once camera effects were set up (R7-68): the one model came from the internet once, and the video goes nowhere
+CAMERA_DIR="${XDG_DATA_HOME:-${HOME:-/nonexistent}/.local/share}/amethystora/camera"
+if [[ -d "${CAMERA_DIR}" ]]; then
+    row camera off "$(gettext "Camera effects")" \
+        "$(gettext "The model that finds you in the picture was downloaded once from media.githubusercontent.com. Your video is made on this computer and never written or sent.")" \
+        "ame desktop camera"
+fi
+
+# Only once the photo index was set up (R7-63): its model came from the internet once, and no photo goes anywhere
+PHOTOS_DIR="${XDG_DATA_HOME:-${HOME:-/nonexistent}/.local/share}/amethystora/photos"
+if [[ -d "${PHOTOS_DIR}" ]]; then
+    row photos off "$(gettext "Photos by what is in them")" \
+        "$(gettext "The model that understands pictures and words was downloaded once from huggingface.co and its content network (cdn.hf.co). Your photos are read on this computer, and what is worked out is sealed in the Vault. Nothing is sent.")" \
+        "ame desktop search photos"
+fi
+
 if command -v firefox >/dev/null; then
     row firefox on "$(gettext "Firefox")" \
         "$(gettext "Firefox has its own settings for what it sends, under Privacy & Security in its settings.")" \

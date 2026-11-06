@@ -10,7 +10,8 @@
 // window, from the thumbnail or straight from the bar's Pin button or Ctrl+P (capture-pin; screenshot/pins.js).
 //
 // Hide what's private (R7-67): a button beside Pin covers addresses, card, phone and account numbers with solid boxes
-// (hide-private; screenshot/cover.js).
+// (hide-private; screenshot/cover.js). Any language (R7-47): another reads the box and translates it on this computer, once
+// a language was chosen (translate-to; screenshot/translate.js).
 
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
@@ -38,7 +39,7 @@ const PORTAL_MODE = 2;
 const SCHEMA = 'org.gnome.shell.extensions.amethystora-ui.screenshot';
 // Icons drawn for the toolbar, in icons/screenshot; the rest are the icon theme's
 const OWN_ICONS = new Set(['move', 'pen', 'box', 'fill', 'highlight', 'arrow', 'text', 'marker', 'extract', 'pin',
-    'through', 'cover']);
+    'through', 'cover', 'translate']);
 // GNOME's own words for a capture, in its own translations, for the notification that stands in for the thumbnail
 const gnome = text => Gettext.dgettext('gnome-shell', text);
 const THEME_ICONS = {area: 'screenshot-ui-area-symbolic', display: 'screenshot-ui-display-symbolic'};
@@ -91,6 +92,7 @@ export class Screenshot {
         this._settings.connectObject(
             'changed::capture-pin', () => this._pinChanged(),
             'changed::hide-private', () => this._session?.syncCover(),
+            'changed::translate-to', () => this._session?.syncTranslate(),
             'changed::capture-thumbnail', () => {
                 if (!this._settings.get_boolean('capture-thumbnail'))
                     this._card?.close(true);
@@ -164,6 +166,11 @@ export class Screenshot {
     // Hide what's private (R7-67, screenshot/cover.js)
     get coverOn() {
         return this._settings?.get_boolean('hide-private') ?? false;
+    }
+
+    // Any language (R7-47, screenshot/translate.js): empty until a language was chosen
+    get translateTo() {
+        return this._settings?.get_string('translate-to') ?? '';
     }
 
     copyNow() {

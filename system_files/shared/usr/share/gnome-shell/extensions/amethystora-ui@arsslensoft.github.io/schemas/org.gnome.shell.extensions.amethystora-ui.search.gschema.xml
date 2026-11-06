@@ -89,5 +89,10 @@
       <summary>Files by meaning</summary>
       <description>Files in Documents found by what they are about, from the text GNOME's indexer extracted, with the agent's small embedding model, on this computer. `ame desktop search meaning` also starts and stops its daily reading. Off as the image ships.</description>
     </key>
+    <key name="photos" type="b">
+      <default>false</default>
+      <summary>Your photos, by what is in them</summary>
+      <description>After "photo:" and a few words, the pictures of Pictures that look like what was described, found by a small model that reads each photo once on this computer while it is on mains power and left alone. What it works out is kept sealed in the Vault. `ame desktop search photos` also starts and stops that reading. Off as the image ships.</description>
+    </key>
   </schema>
 </schemalist>

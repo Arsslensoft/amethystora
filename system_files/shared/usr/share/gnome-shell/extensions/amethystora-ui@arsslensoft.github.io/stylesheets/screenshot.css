@@ -241,3 +241,27 @@
 .amethystora-screenshot-cover-primary:hover {
   background-color: rgba(255, 255, 255, 0.85);
 }
+
+/* Any language (R7-47): the card of a box translated, over Hide what's private's own */
+.amethystora-screenshot-translate-card {
+  width: 460px;
+}
+
+.amethystora-screenshot-translate-scroll {
+  max-height: 420px;
+}
+
+.amethystora-screenshot-translate-words {
+  spacing: 8px;
+}
+
+.amethystora-screenshot-translate-title {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.amethystora-screenshot-translate-source,
+.amethystora-screenshot-translate-note {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.72);
+}

@@ -181,6 +181,32 @@ usr/share/licenses/potion-base-8M, with where the model comes from.
   - bge-base-en-v1.5   https://huggingface.co/BAAI/bge-base-en-v1.5
   - BERT               https://github.com/google-research/bert
 
+The translation in the screenshot bar (usr/libexec/amethystora-translate) uses Bergamot's
+translator (bergamot-translator, under the Mozilla Public License, version 2.0)
+with Marian (the MIT License) and the libraries beside it in its tree, each under
+its own licence. None of it is in the image and none of it is passed on: when
+the person asks for the translation, usr/share/amethystora/translate/build-engine.sh
+builds the program on their own computer, in a container of Fedora, from their
+source at commit 9271618ebbdc5d21ac4dc4df9e72beb7ce644774, with the changes that
+script makes (none to a file of bergamot-translator's own but its build's flags),
+and keeps their licences beside the program it makes, in
+~/.local/share/amethystora/translate/engine/licenses. The libraries it compiles in
+include Eigen's MPL-2.0 routines (through onnxjs, built with EIGEN_MPL2_ONLY, so
+that no other part of Eigen can be compiled in) and Marian's half-float code, a
+BSD licence with a binary clause whose text is only in its header, which the
+script copies out:
+
+  - bergamot-translator   https://github.com/browsermt/bergamot-translator
+  - Marian                https://github.com/browsermt/marian-dev
+  - Eigen                 https://gitlab.com/libeigen/eigen
+
+The models it runs and the reading data Tesseract uses are not in the image
+either: `ame desktop translate` downloads them on the user's machine, from Mozilla
+(the models, under the Mozilla Public License, version 2.0,
+https://github.com/mozilla/translations) and from the Tesseract project (the
+reading data, under the Apache License, version 2.0,
+https://github.com/tesseract-ocr/tessdata_fast).
+
 The GTK theme in usr/share/themes/Amethystora is Sweet by Eliver Lara,
 licensed under the GNU General Public License, version 3:
 

@@ -163,6 +163,10 @@ FEDORA_PACKAGES=(
     printer-driver-brlaser
     pulseaudio-utils
     python3-pip
+    # The two programs that run a small model on the machine, with no GPU: the camera's blur and light (amethystora-camera, R7-68) and
+    # the photo index (amethystora-photos, R7-63). Both are offered and off, and their models are downloaded only when asked
+    python3-numpy
+    python3-onnxruntime
     python3-pygit2
     # QR codes of a copied link and of the Wi-Fi in use (Amethystora UI's tools module), the text on its stdin
     qrencode

@@ -1,0 +1,22 @@
+[Unit]
+Description=Amethystora photo index: read the new photos of Pictures, while the computer is on mains power and left alone
+Documentation=file:///usr/share/amethystora/manual/desktop.md
+# Not enabled for anyone as the image ships (the timer is): `ame desktop search photos on` enables it. It reads photos only
+# when the computer is on mains power and nobody has touched it for 30 seconds, and ends the moment someone does.
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/amethystora-photos index
+# The lowest priority of everything: nothing it does may be felt, and the model's memory is bounded
+Nice=19
+IOSchedulingClass=idle
+CPUWeight=5
+CPUQuota=60%
+MemoryMax=450M
+TasksMax=64
+# Only the vault's socket: no network, and no new privileges
+NoNewPrivileges=yes
+RestrictAddressFamilies=AF_UNIX
+LockPersonality=yes
+UMask=0077
+LimitCORE=0

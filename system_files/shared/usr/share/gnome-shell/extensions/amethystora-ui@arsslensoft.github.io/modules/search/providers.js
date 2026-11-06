@@ -33,6 +33,7 @@ import {TimerProvider} from './timerProvider.js';
 import {BookmarksProvider} from './bookmarks.js';
 import {NotesProvider} from './notes.js';
 import {MeaningProvider} from './meaning.js';
+import {PhotosProvider} from './photos.js';
 import {WordsProvider} from './wordsProvider.js';
 import {RememberedProvider} from './rememberProvider.js';
 import {PluginsProvider} from './plugins.js';
@@ -57,6 +58,7 @@ const PROVIDERS = [
     {key: 'meaning', rank: 5, max: 3},
     // What plugins that contribute `search` last printed (modules/plugins.js)
     {key: 'plugins', rank: 5, max: 4},
+    {key: 'photos', rank: 5, max: 6},
     {key: 'agent', rank: 7, max: 1},
 ];
 const GNOME_RANK = 4;
@@ -130,6 +132,7 @@ export class Providers {
         case 'bookmarks': return new BookmarksProvider();
         case 'notes': return new NotesProvider();
         case 'meaning': return new MeaningProvider();
+        case 'photos': return new PhotosProvider();
         case 'old-words': return new WordsProvider();
         case 'remembered': return new RememberedProvider();
         case 'plugins': return new PluginsProvider(this._ext);
@@ -156,6 +159,7 @@ export class Providers {
             notes: {title: _('Notes'), tag: _('While Notes is unlocked')},
             meaning: {title: _('Files by meaning'), tag: _('On this computer')},
             plugins: {title: _('Plugins'), tag: _('What each last printed')},
+            photos: {title: _('Photos'), tag: _('While the vault is open')},
             agent: {title: _('The agent'), tag: _('Only while it is on')},
         }[key];
     }

@@ -1158,6 +1158,65 @@ It will miss things: a name, a street address, small or unusual text, or a numbe
 at the picture before you send it. It is read on this computer: nothing is sent, nothing is written, and only what the
 screenshot holds is read, when you press the button. `ame desktop screenshot private off` takes the button away.
 
+### Read it in your language
+
+`ame desktop translate` is off until you choose it. The translator is not part of the image, since building it into every
+image would cost every update twenty minutes, so the first time it **builds the translator on your computer**, from its
+published source, in a Fedora container that is removed again afterwards: about 20 minutes of up to four cores and a few
+hundred megabytes of downloads, which it says first and asks about. Then it asks which language you read from and which you
+read in, says what it downloads, and fetches it once. From then on, the screenshot bar has a button that reads what your box holds and translates it, on this computer,
+into a card with **Copy** and **Translate more**: for anything on the screen, in any app, picture or paused video. Nothing
+you translate is written or sent, and it is gone with the card.
+
+Each language's model comes from Mozilla's servers, and the data to read its script from the Tesseract project (on GitHub),
+each file checked against the SHA-256 in the image. Machine translation can be wrong, and a small or unusual text can be
+misread first, so do not lean on it for what matters most. A box takes about 4,000 characters, and the card says when it
+held more. Chinese, Japanese and Korean are not offered, since their models hold more memory than this feature allows itself,
+and it cannot tell what language a box is in, so you pick: `ame desktop translate languages` lists what can be chosen. `ame
+desktop translate off` takes the button away, `ame desktop translate remove` deletes the models and the reading data you
+downloaded, and `ame desktop translate remove all` deletes the translator too, which would take the 20 minutes again.
+
+### Your photos, by what is in them
+
+`ame desktop search photos on` (or **Your photos, by what is in them** in [Control](control.md)) lets you describe a photo and
+find it: in the search (`Super+Space`) type `photo:` and a few words, such as `photo: the dog at the beach`, and the pictures of
+your Pictures folder that look like that come up. It is off until you choose it. It downloads a model once (about 150 MiB, MIT
+licence, checked against the SHA-256 in the image), which reads each photo **once, on this computer**, only while it is on mains
+power and nobody has touched it for 30 seconds, and stops the moment someone does. What it works out (a short list of numbers and the
+photo's name) is kept **sealed in the [Vault](vault.md)**, so it can be searched only while the vault is open: with it closed
+the search says so. Nothing in `Private`, in a folder that starts with a dot or behind a link is read, and no photo leaves this
+computer. Photos are read through the same sandboxed picture readers as the rest of the system. `ame desktop search photos off`
+stops it and deletes the model, the index and the vault's key for it.
+
+### Another screen from what you have
+
+`ame desktop second-screen on` turns an old laptop or tablet into a **second screen** next to this one, over your home network.
+It uses GNOME's own remote desktop: it opens its one port in the firewall's home zone (only while it is on, and never on a
+network you have not named home with `ame security home-networks`), makes a certificate for this alone, and shows a **new
+eight-digit code** and the address to type into any RDP app on the other computer. A virtual monitor then appears next to
+yours, with the other computer's keyboard and touch as input. `ame desktop second-screen off` ends it and the code no
+longer works. Across the internet it cannot work, because that needs a relay, and Amethystora runs none: use it at home.
+
+### Help from someone you trust
+
+`ame desktop help-me on` lets a person on your home network **see your screen and nothing more**: it shows a new code each
+time, opens the same one port in the home zone only, and the other side connects with any RDP app. They cannot move the mouse or
+type until you allow it with `ame desktop help-me control on` (and take it back with `control off`). It ends by itself when you
+lock the screen or after an hour, and `ame desktop help-me off` ends it at once. GNOME shows its own indicator in the top bar while
+anyone is connected. **Across the internet it cannot be built here:** reaching a computer behind a router needs a relay that both
+sides can dial out to, and Amethystora runs no servers. Until there is a way that needs no relay, it works on the home network only.
+
+### Look good in every call
+
+`ame desktop camera on` blurs what is behind you and evens out the light in every app at once, instead of a setting in each. It
+is off until you choose it. It downloads one small model once (6 MiB, Apache-2.0, checked against the SHA-256 in the image),
+measures what 720p video costs on this computer, and **turns on only where that is under 15% of one processor core**: on an
+older or busy computer it says so and does not offer it. Apps then see a second camera, the virtual one: pick it in each app.
+It runs only while an app uses that camera; your video is made here and never written, logged or sent. Blocking the webcam in
+[Security](security.md) still blocks it, since then there is no camera to read. `ame desktop camera blur on|off` and
+`ame desktop camera light on|off` choose the two effects, `ame desktop camera off` turns it off and `ame desktop camera
+remove` deletes the model.
+
 ### Pinned pictures
 
 A pinned picture stays above every window, on every workspace, while you work in the window below: numbers
