@@ -612,10 +612,10 @@ rm -rf "${UI_RENDER}"
 # The search box is on Super+Space alone, which GNOME's input-source switch must not take (zz0 moves it to
 # Shift+Super+Space): on a base without that line the box never opened
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys org.gnome.shell.extensions.amethystora-ui.search | sort | paste -sd ' ')" == \
-    "agent answers bookmarks clipboard glance manual meaning notes old-words open photos plugins remembered reminders settings timers times windows" ]]
+    "agent answers bookmarks clipboard glance manual meaning notes old-words open photos plugins put-away remembered reminders settings timers times windows" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.search open)" == "['<Super>space']" ]]
 # Search that answers (plans/beyond/spec-search.md): each part on, the emoji picker on Super+. in the yellow tone
-for key in answers times reminders timers settings manual windows clipboard agent glance old-words remembered; do
+for key in answers times reminders timers put-away settings manual windows clipboard agent glance old-words remembered; do
     [[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.search "${key}")" == true ]]
 done
 EMOJI=org.gnome.shell.extensions.amethystora-ui.emoji

@@ -417,6 +417,7 @@ read_in_background sink pactl get-default-sink
 gsettings_read space-names org.gnome.shell.extensions.amethystora-ui.workspaces auto-names
 gsettings_read sets org.gnome.shell.extensions.amethystora-ui.workspaces sets
 gsettings_read resume org.gnome.shell.extensions.amethystora-ui.workspaces resume
+gsettings_read put-away org.gnome.shell.extensions.amethystora-ui.workspaces put-away
 gsettings_read pill org.gnome.shell.extensions.amethystora-ui.pill
 gsettings_read quick org.gnome.shell.extensions.amethystora-ui.quick
 gsettings_read bars org.gnome.shell.extensions.amethystora-ui.bars
@@ -1646,6 +1647,12 @@ USAGE="ame desktop resume on|off"
 item desktop resume switch "${ gettext "Pick up where you left off"; }" \
     "${ gettext "When an update restarts the computer, the first login after it offers to open again the apps that were open, in their places."; }" \
     "${ [[ "${ said resume; }" == true ]] && echo on || echo off; }" updates#picking-up-where-you-left-off
+switch_choices false ame desktop put-away
+[[ "${ ended put-away; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
+USAGE="ame desktop put-away on|off"
+item desktop put-away switch "${ gettext "Put a workspace away"; }" \
+    "${ gettext "Put a whole workspace away from its menu and bring it back days later with every window in place. What is put away is kept sealed in your Vault."; }" \
+    "${ [[ "${ said put-away; }" == true ]] && echo on || echo off; }" desktop#putting-a-workspace-away
 GROUP=""
 
 # How long Amethystora Clipboard, the history on Super+Shift+V, keeps what was copied (keep-history)
@@ -1686,6 +1693,8 @@ search_item reminders "${ gettext "Reminders into Notes"; }" \
     "${ gettext "“remind me at 17:00 to call the garage” becomes a task in Notes with a reminder, when you press Enter."; }"
 search_item timers "${ gettext "Timers"; }" \
     "${ gettext "“tea 4 min” starts a timer called Tea in the live pill, when you press Enter."; }"
+search_item put-away "${ gettext "Bring back what was put away"; }" \
+    "${ gettext "Typing the name of a workspace you put away offers to bring it back, when you press Enter."; }"
 search_item settings "${ gettext "Settings from Control"; }" "${ gettext "Finds Control's settings, and changes one with Enter."; }"
 search_item manual "${ gettext "The manual"; }" "${ gettext "Finds the pages of this manual that answer what you typed."; }"
 search_item windows "${ gettext "Open windows"; }" "${ gettext "Finds an open window by its title, on any workspace."; }"

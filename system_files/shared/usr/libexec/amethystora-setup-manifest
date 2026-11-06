@@ -76,7 +76,7 @@ GLASS_KEYS=(material solid blur-frost blur-prism blur-clear tint-frost tint-pris
 MOTION=org.gnome.shell.extensions.amethystora-ui.motion
 MOTION_KEYS=(minimize workspace-switch speed open-close)
 WORKSPACES=org.gnome.shell.extensions.amethystora-ui.workspaces
-WORKSPACES_KEYS=(auto-names sets resume)
+WORKSPACES_KEYS=(auto-names sets resume put-away)
 # The windows module's keys amethystora-setup's WINDOWS_KEYS takes; its keybindings (snap-chooser, drop-down-key,
 # keep-on-top-key, reopen-key) are kept with the other keybindings (KEY_SCHEMAS lists its schema for that)
 WINDOWS=org.gnome.shell.extensions.amethystora-ui.windows
@@ -109,7 +109,7 @@ BREAKS_KEYS=(selected-breaks)
 # The search's switches and the emoji picker's skin tone, which amethystora-setup's SEARCH_KEYS and EMOJI_KEYS take;
 # their keybindings (open, emoji-picker) are kept with the other keybindings
 SEARCH=org.gnome.shell.extensions.amethystora-ui.search
-SEARCH_KEYS=(answers settings manual windows clipboard agent glance times reminders timers bookmarks notes old-words remembered plugins)
+SEARCH_KEYS=(answers settings manual windows clipboard agent glance times reminders timers put-away bookmarks notes old-words remembered plugins)
 EMOJI=org.gnome.shell.extensions.amethystora-ui.emoji
 EMOJI_KEYS=(skin-tone)
 # The not-responding question's look, which amethystora-setup's QUIT_KEYS takes; force quit's key (force-quit) is kept

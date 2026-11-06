@@ -1926,6 +1926,23 @@ in the same order and widths. A set keeps at most sixteen windows, the ones you 
 in `~/.local/state/amethystora/sets.json`; the cross on a set forgets it. `ame desktop sets off` takes Sets out of the
 menu and keeps what was saved.
 
+### Putting a workspace away
+
+Halfway through something and need the desk clear? Right-click the workspace in the top bar and choose **Put this
+workspace away**. The pill asks first ("Put "Tax return" away?"), named after the workspace; say **Put away** and its
+windows are closed the way their close button closes them, so an app with unsaved work asks you first, as it always
+does. The pill then keeps a quiet mark, "Tax return · put away", and its card lists what is put away, each with **Bring
+back** and **Forget**. Bring it back tomorrow or in a month: the apps start and each window goes to its place, as a
+[saved set](#saved-sets) opens. Typing its name in the search box offers **Bring back** too.
+
+Like a saved set, it keeps the apps and their places, never what was open in them: an app that reopens its own
+documents (most browsers and editors) does, and the others start empty. What is put away (its name and its apps) is
+**sealed in your [Vault](vault.md)**, in `~/.local/state/amethystora/put-away.avs`, which only your Vault opens, and
+nothing asks for the Vault by itself: at login the mark says only "Put away", and a click on it reads the list, or says
+"Open Vault" when the Vault is closed. With the Vault closed or not set up when you put a workspace away, it is kept
+in memory until you log out, and the card says so, with **Keep it** to seal it once the Vault is open. Up to eight
+workspaces can be put away at once. `ame desktop put-away off` takes the row out of the menu.
+
 ## Extensions
 
 These GNOME Shell extensions come with the image:

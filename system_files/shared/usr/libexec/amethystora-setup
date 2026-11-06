@@ -144,7 +144,7 @@ MOTION_KEYS='{"minimize": ["s", ["droplet", "shrink"]], "workspace-switch": ["s"
 # update's restart (never resume.json, which is this machine's state). Never its two
 # keybindings, which the keybindings part keeps, nor sets.json, which names this machine's screens.
 WORKSPACES=org.gnome.shell.extensions.amethystora-ui.workspaces
-WORKSPACES_KEYS='{"auto-names": ["b"], "sets": ["b"], "resume": ["b"]}'
+WORKSPACES_KEYS='{"auto-names": ["b"], "sets": ["b"], "resume": ["b"], "put-away": ["b"]}'
 # The windows module's keys: snap layouts, the switcher, the Super card, the corners, show desktop, the gestures,
 # places, dimming, the drop-down terminal and the scratchpad, keep on top, see-through windows (and the apps that open
 # so, by launcher ID), the frame, sizes for recording, reopening, handing a window over and the simple desktop. Never snap-chooser, drop-down-key,
@@ -212,7 +212,7 @@ SEARCH=org.gnome.shell.extensions.amethystora-ui.search
 SEARCH_KEYS='{
     "answers": ["b"], "settings": ["b"], "manual": ["b"], "windows": ["b"], "clipboard": ["b"], "agent": ["b"],
     "glance": ["b"], "times": ["b"], "reminders": ["b"], "timers": ["b"], "bookmarks": ["b"], "notes": ["b"], "old-words": ["b"],
-    "remembered": ["b"], "plugins": ["b"]
+    "remembered": ["b"], "plugins": ["b"], "put-away": ["b"]
 }'
 # The emoji picker's skin tone. Never emoji-picker, its key, which the keybindings part keeps.
 EMOJI=org.gnome.shell.extensions.amethystora-ui.emoji

@@ -1092,6 +1092,35 @@ resume VALUE="":
             ;;
     esac
 
+# Put a workspace away for tomorrow (R7-34): the workspace menu's Put this workspace away, and the pill's list of what is put away,
+# sealed in the Vault (VALUE: on or off; without it, it flips). Off, the menu has no such row and nothing is read or kept; what is put
+# away is left where it is
+[positional-arguments]
+put-away VALUE="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.workspaces
+    value="${1:-}"
+    if [[ -z "${value}" ]]; then
+        if [[ "$(gsettings get "${schema}" put-away)" == true ]]; then value=off; else value=on; fi
+    fi
+    case "${value}" in
+        on)
+            gsettings set "${schema}" put-away true
+            echo "$(gettext "The workspace menu can put a workspace away, and bring it back later. What is put away is kept sealed in your Vault.")"
+            ;;
+        off)
+            gsettings set "${schema}" put-away false
+            echo "$(gettext "The workspace menu no longer puts workspaces away.")"
+            ;;
+        *)
+            echo "usage: ame desktop put-away on|off"
+            exit 64
+            ;;
+    esac
+
 # Print jobs in the pill: the pages when the printer gives them, what is wrong in words, Cancel and Try again (VALUE: on
 # or off; without it, it flips). Only this account's jobs, and nothing runs until there is one.
 [positional-arguments]
@@ -4012,8 +4041,7 @@ dock *ARGS:
 # reminders into Notes, Control's settings, the manual, open windows, the clipboard after clip:, the agent row, Glance
 # on a file, the words people already know, files by what is remembered of them, and, offered and off, Firefox's
 # bookmarks, Notes while it is unlocked, files by meaning and your photos by what is in them after `photo:` (WHAT: answers, times,
-# reminders, timers, settings, manual, windows, clipboard, agent, glance, old-words, remembered, plugins, bookmarks, notes, meaning or
-# photos; STATE: on or off). Without STATE it says what WHAT is; without WHAT, all seventeen
+# reminders, timers, settings, manual, windows, clipboard, agent, glance, old-words, remembered, plugins, bookmarks, notes, meaning, photos or put-away; STATE: on or off). Without STATE it says what WHAT is; without WHAT, all of them
 [positional-arguments]
 search WHAT="" STATE="":
     #!/usr/bin/bash
@@ -4021,9 +4049,9 @@ search WHAT="" STATE="":
     # shellcheck source=/dev/null
     source gettext.sh
     schema=org.gnome.shell.extensions.amethystora-ui.search
-    parts=(answers times reminders timers settings manual windows clipboard agent glance old-words remembered plugins bookmarks notes meaning photos)
+    parts=(answers times reminders timers put-away settings manual windows clipboard agent glance old-words remembered plugins bookmarks notes meaning photos)
     usage() {
-        echo "usage: ame desktop search [answers|times|reminders|timers|settings|manual|windows|clipboard|agent|glance|old-words|remembered|plugins|bookmarks|notes|meaning|photos] [on|off]"
+        echo "usage: ame desktop search [answers|times|reminders|timers|put-away|settings|manual|windows|clipboard|agent|glance|old-words|remembered|plugins|bookmarks|notes|meaning|photos] [on|off]"
         exit 2
     }
     state_of() {
@@ -4042,6 +4070,7 @@ search WHAT="" STATE="":
         answers) title="$(gettext "Sums and units")" ;;
         times) title="$(gettext "Time in other places")" ;;
         reminders) title="$(gettext "Reminders into Notes")" ;;
+        put-away) title="$(gettext "Bring back what was put away")" ;;
         settings) title="$(gettext "Settings from Control")" ;;
         manual) title="$(gettext "The manual")" ;;
         windows) title="$(gettext "Open windows")" ;;
