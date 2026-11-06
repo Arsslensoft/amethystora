@@ -94,7 +94,9 @@ python3 "${FIXTURES}/archives.py" "${WORK}/archives" "${FIXTURES}/plugin/manifes
 for archive in "${WORK}"/archives/*.tar; do
     refused "prepare refuses $(basename "${archive}" .tar)" helper prepare <"${archive}"
 done
-if [[ -z "$(ls -A "${STORE}/quarantine")" ]]; then ok "nothing of the refused archives was kept"; else not_ok "the quarantine holds what was refused" "$(ls -A "${STORE}/quarantine")"; fi
+# The helper's own lock file stays: only a ticket would be what was refused
+kept="$(ls -A "${STORE}/quarantine" | grep -vx '.lock')"
+if [[ -z "${kept}" ]]; then ok "nothing of the refused archives was kept"; else not_ok "the quarantine holds what was refused" "${kept}"; fi
 
 # A file swapped after the pack is not what was frozen: the digest is the packed folder's
 make_plugin "${WORK}/swap"
@@ -149,10 +151,10 @@ hostile net 6
 hostile proc 10
 [[ ! -e "${HOME_TEST}/leaked" && ! -e "${HOME_TEST}/leaked2" && ! -e /usr/leaked && ! -e /etc/leaked ]] && ok "nothing was written outside the sandbox" || not_ok "a file the plugin made is on the machine"
 # A fork bomb stays within its 64 tasks, and a memory bomb ends the run
-out="$(in_session "BOMB=fork ${HOST} try ${ID} bomb" 2>&1)" || true
+out="$(in_session "${HOST} try ${ID} bomb" 2>&1)" || true
 [[ "$(jq -r '.card[0].value' <<<"${out}" 2>/dev/null)" == blocked ]] && ok "a fork bomb is held to its tasks" || not_ok "the fork bomb was not held" "${out}"
-out="$(in_session "BOMB=memory ${HOST} try ${ID} bomb" 2>&1)" && not_ok "a memory bomb ended its run in a result" "${out}" || ok "a memory bomb is stopped by its scope's limit"
-[[ -z "$(pgrep -u "${TEST_USER}" -f 'sleep 30')" ]] && ok "no process of the fork bomb is left" || not_ok "the fork bomb's processes outlived the run"
+out="$(in_session "${HOST} try ${ID} membomb" 2>&1)" && not_ok "a memory bomb ended its run in a result" "${out}" || ok "a memory bomb is stopped by its scope's limit"
+[[ -z "$(pgrep -u "${TEST_USER}" -f 'time.sleep\(30\)')" ]] && ok "no process of the fork bomb is left" || not_ok "the fork bomb's processes outlived the run"
 
 # --- 3. The network ----------------------------------------------------------------------------------------------------------------
 grep -q 'granted.example.test' /etc/hosts || echo '192.168.7.7 granted.example.test' >>/etc/hosts
@@ -192,6 +194,6 @@ refused "the account cannot put the byte back" as_tester sh -c "echo x > '${STOR
 
 # Off is off: nothing of the host is running, and the bus name is gone
 as_tester "${HOST}" disable "${ID}" 2>/dev/null
-if wait_for 30 sh -c "! pgrep -u ${TEST_USER} -f amethystora-plugin-host >/dev/null"; then ok "with no plugin on, no process of the host is left"; else not_ok "the host runs with no plugin on"; fi
+if wait_for 30 sh -c "! pgrep -u ${TEST_USER} -f ^/usr/libexec/amethystora-plugin-host >/dev/null"; then ok "with no plugin on, no process of the host is left"; else not_ok "the host runs with no plugin on"; fi
 user_bus busctl --user list 2>/dev/null | grep -q org.amethystora.Plugins && not_ok "the host's bus name is still owned" || ok "the host's bus name is gone"
 finish

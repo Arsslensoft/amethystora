@@ -75,20 +75,34 @@ case "${PLUGIN_ACTION:-}" in
         probe new-user-namespace-by-syscall syscall 272 0x10000000
         probe tiocsti python3 -c 'import fcntl, termios; fcntl.ioctl(0, termios.TIOCSTI, b"x")'
         probe other-process pgrep -x gnome-shell
-        probe kill-pid-1 sh -c 'kill -9 1'
+        # Signals to the namespace's init from inside it are dropped and kill says nothing: only an init that went counts
+        probe kill-pid-1 sh -c 'kill -9 1 2>/dev/null; sleep 0.5; ! kill -0 1'
         card proc
         ;;
     bomb)
-        # A fork bomb is held to 64 tasks and a memory bomb to 256 MB: the second fails the run as a whole, which the suite expects
-        if [[ "${BOMB:-fork}" == fork ]]; then
-            for _ in $(seq 400); do sleep 30 & done
-            alive=$(jobs -p | wc -l)
-            [[ "${alive}" -le 64 ]] && value=blocked || value=LEAK
-            rows+=("{\"type\":\"row\",\"label\":\"fork-bomb\",\"value\":\"${value}\"}")
-            card bomb
-        else
-            python3 -c 'x = bytearray(1 << 30); print("allocated")'
-        fi
+        # A fork bomb is held to 64 tasks. Counted in Python: bash itself exits (254) when a fork finally fails, which is the
+        # limit holding, not a result
+        value=LEAK
+        python3 -c 'import os, sys, time
+forks = 0
+for _ in range(400):
+    try:
+        pid = os.fork()
+    except OSError:
+        break
+    if pid == 0:
+        time.sleep(30)
+        os._exit(0)
+    forks += 1
+sys.exit(0 if forks <= 64 else 1)' && value=blocked
+        rows+=("{\"type\":\"row\",\"label\":\"fork-bomb\",\"value\":\"${value}\"}")
+        card bomb
+        ;;
+    membomb)
+        # A memory bomb is held to 256 MB, which fails the run as a whole: the suite expects no result. An action of its own,
+        # since the sandbox keeps no variable the suite could set
+        # Bytes that are written, since a zeroed bytearray is never touched and takes no memory at all
+        python3 -c 'x = b"\x01" * (1 << 30); print("allocated")'
         ;;
     netp)
         # Through the host's proxy, with only a host that /etc/hosts points at a private address granted: every one is refused
