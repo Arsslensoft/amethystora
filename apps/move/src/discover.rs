@@ -64,10 +64,46 @@ pub fn parse_answer(text: &[u8], from: IpAddr) -> Option<Found> {
     Some(Found { name: clean(name), addr: SocketAddr::new(from, port) })
 }
 
-/// Asks on the network and listens for `wait`; `to` is the address to ask (the broadcast address, or one in a test)
-pub fn find(to: SocketAddr, wait: Duration, home: &dyn Home) -> io::Result<Vec<Found>> {
-    let socket = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, 0))?;
-    socket.set_broadcast(true)?;
+/// A socket bound to `port` that others may share, with broadcast on. The answer to a broadcast comes from the other computer's
+/// address, which no firewall that tracks connections takes for the reply to a question sent to everyone: it is a new packet, and
+/// it is let in only where the port it goes to is open. So the question is asked from the move's own port, which the home zone
+/// opens (and not from a port of the system's choosing, which no zone does).
+fn socket_on(port: u16) -> io::Result<UdpSocket> {
+    use std::os::fd::FromRawFd;
+    // SAFETY: plain socket calls; the descriptor is closed by `UdpSocket`'s drop once it is handed over, and on every error here
+    unsafe {
+        let fd = libc::socket(libc::AF_INET, libc::SOCK_DGRAM | libc::SOCK_CLOEXEC, 0);
+        if fd < 0 {
+            return Err(io::Error::last_os_error());
+        }
+        let on: libc::c_int = 1;
+        let size = std::mem::size_of::<libc::c_int>() as libc::socklen_t;
+        let mut address: libc::sockaddr_in = std::mem::zeroed();
+        address.sin_family = libc::AF_INET as libc::sa_family_t;
+        address.sin_port = port.to_be();
+        let ok = libc::setsockopt(fd, libc::SOL_SOCKET, libc::SO_REUSEADDR, (&raw const on).cast(), size) == 0
+            && libc::setsockopt(fd, libc::SOL_SOCKET, libc::SO_BROADCAST, (&raw const on).cast(), size) == 0
+            && libc::bind(fd, (&raw const address).cast(), std::mem::size_of::<libc::sockaddr_in>() as libc::socklen_t) == 0;
+        if !ok {
+            let error = io::Error::last_os_error();
+            libc::close(fd);
+            return Err(error);
+        }
+        Ok(UdpSocket::from_raw_fd(fd))
+    }
+}
+
+/// Asks on the network and listens for `wait`; `to` is the address to ask (the broadcast address, or one in a test). `from` is the
+/// port to ask from: the move's own, or 0 where nothing is between (a test, one machine); when it cannot be had, any port.
+pub fn find(to: SocketAddr, wait: Duration, home: &dyn Home, from: u16) -> io::Result<Vec<Found>> {
+    let socket = match socket_on(from) {
+        Ok(socket) => socket,
+        Err(_) => {
+            let socket = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, 0))?;
+            socket.set_broadcast(true)?;
+            socket
+        }
+    };
     socket.send_to(ASK, to)?;
     let until = Instant::now() + wait;
     let mut found: Vec<Found> = Vec::new();
@@ -114,8 +150,23 @@ mod tests {
         let udp = UdpSocket::bind("127.0.0.1:0").unwrap();
         let to = udp.local_addr().unwrap();
         let answering = Answering::start(udp, 4793, "New desk".into(), Arc::new(Anywhere)).unwrap();
-        let found = find(to, Duration::from_millis(600), &Anywhere).unwrap();
+        let found = find(to, Duration::from_millis(600), &Anywhere, 0).unwrap();
         assert_eq!(found, vec![Found { name: "New desk".into(), addr: SocketAddr::new("127.0.0.1".parse().unwrap(), 4793) }]);
+        drop(answering);
+    }
+
+    #[test]
+    fn the_question_is_asked_from_a_port_that_can_be_shared_and_the_answer_goes_back_to_it() {
+        // The asker holds a port of its own, as the move's port is held on the old computer, and the answerer replies to where it was asked
+        let asked_from = socket_on(0).unwrap();
+        let port = asked_from.local_addr().unwrap().port();
+        assert!(socket_on(port).is_ok(), "the same port can be asked from by another program of the same machine");
+        drop(asked_from);
+        let udp = UdpSocket::bind("127.0.0.1:0").unwrap();
+        let to = udp.local_addr().unwrap();
+        let answering = Answering::start(udp, 4793, "New desk".into(), Arc::new(Anywhere)).unwrap();
+        let found = find(to, Duration::from_millis(600), &Anywhere, port).unwrap();
+        assert_eq!(found.len(), 1, "an answer to the port the question came from is heard");
         drop(answering);
     }
 
@@ -130,13 +181,13 @@ mod tests {
         let udp = UdpSocket::bind("127.0.0.1:0").unwrap();
         let to = udp.local_addr().unwrap();
         let answering = Answering::start(udp, 4793, "New desk".into(), Arc::new(Nowhere)).unwrap();
-        assert!(find(to, Duration::from_millis(500), &Anywhere).unwrap().is_empty());
+        assert!(find(to, Duration::from_millis(500), &Anywhere, 0).unwrap().is_empty());
         drop(answering);
         // And an answer that comes from a network that is not home is passed over
         let udp = UdpSocket::bind("127.0.0.1:0").unwrap();
         let to = udp.local_addr().unwrap();
         let answering = Answering::start(udp, 4793, "New desk".into(), Arc::new(Anywhere)).unwrap();
-        assert!(find(to, Duration::from_millis(500), &Nowhere).unwrap().is_empty());
+        assert!(find(to, Duration::from_millis(500), &Nowhere, 0).unwrap().is_empty());
         drop(answering);
     }
 }

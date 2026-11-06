@@ -136,7 +136,7 @@ fn receive() -> Result<(), String> {
     listener.set_nonblocking(true).map_err(|e| e.to_string())?;
     let udp = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, PORT)).map_err(|e| e.to_string())?;
     let checker: Arc<dyn Home + Send + Sync> = Arc::new(Firewalld);
-    let _answering = discover::Answering::start(udp, PORT, host_name(), checker.clone()).map_err(|e| e.to_string())?;
+    let mut answering = Some(discover::Answering::start(udp, PORT, host_name(), checker.clone()).map_err(|e| e.to_string())?);
     eprintln!("{}", tr("Waiting for the old computer. On it, run: ame system move send"));
     eprintln!("{}", tr("Only a computer on a network you named home can reach this one."));
     let until = Instant::now() + WAIT;
@@ -157,6 +157,8 @@ fn receive() -> Result<(), String> {
             Err(e) => return Err(e.to_string()),
         }
     };
+    // Nobody is asked or answered after the first one: the move listens for the wait, and for no longer
+    drop(answering.take());
     drop(listener);
     stream.set_nonblocking(false).map_err(|e| e.to_string())?;
     stream.set_read_timeout(Some(SILENCE)).map_err(|e| e.to_string())?;
@@ -193,7 +195,7 @@ fn send(to: Option<&str>) -> Result<(), String> {
         }
         None => {
             eprintln!("{}", tr("Looking for the new computer on this network…"));
-            let mut found = discover::find(SocketAddr::new(Ipv4Addr::BROADCAST.into(), PORT), Duration::from_secs(3), &checker).map_err(|e| e.to_string())?;
+            let mut found = discover::find(SocketAddr::new(Ipv4Addr::BROADCAST.into(), PORT), Duration::from_secs(3), &checker, PORT).map_err(|e| e.to_string())?;
             match found.len() {
                 0 => return Err(tr("No computer answered. On the new one, run: ame system move receive. Both must be on a network named home.")),
                 1 => found.remove(0),

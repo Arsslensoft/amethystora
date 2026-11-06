@@ -61,6 +61,24 @@ INSERT INTO moz_bookmarks VALUES (1, 2, NULL, 0, '', 'root________'), (2, 2, NUL
 """)
 db.commit()
 EOF
+# A profile folder whose name tries to turn the options of the database's address into its path (a ? and a #), with a bookmark of its own
+ODD="${SAM}/AppData/Roaming/Mozilla/Firefox/Profiles/y?mode=rw&immutable=0#z"
+mkdir -p "${ODD}"
+python3 - "${ODD}/places.sqlite" <<'PY'
+import sqlite3, sys
+db = sqlite3.connect(sys.argv[1])
+db.executescript("""
+CREATE TABLE moz_places (id INTEGER PRIMARY KEY, url TEXT);
+CREATE TABLE moz_bookmarks (id INTEGER PRIMARY KEY, type INTEGER, fk INTEGER, parent INTEGER, title TEXT, guid TEXT);
+INSERT INTO moz_places VALUES (1, 'https://odd.example/');
+INSERT INTO moz_bookmarks VALUES (1, 2, NULL, 0, '', 'root________'), (3, 2, NULL, 1, 'toolbar', 'toolbar_____'), (10, 1, 1, 3, 'Odd place', 'aaaaaaaaaaaa');
+""")
+db.commit()
+PY
+# A Bookmarks file that is not an object, and one nested past the stack: a hostile disk's, passed over
+mkdir -p "${SAM}/AppData/Local/Vivaldi/User Data/Default" "${SAM}/AppData/Local/Chromium/User Data/Default"
+echo '[1, 2, 3]' >"${SAM}/AppData/Local/Vivaldi/User Data/Default/Bookmarks"
+python3 -c "print('{\"roots\":{\"a\":' + '{\"children\":[' * 5000 + ']}' * 5000 + '}}')" >"${SAM}/AppData/Local/Chromium/User Data/Default/Bookmarks"
 echo "CANARY-FIREFOX-LOGINS" >"${SAM}/AppData/Roaming/Mozilla/Firefox/Profiles/x.default/logins.json"
 echo "CANARY-FIREFOX-KEYS" >"${SAM}/AppData/Roaming/Mozilla/Firefox/Profiles/x.default/key4.db"
 chmod 000 "${SAM}/AppData/Local/Google/Chrome/User Data/Default/Login Data" "${SAM}/AppData/Local/Google/Chrome/User Data/Default/Cookies" \
@@ -77,7 +95,7 @@ JSON="$("${HELPER}" scan "${OLD}" --json)" || fail "scan failed"
 [[ "$(jq -r '.[0].folders | map(.id) | join(",")' <<<"${JSON}")" == "documents,pictures,music,videos" ]] ||
     fail "the folders: $(jq -c '.[0].folders | map(.id)' <<<"${JSON}") (a link is not a folder, and Downloads here is one)"
 [[ "$(jq -r '.[0].folders[0].files' <<<"${JSON}")" == 2 ]] || fail "Documents has two files that count (a link, desktop.ini, Thumbs.db and a lock file do not): $(jq -c '.[0].folders[0]' <<<"${JSON}")"
-[[ "$(jq -r '.[0].bookmarks' <<<"${JSON}")" == 3 ]] || fail "bookmarks counted: $(jq -r '.[0].bookmarks' <<<"${JSON}") (two in the first browser, one more in the second, a bookmark both have once, no script, no place:, no tag)"
+[[ "$(jq -r '.[0].bookmarks' <<<"${JSON}")" == 4 ]] || fail "bookmarks counted: $(jq -r '.[0].bookmarks' <<<"${JSON}") (two in the first browser, one more in the second, a bookmark both have once, one in a profile with a hostile name, no script, no place:, no tag, and two hostile files passed over)"
 
 # --- Bring ----------------------------------------------------------------------------------------------------------------------------
 "${HELPER}" bring "${OLD}" Sam --folders documents,pictures,music,downloads,bogus --bookmarks >"${T}/log/bring.out" 2>&1 || fail "bring failed: $(cat "${T}/log/bring.out")"
@@ -96,6 +114,7 @@ BOOKMARKS="$(ls "${NEW}/Documents/"Bookmarks*.html 2>/dev/null)"
 [[ -n "${BOOKMARKS}" ]] || fail "no bookmarks file: $(ls -A "${NEW}/Documents")"
 grep -q 'HREF="https://docs.fedoraproject.org/?a=1&amp;b=2"' "${BOOKMARKS}" || fail "a bookmark is missing or not escaped"
 grep -q 'HREF="http://example.org/"' "${BOOKMARKS}" && grep -q 'HREF="https://www.mozilla.org/"' "${BOOKMARKS}" || fail "bookmarks of both browsers"
+grep -q 'HREF="https://odd.example/"' "${BOOKMARKS}" || fail "the bookmark of a profile with a ? in its name was not read"
 grep -qi 'javascript:\|place:' "${BOOKMARKS}" && fail "a script or a place made it into the bookmarks"
 [[ "$(grep -c 'docs.fedoraproject' "${BOOKMARKS}")" == 1 ]] || fail "a bookmark that both browsers have is there twice"
 [[ "$(stat -c %a "${BOOKMARKS}")" == 600 ]] || fail "the bookmarks file is not private"
@@ -117,6 +136,11 @@ BEFORE="$(tree_state)"
 [[ "$(cat "${NEW}/Pictures/p.jpg")" == "a picture" ]] || fail "a file that is here was replaced by the disk's changed one"
 [[ "$(tree_state)" == "${BEFORE}" ]] || fail "the disk changed on the next run"
 
+# --- Room: a folder that does not leave the room asked for is left out, and said
+OUT="$(AMETHYSTORA_BRING_KEEP_FREE=900000000000000000 "${HELPER}" bring "${OLD}" Sam --folders videos 2>&1)" || fail "bring with no room failed"
+[[ "${OUT}" == *"does not fit here"* ]] || fail "no room was not said: ${OUT}"
+[[ ! -e "${NEW}/Videos/v.mp4" ]] || fail "a folder was copied where there was no room"
+
 # --- A person that is not there, and nonsense ------------------------------------------------------------------------------------------
 "${HELPER}" bring "${OLD}" Nobody --folders documents >/dev/null 2>&1 && fail "bring for a person the disk does not have"
 "${HELPER}" bogus >/dev/null 2>&1
@@ -125,26 +149,43 @@ BEFORE="$(tree_state)"
 [[ $? == 1 ]] || fail "without a terminal it must refuse"
 
 # --- Disks: lsblk and udisksctl as stand-ins -------------------------------------------------------------------------------------------------
-cat >"${T}/stubs/lsblk" <<EOF
+printf '%s\n' 'UUID=feedface-1 /data ext4 defaults 0 2' >"${T}/fstab"
+export AMETHYSTORA_BRING_FSTAB="${T}/fstab"
+cat >"${T}/stubs/lsblk" <<'EOF'
 #!/bin/sh
+case "$*" in
+    *"-n -o FSTYPE"*)
+        case "$*" in *sdh1*) echo ext4 ;; *sdi1*) echo xfs ;; *) echo ntfs ;; esac
+        exit 0 ;;
+esac
 cat <<'JSON'
 {"blockdevices":[
  {"name":"nvme0n1","path":"/dev/nvme0n1","type":"disk","fstype":null,"size":512000000000,"model":"Own SSD","rm":false,"mountpoints":[null],"children":[
    {"name":"nvme0n1p1","path":"/dev/nvme0n1p1","type":"part","fstype":"vfat","size":600000000,"mountpoints":["/boot/efi"],"pkname":"nvme0n1","rm":false},
    {"name":"nvme0n1p3","path":"/dev/nvme0n1p3","type":"part","fstype":"btrfs","size":500000000000,"mountpoints":["/var","/var/home","/sysroot"],"pkname":"nvme0n1","rm":false}]},
- {"name":"sda","path":"/dev/sda","type":"disk","fstype":null,"size":1000000000000,"model":"Old Laptop HDD","rm":false,"mountpoints":[null],"children":[
+ {"name":"sda","path":"/dev/sda","type":"disk","fstype":null,"size":1000000000000,"model":"Old Laptop HDD","rm":false,"tran":"usb","mountpoints":[null],"children":[
    {"name":"sda1","path":"/dev/sda1","type":"part","fstype":"ntfs","size":999000000000,"label":"Windows\u001b[31m","mountpoints":["/run/media/me/Windows"],"pkname":"sda","rm":false}]},
  {"name":"sdb","path":"/dev/sdb","type":"disk","fstype":null,"size":500000000000,"model":"Locked","rm":true,"mountpoints":[null],"children":[
    {"name":"sdb1","path":"/dev/sdb1","type":"part","fstype":"BitLocker","size":499000000000,"mountpoints":[null],"pkname":"sdb","rm":true}]},
- {"name":"sdc","path":"/dev/sdc","type":"disk","fstype":null,"size":500000000000,"model":"Linux","rm":false,"mountpoints":[null],"children":[
+ {"name":"sdc","path":"/dev/sdc","type":"disk","fstype":null,"size":500000000000,"model":"Linux","rm":false,"tran":"usb","mountpoints":[null],"children":[
    {"name":"sdc1","path":"/dev/sdc1","type":"part","fstype":"crypto_LUKS","size":499000000000,"mountpoints":[null],"pkname":"sdc","rm":false},
    {"name":"sdc2","path":"/dev/sdc2","type":"part","fstype":"swap","size":8000000000,"mountpoints":["[SWAP]"],"pkname":"sdc","rm":false}]},
+ {"name":"sdd","path":"/dev/sdd","type":"disk","fstype":null,"size":500000000000,"model":"Mine","rm":true,"tran":"usb","mountpoints":[null],"children":[
+   {"name":"sdd1","path":"/dev/sdd1","type":"part","fstype":"ext4","size":499000000000,"uuid":"feedface-1","mountpoints":[null],"pkname":"sdd","rm":true},
+   {"name":"sdd2","path":"/dev/sdd2","type":"part","fstype":"btrfs","size":1000000000,"label":"raid-pool-1","mountpoints":[null],"pkname":"sdd","rm":true},
+   {"name":"sdd3","path":"/dev/sdd3","type":"part","fstype":"ext4","size":1000000000,"mountpoints":["/mnt/data"],"pkname":"sdd","rm":true}]},
+ {"name":"sde","path":"/dev/sde","type":"disk","fstype":null,"size":500000000000,"model":"Internal data","rm":false,"mountpoints":[null],"children":[
+   {"name":"sde1","path":"/dev/sde1","type":"part","fstype":"ext4","size":499000000000,"mountpoints":[null],"pkname":"sde","rm":false}]},
+ {"name":"sdh","path":"/dev/sdh","type":"disk","fstype":null,"size":500000000000,"model":"Old Linux","rm":true,"mountpoints":[null],"children":[
+   {"name":"sdh1","path":"/dev/sdh1","type":"part","fstype":"ext4","size":499000000000,"mountpoints":[null],"pkname":"sdh","rm":true}]},
+ {"name":"sdi","path":"/dev/sdi","type":"disk","fstype":null,"size":500000000000,"model":"Old server","rm":true,"mountpoints":[null],"children":[
+   {"name":"sdi1","path":"/dev/sdi1","type":"part","fstype":"xfs","size":499000000000,"mountpoints":[null],"pkname":"sdi","rm":true}]},
  {"name":"zram0","path":"/dev/zram0","type":"disk","fstype":"swap","size":8000000000,"mountpoints":["[SWAP]"],"rm":false}]}
 JSON
 EOF
 chmod +x "${T}/stubs/lsblk"
 LISTED="$("${HELPER}" disks --json)" || fail "disks failed"
-[[ "$(jq -r 'map(.device) | join(",")' <<<"${LISTED}")" == "/dev/sda1,/dev/sdb1,/dev/sdc1" ]] || fail "the disks offered: $(jq -c 'map(.device)' <<<"${LISTED}") (not this system's, not swap, not zram)"
+[[ "$(jq -r 'map(.device) | join(",")' <<<"${LISTED}")" == "/dev/sda1,/dev/sdb1,/dev/sdc1,/dev/sdh1,/dev/sdi1" ]] || fail "the disks offered: $(jq -c 'map(.device)' <<<"${LISTED}") (only plugged-in disks; not this system's, an fstab one, a pool, one mounted elsewhere, an internal one, swap or zram)"
 [[ "$(jq -r '.[0].label' <<<"${LISTED}")" == "Windows[31m" ]] || fail "a label is shown as text: $(jq -r '.[0].label' <<<"${LISTED}" | od -c | head -2)"
 [[ "$(jq -r '.[1].encrypted' <<<"${LISTED}")" == true && "$(jq -r '.[2].supported' <<<"${LISTED}")" == false ]] || fail "BitLocker is asked for a key, LUKS is said to be unsupported"
 
@@ -221,5 +262,15 @@ if grep -rqF "${KEY}" "${T}" --exclude-dir=log --exclude-dir=old 2>/dev/null; th
 python3 "${T}/drive.py" "${HELPER}" "Its number" 1 n >/dev/null || fail "the terminal run with a mounted disk failed"
 [[ "$(grep '^ARGS' "${T}/log/udisks.log" | head -2 | tr '\n' '|')" == "ARGS unmount -b /dev/sda1|ARGS mount -b /dev/sda1 -o ro|" ]] ||
     fail "a mount the desktop made was not unmounted before the read-only mount: $(cat "${T}/log/udisks.log")"
+
+# An ext4 disk is mounted without loading its journal, so that a disk that was not shut down cleanly is not written to
+: >"${T}/log/udisks.log"
+python3 "${T}/drive.py" "${HELPER}" "Its number" 4 n >/dev/null || fail "the terminal run with an ext4 disk failed"
+grep -qx 'ARGS mount -b /dev/sdh1 -o ro,noload' "${T}/log/udisks.log" || fail "an ext4 disk was not mounted with noload: $(cat "${T}/log/udisks.log")"
+# An XFS disk may have its log replayed whatever is asked: it asks first, and nothing is mounted after a no
+: >"${T}/log/udisks.log"
+TEXT="$(python3 "${T}/drive.py" "${HELPER}" "Its number" 5 "Mount it anyway" n n)"
+[[ "${TEXT}" == *"replays its log onto it"* ]] || fail "the XFS warning was not said: ${TEXT}"
+grep -q '^ARGS mount' "${T}/log/udisks.log" && fail "an XFS disk was mounted after a no"
 
 echo "test-bring-over: ok"

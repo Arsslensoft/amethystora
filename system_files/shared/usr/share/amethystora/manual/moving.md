@@ -28,8 +28,10 @@ moves. They prove that nobody sits between the two computers; they are not a pas
 The new computer then lists what the old one has, and you choose:
 
 - **The home folder**: the folders you made yourself (Documents, Pictures, Music, Videos, Downloads, Desktop and any other),
-  the data of your Flatpak apps (`~/.var/app`, less their caches), and the Vault's own backup file, which opens only with its
-  recovery key. To bring the Vault's contents, restore that file with `ame vault restore` and your recovery key.
+  the data of your Flatpak apps (`~/.var/app`, less their caches), and the Vault's own backup files, which open only with their
+  recovery key. They land in `~/From old computer/Vault backups`, not in this computer's own backup folder, which rotates (it
+  keeps the seven newest and deletes the rest). To bring the Vault's contents, restore the newest with
+  `ame vault restore "$HOME/From old computer/Vault backups/FILE"` and your recovery key, **before** you wipe the old computer.
 - **The setup file**, which names the apps, theme and shortcuts (`ame setup save` makes it). It lands in `~/From old computer`;
   bring it in with `ame setup apply "$HOME/From old computer/setup.json"`, which shows what it would change and asks first.
 
@@ -40,7 +42,8 @@ The new computer refuses these itself, whatever the other end sends.
 It **adds and never deletes**: a file whose name is already on this computer is kept as it is, and the new computer says how
 many. A file appears under its name only when it is whole, so stopping half way leaves no half files, and running it again
 carries on with what is missing. It runs at the lowest disk and processor priority, so the desktop stays quick, and leaves a
-gigabyte free: a home that does not fit is left out, and said.
+gigabyte free: a home that does not fit is left out, and said, and a sender that sends more than it said, or than there is room
+for, is stopped.
 
 The key is agreed for this move alone (P-256, each direction sealed with AES-256-GCM), lives in memory and is gone when the
 command ends. Only a computer on a network named home can reach the other: the firewall opens port 4793 in that zone alone, the
@@ -66,8 +69,15 @@ has them. An APFS disk cannot be read, and a LUKS-encrypted one has to be unlock
 
 What it promises, and how it is kept:
 
-- **The disk is read-only and nothing on it changes.** It is mounted with `-o ro`; a disk the desktop already mounted so that it
-  can be written to is unmounted and mounted again read-only. It is unmounted (and locked) again at the end.
+- **The disk is read-only.** It is mounted with `-o ro`, and an ext2/3/4 disk with `noload` too, so that its journal is not replayed
+  onto it. Only disks you plugged in (removable or on USB) are offered, never this computer's own disks, pools or what `/etc/fstab`
+  names; one the desktop mounted so that it can be written to is unmounted and mounted again read-only, and all are unmounted
+  (and locked) again at the end. **One exception, said before it is mounted:** an XFS or btrfs disk that was not shut down cleanly
+  may have its log replayed by the kernel when it is mounted, even read-only, which writes to it; udisks offers no option to
+  prevent that, so for those two it asks first (default no). A disk Files mounted writable and handed over with `--from` is read as
+  it is, and reading updates its access times.
+- **There is room for it.** Before each folder it compares what it will copy with the free space here and keeps a gigabyte free:
+  a folder that does not fit is left out, and said.
 - **It copies and never moves, and never replaces.** A file whose name is already here stays as it is. Each file appears under its
   name only when whole. If it stops, run it again: it carries on where it stopped.
 - **It never reads a password.** Of a browser it opens its bookmarks and nothing else: not `logins.json`, not Chrome's `Login Data`,

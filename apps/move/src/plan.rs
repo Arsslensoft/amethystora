@@ -112,6 +112,16 @@ pub fn allows(item: Item, rel: &str) -> bool {
     }
 }
 
+/// Where a file of the old computer lands under the new computer's root, which is its own path except for the Vault's backups: those are
+/// the new computer's own folder of backups, which it rotates (seven kept) and writes today's into by name, so a backup moved there
+/// would be deleted within a week or replaced the same day. They land in a folder of their own, where nothing rotates them.
+pub fn landing(item: Item, rel: &str) -> String {
+    match rel.strip_prefix(".local/share/amethystora/vault-backup/") {
+        Some(name) if item == Item::Home => format!("From old computer/Vault backups/{name}"),
+        _ => rel.to_string(),
+    }
+}
+
 /// A file that is to go
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Entry {
@@ -256,12 +266,12 @@ impl Writer {
         }
         let mut cur = Current { rel: rel.to_string(), size, mode, mtime, got: 0, target: None, landed: Landed::Refused };
         if allows(self.item, rel) {
-            let path = self.root.join(rel);
-            if fs::symlink_metadata(&path).is_ok() {
+            let path = self.root.join(landing(self.item, rel));
+            // A name that is there is kept; so is one whose folder cannot be made (a file here where the old computer has a folder)
+            let parent = path.parent().ok_or_else(|| io_err("no folder"))?;
+            if fs::symlink_metadata(&path).is_ok() || fs::create_dir_all(parent).is_err() {
                 cur.landed = Landed::Kept;
             } else {
-                let parent = path.parent().ok_or_else(|| io_err("no folder"))?;
-                fs::create_dir_all(parent)?;
                 let mut name = String::from(".amethystora-move-");
                 let mut random = [0u8; 6];
                 getrandom::fill(&mut random).map_err(|_| io_err("no random bytes"))?;
@@ -403,6 +413,32 @@ mod tests {
         assert_eq!(totals.bytes, 3 + 2 + 1 + 6);
         assert!(totals.left_out >= 2, "the two links were passed over: {totals:?}");
         let _ = fs::remove_dir_all(&home);
+    }
+
+    #[test]
+    fn the_vaults_backups_land_where_nothing_rotates_them() {
+        assert_eq!(landing(Item::Home, ".local/share/amethystora/vault-backup/vault-2026-11-06.avb"), "From old computer/Vault backups/vault-2026-11-06.avb");
+        assert_eq!(landing(Item::Home, "Documents/a.txt"), "Documents/a.txt");
+        let root = tree();
+        let mut w = Writer::new(root.clone(), Item::Home);
+        w.begin(".local/share/amethystora/vault-backup/vault-2026-11-06.avb", 3, 0o600, 0).unwrap();
+        w.data(b"avb").unwrap();
+        assert_eq!(w.end().unwrap(), Landed::Written);
+        assert_eq!(fs::read(root.join("From old computer/Vault backups/vault-2026-11-06.avb")).unwrap(), b"avb");
+        assert!(!root.join(".local").exists(), "the new computer's own backup folder is not touched");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_name_that_is_a_file_here_and_a_folder_there_is_kept_and_does_not_stop_the_move() {
+        let root = tree();
+        put(&root, "Documents", b"a file here");
+        let mut w = Writer::new(root.clone(), Item::Home);
+        w.begin("Documents/report.odt", 2, 0o644, 0).unwrap();
+        w.data(b"ab").unwrap();
+        assert_eq!(w.end().unwrap(), Landed::Kept);
+        assert_eq!(fs::read(root.join("Documents")).unwrap(), b"a file here");
+        let _ = fs::remove_dir_all(&root);
     }
 
     #[test]

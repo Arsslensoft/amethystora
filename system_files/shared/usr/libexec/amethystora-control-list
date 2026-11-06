@@ -3431,7 +3431,7 @@ TERMINAL=true
 BUTTON="${ gettext "Find the old disk"; }"
 USAGE="ame system bring-over"
 item system bring-over action "${ gettext "Bring everything from your old computer"; }" \
-    "${ gettext "Your folders and bookmarks from the disk of another computer you plugged in. The disk is read-only and nothing on it changes; an encrypted one asks for its recovery key, which is not kept; no password is read."; }" \
+    "${ gettext "Your folders and bookmarks from the disk of another computer you plugged in. The disk is mounted read-only and nothing is written to it (an XFS or btrfs disk that was not shut down cleanly asks first); an encrypted one asks for its recovery key, which is not kept; no password is read."; }" \
     "" moving#bring-everything-from-your-old-computer
 GROUP=""
 

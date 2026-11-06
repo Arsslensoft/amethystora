@@ -317,6 +317,7 @@ pub fn receive<S: Read + Write>(s: &mut S, keys: &mut Keys, ui: &mut dyn Ui, hom
     }
     write_json(s, keys, &json!({ "items": wanted.iter().map(|i| i.id()).collect::<Vec<_>>() }))?;
     let total: u64 = offered.iter().filter(|o| wanted.contains(&o.item)).map(|o| o.bytes).sum();
+    let free = plan::free_space(home);
     let mut summary = Summary::default();
     let mut done = 0u64;
     for item in &wanted {
@@ -329,7 +330,9 @@ pub fn receive<S: Read + Write>(s: &mut S, keys: &mut Keys, ui: &mut dyn Ui, hom
             Item::Setup => home.join("From old computer"),
         };
         let mut writer = Writer::new(root, *item);
-        let result = receive_item(s, keys, &mut writer, &mut done, total, ui);
+        let declared = offered.iter().find(|o| o.item == *item).map_or(0, |o| o.bytes);
+        let budget = budget_for(*item, declared, free);
+        let result = receive_item(s, keys, &mut writer, &mut done, total, budget, ui);
         if result.is_err() {
             writer.abandon();
         }
@@ -344,7 +347,22 @@ pub fn receive<S: Read + Write>(s: &mut S, keys: &mut Keys, ui: &mut dyn Ui, hom
     Ok(summary)
 }
 
-fn receive_item<S: Read + Write>(s: &mut S, keys: &mut Keys, writer: &mut Writer, done: &mut u64, total: u64, ui: &mut dyn Ui) -> Result<()> {
+/// The setup file is small, whatever the other side says
+pub const MOST_SETUP: u64 = 1 << 20;
+
+/// The most the files of one item may add up to: what the sender said, with room for what grew while it counted, and never more than
+/// the disk has to spare. A sender that declares a little and streams a lot is stopped by it, and the disk is never filled.
+pub fn budget_for(item: Item, declared: u64, free: Option<u64>) -> u64 {
+    let said = match item {
+        Item::Setup => declared.min(MOST_SETUP),
+        Item::Home => declared.saturating_add(declared / 100).saturating_add(64 << 20),
+    };
+    free.map_or(said, |free| said.min(free.saturating_sub(KEEP_FREE)))
+}
+
+fn receive_item<S: Read + Write>(s: &mut S, keys: &mut Keys, writer: &mut Writer, done: &mut u64, total: u64, budget: u64, ui: &mut dyn Ui) -> Result<()> {
+    // What the files of this item have promised so far, by their headers
+    let mut promised = 0u64;
     // The file being written: how long it is and how much has come
     let mut open: Option<(u64, u64)> = None;
     loop {
@@ -358,6 +376,10 @@ fn receive_item<S: Read + Write>(s: &mut S, keys: &mut Keys, writer: &mut Writer
                 let (Some(rel), Some(size)) = (header.get("p").and_then(Value::as_str), header.get("s").and_then(Value::as_u64)) else { return fail("a file header lacks its name or length") };
                 if size > MOST_FILE {
                     return fail("a file is longer than any file");
+                }
+                promised = promised.saturating_add(size);
+                if promised > budget {
+                    return fail("the other computer is sending more than it said, or than there is room for");
                 }
                 let mode = header.get("m").and_then(Value::as_u64).unwrap_or(0o600) as u32;
                 let mtime = header.get("t").and_then(Value::as_i64).unwrap_or(0);
@@ -496,7 +518,8 @@ mod tests {
         assert_eq!(std::fs::read(new.join("Pictures/holiday.jpg")).unwrap(), b"jpeg");
         assert_eq!(std::fs::read(new.join("Music/empty.flac")).unwrap(), b"");
         assert_eq!(std::fs::read(new.join("Documents/report.odt")).unwrap(), b"the new computer's own", "adds, never replaces");
-        assert_eq!(std::fs::read(new.join(".local/share/amethystora/vault-backup/vault-2026-11-06.avb")).unwrap(), b"sealed backup");
+        assert_eq!(std::fs::read(new.join("From old computer/Vault backups/vault-2026-11-06.avb")).unwrap(), b"sealed backup", "the Vault's backup lands where nothing rotates it");
+        assert!(!new.join(".local").exists(), "and the new computer's own backup folder is not touched");
         assert_eq!(std::fs::read(new.join("From old computer/setup.json")).unwrap(), br#"{"version":1,"theme":"nord"}"#);
         for secret in [".ssh", ".mozilla", ".config", ".local/share/keyrings", "Private", ".var/app/org.mozilla.firefox"] {
             assert!(!new.join(secret).exists(), "{secret} never crosses");
@@ -593,6 +616,48 @@ mod tests {
             assert!(!new.join(evil).exists(), "{evil}");
         }
         assert!(!new.parent().unwrap().join("escape.txt").exists());
+        let _ = std::fs::remove_dir_all(&new);
+    }
+
+    #[test]
+    fn what_may_come_is_what_was_said_and_what_there_is_room_for() {
+        assert_eq!(budget_for(Item::Setup, 5_000_000_000, None), MOST_SETUP, "the setup file is small whatever is declared");
+        assert_eq!(budget_for(Item::Setup, 10, None), 10);
+        assert_eq!(budget_for(Item::Home, 1000, None), 1000 + 10 + (64 << 20));
+        assert_eq!(budget_for(Item::Home, 10 << 30, Some(3 << 30)), (3 << 30) - KEEP_FREE, "never more than the disk has to spare");
+        assert_eq!(budget_for(Item::Home, 10 << 30, Some(0)), 0);
+    }
+
+    /// A sender that declares little and streams a lot is stopped, and what was half written is not left
+    #[test]
+    fn a_sender_that_says_a_little_and_sends_a_lot_is_stopped() {
+        let new = temp("new-liar");
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let new_home = new.clone();
+        let thread = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            stream.set_read_timeout(Some(std::time::Duration::from_secs(20))).unwrap();
+            let mut ui = Script::new(true, vec![Item::Home]);
+            let mut keys = handshake_receiver(&mut stream)?;
+            receive(&mut stream, &mut keys, &mut ui, &new_home)
+        });
+        let mut stream = TcpStream::connect(address).unwrap();
+        let mut keys = handshake_sender(&mut stream).unwrap();
+        let mut ui = Script::new(true, vec![]);
+        compare(&mut stream, &mut keys, &mut ui).unwrap();
+        write_json(&mut stream, &mut keys, &json!({ "v": 1, "name": "Old", "items": [{ "id": "home", "bytes": 1000, "files": 1 }] })).unwrap();
+        read_json(&mut stream, &mut keys).unwrap();
+        write_json(&mut stream, &mut keys, &json!({ "item": "home" })).unwrap();
+        // One file within what it said, then a header that claims a terabyte
+        write_sealed(&mut stream, &mut keys, FILE, json!({ "p": "Documents/a.txt", "m": 420, "t": 0, "s": 3 }).to_string().as_bytes()).unwrap();
+        write_sealed(&mut stream, &mut keys, DATA, b"abc").unwrap();
+        write_sealed(&mut stream, &mut keys, FILE, json!({ "p": "Documents/huge.bin", "m": 420, "t": 0, "s": 1u64 << 40 }).to_string().as_bytes()).unwrap();
+        drop(stream);
+        let error = thread.join().unwrap().unwrap_err();
+        assert!(error.0.contains("more than it said"), "{error}");
+        assert_eq!(std::fs::read(new.join("Documents/a.txt")).unwrap(), b"abc", "what was within bounds stays");
+        assert!(!new.join("Documents/huge.bin").exists());
         let _ = std::fs::remove_dir_all(&new);
     }
 

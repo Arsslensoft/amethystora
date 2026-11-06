@@ -488,7 +488,7 @@ raid *ARGS:
 
 # Move to this computer (R7-25): the person's own folders and setup file from an old computer to this one, over a network named
 # home, encrypted under a key that lives for this move only, with the same six digits on both screens. `move receive` on the new
-# computer, `move send [ADDRESS]` on the old one. It adds and never deletes, and passwords and keys never cross
+# computer, `move send [--to ADDRESS]` on the old one. It adds and never deletes, and passwords and keys never cross
 [no-cd]
 [no-exit-message]
 [positional-arguments]
@@ -496,7 +496,7 @@ move *ARGS:
     @/usr/libexec/amethystora-move "$@"
 
 # Bring everything from your old computer (R7-48): the folders and bookmarks of another computer's disk, plugged in, copied to the
-# right folders here. The disk is mounted read-only and nothing on it changes; a BitLocker disk asks for its recovery key, which is
+# right folders here. The disk is mounted read-only (ext3 and ext4 without loading their journal); a BitLocker disk asks for its recovery key, which is
 # never kept; no password is read. `bring-over --from DIR` takes a disk that is already mounted
 [no-cd]
 [no-exit-message]

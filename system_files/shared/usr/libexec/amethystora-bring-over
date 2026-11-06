@@ -9,8 +9,11 @@
                                                copies the folders chosen (and the bookmarks) of one person of that disk
 
 What it promises, and how the code keeps each:
-- **The disk is never changed.** It is mounted read-only (`udisksctl mount -o ro`); one that the desktop mounted read-write is
-  unmounted first and mounted again read-only. Nothing here writes under the mount point, and rsync only reads from it.
+- **The disk is mounted read-only** (`udisksctl mount -o ro`, with `noload` for ext3 and ext4 so that a journal is not replayed onto a
+  disk that was not shut down cleanly); one that the desktop mounted read-write is unmounted first and mounted again read-only. Only
+  a disk that was plugged in (removable, hotplug or USB) is offered, never this computer's own, a pool or one /etc/fstab names. Nothing
+  here writes under the mount point, and rsync only reads from it. XFS and btrfs offer udisks no option that stops the kernel
+  replaying their log on a disk that was not shut down cleanly, so for those two the person is told, and asked, first.
 - **It copies and never moves, adds and never replaces.** Each folder is rsynced into the matching folder of this computer with
   `--ignore-existing`, so a name that is there stays as it is; a file appears under its name only when whole, and an interrupted run
   carries on where it stopped when run again (rsync's partial directory). Nothing is deleted.
@@ -20,6 +23,7 @@ What it promises, and how the code keeps each:
   latter read-only and immutable): never `logins.json`, `Login Data`, cookies or keys. They are written to one new HTML file that
   any browser imports. An encrypted disk's recovery key is typed with no echo, passed on a pipe's standard input to udisks and
   never put in an argument, an environment variable or a file.
+- It leaves a gigabyte free: a folder that does not fit is left out, measured again just before it is copied.
 - It runs at idle disk priority and a low processor priority, so the desktop stays quick.
 
 A disk of another computer's system holds `Users/NAME` (Windows, macOS) or `home/NAME` (Linux), with Documents, Pictures, Music,
@@ -32,6 +36,7 @@ import gettext
 import html
 import json
 import os
+import pathlib
 import re
 import shutil
 import sqlite3
@@ -96,9 +101,25 @@ def mount_points(device):
     return [m for m in (device.get("mountpoints") or []) if m]
 
 
+def in_fstab(device):
+    """Whether /etc/fstab names this device (by path, UUID, label or partition label): this computer's own, whatever it is mounted as"""
+    names = {device.get("path"), f"UUID={device.get('uuid')}", f"LABEL={device.get('label')}", f"PARTLABEL={device.get('partlabel')}"}
+    try:
+        with open(os.environ.get("AMETHYSTORA_BRING_FSTAB", "/etc/fstab"), encoding="utf-8", errors="replace") as handle:
+            for line in handle:
+                fields = line.split()
+                if fields and not fields[0].startswith("#") and fields[0] in names:
+                    return True
+    except OSError:
+        pass
+    return False
+
+
 def disks():
-    """The disks that look like another computer's: what they are and whether they can be read here"""
-    out = run(["lsblk", "-J", "-b", "-o", "NAME,PATH,FSTYPE,SIZE,LABEL,MOUNTPOINTS,TYPE,RM,MODEL,PKNAME"])
+    """The disks that look like another computer's: what they are and whether they can be read here. Only a disk that was plugged in
+    (removable, hotplug or on USB) and is unmounted or mounted by the desktop under /run/media; never this computer's own disks, a pool of
+    amethystora-raid, or anything /etc/fstab names."""
+    out = run(["lsblk", "-J", "-b", "-o", "NAME,PATH,FSTYPE,SIZE,LABEL,MOUNTPOINTS,TYPE,RM,MODEL,PKNAME,UUID,PARTLABEL,TRAN,HOTPLUG"])
     if out.returncode != 0:
         raise Problem(_("The list of disks could not be read."))
     tree = json.loads(out.stdout or b"{}").get("blockdevices", [])
@@ -116,6 +137,12 @@ def disks():
         if device.get("name") in own_parents or any(m in OWN_MOUNTS or m.startswith(("/boot/", "/var/home/", "/sysroot")) for m in mount_points(device)):
             continue
         if fstype in ("swap", "linux_raid_member", "LVM2_member", "zfs_member", "squashfs", "iso9660"):
+            continue
+        whole = parent or device
+        plugged = any(bool(d.get("rm")) or bool(d.get("hotplug")) or d.get("tran") == "usb" for d in (device, whole))
+        elsewhere = [m for m in mount_points(device) if not m.startswith("/run/media/")]
+        pool = any(str(d.get(k) or "").startswith("raid-") for d in (device, whole) for k in ("name", "label", "partlabel"))
+        if not plugged or elsewhere or pool or in_fstab(device):
             continue
         if device.get("name", "").startswith(("zram", "sr")):
             continue
@@ -156,9 +183,21 @@ def unlock(device, key):
     return found.group(1)
 
 
-def mount_read_only(device):
+def mount_options(fstype):
+    """Read-only, and for ext3 and ext4 without loading the journal: a disk that was not shut down cleanly has it replayed onto the
+    disk even on a read-only mount, which `noload` (one of udisks's allowed options) prevents. udisks allows no such option for XFS or
+    btrfs, which the person is told of first."""
+    return "ro,noload" if fstype in ("ext3", "ext4") else "ro"
+
+
+def fstype_of(device):
+    out = run(["lsblk", "-n", "-o", "FSTYPE", device])
+    return out.stdout.decode("utf-8", "replace").strip().splitlines()[0].strip() if out.returncode == 0 and out.stdout.strip() else ""
+
+
+def mount_read_only(device, fstype=""):
     """Mounts it read-only through udisks and says where"""
-    text = udisks(["mount", "-b", device, "-o", "ro"])
+    text = udisks(["mount", "-b", device, "-o", mount_options(fstype)])
     found = re.search(r" at (/\S.*?)\.?\s*$", text.strip())
     if not found or not os.path.isdir(found.group(1)):
         raise Problem(_("The disk mounted, but not where it was said to."))
@@ -287,10 +326,14 @@ def chromium_bookmarks(path):
 def firefox_bookmarks(path):
     """[(folder path, title, url)] from places.sqlite, opened read-only and immutable, so that nothing is written beside it"""
     try:
-        database = sqlite3.connect(f"file:{path}?mode=ro&immutable=1", uri=True, timeout=5)
+        # The path is quoted into a URI, so that a name with a ? or a # cannot turn the options into part of it; and the database is a
+        # hostile file: nothing may be written, and a schema of its own (a view in place of a table) may not run anything
+        database = sqlite3.connect(pathlib.Path(path).as_uri() + "?mode=ro&immutable=1", uri=True, timeout=5)
+        database.execute("PRAGMA query_only = 1")
+        database.execute("PRAGMA trusted_schema = OFF")
         rows = database.execute("SELECT b.id, b.type, b.parent, b.title, p.url, b.guid FROM moz_bookmarks b LEFT JOIN moz_places p ON b.fk = p.id WHERE b.type IN (1, 2) LIMIT ?", (MOST_BOOKMARKS * 4,)).fetchall()
         database.close()
-    except sqlite3.Error:
+    except (sqlite3.Error, ValueError, OSError):
         return []
     by_id = {row[0]: row for row in rows}
     found = []
@@ -314,7 +357,11 @@ def firefox_bookmarks(path):
 def all_bookmarks(root, person):
     found, seen = [], set()
     for kind, path in bookmark_files(root, person):
-        for trail, title, url in (chromium_bookmarks(path) if kind == "chromium" else firefox_bookmarks(path)):
+        try:
+            from_store = chromium_bookmarks(path) if kind == "chromium" else firefox_bookmarks(path)
+        except Exception:  # a hostile file may raise anything (a list where an object should be, nesting past the stack): that store is passed over
+            continue
+        for trail, title, url in from_store:
             if not url.lower().startswith(BOOKMARK_SCHEMES) or any(ord(c) < 32 for c in url) or (title, url) in seen:
                 continue
             seen.add((title, url))
@@ -406,6 +453,20 @@ def write_bookmarks(found, documents):
     raise Problem(_("There are too many bookmark files here already."))
 
 
+KEEP_FREE = 1 << 30
+
+
+def room_for(target, source):
+    """Whether what is under source fits under target and leaves a gigabyte free; measured again here, since a disk may hold more than
+    it said when it was scanned. (AMETHYSTORA_BRING_KEEP_FREE can only raise the gigabyte.)"""
+    try:
+        keep = max(KEEP_FREE, int(os.environ.get("AMETHYSTORA_BRING_KEEP_FREE", "0")))
+    except ValueError:
+        keep = KEEP_FREE
+    _files, size, _partial = measure(source)
+    return size <= shutil.disk_usage(target).free - keep, size
+
+
 def bring(root, person_name, chosen, with_bookmarks):
     matches = [(name, rel) for name, rel in people(root) if name == person_name]
     if not matches:
@@ -419,6 +480,10 @@ def bring(root, person_name, chosen, with_bookmarks):
         if not source:
             continue
         target = user_dir(xdg, label)
+        fits, size = room_for(target, source)
+        if not fits:
+            say(_("{folder} ({size}) does not fit here with a gigabyte to spare, so it is left out.").format(folder=label, size=size_text(size)))
+            continue
         say(_("Copying {folder}…").format(folder=label))
         if not copy_folder(source, target):
             raise Problem(_("Copying {folder} stopped. Run it again to carry on where it stopped.").format(folder=label))
@@ -471,7 +536,7 @@ def interactive(source=None):
             found = [d for d in disks()]
             if not found:
                 raise Problem(_("No disk of another computer was found. Plug it in, and run this again."))
-            say(_("Disks that look like another computer's. Nothing on them is changed."))
+            say(_("Disks you plugged in that look like another computer's. They are mounted read-only."))
             choice = pick(_("Which one? Its number:"), [
                 f"{d['label'] or d['model'] or d['device']}  {d['fstype']}  {size_text(d['size'])}" + ("" if d["supported"] else "  — " + d["reason"]) for d in found])
             disk = found[choice]
@@ -490,7 +555,10 @@ def interactive(source=None):
             elif disk["mounted"]:
                 say(_("The desktop mounted this disk so that it can be written to. It is unmounted and mounted again read-only."))
                 udisks(["unmount", "-b", device])
-            root = mount_read_only(device)
+            kind = fstype_of(device) or disk["fstype"]
+            if kind in ("xfs", "btrfs") and not ask(_("This {format} disk may be mounted even if it was not shut down cleanly, and the system then replays its log onto it, which writes to it, even read-only; there is no way to prevent that here. Mount it anyway?").format(format=kind), default=False):
+                raise Problem(_("Nothing was mounted."))
+            root = mount_read_only(device, kind)
             cleanup.insert(0, ["udisksctl", "unmount", "-b", device])
         else:
             root = os.path.realpath(source)
@@ -498,7 +566,7 @@ def interactive(source=None):
         if not found_people:
             raise Problem(_("No one's folders were found on this disk."))
         who = found_people[0] if len(found_people) == 1 else found_people[pick(_("Whose things? Its number:"), [p["name"] for p in found_people])]
-        say(_("Found {name}'s things. Nothing on the disk changes.").format(name=who["name"]))
+        say(_("Found {name}'s things. The disk is mounted read-only.").format(name=who["name"]))
         chosen = []
         for folder in who["folders"]:
             question = _("Bring {folder} ({size}, {files} files)?").format(folder=folder["label"], size=size_text(folder["bytes"]), files=folder["files"])
@@ -508,7 +576,7 @@ def interactive(source=None):
         if not chosen and not want_bookmarks:
             return
         bring(root, who["name"], chosen, want_bookmarks)
-        say(_("Done. The disk was not changed, and a name already here was kept as it was."))
+        say(_("Done. A name already here was kept as it was."))
     finally:
         for command in cleanup:
             run(command)
