@@ -571,7 +571,7 @@ impl Control {
         self.perform(id, async move { backend::perform(backend::change(this.known().as_deref(), &key, &value)).await });
     }
 
-    fn act(self: &Rc<Self>, id: &str) {
+    pub(crate) fn act(self: &Rc<Self>, id: &str) {
         let this = self.clone();
         let key = id.to_string();
         self.perform(id, async move { backend::perform(backend::act(this.known().as_deref(), &key)).await });

@@ -1,8 +1,8 @@
 # vim: set ft=make :
 
-# Back up this account to a repository that ransomware on this machine cannot delete from
+# Back up this account to a repository that ransomware cannot delete from, to another of your computers, or start from a backup on a new one
 [positional-arguments]
-backup ACTION="":
+backup ACTION="" *MORE:
     #!/usr/bin/bash
     set -euo pipefail
     # shellcheck source=/dev/null
@@ -19,6 +19,8 @@ backup ACTION="":
     show_snapshots="$(gettext "Show snapshots")"
     turn_on="$(gettext "Turn on the daily run")"
     turn_off="$(gettext "Turn off the daily run")"
+    recovery_key="$(gettext "Make a recovery key")"
+    restore_from="$(gettext "Start from a backup")"
     if [[ -r "${ENV_FILE}" ]]; then
         backing_up_to="$(sed -n 's/^RESTIC_REPOSITORY=//p' "${ENV_FILE}" | sed -E 's#(://)[^/]*@#\1#')"
         echo "$(eval_gettext "Backing up to: \${backing_up_to}")"
@@ -34,7 +36,7 @@ backup ACTION="":
         daily="${turn_off}"
         systemctl --user is-enabled --quiet amethystora-backup.timer 2>/dev/null || daily="${turn_on}"
         action="$(gum choose --header "$(gettext "Backups (restic)")" \
-            "${set_up}" "${back_up_now}" "${show_snapshots}" "${daily}" "$(gettext "Cancel")")" || exit 0
+            "${set_up}" "${back_up_now}" "${show_snapshots}" "${daily}" "${recovery_key}" "${restore_from}" "$(gettext "Cancel")")" || exit 0
     fi
     case "${action}" in
         "${set_up}" | "Set up" | setup)
@@ -96,6 +98,22 @@ backup ACTION="":
         "${turn_off}" | "Turn off the daily run" | off)
             systemctl --user disable --now amethystora-backup.timer
             echo "$(gettext "Off. The settings and the repository itself are left alone.")"
+            ;;
+        "${recovery_key}" | "Make a recovery key" | recovery-key)
+            # A second key of the repository, shown once: on a new computer it is all the backup needs (amethystora-backup-recovery)
+            exec /usr/libexec/amethystora-backup-recovery
+            ;;
+        other-computer)
+            # The daily backup to another computer of yours at home (R7-35): `ame backup other-computer [setup|status|now|on|off|forget]`
+            exec /usr/libexec/amethystora-backup-other computer "${2:-status}" "${@:3}"
+            ;;
+        store)
+            # This computer as the other one's store: `ame backup store [on|off|pair|status|clients|forget FINGERPRINT]`
+            exec /usr/libexec/amethystora-backup-other store "${2:-status}" "${@:3}"
+            ;;
+        "${restore_from}" | "Start from a backup" | restore-from)
+            # On a new computer, or after the old one was lost: the files, the setup and the Vault from a backup, with only the recovery key
+            exec /usr/libexec/amethystora-start-from-backup
             ;;
         *) exit 0 ;;
     esac

@@ -1,0 +1,187 @@
+#!/usr/bin/bash
+# Back up to your other computer (plans/ui-ideas/r7/spec-keep.md, R7-35): `ame backup other-computer` on the computer to back up, and `ame backup store`
+# on the other one, which holds the backup and cannot read it. Two home computers look after each other: no disk to remember, no cloud, no account.
+#
+#   amethystora-backup-other computer setup [HOST]    pair with the store (six digits on both screens), seal the keys in the Vault, make the repository
+#                                                    and a recovery key, and turn the nightly run on
+#   amethystora-backup-other computer status          where it backs up to, whether the run is on, and the last good run
+#   amethystora-backup-other computer now            run it now, if the store answers
+#   amethystora-backup-other computer off|on         the nightly run (the settings and the sealed keys stay)
+#   amethystora-backup-other computer forget          the settings and the sealed keys of this computer; the repository on the store is left alone
+#   amethystora-backup-other store on|off             this computer as a store: its certificate and the user service (the firewall is `ame security backup-store`)
+#   amethystora-backup-other store pair               wait three minutes for one computer to pair, show six digits, ask
+#   amethystora-backup-other store status|clients     what it is, and the computers it accepts
+#   amethystora-backup-other store forget FINGERPRINT stop accepting a computer
+#
+# Nothing here runs on its own and nothing here deletes from a backup. The repository's password is made here (random, 40 characters), sealed in the Vault
+# under its `background` key, and never in a file, an argument, a variable that is exported or a log. The store is append-only (rclone serve restic
+# --append-only): this computer can add and read its own, never delete, so what was backed up before it was taken over is still there afterwards.
+# Thinning old snapshots is done at the store, with `restic forget --prune` against its folder, which this computer's credentials cannot do.
+
+set -uo pipefail
+
+export TEXTDOMAIN=amethystora
+# shellcheck source=/dev/null
+source gettext.sh
+
+PAIR=/usr/libexec/amethystora-backup-pair
+SECRET=/usr/libexec/amethystora-backup-secret
+RECOVERY=/usr/libexec/amethystora-backup-recovery
+CONFIG_DIR="${XDG_CONFIG_HOME:-${HOME}/.config}/amethystora"
+ENV_FILE="${CONFIG_DIR}/backup-other.env"
+DATA="${XDG_DATA_HOME:-${HOME}/.local/share}/amethystora"
+STATE="${XDG_STATE_HOME:-${HOME}/.local/state}/amethystora"
+TIMER=amethystora-backup-other.timer
+STORE_UNIT=amethystora-backup-store.service
+HARDENING=/usr/libexec/amethystora-hardening
+
+say() { printf '%s\n' "$*"; }
+die() {
+    printf '%s\n' "$*" >&2
+    exit 1
+}
+
+usage() {
+    die "usage: ${0##*/} computer setup [HOST]|status|now|off|on|forget | store on|off|pair|status|clients|forget FINGERPRINT"
+}
+
+# --- The computer that backs up -----------------------------------------------------------------------------------------
+
+computer_setup() {
+    local host="${1:-}" name answer password cacert code
+    [[ ! -e "${ENV_FILE}" ]] || die "$(gettext "This computer already backs up to another one. Turn that off first: ame backup other-computer forget")"
+    command -v restic >/dev/null || die "restic is not installed."
+    say "$(gettext "Back up to your other computer. It keeps the backup and cannot read it: everything is encrypted here first. You need that computer next to you, with the store turned on and pairing waiting (ame backup store pair there), and both on a network you named home.")"
+    say
+    if [[ -z "${host}" ]]; then
+        [[ -t 0 ]] || die "$(gettext "Name the other computer: ame backup other-computer setup NAME")"
+        host="$(gum input --header "$(gettext "The other computer's name (as it shows on its pairing screen)")" --placeholder "desk.local")" || exit 0
+    fi
+    [[ "${host}" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ || "${host}" =~ ^[0-9a-fA-F:.]+$ ]] || die "$(gettext "That is not a computer's name or address.")"
+
+    # The password first, sealed at once: a Vault that is closed or not set up stops this before anything is paired
+    password="$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 40 || true)"
+    [[ ${#password} -eq 40 ]] || die "A password could not be made."
+    printf '%s' "${password}" | "${SECRET}" store-password
+    code="${PIPESTATUS[1]}"
+    if [[ "${code}" -ne 0 ]]; then
+        case "${code}" in
+            3) die "$(gettext "Your Vault is closed. Open Vault, then run this again: the backup's password is kept in it.")" ;;
+            4) die "$(gettext "No Vault is set up. Set up Vault first: the backup's password is kept in it, and nowhere else.")" ;;
+            *) die "$(gettext "The Vault could not keep the backup's password.")" ;;
+        esac
+    fi
+    unset password
+
+    answer="$("${PAIR}" connect "${host}")" || { rm -f -- "${DATA}/backup-other/password.avs"; exit 1; }
+    name="$(jq -r '.name' <<<"${answer}")"
+    mkdir -p "${CONFIG_DIR}"
+    cacert="$(jq -r '.store_pem' <<<"${answer}")"
+    (umask 077 && printf '%s\n' \
+        "# Written by ame backup other-computer, read by /usr/libexec/amethystora-backup --other. The password and the client key are sealed in the Vault." \
+        "RESTIC_REPOSITORY=rest:https://$(jq -r '.host' <<<"${answer}"):$(jq -r '.port' <<<"${answer}")/" \
+        "RESTIC_PASSWORD_COMMAND='${SECRET} password'" \
+        "RESTIC_CACERT=${cacert}" \
+        "AMETHYSTORA_BACKUP_SECRETS=vault" \
+        "AMETHYSTORA_BACKUP_PATHS=${HOME}" \
+        "AMETHYSTORA_BACKUP_NAME=${name}" >"${ENV_FILE}")
+
+    # The repository: an append-only store refuses `restic init` when it is there already, so finding one is normal
+    # shellcheck source=/dev/null
+    source /usr/lib/amethystora/backup-secrets.sh
+    trap backup_secrets_close EXIT
+    backup_secrets_open || die "$(gettext "The Vault could not give the key just sealed back. Open Vault and run: ame backup other-computer setup")"
+    ( set -a && source "${ENV_FILE}" && set +a
+      if restic cat config >/dev/null 2>&1; then
+          say "$(gettext "Using the repository that is already there.")"
+      else
+          say "$(gettext "Nothing there yet, creating the repository.")"
+          restic init >/dev/null || exit 1
+      fi ) || { rm -f -- "${ENV_FILE}"; die "$(gettext "The store did not take the repository. Nothing is set up.")"; }
+    backup_secrets_close
+
+    say
+    say "$(gettext "Now a recovery key, which opens this backup on any computer, so that a lost laptop costs you nothing.")"
+    "${RECOVERY}" --env "${ENV_FILE}" || say "$(gettext "The recovery key could not be made. Make one later: ame backup recovery-key")"
+    systemctl --user enable --now "${TIMER}" 2>/dev/null || say "$(gettext "The nightly run could not be turned on: ame backup other-computer on")"
+    say
+    say "$(eval_gettext "Set up. Each hour that both computers are at home and the last run is more than twenty hours old, your files go to \${name}.")"
+}
+
+last_run() {
+    local stamp="${STATE}/backup-other-last-success" when
+    if [[ -r "${stamp}" ]]; then
+        when="$(<"${stamp}")"
+        [[ "${when}" =~ ^[0-9]+$ ]] && date -d "@${when}" '+%A %-d %B, %H:%M' && return
+    fi
+    echo "$(gettext "never")"
+}
+
+computer_status() {
+    if [[ ! -r "${ENV_FILE}" ]]; then
+        say "$(gettext "This computer does not back up to another one.")"
+        return 0
+    fi
+    local name on last
+    name="$(sed -n 's/^AMETHYSTORA_BACKUP_NAME=//p' "${ENV_FILE}" | head -n 1)"
+    if systemctl --user is-enabled --quiet "${TIMER}" 2>/dev/null; then on="$(gettext "on")"; else on="$(gettext "off")"; fi
+    last="$(last_run)"
+    say "$(eval_gettext "Backing up to \${name}: the nightly run is \${on}. The last good run: \${last}.")"
+}
+
+computer_now() {
+    [[ -r "${ENV_FILE}" ]] || die "$(gettext "This computer does not back up to another one.")"
+    /usr/libexec/amethystora-backup-other-ready || die "$(gettext "Not now: the other computer does not answer, or this is not a network you named home.")"
+    exec /usr/libexec/amethystora-backup --other
+}
+
+computer_forget() {
+    systemctl --user disable --now "${TIMER}" 2>/dev/null || true
+    rm -f -- "${ENV_FILE}" "${STATE}/backup-other-last-success" "${STATE}/backup-other-said"
+    rm -rf -- "${DATA}/backup-other"
+    say "$(gettext "This computer no longer backs up to the other one. What the other computer already holds is left alone.")"
+}
+
+# --- The store ------------------------------------------------------------------------------------------------------------
+
+store_status() {
+    local fp clients firewall running
+    fp="$("${PAIR}" store-init 2>/dev/null)" || fp="-"
+    clients="$("${PAIR}" clients 2>/dev/null | grep -c . || true)"
+    if "${HARDENING}" is-on backup-store 2>/dev/null; then firewall="$(gettext "open")"; else firewall="$(gettext "closed: ame security backup-store on")"; fi
+    if systemctl --user is-active --quiet "${STORE_UNIT}" 2>/dev/null; then running="$(gettext "running")"; else running="$(gettext "not running")"; fi
+    say "$(eval_gettext "The store is \${running}; \${clients} computers are paired; the home zone's ports are \${firewall}.")"
+    say "$(eval_gettext "Its certificate: \${fp}")"
+}
+
+case "${1:-}:${2:-}" in
+    computer:setup) computer_setup "${3:-}" ;;
+    computer:status) computer_status ;;
+    computer:now) computer_now ;;
+    computer:off) systemctl --user disable --now "${TIMER}" && say "$(gettext "The nightly run is off. The settings and the sealed keys are kept.")" ;;
+    computer:on)
+        [[ -r "${ENV_FILE}" ]] || die "$(gettext "This computer does not back up to another one: ame backup other-computer setup")"
+        systemctl --user enable --now "${TIMER}" && say "$(gettext "The nightly run is on.")"
+        ;;
+    computer:forget) computer_forget ;;
+    store:on)
+        "${PAIR}" store-init >/dev/null || exit 1
+        systemctl --user enable --now "${STORE_UNIT}" 2>/dev/null || true
+        say "$(gettext "This computer is ready to be a store. Turn the home zone's ports on with ame security backup-store, then pair the other computer: ame backup store pair")"
+        ;;
+    store:off)
+        systemctl --user disable --now "${STORE_UNIT}" 2>/dev/null || true
+        say "$(gettext "The store is off. What it holds, and the computers paired, are kept.")"
+        ;;
+    store:pair)
+        "${PAIR}" pair || exit 1
+        systemctl --user restart "${STORE_UNIT}" 2>/dev/null || systemctl --user start "${STORE_UNIT}" 2>/dev/null || true
+        ;;
+    store:status) store_status ;;
+    store:clients) "${PAIR}" clients ;;
+    store:forget)
+        [[ -n "${3:-}" ]] || usage
+        "${PAIR}" forget "${3}" && systemctl --user restart "${STORE_UNIT}" 2>/dev/null || true
+        ;;
+    *) usage ;;
+esac

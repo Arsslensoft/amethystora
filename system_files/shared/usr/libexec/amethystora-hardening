@@ -50,11 +50,11 @@ declare -A SENDS=([countme]="Fedora" [connectivity-check]="Fedora" [firmware-met
 # Off until turned on
 STRICTER=(time firewall-away network-daemons block-bluetooth block-webcam block-automount block-user-extensions
     block-xwayland flathub-verified flatpak-password noexec-temp no-coredumps package-cooldown brew-attestations
-    boot-password locked-poweroff audit-locked vscodium-extensions guest-login remote-screen)
-# ...of which one loosens rather than tightens: a login that needs no password, for a visitor (amethystora-guest;
+    boot-password locked-poweroff audit-locked vscodium-extensions guest-login remote-screen backup-store)
+# ...of which some loosen rather than tighten: a login that needs no password, for a visitor (amethystora-guest;
 # plans/ui-ideas/spec-later.md, R6-36), and a port opened in the home zone for another computer to see or extend this screen
-# (R7-26, R7-50). The report names them on their own, never among the stricter settings
-LOOSER=(guest-login remote-screen)
+# (R7-26, R7-50) or to back up to this one (R7-35). The report names them on their own, never among the stricter settings
+LOOSER=(guest-login remote-screen backup-store)
 # The Settings page's category of each switch, beside the detection switches' own (amethystora-security-config)
 declare -A GROUP=([kernel]=system [blocked-modules]=system [firewire]=devices [kernel-args]=system [firewall]=network
     [failed-logins]=logins [lockout]=logins [app-sandbox]=apps [virtual-input]=devices [ssh-settings]=logins
@@ -63,7 +63,7 @@ declare -A GROUP=([kernel]=system [blocked-modules]=system [firewire]=devices [k
     [block-webcam]=devices [block-automount]=devices [block-user-extensions]=apps [block-xwayland]=apps
     [flathub-verified]=apps [flatpak-password]=apps [noexec-temp]=system [no-coredumps]=system [package-cooldown]=apps
     [brew-attestations]=apps [boot-password]=system [locked-poweroff]=logins [audit-locked]=audit
-    [vscodium-extensions]=apps [guest-login]=logins [remote-screen]=network)
+    [vscodium-extensions]=apps [guest-login]=logins [remote-screen]=network [backup-store]=network)
 # The switches with a level above on, and their levels
 declare -A LEVELS=([kernel]="off standard strict" [package-cooldown]="off on strict")
 # Kernel arguments a switch adds one by one, off until turned on, each with what it puts on the command line
@@ -97,7 +97,7 @@ NO_WEBCAM=modprobe.d/61-amethystora-no-webcam.conf
 # The home zone as the image ships it, with the service of each of these switches that is on added: a copy of that file, in place of
 # it. A switch that opens a port in the home zone joins this list (and nothing else writes the file)
 HOME_ZONE_FILE=firewalld/zones/amethystora-home.xml
-declare -A HOME_ZONE_SERVICES=([remote-screen]=amethystora-remote-screen)
+declare -A HOME_ZONE_SERVICES=([remote-screen]=amethystora-remote-screen [backup-store]=amethystora-backup-store)
 AUTOMOUNT=dconf/db/local.d/60-amethystora-automount
 AUTOMOUNT_LOCK=dconf/db/local.d/locks/60-amethystora-automount
 EXTENSIONS=dconf/db/local.d/60-amethystora-user-extensions
@@ -707,11 +707,13 @@ set_switch() {
                 rm -f "${BLUETOOTH_WAS_OFF}"
             fi
             ;;
-        remote-screen)
-            # The home zone with the remote desktop's one port in it, and firewalld asked to read it again. Recorded first, so that
+        remote-screen | backup-store)
+            # The home zone with the port of the switch in it (the remote desktop's, the backup store's), and firewalld asked to read it again. Recorded first, so that
             # the zone's copy is taken as written by a switch that is on; with the last such switch off, the image's own zone
             record "${name}" "${switched}"
-            if is_on remote-screen; then
+            local zone_switch any_on=false
+            for zone_switch in "${!HOME_ZONE_SERVICES[@]}"; do is_on "${zone_switch}" && any_on=true; done
+            if [[ "${any_on}" == true ]]; then
                 place "${HOME_ZONE_FILE}" || { record "${name}" off; return 1; }
             else
                 place "${HOME_ZONE_FILE}" remove
@@ -861,6 +863,7 @@ words() {
         [block-bluetooth]="$(gettext "No Bluetooth")"
         [block-webcam]="$(gettext "No webcam")"
         [remote-screen]="$(gettext "Let another computer see or extend this screen")"
+        [backup-store]="$(gettext "Be another computer's backup store")"
         [block-automount]="$(gettext "No automatic mounting")"
         [block-user-extensions]="$(gettext "No new GNOME extensions")"
         [block-xwayland]="$(gettext "No X11 apps")"
@@ -899,6 +902,7 @@ words() {
         [block-bluetooth]="$(gettext "Bluetooth cannot load at all, so a flaw in it cannot be reached from radio range. Headphones, mice and keyboards that use it stop working.")"
         [block-webcam]="$(gettext "The USB webcam driver cannot load, whatever app asks. The webcam stops working.")"
         [remote-screen]="$(gettext "Opens the remote desktop port (3389) on the networks you named home only, so that another computer can see this screen or use it as a second screen, with a code that is new each time, when you start it (ame desktop help-me, ame desktop second-screen). Nothing listens on the port until you do, and a share ends when you lock the screen. Anyone on your home network who learns the code, or who watches you type it, sees what is on the screen.")"
+        [backup-store]="$(gettext "Opens two ports, on the networks you named home only, for another of your computers to back up to this one: it can add to what it keeps and read its own back, and can never delete, and it holds nothing but encrypted data. Nothing listens on them until you start the store (ame backup store on) and pair the other computer (ame backup store pair).")"
         [block-automount]="$(gettext "A USB stick or disk is not mounted until you open it in Files. Nothing on one runs by itself either way.")"
         [block-user-extensions]="$(gettext "GNOME extensions cannot be installed from extensions.gnome.org or Extension Manager. An extension runs inside the desktop and sees every key and pixel. The image's own extensions are not affected.")"
         [block-xwayland]="$(gettext "Xwayland does not start, so no app can use X11, where any app reads the keys typed into another. Steam, Wine, Proton and older apps stop working. From your next login.")"
@@ -938,6 +942,7 @@ words() {
         [block-bluetooth]="$(gettext "At once.")"
         [block-webcam]="$(gettext "At once if no app is using it, otherwise from the next restart.")"
         [remote-screen]="$(gettext "At once.")"
+        [backup-store]="$(gettext "At once.")"
         [block-automount]="$(gettext "At once.")"
         [block-user-extensions]="$(gettext "At once.")"
         [block-xwayland]="$(gettext "From your next login.")"

@@ -1,0 +1,11 @@
+[Unit]
+Description=Back up this account to its other computer, when both are at home
+
+[Timer]
+# Each hour asks whether it is time (amethystora-backup-other-ready): at home, the store answering, and the last run twenty hours old
+OnCalendar=hourly
+AccuracySec=10min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,39 @@
+#!/usr/bin/bash
+# Whether tonight's backup to the other computer may start (R7-35): the store is reachable, this computer is on a network named home (the zone
+# amethystora-home, which is where the store's ports are open), and, with --due, the last good run is more than twenty hours old. Silent: exit 0 is yes, 1 is
+# not now, and a unit's ExecCondition= then simply skips the run, to be asked again the next hour.
+#
+#   amethystora-backup-other-ready [--due] [--env FILE]
+
+set -uo pipefail
+
+CONFIG_DIR="${XDG_CONFIG_HOME:-${HOME}/.config}/amethystora"
+ENV_FILE="${CONFIG_DIR}/backup-other.env"
+STAMP="${XDG_STATE_HOME:-${HOME}/.local/state}/amethystora/backup-other-last-success"
+DUE=false
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --due) DUE=true; shift ;;
+        --env) ENV_FILE="${2:-}"; shift 2 ;;
+        *) exit 2 ;;
+    esac
+done
+
+if [[ "${DUE}" == true && -r "${STAMP}" ]]; then
+    last="$(<"${STAMP}")"
+    [[ "${last}" =~ ^[0-9]+$ ]] && (( $(date +%s) - last < 20 * 3600 )) && exit 1
+fi
+
+# The address the settings name, read and never run
+repository="$(sed -n 's/^RESTIC_REPOSITORY=//p' "${ENV_FILE}" 2>/dev/null | head -n 1)"
+[[ "${repository}" =~ ^rest:https://([^/:@]+):([0-9]+)/?$ ]] || exit 1
+host="${BASH_REMATCH[1]}" port="${BASH_REMATCH[2]}"
+
+# On a home network: the interface that reaches the store is in the home zone
+address="$(getent ahosts "${host}" 2>/dev/null | awk 'NR == 1 { print $1 }')"
+[[ -n "${address}" ]] || exit 1
+device="$(ip route get "${address}" 2>/dev/null | sed -n 's/.* dev \([^ ]*\).*/\1/p' | head -n 1)"
+[[ -n "${device}" && "$(firewall-cmd --get-zone-of-interface="${device}" 2>/dev/null)" == amethystora-home ]] || exit 1
+
+# The store answers
+timeout 5 bash -c 'exec 3<>"/dev/tcp/$0/$1"' "${address}" "${port}" 2>/dev/null

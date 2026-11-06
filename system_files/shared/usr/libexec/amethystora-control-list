@@ -3306,6 +3306,16 @@ item system if-found action "${ gettext "If it's lost, it says whose it is"; }" 
     "${ gettext "One line of yours on the login and lock screens, for an honest finder. Anyone holding the computer can read it."; }" \
     "" hardware#if-its-lost
 GROUP="${ gettext "The system"; }"
+# Start from your backup (R7-55): the first look's card runs this entry too. The recovery key is typed in the terminal it opens, and the files, the
+# setup and the Vault each come back only when chosen
+COMMAND=(ame backup restore-from)
+TERMINAL=true
+BUTTON="${ gettext "Bring it all back…"; }"
+USAGE="ame backup restore-from"
+item system start-from-backup action "${ gettext "Start from your backup"; }" \
+    "${ gettext "On a new computer, or after the old one was lost: your files, apps and setup, and your Vault, from a backup, with the recovery key you wrote down."; }" \
+    "" security#backups
+GROUP="${ gettext "The system"; }"
 USAGE="ame system rebase IMAGE STREAM"
 item system stream choice "${ gettext "Stream"; }" "${ gettext "How new the builds this machine follows are."; }" \
     "${IMAGE_TAG}" updates#streams

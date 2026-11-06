@@ -1156,6 +1156,11 @@ block-bluetooth ACTION="":
 remote-screen ACTION="":
     @/usr/libexec/amethystora-hardening ask remote-screen "${1:-}"
 
+# Another computer of yours backing up to this one, over the networks named home (R7-35): the home zone opens the store's two ports
+[positional-arguments]
+backup-store ACTION="":
+    @/usr/libexec/amethystora-hardening ask backup-store "${1:-}"
+
 # The USB webcam driver kept from loading
 [positional-arguments]
 block-webcam ACTION="":

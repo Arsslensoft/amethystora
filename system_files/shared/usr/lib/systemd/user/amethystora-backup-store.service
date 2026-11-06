@@ -1,0 +1,13 @@
+[Unit]
+Description=Be another computer's backup store (append-only, over TLS)
+Documentation=man:rclone(1)
+# Nothing runs until a computer has been paired (amethystora-backup-pair), and nothing enables this for every account: ame backup store on
+ConditionFileNotEmpty=%h/.local/share/amethystora/backup-store/clients.pem
+ConditionFileNotEmpty=%h/.local/share/amethystora/backup-store/server.pem
+
+[Service]
+ExecStart=/usr/libexec/amethystora-backup-store
+Restart=on-failure
+RestartSec=30
+Nice=10
+IOSchedulingClass=idle

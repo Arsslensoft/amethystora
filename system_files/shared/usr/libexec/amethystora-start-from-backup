@@ -1,0 +1,243 @@
+#!/usr/bin/bash
+# Start from your backup (plans/ui-ideas/r7/spec-keep.md, R7-55): on a new computer, or after the old one was lost, bring this account's files,
+# setup and Vault back from a backup that needs nothing from the old machine but the recovery key (`ame backup recovery-key` made it there, as
+# a second key of the repository, and showed it once). The first look offers it (Control's welcome page), and `ame backup restore-from` is the
+# same in a terminal.
+#
+#   amethystora-start-from-backup [--repository REPO] [--cacert FILE --client-cert FILE] [--media DIR] [--steps files,setup,vault] [--yes] [--key-stdin]
+#
+# It finds a backup disk (a restic repository one or two folders down on a mounted removable disk, under --media, /run/media/USER), or takes an
+# address, or pairs with the other computer that holds the backup (R7-35: this computer is new to it, so its person confirms six digits there too); asks for the recovery key; says what the newest backup holds; lets the person choose each step; then
+#   files  `amethystora-restore put-back`: adds what is missing and keeps both where a file differs, never replaces and never deletes
+#   setup  `amethystora-restore-setup`: apps, containers, extensions and theme, each asked first, nothing a backup holds run unread
+#   vault  `ame vault restore`: the Vault's sealed backup that came with the files, which asks for the Vault's own recovery key
+# The recovery key is typed (never an argument, never in the environment), held in a file of 0600 in a 0700 folder of $XDG_RUNTIME_DIR for the
+# life of this command, and deleted when it ends, however it ends. Nothing is written to ~/.config/amethystora: no backup is set up here
+# (`ame backup` does that, afterwards), and nothing is deleted from the backup or from this account.
+# The files come back only for a backup of this account's own home folder (the same path as here), the one `amethystora-restore` knows.
+#
+# --repository and --yes are for scripts and the tests; --key-stdin reads the key from standard input, which is never a terminal then.
+
+set -uo pipefail
+
+export TEXTDOMAIN=amethystora
+# shellcheck source=/dev/null
+source gettext.sh
+
+say() { printf '%s\n' "$*"; }
+die() {
+    printf '%s\n' "$*" >&2
+    exit 1
+}
+
+REPOSITORY=""
+CACERT=""
+CLIENT_CERT=""
+MEDIA="/run/media/${USER:-$(id -un)}"
+STEPS=""
+YES=false
+KEY_STDIN=false
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --repository) REPOSITORY="${2:-}"; shift 2 ;;
+        --cacert) CACERT="${2:-}"; shift 2 ;;
+        --client-cert) CLIENT_CERT="${2:-}"; shift 2 ;;
+        --media) MEDIA="${2:-}"; shift 2 ;;
+        --steps) STEPS="${2:-}"; shift 2 ;;
+        --yes) YES=true; shift ;;
+        --key-stdin) KEY_STDIN=true; shift ;;
+        *) die "usage: ${0##*/} [--repository REPO] [--media DIR] [--steps files,setup,vault] [--yes] [--key-stdin]" ;;
+    esac
+done
+
+RUNTIME="${XDG_RUNTIME_DIR:-}"
+[[ -n "${RUNTIME}" && -d "${RUNTIME}" ]] ||
+    die "$(gettext "There is no private folder to keep the recovery key in while it is used, so nothing was done.")"
+WORK="$(umask 077 && mktemp -d "${RUNTIME}/amethystora-restore-from.XXXXXX")" || die "$(gettext "A private folder could not be made.")"
+trap 'rm -rf -- "${WORK}"' EXIT
+mkdir -p "${WORK}/config/amethystora"
+ENV_FILE="${WORK}/config/amethystora/backup.env"
+KEY_FILE="${WORK}/key"
+interactive() { [[ -t 0 && -t 1 && "${YES}" != true && "${KEY_STDIN}" != true ]]; }
+
+# --- Where the backup is ------------------------------------------------------------------------------------------------
+
+# A restic repository: a folder with config, keys and snapshots
+is_repository() { [[ -f "$1/config" && -d "$1/keys" && -d "$1/snapshots" ]]; }
+
+find_disks() {
+    local mount folder
+    [[ -d "${MEDIA}" ]] || return 0
+    for mount in "${MEDIA}"/*/; do
+        [[ -d "${mount}" ]] || continue
+        mount="${mount%/}"
+        if is_repository "${mount}"; then
+            printf '%s\n' "${mount}"
+            continue
+        fi
+        for folder in "${mount}"/*/; do
+            folder="${folder%/}"
+            [[ -d "${folder}" ]] && is_repository "${folder}" && printf '%s\n' "${folder}"
+        done
+    done
+}
+
+if [[ -z "${REPOSITORY}" ]]; then
+    interactive || die "$(gettext "Name the backup with --repository, or run this in a terminal.")"
+    say "$(gettext "Have a backup? Plug in the disk it is on, or have its address ready, and the recovery key you wrote down.")"
+    say
+    mapfile -t DISKS < <(find_disks)
+    CHOICES=()
+    for disk in "${DISKS[@]+"${DISKS[@]}"}"; do
+        CHOICES+=("${disk}")
+    done
+    OTHER="$(gettext "A different place (an address)")"
+    COMPUTER="$(gettext "My other computer, at home")"
+    CHOICES+=("${COMPUTER}" "${OTHER}")
+    PICK="$(gum choose --header "$(gettext "Where is the backup?")" "${CHOICES[@]}")" || exit 0
+    if [[ "${PICK}" == "${COMPUTER}" ]]; then
+        # The store holds the backup and accepts only computers it was paired with: this one is new, so it pairs with it now, keeping what that gives
+        # in the private folder only (no Vault here yet). On the other computer: ame backup store pair
+        HOST="$(gum input --header "$(gettext "Its name, as the pairing screen on it shows")" --placeholder "desk.local")" || exit 0
+        [[ -n "${HOST}" ]] || exit 0
+        mkdir -p "${WORK}/pair" && chmod 700 "${WORK}/pair"
+        ANSWER="$(/usr/libexec/amethystora-backup-pair connect "${HOST}" --temp "${WORK}/pair")" || exit 1
+        REPOSITORY="rest:https://$(jq -r .host <<<"${ANSWER}"):$(jq -r .port <<<"${ANSWER}")/"
+        CACERT="${WORK}/pair/store.pem"
+        CLIENT_CERT="${WORK}/pair/client.pem"
+    elif [[ "${PICK}" == "${OTHER}" ]]; then
+        REPOSITORY="$(gum input --header "$(gettext "Its address, as restic writes it")" --placeholder "/run/media/you/Backup/restic, sftp:host:/path or rest:https://host:8000/")" || exit 0
+    else
+        REPOSITORY="${PICK}"
+    fi
+    [[ -n "${REPOSITORY}" ]] || exit 0
+fi
+
+# --- The recovery key ---------------------------------------------------------------------------------------------------
+
+# Typed, or on standard input, straight into a file only this account can read; the shell variable that holds it for a moment is not exported
+# and goes at once, and printf is the shell's own, so the key is in no argument
+if [[ "${KEY_STDIN}" == true ]]; then
+    IFS= read -r key || true
+else
+    IFS= read -r -s -p "$(gettext "Recovery key: ")" key || exit 0
+    echo
+fi
+[[ -n "${key}" ]] || die "$(gettext "No recovery key was given.")"
+# As typed, and, when that does not open the backup, as a recovery key is written down: groups of five joined by dashes, in capitals
+TYPED="${key}"
+unset key
+(umask 077 && printf '%s' "${TYPED}" >"${KEY_FILE}")
+
+(umask 077 && printf '%s\n' \
+    "# Written by amethystora-start-from-backup, in a private folder that goes when it ends." \
+    "RESTIC_REPOSITORY=${REPOSITORY}" \
+    "RESTIC_PASSWORD_FILE=${KEY_FILE}" \
+    ${CACERT:+"RESTIC_CACERT=${CACERT}"} ${CLIENT_CERT:+"RESTIC_TLS_CLIENT_CERT=${CLIENT_CERT}"} >"${ENV_FILE}")
+export AMETHYSTORA_BACKUP_ENV="${ENV_FILE}"
+
+# restic, with this backup's settings only for the one command, and never a lock: it reads, as the Backups window does
+backup() {
+    ( set -a && source "${ENV_FILE}" && set +a && restic --no-lock "$@" </dev/null 2>"${WORK}/said" )
+}
+
+if ! SNAPSHOTS="$(backup snapshots --json)"; then
+    # A recovery key as it was shown to be written down
+    NORMAL="${TYPED//[-[:space:]]/}"
+    NORMAL="${NORMAL^^}"
+    if [[ "${NORMAL}" != "${TYPED}" ]]; then
+        (umask 077 && printf '%s' "${NORMAL}" >"${KEY_FILE}")
+        SNAPSHOTS="$(backup snapshots --json)" || SNAPSHOTS=""
+    else
+        SNAPSHOTS=""
+    fi
+fi
+unset TYPED NORMAL
+if [[ -z "${SNAPSHOTS}" ]]; then
+    detail="$(sed -n 's/^Fatal: //p' "${WORK}/said" | tail -n 1)"
+    die "$(gettext "That did not open the backup: check the recovery key and where it is.")${detail:+ (${detail})}"
+fi
+
+# --- What it holds ------------------------------------------------------------------------------------------------------
+
+HOME_DIR="${HOME%/}"
+REAL_HOME="$(realpath -m -- "${HOME_DIR}")"
+FILES_COUNT="$(jq --arg h "${HOME_DIR}" --arg r "${REAL_HOME}" '[.[] | select((.tags // []) | index("amethystora"))
+    | select(any(.paths[]; . as $p | $p == "/" or $p == $h or $p == $r or ($p | startswith($h + "/")) or ($p | startswith($r + "/"))
+        or ($h | startswith($p + "/")) or ($r | startswith($p + "/"))))] | length' <<<"${SNAPSHOTS}")"
+SETUP_COUNT="$(jq '[.[] | select((.tags // []) | index("amethystora-setup"))] | length' <<<"${SNAPSHOTS}")"
+NEWEST="$(jq -r '[.[] | select((.tags // []) | index("amethystora"))] | sort_by(.time) | last | .time // empty' <<<"${SNAPSHOTS}")"
+
+say
+if [[ -n "${NEWEST}" ]]; then
+    when="$(date -d "${NEWEST}" '+%A %-d %B %Y, %H:%M' 2>/dev/null || echo "${NEWEST}")"
+    say "$(eval_gettext "The newest backup of files is from \${when}.")"
+fi
+if [[ "${FILES_COUNT}" -eq 0 ]]; then
+    say "$(eval_gettext "None of it is of this account's home folder, \${HOME_DIR}: only a backup of that folder can be brought back here.")"
+fi
+[[ "${SETUP_COUNT}" -gt 0 ]] && say "$(gettext "It holds the setup too: apps, containers, extensions and the theme.")"
+say
+
+# --- What to bring back -------------------------------------------------------------------------------------------------
+
+WANT_FILES=false WANT_SETUP=false WANT_VAULT=false
+if [[ -n "${STEPS}" ]]; then
+    [[ ",${STEPS}," == *,files,* ]] && WANT_FILES=true
+    [[ ",${STEPS}," == *,setup,* ]] && WANT_SETUP=true
+    [[ ",${STEPS}," == *,vault,* ]] && WANT_VAULT=true
+elif interactive; then
+    FILES_LABEL="$(gettext "Your files")"
+    SETUP_LABEL="$(gettext "Your apps and setup")"
+    VAULT_LABEL="$(gettext "Your Vault (it asks for its own recovery key)")"
+    OPTIONS=()
+    [[ "${FILES_COUNT}" -gt 0 ]] && OPTIONS+=("${FILES_LABEL}")
+    [[ "${SETUP_COUNT}" -gt 0 ]] && OPTIONS+=("${SETUP_LABEL}")
+    OPTIONS+=("${VAULT_LABEL}")
+    CHOSEN="$(printf '%s\n' "${OPTIONS[@]}" | gum choose --no-limit --selected="*" --header "$(gettext "Which of these? (space picks, enter goes)")")" || exit 0
+    [[ "${CHOSEN}" == *"${FILES_LABEL}"* ]] && WANT_FILES=true
+    [[ "${CHOSEN}" == *"${SETUP_LABEL}"* ]] && WANT_SETUP=true
+    [[ "${CHOSEN}" == *"${VAULT_LABEL}"* ]] && WANT_VAULT=true
+else
+    [[ "${FILES_COUNT}" -gt 0 ]] && WANT_FILES=true
+    [[ "${SETUP_COUNT}" -gt 0 ]] && WANT_SETUP=true
+    WANT_VAULT=true
+fi
+say "$(gettext "Nothing is deleted, and what is here already is left as it is.")"
+
+FAILED=()
+
+if [[ "${WANT_FILES}" == true && "${FILES_COUNT}" -gt 0 ]]; then
+    say
+    POINT="$(/usr/libexec/amethystora-restore points --json 2>/dev/null | jq -r '[.points[]? | select(.source == "backup")][0].id // empty')"
+    if [[ -z "${POINT}" ]]; then
+        FAILED+=("$(gettext "the files: no backup of this home folder could be read")")
+    else
+        say "$(gettext "Bringing your files back. A file that is here and differs is kept beside the old one.")"
+        /usr/libexec/amethystora-restore put-back "${POINT}" . --keep-both || FAILED+=("$(gettext "the files")")
+    fi
+fi
+
+if [[ "${WANT_SETUP}" == true && "${SETUP_COUNT}" -gt 0 ]]; then
+    say
+    /usr/libexec/amethystora-restore-setup || FAILED+=("$(gettext "the setup")")
+fi
+
+if [[ "${WANT_VAULT}" == true ]]; then
+    VAULT_BACKUP="$(ls -1t -- "${HOME_DIR}"/.local/share/amethystora/vault-backup/vault-*.avb 2>/dev/null | head -n 1)"
+    if [[ -n "${VAULT_BACKUP}" ]]; then
+        say
+        say "$(gettext "Your Vault came back with your files. Bringing it back asks for the Vault's own recovery key.")"
+        ame vault restore "${VAULT_BACKUP}" || FAILED+=("$(gettext "the Vault")")
+    elif [[ -n "${STEPS}" ]] || interactive; then
+        say "$(gettext "There is no Vault backup in the files that came back.")"
+    fi
+fi
+
+say
+if [[ ${#FAILED[@]} -gt 0 ]]; then
+    list="$(printf '%s, ' "${FAILED[@]}" | sed 's/, $//')"
+    say "$(eval_gettext "Done, except: \${list}. Running this again picks up where it stopped.")"
+    exit 1
+fi
+say "$(gettext "Done. This computer is not backing up yet: ame backup sets that up.")"

@@ -1,0 +1,17 @@
+#!/usr/bin/bash
+# This computer as another computer's backup store (plans/ui-ideas/r7/spec-keep.md, R7-35): rclone's restic server, append-only (it adds files and reads
+# its own back, and refuses every delete, which is the point of a backup ransomware cannot reach), over TLS 1.3, and only for the computers that were
+# paired (amethystora-backup-pair): each shows a certificate the store was told to accept, or the connection is refused before a byte is read. It holds
+# encrypted data and cannot read it. It runs as amethystora-backup-store.service (a user unit that nothing enables for every account), and the ports it
+# listens on are opened in the home zone only by `ame security backup-store`.
+
+set -euo pipefail
+
+DIR="${XDG_DATA_HOME:-${HOME}/.local/share}/amethystora/backup-store"
+PORT="${AMETHYSTORA_BACKUP_STORE_PORT:-8765}"
+DATA="${DIR}/data"
+
+[[ -s "${DIR}/server.pem" && -s "${DIR}/server.key" && -s "${DIR}/clients.pem" ]] || { echo "No computer is paired with this store yet." >&2; exit 1; }
+mkdir -p -m 0700 "${DATA}"
+exec rclone serve restic --addr ":${PORT}" --append-only --min-tls-version tls1.3 \
+    --cert "${DIR}/server.pem" --key "${DIR}/server.key" --client-ca "${DIR}/clients.pem" "${DATA}"

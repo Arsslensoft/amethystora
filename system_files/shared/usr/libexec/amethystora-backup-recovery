@@ -1,0 +1,77 @@
+#!/usr/bin/bash
+# A recovery key for the backup (plans/ui-ideas/r7/spec-keep.md, R7-55 and R7-35, "Restore from nothing has to work"): a second key of the
+# restic repository, made from this account with the credentials its backup already runs on (`restic key add`), shown once to be written down
+# and kept nowhere. On a new computer it is all the repository needs (`ame backup restore-from`), so a lost laptop, and the Vault that held the
+# backup's own password, cost nothing. It is run by `ame backup recovery-key`; `amethystora-restore` stays read-only and never makes one.
+#
+#   amethystora-backup-recovery [--env FILE] [--print]
+#
+# --env names the settings file (default ~/.config/amethystora/backup.env, or what AMETHYSTORA_BACKUP_ENV says). The key is 25 characters in
+# groups of five from an alphabet without look-alikes (125 bits). It goes to restic through a file of 0600 in $XDG_RUNTIME_DIR that is deleted at
+# the end, never an argument; --print writes it on standard output instead of a screen to be cleared, for the tests and for scripts.
+
+set -euo pipefail
+
+export TEXTDOMAIN=amethystora
+# shellcheck source=/dev/null
+source gettext.sh
+
+CONFIG_DIR="${XDG_CONFIG_HOME:-${HOME}/.config}/amethystora"
+ENV_FILE="${AMETHYSTORA_BACKUP_ENV:-${CONFIG_DIR}/backup.env}"
+PRINT=false
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --env) ENV_FILE="${2:-}"; shift 2 ;;
+        --print) PRINT=true; shift ;;
+        *) echo "usage: ${0##*/} [--env FILE] [--print]" >&2; exit 2 ;;
+    esac
+done
+
+[[ -r "${ENV_FILE}" ]] || { echo "$(gettext "No backup is set up for this account. Set one up with: ame backup")" >&2; exit 1; }
+RUNTIME="${XDG_RUNTIME_DIR:-}"
+[[ -n "${RUNTIME}" && -d "${RUNTIME}" ]] || { echo "$(gettext "There is no private folder to make the key in, so nothing was done.")" >&2; exit 1; }
+WORK="$(umask 077 && mktemp -d "${RUNTIME}/amethystora-recovery.XXXXXX")"
+cleanup() {
+    rm -rf -- "${WORK}"
+    # shellcheck disable=SC2317
+    if declare -F backup_secrets_close >/dev/null; then backup_secrets_close; fi
+}
+trap cleanup EXIT
+
+# shellcheck source=/dev/null
+set -a && source "${ENV_FILE}" && set +a
+# A backup whose password and client key are sealed in the Vault (the other computer's) needs them for this too
+if [[ "${AMETHYSTORA_BACKUP_SECRETS:-}" == vault ]]; then
+    # shellcheck source=/dev/null
+    source /usr/lib/amethystora/backup-secrets.sh
+    backup_secrets_open || { echo "$(gettext "The Vault is closed, so the backup's password cannot be read. Open Vault and run this again.")" >&2; exit 1; }
+fi
+
+# The repository must open with what the backup runs on, before anything is made
+restic --no-lock snapshots --latest 1 >/dev/null 2>"${WORK}/said" ||
+    { echo "$(gettext "The backup could not be opened:") $(sed -n 's/^Fatal: //p' "${WORK}/said" | tail -n 1)" >&2; exit 1; }
+
+# 25 characters from 32 that cannot be mistaken for each other (no 0, 1, I or O)
+KEY="$(LC_ALL=C tr -dc 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' </dev/urandom | head -c 25 || true)"
+[[ ${#KEY} -eq 25 ]] || { echo "$(gettext "A key could not be made.")" >&2; exit 1; }
+(umask 077 && printf '%s' "${KEY}" >"${WORK}/new")
+restic key add --new-password-file "${WORK}/new" >/dev/null 2>"${WORK}/said" ||
+    { echo "$(gettext "The key could not be added:") $(sed -n 's/^Fatal: //p' "${WORK}/said" | tail -n 1)" >&2; exit 1; }
+rm -f -- "${WORK}/new"
+
+GROUPED="${KEY:0:5}-${KEY:5:5}-${KEY:10:5}-${KEY:15:5}-${KEY:20:5}"
+if [[ "${PRINT}" == true ]]; then
+    printf '%s\n' "${GROUPED}"
+    exit 0
+fi
+echo
+echo "$(gettext "Your recovery key. Write it on paper and keep it apart from this computer:")"
+echo
+echo "    ${GROUPED}"
+echo
+echo "$(gettext "It opens the backup on any computer, with nothing else, so a lost laptop costs you nothing. It is not kept anywhere, here or in your Vault, and this is the only time it is shown. Anyone who has it and can reach the backup can read it.")"
+if [[ -t 0 ]]; then
+    read -r -p "$(gettext "Press Enter once it is written down: ")" _ || true
+    # What was shown goes off the screen and out of the terminal's scrollback where it can
+    printf '\033[2J\033[3J\033[H'
+fi

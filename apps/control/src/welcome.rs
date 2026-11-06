@@ -24,6 +24,9 @@ const THEMES: &str = "/usr/share/amethystora/themes";
 /// How long the preview's dock takes to change, before the session's own setting for animations
 const DOCK_MS: f64 = 200.0;
 
+/// The list's entry that starts from a backup (`ame backup restore-from`)
+const BACKUP_ENTRY: &str = "start-from-backup";
+
 /// The entries the page shows, by id, in its order
 const ROWS: [&str; 5] = ["theme", "style", "dock-magnify", "pointer", "layout"];
 
@@ -434,6 +437,24 @@ impl Control {
         button
     }
 
+    /// Have a backup? A card above the choices: Start fresh puts it away, Bring it all back runs the list's entry in a terminal
+    fn backup_card(&self) -> gtk::Widget {
+        let card = ui::vbox(8, &["welcome-card", "welcome-backup"]);
+        card.append(&ui::label(&t!("Have a backup?").to_uppercase(), &["welcome-label"]));
+        card.append(&ui::label(&t!("New computer, or the old one was lost. Plug in your backup disk, and have your recovery key ready."), &["lead"]));
+        let buttons = ui::hbox(8, &["welcome-backup-buttons"]);
+        let hide = card.clone();
+        buttons.append(&ui::button(&t!("Start fresh"), None, &["seg"], move || hide.set_visible(false)));
+        let me = self.me.clone();
+        buttons.append(&ui::button(&t!("Bring it all back"), None, &["seg", "chosen"], move || {
+            if let Some(this) = me.upgrade() {
+                this.act(BACKUP_ENTRY);
+            }
+        }));
+        card.append(&buttons);
+        card.upcast()
+    }
+
     /// The page itself, drawn again whenever the list comes back
     pub(crate) fn welcome_view(&self) -> gtk::Widget {
         let list = self.state.borrow().list.clone();
@@ -447,6 +468,11 @@ impl Control {
         head.append(&heading(&t!("Pick a look"), "h1"));
         head.append(&ui::label(&t!("Change any of this later in Control."), &["lead"]));
         view.append(&head);
+
+        // Have a backup? (R7-55): the list's own entry, run as its card runs it, in a terminal, where the recovery key is typed
+        if list.as_deref().is_some_and(|list| list.items.iter().any(|item| item.id == BACKUP_ENTRY && item.available)) {
+            view.append(&self.backup_card());
+        }
 
         let card = ui::hbox(16, &["welcome-card"]);
         let rows = ui::vbox(10, &["welcome-rows"]);

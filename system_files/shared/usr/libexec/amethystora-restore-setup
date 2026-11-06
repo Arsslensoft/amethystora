@@ -24,7 +24,8 @@
 set -uo pipefail
 
 CONFIG_DIR="${XDG_CONFIG_HOME:-${HOME}/.config}/amethystora"
-ENV_FILE="${CONFIG_DIR}/backup.env"
+# AMETHYSTORA_BACKUP_ENV names another settings file, for amethystora-start-from-backup (a new machine with no backup of its own set up yet)
+ENV_FILE="${AMETHYSTORA_BACKUP_ENV:-${CONFIG_DIR}/backup.env}"
 SNAPSHOT="${1:-}"
 
 die() {

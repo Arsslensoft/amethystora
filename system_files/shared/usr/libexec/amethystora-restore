@@ -29,7 +29,8 @@ set -euo pipefail
 
 SNAPSHOTS=/var/home/.snapshots
 CONFIG_DIR="${XDG_CONFIG_HOME:-${HOME}/.config}/amethystora"
-ENV_FILE="${CONFIG_DIR}/backup.env"
+# AMETHYSTORA_BACKUP_ENV names another settings file, for amethystora-start-from-backup, which has no setup of its own yet
+ENV_FILE="${AMETHYSTORA_BACKUP_ENV:-${CONFIG_DIR}/backup.env}"
 # Written by amethystora-backup after each run that succeeded
 STAMP="${XDG_STATE_HOME:-${HOME}/.local/state}/amethystora/backup-last-success"
 # Where a backup is brought down to before it is put back, on the same disk as the home so that the copy
@@ -64,6 +65,7 @@ set -- "${ARGS[@]+"${ARGS[@]}"}"
 WORK=""
 cleanup() {
     [[ -z "${WORK}" ]] || rm -rf -- "${WORK}"
+    if declare -F backup_secrets_close >/dev/null; then backup_secrets_close; fi
 }
 trap cleanup EXIT
 
@@ -120,7 +122,13 @@ load_backup() {
     [[ -r "${ENV_FILE}" ]] || return 1
     # shellcheck source=/dev/null
     set -a && source "${ENV_FILE}" && set +a
-    [[ -n "${RESTIC_REPOSITORY:-}" && -n "${RESTIC_PASSWORD_FILE:-}" ]] || return 1
+    [[ -n "${RESTIC_REPOSITORY:-}" && -n "${RESTIC_PASSWORD_FILE:-}${RESTIC_PASSWORD_COMMAND:-}" ]] || return 1
+    # A backup to the other computer (R7-35) needs the client key the Vault holds: opened for this run, in the runtime folder, and removed with it
+    if [[ "${AMETHYSTORA_BACKUP_SECRETS:-}" == vault ]]; then
+        # shellcheck source=/dev/null
+        source /usr/lib/amethystora/backup-secrets.sh
+        backup_secrets_open || return 1
+    fi
     # Here rather than in restic_read, which runs in a subshell of its caller's
     work
 }

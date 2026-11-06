@@ -14,6 +14,13 @@ set -euo pipefail
 
 CONFIG_DIR="${XDG_CONFIG_HOME:-${HOME}/.config}/amethystora"
 ENV_FILE="${CONFIG_DIR}/backup.env"
+STAMP_NAME=backup-last-success
+# --other: the same run to the other computer (R7-35, `ame backup other-computer`), a unit of its own so that one cannot break the other; its settings
+# are backup-other.env, whose password and client key stay sealed in the Vault (amethystora-backup-secret)
+if [[ "${1:-}" == --other ]]; then
+    ENV_FILE="${CONFIG_DIR}/backup-other.env"
+    STAMP_NAME=backup-other-last-success
+fi
 
 if [[ ! -r "${ENV_FILE}" ]]; then
     echo "No backup configured. Set one up with: ame backup" >&2
@@ -24,7 +31,27 @@ fi
 set -a && source "${ENV_FILE}" && set +a
 
 : "${RESTIC_REPOSITORY:?no RESTIC_REPOSITORY in ${ENV_FILE}}"
-: "${RESTIC_PASSWORD_FILE:?no RESTIC_PASSWORD_FILE in ${ENV_FILE}}"
+# The password is a file (`ame backup`), or a command that asks the Vault for it (the other computer's: it needs no one at night)
+[[ -n "${RESTIC_PASSWORD_FILE:-}${RESTIC_PASSWORD_COMMAND:-}" ]] || { echo "no RESTIC_PASSWORD_FILE or RESTIC_PASSWORD_COMMAND in ${ENV_FILE}" >&2; exit 1; }
+
+if [[ "${AMETHYSTORA_BACKUP_SECRETS:-}" == vault ]]; then
+    # shellcheck source=/dev/null
+    source /usr/lib/amethystora/backup-secrets.sh
+    trap backup_secrets_close EXIT
+    secrets_code=0
+    backup_secrets_open || secrets_code=$?
+    if [[ "${secrets_code}" -ne 0 ]]; then
+        # A closed Vault, or none: nothing is asked and nothing is broken. The night waits, and is said once a day
+        echo "The Vault could not be opened (status ${secrets_code}), so tonight's backup to the other computer waits." >&2
+        said="${XDG_STATE_HOME:-${HOME}/.local/state}/amethystora/backup-other-said"
+        today="$(date +%F)"
+        if [[ "$(cat "${said}" 2>/dev/null)" != "${today}" ]]; then
+            mkdir -p "$(dirname "${said}")" && echo "${today}" >"${said}"
+            notify-send -a Amethystora "Backup to the other computer is waiting" "Open Vault and it carries on." 2>/dev/null || true
+        fi
+        exit 0
+    fi
+fi
 
 # What to back up: the home directory unless the settings name something else
 read -r -a PATHS <<<"${AMETHYSTORA_BACKUP_PATHS:-${HOME}}"
@@ -64,7 +91,7 @@ restic backup \
 # once it is a week old (amethystora-restore status)
 STATE_DIR="${XDG_STATE_HOME:-${HOME}/.local/state}/amethystora"
 mkdir -p "${STATE_DIR}"
-date +%s >"${STATE_DIR}/backup-last-success"
+date +%s >"${STATE_DIR}/${STAMP_NAME}"
 
 # The setup beside the files, as a snapshot of its own tagged amethystora-setup: the image, the apps,
 # Homebrew, the containers, the extensions and the theme, which `ame restore-setup` makes again on a

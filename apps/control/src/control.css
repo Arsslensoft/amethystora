@@ -1156,6 +1156,10 @@ window.narrow .banner-wrap {
     background: var(--card);
 }
 
+.welcome-backup-buttons {
+    margin-top: 4px;
+}
+
 .welcome-label {
     font-size: 12px;
     font-weight: 700;
