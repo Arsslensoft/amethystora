@@ -20,8 +20,8 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 const DURATION = 1200;
 const GEM = '/usr/share/icons/hicolor/scalable/apps/amethystora-logo.svg';
 const LOGO_MENU = 'amethystora-logo-menu@arsslensoft.github.io';
-// The splash's sky, top to bottom
-const SKY = 'background-gradient-direction: vertical; background-color: #0d0714; background-gradient-end: #1a0a2e;';
+// The splash's plain black
+const SKY = 'background-color: #000000;';
 // Where and how large the splash draws the gem: its centre at 46 % of the screen's height, its height 280/1080 of it
 const GEM_CENTRE = 0.46;
 const GEM_HEIGHT = 280 / 1080;

@@ -251,7 +251,7 @@ rm -rf "${MISSING_HOME}"
 [[ "$(plymouth-set-default-theme)" == "amethystora" ]]
 rpm -q plymouth-plugin-script >/dev/null
 test -f /usr/share/plymouth/themes/amethystora/amethystora.script
-for image in crown halo dust gem light side-0 stem wordmark credit field dot; do
+for image in halo gem light side-0 stem wordmark credit field dot; do
     test -f "/usr/share/plymouth/themes/amethystora/${image}.png"
 done
 INITRAMFS_FILES="$(lsinitrd /lib/modules/*/initramfs.img)"
@@ -298,9 +298,9 @@ done
 sed -n 's:.*<filename\(-dark\)\?>\(.*\)</filename\(-dark\)\?>.*:\2:p' /usr/share/gnome-background-properties/amethystora.xml |
     xargs -r -n1 test -f
 
-# Login screen background (12-login-screen.sh): the crown the boot splash ends on, with no gem in
-# it. GNOME reads the login background from the shell's own stylesheet and nowhere else,
-# so both the picture and the rule naming it live inside the theme's gresource.
+# Login screen background (12-login-screen.sh): the default dark theme's wallpaper. GNOME reads the login
+# background from the shell's own stylesheet and nowhere else, so both the picture and the rule naming it live
+# inside the theme's gresource.
 #
 # The bundle itself is checked in 12-login-screen.sh, at the point it is rebuilt, and not here:
 # gresource comes from glib2-devel, which that script takes back out of the image when it is done,

@@ -287,17 +287,15 @@ function wallpaperSvg(theme) {
 
 // ------------------------------------------------------- boot splash --
 
-// The splash has two parts. In the first the mark grows on the crown of the gem it took the place of:
-// the sides of its bowl appear one after another and settle, then the stem rises from its foot to its
-// point. The flash that marks it whole is the first beat of the second part, which lasts until the
-// login screen takes over: the glow breathes down from that height and up again, and the dust, let go
-// by the flash, runs outward along the crown's cuts. From then on only the dust moves, so the second
-// part can run for as long as the boot takes. BOOT_TIMELINE drives the browser preview
+// The splash has two parts, on plain black: a picture over the whole screen made every frame slow on a
+// machine still drawing without its graphics driver. In the first the mark grows: the sides of its bowl
+// appear one after another and settle, then the stem rises from its foot to its point. The flash that
+// marks it whole is the first beat of the second part, which lasts until the login screen takes over:
+// the glow breathes down from that height and up again, for as long as the boot takes. BOOT_TIMELINE drives the browser preview
 // (node branding/generate.mjs --preview) and bootScript() ports it to Plymouth's script language, so
 // both play the same animation. It sticks to the maths that language has: no exp, pow or floor.
 //
-// The mark is drawn in its 256-unit box; BOOT.unit converts that to pixels on a 1080p screen. The crown
-// and the dust are laid out in those pixels.
+// The mark is drawn in its 256-unit box; BOOT.unit converts that to pixels on a 1080p screen.
 const BOOT = {
   unit: 280 / BOUNDS[3], // the mark stands 280px tall at 1080p
   centerY: 0.46, // of the screen height
@@ -310,12 +308,12 @@ const BOOT = {
   settle: [14, 0.3], // how far out a side starts, in units, and the s it takes to come in
   stem: 1.0, // s at which the stem starts to grow
   whole: 1.7, // s at which it reaches its point: the flash, and the start of the second part
-  join: 1.4, // s the dust takes from the flash to its place in the loop
   cycle: 3.2, // s per glow cycle
   halo: 760, // px across at 1080p
-  dust: 40,
-  sky: ["#0d0714", "#1a0a2e"], // background, top to bottom
+  sky: "#000000",
 };
+// The violet night of the dark wallpapers and of the installer, under its crown
+const CROWN_SKY = ["#0d0714", "#1a0a2e"];
 
 // A seeded generator, so every run of this script draws the same dust
 function random(seed) {
@@ -349,13 +347,7 @@ const STEM = (() => {
   return { x, y, width: Math.max(...xs) + 1 - x, height: Math.max(...ys) - y };
 })();
 
-// Dust: for every mote how large it is, in 1080p pixels, how fast it twinkles and from where in its cycle
-const DUST = (() => {
-  const rnd = random(23);
-  return Array.from({ length: BOOT.dust }, () => ({ size: 5 + rnd() * 10, twinkle: 0.8 + rnd() * 2, phase: rnd() * 2 * Math.PI }));
-})();
-
-// The crown of the gem this mark took the place of, seen from above and laid over the whole 1920x1080
+// The installer's background: the crown of the gem this mark took the place of, seen from above and laid over the whole 1920x1080
 // screen with the mark on its table: 16 points on a girdle wider than the screen, 8 star points part of
 // the way in from every other one, and the 8 corners of the table, each with its height above the
 // girdle. It is turned a sixteenth of a turn from that gem's, so that the table lies flat along the top.
@@ -406,58 +398,6 @@ const crownSvg = (() => {
   ${facets.join("\n  ")}
 </svg>
 `;
-})();
-
-// The crown's cuts as the dust runs them: every edge from its inner end to where it leaves the screen,
-// but for those that leave it too soon to be seen as a run, which are the ones that start above the
-// screen and behind the name at its foot. The motes are dealt out over the cuts in a shuffled order, so
-// that every cut carries one. For every mote: the edge it runs, how long the run takes at 45 to 75px a
-// second, and how far along it is when the dust has joined the loop. That is counted from where it was
-// when the flash let the dust go, on the first quarter of its edge: the dust has a short way to come
-// from the mark, the place a mote is heading for never jumps back to the start of its edge on the way
-// there, and the screen fills outward from the table.
-const RUNS = (() => {
-  const rnd = random(67);
-  const { girdle, star, table } = CROWN;
-  const edges = [];
-  for (let i = 0; i < 8; i++) {
-    edges.push(
-      [table(i), star(i)], [table(i), star(i - 1)],
-      [star(i), girdle(2 * i + 1)], [star(i), girdle(2 * i)], [star(i), girdle(2 * i + 2)],
-    );
-  }
-  const [left, top, right, bottom] = [-40, -40, 1960, 1120];
-  const cuts = edges
-    .map(([a, b]) => {
-      let far = 1;
-      for (const [k, lo, hi] of [[0, left, right], [1, top, bottom]]) {
-        const step = b[k] - a[k];
-        if (step > 0) far = Math.min(far, (hi - a[k]) / step);
-        if (step < 0) far = Math.min(far, (lo - a[k]) / step);
-      }
-      return { x: a[0], y: a[1], dx: (b[0] - a[0]) * far, dy: (b[1] - a[1]) * far };
-    })
-    .filter((run) => Math.hypot(run.dx, run.dy) >= 250)
-    .map((run) => [rnd(), run])
-    .sort(([a], [b]) => a - b);
-  return DUST.map((_, i) => {
-    const [, run] = cuts[i % cuts.length];
-    const time = Math.hypot(run.dx, run.dy) / (45 + rnd() * 30);
-    return { ...run, time, from: BOOT.join / time + rnd() * 0.25 };
-  });
-})();
-
-// Where the flash lets each mote go: after a short wait of its own, from a point inside the mark on the
-// way to where its run will have it, in 1080p pixels from the heart
-const RELEASE = (() => {
-  const rnd = random(97);
-  return RUNS.map((run) => {
-    const wait = rnd() * 0.3;
-    const far = (wait / run.time + run.from) % 1;
-    const [x, y] = [run.x + run.dx * far - HEART[0], run.y + run.dy * far - HEART[1]];
-    const out = (30 + rnd() * 60) / (Math.hypot(x, y) || 1);
-    return { wait, x: x * out, y: y * out };
-  });
 })();
 
 // One side of the bowl, drawn exactly as in the logo, in a square around it
@@ -524,23 +464,15 @@ const haloSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
 </svg>
 `;
 
-const dustSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-10 -10 20 20">
-  <defs><radialGradient id="d"><stop offset="0" stop-color="#ffffff"/><stop offset="0.35" stop-color="#f0d4ff" stop-opacity="0.8"/>
-    <stop offset="1" stop-color="#c79bff" stop-opacity="0"/></radialGradient></defs>
-  <circle r="10" fill="url(#d)"/>
-</svg>
-`;
-
 // ----------------------------------------------------- boot animation --
 
-// Where everything is t seconds into the splash: the sides and the dust in 1080p pixels from the heart,
-// the stem as a share of its height. The Plymouth script is a line-for-line port of this function, but
-// for the dust's runs, which it lays out on the screen's own width and height, as it does the crown.
+// Where everything is t seconds into the splash: the sides in 1080p pixels from the heart, the stem as a
+// share of its height. The Plymouth script is a line-for-line port of this function.
 const BOOT_TIMELINE = String.raw`
 function clamp(u) {
   return Math.min(1, Math.max(0, u));
 }
-function frame(t, B, SIDES, DUST, RUNS, RELEASE) {
+function frame(t, B, SIDES) {
   t = Math.max(0, t - B.hold);
   const whole = t >= B.whole ? 1 : 0;
   // Part 1: the sides of the bowl, each coming in from a little way out as it appears
@@ -565,28 +497,8 @@ function frame(t, B, SIDES, DUST, RUNS, RELEASE) {
   const since = (t - B.whole) / 0.75;
   const flash = since >= 0 && since < 1 ? (1 - since) * (1 - since) * (1 - since) : 0;
   const g = whole ? 0.5 + 0.5 * Math.cos((2 * Math.PI * (t - B.whole)) / B.cycle) : 0;
-  const sky = Math.min(1, 0.85 * rise + 0.15 * flash);
-  // Part 2: each mote leaves the mark and slows into its run along a cut, where it stays. It reaches the
-  // run already moving as the run moves it, so nothing stops and starts again.
-  const level = 0.55 + 0.45 * g;
-  const dust = DUST.map((d, i) => {
-    const run = RUNS[i];
-    const free = RELEASE[i];
-    let far = (t - B.whole - B.join) / run.time + run.from;
-    far = far - Math.floor(far);
-    const twinkle = 0.35 + 0.65 * Math.abs(Math.sin(d.phase + d.twinkle * t));
-    const strength = Math.min(1, 5 * far, 4 * (1 - far)) * twinkle;
-    const w = 1 - clamp((t - B.whole - free.wait) / B.join);
-    const e = 1 - w * w * w;
-    return {
-      x: free.x + (run.x + run.dx * far - 960 - free.x) * e,
-      y: free.y + (run.y + run.dy * far - 1080 * B.centerY - free.y) * e,
-      opacity: clamp((t - B.whole - free.wait) / 0.12) * (0.9 * (1 - e) + strength * level * e),
-    };
-  });
   return {
-    sides, stem, dust, gem: whole,
-    crown: Math.min(1, sky * (0.8 + 0.2 * g) + 0.2 * flash),
+    sides, stem, gem: whole,
     halo: Math.min(1, rise * (0.3 + 0.7 * g) + 0.5 * flash),
     light: whole * Math.min(1, 0.45 * g + 0.9 * flash),
   };
@@ -604,8 +516,7 @@ function bootPreviewHtml() {
     ${wordmarkFace}
     html,body{margin:0;height:100%;background:#000;overflow:hidden;font-family:"${WORDMARK_FONT}",sans-serif}
     #stage{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:0 0;overflow:hidden;
-      background:linear-gradient(${BOOT.sky[0]},${BOOT.sky[1]})}
-    #crown{position:absolute;left:0;top:0;width:1920px;height:1080px}
+      background:${BOOT.sky}}
     #heart{position:absolute;left:960px;top:${1080 * BOOT.centerY}px}
     #heart img{position:absolute;left:0;top:0;will-change:transform,opacity}
     /* The stem keeps its place in the mark and grows from its foot */
@@ -614,15 +525,14 @@ function bootPreviewHtml() {
     #mark{position:absolute;left:0;right:0;top:${Math.round(1080 * 0.94) - 18}px;text-align:center;color:#fff;
       font-weight:${WORDMARK_WEIGHT};letter-spacing:-0.015em;font-size:34px;line-height:36px}
     #mark img.a{${GEM_CSS};${glowCss(WORDMARK.glow)}}
-    /* The author credit under the name, in a violet close to the crown behind it so it only shows when looked for */
+    /* The author credit under the name, faint, so that it only shows when looked for */
     #credit{position:absolute;left:0;right:0;top:${Math.round(1080 * 0.94) + 26}px;text-align:center;color:${SHADES[7]};
       opacity:0.22;font-weight:500;letter-spacing:0.04em;font-size:13px;line-height:16px}
     #bar{position:fixed;left:12px;bottom:12px;display:flex;gap:8px;align-items:center;color:#cdb8ec;font:13px system-ui}
     button{background:#2a1740;color:#eadcff;border:1px solid #4a2d70;border-radius:6px;padding:6px 12px;font:inherit;cursor:pointer}
   </style></head><body>
-  <div id="stage"><img id="crown" src="${svgData(crownSvg)}"><div id="heart">
+  <div id="stage"><div id="heart">
     ${img("halo", haloSvg, BOOT.halo, BOOT.halo)}
-    ${DUST.map((d, i) => img(`dust${i}`, dustSvg, d.size, d.size)).join("")}
     ${SIDES.map((s, i) => img(`side${i}`, sideSvg(s), s.side * k, s.side * k)).join("")}
     <img id="stem" src="${svgData(stemSvg)}">
     ${img("gem", gemSvg(), 256 * k, 256 * k)}
@@ -632,7 +542,6 @@ function bootPreviewHtml() {
   <script>
     ${BOOT_TIMELINE}
     const B = ${JSON.stringify(BOOT)}, SIDES = ${JSON.stringify(SIDES.map(({ c, dirx, diry }) => ({ c, dirx, diry })))};
-    const DUST = ${JSON.stringify(DUST)}, RUNS = ${JSON.stringify(RUNS)}, RELEASE = ${JSON.stringify(RELEASE)};
     const $ = (id) => document.getElementById(id);
     const stage = $("stage");
     const fit = () => {
@@ -652,13 +561,11 @@ function bootPreviewHtml() {
       // #t=1.5 in the address holds the animation at that moment
       const hold = /t=([\\d.]+)/.exec(location.hash);
       if (hold) t = +hold[1];
-      const f = frame(t, B, SIDES, DUST, RUNS, RELEASE);
+      const f = frame(t, B, SIDES);
       f.sides.forEach((s, i) => put($("side" + i), s.x, s.y, s.opacity));
       $("stem").style.transform = "scaleY(" + f.stem.height + ")";
       $("stem").style.opacity = f.stem.opacity;
-      f.dust.forEach((d, i) => put($("dust" + i), d.x, d.y, d.opacity));
       put($("gem"), 0, 0, f.gem); put($("light"), 0, 0, f.light);
-      $("crown").style.opacity = f.crown;
       put($("halo"), 0, 0, f.halo);
       $("clock").textContent = t.toFixed(2) + " s";
       requestAnimationFrame(tick);
@@ -867,8 +774,7 @@ function logoHtml({ width, height, text, white = false, gem = true, glow = 0, fi
 
 // The splash runs in Plymouth's script plugin. Its images are drawn at twice their 1080p size so they stay
 // sharp up to 4K, and the script scales each one once at start-up to fit the screen. The halo is soft
-// enough to be drawn smaller and stretched. The crown is drawn at 1080p: it fills the screen, and every
-// byte of it is in the initramfs, so it is left to be a little soft on a larger screen, as a background can be.
+// enough to be drawn smaller and stretched.
 const THEME = "usr/share/plymouth/themes/amethystora";
 const GEM_PX = 256 * BOOT.unit; // the gem's 256-unit box, in 1080p pixels
 // The name at the foot of the splash is the login screen's logo, the gem glowing as the "a", so the splash hands
@@ -911,9 +817,7 @@ const dotSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><cir
 const BOOT_PNGS = [
   { out: `${THEME}/field.png`, width: FIELD.width * 2, height: FIELD.height * 2, html: () => svgPage(fieldSvg, FIELD.width * 2, FIELD.height * 2) },
   { out: `${THEME}/dot.png`, width: FIELD.dot * 2, height: FIELD.dot * 2, html: () => svgPage(dotSvg, FIELD.dot * 2, FIELD.dot * 2) },
-  { out: `${THEME}/crown.png`, width: 1920, height: 1080, html: () => svgPage(crownSvg, 1920, 1080) },
   { out: `${THEME}/halo.png`, width: BOOT.halo / 2, height: BOOT.halo / 2, html: () => svgPage(haloSvg, BOOT.halo / 2, BOOT.halo / 2) },
-  { out: `${THEME}/dust.png`, width: 32, height: 32, html: () => svgPage(dustSvg, 32, 32) },
   ...[["gem", gemSvg()], ["light", lightSvg]].map(([name, svg]) => {
     const px = Math.round(GEM_PX * 2);
     return { out: `${THEME}/${name}.png`, width: px, height: px, html: () => svgPage(svg, px, px) };
@@ -961,40 +865,20 @@ side[${i}].x = ${num(s.c[0] - 128)};
 side[${i}].y = ${num(s.c[1] - 128)};
 side[${i}].dirx = ${num(s.dirx)};
 side[${i}].diry = ${num(s.diry)};`).join("\n");
-  const dust = DUST.map((d, i) => `dust[${i}].image = sized(dust_image, ${num(d.size)} * scale, ${num(d.size)} * scale);
-dust[${i}].half = dust[${i}].image.GetWidth() / 2;
-dust[${i}].sprite = Sprite(dust[${i}].image);
-dust[${i}].sprite.SetZ(2);
-dust[${i}].sprite.SetOpacity(0);
-dust[${i}].twinkle = ${num(d.twinkle)};
-dust[${i}].phase = ${num(d.phase)};
-dust[${i}].x = ${num(RUNS[i].x)};
-dust[${i}].y = ${num(RUNS[i].y)};
-dust[${i}].dx = ${num(RUNS[i].dx)};
-dust[${i}].dy = ${num(RUNS[i].dy)};
-dust[${i}].time = ${num(RUNS[i].time)};
-dust[${i}].from = ${num(RUNS[i].from)};
-dust[${i}].wait = ${num(RELEASE[i].wait)};
-dust[${i}].free_x = ${num(RELEASE[i].x)};
-dust[${i}].free_y = ${num(RELEASE[i].y)};`).join("\n");
 
   return `# The Amethystora boot splash, for Plymouth's script plugin.
 # Generated by branding/generate.mjs from the same timeline as its browser preview
 # (node branding/generate.mjs --preview): change it there, not here.
 
-Window.SetBackgroundTopColor(${rgb01(B.sky[0])});
-Window.SetBackgroundBottomColor(${rgb01(B.sky[1])});
+Window.SetBackgroundTopColor(${rgb01(B.sky)});
+Window.SetBackgroundBottomColor(${rgb01(B.sky)});
 
-# The mark and everything round it are laid out for a 1920x1080 screen and scaled to fit this one. The
-# crown is stretched to the screen whatever its shape, and the dust runs its cuts, so those two go by
-# the screen's own width and height.
+# The mark and everything round it are laid out for a 1920x1080 screen and scaled to fit this one.
 screen_x = Window.GetX();
 screen_y = Window.GetY();
 screen_w = Window.GetWidth();
 screen_h = Window.GetHeight();
 scale = Math.Min(screen_w / 1920, screen_h / 1080);
-wide = screen_w / 1920;
-tall = screen_h / 1080;
 origin_x = screen_x + screen_w / 2;
 origin_y = screen_y + screen_h * ${num(B.centerY)};
 
@@ -1010,30 +894,13 @@ fun clamp01(v) {
   return v;
 }
 
-# Math.Int rounds towards zero; this rounds down
-fun floor_of(v) {
-  q = Math.Int(v);
-  if (q > v) { q = q - 1; }
-  return q;
-}
-
 # ------------------------------------------------------------------- scene --
-
-crown.image = sized(Image("crown.png"), screen_w, screen_h);
-crown.sprite = Sprite(crown.image);
-crown.sprite.SetPosition(screen_x, screen_y, 0);
-crown.sprite.SetOpacity(0);
-crown.opacity = 0;
 
 halo.image = sized(Image("halo.png"), ${B.halo} * scale, ${B.halo} * scale);
 halo.sprite = Sprite(halo.image);
 halo.sprite.SetPosition(origin_x - halo.image.GetWidth() / 2, origin_y - halo.image.GetHeight() / 2, 1);
 halo.sprite.SetOpacity(0);
 halo.opacity = 0;
-
-dust_image = Image("dust.png");
-dust_count = ${DUST.length};
-${dust}
 
 side_count = ${SIDES.length};
 ${sides}
@@ -1130,35 +997,10 @@ fun refresh_callback() {
     glow = 0.5 + 0.5 * Math.Cos(6.2831853 * (t - ${num(B.whole)}) / ${num(B.cycle)});
     whole = 1;
   }
-  sky = Math.Min(1, 0.85 * rise + 0.15 * flash);
 
-${fade("crown", "Math.Min(1, sky * (0.8 + 0.2 * glow) + 0.2 * flash)")}
 ${fade("halo", "Math.Min(1, rise * (0.3 + 0.7 * glow) + 0.5 * flash)")}
 ${fade("light", "whole * Math.Min(1, 0.45 * glow + 0.9 * flash)")}
 
-  # Part 2: each mote leaves the mark and slows into its run along a cut, where it stays. It leaves
-  # from a point laid out round the mark, and runs a cut laid out on the screen.
-  if (whole) {
-    level = 0.55 + 0.45 * glow;
-    for (i = 0; i < global.dust_count; i++) {
-      far = (t - ${num(B.whole + B.join)}) / global.dust[i].time + global.dust[i].from;
-      far = far - floor_of(far);
-      strength = 5 * far;
-      if (strength > 4 * (1 - far)) { strength = 4 * (1 - far); }
-      if (strength > 1) { strength = 1; }
-      strength = strength * (0.35 + 0.65 * Math.Abs(Math.Sin(global.dust[i].phase + global.dust[i].twinkle * t)));
-      since = t - ${num(B.whole)} - global.dust[i].wait;
-      w = 1 - clamp01(since / ${num(B.join)});
-      e = 1 - w * w * w;
-      free_x = global.origin_x + global.dust[i].free_x * global.scale;
-      free_y = global.origin_y + global.dust[i].free_y * global.scale;
-      run_x = global.screen_x + (global.dust[i].x + global.dust[i].dx * far) * global.wide;
-      run_y = global.screen_y + (global.dust[i].y + global.dust[i].dy * far) * global.tall;
-      global.dust[i].sprite.SetX(free_x + (run_x - free_x) * e - global.dust[i].half);
-      global.dust[i].sprite.SetY(free_y + (run_y - free_y) * e - global.dust[i].half);
-      global.dust[i].sprite.SetOpacity(clamp01(since / 0.12) * (0.9 * (1 - e) + strength * level * e));
-    }
-  }
 }
 Plymouth.SetRefreshFunction(refresh_callback);
 
@@ -1357,14 +1199,14 @@ function facetsSvg(theme, tones = theme === "dark" ? FACET_TONES.dark : FACET_TO
 function nebulaWallpaperHtml(theme) {
   const dark = theme === "dark";
   const rnd = random(83);
-  const sky = dark ? BOOT.sky : ["#f6f0fd", "#dcc8f6"];
+  const sky = dark ? CROWN_SKY : ["#f6f0fd", "#dcc8f6"];
   const smoke = dark
     ? nebula({ center: [330, 110], rim: SHADES[3], layers: [[3, 0.014, SHADES[6], 0.8, 0.12], [11, 0.024, SHADES[5], 0.45, 0.1]] })
     : nebula({ center: [330, 110], rim: SHADES[7], layers: [[3, 0.014, SHADES[6], 0.5, 0.1], [11, 0.024, SHADES[7], 0.4, 0.1]] });
   const speck = dark ? "#f0d4ff" : SHADES[5];
   const dust = Array.from({ length: 280 }, () =>
     `<circle cx="${n1(rnd() * WALL_W)}" cy="${n1(rnd() * WALL_H)}" r="${n1(1 + 2.6 * rnd() ** 3)}" fill="${speck}" fill-opacity="${(0.25 + 0.6 * rnd()).toFixed(2)}"/>`);
-  // and a few motes that glow, as the splash's dust does
+  // and a few motes that glow
   const motes = Array.from({ length: 9 }, () =>
     `<circle cx="${n1(1700 + rnd() * 2000)}" cy="${n1(200 + rnd() * 1500)}" r="${n1(10 + rnd() * 14)}" fill="url(#mote)"/>`);
   return `<!doctype html><html><head><style>
@@ -2289,22 +2131,18 @@ const daylightList = (files) => ["dawn", "day", "dusk", "night"].map((time) => `
 
 // ---------------------------------------------------------- login screen --
 
-// The login screen stands on the crown the boot splash ends on, so the handover from Plymouth to GDM
-// is one picture carried across: the same gradient, the same cut over it, as sharp as the splash
-// draws it, and no mark, which by then has done its part and would sit behind the dialog anyway.
-// The crown's shades are all dark, so the clock and the user list read over it as the mark does.
-//
-// 12-login-screen.sh puts it inside GNOME Shell's theme, which is the only place the login screen
-// takes a background from.
+// The login screen stands on the default dark theme's wallpaper, Facets, so that the desktop a person
+// logs in to starts from the picture they logged in on. 12-login-screen.sh puts it inside GNOME Shell's
+// theme, which is the only place the login screen takes a background from.
 const LOGIN = { width: 2560, height: 1440 };
 const SOFT = { blur: 44, overscan: 1.12 };
 
-// The installer draws the same picture in a square, so the crown covers it instead of being
-// stretched, and soft: its sidebar and top bar are narrow strips of it with labels all over them
-const loginBackgroundHtml = ({ width, height, soft = false } = LOGIN) => `<!doctype html><html><head><style>
-    html,body{margin:0;background:${BOOT.sky[0]}}
+// The installer stands on the crown of a cut stone, in a square, so that the crown covers it instead of
+// being stretched, and soft: its sidebar and top bar are narrow strips of it with labels all over them
+const installerSkyHtml = ({ width, height, soft = false }) => `<!doctype html><html><head><style>
+    html,body{margin:0;background:${CROWN_SKY[0]}}
     #frame{position:relative;width:${width}px;height:${height}px;overflow:hidden}
-    #sky{position:absolute;inset:0;background:linear-gradient(180deg,${BOOT.sky[0]},${BOOT.sky[1]})}
+    #sky{position:absolute;inset:0;background:linear-gradient(180deg,${CROWN_SKY[0]},${CROWN_SKY[1]})}
     /* A blur this wide pulls in whatever is past the edge, which is nothing, and would leave the
        picture fading out around its border. The layer is drawn oversized and the frame clips it,
        so the fade happens outside the picture instead of inside it. */
@@ -2323,12 +2161,12 @@ const logo = (spec) => ({ ...spec, html: () => logoHtml(spec) });
 
 // The picture on the first page of GNOME Tour. Fedora builds the Tour with its own in place of GNOME's,
 // a backpack with Fedora's logo on it, and 12-tour.sh puts this one in its place: the boot splash at the
-// top of its first glow once the dust has found its cuts, cut to the Tour's 600x300 frame around the
+// top of its first glow, cut to the Tour's 600x300 frame around the
 // mark, as a card with the window's rounded corners. Plain shapes and gradients only, and nothing ahead
 // of the <svg> tag: GTK draws it, not a browser.
 const TOUR = { width: 600, height: 300, crop: 1280, radius: 12 };
 const tourSvg = (() => {
-  const f = new Function(`${BOOT_TIMELINE}\nreturn frame;`)()(BOOT.hold + BOOT.whole + BOOT.cycle, BOOT, SIDES, DUST, RUNS, RELEASE);
+  const f = new Function(`${BOOT_TIMELINE}\nreturn frame;`)()(BOOT.hold + BOOT.whole + BOOT.cycle, BOOT, SIDES);
   const [x0, y0] = [HEART[0] - TOUR.crop / 2, HEART[1] - TOUR.crop / 4];
   const inner = (svg) => svg.slice(svg.indexOf(">") + 1, svg.lastIndexOf("</svg>")).trim();
   // A picture's box of the given units, px across and centred on the heart, as the splash places it
@@ -2336,16 +2174,10 @@ const tourSvg = (() => {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${TOUR.width}" height="${TOUR.height}" viewBox="0 0 ${TOUR.width} ${TOUR.height}">
   <defs>
     <clipPath id="card"><rect width="${TOUR.width}" height="${TOUR.height}" rx="${TOUR.radius}"/></clipPath>
-    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1080" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="${BOOT.sky[0]}"/><stop offset="1" stop-color="${BOOT.sky[1]}"/>
-    </linearGradient>
-    ${inner(dustSvg).match(/<defs>([\s\S]*)<\/defs>/)[1].trim()}
   </defs>
   <g clip-path="url(#card)"><g transform="scale(${num(TOUR.width / TOUR.crop)}) translate(${num(-x0)} ${num(-y0)})">
-  <rect x="${num(x0)}" y="${num(y0)}" width="${TOUR.crop}" height="${TOUR.crop / 2}" fill="url(#sky)"/>
-  <g opacity="${num(f.crown)}">${inner(crownSvg)}</g>
+  <rect x="${num(x0)}" y="${num(y0)}" width="${TOUR.crop}" height="${TOUR.crop / 2}" fill="${BOOT.sky}"/>
   <g opacity="${num(f.halo)}" transform="${around(200, BOOT.halo)}">${inner(haloSvg)}</g>
-  ${f.dust.map((d, i) => `<circle cx="${num(HEART[0] + d.x)}" cy="${num(HEART[1] + d.y)}" r="${num(DUST[i].size / 2)}" fill="url(#d)" opacity="${num(d.opacity)}"/>`).join("\n  ")}
   <g transform="${around(256, 256 * BOOT.unit)}">${inner(gemSvg())}</g>
   <g opacity="${num(f.light)}" transform="${around(256, 256 * BOOT.unit)}">${inner(lightSvg)}</g>
   </g></g>
@@ -2508,7 +2340,7 @@ const INSTALLER_SKY = 1024;
 const anacondaCss = () => `/* Amethystora's look for the Anaconda installer
  * Generated by branding/generate.mjs */
 
-@define-color amethystora ${BOOT.sky[1]};
+@define-color amethystora ${CROWN_SKY[1]};
 
 .logo-sidebar {
     background-color: @amethystora;
@@ -2583,7 +2415,7 @@ switch:checked:not(:disabled) {
 
 const INSTALLER_PNGS = [
   { root: PRODUCT, out: `${ANACONDA}/sky.png`, width: INSTALLER_SKY, height: INSTALLER_SKY,
-    html: () => loginBackgroundHtml({ width: INSTALLER_SKY, height: INSTALLER_SKY, soft: true }) },
+    html: () => installerSkyHtml({ width: INSTALLER_SKY, height: INSTALLER_SKY, soft: true }) },
   // The glow of the login screen's logo, with room around the gem for it to fade out in
   logo({ root: PRODUCT, out: `${ANACONDA}/sidebar-logo.png`, width: 180, height: 180, glow: 10, fit: 0.55 }),
 ];
@@ -2611,9 +2443,10 @@ const PNGS = [
     [["l", "light"], ["d", "dark"]].map(([suffix, theme]) => ({
       out: `usr/share/backgrounds/amethystora/amethystora-${name}-${suffix}.png`, width: WALL_W, height: WALL_H, html: () => html(theme),
     }))),
-  // Smaller than the wallpapers on purpose: it is flat facets and faint cuts, with little detail
-  // for the extra pixels to carry, and GNOME scales it to the screen either way
-  { out: "usr/share/backgrounds/amethystora/amethystora-login.png", width: LOGIN.width, height: LOGIN.height, html: loginBackgroundHtml },
+  // Smaller than the wallpaper on purpose: every byte of it is in GNOME Shell's theme bundle, and GNOME
+  // scales it to the screen either way
+  { out: "usr/share/backgrounds/amethystora/amethystora-login.png", width: LOGIN.width, height: LOGIN.height,
+    html: () => svgPage(facetsSvg("dark"), LOGIN.width, LOGIN.height) },
   ...Object.entries(THEME_WALLPAPERS).flatMap(([theme, pictures]) => {
     const drawn = pictures(palette(theme));
     return Object.keys(drawn).map((name) => ({
