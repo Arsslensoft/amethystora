@@ -17,9 +17,10 @@ show ID *ARGS:
 add SOURCE *ARGS:
     @/usr/libexec/amethystora-plugins add "$@"
 
-# Bring a plugin you added up to date from its source: what is new in it and in what it asks is shown first, and an administrator approves
+# Bring a plugin you added up to date from its source: what is new in it and in what it asks is shown first, and an administrator approves.
+# With --all, every plugin added from an address: those that ask for nothing more, in one approval
 [positional-arguments]
-update ID SOURCE:
+update +ARGS:
     @/usr/libexec/amethystora-plugins update "$@"
 
 # Remove a plugin, with the files it kept
@@ -115,6 +116,12 @@ fix ID:
 [positional-arguments]
 settings ID *ARGS:
     @/usr/libexec/amethystora-plugins settings "$@"
+
+# Make a plugin that holds permissions: install the folder, then again at each change, with no more than it has (an administrator approves,
+# and that approval is kept five minutes)
+[positional-arguments]
+dev FOLDER:
+    @/usr/libexec/amethystora-plugins dev "$@"
 
 # Run a plugin that is on now, or one of its actions: as a script may, so it opens, copies and controls nothing
 [positional-arguments]

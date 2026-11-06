@@ -121,7 +121,13 @@ ame plugin add https://example.org/ci-build.git --digest 24d7ee22fb319619df0095c
 ```
 
 A git address is taken at the version it has now, and `ame plugin update` shows what changed, and what is newly asked for, before
-anything is installed. Nothing updates by itself.
+anything is installed. Nothing updates by itself. `ame plugin update --all` fetches every plugin you added from an address again and
+installs, in one approval that names each of them, the new versions that ask for nothing more; one that asks for more is left for
+`ame plugin update ID ADDRESS`, on its own, where you read each new permission.
+
+If you are making a plugin that needs permissions, `ame plugin dev FOLDER` installs your folder, then installs it again each time you
+save a change, with no more than you allowed it. That approval is kept five minutes, the only one that is: anything that asks for more
+stops the loop.
 
 ## What a plugin may ask for
 

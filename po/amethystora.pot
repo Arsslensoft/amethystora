@@ -9253,6 +9253,10 @@ msgid "Install it with only what you allowed?"
 msgstr ""
 
 #: usr/libexec/amethystora-plugins
+msgid "It was not approved, so nothing was installed."
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
 #, sh-format
 msgid "${id} is installed. Turn it on with: ame plugin on ${id}"
 msgstr ""
@@ -9268,6 +9272,58 @@ msgstr ""
 
 #: usr/libexec/amethystora-plugins
 msgid "A source is a folder, a .amethystora-plugin file or an https:// git address."
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+#, sh-format
+msgid "${id} could not be fetched."
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+#, sh-format
+msgid "${id} asks for more than you allowed. Update it on its own: ame plugin update ${id} ${source}"
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+msgid "Nothing to update in one go."
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+msgid "These have a new version that asks for nothing more:"
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+msgid "Update them all, each with what you allowed it before?"
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+msgid "It was not approved, so nothing was updated."
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+msgid "Updated."
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+msgid "Its manifest.json has no id a plugin can have."
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+msgid "Fix what the check says first."
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+#, sh-format
+msgid "Watching ${folder}: each change is installed with no more than it has. Ctrl+C ends."
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+#, sh-format
+msgid "It now asks for more than it has, or it was not approved. Read what it asks with: ame plugin update ${id} ${folder}"
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+msgid "The check refuses it as it is now: fix it, and it is tried again."
 msgstr ""
 
 #: usr/libexec/amethystora-plugins

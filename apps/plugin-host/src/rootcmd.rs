@@ -6,6 +6,9 @@
 //!   prepare                      a tar on standard input, frozen in quarantine/<ticket>; prints the ticket and the digest
 //!   inspect TICKET               what was frozen, for a person to read
 //!   commit ID DIGEST PERM...     the frozen files into the store, and exactly these permissions granted
+//!   commit-updates ID=DIGEST...  updates of plugins already installed, in one approval: each keeps what it was granted (less what the
+//!                                new version no longer asks for), and one that asks for anything more refuses the whole batch
+//!   commit-dev ID=DIGEST         `ame plugin dev`: the same for one plugin, through an action whose approval polkit keeps five minutes
 //!   commit-shipped ID            the image's own plugin, granted what its manifest names
 //!   grant ID DIGEST PERM...      more permissions for the files already installed
 //!   revoke ID [PERM...]          takes permissions away (all, with none named)
@@ -119,6 +122,9 @@ impl Ctx {
             Some("inspect") => self.inspect(uid, ticket_arg(rest.first())?, out),
             Some("commit") => self.commit(uid, id_arg(rest.first(), false)?, digest_arg(rest.get(1))?, perm_args(rest.get(2..).unwrap_or(&[]))?),
             Some("commit-shipped") => self.commit_shipped(uid, id_arg(rest.first(), true)?),
+            Some("commit-updates") => self.commit_updates(uid, rest),
+            // The author's loop: one plugin, never more than it holds, so that the kept approval cannot widen anything
+            Some("commit-dev") if rest.len() == 1 => self.commit_updates(uid, rest),
             Some("grant") => self.grant(uid, id_arg(rest.first(), false)?, digest_arg(rest.get(1))?, perm_args(rest.get(2..).unwrap_or(&[]))?),
             Some("revoke") => self.revoke(uid, id_arg(rest.first(), true)?, perm_args(rest.get(1..).unwrap_or(&[]))?),
             Some(verb @ ("block" | "unblock")) => {
@@ -131,7 +137,7 @@ impl Ctx {
             }
             Some("remove") => self.remove(uid, id_arg(rest.first(), true)?),
             Some("rollback") => self.rollback(uid, id_arg(rest.first(), true)?),
-            _ => return Err("usage: amethystora-plugin-root prepare|inspect|commit|commit-shipped|grant|revoke|block|unblock|remove|rollback".into()),
+            _ => return Err("usage: amethystora-plugin-root prepare|inspect|commit|commit-updates|commit-shipped|grant|revoke|block|unblock|remove|rollback".into()),
         }?;
         writeln!(out, "ok").map_err(|e| e.to_string())
     }
@@ -188,6 +194,42 @@ impl Ctx {
     }
 
     fn commit(&self, uid: u32, id: &str, digest: &str, perms: Vec<String>) -> Result<(), String> {
+        self.commit_as(uid, id, digest, perms, self.approval_off)
+    }
+
+    /// Several updates, one approval (plans/PLAN-plugins.md, How a person approves): every one is checked before any is written, so that
+    /// the batch is all or nothing as far as the checks go
+    fn commit_updates(&self, uid: u32, args: &[String]) -> Result<(), String> {
+        if args.is_empty() || args.len() > 32 {
+            return Err("a batch is one to thirty-two ID=DIGEST".into());
+        }
+        let grants = self.store.grants(uid)?;
+        let tickets: Vec<Ticket> = self.tickets(uid).into_iter().map(|(t, _)| t).collect();
+        let mut plan = Vec::new();
+        for arg in args {
+            let (id, digest) = arg.split_once('=').ok_or("each update is ID=DIGEST")?;
+            valid_id(id, false).map_err(|_| format!("{id:?} is not a plugin id"))?;
+            if !tree::valid_digest(digest) {
+                return Err("a digest is 64 lower-case hex digits".into());
+            }
+            let grant = grants.plugins.get(id).filter(|g| !g.shipped).ok_or_else(|| format!("{id} is not installed, so it is not an update"))?;
+            let ticket = tickets.iter().find(|t| t.id == id && t.digest == digest).ok_or_else(|| format!("no update of {id} with that digest is waiting for you"))?;
+            let manifest = read_manifest(&tree::read_dir(&ticket.dir.join("tree"))?, false)?;
+            let asked = manifest.permissions();
+            if let Some(more) = asked.iter().find(|p| !grant.perms.contains(*p)) {
+                return Err(format!("{id} asks for {more}, which it was not given: update it on its own, so that you read what it asks"));
+            }
+            let keep: Vec<String> = grant.perms.iter().filter(|p| asked.contains(*p)).cloned().collect();
+            plan.push((id.to_string(), digest.to_string(), keep));
+        }
+        for (id, digest, keep) in plan {
+            // Asked of an administrator every time: the rule plugin-approval off writes is for a commit alone
+            self.commit_as(uid, &id, &digest, keep, false)?;
+        }
+        Ok(())
+    }
+
+    fn commit_as(&self, uid: u32, id: &str, digest: &str, perms: Vec<String>, unasked: bool) -> Result<(), String> {
         let ticket = self.tickets(uid).into_iter().map(|(t, _)| t).find(|t| t.id == id && t.digest == digest).ok_or("no plugin with that id and digest is waiting for you")?;
         let frozen = ticket.dir.join("tree");
         // The files are checked again, as they are now, against the digest the person was shown
@@ -223,7 +265,8 @@ impl Ctx {
             Grant { digest: digest.into(), previous: previous.clone(), perms: perms.clone(), shipped: false, blocked: old.blocked, blocked_hosts: old.blocked_hosts, limits },
         );
         self.store.write_grants(uid, &grants)?;
-        self.given(uid, json!({"action": "commit", "id": id, "digest": digest, "previous": previous, "perms": perms}))?;
+        let line = json!({"action": "commit", "id": id, "digest": digest, "previous": previous, "perms": perms});
+        if unasked { self.given(uid, line)? } else { self.store.append_history(uid, line)? }
         let _ = std::fs::remove_dir_all(&ticket.dir);
         self.gc();
         Ok(())
@@ -399,6 +442,32 @@ mod tests {
 
     fn field(output: &str, name: &str) -> String {
         output.lines().find_map(|l| l.strip_prefix(&format!("{name}\t"))).unwrap().to_string()
+    }
+
+    #[test]
+    fn a_batch_of_updates_keeps_its_grants_and_refuses_one_that_asks_for_more() {
+        let (ctx, dir) = setup("batch");
+        let needs = r#"{"notify":{"why":"Says"}}"#;
+        let out = call(&ctx, "prepare", &archive(&manifest_with(needs))).unwrap();
+        call(&ctx, &format!("commit dev.example.t {} notify", field(&out, "digest")), b"").unwrap();
+        // The same permissions in a new version: one approval, and the grant is kept
+        let v2 = call(&ctx, "prepare", &archive(&manifest_with(needs).replace("1.0.0", "1.1.0"))).unwrap();
+        let digest2 = field(&v2, "digest");
+        call(&ctx, &format!("commit-updates dev.example.t={digest2}"), b"").unwrap();
+        let grant = &ctx.store.grants(1000).unwrap().plugins["dev.example.t"];
+        assert_eq!((grant.digest.as_str(), grant.perms.clone()), (digest2.as_str(), vec!["notify".to_string()]));
+        // A version that asks for more is never in a batch
+        let more = r#"{"notify":{"why":"Says"},"open":{"why":"Opens"}}"#;
+        let v3 = call(&ctx, "prepare", &archive(&manifest_with(more).replace("1.0.0", "1.2.0"))).unwrap();
+        assert!(call(&ctx, &format!("commit-updates dev.example.t={}", field(&v3, "digest")), b"").is_err());
+        assert_eq!(ctx.store.grants(1000).unwrap().plugins["dev.example.t"].digest, digest2);
+        // `dev` is the same check for one plugin
+        assert!(call(&ctx, &format!("commit-dev dev.example.t={}", field(&v3, "digest")), b"").is_err());
+        assert!(call(&ctx, &format!("commit-dev dev.example.t={digest2} dev.example.t={digest2}"), b"").is_err(), "one at a time");
+        // Nor what is not installed, nor a shape that is not ID=DIGEST
+        assert!(call(&ctx, &format!("commit-updates dev.example.other={digest2}"), b"").is_err());
+        assert!(call(&ctx, "commit-updates dev.example.t", b"").is_err());
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]

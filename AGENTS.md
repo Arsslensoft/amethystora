@@ -1753,7 +1753,7 @@ crate (no GTK; only the host's `service.rs` links GLib) with two programs: `amet
 - **The store is root's** (`/var/lib/amethystora/plugins`, tmpfiles): `store/<tree digest>/`, `accounts/<uid>/grants.json` and
   `history.jsonl`, `quarantine/<ticket>` (0700, cleared at boot and after an hour). `amethystora-plugin-root` is its one writer and
   starts only through pkexec, one polkit action per verb in `org.amethystora.plugins.policy`, picked by `exec.argv1` (a new verb is a
-  new action, and `test-plugins.sh` counts ten). The account is `PKEXEC_UID`, never an argument; each argument is held to
+  new action, and `test-plugins.sh` counts twelve). The account is `PKEXEC_UID`, never an argument; each argument is held to
   `valid_perm_arg`'s short set of characters (so `$(command_line)` in the dialog is what runs); what is granted is checked against the
   manifest in the *frozen* files, never against what the caller says. `prepare` reads a bounded tar on stdin (`tree.rs`: files and
   folders only, no link, device, FIFO, `..`, absolute path or setuid bit; its own modes; `openat` with `O_NOFOLLOW|O_EXCL`), `inspect`
@@ -1822,8 +1822,11 @@ crate (no GTK; only the host's `service.rs` links GLib) with two programs: `amet
   runs with the session's Wayland socket bound at `/run/wayland/wayland-0` and nothing else of the session, GTK in software, memory settings, up to
   `PANEL_LIMIT` (8 h) under the same scope, beside the plugin's runs, and **no click** for its whole life; a `tool` place, which the agent's level-2
   `plugin` tool lists and runs through the bus method `Ask` (no click, the answer marked as data); and data-only plugins, which are the theme files:
-  `ame plugin add|open` hands `.amethystora-theme` and `.amethystora-look` to `ame desktop theme import|look`. Not built: wallpapers, icon packs and
-  sound sets as plugins of data.
+  `ame plugin add|open` hands `.amethystora-theme` and `.amethystora-look` to `ame desktop theme import|look`. Approval's last two: `ame plugin update --all` (sources
+  of plugins added from an https address are the account's `plugins/sources.json`; each is fetched and frozen, and those asking for nothing more go to
+  `commit-updates ID=DIGEST...`, its own action, one dialog, which refuses the whole batch if any asks for more and keeps each grant less what the new
+  version no longer asks) and `ame plugin dev FOLDER` (`commit-dev ID=DIGEST`, the same checks for one plugin, and the policy's only `auth_admin_keep`,
+  which test-plugins.sh holds). Not built: wallpapers, icon packs and sound sets as plugins of data, and the consent card in Control (the board's).
 
 ### Plugins in the shell
 

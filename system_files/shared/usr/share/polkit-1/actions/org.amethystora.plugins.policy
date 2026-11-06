@@ -26,6 +26,34 @@
     <annotate key="org.freedesktop.policykit.exec.argv1">commit</annotate>
   </action>
 
+  <action id="org.amethystora.plugins.commit-updates">
+    <description>Update several plugins at once, each with no more than it was given</description>
+    <message>Update the plugins listed here, each keeping only what you allowed it before: $(command_line)</message>
+    <icon_name>dialog-password</icon_name>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/amethystora-plugin-root</annotate>
+    <annotate key="org.freedesktop.policykit.exec.argv1">commit-updates</annotate>
+  </action>
+
+  <!-- The one kept approval (plans/PLAN-plugins.md): `ame plugin dev`, where an author tries each change of a plugin that holds
+       permissions. The helper commits one plugin with no more than it holds, so what is kept for five minutes cannot widen anything -->
+  <action id="org.amethystora.plugins.commit-dev">
+    <description>Install a new version of a plugin you are making, with no more than it has</description>
+    <message>Install the new version of the plugin you are making, with no more than it has, and keep this approval five minutes: $(command_line)</message>
+    <icon_name>dialog-password</icon_name>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/amethystora-plugin-root</annotate>
+    <annotate key="org.freedesktop.policykit.exec.argv1">commit-dev</annotate>
+  </action>
+
   <action id="org.amethystora.plugins.commit-shipped">
     <description>Add a plugin of the system</description>
     <message>Add a plugin that comes with the system: $(command_line)</message>

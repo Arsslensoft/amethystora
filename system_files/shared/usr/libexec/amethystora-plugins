@@ -7,6 +7,7 @@
 #   list|show|check|verify|history [--json]   read
 #   add SOURCE [--digest SHA256]              from a git address (https), a folder or a .amethystora-plugin file
 #   update ID SOURCE                          the same, for a plugin that is installed: what is new is shown first
+#   update --all                              every one added from an address: what asks for nothing more, in one approval
 #   grant ID [PERMISSION...]                  more of what an installed plugin asks for
 #   revoke ID [PERMISSION...] | block ID [HOST] | unblock ID [HOST] | remove ID | rollback ID
 #   on ID | off ID                            whether it runs, which stays inside what was approved
@@ -15,6 +16,7 @@
 #   examples | new ID [EXAMPLE]               the examples to start from (an agent or a person), and a draft made from one
 #   try ID [ACTION]                           run a plugin or a draft once in its sandbox and print what the shell would be given
 #   run ID [ACTION]                           run a plugin that is on now, as a script may: no click, so it opens, copies and controls nothing
+#   dev FOLDER                                a plugin you are making, installed again at each change with no more than it has
 #   hand -- FILE                              Files' "Give to a plugin": the host asks first, then the plugin's files-menu action gets it
 #   remove-agent-made                         every plugin and draft the agent made, after asking
 #   draft ID [--by me]                        a draft the agent wrote is checked, marked as the agent's and shown (it has no permissions)
@@ -278,7 +280,8 @@ consent() {
         return 1
     fi
     # An administrator approves in polkit's dialog, which shows this very command with each permission
-    pkexec "${ROOT}" commit "${id}" "${digest}" "${chosen[@]}" >/dev/null
+    pkexec "${ROOT}" commit "${id}" "${digest}" "${chosen[@]}" >/dev/null || die "$(gettext "It was not approved, so nothing was installed.")"
+    remember_source "${id}"
     eval_gettext "\${id} is installed. Turn it on with: ame plugin on \${id}"
     echo
 }
@@ -306,8 +309,103 @@ fetch() {
     fi
 }
 
+# Where each plugin added from an address came from, the account's own note, for `update --all`: an address only, never a folder or a file
+SOURCES="${XDG_STATE_HOME:-${HOME}/.local/state}/amethystora/plugins/sources.json"
+remember_source() {
+    [[ "${SOURCE:-}" == https://* ]] || return 0
+    mkdir -p -- "${SOURCES%/*}"
+    jq -n --slurpfile old <(cat -- "${SOURCES}" 2>/dev/null || echo '{}') --arg id "$1" --arg source "${SOURCE}" '($old[0] // {}) + {($id): $source}' \
+        >"${SOURCES}.new" && mv -f -- "${SOURCES}.new" "${SOURCES}"
+}
+
+# Every plugin added from an address, fetched again: what is new and asks for nothing more goes in one approval, which names each one; what
+# asks for more is left for `ame plugin update ID ADDRESS`, alone, where each new permission is read and answered
+update_all() {
+    need_terminal
+    local id source out digest installed batch=() names=() more
+    while IFS=$'\t' read -r id source; do
+        valid_id "${id}" && [[ "${source}" == https://* ]] || continue
+        installed="$("${HOST}" show "${id}" 2>/dev/null | field digest)" || continue
+        [[ -n "${installed}" ]] || continue
+        out="$(fetch "${source}" | pkexec "${ROOT}" prepare)" || { export id; eval_gettext "\${id} could not be fetched."; echo; continue; }
+        digest="$(field digest <<<"${out}")"
+        if [[ "${digest}" == "${installed}" || "$(field id <<<"${out}")" != "${id}" ]]; then
+            continue
+        fi
+        more="$(comm -23 <(pkexec "${ROOT}" inspect "$(field ticket <<<"${out}")" | awk -F'\t' '$1 == "perm" { print $2 }' | sort) \
+            <("${HOST}" show "${id}" | awk -F'\t' '$1 == "granted" { print $2 }' | sort))"
+        if [[ -n "${more}" ]]; then
+            export id source
+            eval_gettext "\${id} asks for more than you allowed. Update it on its own: ame plugin update \${id} \${source}"
+            echo
+            continue
+        fi
+        batch+=("${id}=${digest}")
+        names+=("${id}")
+    done < <(jq -r 'to_entries[] | "\(.key)\t\(.value)"' "${SOURCES}" 2>/dev/null)
+    if ((${#batch[@]} == 0)); then
+        gettext "Nothing to update in one go."
+        echo
+        return 0
+    fi
+    gettext "These have a new version that asks for nothing more:"
+    echo
+    printf '  %s\n' "${names[@]}"
+    ask "$(gettext "Update them all, each with what you allowed it before?")" || return 0
+    # One approval, in polkit's dialog, which names each plugin and its new files
+    pkexec "${ROOT}" commit-updates "${batch[@]}" >/dev/null || die "$(gettext "It was not approved, so nothing was updated.")"
+    gettext "Updated."
+    echo
+}
+
+# The author's loop (plans/PLAN-plugins.md, Around the store): a folder installed as it is now, with the usual consent the first time, then
+# every change installed again with no more than it has, through commit-dev, whose approval polkit keeps five minutes. What asks for
+# more stops the loop: it is a new consent, `ame plugin update ID FOLDER`. A draft needs none of this: it runs with nothing
+cmd_dev() {
+    local folder="${1:-}" id installed last="" now out digest
+    [[ -d "${folder}" ]] || usage
+    need_terminal
+    folder="$(realpath -- "${folder}")"
+    id="$(jq -r '.id // empty' "${folder}/manifest.json" 2>/dev/null)"
+    valid_id "${id}" || die "$(gettext "Its manifest.json has no id a plugin can have.")"
+    "${HOST}" check "${folder}" || die "$(gettext "Fix what the check says first.")"
+    installed="$("${HOST}" show "${id}" 2>/dev/null | field digest)"
+    if [[ -z "${installed}" ]]; then
+        install_from "${folder}" "" "" || exit 1
+        installed="$("${HOST}" show "${id}" | field digest)"
+    fi
+    cmd_onoff enable "${id}"
+    export folder
+    eval_gettext "Watching \${folder}: each change is installed with no more than it has. Ctrl+C ends."
+    echo
+    while true; do
+        now="$(find "${folder}" -type f -printf '%P %s %T@\n' 2>/dev/null | sort | sha256sum)"
+        if [[ "${now}" != "${last}" ]]; then
+            last="${now}"
+            if "${HOST}" check "${folder}" >/dev/null 2>&1 && out="$("${HOST}" pack "${folder}" | pkexec "${ROOT}" prepare)"; then
+                digest="$(field digest <<<"${out}")"
+                if [[ "${digest}" != "${installed}" ]]; then
+                    if pkexec "${ROOT}" commit-dev "${id}=${digest}" >/dev/null; then
+                        installed="${digest}"
+                        busctl --user call org.amethystora.Plugins /org/amethystora/Plugins org.amethystora.Plugins Run ss "${id}" "" >/dev/null 2>&1
+                        date '+%H:%M:%S'
+                    else
+                        export id folder
+                        die "$(eval_gettext "It now asks for more than it has, or it was not approved. Read what it asks with: ame plugin update \${id} \${folder}")"
+                    fi
+                fi
+            else
+                gettext "The check refuses it as it is now: fix it, and it is tried again."
+                echo
+            fi
+        fi
+        sleep 2
+    done
+}
+
 install_from() {
     local source="$1" want_digest="$2" expect_id="$3" previous=""
+    SOURCE="${source}"
     need_terminal
     local out ticket digest id
     out="$(fetch "${source}" | pkexec "${ROOT}" prepare)" || die "$(gettext "It was refused, so nothing was kept.")"
@@ -357,6 +455,7 @@ cmd_add() {
 }
 
 cmd_update() {
+    [[ "${1:-}" == --all ]] && { update_all; return; }
     valid_id "${1:-}" && [[ -n "${2:-}" ]] || usage
     install_from "$2" "" "$1"
 }
@@ -707,6 +806,7 @@ case "${1:-}" in
     set) shift; cmd_set "$@" ;;
     run) shift; cmd_run "$@" ;;
     hand) shift; cmd_hand "$@" ;;
+    dev) shift; cmd_dev "$@" ;;
     open) shift; cmd_open "$@" ;;
     share) shift; cmd_share "$@" ;;
     examples) cmd_examples ;;

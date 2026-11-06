@@ -43,22 +43,26 @@ grep -qx 'ALLOW=granted' /etc/amethystora/plugins.conf || fail "plugins.conf doe
 grep -qx 'BLOCK_NETWORK=no' /etc/amethystora/plugins.conf || fail "plugins.conf does not ship BLOCK_NETWORK=no"
 
 # --- The polkit policy: one action for each verb, each asking an administrator, none keeping an answer ----------------------------
-for verb in prepare inspect commit commit-shipped grant revoke block unblock remove rollback; do
+for verb in prepare inspect commit commit-updates commit-dev commit-shipped grant revoke block unblock remove rollback; do
     grep -qF "<annotate key=\"org.freedesktop.policykit.exec.argv1\">${verb}</annotate>" "${POLICY}" || fail "the policy has no action for ${verb}"
     grep -qF "<action id=\"org.amethystora.plugins.${verb}\">" "${POLICY}" || fail "the action of ${verb} has another id"
 done
-[[ "$(grep -c '<action ' "${POLICY}")" == 10 ]] || fail "the policy has an action that is not one of the verbs"
-if grep -qE '_keep|<allow_active>(yes|no)</allow_active>|<allow_any>(auth|yes)|<allow_inactive>(auth|yes)' "${POLICY}"; then
+[[ "$(grep -c '<action ' "${POLICY}")" == 12 ]] || fail "the policy has an action that is not one of the verbs"
+# One kept answer, the plan's only one: commit-dev, which the helper holds to one plugin and no more than it has
+[[ "$(grep -c '_keep' "${POLICY}")" == 1 ]] && sed -n '/<action id="org.amethystora.plugins.commit-dev">/,/<\/action>/p' "${POLICY}" | grep -q 'auth_admin_keep' ||
+    fail "an answer is kept for an action other than commit-dev"
+grep -q 'Some("commit-dev") if rest.len() == 1 => self.commit_updates' "${SRC}/plugin-host/src/rootcmd.rs" || fail "commit-dev is not the checks of an update, for one plugin"
+if sed '/<action id="org.amethystora.plugins.commit-dev">/,/<\/action>/d' "${POLICY}" | grep -qE '_keep|<allow_active>(yes|no)</allow_active>|<allow_any>(auth|yes)|<allow_inactive>(auth|yes)'; then
     fail "the policy keeps an answer, or lets someone through, or asks someone who is not at the machine"
 fi
-[[ "$(grep -c '<allow_active>auth_admin</allow_active>' "${POLICY}")" == 10 ]] || fail "an action does not ask an administrator"
+[[ "$(grep -c '<allow_active>auth_admin</allow_active>' "${POLICY}")" == 11 ]] || fail "an action does not ask an administrator"
 grep -q 'exec.path">/usr/libexec/amethystora-plugin-root<' "${POLICY}" || fail "the policy names another program"
 # What gives more shows what is being given, in polkit's own dialog: the command line, which the helper holds to a short set of characters
-for verb in commit commit-shipped grant unblock rollback; do
+for verb in commit commit-updates commit-dev commit-shipped grant unblock rollback; do
     sed -n "/<action id=\"org.amethystora.plugins.${verb}\">/,/<\/action>/p" "${POLICY}" | grep -q '\$(command_line)' || fail "the dialog of ${verb} does not show the command line"
 done
 # The rule lets the person at the machine through for what only takes away or reads, and names nothing that gives more
-if grep -qE 'plugins\.(commit|grant|unblock|rollback)"' "${RULES}"; then
+if grep -qE 'plugins\.(commit|commit-updates|commit-dev|grant|unblock|rollback)"' "${RULES}"; then
     fail "the rule lets someone through for what gives a plugin more"
 fi
 for verb in prepare inspect revoke block remove commit-shipped; do

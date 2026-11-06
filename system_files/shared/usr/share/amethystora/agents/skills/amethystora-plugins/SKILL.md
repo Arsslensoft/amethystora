@@ -76,7 +76,8 @@ in an action run), `plugin notify TITLE [BODY [ACTION LABEL]]` (once a minute; w
 click), `plugin open URL` and `plugin clipboard TEXT` (only after a click), `plugin pick FILE` (the file the person chooses, or gave it in Files, written to FILE in `/tmp`; its
 name is printed), `plugin event` (what started this run: `{"name","value"}`, or nothing for its timer) and `plugin change ENTRY VALUE` (after a click). In a draft they answer from
 samples. A home service (`network-local`) is reached through the same proxy: `curl -p -x "$HTTPS_PROXY" http://ha.home.arpa:8123/api/` (`-p` tunnels plain HTTP too).
-`ame plugin run ID [ACTION]` runs one that is on from a script, as no click.
+`ame plugin run ID [ACTION]` runs one that is on from a script, as no click. A person making a plugin that needs permissions uses `ame plugin dev FOLDER`
+(the agent never runs it: it installs).
 `$PLUGIN_STATE` is the plugin's own folder for what it remembers (never run or source a file from it). Never write into its own folder: it is read-only.
 
 ## When it paused
