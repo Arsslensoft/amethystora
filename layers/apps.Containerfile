@@ -12,11 +12,14 @@ FROM scratch AS ctx
 COPY /apps /apps
 COPY /build_files/shared/build-apps.sh /build_files/shared/build-apps.sh
 # What the tests compare the apps with (AMETHYSTORA_ROOT): the palette's checks and the themes (Control's contrast),
-# the watcher's list of credential files and vault.just (the Vault's)
+# the watcher's list of credential files and vault.just (the Vault's), the shipped plugins and their examples (the
+# plugin host's). A test that reads another file of system_files needs its line here
 COPY /system_files/shared/usr/lib/amethystora/theme/palette.awk /system_files/shared/usr/lib/amethystora/theme/palette.awk
 COPY /system_files/shared/usr/share/amethystora/themes /system_files/shared/usr/share/amethystora/themes
 COPY /system_files/shared/usr/libexec/amethystora-audit-home-rules /system_files/shared/usr/libexec/amethystora-audit-home-rules
 COPY /system_files/shared/usr/share/amethystora/just/vault.just /system_files/shared/usr/share/amethystora/just/vault.just
+COPY /system_files/shared/usr/share/amethystora/plugins /system_files/shared/usr/share/amethystora/plugins
+COPY /system_files/shared/usr/share/amethystora/plugin-examples /system_files/shared/usr/share/amethystora/plugin-examples
 
 FROM ${CARGO_IMAGE} AS cargo
 
