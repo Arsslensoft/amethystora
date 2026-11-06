@@ -20,3 +20,8 @@ amethystora-mov 4793
 # The remote desktop (gnome-remote-desktop-daemon, whose name the kernel cuts to fifteen characters), only while ame desktop help-me or
 # second-screen runs it, on the one port the remote-screen switch opens in the home zone (ame security remote-screen)
 gnome-remote-de 3389
+
+# The store for another computer's backup (R7-35, ame backup store, only while it is on): rclone serving restic, one port of 8767 to 8799 for each computer paired,
+# and python3 on 8766 for the three minutes a pairing waits. The firewall opens them at home only (ame security backup-store)
+rclone 87[6-9][0-9]
+python3 8766

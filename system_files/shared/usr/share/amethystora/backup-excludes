@@ -16,6 +16,10 @@
 # would open it again
 **/.local/state/amethystora/clipboard
 
+# What this computer keeps for another computer's backup (ame backup store): its data is that computer's own, encrypted, and backing it up would carry it
+# round and round between two computers that look after each other
+**/.local/share/amethystora/backup-store
+
 # Flatpak: the per-application caches, but not the application data next to them
 **/.var/app/*/cache
 

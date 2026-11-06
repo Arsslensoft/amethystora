@@ -184,7 +184,8 @@ const keeper = {
     // The pattern: `list` what is known (the file's, once opened, and this session's), `fresh` what was seen before it was opened
     list: [], fresh: [], loaded: false, onDisk: false, problem: null, saidSealed: false, saidUntil: 0,
     // The hold: whether this part turned the limit on, when it comes off, the leaving time it works from (memory only), and "Full now"
-    hold: false, timer: 0, leaveAt: null, releaseAt: null, skip: false, refused: false,
+    hold: false, timer: 0, leaveAt: null, releaseAt: null, skip: false, refused: false, stuck: false, personal: null,
+    inhibitor: null, inhibiting: false, subs: null, saidKeep: false,
 };
 let tail = Promise.resolve();
 
@@ -267,6 +268,10 @@ function eventStarts(now) {
 
 // ---- the hold ----
 
+const LOGIND = 'org.freedesktop.login1';
+const LOGIND_PATH = '/org/freedesktop/login1';
+const LOGIND_MANAGER = 'org.freedesktop.login1.Manager';
+
 function disarm() {
     if (keeper.timer)
         GLib.source_remove(keeper.timer);
@@ -274,15 +279,65 @@ function disarm() {
     keeper.releaseAt = null;
 }
 
-// The limit taken off if this part turned it on; gives back nothing else
+// A delay inhibitor on sleep and shutdown while the limit is on, so that it can be taken off before the computer goes: the firmware keeps it through
+// the night otherwise, and the battery is at the limit when the person leaves. Its file descriptor is closed to let the computer go.
+function takeInhibitor() {
+    if (keeper.inhibitor !== null || keeper.inhibiting)
+        return;
+    keeper.inhibiting = true;
+    Gio.DBus.system.call_with_unix_fd_list(LOGIND, LOGIND_PATH, LOGIND_MANAGER, 'Inhibit',
+        new GLib.Variant('(ssss)', ['sleep:shutdown', 'Amethystora UI', 'Taking the battery limit off', 'delay']),
+        new GLib.VariantType('(h)'), Gio.DBusCallFlags.NONE, -1, null, null, (bus, result) => {
+            keeper.inhibiting = false;
+            try {
+                const [reply, fds] = bus.call_with_unix_fd_list_finish(result);
+                const fd = fds.get(reply.deepUnpack()[0]);
+                if (keeper.hold)
+                    keeper.inhibitor = fd;
+                else
+                    GLib.close(fd);
+            } catch (e) {
+                console.debug(`Amethystora UI: no inhibitor for the battery limit: ${e.message}`);
+            }
+        });
+}
+
+function dropInhibitor() {
+    if (keeper.inhibitor === null)
+        return;
+    const fd = keeper.inhibitor;
+    keeper.inhibitor = null;
+    try {
+        GLib.close(fd);
+    } catch {}
+}
+
+// The limit taken off, if this part turned it on. The hold and its marker go only once UPower says it is off: a refusal (UPower asks polkit, which
+// says no to a session that is not the active one) leaves both, so that the next change or the next start puts it right, and it is said once.
 async function release() {
     disarm();
     if (!keeper.hold)
-        return;
+        return true;
+    const ok = await keeper.backend?.setThreshold(false);
+    if (!ok) {
+        keeper.stuck = true;
+        tell();
+        return false;
+    }
     keeper.hold = false;
-    await keeper.backend?.setThreshold(false);
+    keeper.stuck = false;
+    dropInhibitor();
     await removeFile(MARKER);
     tell();
+    return true;
+}
+
+// A limit that was there before this part ever held the battery is the person's own (a vendor tool, TLP, Settings): UPower's own switch on, or an end
+// threshold below full while it is off, the first time this looks in a session and no hold of ours has been made
+function personalLimit(backend) {
+    if (keeper.personal === null)
+        keeper.personal = backend.thresholdOn || (backend.limit > 0 && backend.limit < 100);
+    return keeper.personal;
 }
 
 async function decide() {
@@ -290,7 +345,7 @@ async function decide() {
     if (!keeper.ready || !backend?.supported || backend.onBattery)
         return;
     // A limit the person set themselves is theirs: nothing here touches it
-    if (backend.thresholdOn && !keeper.hold) {
+    if (!keeper.hold && personalLimit(backend)) {
         keeper.leaveAt = null;
         tell();
         return;
@@ -304,14 +359,8 @@ async function decide() {
     if (!hold) {
         await release();
         // Nothing known because the pattern is sealed and nobody opened it: said once, with the way to open it
-        if (!keeper.skip && !keeper.loaded && keeper.onDisk && !keeper.saidSealed) {
-            keeper.saidSealed = true;
-            keeper.saidUntil = now + SAID_FOR * 1000;
-            GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, SAID_FOR, () => {
-                tell();
-                return GLib.SOURCE_REMOVE;
-            });
-        }
+        if (!keeper.skip && !keeper.loaded && keeper.onDisk && !keeper.saidSealed)
+            saySomething('saidSealed');
         tell();
         return;
     }
@@ -325,28 +374,47 @@ async function decide() {
         }
         keeper.refused = false;
         keeper.hold = true;
+        keeper.personal = false;
         await writeFile(MARKER, new TextEncoder().encode('1\n'));
     }
+    takeInhibitor();
+    arm(releaseAt);
+    tell();
+}
+
+// The release at a time on the wall clock. The timer counts the time the computer is awake only, so when it fires the clock is asked again, and the
+// sleep and shutdown signals below take the limit off before the computer goes.
+function arm(releaseAt) {
     disarm();
     keeper.releaseAt = releaseAt;
     keeper.timer = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, Math.max(1, Math.ceil((releaseAt - Date.now()) / 1000)), () => {
         keeper.timer = 0;
-        release();
+        if (Date.now() + 1000 < releaseAt)
+            arm(releaseAt);
+        else
+            release();
         return GLib.SOURCE_REMOVE;
     });
-    tell();
+}
+
+// Said once, for about a minute and a half, in the pill (which hides it when it is over)
+function saySomething(flag) {
+    keeper[flag] = true;
+    keeper.saidUntil = Date.now() + SAID_FOR * 1000;
+    GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, SAID_FOR, () => {
+        tell();
+        return GLib.SOURCE_REMOVE;
+    });
 }
 
 async function sealList() {
     return queued(async () => {
         const sealed = await Vault.seal(PURPOSE, RECORD, encode(keeper.list));
-        if (!sealed.ok) {
-            keeper.problem = sealed.why;
-            tell();
-            return false;
-        }
-        if (!await writeFile(PATTERN_FILE, sealed.data)) {
-            keeper.problem = 'failed';
+        if (!sealed.ok || !await writeFile(PATTERN_FILE, sealed.data)) {
+            keeper.problem = sealed.ok ? 'failed' : sealed.why;
+            // What was learnt is kept in memory, and said once, with Keep it
+            if (!keeper.saidKeep)
+                saySomething('saidKeep');
             tell();
             return false;
         }
@@ -357,19 +425,23 @@ async function sealList() {
     });
 }
 
-// An unplug: what the night taught goes into the pattern (in memory, and sealed again when the pattern has been opened), and the
-// hold, if there is one, comes off
+// An unplug: what the night taught goes into the pattern, sealed at once when the Vault is open (the first night too), else kept in memory with Keep it;
+// and the hold, if there is one, comes off
 async function unplugged() {
     const now = Date.now();
     keeper.skip = false;
     await release();
     keeper.leaveAt = null;
     if (keeper.pluggedSince !== null) {
-        const before = keeper.loaded ? keeper.list : keeper.fresh;
+        // With no sealed pattern yet there is nothing to open first: what is learnt is the pattern, and is sealed now if it can be
+        const adopt = !keeper.loaded && !keeper.onDisk;
+        const before = keeper.loaded || adopt ? [...keeper.list, ...keeper.fresh] : keeper.fresh;
         const after = learn(before, now, keeper.pluggedSince);
         if (after !== before) {
-            if (keeper.loaded) {
+            if (keeper.loaded || adopt) {
                 keeper.list = after;
+                keeper.fresh = [];
+                keeper.loaded = true;
                 sealList();
             } else {
                 keeper.fresh = after;
@@ -402,28 +474,63 @@ function changed() {
         else
             plugged();
     } else {
-        // The limit changed under us (the person's own, or UPower): the view is told
+        // A release UPower refused is tried again at any change; the view is told
+        if (keeper.stuck)
+            release();
         tell();
     }
+}
+
+// Going to sleep or shutting down: the limit comes off first, then the computer is let go. Waking: decided again against the clock.
+function goingDown(signal) {
+    return async (connection, sender, path, iface, name, parameters) => {
+        const [on] = parameters.deepUnpack();
+        if (name === 'PrepareForSleep' && !on) {
+            keeper.onBattery = keeper.backend?.onBattery ?? null;
+            if (keeper.onBattery === false)
+                decide();
+            return;
+        }
+        if (!on)
+            return;
+        await release();
+        dropInhibitor();
+    };
 }
 
 async function begin(backend) {
     keeper.backend = backend;
     keeper.started = true;
-    keeper.onDisk = await fileExists(PATTERN_FILE);
+    const onDisk = await fileExists(PATTERN_FILE);
+    // Stopped while that was looked up: nothing is started for a part that is gone
+    if (keeper.backend !== backend)
+        return;
+    keeper.onDisk = onDisk;
     backend.start(changed, async supported => {
+        if (keeper.backend !== backend)
+            return;
         keeper.ready = true;
         keeper.supported = supported;
         if (!supported) {
             tell();
             return;
         }
-        // A hold the last session could not take off: a restart means charge fully
+        // A hold the last session could not take off: a restart means charge fully. The marker goes only once the limit is off.
         if (await fileExists(MARKER)) {
-            if (backend.thresholdOn)
-                await backend.setThreshold(false);
-            await removeFile(MARKER);
+            if (!backend.thresholdOn || await backend.setThreshold(false))
+                await removeFile(MARKER);
+            else
+                keeper.stuck = true;
+            // Ours, not the person's, whatever UPower says of it now
+            keeper.personal = false;
         }
+        if (keeper.backend !== backend)
+            return;
+        const bus = Gio.DBus.system;
+        keeper.subs = [
+            bus.signal_subscribe(LOGIND, LOGIND_MANAGER, 'PrepareForSleep', LOGIND_PATH, null, Gio.DBusSignalFlags.NONE, goingDown()),
+            bus.signal_subscribe(LOGIND, LOGIND_MANAGER, 'PrepareForShutdown', LOGIND_PATH, null, Gio.DBusSignalFlags.NONE, goingDown()),
+        ];
         keeper.onBattery = backend.onBattery;
         if (!keeper.onBattery)
             decide();
@@ -431,21 +538,24 @@ async function begin(backend) {
     });
 }
 
-// Everything given back: the hold taken off, the timer, the proxies
+// Everything given back: the hold taken off, the timer, the proxies. The keeper is reset at once, before anything is waited for, so that a part
+// turned on again straight away starts clean; a limit UPower will not take off keeps its marker for the next start.
 async function end() {
-    const backend = keeper.backend;
+    const {backend, hold} = keeper;
     disarm();
-    if (keeper.hold) {
-        keeper.hold = false;
-        await backend?.setThreshold(false);
-        await removeFile(MARKER);
+    dropInhibitor();
+    for (const id of keeper.subs ?? [])
+        Gio.DBus.system.signal_unsubscribe(id);
+    Object.assign(keeper, {
+        started: false, backend: null, ready: false, supported: false, onBattery: null, pluggedSince: null, subs: null,
+        list: [], fresh: [], loaded: false, onDisk: false, problem: null, saidSealed: false, saidKeep: false, saidUntil: 0,
+        leaveAt: null, skip: false, refused: false, hold: false, stuck: false, personal: null,
+    });
+    if (hold) {
+        if (await backend?.setThreshold(false))
+            await removeFile(MARKER);
     }
     backend?.stop();
-    Object.assign(keeper, {
-        started: false, backend: null, ready: false, supported: false, onBattery: null, pluggedSince: null,
-        list: [], fresh: [], loaded: false, onDisk: false, problem: null, saidSealed: false, saidUntil: 0,
-        leaveAt: null, skip: false, refused: false,
-    });
 }
 
 export class ChargeBy {
@@ -481,7 +591,8 @@ export class ChargeBy {
         return {
             supported: keeper.supported, onMains, holding: keeper.hold && onMains, limit: backend?.limit ?? 0,
             leaveAt: keeper.leaveAt, releaseAt: keeper.releaseAt, sealed: keeper.onDisk && !keeper.loaded,
-            refused: keeper.refused, said: keeper.saidSealed && Date.now() < keeper.saidUntil, fresh: keeper.fresh.length,
+            refused: keeper.refused, stuck: keeper.stuck, said: (keeper.saidSealed || keeper.saidKeep) && Date.now() < keeper.saidUntil,
+            fresh: keeper.fresh.length,
             known: keeper.loaded ? keeper.list.length : keeper.fresh.length, problem: keeper.problem, skip: keeper.skip,
         };
     }
@@ -510,6 +621,7 @@ export class ChargeBy {
                     tell();
                     return false;
                 }
+                keeper.problem = null;
                 keeper.list = merge(list, keeper.fresh);
             } else if (!keeper.loaded) {
                 keeper.list = keeper.fresh;
@@ -517,8 +629,8 @@ export class ChargeBy {
             const had = keeper.fresh.length;
             keeper.fresh = [];
             keeper.loaded = true;
-            keeper.problem = null;
-            if (had)
+            // What was learnt and not sealed yet (the Vault was closed, or not there) is sealed now: this is the person's click
+            if (had || keeper.problem !== null)
                 await sealList();
             await decide();
             tell();
@@ -541,8 +653,8 @@ export class ChargeBy {
 
     // For the suites
     snapshot() {
-        const {started, ready, supported, onBattery, hold, loaded, onDisk, leaveAt, releaseAt, skip, refused, problem} = keeper;
-        return {started, ready, supported, onBattery, hold, loaded, onDisk, leaveAt, releaseAt, skip, refused, problem,
+        const {started, ready, supported, onBattery, hold, loaded, onDisk, leaveAt, releaseAt, skip, refused, problem, stuck, personal} = keeper;
+        return {started, ready, supported, onBattery, hold, loaded, onDisk, leaveAt, releaseAt, skip, refused, problem, stuck, personal,
             list: keeper.list.length, fresh: keeper.fresh.length, timer: keeper.timer !== 0};
     }
 

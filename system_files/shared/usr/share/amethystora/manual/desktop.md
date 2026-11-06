@@ -206,7 +206,7 @@ needs three of a kind, and an earlier event in your calendar (its start time onl
 Nothing asks for the Vault by itself, so after you log in the pill says once that it is **charging fully** while the
 pattern is sealed, and **Use my pattern** opens it. The time it works out is only ever in memory: a restart, or a Vault
 that is closed, means the battery charges fully, which is always safe. A limit you set yourself (in Settings) is never
-touched, and what it turns on it turns off again when you unplug, turn it off, or log out. It is offered only where
+touched (it looks the first time it can: a limit already there, set by a vendor tool or the firmware, counts as yours), and what it turns on it turns off again when you unplug, turn it off, go to sleep, shut down or log out, and when the release time comes, by the clock, even after the computer slept. If the system refuses to take it off, the pill says so and it tries again at the next change and the next start. What it learns is sealed in your Vault at the end of each night the Vault is open, the first night too; with the Vault closed it is kept in memory, and the pill says so once, with **Keep it**. It is offered only where
 `/usr/libexec/amethystora-charge-limit support` finds a battery with a `charge_control_end_threshold` that root may write
 (ThinkPads, many ASUS, Dell, Framework and others do; a laptop without one never offers it), and the limit is moved
 through UPower, which asks the system's own permission. If a laptop does not accept the change, the pill says so and

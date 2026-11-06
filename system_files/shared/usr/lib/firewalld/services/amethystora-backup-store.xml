@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <service>
   <short>Amethystora backup store</short>
-  <description>Another of your computers backing up to this one (ame backup other-computer on that computer): the store, which only adds and reads, and the short pairing that starts it. Opened in the home zone alone, by ame security backup-store, and nothing listens on either port until ame backup store is on.</description>
-  <port protocol="tcp" port="8765"/>
+  <description>Another of your computers backing up to this one (ame backup other-computer on that computer): one store port for each computer paired, which only adds and reads, and the short pairing that starts it. Opened in the home zone alone, by ame security backup-store, and nothing listens on either port until ame backup store is on.</description>
   <port protocol="tcp" port="8766"/>
+  <port protocol="tcp" port="8767-8799"/>
 </service>

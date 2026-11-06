@@ -815,23 +815,34 @@ starting from a backup never changes how this computer backs up.
 ### Back up to your other computer
 
 Two computers at home can look after each other: no disk to remember, no cloud, no subscription. On the computer that will
-**keep** the backup (the store), turn on **Be another computer's backup store** in Security (`ame security backup-store on`), which opens two
-ports in the zone of the networks you named home and nowhere else, then `ame backup store on` and `ame backup store pair`.
+**keep** the backup (the store), turn on **Be another computer's backup store** in Security (`ame security backup-store on`), which opens a pairing port
+and a range of ports in the zone of the networks you named home and nowhere else, then `ame backup store on` and `ame backup store pair`.
+The store's own key is **sealed in its Vault** (under the background key, so the store can start with the Vault closed), and is on disk
+only for the moment the servers start.
 On the computer to back up, `ame backup other-computer setup NAME` pairs with it: **both screens show six digits, and you say
 whether they are the same**. That is what makes a pairing safe against someone else on the network: a stranger in the middle would
-make the two screens differ, and nothing is kept on either side then. Your Vault must be set up, because the backup's password
-and this computer's key for the store are **sealed in it** under its background key, which works with the vault closed so that a night's
-backup needs no one (the Vault's setup says what that gives up). The command also makes a recovery key, above.
+make the two screens differ, and nothing is kept on either side then. Use the name the store's certificate carries (its host name, or that name with
+`.local`, or an address it had when it was set up): setup says so before it asks for anything if the name you typed is not one of them. Your Vault must be
+set up, because the backup's password and this computer's key for the store are **sealed in it** under its background key, which works with the vault closed
+so that a night's backup needs no one (the Vault's setup says what that gives up). The command also makes a recovery key, above.
 
 After that each hour that both computers are at home, the other answers, and the last run is more than twenty hours old, the same backup as
 `ame backup` runs there too (`ame backup other-computer now` runs it at once, `status` says where it stands, `off` and `on` turn the
 nightly run off and on, `forget` takes this computer's settings and keys away). If the Vault is closed and has no background key, the night waits and
-a notice says so once a day. The store holds **only encrypted data**, because restic encrypts before it sends; it is `rclone serve restic
---append-only` over TLS 1.3 and answers only computers it was paired with, each shown to it by a certificate, so no password crosses the network
-and **this computer can add and read its own backups but can never delete from them**: what was backed up before it was taken over is still
-there afterwards. Old snapshots are thinned from the store itself, with credentials the other computer does not hold. `ame backup store clients`
-lists the computers it accepts, and `ame backup store forget FINGERPRINT` stops accepting one. A computer that is paired with a store by
-mistake changes nothing else about backups: the backup in `ame backup` and the Backups window go on as before.
+a notice says so once a day. The store holds **only encrypted data**, because restic encrypts before it sends. It runs `rclone serve restic
+--append-only` over TLS 1.3, **one server, one port and one folder for each computer you paired**, and each server accepts that computer's certificate and
+no other: no password crosses the network, one paired computer can neither read nor write another's backups, and
+**a computer can add and read its own backups but can never delete from them**, so what was backed up before it was taken over is still there afterwards.
+The store's data is in its owner's home (`~/.local/share/amethystora/backup-store/data`), which the store's own backup leaves out, and it fills the store's
+disk until someone thins it: **nothing thins it by itself**, because that needs the repository's password, which the store never has. At the store, run
+`restic -r ~/.local/share/amethystora/backup-store/data/FOLDER forget --keep-daily 14 --keep-weekly 8 --prune` and type the recovery key (`ame backup store clients` lists each
+computer's fingerprint; its folder is the first sixteen characters).
+
+`ame backup store clients` lists the computers it accepts, and `ame backup store forget FINGERPRINT` stops accepting one. **A new computer for a lost one** is
+paired as a replacement, `ame backup store pair --replace FINGERPRINT`: it takes over that computer's backups, port and folder, the old certificate is no longer
+accepted, and `ame backup restore-from` on it brings everything back with the recovery key. Each `ame backup recovery-key` adds another key, and on an
+append-only store none can ever be taken away, so keep the paper safe. A computer paired only to restore stays in the store's list until you forget it.
+Nothing about backups changes for the backup in `ame backup` and the Backups window, which go on as before; they do not show the other computer's backup yet.
 
 ### Your backup disk
 

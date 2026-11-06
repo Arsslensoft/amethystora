@@ -98,7 +98,7 @@ if [[ -z "${REPOSITORY}" ]]; then
     if [[ "${PICK}" == "${COMPUTER}" ]]; then
         # The store holds the backup and accepts only computers it was paired with: this one is new, so it pairs with it now, keeping what that gives
         # in the private folder only (no Vault here yet). On the other computer: ame backup store pair
-        HOST="$(gum input --header "$(gettext "Its name, as the pairing screen on it shows")" --placeholder "desk.local")" || exit 0
+        HOST="$(gum input --header "$(gettext "Its name, as the pairing screen on it shows (on it: ame backup store pair --replace, naming the computer that was lost)")" --placeholder "desk.local")" || exit 0
         [[ -n "${HOST}" ]] || exit 0
         mkdir -p "${WORK}/pair" && chmod 700 "${WORK}/pair"
         ANSWER="$(/usr/libexec/amethystora-backup-pair connect "${HOST}" --temp "${WORK}/pair")" || exit 1
@@ -129,11 +129,13 @@ TYPED="${key}"
 unset key
 (umask 077 && printf '%s' "${TYPED}" >"${KEY_FILE}")
 
-(umask 077 && printf '%s\n' \
-    "# Written by amethystora-start-from-backup, in a private folder that goes when it ends." \
-    "RESTIC_REPOSITORY=${REPOSITORY}" \
-    "RESTIC_PASSWORD_FILE=${KEY_FILE}" \
-    ${CACERT:+"RESTIC_CACERT=${CACERT}"} ${CLIENT_CERT:+"RESTIC_TLS_CLIENT_CERT=${CLIENT_CERT}"} >"${ENV_FILE}")
+# Every value is quoted for the shell (%q): this file is sourced, and a disk's name has spaces in it as often as not
+(umask 077 && {
+    echo "# Written by amethystora-start-from-backup, in a private folder that goes when it ends."
+    printf '%s=%q\n' RESTIC_REPOSITORY "${REPOSITORY}" RESTIC_PASSWORD_FILE "${KEY_FILE}"
+    [[ -z "${CACERT}" ]] || printf '%s=%q\n' RESTIC_CACERT "${CACERT}"
+    [[ -z "${CLIENT_CERT}" ]] || printf '%s=%q\n' RESTIC_TLS_CLIENT_CERT "${CLIENT_CERT}"
+} >"${ENV_FILE}")
 export AMETHYSTORA_BACKUP_ENV="${ENV_FILE}"
 
 # restic, with this backup's settings only for the one command, and never a lock: it reads, as the Backups window does

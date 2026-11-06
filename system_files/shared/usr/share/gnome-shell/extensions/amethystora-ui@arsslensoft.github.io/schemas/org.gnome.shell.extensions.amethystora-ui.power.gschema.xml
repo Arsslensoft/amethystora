@@ -26,7 +26,7 @@
     <key name="charge-by-leaving" type="b">
       <default>false</default>
       <summary>Charged by the time you leave</summary>
-      <description>Plugged in for the night, the battery waits at its charge limit and finishes just before you usually leave, which it learns from your own unplugging, sealed in your Vault. Only on a computer whose battery takes a charge limit. Full now, just this once, is always one press away. ame desktop charge-by and Control write it.</description>
+      <description>Plugged in for the night, the battery waits at its charge limit and finishes just before you usually leave, which it learns from your own unplugging, sealed in your Vault. Only on a computer whose battery takes a charge limit. Full now, just this once, is always one press away. ame desktop power charge and Control write it.</description>
     </key>
     <key name="flat-hold" type="as">
       <default><![CDATA[['<Super><Shift>n']]]></default>

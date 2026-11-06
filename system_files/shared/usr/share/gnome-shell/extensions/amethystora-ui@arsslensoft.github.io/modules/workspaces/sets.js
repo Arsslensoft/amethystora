@@ -327,11 +327,12 @@ export class Sets {
     }
 
     // A set that is not in the list (a put-away's, workspaces/putaway.js): opened as the menu opens a saved one
-    openGiven(set) {
+    // `named` whether an unnamed workspace takes the set's name: a put-away's never does, so that its name is written nowhere in the clear
+    openGiven(set, named = true) {
         if (!this._data)
             return;
         this._clearQueue();
-        this._openSet(set, null, true);
+        this._openSet(set, null, named);
     }
 
     // The apps open before an update's restart (workspaces/resume.js): each entry ({index, layout, windows}) on the

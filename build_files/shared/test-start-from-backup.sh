@@ -84,6 +84,14 @@ compgen -G "${HOME}/notes (*).txt" >/dev/null || fail "the old version was not k
 # A backup disk is found one folder down, and only a restic repository is
 mkdir -p "${T}/media2/Disk/restic" "${T}/media2/Disk/photos"
 mv "${REPO}"/* "${T}/media2/Disk/restic/" 2>/dev/null
+# A disk whose label has a space and a dollar sign in it ("My Passport"): the settings the helper writes are quoted for the shell that sources them
+mkdir -p "${T}/media3/My Pass\$port"
+cp -a "${T}/media2/Disk/restic" "${T}/media3/My Pass\$port/restic"
+rm -rf "${HOME}/notes (*).txt" "${HOME}/Documents"
+out="$(printf '%s\n' "${KEY}" | "${T}/libexec/amethystora-start-from-backup" --repository "${T}/media3/My Pass\$port/restic" --steps files --key-stdin 2>&1)" ||
+    fail "a repository with a space and a dollar sign in its name was not opened: ${out}"
+[[ "$(cat "${HOME}/Documents/tax.txt")" == "${CANARY}" ]] || fail "nothing came back from a disk with a space in its name"
+
 cat >"${T}/finder.sh" <<'SH'
 source "$1"
 SH

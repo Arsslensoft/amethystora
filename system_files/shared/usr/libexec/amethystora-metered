@@ -32,7 +32,7 @@ THROUGH="${XDG_RUNTIME_DIR:-/nonexistent}/amethystora/get-through"
 NETWORK_FS='^(nfs|nfs4|cifs|smb3|smbfs|9p|ceph|glusterfs|davfs|fuse\.(sshfs|rclone|s3fs|davfs2|gvfsd-fuse))$'
 
 usage() {
-    echo "usage: ${0##*/} metered | wait system|containers|backup | done system|containers|backup | status --json | through on|off" >&2
+    echo "usage: ${0##*/} metered | wait system|containers|backup|backup-other | done system|containers|backup|backup-other | status --json | through on|off" >&2
     exit 2
 }
 
@@ -56,7 +56,7 @@ getting_through() {
 stamp_of() {
     case "$1" in
         system) echo "${SYSTEM_DIR}/system" ;;
-        containers | backup) echo "${USER_DIR}/$1" ;;
+        containers | backup | backup-other) echo "${USER_DIR}/$1" ;;
         *) usage ;;
     esac
 }

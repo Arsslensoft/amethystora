@@ -9,14 +9,17 @@
 #   amethystora-backup-other computer off|on         the nightly run (the settings and the sealed keys stay)
 #   amethystora-backup-other computer forget          the settings and the sealed keys of this computer; the repository on the store is left alone
 #   amethystora-backup-other store on|off             this computer as a store: its certificate and the user service (the firewall is `ame security backup-store`)
-#   amethystora-backup-other store pair               wait three minutes for one computer to pair, show six digits, ask
+#   amethystora-backup-other store pair [--replace FP] wait three minutes for one computer to pair, show six digits, ask; --replace: a new computer for a lost one
 #   amethystora-backup-other store status|clients     what it is, and the computers it accepts
 #   amethystora-backup-other store forget FINGERPRINT stop accepting a computer
 #
 # Nothing here runs on its own and nothing here deletes from a backup. The repository's password is made here (random, 40 characters), sealed in the Vault
 # under its `background` key, and never in a file, an argument, a variable that is exported or a log. The store is append-only (rclone serve restic
-# --append-only): this computer can add and read its own, never delete, so what was backed up before it was taken over is still there afterwards.
-# Thinning old snapshots is done at the store, with `restic forget --prune` against its folder, which this computer's credentials cannot do.
+# --append-only), with a server, a port and a folder of its own for each computer paired: this computer can add and read its own, never delete, and cannot
+# reach another's, so what was backed up before it was taken over is still there afterwards.
+# Nothing thins old snapshots by itself: that needs the repository's password, which the store never has. At the store, `restic -r ~/.local/share/amethystora/backup-store/data/FOLDER
+# forget ... --prune` with the recovery key typed (the folder is the first sixteen characters of the computer's fingerprint: ame backup store clients), and the
+# store's disk fills until someone does.
 
 set -uo pipefail
 
@@ -77,14 +80,17 @@ computer_setup() {
     name="$(jq -r '.name' <<<"${answer}")"
     mkdir -p "${CONFIG_DIR}"
     cacert="$(jq -r '.store_pem' <<<"${answer}")"
-    (umask 077 && printf '%s\n' \
-        "# Written by ame backup other-computer, read by /usr/libexec/amethystora-backup --other. The password and the client key are sealed in the Vault." \
-        "RESTIC_REPOSITORY=rest:https://$(jq -r '.host' <<<"${answer}"):$(jq -r '.port' <<<"${answer}")/" \
-        "RESTIC_PASSWORD_COMMAND='${SECRET} password'" \
-        "RESTIC_CACERT=${cacert}" \
-        "AMETHYSTORA_BACKUP_SECRETS=vault" \
-        "AMETHYSTORA_BACKUP_PATHS=${HOME}" \
-        "AMETHYSTORA_BACKUP_NAME=${name}" >"${ENV_FILE}")
+    # Every value is quoted for the shell (%q): this file is sourced, and some of it came off the network
+    local port
+    port="$(jq -r '.port' <<<"${answer}")"
+    [[ "${port}" =~ ^[0-9]{4,5}$ && "${name}" =~ ^[A-Za-z0-9\ ._-]{1,40}$ ]] || die "$(gettext "The other computer's answer was not right.")"
+    {
+        echo "# Written by ame backup other-computer, read by /usr/libexec/amethystora-backup --other. The password and the client key are sealed in the Vault."
+        printf '%s=%q\n' RESTIC_REPOSITORY "rest:https://${host}:${port}/" RESTIC_PASSWORD_COMMAND "${SECRET} password" RESTIC_CACERT "${cacert}" \
+            AMETHYSTORA_BACKUP_SECRETS vault AMETHYSTORA_BACKUP_PATHS "${HOME}" AMETHYSTORA_BACKUP_NAME "${name}"
+    } >"${ENV_FILE}.new"
+    chmod 0600 "${ENV_FILE}.new"
+    mv -f -- "${ENV_FILE}.new" "${ENV_FILE}"
 
     # The repository: an append-only store refuses `restic init` when it is there already, so finding one is normal
     # shellcheck source=/dev/null
@@ -146,9 +152,9 @@ computer_forget() {
 
 store_status() {
     local fp clients firewall running
-    fp="$("${PAIR}" store-init 2>/dev/null)" || fp="-"
+    fp="$("${PAIR}" fingerprint 2>/dev/null)" || fp="-"
     clients="$("${PAIR}" clients 2>/dev/null | grep -c . || true)"
-    if "${HARDENING}" is-on backup-store 2>/dev/null; then firewall="$(gettext "open")"; else firewall="$(gettext "closed: ame security backup-store on")"; fi
+    if "${HARDENING}" is-on backup-store 2>/dev/null; then firewall="$(gettext "set to open on the networks you named home")"; else firewall="$(gettext "closed: ame security backup-store on")"; fi
     if systemctl --user is-active --quiet "${STORE_UNIT}" 2>/dev/null; then running="$(gettext "running")"; else running="$(gettext "not running")"; fi
     say "$(eval_gettext "The store is \${running}; \${clients} computers are paired; the home zone's ports are \${firewall}.")"
     say "$(eval_gettext "Its certificate: \${fp}")"
@@ -167,14 +173,15 @@ case "${1:-}:${2:-}" in
     store:on)
         "${PAIR}" store-init >/dev/null || exit 1
         systemctl --user enable --now "${STORE_UNIT}" 2>/dev/null || true
-        say "$(gettext "This computer is ready to be a store. Turn the home zone's ports on with ame security backup-store, then pair the other computer: ame backup store pair")"
+        say "$(gettext "This computer is ready to be a store. Its key is sealed in your Vault, which must be open, or have its background key, whenever the store starts. Turn the home zone's ports on with ame security backup-store, then pair the other computer: ame backup store pair")"
         ;;
     store:off)
         systemctl --user disable --now "${STORE_UNIT}" 2>/dev/null || true
         say "$(gettext "The store is off. What it holds, and the computers paired, are kept.")"
         ;;
     store:pair)
-        "${PAIR}" pair || exit 1
+        # `ame backup store pair --replace FINGERPRINT` for a new computer that takes over a lost one's backups (ame backup store clients)
+        "${PAIR}" pair "${@:3}" || exit 1
         systemctl --user restart "${STORE_UNIT}" 2>/dev/null || systemctl --user start "${STORE_UNIT}" 2>/dev/null || true
         ;;
     store:status) store_status ;;

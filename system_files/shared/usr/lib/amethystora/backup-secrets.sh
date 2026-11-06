@@ -7,6 +7,8 @@
 backup_secrets_open() {
     local code=0
     [[ -n "${XDG_RUNTIME_DIR:-}" && -d "${XDG_RUNTIME_DIR}" ]] || return 1
+    # A run that was killed (systemd's stop timeout) left its folder: those more than an hour old are swept before another is made
+    find "${XDG_RUNTIME_DIR}" -maxdepth 1 -name 'amethystora-backup.*' -type d -mmin +60 -exec rm -rf -- {} + 2>/dev/null || true
     BACKUP_SECRETS_DIR="$(umask 077 && mktemp -d "${XDG_RUNTIME_DIR}/amethystora-backup.XXXXXX")" || return 1
     /usr/libexec/amethystora-backup-secret client "${BACKUP_SECRETS_DIR}" || code=$?
     if [[ "${code}" -ne 0 ]]; then

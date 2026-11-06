@@ -1,17 +1,60 @@
 #!/usr/bin/bash
-# This computer as another computer's backup store (plans/ui-ideas/r7/spec-keep.md, R7-35): rclone's restic server, append-only (it adds files and reads
-# its own back, and refuses every delete, which is the point of a backup ransomware cannot reach), over TLS 1.3, and only for the computers that were
-# paired (amethystora-backup-pair): each shows a certificate the store was told to accept, or the connection is refused before a byte is read. It holds
-# encrypted data and cannot read it. It runs as amethystora-backup-store.service (a user unit that nothing enables for every account), and the ports it
-# listens on are opened in the home zone only by `ame security backup-store`.
+# This computer as other computers' backup store (plans/ui-ideas/r7/spec-keep.md, R7-35): for each computer paired (amethystora-backup-pair) one rclone restic
+# server on a port of its own, append-only (it adds files and reads its own back, and refuses every delete, which is the point of a backup ransomware cannot
+# reach), over TLS 1.3, that accepts that one computer's certificate and no other, and keeps that computer's repository in a folder of its own. So a computer
+# paired here can neither read nor write another's repository, and none can delete. The store holds encrypted data and cannot read it. It runs as
+# amethystora-backup-store.service (a user unit that nothing enables for every account), and the ports are opened in the home zone only by
+# `ame security backup-store`.
+#
+# The store's private key is sealed in the Vault (amethystora-backup-secret, under the `background` key, which works with the vault closed): it is put in
+# a private folder of $XDG_RUNTIME_DIR for the moment the servers start and read the key, and deleted then. With no Vault set up, or no background key
+# while the vault is closed, the store cannot start, and says why in the journal.
 
 set -euo pipefail
 
 DIR="${XDG_DATA_HOME:-${HOME}/.local/share}/amethystora/backup-store"
-PORT="${AMETHYSTORA_BACKUP_STORE_PORT:-8765}"
-DATA="${DIR}/data"
+SECRET=/usr/libexec/amethystora-backup-secret
 
-[[ -s "${DIR}/server.pem" && -s "${DIR}/server.key" && -s "${DIR}/clients.pem" ]] || { echo "No computer is paired with this store yet." >&2; exit 1; }
-mkdir -p -m 0700 "${DATA}"
-exec rclone serve restic --addr ":${PORT}" --append-only --min-tls-version tls1.3 \
-    --cert "${DIR}/server.pem" --key "${DIR}/server.key" --client-ca "${DIR}/clients.pem" "${DATA}"
+shopt -s nullglob
+CLIENTS=("${DIR}"/clients/*.port)
+[[ -s "${DIR}/server.pem" && ${#CLIENTS[@]} -gt 0 ]] || { echo "No computer is paired with this store yet." >&2; exit 1; }
+[[ -n "${XDG_RUNTIME_DIR:-}" && -d "${XDG_RUNTIME_DIR}" ]] || { echo "There is no private folder to hold the store's key for a moment." >&2; exit 1; }
+WORK="$(umask 077 && mktemp -d "${XDG_RUNTIME_DIR}/amethystora-store.XXXXXX")"
+PIDS=()
+cleanup() {
+    rm -rf -- "${WORK}"
+    for pid in "${PIDS[@]+"${PIDS[@]}"}"; do kill "${pid}" 2>/dev/null || true; done
+}
+trap cleanup EXIT
+trap 'exit 0' TERM INT
+
+"${SECRET}" server-key "${WORK}" || { echo "The store's key could not be opened from the Vault: it needs the Vault open, or its background key." >&2; exit 1; }
+
+PORTS=()
+for file in "${CLIENTS[@]}"; do
+    fp="$(basename "${file}" .port)"
+    port="$(<"${file}")"
+    [[ "${fp}" =~ ^[0-9a-f]{64}$ && "${port}" =~ ^[0-9]{4,5}$ && -s "${DIR}/clients/${fp}.pem" ]] || continue
+    # Its folder: the one it was given when it was paired (a computer that replaced another has the other's)
+    name="$(head -n 1 "${DIR}/clients/${fp}.dir" 2>/dev/null || true)"
+    [[ "${name}" =~ ^[0-9a-f]{16}$ ]] || name="${fp:0:16}"
+    data="${DIR}/data/${name}"
+    mkdir -p -m 0700 "${DIR}/data" "${data}"
+    # This computer's certificate is the only one this server accepts
+    rclone serve restic --addr ":${port}" --append-only --min-tls-version tls1.3 \
+        --cert "${DIR}/server.pem" --key "${WORK}/server.key" --client-ca "${DIR}/clients/${fp}.pem" "${data}" &
+    PIDS+=($!)
+    PORTS+=("${port}")
+done
+[[ ${#PIDS[@]} -gt 0 ]] || { echo "No computer paired with this store has a port." >&2; exit 1; }
+# The servers read the key as they start: once each answers, it is deleted
+for port in "${PORTS[@]}"; do
+    for _ in $(seq 100); do
+        (exec 3<>"/dev/tcp/127.0.0.1/${port}") 2>/dev/null && break
+        sleep 0.1
+    done
+done
+rm -f -- "${WORK}/server.key"
+# One going away ends the store, and systemd starts it again
+wait -n "${PIDS[@]}" || true
+exit 1

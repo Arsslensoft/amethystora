@@ -43,6 +43,8 @@ class Mark {
         const view = this._view;
         if (!view)
             return '';
+        if (view.stuck)
+            return _('Charge limit stays on');
         if (view.holding)
             return view.limit > 0 ? _('Held at %d%%').format(view.limit) : _('Held for the night');
         if (view.refused)
@@ -69,7 +71,7 @@ class Mark {
         const body = new St.BoxLayout({style_class: 'amethystora-pill-card-body amethystora-pill-news-card',
             orientation: Clutter.Orientation.VERTICAL});
         body.add_child(label(this.text, 'amethystora-pill-news-title'));
-        if (view?.holding) {
+        if (view?.holding && !view.stuck) {
             body.add_child(label(_('Your battery lasts longer when it does not sit full.'), 'amethystora-pill-card-text'));
             if (view.leaveAt) {
                 body.add_child(label(_('Full by %s. You usually leave about then.').format(timeOfDay(new Date(view.leaveAt))),
@@ -81,6 +83,9 @@ class Mark {
             }, {primary: true})]));
         } else if (view?.leaveAt) {
             body.add_child(label(_('You usually leave about %s, which is soon, so it is charging fully.').format(timeOfDay(new Date(view.leaveAt))),
+                'amethystora-pill-card-text'));
+        } else if (view?.stuck) {
+            body.add_child(label(_('The battery was held at its limit and the system did not let this take the limit off. It tries again whenever anything changes, and when you start next.'),
                 'amethystora-pill-card-text'));
         } else if (view?.refused) {
             body.add_child(label(_('This laptop did not take the change, so nothing is held. It charges fully.'), 'amethystora-pill-card-text'));
@@ -97,7 +102,7 @@ class Mark {
         } else {
             body.add_child(label(_('It is still learning when you leave: it needs a few nights on mains, then it can hold the charge and finish it just before you go. Until then it charges fully.'),
                 'amethystora-pill-card-text'));
-            if (view?.fresh > 0 && view.problem !== null) {
+            if (view?.problem !== null) {
                 body.add_child(label(_('What it learned is kept until you log out. Open Vault to keep it longer.'), 'amethystora-pill-news-once'));
                 body.add_child(buttonRow([cardButton(_('Open Vault'), () => charge.openVault()),
                     cardButton(_('Keep it'), () => {
@@ -135,7 +140,7 @@ export class ChargeCards {
     // Shown while it holds the battery, or says what it does not know, or that the laptop refused
     refresh() {
         const view = this.charge?.view;
-        const on = !!view?.supported && view.onMains && (view.holding || view.refused || view.said);
+        const on = !!view?.supported && view.onMains && (view.holding || view.refused || view.stuck || view.said);
         if (on && this._activities.get('chargeby') !== this._mark)
             this._activities.set('chargeby', this._mark);
         else if (!on && this._activities.get('chargeby') === this._mark)

@@ -56,18 +56,17 @@ as() {
         "$@"
 }
 
+# Free ports for the store's servers, one for each computer paired
 PORTS="$(python3 -I -c 'import socket
-s = [socket.socket() for _ in range(2)]
+s = [socket.socket() for _ in range(4)]
 [x.bind(("127.0.0.1", 0)) for x in s]
 print(*[x.getsockname()[1] for x in s])')"
-STORE_PORT="${PORTS% *}"
-PAIR_PORT="${PORTS#* }"
 
 # --- Pairing, in one process with two roles ------------------------------------------------------------------------------
 cat >"${T}/pairing.py" <<'PY'
 import faulthandler, importlib.machinery, importlib.util, json, os, socket, sys, threading
 faulthandler.dump_traceback_later(90, exit=True)
-path, base, store_port = sys.argv[1], sys.argv[2], int(sys.argv[3])
+path, base, ports = sys.argv[1], sys.argv[2], [int(x) for x in sys.argv[3].split()]
 loader = importlib.machinery.SourceFileLoader("pairmod", path)
 spec = importlib.util.spec_from_loader("pairmod", loader)
 m = importlib.util.module_from_spec(spec)
@@ -76,7 +75,7 @@ os.environ["XDG_RUNTIME_DIR"] = f"{base}/a/run"
 os.environ["XDG_DATA_HOME"] = f"{base}/a/home/.local/share"
 os.environ["HOME"] = f"{base}/a/home"
 m.SECRET = f"{base}/libexec/amethystora-backup-secret"
-m.STORE_PORT = store_port
+m.CLIENT_PORTS = ports
 local = threading.local()
 shown, ready = {}, {"a": threading.Event(), "b": threading.Event()}
 def ask(six, expect, name):
@@ -184,12 +183,13 @@ import tempfile
 d = tempfile.mkdtemp(dir=f"{base}/scratch")
 cert, _ = m.make_certificate(d, "cheat", "clientAuth")
 na = os.urandom(16)
+result["clean_name"] = m.clean_name("x\x1b[2A\r123 456\u202eEVIL;$(rm -rf)\n" + "y" * 80)
 result["cheat"] = {"refused": raw({"v": 1, "commit": m.commit(na), "cert": cert, "name": "x"}, {"v": 1, "na": os.urandom(16).hex()}),
     "not_a_certificate": raw({"v": 1, "commit": "0" * 64, "cert": "not a certificate", "name": "x"}),
     "bad_commit": raw({"v": 1, "commit": "zz", "cert": cert, "name": "x"}), "clients_added": client_count() - before}
 print(json.dumps(result))
 PY
-OUT="$(python3 -I "${T}/pairing.py" "${T}/libexec/amethystora-backup-pair" "${T}" "${STORE_PORT}" 2>"${T}/pairing.err")" || fail "the pairing harness: $(tail -n 5 "${T}/pairing.err")"
+OUT="$(python3 -I "${T}/pairing.py" "${T}/libexec/amethystora-backup-pair" "${T}" "${PORTS}" 2>"${T}/pairing.err")" || fail "the pairing harness: $(tail -n 5 "${T}/pairing.err")"
 OUT="$(tail -n 1 <<<"${OUT}")"
 j() { jq -r "$1" <<<"${OUT}"; }
 [[ "$(j .good.digits_agree)" == true && "$(j .good.a_ok)" == true && "$(j .good.b_ok)" == true ]] || fail "a good pairing did not finish: ${OUT}"
@@ -197,19 +197,25 @@ j() { jq -r "$1" <<<"${OUT}"; }
 [[ "$(j .mitm.digits_differ)" == true ]] || echo "note: the man in the middle's digits matched by chance (one in a million)"
 [[ "$(j .mitm.a_failed)" == true && "$(j .mitm.b_failed)" == true && "$(j .mitm.clients_added)" == 0 && "$(j .mitm.c_kept)" == false ]] ||
     fail "a person in the middle was accepted: ${OUT}"
+[[ "$(j .clean_name)" =~ ^[A-Za-z0-9\ ._-]{1,40}$ ]] || fail "a peer's name was not reduced to safe characters: $(j .clean_name)"
 [[ "$(j .cheat.refused)" == true && "$(j .cheat.not_a_certificate)" == true && "$(j .cheat.bad_commit)" == true && "$(j .cheat.clients_added)" == 0 ]] ||
     fail "a broken pairing was accepted: ${OUT}"
 STORE="${T}/b/home/.local/share/amethystora/backup-store"
 OTHER="${T}/a/home/.local/share/amethystora/backup-other"
 # The key and the pairing certificate are sealed, never plain
-[[ "$(stat -c %a "${STORE}/server.key")" == 600 && "$(stat -c %a "${STORE}")" == 700 ]] || fail "the store's folder or key is not private"
-! grep -rIl "PRIVATE KEY" "${T}/a" "${T}/c" 2>/dev/null | grep -q . || fail "a private key is on disk on the computer that backs up: $(grep -rIl 'PRIVATE KEY' "${T}/a" "${T}/c" | head -n 1)"
+[[ ! -e "${STORE}/server.key" && -s "${STORE}/server.avs" && "$(stat -c %a "${STORE}")" == 700 ]] || fail "the store's key is not sealed, or its folder is not private"
+A_PORT="$(cat "${STORE}"/clients/*.port)"
+[[ "${A_PORT}" =~ ^[0-9]+$ ]] || fail "the computer paired has no port: ${A_PORT}"
+! grep -rIl "PRIVATE KEY" "${T}/a" "${T}/b" "${T}/c" 2>/dev/null | grep -q . || fail "a private key is on disk: $(grep -rIl 'PRIVATE KEY' "${T}/a" "${T}/b" "${T}/c" | head -n 1)"
 [[ -z "$(find "${T}/a/run" "${T}/b/run" "${T}/c/run" -mindepth 1)" ]] || fail "pairing left something in a runtime folder: $(find "${T}/a/run" "${T}/b/run" "${T}/c/run" -mindepth 1)"
 
 # --- The store ----------------------------------------------------------------------------------------------------------
-as b env AMETHYSTORA_BACKUP_STORE_PORT="${STORE_PORT}" "${T}/libexec/amethystora-backup-store" >"${T}/store.log" 2>&1 &
+as b "${T}/libexec/amethystora-backup-store" >"${T}/store.log" 2>&1 &
 PIDS+=($!)
-for _ in $(seq 60); do (exec 3<>"/dev/tcp/127.0.0.1/${STORE_PORT}") 2>/dev/null && break; sleep 0.2; done
+for _ in $(seq 100); do (exec 3<>"/dev/tcp/127.0.0.1/${A_PORT}") 2>/dev/null && break; sleep 0.2; done
+sleep 1
+# The key was in a private folder only while the server started: nothing is left of it
+[[ -z "$(find "${T}/b/run" -mindepth 1 -name 'server.key')" ]] || fail "the store's key is still in the runtime folder"
 
 # The computer that backs up: the settings, as `ame backup other-computer setup` writes them, and the password sealed
 mkdir -p "${T}/a/home/.config/amethystora" "${T}/a/home/Documents"
@@ -220,7 +226,7 @@ cat >"${T}/a/home/.config/amethystora/backup-excludes" <<<"*.cache"
 PASSWORD="repo-password-$(head -c 12 /dev/urandom | base64 | tr -dc 'A-Za-z0-9')-$$"
 printf '%s' "${PASSWORD}" | as a "${T}/libexec/amethystora-backup-secret" store-password || fail "sealing the password"
 cat >"${T}/a/home/.config/amethystora/backup-other.env" <<ENV
-RESTIC_REPOSITORY=rest:https://127.0.0.1:${STORE_PORT}/
+RESTIC_REPOSITORY=rest:https://127.0.0.1:${A_PORT}/
 RESTIC_PASSWORD_COMMAND='${T}/libexec/amethystora-backup-secret password'
 RESTIC_CACERT=${OTHER}/store.pem
 AMETHYSTORA_BACKUP_SECRETS=vault
@@ -291,17 +297,19 @@ KEY="$(as a "${T}/libexec/amethystora-backup-recovery" --env "${T}/a/home/.confi
 [[ -z "$(ls -A "${T}/a/run")" ]] || fail "the recovery key's helper left something in the runtime folder"
 # A new computer (c), paired with the store later, opens the repository with the recovery key alone and puts the files back
 HOLDER_C="${T}/c.sh"
-cat >"${T}/pair-c.py" <<'PY'
+cat >"${T}/pair-more.py" <<'PY'
 import faulthandler, importlib.machinery, importlib.util, json, os, socket, sys, threading
 faulthandler.dump_traceback_later(90, exit=True)
-path, base, store_port, out = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
+path, base, ports, out, computer = sys.argv[1], sys.argv[2], [int(x) for x in sys.argv[3].split()], sys.argv[4], sys.argv[5]
+replace = sys.argv[6] if len(sys.argv) > 6 else None
 loader = importlib.machinery.SourceFileLoader("pairmod", path)
 m = importlib.util.module_from_spec(importlib.util.spec_from_loader("pairmod", loader)); loader.exec_module(m)
-os.environ["XDG_RUNTIME_DIR"] = f"{base}/c/run"
-os.environ["XDG_DATA_HOME"] = f"{base}/c/home/.local/share"
-os.environ["HOME"] = f"{base}/c/home"
+os.environ["XDG_RUNTIME_DIR"] = f"{base}/{computer}/run"
+os.environ["XDG_DATA_HOME"] = f"{base}/{computer}/home/.local/share"
+os.environ["HOME"] = f"{base}/{computer}/home"
 m.STORE_DIR = f"{base}/b/home/.local/share/amethystora/backup-store"
-m.STORE_PORT = store_port
+m.SECRET = f"{base}/libexec/amethystora-backup-secret"
+m.CLIENT_PORTS = ports
 shown = {}
 ev = {"a": threading.Event(), "b": threading.Event()}
 local = threading.local()
@@ -311,28 +319,46 @@ def ask(six, expect, name):
 m.ask_match = ask
 srv = socket.create_server(("127.0.0.1", 0))
 def b():
-    local.role = "b"; m.pair(0, 30, None, listener=srv)
+    local.role = "b"; m.pair(0, 30, None, listener=srv, replace=replace)
 t = threading.Thread(target=b); t.start()
 local.role = "a"
 os.makedirs(out, mode=0o700, exist_ok=True)
 print(json.dumps(m.connect("127.0.0.1", srv.getsockname()[1], None, temp=out)))
 t.join()
 PY
-mkdir -p "${T}/c/restore"
-python3 -I "${T}/pair-c.py" "${T}/libexec/amethystora-backup-pair" "${T}" "${STORE_PORT}" "${T}/c/restore" >/dev/null || fail "pairing the new computer"
-as b "${T}/libexec/amethystora-backup-pair" clients | grep -c . | grep -qx 2 || fail "the store does not accept the new computer"
-# The store reads its clients when it starts: it is restarted, as `ame backup store pair` does
+mkdir -p "${T}/c/restore" "${T}/d/home" "${T}/d/run" "${T}/d/restore"
+chmod 700 "${T}/d/run"
+A_FP="$(basename "$(ls "${STORE}"/clients/*.pem)" .pem)"
+# A new laptop for the lost one: it is paired as a replacement, and takes over the backups, the port and the folder; the old one is no longer accepted
+python3 -I "${T}/pair-more.py" "${T}/libexec/amethystora-backup-pair" "${T}" "${PORTS}" "${T}/c/restore" c "${A_FP}" >/dev/null || fail "pairing the replacement"
+as b "${T}/libexec/amethystora-backup-pair" clients | grep -c . | grep -qx 1 || fail "the replaced computer is still accepted, or the new one is not"
+[[ ! -e "${STORE}/clients/${A_FP}.pem" ]] || fail "the replaced computer's certificate was kept"
+C_PORT="$(cat "${STORE}"/clients/*.port)"
+[[ "${C_PORT}" == "${A_PORT}" ]] || fail "the replacement did not take over the port"
+# Another computer, paired as new: a server, a port and a folder of its own
+python3 -I "${T}/pair-more.py" "${T}/libexec/amethystora-backup-pair" "${T}" "${PORTS}" "${T}/d/restore" d >/dev/null || fail "pairing a second computer"
+D_PORT="$(grep -hvx "${A_PORT}" "${STORE}"/clients/*.port)"
+[[ "${D_PORT}" =~ ^[0-9]+$ && "${D_PORT}" != "${A_PORT}" ]] || fail "the second computer has no port of its own"
+# The store starts a server for each computer when it starts: it is restarted, as `ame backup store pair` does
 kill "${PIDS[-1]}" 2>/dev/null || true
-sleep 0.5
-as b env AMETHYSTORA_BACKUP_STORE_PORT="${STORE_PORT}" "${T}/libexec/amethystora-backup-store" >"${T}/store2.log" 2>&1 &
+sleep 1
+as b "${T}/libexec/amethystora-backup-store" >"${T}/store2.log" 2>&1 &
 PIDS+=($!)
-for _ in $(seq 60); do (exec 3<>"/dev/tcp/127.0.0.1/${STORE_PORT}") 2>/dev/null && break; sleep 0.2; done
+for _ in $(seq 100); do (exec 3<>"/dev/tcp/127.0.0.1/${D_PORT}") 2>/dev/null && break; sleep 0.2; done
+sleep 1
+# Each computer reaches its own server and no other's: the second is refused on the first one's port, and the first on the second's
+RESTIC_REPOSITORY="rest:https://127.0.0.1:${A_PORT}/" RESTIC_CACERT="${T}/d/restore/store.pem" RESTIC_TLS_CLIENT_CERT="${T}/d/restore/client.pem" \
+    RESTIC_PASSWORD="x" timeout 30 restic --no-lock snapshots >/dev/null 2>&1 && fail "the second computer reached the first one's repository"
+RESTIC_REPOSITORY="rest:https://127.0.0.1:${D_PORT}/" RESTIC_CACERT="${T}/c/restore/store.pem" RESTIC_TLS_CLIENT_CERT="${T}/c/restore/client.pem" \
+    RESTIC_PASSWORD="x" timeout 30 restic --no-lock snapshots >/dev/null 2>&1 && fail "the first computer reached the second one's server"
+# The computer that was replaced is refused where it used to be
+with_a timeout 30 restic cat config >/dev/null 2>&1 && fail "a computer that was replaced still reaches the backups"
 # c is a new computer at the same home path as a (what amethystora-restore knows how to put back): the files are gone, only the recovery key is known
 rm -rf "${T}/a/home/Documents"
 CONFIG_BEFORE="$(find "${T}/a/home/.config" -type f -exec sha256sum {} + | sort)"
 # (as c, but at the home path the backup has)
 out="$(printf '%s\n' "${KEY}" | env -i PATH="${T}/bin:${PATH}" HOME="${T}/a/home" XDG_RUNTIME_DIR="${T}/c/run" TMPDIR="${T}/c/tmp" \
-    "${T}/libexec/amethystora-start-from-backup" --repository "rest:https://127.0.0.1:${STORE_PORT}/" \
+    "${T}/libexec/amethystora-start-from-backup" --repository "rest:https://127.0.0.1:${C_PORT}/" \
     --cacert "${T}/c/restore/store.pem" --client-cert "${T}/c/restore/client.pem" --steps files --key-stdin 2>&1)" || { echo "${out}"; fail "restoring from nothing with the recovery key"; }
 grep -q "newest backup of files" <<<"${out}" || fail "the restore did not say what the backup holds: ${out}"
 [[ "$(cat "${T}/a/home/Documents/tax.txt")" == "${CANARY}" ]] || fail "the files did not come back from the other computer"

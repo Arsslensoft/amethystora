@@ -59,11 +59,11 @@ backup ACTION="" *MORE:
             [[ -n "${paths}" ]] || exit 0
             mkdir -p "${CONFIG_DIR}"
             (umask 077 && printf '%s' "${password}" >"${PASSWORD_FILE}")
-            (umask 077 && printf '%s\n' \
-                "# Written by ame backup, read by /usr/libexec/amethystora-backup." \
-                "RESTIC_REPOSITORY=${repository}" \
-                "RESTIC_PASSWORD_FILE=${PASSWORD_FILE}" \
-                "AMETHYSTORA_BACKUP_PATHS=${paths}" >"${ENV_FILE}")
+            # Every value is quoted for the shell (%q): the file is sourced, and a repository or a folder may have spaces or $ in it
+            (umask 077 && {
+                echo "# Written by ame backup, read by /usr/libexec/amethystora-backup."
+                printf '%s=%q\n' RESTIC_REPOSITORY "${repository}" RESTIC_PASSWORD_FILE "${PASSWORD_FILE}" AMETHYSTORA_BACKUP_PATHS "${paths}"
+            } >"${ENV_FILE}")
             set -a && source "${ENV_FILE}" && set +a
             # An append-only repository refuses `restic init`, so finding one already there is normal
             if restic cat config >/dev/null 2>&1; then

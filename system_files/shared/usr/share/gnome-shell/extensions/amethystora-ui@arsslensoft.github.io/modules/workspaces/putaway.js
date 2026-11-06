@@ -109,6 +109,7 @@ export class PutAway {
     enable() {
         this._dead = false;
         this._check = 0;
+        this._askTimer = 0;
         this._watched = [];
         // One stat of one file, once: whether a sealed list is there to be offered. It is not read, so no Vault is asked.
         fileSize(FILE).then(size => {
@@ -123,6 +124,7 @@ export class PutAway {
 
     disable() {
         this._dead = true;
+        this._clearAsk();
         if (this._check)
             GLib.source_remove(this._check);
         this._check = 0;
@@ -170,20 +172,39 @@ export class PutAway {
             pending = null;
             return null;
         }
-        pending = {workspace, set: captured.set, count: captured.set.windows.length, name: captured.set.name};
+        // The windows the set holds are the ones that close: kept here, since the card may stay up while others come and go on the workspace
+        const windows = sets.windowsOf(workspace).slice(-captured.set.windows.length);
+        pending = {workspace, set: captured.set, count: captured.set.windows.length, name: captured.set.name, windows};
+        if (this._askTimer)
+            GLib.source_remove(this._askTimer);
+        // A question left unanswered goes by itself after two minutes
+        this._askTimer = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 120, () => {
+            this._askTimer = 0;
+            pending = null;
+            this._changed();
+            return GLib.SOURCE_REMOVE;
+        });
         this._changed();
         this._module._ext.modules?.get('pill')?.putAway?.show('putaway');
         return {name: pending.name, count: pending.count};
     }
 
     cancel() {
+        this._clearAsk();
         pending = null;
         this._changed();
+    }
+
+    _clearAsk() {
+        if (this._askTimer)
+            GLib.source_remove(this._askTimer);
+        this._askTimer = 0;
     }
 
     // The person said yes: it is kept in memory at once, its windows are asked to close the way their close button asks, and the list is sealed
     confirm() {
         const ask = pending;
+        this._clearAsk();
         pending = null;
         const sets = this._module.sets;
         if (!ask || !sets) {
@@ -192,7 +213,8 @@ export class PutAway {
         }
         items = add(items, ask.set);
         dirty = true;
-        const windows = sets.windowsOf(ask.workspace).slice(-ask.count);
+        // Only the captured windows that are still there
+        const windows = ask.windows.filter(w => w.get_workspace() === ask.workspace);
         stillOpen = windows.length;
         const time = global.get_current_time();
         for (const window of windows) {
@@ -311,7 +333,7 @@ export class PutAway {
         if (!item)
             return false;
         items = without(items, name);
-        this._module.sets?.openGiven(item);
+        this._module.sets?.openGiven(item, false);
         dirty = true;
         this._changed();
         this.keep();

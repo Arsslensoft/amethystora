@@ -24,6 +24,11 @@ const THEMES: &str = "/usr/share/amethystora/themes";
 /// How long the preview's dock takes to change, before the session's own setting for animations
 const DOCK_MS: f64 = 200.0;
 
+thread_local! {
+    /// Start fresh was pressed: the card stays away for as long as this window lives, however often the page is drawn again
+    static FRESH: Cell<bool> = const { Cell::new(false) };
+}
+
 /// The list's entry that starts from a backup (`ame backup restore-from`)
 const BACKUP_ENTRY: &str = "start-from-backup";
 
@@ -444,7 +449,10 @@ impl Control {
         card.append(&ui::label(&t!("New computer, or the old one was lost. Plug in your backup disk, and have your recovery key ready."), &["lead"]));
         let buttons = ui::hbox(8, &["welcome-backup-buttons"]);
         let hide = card.clone();
-        buttons.append(&ui::button(&t!("Start fresh"), None, &["seg"], move || hide.set_visible(false)));
+        buttons.append(&ui::button(&t!("Start fresh"), None, &["seg"], move || {
+            FRESH.with(|fresh| fresh.set(true));
+            hide.set_visible(false);
+        }));
         let me = self.me.clone();
         buttons.append(&ui::button(&t!("Bring it all back"), None, &["seg", "chosen"], move || {
             if let Some(this) = me.upgrade() {
@@ -470,7 +478,7 @@ impl Control {
         view.append(&head);
 
         // Have a backup? (R7-55): the list's own entry, run as its card runs it, in a terminal, where the recovery key is typed
-        if list.as_deref().is_some_and(|list| list.items.iter().any(|item| item.id == BACKUP_ENTRY && item.available)) {
+        if !FRESH.with(Cell::get) && list.as_deref().is_some_and(|list| list.items.iter().any(|item| item.id == BACKUP_ENTRY && item.available)) {
             view.append(&self.backup_card());
         }
 

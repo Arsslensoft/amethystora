@@ -9,10 +9,10 @@ After=network-online.target
 Type=oneshot
 # Only at home with the store answering, and not twice a day; a run that is not due is skipped, and asked again the next hour
 ExecCondition=/usr/libexec/amethystora-backup-other-ready --due
-# On a connection that counts data the run waits for one that does not, at most a week, as the first backup does (amethystora-metered)
-ExecCondition=/usr/libexec/amethystora-metered wait backup
+# On a connection that counts data the run waits for one that does not, at most a week, as the first backup does, with a stamp of its own (amethystora-metered)
+ExecCondition=/usr/libexec/amethystora-metered wait backup-other
 ExecStart=/usr/libexec/amethystora-backup --other
-ExecStartPost=/usr/libexec/amethystora-metered done backup
+ExecStartPost=/usr/libexec/amethystora-metered done backup-other
 # A backup that makes the desktop stutter is a backup the user turns off
 Nice=19
 IOSchedulingClass=idle

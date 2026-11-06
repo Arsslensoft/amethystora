@@ -1355,6 +1355,12 @@ elif [[ "${GUEST}" == on ]]; then
     report optional guest-login on "$(gettext "Guest login")" \
         "$(gettext "A visitor's login without a password, whose home folder is emptied when they log out")"
 fi
+# Another computer's backup (ame security backup-store; R7-35): said only while it is on, since it opens ports, in the home zone only
+COMMAND="ame security backup-store"
+if /usr/libexec/amethystora-hardening is-on backup-store 2>/dev/null; then
+    report optional backup-store on "$(gettext "Another computer's backup")" \
+        "$(gettext "Ports are open on the networks you named home, for the computers you paired to back up to this one: each can add to its own folder and never delete, and it holds only encrypted data")"
+fi
 COMMAND=""
 
 if systemctl --user is-enabled --quiet amethystora-backup.timer 2>/dev/null; then BACKUP=on; else BACKUP=off; fi

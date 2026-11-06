@@ -1,12 +1,14 @@
 #!/usr/bin/python3 -I
 # Pairing two computers so that one backs up to the other (plans/ui-ideas/r7/spec-keep.md, R7-35, Back up to your other computer).
 #
-#   amethystora-backup-pair store-init [--name NAME]          the store: make its certificate if it has none, and say its fingerprint
-#   amethystora-backup-pair pair [--port N] [--timeout S]     the store: wait for one computer to pair, show six digits, ask
+#   amethystora-backup-pair store-init [--name NAME]          the store: make its certificate and key if it has none (the key sealed in the Vault), say its fingerprint
+#   amethystora-backup-pair fingerprint                       the store's fingerprint, or - when it has none: reads only
+#   amethystora-backup-pair pair [--port N] [--timeout S] [--replace FP]   the store: wait for one computer to pair, show six digits, ask; with --replace the
+#                                                             computer takes over the backups, port and folder of the one it replaces (a new laptop for a lost one)
 #   amethystora-backup-pair connect HOST [--port N] [--temp DIR]  the computer to back up: pair with the store at HOST, show six digits, ask
 #                                                             (--temp: keep the key in DIR instead of sealing it, to restore on a computer with no Vault)
 #   amethystora-backup-pair forget FINGERPRINT                the store: stop accepting that computer
-#   amethystora-backup-pair clients                           the store: the computers it accepts, one fingerprint and name a line
+#   amethystora-backup-pair clients                           the store: the computers it accepts, one fingerprint, port and name a line
 #
 # Both sides show the same six digits, and each person says whether they are the same. The digits are a short authentication string with a
 # commitment, so that six are enough against someone in the middle of the network:
@@ -38,7 +40,8 @@ import tempfile
 import time
 
 PAIR_PORT = 8766
-STORE_PORT = 8765
+# One port for each computer paired, each served by an rclone of its own that knows that computer's certificate and folder alone
+CLIENT_PORTS = range(8767, 8800)
 SECRET = "/usr/libexec/amethystora-backup-secret"
 TAG = b"amethystora-backup-pair"
 MAX_LINE = 16384
@@ -50,6 +53,13 @@ def data_dir():
 
 STORE_DIR = os.path.join(data_dir(), "backup-store")
 OTHER_DIR = os.path.join(data_dir(), "backup-other")
+
+
+def clean_name(text, fallback="the other computer"):
+    """A name that came off the network, reduced to letters, digits, spaces, dots, dashes and underscores before anything uses it: it is printed in
+    a terminal beside six digits people compare, and written into settings, so it may carry nothing that moves a cursor or runs"""
+    kept = "".join(c for c in str(text) if c.isascii() and (c.isalnum() or c in " ._-"))[:40].strip()
+    return kept or fallback
 
 
 def say(text):
@@ -103,6 +113,30 @@ def make_certificate(directory, common_name, usage, names=(), addresses=()):
     return cert_pem, key_pem
 
 
+def x509(pem, *args):
+    result = subprocess.run(["openssl", "x509", "-noout", *args], input=pem, capture_output=True, text=True, check=False)
+    if result.returncode != 0:
+        raise ValueError("not a certificate")
+    return result.stdout
+
+
+def clean_cert(pem):
+    """One certificate, parsed by openssl, as clean PEM; ValueError for anything else (two certificates, text around one, junk between markers)"""
+    if not isinstance(pem, str) or pem.count("-----BEGIN CERTIFICATE-----") != 1 or len(pem) > 8192:
+        raise ValueError("not one certificate")
+    x509(pem, "-fingerprint")
+    return ssl.DER_cert_to_PEM_cert(ssl.PEM_cert_to_DER_cert(pem))
+
+
+def cert_names(pem):
+    """The names and addresses a certificate carries, lower case"""
+    try:
+        out = x509(pem, "-ext", "subjectAltName")
+    except ValueError:
+        return []
+    return [m.lower() for m in re.findall(r"(?:DNS:|IP Address:)([^\s,]+)", out)]
+
+
 def der(pem):
     return ssl.PEM_cert_to_DER_cert(pem)
 
@@ -147,14 +181,17 @@ def receive(reader):
 
 def ask_match(six, expect, name):
     """Whether the person says the digits are the same: from the terminal, or --expect-digits"""
+    # The digits are the last thing printed before the person answers
+    if expect is None and not sys.stdin.isatty():
+        die("Pairing asks a person: run it in a terminal.")
+    if expect is None:
+        say("")
+        say(f"Are these the same six digits on {clean_name(name)}'s screen?")
     say("")
     say(f"    {shown(six)}")
     say("")
     if expect is not None:
         return expect.replace(" ", "") == six
-    if not sys.stdin.isatty():
-        die("Pairing asks a person: run it in a terminal.")
-    say(f"Are these the same six digits on {name}'s screen?")
     return input("Type yes if they match, anything else if they differ: ").strip().lower() in ("yes", "y")
 
 
@@ -178,15 +215,19 @@ def own_addresses():
     return sorted(found)
 
 
-def store_init(name=None):
-    private_dir(STORE_DIR)
-    private_dir(os.path.join(STORE_DIR, "clients"))
+def store_init(name=None, create=True):
+    """The store's certificate (public, in the folder) and its key (sealed in the Vault, under `background`, never a file here); returns the fingerprint,
+    or None when there is none and create is false"""
     cert = os.path.join(STORE_DIR, "server.pem")
-    key = os.path.join(STORE_DIR, "server.key")
-    if not (os.path.exists(cert) and os.path.exists(key)):
+    sealed = os.path.join(STORE_DIR, "server.avs")
+    if not (os.path.exists(cert) and os.path.exists(sealed)):
+        if not create:
+            return None
+        private_dir(STORE_DIR)
+        private_dir(os.path.join(STORE_DIR, "clients"))
         work = runtime()
         try:
-            host = name or hostname()
+            host = clean_name(name or hostname(), "store")
             cert_pem, key_pem = make_certificate(work, host, "serverAuth", [host, f"{host}.local", "localhost"], ["127.0.0.1", "::1", *own_addresses()])
         finally:
             for leftover in ("key.pem", "cert.pem"):
@@ -195,12 +236,15 @@ def store_init(name=None):
                 except OSError:
                     pass
             os.rmdir(work)
-        for path, content in ((cert, cert_pem), (key, key_pem)):
-            fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-            with os.fdopen(fd, "w") as handle:
-                handle.write(content)
-    with open(cert, encoding="ascii") as handle:
-        return fingerprint(handle.read())
+        sealed_run = subprocess.run([SECRET, "store-server-key"], input=key_pem, text=True, capture_output=True, check=False,
+                                    env={**os.environ, "XDG_DATA_HOME": os.path.dirname(os.path.dirname(STORE_DIR))})
+        if sealed_run.returncode != 0:
+            die((sealed_run.stderr or "The store's key could not be sealed in the Vault.").strip() +
+                " The store needs a Vault that is set up, with its background key, to start on its own.", sealed_run.returncode or 1)
+        fd = os.open(cert, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w") as handle:
+            handle.write(cert_pem)
+    return fingerprint(read_text(cert))
 
 
 def read_text(path):
@@ -208,20 +252,36 @@ def read_text(path):
         return handle.read()
 
 
-def rebuild_clients():
-    """clients.pem, the certificates the store accepts, from the clients folder"""
+def used_ports():
     folder = os.path.join(STORE_DIR, "clients")
-    bundle = "".join(read_text(os.path.join(folder, name)) for name in sorted(os.listdir(folder)) if re.fullmatch(r"[0-9a-f]{64}\.pem", name))
-    path = os.path.join(STORE_DIR, "clients.pem")
-    tmp = path + ".new"
-    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w") as handle:
-        handle.write(bundle)
-    os.replace(tmp, path)
+    found = {}
+    for name in os.listdir(folder) if os.path.isdir(folder) else []:
+        if name.endswith(".port"):
+            try:
+                found[name[:-5]] = int(read_text(os.path.join(folder, name)).strip())
+            except (OSError, ValueError):
+                pass
+    return found
 
 
-def pair(port, timeout, expect, listener=None):
+def port_for(fp, replace=None):
+    """The port of this computer's own server: the one it has, the one of the computer it replaces, or the first of the range that no other has"""
+    ports = used_ports()
+    if replace and replace in ports:
+        return ports[replace]
+    if fp in ports:
+        return ports[fp]
+    taken = set(ports.values())
+    for candidate in CLIENT_PORTS:
+        if candidate not in taken:
+            return candidate
+    die("This store has as many computers paired as it has room for. Forget one first: ame backup store forget FINGERPRINT")
+
+
+def pair(port, timeout, expect, listener=None, replace=None):
     """The store's side. Returns the fingerprint of the computer accepted"""
+    if replace is not None and not (re.fullmatch(r"[0-9a-f]{64}", replace) and os.path.exists(os.path.join(STORE_DIR, "clients", f"{replace}.pem"))):
+        die("That is not a computer this store accepts: ame backup store clients")
     store_init()
     cert_b = read_text(os.path.join(STORE_DIR, "server.pem"))
     name_b = hostname()
@@ -239,15 +299,17 @@ def pair(port, timeout, expect, listener=None):
         sock.settimeout(60)
         reader = sock.makefile("r", encoding="utf-8", newline="\n")
         hello = receive(reader)
-        commitment, cert_a, name_a = hello.get("commit"), hello.get("cert"), str(hello.get("name", ""))[:60]
-        if not isinstance(commitment, str) or not re.fullmatch(r"[0-9a-f]{64}", commitment) or not isinstance(cert_a, str):
+        commitment, cert_a, name_a = hello.get("commit"), hello.get("cert"), str(hello.get("name", ""))
+        if not isinstance(commitment, str) or not re.fullmatch(r"[0-9a-f]{64}", commitment):
             die("The other computer's hello was not right.")
         try:
-            der(cert_a)
+            cert_a = clean_cert(cert_a)
         except ValueError:
             die("The other computer sent no certificate.")
+        name_a = clean_name(name_a)
         nb = secrets.token_bytes(16)
-        send(sock, {"v": 1, "cert": cert_b, "nb": nb.hex(), "name": name_b, "port": STORE_PORT})
+        client_port = port_for(fingerprint(cert_a), replace)
+        send(sock, {"v": 1, "cert": cert_b, "nb": nb.hex(), "name": name_b, "port": client_port})
         reveal = receive(reader)
         try:
             na = bytes.fromhex(reveal.get("na", ""))
@@ -256,24 +318,37 @@ def pair(port, timeout, expect, listener=None):
         if len(na) != 16 or commit(na) != commitment:
             die("The other computer did not keep to what it said first. Nothing was added.")
         six = digits(na, nb, cert_a, cert_b)
-        say(f"{name_a or 'The other computer'} is pairing. The same six digits should be on its screen:")
+        say(f"{name_a} is pairing.")
         sock.settimeout(300)
-        mine = ask_match(six, expect, name_a or "the other computer")
+        mine = ask_match(six, expect, name_a)
         theirs = receive(reader)
         if not (mine and theirs.get("match") is True):
             send(sock, {"v": 1, "enrolled": False})
             die("Not paired: the digits were not confirmed on both computers. Nothing was added.")
         print_fp = fingerprint(cert_a)
         folder = private_dir(os.path.join(STORE_DIR, "clients"))
+        # A computer that replaces another (a new laptop for a lost one) takes over its port and its folder of backups, and the old one is no longer accepted
+        data_dir_name = print_fp[:16]
+        if replace:
+            try:
+                data_dir_name = read_text(os.path.join(folder, f"{replace}.dir")).strip() or replace[:16]
+            except OSError:
+                data_dir_name = replace[:16]
+            if replace != print_fp:
+                forget(replace)
         path = os.path.join(folder, f"{print_fp}.pem")
         fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
         with os.fdopen(fd, "w") as handle:
             handle.write(cert_a)
         with open(os.path.join(folder, f"{print_fp}.name"), "w", encoding="utf-8") as handle:
-            handle.write(re.sub(r"[^\w .-]", "", name_a) + "\n")
-        rebuild_clients()
+            handle.write(name_a + "\n")
+        with open(os.path.join(folder, f"{print_fp}.dir"), "w", encoding="ascii") as handle:
+            handle.write(data_dir_name + "\n")
+        fd = os.open(os.path.join(folder, f"{print_fp}.port"), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w") as handle:
+            handle.write(f"{client_port}\n")
         send(sock, {"v": 1, "enrolled": True})
-        say(f"Paired. {name_a or 'The other computer'} may back up to this one now.")
+        say(f"Paired. {name_a} may back up to this one now.")
         return print_fp
 
 
@@ -281,12 +356,11 @@ def forget(fp):
     if not re.fullmatch(r"[0-9a-f]{64}", fp):
         die("That is not a fingerprint.")
     folder = os.path.join(STORE_DIR, "clients")
-    for ext in ("pem", "name"):
+    for ext in ("pem", "name", "port", "dir"):
         try:
             os.unlink(os.path.join(folder, f"{fp}.{ext}"))
         except FileNotFoundError:
             pass
-    rebuild_clients()
 
 
 def clients():
@@ -298,7 +372,7 @@ def clients():
                 label = read_text(os.path.join(folder, f"{fp}.name")).strip()
             except OSError:
                 label = ""
-            say(f"{fp}\t{label}")
+            say(f"{fp}\t{used_ports().get(fp, '')}\t{label}")
 
 
 # ---- The computer that backs up ----
@@ -309,7 +383,7 @@ def connect(host, port, expect, work=None, temp=None):
     temp/store.pem, and nothing is sealed or kept"""
     own = work or runtime()
     try:
-        cert_a, key_a = make_certificate(own, f"amethystora-backup-{hostname()}", "clientAuth")
+        cert_a, key_a = make_certificate(own, f"amethystora-backup-{clean_name(hostname(), 'computer')}", "clientAuth")
         na = secrets.token_bytes(16)
         try:
             sock = socket.create_connection((host, port), timeout=15)
@@ -318,21 +392,25 @@ def connect(host, port, expect, work=None, temp=None):
         with sock:
             sock.settimeout(60)
             reader = sock.makefile("r", encoding="utf-8", newline="\n")
-            send(sock, {"v": 1, "commit": commit(na), "cert": cert_a, "name": hostname()})
+            send(sock, {"v": 1, "commit": commit(na), "cert": cert_a, "name": clean_name(hostname(), "a computer")})
             answer = receive(reader)
-            cert_b, nb_hex, name_b, store_port = answer.get("cert"), answer.get("nb"), str(answer.get("name", ""))[:60], answer.get("port")
+            cert_b, nb_hex, name_b, store_port = answer.get("cert"), answer.get("nb"), clean_name(answer.get("name", "")), answer.get("port")
             try:
                 nb = bytes.fromhex(nb_hex)
-                der(cert_b)
+                cert_b = clean_cert(cert_b)
             except (ValueError, TypeError):
                 die("The other computer's answer was not right.")
-            if len(nb) != 16 or not isinstance(store_port, int) or not 1 <= store_port <= 65535:
+            if len(nb) != 16 or not isinstance(store_port, int) or isinstance(store_port, bool) or not 1024 <= store_port <= 65535:
                 die("The other computer's answer was not right.")
+            # The backup will connect by the name typed here, and TLS checks it against the certificate: say now, not after the pairing
+            names = cert_names(cert_b)
+            if host.lower().strip("[]") not in names:
+                die(f"The other computer's certificate does not name {host}. It names: {', '.join(names) or 'nothing'}. Use one of those.")
             send(sock, {"v": 1, "na": na.hex()})
             six = digits(na, nb, cert_a, cert_b)
-            say(f"Pairing with {name_b or host}. The same six digits should be on its screen:")
+            say(f"Pairing with {name_b}.")
             sock.settimeout(300)
-            mine = ask_match(six, expect, name_b or host)
+            mine = ask_match(six, expect, name_b)
             send(sock, {"v": 1, "match": bool(mine)})
             final = receive(reader)
             if not (mine and final.get("enrolled") is True):
@@ -347,7 +425,8 @@ def connect(host, port, expect, work=None, temp=None):
                 handle.write(cert_a + key_a)
             return {"host": host, "port": store_port, "name": name_b, "store_pem": store_pem}
         # The key and certificate, sealed in the Vault by the helper that knows how, on standard input and never in a file of ours
-        sealed = subprocess.run([SECRET, "store-client"], input=cert_a + key_a, text=True, capture_output=True, check=False)
+        sealed = subprocess.run([SECRET, "store-client"], input=cert_a + key_a, text=True, capture_output=True, check=False,
+                                env={**os.environ, "XDG_DATA_HOME": os.path.dirname(os.path.dirname(OTHER_DIR))})
         if sealed.returncode != 0:
             os.unlink(store_pem)
             die((sealed.stderr or "The key could not be sealed in the Vault.").strip(), sealed.returncode or 1)
@@ -369,11 +448,11 @@ def main(argv):
     if not argv:
         die("usage: amethystora-backup-pair store-init|pair|connect HOST|forget FP|clients", 2)
     command, rest = argv[0], argv[1:]
-    port, timeout, expect, name, temp, positional = None, 180.0, None, None, None, []
+    port, timeout, expect, name, temp, replace, positional = None, 180.0, None, None, None, None, []
     i = 0
     while i < len(rest):
         arg = rest[i]
-        if arg in ("--port", "--timeout", "--expect-digits", "--name", "--temp") and i + 1 < len(rest):
+        if arg in ("--port", "--timeout", "--expect-digits", "--name", "--temp", "--replace") and i + 1 < len(rest):
             value = rest[i + 1]
             if arg == "--port":
                 port = int(value)
@@ -383,6 +462,8 @@ def main(argv):
                 expect = value
             elif arg == "--temp":
                 temp = value
+            elif arg == "--replace":
+                replace = value
             else:
                 name = value
             i += 2
@@ -390,13 +471,15 @@ def main(argv):
             positional.append(arg)
             i += 1
     if command == "store-init":
-        say(store_init(name))
+        say(store_init(name) or "")
     elif command == "pair":
-        pair(port or PAIR_PORT, timeout, expect)
+        pair(port or PAIR_PORT, timeout, expect, replace=replace)
     elif command == "connect" and len(positional) == 1:
         print(json.dumps(connect(positional[0], port or PAIR_PORT, expect, temp=temp)))
     elif command == "forget" and len(positional) == 1:
         forget(positional[0])
+    elif command == "fingerprint":
+        say(store_init(create=False) or "-")
     elif command == "clients":
         clients()
     else:
