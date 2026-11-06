@@ -62,7 +62,7 @@ msgid "check"
 msgstr ""
 
 #. Translators: the state of a check in the terminal, in a column seven letters wide: keep it short
-#: usr/libexec/amethystora-security-status usr/libexec/amethystora-plugins
+#: usr/libexec/amethystora-security-status usr/libexec/amethystora-plugins usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/card.js
 msgid "off"
 msgstr ""
 
@@ -3848,6 +3848,14 @@ msgid "“pdf from last week” or “big videos” finds files by their kind, d
 msgstr ""
 
 #: usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/providers.js
+msgid "Plugins"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "What each plugin that asks for search last printed, when you type its prefix. What you type never goes to a plugin."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/providers.js
 msgid "Bookmarks"
 msgstr ""
 
@@ -3964,79 +3972,142 @@ msgid "What was deleted longer ago than this leaves the trash by itself, checked
 msgstr ""
 
 #: usr/libexec/amethystora-control-list
-msgid "The bar is not showing widgets: the extension that shows them is off."
+msgid "The plugins could not be listed."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/deskwidgets.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/bar.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/pill.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/tile.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/plugins.js
+msgid "Draft"
 msgstr ""
 
 #: usr/libexec/amethystora-control-list
-msgid "The widgets could not be listed."
-msgstr ""
-
-#: usr/libexec/amethystora-control-list usr/libexec/amethystora-bar-layout usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/bars.js
-msgid "Clock"
+msgid "Changed"
 msgstr ""
 
 #: usr/libexec/amethystora-control-list
-msgid "The time in big type, with the day under it"
-msgstr ""
-
-#: usr/libexec/amethystora-control-list
-msgid "Calendar"
-msgstr ""
-
-#: usr/libexec/amethystora-control-list
-msgid "Today's date and the week's number"
-msgstr ""
-
-#: usr/libexec/amethystora-control-list
-msgid "Now playing"
-msgstr ""
-
-#: usr/libexec/amethystora-control-list
-msgid "What a player plays, with its buttons"
-msgstr ""
-
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/settings.js
-msgid "System"
-msgstr ""
-
-#: usr/libexec/amethystora-control-list
-msgid "How busy the processor is, the memory and the disk"
-msgstr ""
-
-#: usr/libexec/amethystora-control-list
-msgid "Pomodoro"
-msgstr ""
-
-#: usr/libexec/amethystora-control-list
-msgid "A 25-minute focus timer: click it to start"
-msgstr ""
-
-#: usr/libexec/amethystora-control-list
-msgid "Do not disturb"
-msgstr ""
-
-#: usr/libexec/amethystora-control-list
-msgid "Shown while notifications are silenced, with a switch that brings them back"
+msgid "Pill"
 msgstr ""
 
 #: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/prefs.js
 msgid "Top bar"
 msgstr ""
 
-#: usr/libexec/amethystora-control-list
-msgid "Top bar widgets"
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/settings.js
+msgid "Desktop"
 msgstr ""
 
 #: usr/libexec/amethystora-control-list
-msgid "Small commands whose output the top bar shows. Each runs as you, with everything you have: keep only the ones you have read."
+msgid "Quick settings"
 msgstr ""
 
 #: usr/libexec/amethystora-control-list
-msgid "Widgets on the desktop"
+msgid "Made by the agent"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/pill.js
+msgid "Made for Amethystora"
 msgstr ""
 
 #: usr/libexec/amethystora-control-list
-msgid "Widgets placed on the desktop in their widget.json are drawn on the wallpaper, under the windows."
+msgid "Added by you"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Keep…"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/pill.js
+msgid "Throw away"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Fix…"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/deskwidgets.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/media.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/timer.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/bar.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/pill.js
+msgid "Pause"
+msgstr ""
+
+#. Translators: a choice in a menu: to put the artwork on the boot menu
+#: usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just usr/share/amethystora/just/security.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/battery.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/today/weather.js
+msgid "Turn on"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/bazaar/dialog.js
+msgid "Remove"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Its files are not what you approved: it is stopped."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+#, sh-format
+msgid "${count} plugin"
+msgid_plural "${count} plugins"
+msgstr[0] ""
+msgstr[1] ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Everything that shows in the pill, the top bar, quick settings, search, the dock and the desktop. Each runs in a sandbox and reaches only what you allowed."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+#, sh-format
+msgid "${count} thing the agent made"
+msgid_plural "${count} things the agent made"
+msgstr[0] ""
+msgstr[1] ""
+
+#: usr/libexec/amethystora-control-list
+msgid "What the AI agent wrote for you, who made it and when. A draft runs with nothing allowed until you keep it. Nothing the agent makes stays without you."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Remove all…"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Remove everything the agent made"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Each plugin and draft it wrote, with what they kept. Asks first, in a terminal."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Add…"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Ready"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Made for Amethystora. None is on until you add it."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Ready to add"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "The plugins that come with Amethystora: its own code, which cannot change. You read what each asks for before it is added."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Show plugins"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Draw what plugins and scripts show: in the live pill, the top bar, quick settings, search, the dock and on the desktop. Off, nothing of them is drawn."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Plugins on the desktop"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Plugins that ask for a place on the desktop are drawn on the wallpaper, under the windows."
 msgstr ""
 
 #: usr/libexec/amethystora-control-list
@@ -4386,6 +4457,10 @@ msgstr ""
 
 #: usr/libexec/amethystora-control-list
 msgid "The bar gives its room to the windows; push the pointer against its edge to bring it in."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list usr/libexec/amethystora-bar-layout usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/bars.js
+msgid "Clock"
 msgstr ""
 
 #: usr/libexec/amethystora-control-list
@@ -4758,7 +4833,7 @@ msgstr ""
 msgid "What power saver does to the desktop, for games played in a window."
 msgstr ""
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/quick/volume.js
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/quick/volume.js
 msgid "Paused"
 msgstr ""
 
@@ -6501,11 +6576,11 @@ msgid "Appearance"
 msgstr ""
 
 #: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/settings.js
-msgid "Desktop"
+msgid "The AI agent"
 msgstr ""
 
 #: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/settings.js
-msgid "The AI agent"
+msgid "System"
 msgstr ""
 
 #: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/settings.js
@@ -7200,6 +7275,14 @@ msgstr ""
 msgid "Déjà Dup is no longer one of the apps this system comes with, and its scheduled backups stopped when it was removed. Your backups made with it stay where they are. Set up Amethystora's backup with: ame backup setup, or install Déjà Dup again from Bazaar."
 msgstr ""
 
+#: usr/libexec/amethystora-widgets-moved-notice
+msgid "Your widgets are plugins now"
+msgstr ""
+
+#: usr/libexec/amethystora-widgets-moved-notice
+msgid "Widgets run in a sandbox now, and the ones in ~/.config/amethystora/widgets no longer run. Their folders are untouched. Start a plugin from one with: ame plugin new NAME, add the ones that come with the image with: ame plugin shipped, or ask the agent: ame plugin make."
+msgstr ""
+
 #: usr/libexec/amethystora-update-alert
 msgid "What happened?"
 msgstr ""
@@ -7397,11 +7480,11 @@ msgstr ""
 msgid "This takes the private folder away, with its encrypted copy and its password. Type REMOVE to go on:"
 msgstr ""
 
-#: usr/libexec/amethystora-private-folder
+#: usr/libexec/amethystora-private-folder usr/libexec/amethystora-plugins
 msgid "Nothing was removed."
 msgstr ""
 
-#: usr/libexec/amethystora-private-folder usr/share/amethystora/just/security.just
+#: usr/libexec/amethystora-private-folder usr/libexec/amethystora-plugins usr/share/amethystora/just/security.just
 msgid "Removed."
 msgstr ""
 
@@ -8497,12 +8580,16 @@ msgstr ""
 msgid "This asks you before it changes anything, so it needs a terminal."
 msgstr ""
 
-#: usr/libexec/amethystora-plugins
+#: usr/libexec/amethystora-plugins usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/card.js
 msgid "on"
 msgstr ""
 
 #: usr/libexec/amethystora-plugins
 msgid "changed"
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+msgid "draft"
 msgstr ""
 
 #: usr/libexec/amethystora-plugins
@@ -8603,6 +8690,11 @@ msgstr ""
 #: usr/libexec/amethystora-plugins
 #, sh-format
 msgid "${id} is back at its earlier version."
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+#, sh-format
+msgid "Remove ${id}, with what it kept?"
 msgstr ""
 
 #: usr/libexec/amethystora-plugins
@@ -8715,6 +8807,130 @@ msgstr ""
 #: usr/libexec/amethystora-plugins
 #, sh-format
 msgid "${id} was given what you allowed."
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+msgid "The image ships no such plugin."
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+msgid "That plugin did not pass its own check."
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+#, sh-format
+msgid "  It will be allowed ${perm}: ${reason}"
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+#, sh-format
+msgid "${name} (${id}) is part of this image: its code is signed and cannot change."
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+msgid "Add it with what it asks for?"
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+msgid "Nothing was added."
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+#, sh-format
+msgid "${id} is added and on."
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+msgid "There is no such draft."
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+msgid "It did not pass the check, so it was not shown."
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+#, sh-format
+msgid "${id} is a draft now, running with nothing allowed. Look at it, then keep it, change it or throw it away."
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+#, sh-format
+msgid "The draft ${id} was thrown away."
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+msgid "A name is lower case letters, digits and dashes, as in my-widget or dev.example.my-widget."
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+msgid "There is no such example. See them with: ame plugin examples"
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+msgid "There is a draft of that name already."
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+#, sh-format
+msgid "Started ${id} from the example ${example}, in ${DRAFTS}/${id}. Change its files, then: ame plugin draft ${id} --by me"
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+msgid "The agent made nothing that is still here."
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+msgid "Remove all of these, with what they kept?"
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+msgid "The AI agent is off. Turn it on with: ame agent toggle on"
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+msgid "Value (it is not shown): "
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+#, sh-format
+msgid "${name} is set."
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+msgid "There is no such plugin."
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+msgid "That file exists already."
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+#, sh-format
+msgid "Written to ${out}. Whoever opens it reads what it runs and reaches first, and decides."
+msgstr ""
+
+#: usr/libexec/amethystora-pill
+msgid "A pill's name is one to 40 characters."
+msgstr ""
+
+#: usr/libexec/amethystora-pill
+msgid "Give --progress a number from 0 to 1."
+msgstr ""
+
+#: usr/libexec/amethystora-pill
+msgid "Give --until a time in seconds since 1970, or +SECONDS from now."
+msgstr ""
+
+#: usr/libexec/amethystora-pill
+msgid "Give --icon the name of an icon in the theme."
+msgstr ""
+
+#: usr/libexec/amethystora-pill
+msgid "Give --pid a running process."
+msgstr ""
+
+#: usr/libexec/amethystora-pill
+msgid "There is no such pill. Start it with: ame pill start NAME"
 msgstr ""
 
 #: usr/libexec/amethystora-text-shortcuts
@@ -9527,14 +9743,6 @@ msgstr ""
 
 #: usr/libexec/amethystora-changes
 msgid "That is no longer on the list."
-msgstr ""
-
-#: usr/share/gnome-shell/extensions/amethystora-widgets@arsslensoft.github.io/extension.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/deskwidgets.js
-msgid "Fix it with the AI agent"
-msgstr ""
-
-#: usr/share/gnome-shell/extensions/amethystora-widgets@arsslensoft.github.io/extension.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/deskwidgets.js
-msgid "Open its folder"
 msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-logo-menu@arsslensoft.github.io/extension.js
@@ -10839,11 +11047,6 @@ msgstr ""
 
 #: usr/share/amethystora/just/desktop.just
 msgid "What it empties stays in the snapshots and the backup, where they are on."
-msgstr ""
-
-#. Translators: a choice in a menu: to put the artwork on the boot menu
-#: usr/share/amethystora/just/desktop.just usr/share/amethystora/just/security.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/battery.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/today/weather.js
-msgid "Turn on"
 msgstr ""
 
 #. Translators: a choice in a menu: to take the artwork off the boot menu
@@ -12468,11 +12671,19 @@ msgid "A recording's notice offers no Trim."
 msgstr ""
 
 #: usr/share/amethystora/just/desktop.just
-msgid "Widgets on the desktop: on. A widget placed on the desktop in its widget.json is drawn on the wallpaper."
+msgid "Plugins are drawn: in the live pill, the top bar, quick settings, search, the dock and on the desktop."
 msgstr ""
 
 #: usr/share/amethystora/just/desktop.just
-msgid "Widgets on the desktop: off. Their commands do not run."
+msgid "Plugins are not drawn. Scripts in the pill (ame pill) are not shown either."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "Plugins on the desktop: on. A plugin that asks for a corner of the desktop is drawn on the wallpaper."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "Plugins on the desktop: off. They are drawn nowhere there."
 msgstr ""
 
 #: usr/share/amethystora/just/desktop.just
@@ -16716,12 +16927,8 @@ msgstr ""
 msgid "Documents saved outside its own folder stay."
 msgstr ""
 
-#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/bazaar/dialog.js
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/bazaar/dialog.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/pill.js
 msgid "Keep"
-msgstr ""
-
-#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/bazaar/dialog.js
-msgid "Remove"
 msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/bazaar/dialog.js
@@ -17078,6 +17285,14 @@ msgstr ""
 msgid "Remember"
 msgstr ""
 
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/deskwidgets.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/bar.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/pill.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/tile.js
+msgid "Private"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/deskwidgets.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/timer.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/bar.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/pill.js
+msgid "Resume"
+msgstr ""
+
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/dock/badges.js
 msgid "%s is being updated. Try again later."
 msgstr ""
@@ -17266,7 +17481,7 @@ msgstr ""
 msgid "Search: arrow, euro, smile…"
 msgstr ""
 
-#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/emoji/picker.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/agent.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/manual.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remindProvider.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/settings.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/timerProvider.js
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/emoji/picker.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/agent.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/manual.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/plugins.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remindProvider.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/settings.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/timerProvider.js
 msgid "Enter"
 msgstr ""
 
@@ -18016,10 +18231,6 @@ msgstr ""
 msgid "Back"
 msgstr ""
 
-#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/media.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/timer.js
-msgid "Pause"
-msgstr ""
-
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/media.js
 msgid "Playing on %s"
 msgstr ""
@@ -18707,10 +18918,6 @@ msgstr ""
 msgid "of %s, rings at %s"
 msgstr ""
 
-#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/timer.js
-msgid "Resume"
-msgstr ""
-
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/update.js
 msgid "Ready · quick restart"
 msgstr ""
@@ -18804,6 +19011,138 @@ msgstr ""
 #. Translators: the version updated to, and the one before it
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/whatsnew.js
 msgid "Said once per update"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/card.js
+msgid "It can reach nothing outside its own sandbox."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/card.js
+msgid "the network: %s"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/card.js
+msgid "the home network: %s"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/card.js
+msgid "your files: %s"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/card.js
+msgid "what the computer says of %s"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/card.js
+msgid "%s (after a click)"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/card.js
+msgid "news of %s"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/card.js
+msgid "notifications"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/card.js
+msgid "opening a web address (after a click)"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/card.js
+msgid "copying (after a click)"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/card.js
+msgid "one file you choose"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/card.js
+msgid "a window of its own"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/card.js
+msgid "settings: %s"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/card.js
+msgid "It can reach: %s."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/pill.js
+msgid "Draft: it runs with nothing allowed"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/pill.js
+msgid "From a script of yours"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/pill.js
+msgid "A plugin"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/pill.js
+msgid "Hidden while your screen is shared."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/pill.js
+msgid "Nothing about it is sandboxed: it is a program of yours."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/pill.js
+msgid "Change"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/pill.js
+msgid "Stop showing"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins/tile.js
+msgid "Press to resume"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins.js
+msgid "%s updated too often, so its pill ended"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins.js
+msgid "%s was paused"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins.js
+msgid "Ask the agent to fix it"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins.js
+msgid "%s sent a lot to %s, so it is blocked until you decide"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins.js
+msgid "%s opened %s"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins.js
+msgid "%s copied something"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins.js
+msgid "Waiting: its secret settings are in the Vault, which is closed"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins.js
+msgid "Paused: it failed several times in a row"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins.js
+msgid "Paused: it kept taking too long"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins.js
+msgid "Paused: it kept going over its memory"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/plugins.js
+msgid "Paused: it updated too often"
 msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pointer.js
@@ -19894,6 +20233,10 @@ msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/providers.js
 msgid "On this computer"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/providers.js
+msgid "What each last printed"
 msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/providers.js
