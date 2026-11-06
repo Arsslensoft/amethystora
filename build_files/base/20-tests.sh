@@ -1387,14 +1387,19 @@ grep -q 'new_from_file_at_scale' /usr/libexec/amethystora-photos
 grep -vh '^ *#' /usr/libexec/amethystora-photos | grep -qE 'PIL|Image\.open' && false
 [[ "$(systemctl --global is-enabled amethystora-photos.timer 2>/dev/null)" != enabled ]]
 bash /ctx/build_files/shared/test-photos.sh
-# Another screen from what you have, and help from someone you trust (R7-26, R7-50): GNOME's remote desktop, the one port in the home
-# zone alone and for now only, a new code every time, view only for a help, and nothing for the agent to turn on
+# Another screen from what you have, and help from someone you trust (R7-26, R7-50): GNOME's remote desktop, started for the session only,
+# a new code every time, view only for a help. The port is Security's: the loosening switch remote-screen (off) adds the
+# amethystora-remote-screen service to the home zone alone, and the commands refuse while it is off; nothing here calls the firewall
 test -x /usr/libexec/amethystora-share-screen
 bash -n /usr/libexec/amethystora-share-screen
 command -v grdctl >/dev/null
-test -f /usr/lib/firewalld/services/ms-wbt.xml
-grep -q 'amethystora-home' /usr/libexec/amethystora-share-screen
-! grep -q 'ms-wbt' /usr/lib/firewalld/zones/amethystora*.xml
+grep -q 'port="3389"' /usr/lib/firewalld/services/amethystora-remote-screen.xml
+! grep -q 'amethystora-remote-screen' /usr/lib/firewalld/zones/amethystora*.xml
+grep -vh '^ *#' /usr/libexec/amethystora-share-screen | grep -q 'firewall-cmd' && false
+[[ "$(/usr/libexec/amethystora-hardening status --json | jq -r '.[] | select(.name == "remote-screen") | "\(.group) \(.default) \(.loosens)"')" == "network off true" ]]
+grep -q '^remote-screen ACTION="":' /usr/share/amethystora/just/security.just
+grep -q '^gnome-remote-de 3389$' /usr/share/amethystora/allow.d/listeners
+test -x /usr/share/amethystora/user-setup.hooks.d/30-share-screen-end.sh
 [[ "$(/usr/libexec/amethystora-share-screen >/dev/null 2>&1; echo $?)" == 64 ]]
 bash /ctx/build_files/shared/test-share-screen.sh
 # Look good in every call (R7-68): offered and off, a helper of its own, its unit enabled for nobody, and the programs that run

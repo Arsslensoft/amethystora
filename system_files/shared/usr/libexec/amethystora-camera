@@ -235,8 +235,9 @@ def gst():
 
 
 def real_source(device):
-    """The camera as the system has it: a motion-JPEG or raw picture at 720p, decoded, as RGB"""
-    return (f'v4l2src device={device} ! image/jpeg,width={WIDTH},height={HEIGHT},framerate={RATE}/1 ! jpegdec ! videoconvert ! '
+    """The camera as the system has it: a motion-JPEG or a raw picture at 720p, decoded, as RGB"""
+    return (f'v4l2src device={device} ! image/jpeg,width={WIDTH},height={HEIGHT},framerate={RATE}/1;'
+            f'video/x-raw,width={WIDTH},height={HEIGHT},framerate={RATE}/1 ! decodebin ! videoconvert ! '
             f'video/x-raw,format=RGB,width={WIDTH},height={HEIGHT} ! queue max-size-buffers=2 leaky=downstream ! '
             'appsink name=sink emit-signals=true max-buffers=2 drop=true sync=false')
 
@@ -246,30 +247,38 @@ def sink_for(device):
             f'framerate={RATE}/1 ! videoconvert ! video/x-raw,format=YUY2 ! v4l2sink device={device} sync=false')
 
 
+def photo_like(turn):
+    """A 720p motion-JPEG picture with what a camera's has: smooth light, edges and sensor noise (about 150 to 250 KB), not a mostly
+    black test pattern, which decodes far faster than a real one"""
+    import io
+    import numpy
+    from PIL import Image, ImageDraw
+    random = numpy.random.default_rng(turn)
+    x = numpy.linspace(0, 1, WIDTH, dtype=numpy.float32)[None, :, None]
+    y = numpy.linspace(0, 1, HEIGHT, dtype=numpy.float32)[:, None, None]
+    base = 90 + 100 * x * numpy.array([0.9, 0.7, 0.5], dtype=numpy.float32) + 60 * y * numpy.array([0.4, 0.8, 1.0], dtype=numpy.float32)
+    picture = Image.fromarray(numpy.clip(base, 0, 255).astype(numpy.uint8))
+    draw = ImageDraw.Draw(picture)
+    for _ in range(25):
+        left, top = int(random.integers(0, WIDTH - 200)), int(random.integers(0, HEIGHT - 150))
+        draw.ellipse([left, top, left + int(random.integers(40, 200)), top + int(random.integers(40, 150))],
+                     fill=tuple(int(v) for v in random.integers(20, 235, 3)))
+    noisy = numpy.asarray(picture, dtype=numpy.float32) + random.normal(0, 7, (HEIGHT, WIDTH, 3))
+    out = io.BytesIO()
+    Image.fromarray(numpy.clip(noisy, 0, 255).astype(numpy.uint8)).save(out, 'JPEG', quality=85)
+    return out.getvalue()
+
+
 def bench():
     """720p at 30 pictures a second, through every step this does, from motion-JPEG pictures held in memory: the process's own
-    CPU time over the run, which no other load changes much, as a share of one core"""
+    CPU time over the run, which no other load changes much, as a share of one core. **Always with both effects on**, the most this
+    ever does, so that passing it once passes whatever the person chooses afterwards"""
     if not os.path.isfile(model_path()):
         print(json.dumps({'error': 'no-model'}))
         return 1
     Gst, GLib = gst()
-    pictures = []
-    made = Gst.parse_launch(f'videotestsrc num-buffers=12 pattern=ball ! video/x-raw,format=I420,width={WIDTH},height={HEIGHT} ! '
-                            'jpegenc ! appsink name=sink emit-signals=false sync=false')
-    made.set_state(Gst.State.PLAYING)
-    sink = made.get_by_name('sink')
-    while True:
-        sample = sink.try_pull_sample(Gst.SECOND * 5)
-        if sample is None:
-            break
-        ok, info = sample.get_buffer().map(Gst.MapFlags.READ)
-        pictures.append(bytes(info.data))
-        sample.get_buffer().unmap(info)
-    made.set_state(Gst.State.NULL)
-    if not pictures:
-        print(json.dumps({'error': 'no-pictures'}))
-        return 1
-    effects = Effects(settings()['blur'], settings()['light'])
+    pictures = [photo_like(turn) for turn in range(8)]
+    effects = Effects(True, True)
     decode = Gst.parse_launch(f'appsrc name=src format=time caps=image/jpeg,width={WIDTH},height={HEIGHT},framerate={RATE}/1 ! '
                               f'jpegdec ! videoconvert ! video/x-raw,format=RGB ! appsink name=sink max-buffers=1 sync=false')
     encode = Gst.parse_launch(sink_for('/dev/null').replace('v4l2sink device=/dev/null', 'fakesink'))
@@ -281,7 +290,7 @@ def bench():
     frames = 150
     for turn in range(10 + frames):
         if turn == 10:
-            started, wall = time.process_time(), time.perf_counter()
+            started = time.process_time()
         buffer = Gst.Buffer.new_wrapped(pictures[turn % len(pictures)])
         src.emit('push-buffer', buffer)
         sample = got.try_pull_sample(Gst.SECOND * 5)
@@ -299,39 +308,121 @@ def bench():
     return 0
 
 
-def readers(dump):
-    """True when PipeWire's dump (a list of objects) has a video source of the virtual camera that an app is reading"""
-    for item in dump if isinstance(dump, list) else []:
-        info = item.get('info', {}) if isinstance(item, dict) else {}
-        props = info.get('props', {}) if isinstance(info, dict) else {}
-        if props.get('media.class') == 'Video/Source' and info.get('state') == 'running':
-            return True
+class Graph:
+    """PipeWire's nodes by id. `pw-dump --monitor` prints the whole graph once and then only the objects that changed, so a decision
+    is taken from this, kept from the first dump and moved by each change (an object whose info is null is gone), never from one dump"""
+
+    def __init__(self):
+        self.nodes = {}
+
+    def update(self, dump):
+        for item in dump if isinstance(dump, list) else []:
+            if not isinstance(item, dict) or not isinstance(item.get('id'), int):
+                continue
+            if 'info' in item and item['info'] is None:
+                self.nodes.pop(item['id'], None)
+                continue
+            info = item.get('info')
+            if not isinstance(info, dict) or item.get('type') not in (None, 'PipeWire:Interface:Node'):
+                continue
+            node = self.nodes.setdefault(item['id'], {'class': None, 'state': None, 'path': None})
+            props = info.get('props')
+            if isinstance(props, dict):
+                node['class'] = props.get('media.class', node['class'])
+                path = props.get('api.v4l2.path') or str(props.get('object.path', '')).removeprefix('v4l2:')
+                node['path'] = path or node['path']
+            if 'state' in info:
+                node['state'] = info['state']
+
+    def reading(self, device):
+        """True when a program reads the video source of this device through PipeWire: that device's own node, never another camera's"""
+        return any(node['class'] == 'Video/Source' and node['state'] == 'running' and node['path'] == device
+                   for node in self.nodes.values())
+
+
+# Programs that hold the device open without reading a picture of it: the sound server's own probing
+NOT_READERS = {'pipewire', 'wireplumber', 'pipewire-pulse'}
+
+
+def openers(device):
+    """True when another program of this account has the device open itself: a V4L2 reader, as most browsers are, which PipeWire
+    never sees. Read from /proc, only when the device was opened or closed"""
+    me = os.getpid()
+    target = os.path.realpath(device)
+    try:
+        pids = [name for name in os.listdir('/proc') if name.isdigit() and int(name) != me]
+    except OSError:
+        return False
+    for pid in pids:
+        try:
+            with open(f'/proc/{pid}/comm', encoding='utf-8') as f:
+                if f.read().strip() in NOT_READERS:
+                    continue
+            for fd in os.listdir(f'/proc/{pid}/fd'):
+                if os.path.realpath(f'/proc/{pid}/fd/{fd}') == target:
+                    return True
+        except OSError:
+            continue
     return False
+
+
+def watch_opens(device, callback, GLib):
+    """Calls back when the device is opened or closed by anyone (inotify's IN_OPEN and IN_CLOSE): nothing runs between them. Returns
+    the descriptor, or None when it cannot be watched"""
+    import ctypes
+    libc = ctypes.CDLL(None, use_errno=True)
+    fd = libc.inotify_init1(os.O_NONBLOCK | os.O_CLOEXEC)
+    # IN_OPEN | IN_CLOSE_WRITE | IN_CLOSE_NOWRITE
+    if fd < 0 or libc.inotify_add_watch(fd, device.encode(), 0x20 | 0x8 | 0x10) < 0:
+        return None
+
+    def ready(_fd, _condition):
+        try:
+            os.read(fd, 4096)
+        except OSError:
+            pass
+        callback()
+        return True
+
+    GLib.io_add_watch(fd, GLib.PRIORITY_DEFAULT, GLib.IOCondition.IN, ready)
+    return fd
+
+
+# Why it ends without a camera: the unit does not start it again (RestartPreventExitStatus), which would be a start every few
+# seconds for as long as the session lasts. `ame desktop camera on` starts it again
+NO_CAMERA = 69
+NO_MODEL = 78
 
 
 def run():
     if not os.path.isfile(model_path()):
         print('amethystora-camera: no model: run ame desktop camera on', file=sys.stderr)
-        return 1
+        return NO_MODEL
     found = cameras()
     real = [path for path, virtual in found if not virtual]
     virtual = [path for path, virtual in found if virtual]
     if not real or not virtual or not all(DEVICE.match(path) for path in real + virtual):
-        print('amethystora-camera: needs a camera and the virtual camera', file=sys.stderr)
-        return 1
+        print('amethystora-camera: needs a camera and the virtual camera, and there is not one: it does not start again by itself',
+              file=sys.stderr)
+        return NO_CAMERA
     Gst, GLib = gst()
     loop = GLib.MainLoop()
-    state = {'capture': None, 'effects': None, 'idle': None, 'readers': False}
+    state = {'capture': None, 'effects': None, 'idle': None, 'readers': False, 'failed': False, 'recheck': None}
     output = Gst.parse_launch(sink_for(virtual[0]))
     src = output.get_by_name('src')
     # Holding the loopback device open is what makes it show as a camera to the apps
     output.set_state(Gst.State.PLAYING)
-    black = Gst.Buffer.new_wrapped(bytes(WIDTH * HEIGHT * 3))
-    src.emit('push-buffer', black)
+
+    def black():
+        src.emit('push-buffer', Gst.Buffer.new_wrapped(bytes(WIDTH * HEIGHT * 3)))
+
+    black()
 
     def stop_capture():
         if state['capture']:
             state['capture'].set_state(Gst.State.NULL)
+            # What stays in the loopback is the last picture: a black one is better than a person's last frame
+            black()
         state['capture'] = state['effects'] = None
 
     def on_sample(sink):
@@ -344,11 +435,20 @@ def run():
         src.emit('push-buffer', Gst.Buffer.new_wrapped(data))
         return Gst.FlowReturn.OK
 
+    def on_error(_bus, _message):
+        # A camera that cannot give 720p, or went away: said once, and not tried again until the readers have gone
+        print('amethystora-camera: the camera gave no picture', file=sys.stderr)
+        state['failed'] = True
+        stop_capture()
+
     def start_capture():
         chosen = settings()
         state['effects'] = Effects(chosen['blur'], chosen['light'])
         state['capture'] = Gst.parse_launch(real_source(real[0]))
         state['capture'].get_by_name('sink').connect('new-sample', on_sample)
+        bus = state['capture'].get_bus()
+        bus.add_signal_watch()
+        bus.connect('message::error', on_error)
         state['capture'].set_state(Gst.State.PLAYING)
 
     def let_go():
@@ -363,14 +463,32 @@ def run():
             if state['idle']:
                 GLib.source_remove(state['idle'])
                 state['idle'] = None
-            if not state['capture']:
+            if not state['capture'] and not state['failed']:
                 start_capture()
-        elif state['capture'] and not state['idle']:
-            state['idle'] = GLib.timeout_add_seconds(IDLE_S, let_go)
+        else:
+            state['failed'] = False
+            if state['capture'] and not state['idle']:
+                state['idle'] = GLib.timeout_add_seconds(IDLE_S, let_go)
 
-    watch = subprocess.Popen([f'{ROOT}/usr/bin/pw-dump', '--monitor'], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-                             text=True)
+    graph = Graph()
+
+    def reading():
+        # PipeWire's node for this device, or a program with the device open itself (V4L2): either is a reader
+        return graph.reading(virtual[0]) or openers(virtual[0])
+
+    def decide():
+        state['recheck'] = None
+        changed(reading())
+        return GLib.SOURCE_REMOVE
+
+    def soon():
+        # A burst of opens and closes (a call app probing the device) is one decision, a third of a second later
+        if not state['recheck']:
+            state['recheck'] = GLib.timeout_add(300, decide)
+
+    watch = subprocess.Popen([f'{ROOT}/usr/bin/pw-dump', '--monitor'], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
     buffer = ''
+    decoder = json.JSONDecoder()
 
     def on_dump(_fd, _condition):
         nonlocal buffer
@@ -379,17 +497,22 @@ def run():
             loop.quit()
             return False
         buffer += chunk
-        # pw-dump prints one JSON array after another, each starting with "[" at the start of a line
-        parts = re.split(r'(?m)^(?=\[)', buffer)
-        buffer = parts.pop() if parts else ''
-        for part in parts:
+        # One JSON array after another: each is taken as soon as it is whole, and what is left waits for the rest
+        while True:
+            buffer = buffer.lstrip()
+            if not buffer:
+                break
             try:
-                changed(readers(json.loads(part)))
+                dump, end = decoder.raw_decode(buffer)
             except ValueError:
-                pass
+                break
+            buffer = buffer[end:]
+            graph.update(dump)
+            soon()
         return True
 
     GLib.io_add_watch(watch.stdout.fileno(), GLib.PRIORITY_DEFAULT, GLib.IOCondition.IN | GLib.IOCondition.HUP, on_dump)
+    watch_opens(virtual[0], soon, GLib)
     for number in (signal.SIGTERM, signal.SIGINT):
         GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, number, loop.quit)
     try:

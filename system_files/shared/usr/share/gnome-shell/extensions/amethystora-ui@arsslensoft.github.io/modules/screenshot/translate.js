@@ -14,9 +14,10 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {captureFrame} from './capture.js';
 
 const HELPER = '/usr/libexec/amethystora-translate';
-// A reading runs in a scope of its own, as the cover's does: out of GNOME Shell's cgroup, and in a memory of its own. The
-// engine was measured at 253 MB at the most (the limit is 300), and the helper that starts it takes some more
-const SCOPE = ['systemd-run', '--user', '--scope', '--quiet', '--collect', '-p', 'MemoryMax=400M', '-p', 'CPUWeight=50'];
+// A reading runs in a scope of its own, as the cover's does: out of GNOME Shell's cgroup, and in a memory of its own, the plan's 300 MB
+// for the whole reading: the helper, Tesseract and the engine one after another were measured at 272 MB together at the most (summed
+// resident sizes, a German paragraph, 2026-11-06), and the engine alone at 253 MB
+const SCOPE = ['systemd-run', '--user', '--scope', '--quiet', '--collect', '-p', 'MemoryMax=300M', '-p', 'CPUWeight=50'];
 // Over the helper's own limits added up (reading 25 s, then 60 s for each of the two steps)
 const READ_MS = 150000;
 // As wide as stylesheets/screenshot.css draws it, and below the toolbar

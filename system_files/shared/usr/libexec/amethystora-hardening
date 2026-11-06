@@ -50,10 +50,11 @@ declare -A SENDS=([countme]="Fedora" [connectivity-check]="Fedora" [firmware-met
 # Off until turned on
 STRICTER=(time firewall-away network-daemons block-bluetooth block-webcam block-automount block-user-extensions
     block-xwayland flathub-verified flatpak-password noexec-temp no-coredumps package-cooldown brew-attestations
-    boot-password locked-poweroff audit-locked vscodium-extensions guest-login)
+    boot-password locked-poweroff audit-locked vscodium-extensions guest-login remote-screen)
 # ...of which one loosens rather than tightens: a login that needs no password, for a visitor (amethystora-guest;
-# plans/ui-ideas/spec-later.md, R6-36). The report names it on its own, never among the stricter settings
-LOOSER=(guest-login)
+# plans/ui-ideas/spec-later.md, R6-36), and a port opened in the home zone for another computer to see or extend this screen
+# (R7-26, R7-50). The report names them on their own, never among the stricter settings
+LOOSER=(guest-login remote-screen)
 # The Settings page's category of each switch, beside the detection switches' own (amethystora-security-config)
 declare -A GROUP=([kernel]=system [blocked-modules]=system [firewire]=devices [kernel-args]=system [firewall]=network
     [failed-logins]=logins [lockout]=logins [app-sandbox]=apps [virtual-input]=devices [ssh-settings]=logins
@@ -62,7 +63,7 @@ declare -A GROUP=([kernel]=system [blocked-modules]=system [firewire]=devices [k
     [block-webcam]=devices [block-automount]=devices [block-user-extensions]=apps [block-xwayland]=apps
     [flathub-verified]=apps [flatpak-password]=apps [noexec-temp]=system [no-coredumps]=system [package-cooldown]=apps
     [brew-attestations]=apps [boot-password]=system [locked-poweroff]=logins [audit-locked]=audit
-    [vscodium-extensions]=apps [guest-login]=logins)
+    [vscodium-extensions]=apps [guest-login]=logins [remote-screen]=network)
 # The switches with a level above on, and their levels
 declare -A LEVELS=([kernel]="off standard strict" [package-cooldown]="off on strict")
 # Kernel arguments a switch adds one by one, off until turned on, each with what it puts on the command line
@@ -93,6 +94,10 @@ CONNECTIVITY=NetworkManager/conf.d/60-amethystora-connectivity.conf
 CHRONY=chrony.conf
 NO_BLUETOOTH=modprobe.d/61-amethystora-no-bluetooth.conf
 NO_WEBCAM=modprobe.d/61-amethystora-no-webcam.conf
+# The home zone as the image ships it, with the service of each of these switches that is on added: a copy of that file, in place of
+# it. A switch that opens a port in the home zone joins this list (and nothing else writes the file)
+HOME_ZONE_FILE=firewalld/zones/amethystora-home.xml
+declare -A HOME_ZONE_SERVICES=([remote-screen]=amethystora-remote-screen)
 AUTOMOUNT=dconf/db/local.d/60-amethystora-automount
 AUTOMOUNT_LOCK=dconf/db/local.d/locks/60-amethystora-automount
 EXTENSIONS=dconf/db/local.d/60-amethystora-user-extensions
@@ -214,6 +219,15 @@ record() {
     /usr/libexec/amethystora-security-config note "${name}${argument:+:${argument}}" "${switched}" 2>/dev/null || true
 }
 
+# The image's home zone with the service of every switch that opens one in it and is on
+home_zone() {
+    local switch services=""
+    for switch in "${!HOME_ZONE_SERVICES[@]}"; do
+        is_on "${switch}" && services+="  <service name=\"${HOME_ZONE_SERVICES[${switch}]}\"/>"$'\n'
+    done
+    awk -v add="${services}" '/<\/zone>/ { printf "%s", add } { print }' /usr/lib/firewalld/zones/amethystora-home.xml
+}
+
 # The content of a file a switch writes, for set and for the watcher to compare with
 expected() {
     # The guest login's files are its helper's, which knows the account's numbers they name
@@ -241,6 +255,7 @@ expected() {
         "${CONNECTIVITY}") cat "${SHARE}/${CONNECTIVITY##*/}" ;;
         "${NO_BLUETOOTH}") cat "${SHARE}/${NO_BLUETOOTH##*/}" ;;
         "${NO_WEBCAM}") cat "${SHARE}/${NO_WEBCAM##*/}" ;;
+        "${HOME_ZONE_FILE}") home_zone ;;
         "${AUTOMOUNT}") cat "${SHARE}/dconf-automount" ;;
         "${AUTOMOUNT_LOCK}") cat "${SHARE}/dconf-automount-locks" ;;
         "${EXTENSIONS}") cat "${SHARE}/dconf-user-extensions" ;;
@@ -324,6 +339,11 @@ managed() {
     is_on time && printf '%s\tfile\n' "${CHRONY}"
     is_on block-bluetooth && printf '%s\tfile\n' "${NO_BLUETOOTH}"
     is_on block-webcam && printf '%s\tfile\n' "${NO_WEBCAM}"
+    # The home zone's copy, while any switch that opens a port in it is on
+    local zone_switch
+    for zone_switch in "${!HOME_ZONE_SERVICES[@]}"; do
+        if is_on "${zone_switch}"; then printf '%s\tfile\n' "${HOME_ZONE_FILE}"; break; fi
+    done
     is_on block-automount && printf '%s\tfile\n%s\tfile\n' "${AUTOMOUNT}" "${AUTOMOUNT_LOCK}"
     is_on block-user-extensions && printf '%s\tfile\n%s\tfile\n' "${EXTENSIONS}" "${EXTENSIONS_LOCK}"
     is_on block-xwayland && printf '%s\tfile\n' "${NO_X11}"
@@ -687,6 +707,18 @@ set_switch() {
                 rm -f "${BLUETOOTH_WAS_OFF}"
             fi
             ;;
+        remote-screen)
+            # The home zone with the remote desktop's one port in it, and firewalld asked to read it again. Recorded first, so that
+            # the zone's copy is taken as written by a switch that is on; with the last such switch off, the image's own zone
+            record "${name}" "${switched}"
+            if is_on remote-screen; then
+                place "${HOME_ZONE_FILE}" || { record "${name}" off; return 1; }
+            else
+                place "${HOME_ZONE_FILE}" remove
+            fi
+            [[ -n "${ROOT}" ]] || firewall-cmd --reload >/dev/null 2>&1 || true
+            return 0
+            ;;
         block-webcam)
             if [[ "${switched}" == on ]]; then
                 place "${NO_WEBCAM}" || return 1
@@ -828,6 +860,7 @@ words() {
         [network-daemons]="$(gettext "Network discovery, mobile broadband and firmware sharing")"
         [block-bluetooth]="$(gettext "No Bluetooth")"
         [block-webcam]="$(gettext "No webcam")"
+        [remote-screen]="$(gettext "Let another computer see or extend this screen")"
         [block-automount]="$(gettext "No automatic mounting")"
         [block-user-extensions]="$(gettext "No new GNOME extensions")"
         [block-xwayland]="$(gettext "No X11 apps")"
@@ -865,6 +898,7 @@ words() {
         [network-daemons]="$(gettext "Stops Avahi, which finds printers and devices on the network, ModemManager, which runs mobile broadband modems, and passim, which offers the firmware updates this machine downloaded to the machines nearby. All three answer the network. On, printers have to be added by address, a mobile broadband modem does not work, and each machine downloads its own firmware updates.")"
         [block-bluetooth]="$(gettext "Bluetooth cannot load at all, so a flaw in it cannot be reached from radio range. Headphones, mice and keyboards that use it stop working.")"
         [block-webcam]="$(gettext "The USB webcam driver cannot load, whatever app asks. The webcam stops working.")"
+        [remote-screen]="$(gettext "Opens the remote desktop port (3389) on the networks you named home only, so that another computer can see this screen or use it as a second screen, with a code that is new each time, when you start it (ame desktop help-me, ame desktop second-screen). Nothing listens on the port until you do, and a share ends when you lock the screen. Anyone on your home network who learns the code, or who watches you type it, sees what is on the screen.")"
         [block-automount]="$(gettext "A USB stick or disk is not mounted until you open it in Files. Nothing on one runs by itself either way.")"
         [block-user-extensions]="$(gettext "GNOME extensions cannot be installed from extensions.gnome.org or Extension Manager. An extension runs inside the desktop and sees every key and pixel. The image's own extensions are not affected.")"
         [block-xwayland]="$(gettext "Xwayland does not start, so no app can use X11, where any app reads the keys typed into another. Steam, Wine, Proton and older apps stop working. From your next login.")"
@@ -903,6 +937,7 @@ words() {
         [network-daemons]="$(gettext "At once.")"
         [block-bluetooth]="$(gettext "At once.")"
         [block-webcam]="$(gettext "At once if no app is using it, otherwise from the next restart.")"
+        [remote-screen]="$(gettext "At once.")"
         [block-automount]="$(gettext "At once.")"
         [block-user-extensions]="$(gettext "At once.")"
         [block-xwayland]="$(gettext "From your next login.")"

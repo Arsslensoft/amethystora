@@ -257,6 +257,20 @@ grep -qx 'npm_config_min_release_age=7' <<<"${COOLDOWN}" && grep -qx 'npm_config
     fail "the strict cooldown"
 grep -qx 'export UV_EXCLUDE_NEWER="7 days"' <<<"$("${HARDENING}" expected profile.d/amethystora-cooldown.sh)" ||
     fail "the cooldown's shell form"
+# The remote screen (R7-26, R7-50): off until turned on, a loosening switch of the network category, whose only file is the home zone
+# with the image's own services and its one more, and which is managed only while it is on
+"${HARDENING}" is-on remote-screen && fail "remote-screen is on by default"
+"${HARDENING}" status --json | jq -e 'any(.[]; .name == "remote-screen" and .group == "network" and .default == "off" and .loosens == true)' >/dev/null ||
+    fail "remote-screen is not a loosening network switch, off by default"
+[[ "$("${HARDENING}" managed | grep -c '^firewalld/zones/amethystora-home.xml')" == 0 ]] || fail "the home zone is managed with the switch off"
+printf 'remote-screen\n' >>"${AMETHYSTORA_HARDENING_ROOT}/etc/amethystora/hardening-on"
+"${HARDENING}" is-on remote-screen || fail "remote-screen, turned on, is not reported on"
+grep -qxP 'firewalld/zones/amethystora-home.xml\tfile' <<<"$("${HARDENING}" managed)" || fail "managed: the home zone with the switch on"
+ZONE="$("${HARDENING}" expected firewalld/zones/amethystora-home.xml)"
+[[ "$(grep -c 'service name="amethystora-remote-screen"' <<<"${ZONE}")" == 1 ]] || fail "the home zone does not carry the remote screen's service once"
+grep -q 'service name="kdeconnect"' <<<"${ZONE}" && grep -q '</zone>' <<<"${ZONE}" || fail "the home zone lost the image's own services"
+grep -q 'amethystora-remote-screen' /usr/lib/firewalld/zones/amethystora*.xml && fail "the image's own zones already open the remote screen"
+grep -q 'port="3389"' /usr/lib/firewalld/services/amethystora-remote-screen.xml || fail "the service is not port 3389"
 "${HARDENING}" status --json | jq -e 'any(.[]; .name == "package-cooldown" and .level == "strict") and any(.[]; .name == "kernel" and .level == "off") and
     any(.[]; .name == "kernel-args" and any(.arguments[]; .argument == "init_on_free=1" and .state == "on" and .default == "off"))' >/dev/null ||
     fail "levels and extra arguments in the status"

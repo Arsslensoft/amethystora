@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 # Look good in every call (R7-68, amethystora-camera) against stand-ins: which cameras it finds (a real one, never its metadata
 # node, and the virtual one), a model kept only when its pinned SHA-256 holds, the settings, when PipeWire's dump says an app is
-# reading, that off and `status` write nothing, and that no frame is ever written. The cost check itself needs a machine's own
+# reading (a graph kept from each change, and the programs that open the device themselves), that off and `status` write nothing, and that no frame is ever written. The cost check itself needs a machine's own
 # processor and is run by `ame desktop camera on`.
 #
 #   test-camera.sh   HELPER and TABLE name other copies of the helper and the table
@@ -68,21 +68,81 @@ FAKE_RUNNING=yes jq -e '.running == true' <<<"$(FAKE_RUNNING=yes python3 "${HELP
 # Without the model the cost check says so, and without the unit's switch nothing runs
 rm "${XDG_DATA_HOME}/amethystora/camera/model.onnx"
 jq -e '.error == "no-model"' <<<"$(python3 "${HELPER}" bench || true)" >/dev/null || fail "bench without a model"
-python3 "${HELPER}" run 2>/dev/null && fail "it ran without a model"
+set +e
+python3 "${HELPER}" run 2>/dev/null
+[[ "$?" == 78 ]] || fail "without a model it must end with 78, which the unit does not restart on"
+# No camera: it ends with 69 and the unit does not start it again (a start every few seconds, for as long as the session lasts)
+printf 'a model' >"${XDG_DATA_HOME}/amethystora/camera/model.onnx"
+AMETHYSTORA_CAMERA_ROOT="${T}/nocamera" python3 "${HELPER}" run 2>/dev/null
+[[ "$?" == 69 ]] || fail "without a camera it must end with 69"
+set -e
+grep -qx 'RestartPreventExitStatus=69 78' "${UNIT}" || fail "the unit starts it again without a camera"
+rm "${XDG_DATA_HOME}/amethystora/camera/model.onnx"
 
-# PipeWire's dump: an app is reading only when a video source runs
-python3 - "${HELPER}" <<'PY' || fail "readers"
-import sys
-import importlib.util
+# PipeWire's graph: `pw-dump --monitor` prints the whole graph once and then only what changed, so a reader is told from a graph
+# that is kept and moved by each change, and only for the virtual camera's own node
+python3 - "${HELPER}" <<'PY' || fail "the graph of readers"
+import sys, importlib.util
 from importlib.machinery import SourceFileLoader
 loader = SourceFileLoader('camera', sys.argv[1])
 camera = importlib.util.module_from_spec(importlib.util.spec_from_loader('camera', loader))
 loader.exec_module(camera)
-source = lambda state: {'type': 'PipeWire:Interface:Node', 'info': {'state': state, 'props': {'media.class': 'Video/Source'}}}
-audio = {'type': 'PipeWire:Interface:Node', 'info': {'state': 'running', 'props': {'media.class': 'Audio/Source'}}}
-assert camera.readers([source('running')])
-assert not camera.readers([source('idle')]) and not camera.readers([audio]) and not camera.readers([])
-assert not camera.readers({'info': 'not a list'}) and not camera.readers([None, 3, {'info': None}])
+NODE = 'PipeWire:Interface:Node'
+def node(ident, state, path, klass='Video/Source'):
+    return {'id': ident, 'type': NODE, 'info': {'state': state, 'props': {'media.class': klass, 'api.v4l2.path': path}}}
+audio = {'id': 80, 'type': NODE, 'info': {'state': 'running', 'props': {'media.class': 'Audio/Source'}}}
+g = camera.Graph()
+assert not g.reading('/dev/video0')
+g.update([node(52, 'idle', '/dev/video0'), node(53, 'idle', '/dev/video2'), audio])
+assert not g.reading('/dev/video0')
+# An app starts reading the virtual camera: a change of that node's state, which carries no properties at all
+g.update([{'id': 52, 'type': NODE, 'info': {'state': 'running'}}])
+assert g.reading('/dev/video0')
+# A change that is not about the camera (a volume key, a call's audio) must not end it
+g.update([{'id': 80, 'type': NODE, 'info': {'state': 'idle', 'props': {'media.class': 'Audio/Source'}}}])
+g.update([{'id': 99, 'type': 'PipeWire:Interface:Port', 'info': {'direction': 'output'}}, 'junk', None, {'id': 'x'}])
+assert g.reading('/dev/video0')
+# Another camera's node running is not this one's reader
+g.update([{'id': 52, 'type': NODE, 'info': {'state': 'idle'}}, {'id': 53, 'type': NODE, 'info': {'state': 'running'}}])
+assert not g.reading('/dev/video0') and g.reading('/dev/video2')
+# The node goes, and what is not a list is nothing
+g.update([{'id': 53, 'info': None}])
+assert not g.reading('/dev/video2')
+g.update({'info': 'not a list'})
+assert not g.nodes.get(53)
+# A reader found by its object path, as a node without the V4L2 property has it
+g.update([{'id': 60, 'type': NODE, 'info': {'state': 'running', 'props': {'media.class': 'Video/Source', 'object.path': 'v4l2:/dev/video0'}}}])
+assert g.reading('/dev/video0')
+PY
+
+# A program that opens the device itself (V4L2, as most browsers do) is a reader too, found from /proc; this process is not
+: >"${T}/device"
+python3 - "${HELPER}" "${T}/device" <<'PY' || fail "the openers"
+import sys, subprocess, time, importlib.util
+from importlib.machinery import SourceFileLoader
+loader = SourceFileLoader('camera', sys.argv[1])
+camera = importlib.util.module_from_spec(importlib.util.spec_from_loader('camera', loader))
+loader.exec_module(camera)
+device = sys.argv[2]
+mine = open(device)
+assert not camera.openers(device), 'this process counted as a reader'
+child = subprocess.Popen([sys.executable, '-c', 'import sys, time; f = open(sys.argv[1]); time.sleep(30)', device])
+for _ in range(50):
+    if camera.openers(device):
+        break
+    time.sleep(0.1)
+assert camera.openers(device), 'a program with the device open was not found'
+child.kill(); child.wait()
+assert not camera.openers(device), 'a program that is gone still counts'
+# ...and the open and the close of it are told, by inotify, on a file and on a device node
+from gi.repository import GLib
+for target in (device, '/dev/null'):
+    loop = GLib.MainLoop(); told = []
+    assert camera.watch_opens(target, lambda: (told.append(1), loop.quit()), GLib) is not None
+    GLib.timeout_add(100, lambda: (open(target).close(), GLib.SOURCE_REMOVE)[1])
+    GLib.timeout_add(3000, loop.quit)
+    loop.run()
+    assert told, f'no event for an open of {target}'
 PY
 
 # Off and idle: `status` and `set` are all that touch the account, and the folder goes with `remove`
@@ -91,7 +151,8 @@ python3 "${HELPER}" remove
 
 # What the code may not do: a shell, a frame written anywhere, a connection of its own
 grep -q 'shell=True' "${HELPER}" && fail "a shell"
-grep -qE "\.save\(|imwrite" "${HELPER}" && fail "a frame could be written"
+# (the one .save is the benchmark's own test picture, into memory)
+[[ -z "$(grep -E "\.save\(|imwrite" "${HELPER}" | grep -v "\.save(out, 'JPEG'")" ]] || fail "a frame could be written"
 [[ "$(grep -cE "open\([^)]*, 'w'" "${HELPER}")" == 1 ]] || fail "the helper writes more than its settings file"
 for word in socket urllib requests tempfile; do
     grep -qw "${word}" "${HELPER}" && fail "the helper names ${word}"

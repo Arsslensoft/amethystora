@@ -2,21 +2,25 @@
 # Another screen from what you have, and help from someone you trust (R7-26, R7-50), both on GNOME's own remote desktop
 # (gnome-remote-desktop, RDP), run as the account, on the home network only, and off until asked:
 #
-#   amethystora-share-screen second-screen on|off   an old laptop or tablet as a second screen: its own virtual monitor
-#                                                   next to this one (`screen-share-mode extend`), keyboard and touch from the other side
-#   amethystora-share-screen help on|off            someone you trust sees this screen and nothing more (`mirror-primary`,
-#                                                   view only), until you stop it, lock the screen, or an hour has gone
+#   amethystora-share-screen check                   whether sharing may be turned on at all: says why not, and ends 3
+#   amethystora-share-screen second-screen on|off    an old laptop or tablet as a second screen: its own virtual monitor
+#                                                    next to this one (`screen-share-mode extend`); its keyboard and pointer
+#                                                    can use this whole computer; ends on lock, or after eight hours
+#   amethystora-share-screen help on|off             someone you trust sees this screen (`mirror-primary`, view only); ends on
+#                                                    lock, or after an hour
 #   amethystora-share-screen help control on|off    let them use the mouse and keyboard too, or take that back
-#   amethystora-share-screen status                 as JSON: the mode, the address and port, whether the code was made now
-#   amethystora-share-screen watch                  (run by `help on`) ends the share when the screen locks, or after an hour
+#   amethystora-share-screen status                  as JSON: the mode, the port, whether the settings app's own credentials are set
+#   amethystora-share-screen watch MODE              (run by `on`) ends the share when the screen locks, or when the time is up
+#   amethystora-share-screen end                     puts everything back, quietly (the login hook: a share does not outlive a session)
 #
-# What it does, and no more: RDP is turned on with a certificate made here for this one purpose, a user name and a
-# new eight-digit code every time (shown to the person at this computer, who says it to the other), the one port
-# opened in the firewall's home zone for as long as it lasts (runtime only: a reload or a restart closes it, and on a network
-# that is not named home it is not reachable at all), and every setting put back when it ends. Across the internet it cannot work
-# without a relay, which Amethystora does not run: reach this computer only from the home network, or over a VPN you run
-# yourself. Nothing is sent anywhere by this program; GNOME's remote desktop shows its own indicator in the top bar while
-# anyone is connected, and the share guard covers private windows while the whole screen is shared.
+# What it does, and no more. The port is NOT opened here: it is the Security switch `remote-screen` (ame security remote-screen on),
+# off as the image ships, that puts the remote desktop service in the firewall's home zone, and this refuses to start while that is off
+# or while the firewall's default zone is not an Amethystora one (firewall off). Then: a certificate made here for this alone, a user name
+# and a new eight-digit code every time (set through grdctl's standard input, never its command line, and shown to the person at this
+# computer, who says it to the other), the remote desktop service started for this session only (never enabled), and every setting
+# put back when it ends. The username and password the person set in GNOME Settings' Remote Desktop, if any, cannot be kept
+# (they live in the keyring): this says so and asks before it replaces them. Across the internet it cannot work without a relay, which
+# Amethystora does not run. Nothing is sent anywhere by this program; GNOME shows its own indicator in the top bar while anyone is connected.
 
 set -euo pipefail
 
@@ -27,15 +31,22 @@ source gettext.sh
 SCHEMA=org.gnome.desktop.remote-desktop.rdp
 STATE="${XDG_STATE_HOME:-${HOME}/.local/state}/amethystora/share-screen"
 KEYS="${XDG_DATA_HOME:-${HOME}/.local/share}/amethystora/share-screen"
-ZONE=amethystora-home
-SERVICE=ms-wbt
+HARDENING="${AMETHYSTORA_HARDENING:-/usr/libexec/amethystora-hardening}"
+FIREWALLD_CONF="${AMETHYSTORA_FIREWALLD_CONF:-/etc/firewalld/firewalld.conf}"
+UNIT=gnome-remote-desktop.service
+WATCH_UNIT=amethystora-share-screen-watch
 PORT=3389
 USER_NAME=amethystora
-# An hour, in seconds, for the help
-LIMIT=3600
+# How long a share lasts at most, in seconds
+LIMIT_HELP=3600
+LIMIT_SECOND=28800
+# The settings this changes, kept to put back
+KEEP=(screen-share-mode view-only enable negotiate-port port tls-cert tls-key auth-methods)
+# Set once everything is on, so that a failure on the way puts everything back
+started=false
 
 usage() {
-    echo "usage: amethystora-share-screen second-screen on|off | help on|off | help control on|off | status | watch" >&2
+    echo "usage: amethystora-share-screen check | second-screen on|off | help on|off | help control on|off | status | watch MODE | end" >&2
     exit 64
 }
 
@@ -56,18 +67,36 @@ make_keys() {
     chmod 0600 "${KEYS}/rdp.key"
 }
 
-# The port, in the home zone only and for now only
-open_port() { firewall-cmd --zone="${ZONE}" --add-service="${SERVICE}" >/dev/null; }
-close_port() { firewall-cmd --zone="${ZONE}" --remove-service="${SERVICE}" >/dev/null 2>&1 || true; }
+# Sharing needs the Security switch that puts the service in the home zone, and a firewall that is an Amethystora one: with the
+# firewall off, Fedora's default zone opens every high port on every network
+check() {
+    local zone
+    if ! "${HARDENING}" is-on remote-screen 2>/dev/null; then
+        gettext "Sharing the screen is switched on in Security first, since it opens a port in the firewall's home zone. Turn it on in Security, Network (amethystora-security settings/network), or with: ame security remote-screen on. Nothing was shared."
+        echo
+        return 3
+    fi
+    zone="$(sed -n 's/^DefaultZone=//p' "${FIREWALLD_CONF}" 2>/dev/null || true)"
+    if [[ "${zone}" != amethystora && "${zone}" != amethystora-away ]]; then
+        gettext "The firewall is not Amethystora's (it is off, or another one is in use), so the remote desktop port would not be limited to your home network. Turn the firewall on in Security first. Nothing was shared."
+        echo
+        return 3
+    fi
+}
 
-# The settings as they were, kept to put back: only what this changes
+# Whether the person set a username in GNOME Settings' Remote Desktop: grdctl says "(empty)" when none is
+own_credentials() {
+    local line
+    line="$(grdctl status 2>/dev/null | sed -n 's/^[[:space:]]*Username: //p' | head -1 || true)"
+    [[ -n "${line}" && "${line}" != "(empty)" ]]
+}
+
 remember() {
+    local key
     mkdir -p -m 0700 "${STATE}"
     {
-        echo "screen-share-mode=$(gsettings get "${SCHEMA}" screen-share-mode)"
-        echo "view-only=$(gsettings get "${SCHEMA}" view-only)"
-        echo "enable=$(gsettings get "${SCHEMA}" enable)"
-        echo "negotiate-port=$(gsettings get "${SCHEMA}" negotiate-port)"
+        for key in "${KEEP[@]}"; do echo "${key}=$(gsettings get "${SCHEMA}" "${key}")"; done
+        echo "unit-active=$(systemctl --user is-active "${UNIT}" 2>/dev/null || true)"
     } >"${STATE}/before"
 }
 
@@ -76,21 +105,43 @@ restore() {
     [[ -f "${STATE}/before" ]] || return 0
     while IFS== read -r key value; do
         case "${key}" in
-            screen-share-mode | view-only | enable | negotiate-port) gsettings set "${SCHEMA}" "${key}" "${value}" ;;
+            screen-share-mode | view-only | enable | negotiate-port | port | tls-cert | tls-key | auth-methods)
+                gsettings set "${SCHEMA}" "${key}" "${value}" 2>/dev/null || true ;;
+            unit-active)
+                # What was running before (the person's own Remote Desktop) runs again, with its own settings
+                [[ "${value}" != active ]] || systemctl --user start "${UNIT}" 2>/dev/null || true ;;
         esac
     done <"${STATE}/before"
     rm -f "${STATE}/before"
 }
 
-start() { # MODE VIEW_ONLY(true|false)
+stop() { # [quiet] [inside]
+    grdctl rdp clear-credentials 2>/dev/null || true
+    systemctl --user stop "${UNIT}" 2>/dev/null || true
+    restore
+    rm -f "${STATE}/mode" "${STATE}/since"
+    [[ "${1:-}" == quiet ]] || { gettext "Sharing is off, and the code no longer works."; echo; }
+    # The watcher last, and not when it is the one stopping: stopping its own unit ends it
+    [[ "${2:-}" == inside ]] || systemctl --user stop "${WATCH_UNIT}.service" 2>/dev/null || true
+}
+
+start() { # MODE VIEW_ONLY(true|false) [overwrite]
     local want="$1" view="$2" code share
     command -v grdctl >/dev/null || { gettext "GNOME's remote desktop is not installed."; echo; exit 1; }
+    check || exit 3
+    if own_credentials && [[ "${3:-}" != overwrite ]]; then
+        gettext "GNOME Settings' Remote Desktop already has a username and password. They cannot be kept while this runs, and would have to be set again. Nothing was changed."
+        echo
+        exit 2
+    fi
     [[ "$(mode)" == off ]] || stop quiet
     case "${want}" in
         second-screen) share=extend ;;
         *) share=mirror-primary ;;
     esac
     remember
+    # Anything that goes wrong from here puts everything back (the port was never opened here)
+    trap '[[ "${started}" == true ]] || stop quiet' EXIT
     make_keys
     code="$(new_code)"
     gsettings set "${SCHEMA}" screen-share-mode "${share}"
@@ -100,72 +151,62 @@ start() { # MODE VIEW_ONLY(true|false)
     grdctl rdp set-tls-cert "${KEYS}/rdp.crt"
     grdctl rdp set-tls-key "${KEYS}/rdp.key"
     grdctl rdp set-auth-methods credentials
-    # The code lives in GNOME's keyring, as the settings app's own does, and is made again every time
-    grdctl rdp set-credentials "${USER_NAME}" "${code}"
-    if ! open_port; then
-        grdctl rdp clear-credentials || true
-        restore
-        gettext "The firewall did not open the port, so nothing was shared."; echo
-        exit 1
-    fi
+    # The code goes in on standard input, which no other program can read (a command line is public to every account)
+    printf '%s\n' "${code}" | grdctl rdp set-credentials "${USER_NAME}"
     grdctl rdp enable
-    systemctl --user enable --now gnome-remote-desktop.service 2>/dev/null || systemctl --user start gnome-remote-desktop.service
+    # For this session only: the service is started and never enabled
+    systemctl --user restart "${UNIT}"
     echo "${want}" >"${STATE}/mode"
     date +%s >"${STATE}/since"
-    if [[ "${want}" == help ]]; then
-        # Ends when the screen locks, and after an hour, by a transient user unit of its own
-        systemd-run --user --quiet --collect --unit=amethystora-share-screen-watch "$(readlink -f "$0")" watch >/dev/null
-    fi
-    local address
-    address="$(hostname -I 2>/dev/null | awk '{print $1}')"
-    local port="${PORT}"
-    echo "$(eval_gettext "Connect with an RDP client to \${address} port \${port}.")"
+    # Ends when the screen locks, and when the time is up, by a transient user unit of its own
+    systemd-run --user --quiet --collect --unit="${WATCH_UNIT}" "$(readlink -f "$0")" watch "${want}" >/dev/null
+    started=true
+    local addresses port="${PORT}"
+    addresses="$(hostname -I 2>/dev/null || true)"
+    echo "$(eval_gettext "Connect with an RDP client to one of \${addresses} port \${port}.")"
     echo "$(eval_gettext "User name: \${USER_NAME}")"
     echo "$(eval_gettext "Code: \${code}")"
 }
 
-stop() { # [quiet] [inside]
-    grdctl rdp clear-credentials 2>/dev/null || true
-    grdctl rdp disable 2>/dev/null || true
-    systemctl --user stop gnome-remote-desktop.service 2>/dev/null || true
-    close_port
-    restore
-    rm -f "${STATE}/mode" "${STATE}/since"
-    [[ "${1:-}" == quiet ]] || { gettext "Sharing is off, and the code no longer works."; echo; }
-    # The watcher last, and not when it is the one stopping: stopping its own unit ends it
-    [[ "${2:-}" == inside ]] || systemctl --user stop amethystora-share-screen-watch.service 2>/dev/null || true
-}
-
 status() {
-    local m port=""
+    local m own=false
     m="$(mode)"
-    [[ "${m}" == off ]] || port="${PORT}"
-    jq -nc --arg mode "${m}" --arg port "${port}" --arg since "$(cat "${STATE}/since" 2>/dev/null || true)" \
-        --arg view "$(gsettings get "${SCHEMA}" view-only 2>/dev/null || echo true)" \
+    if command -v grdctl >/dev/null && [[ "${m}" == off ]] && own_credentials; then own=true; fi
+    jq -nc --arg mode "${m}" --arg port "$([[ "${m}" == off ]] || echo "${PORT}")" --arg since "$(cat "${STATE}/since" 2>/dev/null || true)" \
+        --arg view "$(gsettings get "${SCHEMA}" view-only 2>/dev/null || echo true)" --argjson own "${own}" \
         '{mode: $mode, port: ($port | if . == "" then null else tonumber end), since: ($since | if . == "" then null else tonumber end),
-          view_only: ($view == "true")}'
+          view_only: ($view == "true"), own_credentials: $own}'
 }
 
-# Ends a help when the screen locks (the lock screen is the end of it) or the hour is up. A bus that cannot be watched ends it at
-# once, which is the safe side
+# Ends a share when the screen locks (the lock screen is the end of it) or the time is up, within a second of either. The monitor
+# runs beside this, not in a pipe that is only given up at its next line; a bus that cannot be watched ends it at once, which is
+# the safe side
 watch() {
-    timeout "${LIMIT}" gdbus monitor --session --dest org.gnome.ScreenSaver 2>/dev/null | grep -m1 --line-buffered 'ActiveChanged (true' >/dev/null || true
+    local limit="${LIMIT_HELP}" line monitor lines
+    [[ "${1:-}" != second-screen ]] || limit="${LIMIT_SECOND}"
+    exec {lines}< <(timeout "${limit}" gdbus monitor --session --dest org.gnome.ScreenSaver 2>/dev/null)
+    monitor=$!
+    while read -r -u "${lines}" line; do
+        [[ "${line}" == *'ActiveChanged (true'* ]] && break
+    done
+    kill "${monitor}" 2>/dev/null || true
     stop quiet inside
     notify-send --app-name="Amethystora" --icon=screen-shared-symbolic -- "$(gettext "Sharing ended")" \
         "$(gettext "Your screen is no longer shared, and the code no longer works.")" 2>/dev/null || true
 }
 
 case "${1:-}" in
+    check) check ;;
     second-screen)
         case "${2:-}" in
-            on) start second-screen false ;;
+            on) start second-screen false "${3:-}" ;;
             off) stop ;;
             *) usage ;;
         esac
         ;;
     help)
         case "${2:-}" in
-            on) start help true ;;
+            on) start help true "${3:-}" ;;
             off) stop ;;
             control)
                 [[ "$(mode)" == help ]] || { gettext "Nobody is being helped right now."; echo; exit 1; }
@@ -179,6 +220,7 @@ case "${1:-}" in
         esac
         ;;
     status) status ;;
-    watch) watch ;;
+    watch) watch "${2:-}" ;;
+    end) [[ "$(mode)" == off ]] || stop quiet ;;
     *) usage ;;
 esac

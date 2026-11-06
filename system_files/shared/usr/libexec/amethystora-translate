@@ -284,9 +284,13 @@ def engine_build():
     try:
         # Pulled by its digest, so neither the tag nor the policy's catch-all can put another image in its place
         subprocess.run([PODMAN, 'pull', '--quiet', image], check=True, stdout=subprocess.DEVNULL)
-        subprocess.run(['nice', '-n', '10', PODMAN, 'run', '--rm', '--security-opt', 'label=disable',
+        jobs = build_jobs()
+        # A memory and a share of the processors for the container itself (rootless podman puts it in a scope of its own, so a
+        # limit set around podman would not hold): a gigabyte and a half for each compile job, and one more
+        subprocess.run(['nice', '-n', '10', PODMAN, 'run', '--rm', f'--memory={1536 * jobs + 1024}m', f'--cpus={jobs}',
+                        '--security-opt', 'label=disable',
                         '-v', f'{BUILD_SCRIPT}:/build.sh:ro', '-v', f'{work}:/out',
-                        '-e', f'EXPECT_TREE={models["engine"]["tree_sha256"]}', '-e', f'JOBS={build_jobs()}',
+                        '-e', f'EXPECT_TREE={models["engine"]["tree_sha256"]}', '-e', f'JOBS={jobs}',
                         image, 'bash', '/build.sh'], check=True)
         program = os.path.join(work, 'amethystora-bergamot')
         # Run once here, so that a build that is not for this machine's libraries is found now and not at the first box

@@ -7,6 +7,8 @@ Documentation=file:///usr/share/amethystora/manual/desktop.md
 [Service]
 Type=oneshot
 ExecStart=/usr/libexec/amethystora-photos index
+# 75 is "the vault is closed, try again": not a failure of the unit, every hour the vault is closed
+SuccessExitStatus=75
 # The lowest priority of everything: nothing it does may be felt, and the model's memory is bounded
 Nice=19
 IOSchedulingClass=idle

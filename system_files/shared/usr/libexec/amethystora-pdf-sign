@@ -103,9 +103,9 @@ else
 fi
 card="${title}
 
-$(gettext "The signature is digital, made with a certificate of yours that stays in the Vault. The Vault asks you to approve each one. A signed copy is saved beside the original, which is never touched.")
+$(gettext "The signature is digital, made with a certificate of yours that stays in the Vault. The Vault asks you to approve each one, unless you set that certificate to stay approved while the vault is open. A signed copy is saved beside the original, which is never touched.")
 
-$(gettext "A PDF reader calls the signer unknown until it trusts this machine's root certificate. Readers on this account trust it once you have signed. On another computer, it stays unknown until that computer trusts the root that this command prints:
+$(gettext "A PDF reader calls the signer unknown until it trusts this machine's root certificate. Readers on this account usually trust it once you have signed (Papers may need its own setting). On another computer, it stays unknown until that computer trusts the root that this command prints:
 
 ame vault root")"
 chosen="${ids[0]}"

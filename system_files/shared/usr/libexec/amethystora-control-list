@@ -2493,20 +2493,27 @@ item desktop camera switch "${ gettext "Look good in every call"; }" \
     "${ gettext "Blur what is behind you and even out the light in every app at once, made on this computer. It runs only while an app uses the camera, and is offered only where it costs little."; }" \
     "${CAMERA}" desktop#look-good-in-every-call
 # Another screen from what you have, and help from someone you trust (R7-26, R7-50; off): each opens a terminal, which says what
-# it opens, asks, and shows the code
+# it opens, asks, and shows the code. Both need the Security switch remote-screen, which opens the port: said here while it is off
 GROUP="${ gettext "Sharing"; }"
+if [[ "${ [[ "$(<"${HARDENING_ON:-/etc/amethystora/hardening-on}")" == *remote-screen* ]] 2>/dev/null && echo yes; }" == yes ]]; then
+    SHARING_REASON=""
+else
+    SHARING_REASON="${ gettext "Turn it on in Security first: Network, Let another computer see or extend this screen (ame security remote-screen on)."; }"
+fi
+REASON="${SHARING_REASON}"
 choice on "${ON}" "" true ame desktop second-screen on
 choice off "${OFF}" "" false ame desktop second-screen off
 USAGE="ame desktop second-screen on|off"
 item desktop second-screen switch "${ gettext "Another screen from what you have"; }" \
-    "${ gettext "An old laptop or tablet becomes a second screen over your home network, with any remote desktop (RDP) app and a code shown here. Off until you turn it on."; }" \
-    "${ [[ "$(cat "${HOME}/.local/state/amethystora/share-screen/mode" 2>/dev/null)" == second-screen ]] && echo on || echo off; }" desktop#another-screen-from-what-you-have
+    "${ gettext "An old laptop or tablet becomes a second screen over your home network, with any remote desktop (RDP) app and a code shown here. Its keyboard and pointer can use this whole computer. It ends when you lock the screen."; }" \
+    "${ [[ "$(<"${HOME}/.local/state/amethystora/share-screen/mode")" == second-screen ]] 2>/dev/null && echo on || echo off; }" desktop#another-screen-from-what-you-have
+REASON="${SHARING_REASON}"
 choice on "${ON}" "" true ame desktop help-me on
 choice off "${OFF}" "" false ame desktop help-me off
 USAGE="ame desktop help-me on|off"
 item desktop help-me switch "${ gettext "Help from someone you trust"; }" \
     "${ gettext "Someone on your home network sees your screen, and cannot touch anything unless you allow it, with a new code each time. It ends when you lock the screen."; }" \
-    "${ [[ "$(cat "${HOME}/.local/state/amethystora/share-screen/mode" 2>/dev/null)" == help ]] && echo on || echo off; }" desktop#help-from-someone-you-trust
+    "${ [[ "$(<"${HOME}/.local/state/amethystora/share-screen/mode")" == help ]] 2>/dev/null && echo on || echo off; }" desktop#help-from-someone-you-trust
 GROUP="${ gettext "Screenshots"; }"
 # Trim a recording (R6-19, offered, off)
 ui_reason screenshot

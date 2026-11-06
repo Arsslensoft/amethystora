@@ -106,8 +106,24 @@ pub fn refusal(argv: &[String]) -> Option<String> {
     }
     // Sharing the screen, or lending it to a second screen, lets another computer see it: the person at the machine turns it on,
     // by the helper's name, by GNOME's own tool, and by the recipes below
-    if matches!(program, "amethystora-share-screen" | "grdctl") && argv.get(1).map(String::as_str) != Some("status") {
+    // `grdctl status` alone: `status --show-credentials` prints the code
+    if program == "amethystora-share-screen" && argv.get(1).map(String::as_str) != Some("status") {
         return Some("sharing the screen is the user's: it lets another computer see it".into());
+    }
+    if program == "grdctl" && !(argv.len() == 2 && argv[1] == "status") {
+        return Some("GNOME's remote desktop is the user's: it lets another computer see the screen, and `status` is the only part that does not".into());
+    }
+    // The remote desktop's own settings, in every spelling of gsettings or dconf, give the same access as the commands do: reads pass
+    if matches!(program, "gsettings" | "dconf") && lower.iter().any(|arg| arg.contains("remote-desktop"))
+        && !matches!(argv.get(1).map(String::as_str), Some("get" | "list-keys" | "list-recursively" | "list-schemas" | "range" | "describe" | "read" | "list"))
+    {
+        return Some("the remote desktop's settings are the user's: they decide who can see and use the screen".into());
+    }
+    // The firewall is the user's too (it is Security's): asking it what it holds is fine
+    if program == "firewall-cmd"
+        && !argv.iter().skip(1).all(|arg| ["--get-", "--list-", "--query-", "--state", "--info-", "--zone="].iter().any(|start| arg.starts_with(start)))
+    {
+        return Some("the firewall is changed in Security, by the user: asking what it holds is fine".into());
     }
     if program == "amethystora-if-found" && argv.get(1).map(String::as_str) != Some("status") {
         return Some("the line on the login and lock screens is the user's own words: the user writes it".into());
@@ -372,6 +388,12 @@ mod tests {
             "ame -q desktop::help-me on",
             "amethystora-share-screen help on",
             "grdctl rdp enable",
+            "grdctl status --show-credentials",
+            "gsettings set org.gnome.desktop.remote-desktop.rdp view-only false",
+            "gsettings --schemadir /usr/share/glib-2.0/schemas set org.gnome.desktop.remote-desktop.rdp enable true",
+            "dconf write /org/gnome/desktop/remote-desktop/rdp/view-only false",
+            "firewall-cmd --add-port=3389/tcp",
+            "firewall-cmd --permanent --zone=amethystora-home --add-service=amethystora-remote-screen",
             "gsettings set org.amethystora.Connect codes true",
             "gsettings set org.amethystora.Connect:/org/amethystora/Connect/ codes true",
             "gsettings --schemadir /usr/share/glib-2.0/schemas set org.amethystora.Connect codes true",
@@ -611,6 +633,9 @@ mod tests {
             "ame desktop help-me status",
             "amethystora-share-screen status",
             "grdctl status",
+            "gsettings get org.gnome.desktop.remote-desktop.rdp view-only",
+            "firewall-cmd --list-all",
+            "firewall-cmd --get-default-zone",
             "gsettings set org.amethystora.Connect codes false",
             "gsettings reset org.amethystora.Connect codes",
             "gsettings get org.amethystora.Connect codes",

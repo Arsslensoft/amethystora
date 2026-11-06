@@ -2082,8 +2082,8 @@ translate *ARGS:
     esac
 
 # An old laptop or a tablet as a second screen over the home network (R7-26; off): GNOME's own remote desktop, which draws a
-# virtual monitor next to this one for whatever RDP client connects. `on` shows a new code for the other side to type; the one port is
-# open in the firewall's home zone only, for as long as this lasts (STATE: on, off or status; without it, status)
+# virtual monitor next to this one for whatever RDP client connects. It needs the Security switch `remote-screen` (the port is opened
+# there, in the firewall's home zone only) and shows a new code for the other side to type (STATE: on, off or status; without it, status)
 [positional-arguments]
 second-screen STATE="":
     #!/usr/bin/bash
@@ -2091,6 +2091,15 @@ second-screen STATE="":
     # shellcheck source=/dev/null
     source gettext.sh
     helper=/usr/libexec/amethystora-share-screen
+    # The credentials GNOME Settings' Remote Desktop keeps cannot be kept while this runs: said first, and asked
+    replace=""
+    ask_replace() {
+        if [[ "$("${helper}" status | jq -r .own_credentials)" == true ]]; then
+            echo "$(gettext "GNOME Settings' Remote Desktop already has a username and password. They cannot be kept while this runs: you would have to set them again afterwards.")"
+            gum confirm "$(gettext "Replace them?")" || exit 1
+            replace=overwrite
+        fi
+    }
     case "${1:-status}" in
         status)
             if [[ "$("${helper}" status | jq -r .mode)" == second-screen ]]; then
@@ -2100,9 +2109,12 @@ second-screen STATE="":
             fi
             ;;
         on)
-            echo "$(gettext "This opens the remote desktop port for the networks you named home, and only while it is on. The other computer connects with any RDP client and the code below, and gets a second screen next to this one. Across the internet it cannot work: that needs a relay, which Amethystora does not run.")"
+            "${helper}" check || exit 1
+            echo "$(gettext "The other computer's keyboard and pointer will be able to use this whole computer, every window on it, not only its own screen. The code stays valid until you turn this off, lock the screen, or eight hours pass. It works on the networks you named home; across the internet it cannot work: that needs a relay, which Amethystora does not run.")"
+            ask_replace
             gum confirm "$(gettext "Turn it on now?")" || exit 1
-            "${helper}" second-screen on
+            # shellcheck disable=SC2086
+            "${helper}" second-screen on ${replace}
             ;;
         off) "${helper}" second-screen off ;;
         *)
@@ -2111,9 +2123,9 @@ second-screen STATE="":
             ;;
     esac
 
-# Help from someone you trust (R7-50; off): they see this screen and nothing more, with a new code each time, on the home network
-# only, until you stop it, lock the screen or an hour goes by. `control on` lets them use the mouse and keyboard too
-# (ACTION: on, off, control on|off or status; without it, status)
+# Help from someone you trust (R7-50; off): they see this screen, with a new code each time, on the home network only, until you stop
+# it, lock the screen or an hour goes by. It needs the Security switch `remote-screen`. `control on` lets them use the mouse and
+# keyboard too (ACTION: on, off, control on|off or status; without it, status)
 [positional-arguments]
 help-me *ARGS:
     #!/usr/bin/bash
@@ -2136,9 +2148,17 @@ help-me *ARGS:
             ;;
         on)
             [[ $# -eq 1 ]] || usage
-            echo "$(gettext "The other person sees this screen and cannot touch anything, until you let them. Private windows stay covered, the code is new each time, and it ends when you lock the screen. It works on the networks you named home: across the internet it needs a relay, which Amethystora does not run.")"
+            "${helper}" check || exit 1
+            echo "$(gettext "The other person sees this whole screen, and cannot touch anything unless you let them. Close what is private first: nothing here promises it is hidden from them. The code stays valid until you stop it, lock the screen or an hour passes. It works on the networks you named home; across the internet it cannot work: that needs a relay, which Amethystora does not run.")"
+            replace=""
+            if [[ "$("${helper}" status | jq -r .own_credentials)" == true ]]; then
+                echo "$(gettext "GNOME Settings' Remote Desktop already has a username and password. They cannot be kept while this runs: you would have to set them again afterwards.")"
+                gum confirm "$(gettext "Replace them?")" || exit 1
+                replace=overwrite
+            fi
             gum confirm "$(gettext "Start it now?")" || exit 1
-            "${helper}" help on
+            # shellcheck disable=SC2086
+            "${helper}" help on ${replace}
             ;;
         off)
             [[ $# -eq 1 ]] || usage
@@ -2198,7 +2218,7 @@ camera *ARGS:
                 exit 1
             fi
             echo "$(eval_gettext "Here it takes \${percent}% of one processor core, and only while an app uses the camera.")"
-            echo "$(gettext "Apps then show a second camera, the virtual one: choose it in each app. Blocking the webcam in Security still blocks this.")"
+            echo "$(gettext "Apps then show a second camera, the virtual one: choose it in each app. It starts when an app opens it, through PipeWire or itself (a browser does). Blocking the webcam in Security still blocks this.")"
             systemctl --user enable --now "${unit}"
             ;;
         off)
@@ -2208,6 +2228,16 @@ camera *ARGS:
             ;;
         blur | light)
             [[ "${2:-}" == on || "${2:-}" == off ]] && [[ $# -eq 2 ]] || usage
+            # An effect that costs is measured again before it is turned on: what is checked is always the most this does (both on)
+            if [[ "$2" == on ]]; then
+                result="$("${helper}" bench)" || { echo "$(gettext "Turn camera effects on first: ame desktop camera on.")"; exit 1; }
+                if [[ "$(jq -r .ok <<<"${result}")" != true ]]; then
+                    percent="$(jq -r .cpu_percent <<<"${result}")"
+                    limit="$(jq -r .limit <<<"${result}")"
+                    echo "$(eval_gettext "Here it would take \${percent}% of one processor core, and it is offered only under \${limit}%. Nothing was changed.")"
+                    exit 1
+                fi
+            fi
             "${helper}" set "$1" "$2"
             systemctl --user try-restart "${unit}" 2>/dev/null || true
             state="$2"
@@ -4062,8 +4092,13 @@ search WHAT="" STATE="":
             [[ "${what}" != meaning ]] || /usr/libexec/amethystora-file-meaning off
             # ...and the photos' reading stops, and the index, its key and the model are deleted
             if [[ "${what}" == photos ]]; then
+                # A reading in progress is stopped first: it would write the index back, and seal under a new key
                 systemctl --user disable --now amethystora-photos.timer 2>/dev/null || true
-                /usr/libexec/amethystora-photos remove
+                systemctl --user stop amethystora-photos.service 2>/dev/null || true
+                if ! /usr/libexec/amethystora-photos remove; then
+                    echo "${title}: $(gettext "Off")"
+                    exit 1
+                fi
             fi
             echo "${title}: $(gettext "Off")"
             ;;

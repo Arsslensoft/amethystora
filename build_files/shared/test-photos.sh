@@ -47,10 +47,10 @@ while True:
     request = json.loads(line)
     mode = open(mode_file).read().strip()
     open(log, 'a').write(f'{request["op"]} {request["purpose"]} {request.get("record", "")}\n')
-    if request['op'] == 'forget':
-        answer = {'ok': True}
-    elif mode != 'open':
+    if mode != 'open':
         answer = {'ok': False, 'why': mode}
+    elif request['op'] == 'forget':
+        answer = {'ok': True}
     else:
         data = base64.b64decode(request['data'])
         data = b'AVs1' + data[::-1] if request['op'] == 'seal' else (data[4:][::-1] if data[:4] == b'AVs1' else b'')
@@ -166,6 +166,31 @@ echo open >"${T}/mode"
 python3 "${HELPER}" remove
 [[ ! -e "${DATA}" ]] || fail "remove left something"
 grep -q '^forget photo-index' "${T}/vault.log" || fail "remove did not forget the vault's key"
+
+# Off with the vault closed: everything else is deleted, the key stays and that is said plainly, the marker keeps it from being forgotten,
+# and no reading or turning on goes on until the vault has forgotten the key
+mkdir -p "${DATA}"
+cp "${T}/elsewhere/vocab.json" "${DATA}/vocab.json"
+echo closed >"${T}/mode"
+set +e
+python3 "${HELPER}" remove 2>"${T}/err"
+code=$?
+set -e
+[[ "${code}" == 3 ]] || fail "remove with a closed vault ended with ${code}"
+grep -q "did not forget the key" "${T}/err" && grep -q "snapshots" "${T}/err" || fail "the refused forget was not said plainly: $(cat "${T}/err")"
+[[ ! -e "${DATA}" && -e "${HOME}/.local/state/amethystora/photos-forget" ]] || fail "after a refused forget: the data stays or the marker is missing"
+set +e
+AMETHYSTORA_PHOTOS_IDLE=600000 python3 "${HELPER}" index 2>/dev/null
+[[ "$?" == 75 ]] || fail "a reading went on with a key still to forget"
+python3 "${HELPER}" fetch >/dev/null 2>&1
+[[ "$?" == 75 ]] || fail "turning on went on with a key still to forget"
+set -e
+echo open >"${T}/mode"
+: >"${T}/vault.log"
+python3 "${HELPER}" fetch >/dev/null 2>&1 || fail "turning on after the vault forgot"
+grep -q '^forget photo-index' "${T}/vault.log" && [[ ! -e "${HOME}/.local/state/amethystora/photos-forget" ]] || fail "the key was not forgotten and the marker cleared"
+python3 "${HELPER}" remove
+grep -qx 'SuccessExitStatus=75' "${UNITS}/amethystora-photos.service" || fail "a closed vault makes the unit fail every hour"
 
 # --- Real models, when there are (a lab run, not the image's build) -----------------------------------------------------
 if [[ -n "${PHOTOS_MODELS:-}" ]]; then

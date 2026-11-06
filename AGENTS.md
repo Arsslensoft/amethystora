@@ -1533,9 +1533,10 @@ The modules, and what each replaced:
 
 **Round 7's other groups** (`plans/ui-ideas/r7/spec-<group>.md`, the checks in `tests/real/checklist/60-r7-<group>.md`; where a spec and the
 code differ, the code is right). What must outlive a screen lock is at module scope, as above. **Not built:** R7-04 (a command's progress in the
-pill) moved to later, because the terminal offers no documented way to pass a command's progress on; R7-47 (reading the screen in another
-language, with Bergamot) is held whole as `plans/ui-ideas/r7/work/r7-47.patch`, with what its audit asked at the top, and is kept out by the maintainer's decision of 2026-11-02: its build stage costs about
-20 minutes on a cold build, and it misses Chinese, Japanese and Korean. None of it is in the tree.
+pill): Fedora 45's kitty (0.48) draws OSC 9;4 progress in its own window and tab bar only; the documented way out, `on_program_status_change`
+(OSC 7501), is kitty 0.50 (see the later group, below). R7-47 (reading the screen in another language, with Bergamot) was kept out on
+2026-11-02 for its 20-minute build stage and its missing Chinese, Japanese and Korean, and was built on 2026-11-06 with the stage moved off the
+image: the translator is compiled on the person's machine when they ask (see the later group); Chinese, Japanese and Korean are still out.
 - **Find** (`modules/search/`, `/usr/libexec/amethystora-file-find`). *Old words* (R7-49, `old-words`) matches a table of word lists, each one
   gettext message with alternatives split by `|`, to a thing here, and **no string names another maker's product**: of other systems' names only
   `task manager`, `control panel`, `recycle bin` and `print screen` stay, and `test-search-words.mjs` (which reads the four catalogs too) and
@@ -1625,8 +1626,10 @@ a SHA-256 over the tree; Chinese, Japanese and Korean stay out because their mod
 core; the model is PP-HumanSeg (Apache-2.0); no shell module. *Your photos* (`amethystora-photos`, search key `photos`, prefix `photo:`) reads photos
 through GdkPixbuf only, on mains power while idle, and keeps its index **sealed in the Vault** (purpose `photo-index`, shards under 1 MiB): a
 closed vault means nothing is read or kept. *Another screen* and *Help from someone you trust* are one helper, `amethystora-share-screen`, on
-GNOME's remote desktop: a new code every time, the one port opened in the `amethystora-home` zone at runtime only; the agent may not turn either on
-(`never.rs`); across the internet it cannot work without a relay, and Amethystora runs none. Commands: `ame desktop translate|camera|second-screen|
+GNOME's remote desktop: a new code every time (through grdctl's standard input), started for the session only and put back when it ends; the port is
+the Security switch `remote-screen` (loosening, off, `amethystora-hardening`, the `amethystora-remote-screen` firewalld service in the `amethystora-home` zone
+through `HOME_ZONE_SERVICES`), and the commands refuse while it is off or the firewall is not an Amethystora one; the agent may not turn either on or
+touch grdctl, the remote-desktop settings or firewall-cmd (`never.rs`); across the internet it cannot work without a relay, and Amethystora runs none. Commands: `ame desktop translate|camera|second-screen|
 help-me` and `ame desktop search photos`. Kitty 0.48's OSC 9;4 progress cannot be passed out (R7-04): see the spec.
 
 **Rounds 5 and 6** (`plans/ui-ideas/`, the boards and a `spec-<group>.md` per group; VM suites 51 to 69, one per group).

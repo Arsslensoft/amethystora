@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<service>
+  <short>Amethystora remote screen</short>
+  <description>Another computer seeing this screen, or using it as a second screen (ame desktop help-me, ame desktop second-screen), over RDP. Opened in the home zone alone, by ame security remote-screen; nothing listens on it until one of those is started.</description>
+  <port protocol="tcp" port="3389"/>
+</service>

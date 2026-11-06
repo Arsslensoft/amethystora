@@ -1150,6 +1150,12 @@ location ACTION="":
 block-bluetooth ACTION="":
     @/usr/libexec/amethystora-hardening ask block-bluetooth "${1:-}"
 
+# Another computer seeing this screen, or using it as a second screen, over the networks named home (R7-26, R7-50): the home zone opens the
+# remote desktop port. Off as the image ships; ame desktop help-me and second-screen refuse while it is off
+[positional-arguments]
+remote-screen ACTION="":
+    @/usr/libexec/amethystora-hardening ask remote-screen "${1:-}"
+
 # The USB webcam driver kept from loading
 [positional-arguments]
 block-webcam ACTION="":

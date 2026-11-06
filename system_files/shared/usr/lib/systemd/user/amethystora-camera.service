@@ -10,10 +10,11 @@ After=graphical-session.target pipewire.service
 [Service]
 ExecStart=/usr/libexec/amethystora-camera run
 Restart=on-failure
+RestartPreventExitStatus=69 78
 RestartSec=5
 # The share of the computer it may take, so that it can never take the desktop with it: the cost the plan allows is 15 % of
 # one core at 720p, and `ame desktop camera on` offers it only where it measured under that
-CPUQuota=40%
+CPUQuota=25%
 CPUWeight=20
 Nice=10
 MemoryMax=400M

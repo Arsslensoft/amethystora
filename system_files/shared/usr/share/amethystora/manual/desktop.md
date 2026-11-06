@@ -1191,19 +1191,23 @@ stops it and deletes the model, the index and the vault's key for it.
 ### Another screen from what you have
 
 `ame desktop second-screen on` turns an old laptop or tablet into a **second screen** next to this one, over your home network.
-It uses GNOME's own remote desktop: it opens its one port in the firewall's home zone (only while it is on, and never on a
-network you have not named home with `ame security home-networks`), makes a certificate for this alone, and shows a **new
-eight-digit code** and the address to type into any RDP app on the other computer. A virtual monitor then appears next to
-yours, with the other computer's keyboard and touch as input. `ame desktop second-screen off` ends it and the code no
-longer works. Across the internet it cannot work, because that needs a relay, and Amethystora runs none: use it at home.
+It uses GNOME's own remote desktop, and needs the Security switch **Let another computer see or extend this screen**
+(`ame security remote-screen on`, off as shipped), which opens its one port in the firewall's home zone only; it refuses
+while that switch is off or the firewall is off. It makes a certificate for this alone, starts the service for this session only,
+and shows a **new eight-digit code** and the address to type into any RDP app on the other computer. A virtual monitor then appears
+next to yours. **The other computer's keyboard and pointer can use this whole computer**, every window on it, not only its own screen,
+and the code stays valid until you turn it off, **lock the screen**, or eight hours pass. If you set a username and password in GNOME
+Settings' Remote Desktop, it says so and asks first: they cannot be kept while this runs. `ame desktop second-screen off` ends it,
+puts the settings back and the code no longer works. Across the internet it cannot work, because that needs a relay, and Amethystora runs none: use it at home.
 
 ### Help from someone you trust
 
-`ame desktop help-me on` lets a person on your home network **see your screen and nothing more**: it shows a new code each
-time, opens the same one port in the home zone only, and the other side connects with any RDP app. They cannot move the mouse or
-type until you allow it with `ame desktop help-me control on` (and take it back with `control off`). It ends by itself when you
-lock the screen or after an hour, and `ame desktop help-me off` ends it at once. GNOME shows its own indicator in the top bar while
-anyone is connected. **Across the internet it cannot be built here:** reaching a computer behind a router needs a relay that both
+`ame desktop help-me on` lets a person on your home network **see your whole screen and nothing more**: it needs the same Security
+switch (`ame security remote-screen on`, one port in the home zone only), shows a new code each time, and the other side connects with
+any RDP app. **Close what is private first**: nothing here promises that windows such as Notes or the Vault are hidden from them. They
+cannot move the mouse or type until you allow it with `ame desktop help-me control on` (and take it back with `control off`). It ends by
+itself when you lock the screen or after an hour, within a second of the lock, and `ame desktop help-me off` ends it at once; the code
+is good until then. GNOME shows its own indicator in the top bar while anyone is connected. **Across the internet it cannot be built here:** reaching a computer behind a router needs a relay that both
 sides can dial out to, and Amethystora runs no servers. Until there is a way that needs no relay, it works on the home network only.
 
 ### Look good in every call
@@ -1212,7 +1216,7 @@ sides can dial out to, and Amethystora runs no servers. Until there is a way tha
 is off until you choose it. It downloads one small model once (6 MiB, Apache-2.0, checked against the SHA-256 in the image),
 measures what 720p video costs on this computer, and **turns on only where that is under 15% of one processor core**: on an
 older or busy computer it says so and does not offer it. Apps then see a second camera, the virtual one: pick it in each app.
-It runs only while an app uses that camera; your video is made here and never written, logged or sent. Blocking the webcam in
+It runs only while an app has that camera open (through PipeWire, or itself as browsers do); with no camera it ends and does not start again by itself, so run `ame desktop camera on` after plugging one in. Turning an effect on measures the cost again. Your video is made here and never written, logged or sent. Blocking the webcam in
 [Security](security.md) still blocks it, since then there is no camera to read. `ame desktop camera blur on|off` and
 `ame desktop camera light on|off` choose the two effects, `ame desktop camera off` turns it off and `ame desktop camera
 remove` deletes the model.

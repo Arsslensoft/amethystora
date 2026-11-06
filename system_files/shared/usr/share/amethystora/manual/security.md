@@ -687,6 +687,21 @@ outside its hours, and a session there is closed when its time runs out, with an
 There the daily limit counts each session afresh, and no session runs past midnight while a limit is
 set.
 
+### Letting another computer see this screen
+
+Two desktop features (`ame desktop help-me`, someone you trust sees your screen, and `ame desktop second-screen`, an old laptop or
+tablet as a second screen) use GNOME's remote desktop, and **they need one port, 3389, open on the networks you named home**.
+That is this switch, and it is **off**:
+
+```bash
+ame security remote-screen on
+```
+
+or **Let another computer see or extend this screen** on Security's **Settings** page, under Network. It adds the remote screen
+to the home zone of the firewall, and nothing else: nothing listens on the port until you start one of the two features. They refuse to
+start while the switch is off, and while the firewall itself is off (then every network would get the port). Turning it off closes it
+again. Anyone on your home network who learns a code, or watches you type it, sees what is on the screen.
+
 ### Guest login
 
 For a friend who needs a browser for ten minutes: with the guest login on, the login screen lists **Guest**, who

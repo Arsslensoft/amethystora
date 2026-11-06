@@ -239,7 +239,7 @@ fi
 TRANSLATE_DIR="${XDG_DATA_HOME:-${HOME:-/nonexistent}/.local/share}/amethystora/translate"
 if [[ -d "${TRANSLATE_DIR}" ]]; then
     row translate off "$(gettext "Translation in the screenshot bar")" \
-        "$(gettext "The translator was built on this computer once, from Fedora's container and packages and its source on GitHub. Its models were each downloaded once from Mozilla's servers (firefox-settings-attachments.cdn.mozilla.net), and the data to read another script from GitHub (raw.githubusercontent.com), when a language was chosen. What you translate goes nowhere.")" \
+        "$(gettext "The translator was built on this computer once, from a Fedora container (registry.fedoraproject.org) and its packages (Fedora's mirrors) and its source on github.com. Its models were each downloaded once from Mozilla's servers (firefox-settings-attachments.cdn.mozilla.net), and the data to read another script from GitHub (raw.githubusercontent.com), when a language was chosen. What you translate goes nowhere.")" \
         "ame desktop translate"
 fi
 

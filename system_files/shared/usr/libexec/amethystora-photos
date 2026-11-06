@@ -189,6 +189,9 @@ def sha256(path):
 
 
 def fetch():
+    if not forget_pending():
+        print('amethystora-photos: the key of an index that was turned off is still in the vault: open it, and try again', file=sys.stderr)
+        return 75
     models = table()
     folder = data_folder()
     os.makedirs(folder, mode=0o700, exist_ok=True)
@@ -219,14 +222,44 @@ def fetch():
                 os.unlink(part)
 
 
-def remove():
-    # The key first: whatever is left of the index is then unreadable, even if a file is
+def pending_file():
+    state = os.environ.get('XDG_STATE_HOME', '')
+    if not os.path.isabs(state):
+        state = os.path.join(os.path.expanduser('~'), '.local', 'state')
+    return os.path.join(state, 'amethystora', 'photos-forget')
+
+
+def forget_pending():
+    """Asks the Vault to forget the key an earlier `remove` could not: True when there is nothing left to forget"""
+    marker = pending_file()
+    if not os.path.exists(marker):
+        return True
     try:
         Vault().forget()
     except Vault.Refused:
-        pass
+        return False
+    os.unlink(marker)
+    return True
+
+
+def remove():
+    # The key first: whatever is left of the index is then unreadable, even if a file is. The Vault forgets only with the first vault open
+    # and after the person's approval: when it will not, that is said, plainly, and asked again at the next run or turning on
+    forgotten = True
+    try:
+        Vault().forget()
+    except Vault.Refused as e:
+        forgotten = False
+        why = e.why
     import shutil
     shutil.rmtree(data_folder(), ignore_errors=True)
+    if not forgotten:
+        os.makedirs(os.path.dirname(pending_file()), mode=0o700, exist_ok=True)
+        open(pending_file(), 'w').close()
+        print(f'amethystora-photos: the vault did not forget the key for the index (it is {why}). The index and the models are deleted, '
+              'but the key stays in the vault, and the hourly snapshots of your home folder keep the sealed index for up to 14 days: '
+              'anyone who can open the vault could read those. Open the vault and run this again to forget the key.', file=sys.stderr)
+        return 3
     return 0
 
 
@@ -341,6 +374,10 @@ def write_state(count):
 
 
 def index():
+    if not forget_pending():
+        # A key that could not be forgotten earlier is forgotten first: nothing is sealed under a key that should be gone
+        print('amethystora-photos: the vault is not open to forget the key of an index that was turned off', file=sys.stderr)
+        return 75
     if not models_here():
         return 1
     if not left_alone():

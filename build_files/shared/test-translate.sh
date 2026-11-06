@@ -123,7 +123,7 @@ grep -q "^podman rmi --force ${IMAGE}$" "${PODMAN_LOG}" || fail "the image was l
 python3 "${HELPER}" engine build >/dev/null 2>&1 || fail "the build failed"
 [[ -x "${ENGINE}" ]] || fail "no translator after a build"
 grep -q "^podman pull --quiet ${IMAGE}$" "${PODMAN_LOG}" || fail "the image was not pulled by its digest"
-grep -qE "^podman run --rm --security-opt label=disable -v .*/build-engine.sh:/build.sh:ro -v .*:/out -e EXPECT_TREE=abc -e JOBS=[1-4] ${IMAGE} bash /build.sh$" "${PODMAN_LOG}" ||
+grep -qE "^podman run --rm --memory=[0-9]+m --cpus=[1-4] --security-opt label=disable -v .*/build-engine.sh:/build.sh:ro -v .*:/out -e EXPECT_TREE=abc -e JOBS=[1-4] ${IMAGE} bash /build.sh$" "${PODMAN_LOG}" ||
     fail "the build's command: $(cat "${PODMAN_LOG}")"
 grep -q '^podman rmi' "${PODMAN_LOG}" || fail "the image it pulled was kept"
 : >"${PODMAN_LOG}"
