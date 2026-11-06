@@ -2924,7 +2924,8 @@ usb-writes STATE="":
 # [on|off]); the same menu lists every device's battery, with a notice once at 15% (ame desktop power devices [on|off]);
 # at 3% the computer asks you to save, keeps where the apps were and closes cleanly (ame desktop power flat [on|off]);
 # a notice says what woke the computer when the battery went much further than it should in sleep (ame desktop power
-# sleep [on|off]). Without on or off, it asks
+# sleep [on|off]); plugged in for the night, the battery waits at its limit and finishes just before you usually leave (ame
+# desktop power charge [on|off], only on a computer whose battery takes a limit). Without on or off, it asks
 [positional-arguments]
 power *ARGS:
     #!/usr/bin/bash
@@ -2933,7 +2934,7 @@ power *ARGS:
     source gettext.sh
     schema=org.gnome.shell.extensions.amethystora-ui.power
     usage() {
-        echo "usage: ame desktop power battery|busy|devices|flat|sleep [on|off]"
+        echo "usage: ame desktop power battery|busy|devices|flat|sleep|charge [on|off]"
         exit 64
     }
     [[ $# -ge 1 && $# -le 2 ]] || usage
@@ -2943,12 +2944,20 @@ power *ARGS:
         devices) key=device-batteries ;;
         flat) key=flat-battery ;;
         sleep) key=sleep-report ;;
+        charge) key=charge-by-leaving ;;
         *) usage ;;
     esac
     state="${2:-}"
+    # Charged by the time you leave is offered only where a battery takes a limit that changes: /usr/libexec/amethystora-charge-limit says
+    if [[ "${key}" == charge-by-leaving && "${state}" != off ]] && ! charge_said="$(/usr/libexec/amethystora-charge-limit support)"; then
+        echo "${charge_said}"
+        exit 1
+    fi
     if [[ -z "${state}" ]]; then
         if [[ "$(gsettings get "${schema}" "${key}")" == true ]]; then current=on; else current=off; fi
-        if [[ "${key}" == battery-details ]]; then
+        if [[ "${key}" == charge-by-leaving ]]; then
+            header="$(eval_gettext "Charged by the time you leave (current: \${current})")"
+        elif [[ "${key}" == battery-details ]]; then
             header="$(eval_gettext "Battery details (current: \${current})")"
         elif [[ "${key}" == device-batteries ]]; then
             header="$(eval_gettext "Your devices' batteries (current: \${current})")"
@@ -2975,6 +2984,8 @@ power *ARGS:
         device-batteries:off) echo "$(gettext "The battery's menu no longer lists other devices' batteries.")" ;;
         flat-battery:on) echo "$(gettext "At 3% a card asks you to save, where your apps were is kept, and the computer closes cleanly 60 seconds later.")" ;;
         flat-battery:off) echo "$(gettext "A flat battery is left to the system's own closing at 2%, and nothing is kept of the open apps.")" ;;
+        charge-by-leaving:on) echo "$(gettext "Plugged in for the night, the battery waits at its limit and finishes just before you usually leave, which it learns from your own unplugging, sealed in your Vault.")" ;;
+        charge-by-leaving:off) echo "$(gettext "The battery charges fully, as the system does.")" ;;
         sleep-report:on) echo "$(gettext "When the battery loses an unusual amount while the computer sleeps, a notice says what woke it, once.")" ;;
         sleep-report:off) echo "$(gettext "Nothing is said of what the battery lost while the computer slept.")" ;;
     esac

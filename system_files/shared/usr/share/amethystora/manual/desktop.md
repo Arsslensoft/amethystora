@@ -196,8 +196,24 @@ It counts as unusual from 10 points gone, faster than 1.5 points an hour, over a
 nothing is read unless it is. Each device is said once, and a loss with nothing to name once a day. What is kept is a
 salted checksum of what was said, in `~/.local/state/amethystora/sleep-report.json`: no name, ID or address of anything.
 
+**Charged by the time you leave** (off). A battery that sits full all night wears faster. On a laptop whose battery takes a
+charge limit, plugged in for the night it **waits at that limit and finishes 75 minutes before you usually leave**, so it
+is full when you go. The pill says **Held at 80%** and when it will be full, and **Full now, just this once** in its card
+charges it now, until the next time you unplug. It learns when you leave from your own unplugging: each time you unplug
+after a night on mains it keeps the minute of the day and whether it was a weekend (the last thirty, nothing else: no date,
+no place), **sealed in your [Vault](vault.md)** under its own key, in `~/.local/state/amethystora/charge-pattern.avs`. It
+needs three of a kind, and an earlier event in your calendar (its start time only, never its title) moves the time earlier.
+Nothing asks for the Vault by itself, so after you log in the pill says once that it is **charging fully** while the
+pattern is sealed, and **Use my pattern** opens it. The time it works out is only ever in memory: a restart, or a Vault
+that is closed, means the battery charges fully, which is always safe. A limit you set yourself (in Settings) is never
+touched, and what it turns on it turns off again when you unplug, turn it off, or log out. It is offered only where
+`/usr/libexec/amethystora-charge-limit support` finds a battery with a `charge_control_end_threshold` that root may write
+(ThinkPads, many ASUS, Dell, Framework and others do; a laptop without one never offers it), and the limit is moved
+through UPower, which asks the system's own permission. If a laptop does not accept the change, the pill says so and
+nothing is held.
+
 `ame desktop power battery on|off`, `ame desktop power busy on|off`, `ame desktop power devices on|off`,
-`ame desktop power flat on|off` and `ame desktop power sleep on|off`, also in [Control](control.md).
+`ame desktop power flat on|off`, `ame desktop power sleep on|off` and `ame desktop power charge on|off`, also in [Control](control.md).
 
 ### Get me through
 

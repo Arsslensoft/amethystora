@@ -16,6 +16,7 @@
 import {BatteryDetails} from './power/battery.js';
 import {Busy} from './power/busy.js';
 import {DeviceBatteries} from './power/devices.js';
+import {ChargeBy} from './power/charge.js';
 import {FlatBattery} from './power/flat.js';
 import {SleptReport, forgetSleep} from './power/slept.js';
 
@@ -33,6 +34,7 @@ export class Power {
             'changed::busy-app', () => this._sync(),
             'changed::device-batteries', () => this._sync(),
             'changed::flat-battery', () => this._sync(),
+            'changed::charge-by-leaving', () => this._sync(),
             'changed::sleep-report', () => this._sync(),
             this);
         this._sync();
@@ -40,6 +42,7 @@ export class Power {
 
     disable() {
         this._settings?.disconnectObject(this);
+        this._stop('_charge');
         this._stop('_flat');
         this._stop('_slept');
         this._stop('_devices');
@@ -59,6 +62,7 @@ export class Power {
         this._toggle('_devices', this._settings.get_boolean('device-batteries'),
             () => new DeviceBatteries(modules?.get('quick'), modules?.get('connect')));
         this._toggle('_flat', this._settings.get_boolean('flat-battery'), () => new FlatBattery(this._ext, this._settings));
+        this._toggle('_charge', this._settings.get_boolean('charge-by-leaving'), () => new ChargeBy(this._ext));
         this._toggle('_slept', this._settings.get_boolean('sleep-report'), () => new SleptReport());
         if (!this._slept)
             forgetSleep();
@@ -102,6 +106,11 @@ export class Power {
 
     get slept() {
         return this._slept;
+    }
+
+    // Charged by the time you leave (power/charge.js), or null while it is off
+    get charge() {
+        return this._charge ?? null;
     }
 
     get flat() {

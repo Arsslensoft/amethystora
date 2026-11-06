@@ -1,0 +1,94 @@
+#!/usr/bin/python3 -I
+# Which of this computer's batteries accept a charge limit that changes (plans/ui-ideas/r7/spec-keep.md, R7-70, Charged by the time you leave).
+#
+#   amethystora-charge-limit support [--json] [--folder DIR]
+#
+# A battery is limitable when the kernel gives it `charge_control_end_threshold` and the file is one root may write (the kernel's
+# power_supply ABI: ThinkPad, ASUS, Dell, Framework, System76, Huawei, LG, Samsung, Toshiba and others have it; a laptop whose firmware
+# does not has no such file, and is never offered the feature). The limit itself is moved by UPower (EnableChargeThreshold, which asks
+# polkit), never by this program, which only reads. A mouse's or a headset's battery (scope Device) is not the computer's.
+# --folder is the folder of power supplies, /sys/class/power_supply, which the tests replace with a stand-in.
+# Exit status: 0 when one battery is limitable, 1 when none is.
+
+import gettext
+import json
+import os
+import sys
+
+FOLDER = "/sys/class/power_supply"
+_ = gettext.translation("amethystora", fallback=True).gettext
+
+
+def read(path):
+    try:
+        with open(path, encoding="utf-8") as handle:
+            return handle.read(64).strip()
+    except OSError:
+        return None
+
+
+def look(folder, name):
+    base = os.path.join(folder, name)
+    if read(os.path.join(base, "type")) != "Battery" or read(os.path.join(base, "scope")) == "Device":
+        return None
+    entry = {"name": name, "supported": False, "limit": None, "why": None}
+    path = os.path.join(base, "charge_control_end_threshold")
+    try:
+        mode = os.stat(path).st_mode
+    except OSError:
+        entry["why"] = "no-threshold"
+        return entry
+    value = read(path)
+    if value is None or not value.isdigit() or not 1 <= int(value) <= 100:
+        entry["why"] = "unreadable"
+        return entry
+    entry["limit"] = int(value)
+    # Root writes it when the owner may: sysfs files are root's
+    if not mode & 0o200:
+        entry["why"] = "read-only"
+        return entry
+    entry["supported"] = True
+    return entry
+
+
+def support(folder):
+    try:
+        names = sorted(os.listdir(folder))
+    except OSError:
+        names = []
+    batteries = [entry for entry in (look(folder, name) for name in names) if entry]
+    chosen = next((entry for entry in batteries if entry["supported"]), None)
+    why = None if chosen else (batteries[0]["why"] if batteries else "no-battery")
+    return {"supported": bool(chosen), "battery": chosen["name"] if chosen else None,
+            "limit": chosen["limit"] if chosen else None, "why": why, "batteries": batteries}
+
+
+def sentence(answer):
+    if answer["supported"]:
+        return _("This computer's battery %s takes a charge limit (now %d%%).") % (answer["battery"], answer["limit"])
+    return {
+        "no-battery": _("This computer has no battery."),
+        "no-threshold": _("This computer's battery cannot be told to stop short of full: its firmware has no charge limit."),
+        "read-only": _("This computer's battery shows a charge limit it will not take a change to."),
+    }.get(answer["why"], _("This computer's battery charge limit could not be read."))
+
+
+def main(argv):
+    folder, as_json, args = FOLDER, False, []
+    it = iter(argv)
+    for arg in it:
+        if arg == "--json":
+            as_json = True
+        elif arg == "--folder":
+            folder = next(it, "")
+        else:
+            args.append(arg)
+    if args != ["support"]:
+        print("usage: amethystora-charge-limit support [--json] [--folder DIR]", file=sys.stderr)
+        return 2
+    answer = support(folder)
+    print(json.dumps(answer) if as_json else sentence(answer))
+    return 0 if answer["supported"] else 1
+
+
+sys.exit(main(sys.argv[1:]))

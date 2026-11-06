@@ -23,6 +23,11 @@
       <summary>A flat battery loses nothing</summary>
       <description>At 3% a card asks you to save and the computer closes cleanly 60 seconds later, unless you plug in or say Not yet. Where your apps were is kept, and they are offered back at the next start.</description>
     </key>
+    <key name="charge-by-leaving" type="b">
+      <default>false</default>
+      <summary>Charged by the time you leave</summary>
+      <description>Plugged in for the night, the battery waits at its charge limit and finishes just before you usually leave, which it learns from your own unplugging, sealed in your Vault. Only on a computer whose battery takes a charge limit. Full now, just this once, is always one press away. ame desktop charge-by and Control write it.</description>
+    </key>
     <key name="flat-hold" type="as">
       <default><![CDATA[['<Super><Shift>n']]]></default>
       <summary>Not yet, from the keyboard</summary>

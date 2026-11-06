@@ -2304,6 +2304,13 @@ power_item device-batteries device-batteries "${ gettext "Your devices' batterie
 power_item flat-battery flat-battery "${ gettext "A flat battery loses nothing"; }" \
     "${ gettext "At 3% a card asks you to save, where your apps were is kept, and the computer closes cleanly 60 seconds later."; }" \
     ame desktop power flat
+# Offered only where a battery takes a limit that changes
+if ! /usr/libexec/amethystora-charge-limit support >/dev/null 2>&1; then
+    REASON="${ gettext "This computer's battery cannot be told to stop short of full."; }"
+fi
+power_item charge-by-leaving charge-by-leaving "${ gettext "Charged by the time you leave"; }" \
+    "${ gettext "Plugged in for the night, the battery waits at its limit and finishes just before you usually leave, which it learns from your own unplugging. Offered only on a computer whose battery takes a limit."; }" \
+    ame desktop power charge
 power_item sleep-report sleep-report "${ gettext "What happened while it slept"; }" \
     "${ gettext "When the battery loses an unusual amount in sleep, a notice says what woke the computer, once, and offers to stop it."; }" \
     ame desktop power sleep

@@ -149,7 +149,7 @@ BACKUPDISK=org.gnome.shell.extensions.amethystora-ui.backupdisk
 BACKUPDISK_KEYS=(ask)
 # The battery explained and the busy app's chip, which amethystora-setup's POWER_KEYS takes
 POWER=org.gnome.shell.extensions.amethystora-ui.power
-POWER_KEYS=(battery-details busy-app device-batteries flat-battery sleep-report)
+POWER_KEYS=(battery-details busy-app device-batteries flat-battery sleep-report charge-by-leaving)
 # Focus profiles: the triggers and what each profile does, which amethystora-setup's FOCUS_KEYS takes; never the profile on
 # now, when it ends, or a saved set a profile names
 FOCUS=org.gnome.shell.extensions.amethystora-ui.focus

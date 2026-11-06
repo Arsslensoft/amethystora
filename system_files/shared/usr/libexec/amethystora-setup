@@ -269,7 +269,7 @@ BACKUPDISK=org.gnome.shell.extensions.amethystora-ui.backupdisk
 BACKUPDISK_KEYS='{"ask": ["b"]}'
 # The battery explained and the busy app's chip (Power you can see)
 POWER=org.gnome.shell.extensions.amethystora-ui.power
-POWER_KEYS='{"battery-details": ["b"], "busy-app": ["b"], "device-batteries": ["b"], "flat-battery": ["b"], "sleep-report": ["b"]}'
+POWER_KEYS='{"battery-details": ["b"], "busy-app": ["b"], "device-batteries": ["b"], "flat-battery": ["b"], "sleep-report": ["b"], "charge-by-leaving": ["b"]}'
 # The shelf, by how it opens; never what it holds, which is never written anywhere
 SHELF=org.gnome.shell.extensions.amethystora-ui.shelf
 SHELF_KEYS='{"shelf": ["s", ["off", "edge", "shake"]]}'
