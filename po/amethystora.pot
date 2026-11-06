@@ -4211,6 +4211,14 @@ msgstr ""
 msgid "A tile in quick settings opens Network Displays, an app from Flathub that looks for TVs nearby, fetched only after you say yes. Nothing has been tried with a real TV yet, and a TV that needs a direct Wi-Fi link is not expected to work."
 msgstr ""
 
+#: usr/libexec/amethystora-control-list usr/libexec/amethystora-send-anyone
+msgid "Send to anyone"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Files' Scripts menu gets Send to anyone: three words read out, and a file arrives far away. It goes through a public relay of the Magic Wormhole project, encrypted end to end, and that is said first. Warp, from Flathub, is fetched only after you say yes."
+msgstr ""
+
 #: usr/libexec/amethystora-control-list
 msgid "Live pill"
 msgstr ""
@@ -5298,6 +5306,14 @@ msgid "A one-time code in a text shows in the clock's pill for 60 seconds, to co
 msgstr ""
 
 #: usr/libexec/amethystora-control-list
+msgid "Snap with your phone"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "A button in the Phone app asks a phone to open its camera, and the picture comes back as a file. Only a phone whose app still takes that request is offered it; a current KDE Connect app does not, and then you take the picture on the phone and share it here."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
 msgid "Send the clipboard to the phone"
 msgstr ""
 
@@ -5327,6 +5343,26 @@ msgstr ""
 
 #: usr/libexec/amethystora-control-list
 msgid "Pictures a paired phone sends."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Other computers"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Phones and computers"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Nobody"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Files wait for Accept from"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "A file another computer sends shows a card with Accept, and nothing arrives by itself. Choose Phones and computers to be asked for your phones too, or Nobody for files to arrive at once."
 msgstr ""
 
 #: usr/libexec/amethystora-control-list
@@ -6137,6 +6173,46 @@ msgstr ""
 
 #: usr/libexec/amethystora-control-list
 msgid "When GNOME's low-space notice fires, it says instead how much can be cleared and that none of it is your work, with one button."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Moving"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Wait for the old computer"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Move to this computer"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Your folders and setup from an old computer on the same home network, encrypted, with the same six digits on both screens. It adds and never deletes, and passwords and keys never cross."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Send from this computer"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Move this computer's things to a new one"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "The other end: run this on the old computer while the new one waits. Nothing on this computer is changed."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Find the old disk"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Bring everything from your old computer"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Your folders and bookmarks from the disk of another computer you plugged in. The disk is mounted read-only and nothing is written to it (an XFS or btrfs disk that was not shut down cleanly asks first); an encrypted one asks for its recovery key, which is not kept; no password is read."
 msgstr ""
 
 #: usr/libexec/amethystora-control-list
@@ -7448,7 +7524,7 @@ msgid "I have the recovery key"
 msgstr ""
 
 #. Translators: choices of a menu that turns automatic updates on or off
-#: usr/libexec/amethystora-private-folder usr/libexec/amethystora-windows-program usr/share/amethystora/just/apps.just usr/share/amethystora/just/backup.just usr/share/amethystora/just/desktop.just usr/share/amethystora/just/security.just usr/share/amethystora/just/system.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/selection.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/appgrid/dialogs.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/bazaar/dialog.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/printing.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/timer.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/quit/list.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/prefs.js apps/connect/src/service.rs apps/connect/src/transfers.rs
+#: usr/libexec/amethystora-private-folder usr/libexec/amethystora-windows-program usr/share/amethystora/just/apps.just usr/share/amethystora/just/backup.just usr/share/amethystora/just/desktop.just usr/share/amethystora/just/security.just usr/share/amethystora/just/system.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/selection.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/appgrid/dialogs.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/bazaar/dialog.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/printing.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/timer.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/quit/list.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/prefs.js apps/connect/src/photo.rs apps/connect/src/service.rs apps/connect/src/transfers.rs
 msgid "Cancel"
 msgstr ""
 
@@ -7692,6 +7768,11 @@ msgstr ""
 msgid "What is using this?"
 msgstr ""
 
+#. Translators: an entry of Files' Scripts menu, which opens the phone link's send window on the files picked, with the paired phones
+#: usr/share/amethystora/user-setup.hooks.d/24-files-menu.sh
+msgid "Send to nearby"
+msgstr ""
+
 #: usr/libexec/amethystora-clean-copy
 msgid "mat2, which makes the copy, is not installed."
 msgstr ""
@@ -7878,6 +7959,58 @@ msgstr ""
 #: usr/libexec/amethystora-start-times
 #, sh-format
 msgid "Measured since ${first_date}. It is not measured any more; what was kept stays here and is never sent."
+msgstr ""
+
+#: usr/libexec/amethystora-send-anyone
+msgid "Warp sends a file with Magic Wormhole. The three words are agreed through a public server of the Magic Wormhole project, which sees that two computers made contact and their addresses, and cannot read the file. The file itself goes straight to the other computer when they can reach each other, and through a public relay of the same project when they cannot: the relay sees how much passes and between which addresses, and the file is encrypted end to end, so it cannot read it."
+msgstr ""
+
+#: usr/libexec/amethystora-send-anyone
+msgid "Nothing is kept: the words work once, and there is no account and no link that lives on. Warp's own preferences name the servers and let you choose your own."
+msgstr ""
+
+#: usr/libexec/amethystora-send-anyone
+msgid "Warp is already installed."
+msgstr ""
+
+#: usr/libexec/amethystora-send-anyone
+msgid "Warp is an app from Flathub, about 5 MB, and the GNOME runtime it needs if you do not have it, about 1 GB shared with other apps. It has network access, and reads the folders you choose in its window."
+msgstr ""
+
+#: usr/libexec/amethystora-send-anyone
+msgid "Install Warp from Flathub?"
+msgstr ""
+
+#: usr/libexec/amethystora-send-anyone
+msgid "Warp could not be installed."
+msgstr ""
+
+#: usr/libexec/amethystora-send-anyone
+msgid "Warp is installed."
+msgstr ""
+
+#: usr/libexec/amethystora-send-anyone
+msgid "In Warp, press Send File and choose:"
+msgstr ""
+
+#: usr/libexec/amethystora-send-anyone
+msgid "In Warp, press Send File and choose the file."
+msgstr ""
+
+#: usr/libexec/amethystora-send-anyone
+msgid "Warp then shows three words: read them to the other person, who types them into Warp or Warp's counterpart on their computer."
+msgstr ""
+
+#: usr/libexec/amethystora-send-anyone
+msgid "A script of yours has that name in Files, and is left as it is."
+msgstr ""
+
+#: usr/libexec/amethystora-send-anyone
+msgid "Files' Scripts menu has Send to anyone. Nothing is fetched or run until you use it, and it says first where the file passes."
+msgstr ""
+
+#: usr/libexec/amethystora-send-anyone
+msgid "Send to anyone is gone from Files. Warp, if you installed it, stays until you remove it in Bazaar."
 msgstr ""
 
 #: usr/libexec/amethystora-night-restart
@@ -8566,6 +8699,18 @@ msgstr ""
 
 #: usr/libexec/amethystora-sends
 msgid "Without it, the server's copy stops being updated and nothing else changes: the vault is the source."
+msgstr ""
+
+#: usr/libexec/amethystora-sends
+msgid "Warp (Send to anyone)"
+msgstr ""
+
+#: usr/libexec/amethystora-sends
+msgid "Only when you send a file in Warp's window: the three words are agreed through a public server of the Magic Wormhole project, which sees that two computers made contact and their addresses, and the file goes straight to the other computer or, when they cannot reach each other, through a public relay of the same project, which sees the addresses and how much passes. The file is encrypted end to end: neither can read it. Nothing is kept, and Warp's preferences let you choose your own servers."
+msgstr ""
+
+#: usr/libexec/amethystora-sends
+msgid "Without Send to anyone, Warp is not offered in Files, and nothing is ever fetched or run."
 msgstr ""
 
 #: usr/libexec/amethystora-sends
@@ -9743,6 +9888,131 @@ msgstr ""
 
 #: usr/libexec/amethystora-changes
 msgid "That is no longer on the list."
+msgstr ""
+
+#: usr/libexec/amethystora-bring-over
+msgid "The list of disks could not be read."
+msgstr ""
+
+#: usr/libexec/amethystora-bring-over
+msgid "Encrypted with LUKS: unlock it in Files first, then bring its folder in with --from."
+msgstr ""
+
+#: usr/libexec/amethystora-bring-over
+msgid "This format cannot be read here."
+msgstr ""
+
+#: usr/libexec/amethystora-bring-over
+#, python-brace-format
+msgid "The disk would not open: {why}"
+msgstr ""
+
+#: usr/libexec/amethystora-bring-over
+msgid "The disk did not unlock."
+msgstr ""
+
+#: usr/libexec/amethystora-bring-over
+msgid "The disk mounted, but not where it was said to."
+msgstr ""
+
+#: usr/libexec/amethystora-bring-over
+msgid "this disk"
+msgstr ""
+
+#: usr/libexec/amethystora-bring-over
+msgid "Bookmarks from old computer"
+msgstr ""
+
+#: usr/libexec/amethystora-bring-over
+msgid "There are too many bookmark files here already."
+msgstr ""
+
+#: usr/libexec/amethystora-bring-over
+msgid "That person is not on this disk."
+msgstr ""
+
+#: usr/libexec/amethystora-bring-over
+#, python-brace-format
+msgid "{folder} ({size}) does not fit here with a gigabyte to spare, so it is left out."
+msgstr ""
+
+#: usr/libexec/amethystora-bring-over
+#, python-brace-format
+msgid "Copying {folder}…"
+msgstr ""
+
+#: usr/libexec/amethystora-bring-over
+#, python-brace-format
+msgid "Copying {folder} stopped. Run it again to carry on where it stopped."
+msgstr ""
+
+#: usr/libexec/amethystora-bring-over
+#, python-brace-format
+msgid "Your bookmarks are in {path}: import that file in your browser."
+msgstr ""
+
+#: usr/libexec/amethystora-bring-over apps/move/src/main.rs
+msgid "[Y/n]"
+msgstr ""
+
+#: usr/libexec/amethystora-bring-over apps/move/src/main.rs
+msgid "[y/N]"
+msgstr ""
+
+#: usr/libexec/amethystora-bring-over
+msgid "No disk of another computer was found. Plug it in, and run this again."
+msgstr ""
+
+#: usr/libexec/amethystora-bring-over
+msgid "Disks you plugged in that look like another computer's. They are mounted read-only."
+msgstr ""
+
+#: usr/libexec/amethystora-bring-over apps/move/src/main.rs
+msgid "Which one? Its number:"
+msgstr ""
+
+#: usr/libexec/amethystora-bring-over
+msgid "This disk is encrypted with BitLocker. Type its 48-digit recovery key; nothing shows as you type, and it is kept only until the disk is open."
+msgstr ""
+
+#: usr/libexec/amethystora-bring-over
+msgid "The desktop mounted this disk so that it can be written to. It is unmounted and mounted again read-only."
+msgstr ""
+
+#: usr/libexec/amethystora-bring-over
+#, python-brace-format
+msgid "This {format} disk may be mounted even if it was not shut down cleanly, and the system then replays its log onto it, which writes to it, even read-only; there is no way to prevent that here. Mount it anyway?"
+msgstr ""
+
+#: usr/libexec/amethystora-bring-over
+msgid "Nothing was mounted."
+msgstr ""
+
+#: usr/libexec/amethystora-bring-over
+msgid "No one's folders were found on this disk."
+msgstr ""
+
+#: usr/libexec/amethystora-bring-over
+msgid "Whose things? Its number:"
+msgstr ""
+
+#: usr/libexec/amethystora-bring-over
+#, python-brace-format
+msgid "Found {name}'s things. The disk is mounted read-only."
+msgstr ""
+
+#: usr/libexec/amethystora-bring-over
+#, python-brace-format
+msgid "Bring {folder} ({size}, {files} files)?"
+msgstr ""
+
+#: usr/libexec/amethystora-bring-over
+#, python-brace-format
+msgid "Bring the browser bookmarks ({count})? No passwords are read."
+msgstr ""
+
+#: usr/libexec/amethystora-bring-over
+msgid "Done. A name already here was kept as it was."
 msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-logo-menu@arsslensoft.github.io/extension.js
@@ -11099,6 +11369,14 @@ msgid "Photos from the phone go to Downloads, with the phone's other files."
 msgstr ""
 
 #: usr/share/amethystora/just/desktop.just
+msgid "A phone whose app takes a photo request is offered Snap with your phone in the Phone app. A current KDE Connect app has none, so most phones are offered nothing: take the picture on the phone and share it here."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "No photo request is listed or sent."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
 msgid "This has the phone link look at each text your paired phone receives, on this computer, for a one-time code. Only the digits of a code go on to the desktop, never the text or who sent it, and they show in the clock's pill for 60 seconds, to copy. Nothing is written or sent, the copied code is kept out of the clipboard's history, and it is hidden while the screen is shared and while locked."
 msgstr ""
 
@@ -11140,6 +11418,18 @@ msgstr ""
 
 #: usr/share/amethystora/just/desktop.just
 msgid "Only phones and tablets pair with this computer now. Paired computers are kept, and connect again once this is on."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "A file another computer sends waits for a card with Accept. Phones you paired send as before."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "A file from any paired phone or computer waits for a card with Accept."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "Files from paired phones and computers arrive at once, as before."
 msgstr ""
 
 #: usr/share/amethystora/just/desktop.just
@@ -22520,8 +22810,53 @@ msgstr ""
 msgid "Remove this rule"
 msgstr ""
 
+#: apps/connect/src/ask.rs
+#, python-brace-format
+msgid "“{name}” wants to send you a file"
+msgstr ""
+
+#: apps/connect/src/ask.rs
+#, python-brace-format
+msgid "“{name}” wants to send you files"
+msgstr ""
+
+#: apps/connect/src/ask.rs
+#, python-brace-format
+msgid "{count} files · {size}"
+msgstr ""
+
+#: apps/connect/src/ask.rs apps/connect/src/service.rs
+msgid "Accept"
+msgstr ""
+
+#: apps/connect/src/ask.rs
+msgid "Decline"
+msgstr ""
+
 #: apps/connect/src/link.rs apps/connect/src/service.rs
 msgid "Unknown device"
+msgstr ""
+
+#: apps/connect/src/photo.rs
+#, python-brace-format
+msgid "Asked “{name}” to open its camera"
+msgstr ""
+
+#: apps/connect/src/photo.rs
+msgid "Take the picture on the phone. Cancel here forgets the request; it cannot close the camera on the phone."
+msgstr ""
+
+#: apps/connect/src/photo.rs
+msgid "No photo came"
+msgstr ""
+
+#: apps/connect/src/photo.rs
+#, python-brace-format
+msgid "“{name}” did not send a picture."
+msgstr ""
+
+#: apps/connect/src/photo.rs
+msgid "The photo was cancelled on the phone"
 msgstr ""
 
 #: apps/connect/src/plugins.rs
@@ -22638,10 +22973,6 @@ msgid "This phone uses an older version of the protocol, which protects the pair
 msgstr ""
 
 #: apps/connect/src/service.rs
-msgid "Accept"
-msgstr ""
-
-#: apps/connect/src/service.rs
 msgid "Reject"
 msgstr ""
 
@@ -22750,4 +23081,115 @@ msgstr ""
 
 #: apps/connect/src/transfers.rs
 msgid "The file cannot be read."
+msgstr ""
+
+#: apps/move/src/main.rs
+msgid "Does the other computer show the same six digits?"
+msgstr ""
+
+#: apps/move/src/main.rs
+#, python-brace-format
+msgid "Moving from “{name}”"
+msgstr ""
+
+#: apps/move/src/main.rs
+#, python-brace-format
+msgid "Bring the home folder ({size}, {files} files)?"
+msgstr ""
+
+#: apps/move/src/main.rs
+msgid "Bring the setup file, which names its apps, theme and shortcuts?"
+msgstr ""
+
+#: apps/move/src/main.rs
+#, python-brace-format
+msgid "Brought over: {written} files ({size})."
+msgstr ""
+
+#: apps/move/src/main.rs
+#, python-brace-format
+msgid "{kept} files were already here, and were kept as they are."
+msgstr ""
+
+#: apps/move/src/main.rs
+#, python-brace-format
+msgid "{refused} things were left out: passwords, keys and places that start programs never cross."
+msgstr ""
+
+#: apps/move/src/main.rs
+msgid "There is no home folder to move into."
+msgstr ""
+
+#: apps/move/src/main.rs
+#, python-brace-format
+msgid "Cannot listen on port {port}: {error}"
+msgstr ""
+
+#: apps/move/src/main.rs
+msgid "Waiting for the old computer. On it, run: ame system move send"
+msgstr ""
+
+#: apps/move/src/main.rs
+msgid "Only a computer on a network you named home can reach this one."
+msgstr ""
+
+#: apps/move/src/main.rs
+msgid "Nobody called, so the wait is over."
+msgstr ""
+
+#: apps/move/src/main.rs
+#, sh-format
+msgid "The setup file is in “From old computer”. To bring its apps, theme and shortcuts, which asks first: ame setup apply \"$HOME/From old computer/setup.json\""
+msgstr ""
+
+#: apps/move/src/main.rs
+#, python-brace-format
+msgid "“{address}” is not an address of the form 192.168.1.20."
+msgstr ""
+
+#: apps/move/src/main.rs
+msgid "There is no home folder to move from."
+msgstr ""
+
+#: apps/move/src/main.rs
+msgid "Looking for the new computer on this network…"
+msgstr ""
+
+#: apps/move/src/main.rs
+msgid "No computer answered. On the new one, run: ame system move receive. Both must be on a network named home."
+msgstr ""
+
+#: apps/move/src/main.rs
+msgid "That is not one of the numbers."
+msgstr ""
+
+#: apps/move/src/main.rs
+msgid "That computer is not on a network you named home, so nothing is sent to it."
+msgstr ""
+
+#: apps/move/src/main.rs
+#, python-brace-format
+msgid "Calling “{name}”…"
+msgstr ""
+
+#: apps/move/src/main.rs
+#, python-brace-format
+msgid "Cannot reach it: {error}"
+msgstr ""
+
+#: apps/move/src/main.rs
+msgid "Nothing on this computer was changed."
+msgstr ""
+
+#: apps/move/src/session.rs
+msgid "Counting what there is to bring…"
+msgstr ""
+
+#: apps/move/src/session.rs
+msgid "There is not room for the home folder here, so it is left out."
+msgstr ""
+
+#: apps/move/src/text.rs
+#, python-brace-format
+msgid "From {name}"
 msgstr ""
