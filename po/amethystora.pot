@@ -1549,6 +1549,14 @@ msgid "A visitor's login without a password, whose home folder is emptied when t
 msgstr ""
 
 #: usr/libexec/amethystora-security-status
+msgid "Another computer's backup"
+msgstr ""
+
+#: usr/libexec/amethystora-security-status
+msgid "Ports are open on the networks you named home, for the computers you paired to back up to this one: each can add to its own folder and never delete, and it holds only encrypted data"
+msgstr ""
+
+#: usr/libexec/amethystora-security-status
 msgid "A daily restic backup to a repository that ransomware on this machine cannot delete from"
 msgstr ""
 
@@ -2994,7 +3002,7 @@ msgstr ""
 msgid "For each arrangement of screens, apps' windows open where they were."
 msgstr ""
 
-#: usr/libexec/amethystora-control-list
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/putaway.js
 msgid "Forget"
 msgstr ""
 
@@ -3716,6 +3724,14 @@ msgid "When an update restarts the computer, the first login after it offers to 
 msgstr ""
 
 #: usr/libexec/amethystora-control-list
+msgid "Put a workspace away"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Put a whole workspace away from its menu and bring it back days later with every window in place. What is put away is kept sealed in your Vault."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
 msgid "The clipboard history's extension is not installed."
 msgstr ""
 
@@ -3785,6 +3801,14 @@ msgstr ""
 
 #: usr/libexec/amethystora-control-list
 msgid "“tea 4 min” starts a timer called Tea in the live pill, when you press Enter."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just
+msgid "Bring back what was put away"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Typing the name of a workspace you put away offers to bring it back, when you press Enter."
 msgstr ""
 
 #: usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just
@@ -4159,7 +4183,7 @@ msgstr ""
 msgid "The greeting is off."
 msgstr ""
 
-#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/power/busy.js
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/putaway.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/power/busy.js
 msgid "Show it"
 msgstr ""
 
@@ -4739,6 +4763,18 @@ msgstr ""
 
 #: usr/libexec/amethystora-control-list usr/share/amethystora/just/desktop.just
 msgid "At 3% a card asks you to save, where your apps were is kept, and the computer closes cleanly 60 seconds later."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "This computer's battery cannot be told to stop short of full."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Charged by the time you leave"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Plugged in for the night, the battery waits at its limit and finishes just before you usually leave, which it learns from your own unplugging. Offered only on a computer whose battery takes a limit."
 msgstr ""
 
 #: usr/libexec/amethystora-control-list
@@ -6022,6 +6058,18 @@ msgid "One line of yours on the login and lock screens, for an honest finder. An
 msgstr ""
 
 #: usr/libexec/amethystora-control-list
+msgid "Bring it all back…"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Start from your backup"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "On a new computer, or after the old one was lost: your files, apps and setup, and your Vault, from a backup, with the recovery key you wrote down."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
 msgid "Stream"
 msgstr ""
 
@@ -7112,6 +7160,10 @@ msgid "Let another computer see or extend this screen"
 msgstr ""
 
 #: usr/libexec/amethystora-hardening
+msgid "Be another computer's backup store"
+msgstr ""
+
+#: usr/libexec/amethystora-hardening
 msgid "No automatic mounting"
 msgstr ""
 
@@ -7249,6 +7301,10 @@ msgstr ""
 
 #: usr/libexec/amethystora-hardening
 msgid "Opens the remote desktop port (3389) on the networks you named home only, so that another computer can see this screen or use it as a second screen, with a code that is new each time, when you start it (ame desktop help-me, ame desktop second-screen). Nothing listens on the port until you do, and a share ends when you lock the screen. Anyone on your home network who learns the code, or who watches you type it, sees what is on the screen."
+msgstr ""
+
+#: usr/libexec/amethystora-hardening
+msgid "Opens a pairing port and one port for each computer you paired, on the networks you named home only, for your other computers to back up to this one: each has a server and a folder of its own, can add to what it keeps and read its own back, can reach no other's, and can never delete, and the store holds nothing but encrypted data. Nothing listens on them until you start the store (ame backup store on) and pair the other computer (ame backup store pair)."
 msgstr ""
 
 #: usr/libexec/amethystora-hardening
@@ -10711,6 +10767,14 @@ msgid "Turn off the daily run"
 msgstr ""
 
 #: usr/share/amethystora/just/backup.just
+msgid "Make a recovery key"
+msgstr ""
+
+#: usr/share/amethystora/just/backup.just
+msgid "Start from a backup"
+msgstr ""
+
+#: usr/share/amethystora/just/backup.just
 #, sh-format
 msgid "Backing up to: ${backing_up_to}"
 msgstr ""
@@ -11223,6 +11287,14 @@ msgstr ""
 
 #: usr/share/amethystora/just/desktop.just
 msgid "An update's restart keeps nothing of the open apps."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "The workspace menu can put a workspace away, and bring it back later. What is put away is kept sealed in your Vault."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "The workspace menu no longer puts workspaces away."
 msgstr ""
 
 #: usr/share/amethystora/just/desktop.just
@@ -12178,6 +12250,11 @@ msgstr ""
 
 #: usr/share/amethystora/just/desktop.just
 #, sh-format
+msgid "Charged by the time you leave (current: ${current})"
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+#, sh-format
 msgid "Battery details (current: ${current})"
 msgstr ""
 
@@ -12227,6 +12304,14 @@ msgstr ""
 
 #: usr/share/amethystora/just/desktop.just
 msgid "A flat battery is left to the system's own closing at 2%, and nothing is kept of the open apps."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "Plugged in for the night, the battery waits at its limit and finishes just before you usually leave, which it learns from your own unplugging, sealed in your Vault."
+msgstr ""
+
+#: usr/share/amethystora/just/desktop.just
+msgid "The battery charges fully, as the system does."
 msgstr ""
 
 #: usr/share/amethystora/just/desktop.just
@@ -16905,7 +16990,7 @@ msgid "It runs in a terminal, and what it prints goes back to the agent."
 msgstr ""
 
 #. Translators: the version updated to, and the one before it
-#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/backupdisk.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/desks.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/focus.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/battery.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/phone.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/resume.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/through.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/whatsnew.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/power/busy.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/today/weather.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/windows/handover.js
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/backupdisk.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/desks.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/focus.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/battery.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/phone.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/putaway.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/resume.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/through.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/whatsnew.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/power/busy.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/today/weather.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/windows/handover.js
 msgid "Not now"
 msgstr ""
 
@@ -17328,7 +17413,7 @@ msgstr ""
 msgid "Your routines wait for the Vault"
 msgstr ""
 
-#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/routines.js
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/routines.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/chargeby.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/putaway.js
 msgid "Open Vault"
 msgstr ""
 
@@ -18152,7 +18237,7 @@ msgstr ""
 msgid "Search: arrow, euro, smile…"
 msgstr ""
 
-#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/emoji/picker.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/agent.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/manual.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/plugins.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remindProvider.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/settings.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/timerProvider.js
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/emoji/picker.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/agent.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/manual.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/plugins.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/putawayProvider.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remindProvider.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/settings.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/timerProvider.js
 msgid "Enter"
 msgstr ""
 
@@ -18644,6 +18729,70 @@ msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/capture.js
 msgid "%s so far. The app that is recording keeps the video."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/chargeby.js
+msgid "Charge limit stays on"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/chargeby.js
+msgid "Held at %d%%"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/chargeby.js
+msgid "Held for the night"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/chargeby.js
+msgid "No charge limit"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/chargeby.js
+msgid "Charging fully"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/chargeby.js
+msgid "Your battery lasts longer when it does not sit full."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/chargeby.js
+msgid "Full by %s. You usually leave about then."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/chargeby.js
+msgid "Full now, just this once"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/chargeby.js
+msgid "You usually leave about %s, which is soon, so it is charging fully."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/chargeby.js
+msgid "The battery was held at its limit and the system did not let this take the limit off. It tries again whenever anything changes, and when you start next."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/chargeby.js
+msgid "This laptop did not take the change, so nothing is held. It charges fully."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/chargeby.js
+msgid "What you usually do is sealed in your Vault, so it opens when you ask. Open it and the battery can wait at its limit overnight."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/chargeby.js
+msgid "Use my pattern"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/chargeby.js
+msgid "It is still learning when you leave: it needs a few nights on mains, then it can hold the charge and finish it just before you go. Until then it charges fully."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/chargeby.js
+msgid "What it learned is kept until you log out. Open Vault to keep it longer."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/chargeby.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/putaway.js
+msgid "Keep it"
 msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/clock.js
@@ -19232,6 +19381,74 @@ msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/privacy.js
 msgid "Shared"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/putaway.js
+msgid "Put “%s” away?"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/putaway.js
+msgid "%d window on this workspace closes. One click brings it back, where it was."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/putaway.js
+msgid "An app with unsaved work asks first, as closing it would. Each app opens as it starts; apps that remember their own windows bring them back."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/putaway.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/providers.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/putawayProvider.js
+msgid "Put away"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/putaway.js
+msgid "%s · put away"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/putaway.js
+msgid "%s and %d more · put away"
+msgid_plural "%s and %d more · put away"
+msgstr[0] ""
+msgstr[1] ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/putaway.js
+msgid "Workspaces put away. Open the list to bring one back."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/putaway.js
+msgid "Something is put away. Open the list."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/putaway.js
+msgid "Bring back"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/putaway.js
+msgid "Something is put away. It is sealed in your Vault, so it opens when you ask."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/putaway.js
+msgid "%d window is still open: its app asked first."
+msgid_plural "%d windows are still open: their apps asked first."
+msgstr[0] ""
+msgstr[1] ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/putaway.js
+msgid "Kept until you log out. Set up Vault to keep it longer."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/putaway.js
+msgid "Set up Vault"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/putaway.js
+msgid "Kept until you log out. Open Vault to keep it longer."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/putaway.js
+msgid "The Vault did not keep it. It stays here until you log out."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/putaway.js
+msgid "Sealed in your Vault. Each app opens as it starts; apps that remember their own windows bring them back."
 msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/resume.js
@@ -20966,6 +21183,10 @@ msgstr ""
 msgid "Only while it is on"
 msgstr ""
 
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/putawayProvider.js
+msgid "Bring back “%s”"
+msgstr ""
+
 #. Translators: words separated by | are alternatives, in lower case, the words people say in your language. {n} is a number; keep it.
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/search/remember.js
 msgid "document|documents|letter|letters"
@@ -22306,6 +22527,10 @@ msgid "The set %s opened without it."
 msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/workspaces/setsmenu.js
+msgid "Put this workspace away"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/workspaces/setsmenu.js
 msgid "Sets"
 msgstr ""
 
@@ -22315,6 +22540,10 @@ msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/workspaces/setsmenu.js
 msgid "Nothing to save here"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/workspaces/setsmenu.js
+msgid "Nothing to put away here"
 msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/workspaces/setsmenu.js
