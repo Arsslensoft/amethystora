@@ -10,14 +10,14 @@
 #      or not a tar (refused by prepare); a file swapped in the folder after it was packed (the frozen copy is what counts);
 #      a commit whose digest is not the ticket's, with a space or a newline in an argument, or a permission the manifest does not
 #      name; the quarantine's quota; one changed byte in the store, as root, which stops the plugin.
-#   5. a batch of updates kept to what was given, commit-dev kept to one plugin, and the bus methods any program may call (Hand,
-#      Ask, Focused) refusing what is not theirs.
 #   2. The hostile plugin with no permission: the files, the buses, the network and the kernel (fixtures/hostile/plugin/run.sh), a
 #      fork bomb and a memory bomb.
 #   3. The same plugin granted a host that /etc/hosts points at 192.168.7.7: the proxy refuses it after resolving, a port other
 #      than 443, a host nobody granted, and an address.
 #   4. A block cuts what is open and survives an update; off is off (no process of the host, no bus name).
 # vmlab-paths: @sf/usr/libexec/amethystora-plugin* @sf/usr/libexec/amethystora-plugins @sf/usr/share/polkit-1/*/*plugins* @sf/usr/lib/systemd/user/amethystora-plugin-host.service @sf/usr/lib/tmpfiles.d/amethystora-plugins.conf
+#   5. A batch of updates kept to what was given, commit-dev kept to one plugin, and the bus methods any program may call (Hand,
+#      Ask, Focused) refusing what is not theirs.
 source "$(dirname "$0")/lib.sh"
 
 HERE="$(dirname "$0")"
