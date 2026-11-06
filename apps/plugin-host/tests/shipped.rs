@@ -9,7 +9,12 @@ use amethystora_plugin_host::manifest::{Manifest, shipped_refuses};
 use amethystora_plugin_host::output;
 
 fn folders(name: &str) -> Vec<PathBuf> {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../system_files/shared/usr/share/amethystora").join(name);
+    // AMETHYSTORA_ROOT is system_files/shared, which the image's apps stage names, since it copies only apps/
+    let root = std::env::var_os("AMETHYSTORA_ROOT")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../system_files/shared"))
+        .join("usr/share/amethystora")
+        .join(name);
     let mut found: Vec<PathBuf> = std::fs::read_dir(&root).unwrap_or_else(|e| panic!("{}: {e}", root.display())).flatten().map(|e| e.path()).filter(|p| p.is_dir()).collect();
     found.sort();
     found
