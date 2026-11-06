@@ -60,7 +60,7 @@ why did my plugin pause itself	manual/plugins*|skill/amethystora-plugins*
 save my setup to a file	manual/setup#saving-it|manual/setup
 let the agent run commands as root	manual/ai-agent#root-commands|knowledge/agent#root-commands
 turn the ai agent off for my kid's account	manual/ai-agent#the-lock|knowledge/agent#the-lock|control/agent-lock|ame/agent/lock
-what did the agent change	manual/ai-agent#history-and-undo|knowledge/agent#records
+what did the agent change	manual/ai-agent#history-and-undo|knowledge/agent#records|manual/ai-agent#its-changes-in-the-live-pill
 enroll the secure boot key with mok	manual/getting-started#1-let-secure-boot-trust-the-image|manual/hardware#secure-boot
 the displaylink dock shows nothing	manual/troubleshooting#a-displaylink-dock-shows-nothing|manual/hardware#docks-and-displays
 install command line tools	manual/software#command-line-tools-homebrew
@@ -99,7 +99,7 @@ add an authenticator code from a qr code	manual/vault#adding-one|manual/vault#au
 sign a pdf with my own certificate	manual/vault#signing-a-pdf|manual/vault#certificates-and-signing*
 keep my ssh key in the vault and sign in with it	manual/vault#the-ssh-agent|manual/vault#using-a-secret-without-handing-it-over*
 sync my passwords with vaultwarden or bitwarden	manual/vault#sync*
-other computers say the signer of my pdf is unknown	manual/vault#trusting-a-certificate*|manual/vault#who-vouches*|knowledge/vault#questions-you-will-get*
+other computers say the signer of my pdf is unknown	manual/vault#trusting-a-certificate*|manual/vault#who-vouches*|knowledge/vault#questions-you-will-get*|manual/desktop#sign-a-pdf
 a program calling itself asks to use an item from the vault	knowledge/vault#questions-you-will-get*|manual/vault#what-it-is-and-what-it-protects-you-from*
 keep my aws credentials file away from other programs	manual/vault#protected-files*|manual/vault#using-a-secret-without-handing-it-over*
 a vault that is not listed anywhere	manual/vault#several-vaults-and-hidden-ones*
