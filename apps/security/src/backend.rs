@@ -1340,7 +1340,70 @@ pub struct App {
 #[derive(Debug, Clone, Default)]
 pub struct Permissions {
     pub apps: Vec<App>,
+    /// The account's plugins, as `ame plugin list` gives them (plans/PLAN-plugins.md: Security keeps the reach)
+    pub plugins: Vec<Plugin>,
     pub error: Option<String>,
+}
+
+/// One plugin the account added: what it was granted, as the store holds it, never what it says of itself
+#[derive(Debug, Clone, Default)]
+pub struct Plugin {
+    pub id: String,
+    pub name: String,
+    /// Normal-form permissions (`network=api.github.com`, `files=~/Documents:ro`, `notify`...)
+    pub granted: Vec<String>,
+    /// All of its network is blocked
+    pub blocked: bool,
+    /// Its files are still the ones approved
+    pub verified: bool,
+    /// The account turned it on
+    pub enabled: bool,
+}
+
+pub const PLUGIN_HOST: &str = "/usr/libexec/amethystora-plugin-host";
+pub const PLUGIN_ROOT: &str = "/usr/libexec/amethystora-plugin-root";
+
+pub fn parse_plugins(list: &[Value]) -> Vec<Plugin> {
+    list.iter()
+        .filter(|p| !truthy(p.get("draft")))
+        .map(|p| Plugin {
+            id: text(p.get("id")),
+            name: text(p.get("name")),
+            granted: strings(p.get("granted")),
+            blocked: truthy(p.get("blocked")),
+            verified: truthy(p.get("verified")),
+            enabled: truthy(p.get("enabled")),
+        })
+        .filter(|p| valid_plugin_id(&p.id))
+        .collect()
+}
+
+/// A plugin id as the host prints it: what is passed back to the helper is held to this first
+fn valid_plugin_id(id: &str) -> bool {
+    (1..=128).contains(&id.len()) && id.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'.' || b == b'-') && !id.starts_with(['.', '-'])
+}
+
+async fn plugins() -> Vec<Plugin> {
+    if !std::path::Path::new(PLUGIN_HOST).exists() {
+        return Vec::new();
+    }
+    let output = run_for(PLUGIN_HOST, &["list", "--json"], 20).await;
+    serde_json::from_str::<Value>(&output.stdout).ok().and_then(|v| v.as_array().map(|l| parse_plugins(l))).unwrap_or_default()
+}
+
+/// Takes from one plugin everything it was given (`revoke` with no permission), or blocks all it sends (`block`): both only take
+/// away, so the person at the machine needs no password for them (50-amethystora-plugins.rules). Only for a plugin the list just
+/// read says has something to take
+pub async fn plugin_take(list: &[Plugin], id: &str, block: bool) -> Result<(), String> {
+    let Some(entry) = list.iter().find(|p| p.id == id && if block { has_network(p) && !p.blocked } else { !p.granted.is_empty() }) else {
+        return Err(t!("That plugin is not one the list can change."));
+    };
+    let output = process::run("pkexec", &[PLUGIN_ROOT, if block { "block" } else { "revoke" }, &entry.id]).await;
+    if output.code == 0 { Ok(()) } else { Err(stopped("amethystora-plugin-root", &output)) }
+}
+
+pub fn has_network(plugin: &Plugin) -> bool {
+    plugin.granted.iter().any(|p| p.starts_with("network="))
 }
 
 pub fn parse_apps(list: &[Value]) -> Vec<App> {
@@ -1362,10 +1425,11 @@ pub fn parse_apps(list: &[Value]) -> Vec<App> {
 
 /// Run as the user, whose overrides are the ones that apply
 pub async fn permissions() -> Permissions {
+    let plugins = plugins().await;
     let output = run_for(PERMISSIONS, &["--json"], 120).await;
     match serde_json::from_str::<Value>(&output.stdout) {
-        Ok(list) => Permissions { apps: list.as_array().map(|l| parse_apps(l)).unwrap_or_default(), error: None },
-        Err(_) => Permissions { apps: Vec::new(), error: Some(stopped("amethystora-app-permissions", &output)) },
+        Ok(list) => Permissions { apps: list.as_array().map(|l| parse_apps(l)).unwrap_or_default(), plugins, error: None },
+        Err(_) => Permissions { apps: Vec::new(), plugins, error: Some(stopped("amethystora-app-permissions", &output)) },
     }
 }
 
@@ -1392,6 +1456,19 @@ pub async fn set_network(list: &[App], id: &str, allow: bool) -> Result<(), Stri
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reads_plugins_and_leaves_drafts_and_odd_ids_out() {
+        let list: Value = serde_json::from_str(
+            r#"[{"id":"dev.example.ci","name":"CI","granted":["network=api.github.com","notify"],"blocked":false,"verified":true,"enabled":true},
+            {"id":"dev.example.draft","name":"Draft","granted":[],"draft":true},
+            {"id":"-x; rm","name":"Odd","granted":["notify"]}]"#,
+        )
+        .unwrap();
+        let plugins = parse_plugins(list.as_array().unwrap());
+        assert_eq!(plugins.len(), 1);
+        assert!(has_network(&plugins[0]) && plugins[0].verified && plugins[0].enabled);
+    }
 
     #[test]
     fn reads_the_report() {

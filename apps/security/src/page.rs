@@ -2415,6 +2415,68 @@ impl Security {
         row
     }
 
+    /// One plugin of the account's: what it was given, as the store holds it, and the two changes that only take away
+    fn plugin_row(&self, plugin: &backend::Plugin) -> gtk::Box {
+        let reaches_out = plugin.granted.iter().any(|p| p.starts_with("network=") || p.starts_with("files="));
+        let tone = if !plugin.verified { "off" } else if reaches_out && !plugin.blocked { "check" } else { "info" };
+        let row = ui::hbox(14, &["list-row", "container-row"]);
+        let mark = status(tone);
+        mark.set_valign(gtk::Align::Start);
+        row.append(&mark);
+        let words = ui::vbox(1, &["grow"]);
+        words.set_hexpand(true);
+        words.append(&ellipsized(&plugin.name, &["strong"]));
+        let id = wrapping(&plugin.id, &["small-text"]);
+        id.set_direction(gtk::TextDirection::Ltr);
+        words.append(&id);
+        if !plugin.verified {
+            words.append(&wrapping(&t!("Its files changed after you approved them, so it does not run"), &["small-text"]));
+        } else if !plugin.enabled {
+            words.append(&wrapping(&t!("Off: it does not run"), &["small-text"]));
+        }
+        if plugin.granted.is_empty() {
+            words.append(&wrapping(&t!("It reaches nothing outside its sandbox"), &["small-text"]));
+        }
+        for perm in &plugin.granted {
+            let line = ui::wrap(8, 8, &["small-text", "container-line", "reach-line"]);
+            let shown = wrapping(perm, &["reach", if perm.starts_with("network=") || perm.starts_with("files=") { "check" } else { "plain" }]);
+            shown.set_direction(gtk::TextDirection::Ltr);
+            line.append(&shown);
+            if plugin.blocked && perm.starts_with("network=") {
+                line.append(&pill(&t!("Blocked"), "", true, false));
+            }
+            words.append(&line);
+        }
+        if plugin.blocked && backend::has_network(plugin) {
+            let back = wrapping(&t!("Give its network back with {command}, which an administrator approves", command = format!("ame plugin unblock {}", plugin.id)), &["small-text"]);
+            words.append(&back);
+        }
+        row.append(&words);
+        let buttons = ui::vbox(6, &[]);
+        buttons.set_valign(gtk::Align::Start);
+        if backend::has_network(plugin) && !plugin.blocked {
+            buttons.append(&self.plugin_button(&t!("Block its network"), &plugin.id, true));
+        }
+        if !plugin.granted.is_empty() {
+            buttons.append(&self.plugin_button(&t!("Take back what it was given"), &plugin.id, false));
+        }
+        row.append(&buttons);
+        row
+    }
+
+    fn plugin_button(&self, label: &str, id: &str, block: bool) -> gtk::Button {
+        let id = id.to_string();
+        self.button_with(label, Opts { small: true, ..Default::default() }, move |this, button| {
+            button.set_sensitive(false);
+            let (this, id) = (this.clone(), id.clone());
+            glib::spawn_future_local(async move {
+                let list = this.state.borrow().permissions.as_ref().map(|p| p.plugins.clone()).unwrap_or_default();
+                let outcome = backend::plugin_take(&list, &id, block).await;
+                this.after_change(outcome);
+            });
+        })
+    }
+
     /// What every Flatpak app can reach; with `focus`, the app the app grid's What can it reach? asked about comes first
     fn apps_page(&self, focus: Option<&str>) -> gtk::Widget {
         let data = self.state.borrow().permissions.clone();
@@ -2479,6 +2541,20 @@ impl Security {
                     &title,
                     &t!("Whatever runs in it can do anything you can. If you did not mean it to, change it in Flatseal, or take back what you granted."),
                     None,
+                )
+                .upcast(),
+            );
+        }
+        let plugins = data.as_ref().map(|d| d.plugins.clone()).unwrap_or_default();
+        if !plugins.is_empty() {
+            children.push(
+                section(
+                    &t!("Plugins"),
+                    &{
+                        let me = self.me.clone();
+                        list_card_filling(plugins, move |plugin| Some(me.upgrade()?.plugin_row(plugin).upcast()))
+                    },
+                    Some(&t!("Taking back or blocking needs no password")),
                 )
                 .upcast(),
             );

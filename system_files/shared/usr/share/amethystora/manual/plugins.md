@@ -141,7 +141,8 @@ ame plugin check FOLDER      # what installing would refuse, for a plugin's auth
 ```
 
 If a file of a plugin changes after you approved it, the plugin stops and `ame plugin show` says so: only you decide what to do next.
-With [Plugins](security.md#plugins) on in Security, the security watcher says so too, and the report counts what it found.
+Security's **Apps** page lists your plugins with what each was given, and blocks one's network or takes back what it was given in a
+click, with no password. With [Plugins](security.md#plugins) on in Security, the security watcher says so too, and the report counts what it found.
 `ame security plugin-approval off` lets an administrator install a plugin without the dialog, which also lets any program running as
 that administrator do it: each plugin installed that way is recorded in `ame plugin history` and said in a notification.
 Plugins are kept in `/var/lib/amethystora/plugins`, which only the system can write, and an administrator can turn them all off

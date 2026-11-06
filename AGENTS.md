@@ -1803,8 +1803,9 @@ crate (no GTK; only the host's `service.rs` links GLib) with two programs: `amet
   never allowed; the report's `plugins` check counts it. `plugin-approval` (`amethystora-hardening`, on until off) writes
   `polkit-1/rules.d/49-amethystora-plugin-approval.rules`, yes for `commit` only, for wheel in the active local session; the root helper marks each commit
   made while that file exists `"approval": "none"` and tells the account; the agent may only turn it on, and no image may ship it off. `amethystora-sends` has
-  a row for each plugin given a host, with what its proxy counted this hour (the host writes `sent.json` as a run ends). Not built yet: Security's Apps
-  section, Control's settings form for a plugin (`ame plugin set` is the way), `pick`, `change`, `events`, `network-local`, panels, Files' menu, keybindings
+  a row for each plugin given a host, with what its proxy counted this hour (the host writes `sent.json` as a run ends). Security's Apps page lists the account's
+  plugins (`list --json`) with Block its network and Take back what it was given (`pkexec amethystora-plugin-root block|revoke ID`, no password),
+  only for a plugin the list just read. Not built yet: Control's settings form for a plugin (`ame plugin set` is the way), `pick`, `change`, `events`, `network-local`, panels, Files' menu, keybindings
   and the agent's tools from a plugin.
 
 ### Plugins in the shell
