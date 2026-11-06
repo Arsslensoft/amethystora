@@ -61,6 +61,10 @@ jobs:
             mnt="$(sudo podman image mount "${image}")"
             sudo find "${mnt}" -xdev -mindepth 1 -printf '%P\t%y\t%m\t%U:%G\t%l\n' | LC_ALL=C sort >"${to}.list"
             sudo sh -c 'cd "$1" && find . -xdev -type f -print0 | xargs -0 -r sha256sum' sh "${mnt}" | LC_ALL=C sort -k2 >"${to}.sha"
+            mkdir -p "${to}.files"
+            for file in etc/passwd etc/group etc/uupd/config.json usr/lib/os-release; do
+              sudo cat "${mnt}/${file}" >"${to}.files/${file//\//_}" 2>/dev/null || true
+            done
             sudo podman image umount "${image}"
             sudo podman run --rm "${image}" rpm -qa --queryformat '%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}\n' | LC_ALL=C sort >"${to}.rpms"
             sudo podman run --rm "${image}" sh -c 'lsinitrd /usr/lib/modules/*/initramfs.img' |

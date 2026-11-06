@@ -66,26 +66,9 @@ step /ctx/build_files/base/13-apps.sh
 # Amethystora Security: network protection's Suricata configuration, and the report's translations
 step /ctx/build_files/base/14-security.sh
 
-# Rename the remaining Universal Blue files, commands and services to Amethystora
-step /ctx/build_files/base/07-debrand.sh
-
-# Signed updates, account lockout, firewall
-step /ctx/build_files/base/08-hardening.sh
-
-
-## late stage changes
-
-# Systemd and Remove Items
-step /ctx/build_files/base/17-cleanup.sh
-
-# Run workarounds for lf (Likely not needed)
-step /ctx/build_files/base/18-workarounds.sh
-
-# Regenerate initramfs
-step /ctx/build_files/base/19-initramfs.sh
-
-# The build tools the packages layer installed for the steps above (tools.list), out again: exactly what it added,
-# less what another package needs (dx's too, which its layer installed)
+# The build tools the packages layer installed for the steps above (tools.list), out again once the last of them
+# is done and before the initramfs is made, whose libraries' links they add: exactly what the layer added, less what
+# another package needs (dx's too, which its layer installed)
 remove_build_tools() {
     local tools=() keep=() count
     readarray -t tools </usr/lib/amethystora-build/tools.list
@@ -107,6 +90,25 @@ remove_build_tools() {
     fi
 }
 step remove_build_tools
+
+# Rename the remaining Universal Blue files, commands and services to Amethystora
+step /ctx/build_files/base/07-debrand.sh
+
+# Signed updates, account lockout, firewall
+step /ctx/build_files/base/08-hardening.sh
+
+
+## late stage changes
+
+# Systemd and Remove Items
+step /ctx/build_files/base/17-cleanup.sh
+
+# Run workarounds for lf (Likely not needed)
+step /ctx/build_files/base/18-workarounds.sh
+
+# Regenerate initramfs
+step /ctx/build_files/base/19-initramfs.sh
+
 
 if [ "${IMAGE_FLAVOR}" == "dx" ] ; then
   # Now we build DX!
