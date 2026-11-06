@@ -102,14 +102,21 @@ fn change_to(cache: &Cache, jobs: &Jobs, entry: &str, value: &str, undoing: Opti
         record["of"] = json!(of);
     }
     if planned.terminal {
-        record["result"] = json!("opened");
+        record["result"] = json!("asking");
         history::record(&record)?;
         let mut done = record.clone();
+        let stage = done.clone();
         handoff::open(
             jobs,
             &id,
             &planned.argv,
             &format!("Change the setting {} to {value}", item.title),
+            handoff::Question { kind: "change", command: planned.argv.clone(), root: false, title: Some(item.title.clone()) },
+            Box::new(move |phase| {
+                let mut at = stage.clone();
+                at["result"] = json!(phase);
+                let _ = history::record(&at);
+            }),
             Box::new(move |said| {
                 done["result"] = json!(if said.contains("exited with 0") { "ok" } else if said.contains("declined") { "declined" } else { "failed" });
                 done["time"] = json!(history::now());
@@ -117,7 +124,7 @@ fn change_to(cache: &Cache, jobs: &Jobs, entry: &str, value: &str, undoing: Opti
             }),
         )?;
         return Ok(format!(
-            "This change asks the user something, so it opened in a terminal for them ({id}). Call history with id {id} and wait to see how it ended."
+            "This change asks the user something, so it was put to them (in the desktop's pill, or in a terminal) and runs after their yes ({id}). Call history with id {id} and wait to see how it ended."
         ));
     }
     let argv: Vec<&str> = planned.argv.iter().map(String::as_str).collect();
@@ -282,6 +289,7 @@ pub fn run_command(jobs: &Jobs, root: &std::sync::Arc<Root>, policy: &Policy, ar
     if let Some(why) = never::refusal(&argv) {
         return Err(format!("Refused: {why}. Name the command for the user to run instead."));
     }
+    let command = argv.clone();
     let id = history::new_id();
     let mode = policy.conf.root;
     // The root mode too, for the live pill: only `each` asks for a password every time
@@ -292,13 +300,20 @@ pub fn run_command(jobs: &Jobs, root: &std::sync::Arc<Root>, policy: &Policy, ar
             shown = [vec!["sudo".to_string(), "--".to_string()], argv].concat();
         }
         let mut opened = record.clone();
-        opened["result"] = json!("opened");
+        opened["result"] = json!("asking");
         history::record(&opened)?;
+        let stage = opened.clone();
         handoff::open(
             jobs,
             &id,
             &shown,
             &reason,
+            handoff::Question { kind: "run", command: command.clone(), root: as_root, title: None },
+            Box::new(move |phase| {
+                let mut at = stage.clone();
+                at["result"] = json!(phase);
+                let _ = history::record(&at);
+            }),
             Box::new(move |said| {
                 opened["result"] = json!(if said.contains("exited with 0") { "ok" } else if said.contains("declined") { "declined" } else { "failed" });
                 opened["time"] = json!(history::now());
@@ -306,7 +321,7 @@ pub fn run_command(jobs: &Jobs, root: &std::sync::Arc<Root>, policy: &Policy, ar
             }),
         )?;
         return Ok(format!(
-            "Opened in a terminal, where the user reads it and says yes{} ({id}). Call history with id {id} and wait to see how it ended.",
+            "Put to the user, who reads it and says yes (in the desktop's pill or in a terminal){} ({id}). Call history with id {id} and wait to see how it ended.",
             if as_root { " and types their password" } else { "" }
         ));
     }

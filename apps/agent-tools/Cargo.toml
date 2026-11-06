@@ -20,6 +20,8 @@ path = "src/bin/root.rs"
 
 [dependencies]
 amethystora-control-core.workspace = true
+# Little routines are sealed under the Vault's background key, which the service gives to nothing else but a program asking as the account
+amethystora-vault-client.workspace = true
 serde_json.workspace = true
 libc.workspace = true
 regex.workspace = true
@@ -27,3 +29,6 @@ regex.workspace = true
 # same ICU4X the apps already build with
 icu_normalizer = { version = "2", default-features = false, features = ["compiled_data"] }
 icu_properties = { version = "2", default-features = false, features = ["compiled_data"] }
+
+[dev-dependencies]
+base64.workspace = true

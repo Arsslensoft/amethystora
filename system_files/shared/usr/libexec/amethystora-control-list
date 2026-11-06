@@ -3039,6 +3039,50 @@ item agent agent-pill switch "${ gettext "The agent's changes in the live pill";
     "${ gettext "While the agent may make changes, the live pill lists each one as it is made, with its own Undo, and Stop."; }" \
     "${ onoff_of "${AGENT_UI}" pill; }" ai-agent#its-changes-in-the-live-pill
 
+# Round 7's agent in the pill: asking it there (Super+/, since Super+Shift+Space is the next keyboard layout), its questions as a card,
+# the line about what it reads, pictures and files for it, and little routines
+if [[ "${ value_of "${AGENT_UI}" ask-here "(.*)\$"; }" == *"'<"* ]]; then ASK_HERE=on; else ASK_HERE=off; fi
+[[ "${ ended agent-ui; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
+[[ "${AGENTIC}" == true ]] || REASON="${ gettext "The agentic features are off."; }"
+switch_choices false ame agent ask-here
+USAGE="ame agent ask-here on|off"
+item agent agent-ask-here switch "${ gettext "Ask the agent in the pill"; }" \
+    "${ gettext "Super+/ opens a field in the pill's card: the agent answers there, looking at this computer with its tools that only read, and changes nothing. Your words go to its maker."; }" \
+    "${ASK_HERE}" ai-agent#asking-in-the-pill
+[[ "${ ended agent-ui; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
+[[ "${AGENTIC}" == true ]] || REASON="${ gettext "The agentic features are off."; }"
+switch_choices false ame agent ask-questions
+USAGE="ame agent ask-questions on|off"
+item agent agent-ask-questions switch "${ gettext "The agent's questions in the pill"; }" \
+    "${ gettext "When the agent's tools ask to run a command, the question is a card in the pill with the exact command, Allow and Not now. A password for a root command is still asked by sudo. Off, they ask in a terminal."; }" \
+    "${ onoff_of "${AGENT_UI}" ask-questions; }" ai-agent#questions-in-the-pill
+[[ "${ ended agent-ui; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
+[[ "${AGENTIC}" == true ]] || REASON="${ gettext "The agentic features are off."; }"
+switch_choices false ame agent doing
+USAGE="ame agent doing on|off"
+item agent agent-doing switch "${ gettext "What the agent is reading, in the pill"; }" \
+    "${ gettext "While the agent's tools read, the pill says which one in a few words, with a tick when it is done. Only the tool's name, never what it read."; }" \
+    "${ onoff_of "${AGENT_UI}" doing; }" ai-agent#what-it-is-doing
+[[ "${ ended agent-ui; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
+[[ "${AGENTIC}" == true ]] || REASON="${ gettext "The agentic features are off."; }"
+switch_choices false ame agent ask-about
+USAGE="ame agent ask-about on|off"
+item agent agent-ask-about switch "${ gettext "Ask about a picture or a file"; }" \
+    "${ gettext "Drop a picture or a text file on the pill's Ask the agent, or copy a picture and press Super+Shift+A. It shows what will be sent, and to whom, before it goes, and never while your screen is shared."; }" \
+    "${ onoff_of "${AGENT_UI}" ask-about; }" ai-agent#asking-about-a-picture-or-a-file
+[[ "${ ended agent-ui; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
+switch_choices false ame agent routines
+USAGE="ame agent routines on|off"
+item agent agent-routines switch "${ gettext "Little routines"; }" \
+    "${ gettext "Routines you kept run by themselves when their trigger happens: a time, a network, an app, the screen, the battery, your phone. Each run shows in the pill once, with Undo and Pause. They are sealed in the Vault."; }" \
+    "${ onoff_of "${AGENT_UI}" routines; }" ai-agent#little-routines
+COMMAND=(ame agent routines list)
+TERMINAL=true
+BUTTON="${ gettext "Show"; }"
+USAGE="ame agent routines list"
+item agent agent-routines-list action "${ gettext "Your routines"; }" \
+    "${ gettext "Each routine's name and when it runs. Ask the agent to write one, then keep it with ame agent routines add FILE: it shows what it does and asks first."; }" "" ai-agent#little-routines
+
 # What an administrator sets for every account (/etc/amethystora/agent.conf): how the agent's root commands are
 # allowed, and the lock. Here by the maintainer's choice of 2026-10-18, an exception to Security keeping every
 # security setting: these govern the agent, not a security feature, and each opens in a terminal for an

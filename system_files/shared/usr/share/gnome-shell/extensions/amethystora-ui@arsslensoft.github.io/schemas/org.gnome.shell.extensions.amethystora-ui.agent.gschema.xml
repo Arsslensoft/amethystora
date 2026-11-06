@@ -25,6 +25,16 @@
       <summary>The agent's questions in the pill</summary>
       <description>The agent's tools ask before they run a command for you: the question comes as a card in the live pill, with the exact command, Allow and Not now. Off, they ask in a terminal as before. A root command's password is asked by sudo either way.</description>
     </key>
+    <key name="ask-about" type="b">
+      <default>false</default>
+      <summary>Ask the agent about a picture or a text file</summary>
+      <description>Offered, off until chosen. A picture or text file dropped on the pill's Ask the agent, or a picture copied when Super+Shift+A finds no selected text, is shown with what will be sent and to whom, and is sent only after Send and ask. A copy of the picture lives in the account's runtime folder while the question is answered. Never while the screen is shared.</description>
+    </key>
+    <key name="routines" type="b">
+      <default>true</default>
+      <summary>Little routines</summary>
+      <description>Routines you made (ame agent routines): each is sealed in the Vault and names one trigger (a time, a network, an app, the screen, the battery, a phone) and what to do, as apps to open and ame commands, never root and never a shell line. Only what a routine names is listened for, each run shows in the pill once with Undo and Pause, and with no routine made nothing is asked. Off, none runs.</description>
+    </key>
     <key name="doing" type="b">
       <default>true</default>
       <summary>One line in the pill about what the agent is reading</summary>

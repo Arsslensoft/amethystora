@@ -21,7 +21,8 @@ import St from 'gi://St';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {buttonRow, cardButton, retire} from '../pill/clock.js';
-import {ANSWER_KEPT, QUESTION_KEPT, askInput, isId, outcome, parseQuestion} from './askmodel.js';
+import {plain} from '../pill/text.js';
+import {ANSWER_KEPT, QUESTION_KEPT, TEXT_READ, aboutFiles, askInput, isId, outcome, parseQuestion, pictureEnd} from './askmodel.js';
 
 const AGENT = 'amethystora-agent';
 const PATH = '/org/amethystora/Agent';
@@ -38,6 +39,13 @@ const ERROR = 'org.amethystora.Agent.Unavailable';
 
 Gio._promisify(Gio.Subprocess.prototype, 'communicate_utf8_async');
 Gio._promisify(Gio.File.prototype, 'load_contents_async');
+Gio._promisify(Gio.File.prototype, 'query_info_async');
+Gio._promisify(Gio.File.prototype, 'read_async');
+Gio._promisify(Gio.File.prototype, 'delete_async');
+Gio._promisify(Gio.InputStream.prototype, 'read_bytes_async');
+Gio._promisify(Gio.InputStream.prototype, 'close_async');
+// The private folder a picture's copy is made in, and taken from again when it has been asked about
+const PRIVATE = GLib.build_filenamev([GLib.get_user_runtime_dir(), 'amethystora', 'ask']);
 
 export class AgentAsk {
     // host: the agent module: `pill`, `agentName`, `gicon`, `changes` (the pill's list of what the tools do, which may be null)
@@ -53,6 +61,8 @@ export class AgentAsk {
     stop() {
         this.unexport();
         this._cancel();
+        this._unstage();
+        this._subject = null;
         for (const question of [...this._questions])
             this._reply(question, false);
         this._mode = null;
@@ -203,6 +213,138 @@ export class AgentAsk {
         this._sync();
     }
 
+    // --- Ask about this (R7-14) ----------------------------------------------------------------------------------------------
+
+    // A file dropped on the pill: shown with where it goes, and sent only after Send and ask. One picture or text file at a time.
+    // Nothing is copied, read past its first bytes, or sent before then; refused while the screen is shared.
+    async aboutFiles(paths) {
+        if (!this._host.on || this._process)
+            return;
+        if (this._host.pill?.sharing?.()) {
+            this._host.pill.notice?.(_('Not while your screen is shared'), 'dialog-question-symbolic', 4);
+            return;
+        }
+        const cancellable = new Gio.Cancellable();
+        let picked;
+        let file;
+        try {
+            file = Gio.File.new_for_path(paths[0] ?? '');
+            const info = paths.length === 1
+                ? await file.query_info_async('standard::type,standard::size,standard::name', Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, GLib.PRIORITY_DEFAULT, cancellable)
+                : null;
+            picked = info?.get_file_type() === Gio.FileType.REGULAR
+                ? aboutFiles([{name: info.get_name(), size: info.get_size()}]) : aboutFiles(paths.length === 1 ? [{name: '', size: 0}] : paths);
+        } catch {
+            picked = {why: 'kind'};
+        }
+        if (!this._host.on)
+            return;
+        if (!picked.kind) {
+            const why = {one: _('One file at a time'), big: _('That picture is too large to send'),
+                kind: _('I can look at a picture or a text file')}[picked.why] ?? _('I can look at a picture or a text file');
+            this._host.pill?.notice?.(why, 'dialog-question-symbolic', 4);
+            return;
+        }
+        const subject = {kind: picked.kind, name: plain(picked.name, 60), size: picked.size, file};
+        if (picked.kind === 'text') {
+            // The start of it, as text, read now to show what would go: nothing else of the file
+            try {
+                const stream = await file.read_async(GLib.PRIORITY_DEFAULT, cancellable);
+                const bytes = await stream.read_bytes_async(TEXT_READ, GLib.PRIORITY_DEFAULT, cancellable);
+                await stream.close_async(GLib.PRIORITY_DEFAULT, cancellable);
+                subject.text = new TextDecoder().decode(bytes.toArray());
+            } catch {
+                this._host.pill?.notice?.(_('I can look at a picture or a text file'), 'dialog-question-symbolic', 4);
+                return;
+            }
+        }
+        this._confirm(subject);
+    }
+
+    // A picture on the clipboard (a screenshot of a region, copied), from the key when no text is selected
+    aboutPicture(bytes) {
+        if (!this._host.on || this._process)
+            return;
+        if (this._host.pill?.sharing?.()) {
+            this._host.pill.notice?.(_('Not while your screen is shared'), 'dialog-question-symbolic', 4);
+            return;
+        }
+        this._confirm({kind: 'picture', name: _('The picture you copied'), size: bytes.get_size(), bytes});
+    }
+
+    _confirm(subject) {
+        if (!this._host.pill?.canAsk?.()) {
+            this._host.pill?.notice?.(_('The live pill is off, so there is nowhere to ask'), 'dialog-question-symbolic', 4);
+            return;
+        }
+        this._unstage();
+        this._subject = subject;
+        this._mode = 'confirm';
+        this._answer = null;
+        this._sync();
+        this._host.pill.openCard('ask');
+    }
+
+    // The picture's copy in the private folder, made now that the person said Send: a file of ours, 0600 in a 0700 folder, which is
+    // taken away when the question is answered. Its path, or null
+    async _stage(subject) {
+        const name = `pic-${GLib.uuid_string_random().replace(/-/g, '')}.${pictureEnd(subject.file?.get_basename() ?? '')}`;
+        GLib.mkdir_with_parents(PRIVATE, 0o700);
+        const target = Gio.File.new_for_path(GLib.build_filenamev([PRIVATE, name]));
+        try {
+            const bytes = subject.bytes ?? (await subject.file.load_contents_async(null))[0];
+            const data = bytes instanceof GLib.Bytes ? bytes : new GLib.Bytes(bytes);
+            await new Promise((resolve, reject) => {
+                target.replace_contents_bytes_async(data, null, false, Gio.FileCreateFlags.PRIVATE | Gio.FileCreateFlags.REPLACE_DESTINATION, null,
+                    (file, result) => {
+                        try {
+                            resolve(file.replace_contents_finish(result));
+                        } catch (e) {
+                            reject(e);
+                        }
+                    });
+            });
+        } catch {
+            return null;
+        }
+        this._staged = target;
+        return target.get_path();
+    }
+
+    // The copy goes, whatever came of the question
+    _unstage() {
+        const target = this._staged;
+        this._staged = null;
+        target?.delete_async(GLib.PRIORITY_DEFAULT, null).catch(() => {});
+    }
+
+    async _sendAbout(text) {
+        const subject = this._subject;
+        if (!subject)
+            return;
+        const question = text.replace(/\s+/g, ' ').trim() || _('What is this, and is anything wrong?');
+        let picture = '';
+        if (subject.kind === 'picture') {
+            this._mode = 'working';
+            this._sync();
+            picture = await this._stage(subject);
+            if (!picture) {
+                this._subject = null;
+                this._mode = 'failed';
+                this._answer = {kind: 'failed', why: 'error', detail: _('The picture could not be read.')};
+                this._sync();
+                return;
+            }
+        }
+        const quoted = subject.text ?? '';
+        this._subject = null;
+        try {
+            await this.ask(question, {quoted, picture});
+        } finally {
+            this._unstage();
+        }
+    }
+
     // The tools' own line about what is read stays out of the pill while this one says it
     _quiet(on) {
         const changes = this._host.changes;
@@ -230,6 +372,8 @@ export class AgentAsk {
 
     _dismiss() {
         this._cancel();
+        this._unstage();
+        this._subject = null;
         if (this._kept)
             GLib.source_remove(this._kept);
         this._kept = 0;
@@ -254,6 +398,7 @@ export class AgentAsk {
         }
         switch (this._mode) {
         case 'typing': return _('Ask %s').format(name);
+        case 'confirm': return _('Ask about this');
         case 'working': return this._host.changes?.doingText ?? _('%s is looking…').format(name);
         case 'answer': return _('%s answered').format(name);
         case 'failed': return _('No answer');
@@ -313,7 +458,7 @@ export class AgentAsk {
             this._body = null;
             // The pill's own card refresh makes a new body at once; a card that was shut does not
             GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-                if (!this._body && this._mode === 'typing')
+                if (!this._body && (this._mode === 'typing' || this._mode === 'confirm'))
                     this._dismiss();
                 return GLib.SOURCE_REMOVE;
             });
@@ -327,7 +472,7 @@ export class AgentAsk {
         if (!body)
             return;
         // What was typed is kept across a refill, which the pill's card does whenever another activity comes or goes
-        if (this._entry && this._mode === 'typing')
+        if (this._entry && (this._mode === 'typing' || this._mode === 'confirm'))
             this._typed = this._entry.text;
         body.destroy_all_children();
         this._entry = null;
@@ -398,6 +543,40 @@ export class AgentAsk {
             box.add_child(this._text(_('It can look at this computer, and it changes nothing. Your words go to the maker of %s.').format(name), 'amethystora-agent-act-how'));
             buttons.push(cardButton(_('Cancel'), () => this._leave(), {small: true}),
                 cardButton(_('Ask'), () => this.ask(entry.text), {small: true, primary: true}));
+            GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+                if (this._entry === entry && entry.get_stage())
+                    entry.grab_key_focus();
+                return GLib.SOURCE_REMOVE;
+            });
+            break;
+        }
+        case 'confirm': {
+            const subject = this._subject;
+            box.add_child(this._head(_('Ask about this'), name));
+            const row = new St.BoxLayout({style_class: 'amethystora-agent-act', x_expand: true});
+            const icon = subject.kind === 'picture'
+                ? new St.Icon({gicon: subject.bytes ? new Gio.BytesIcon({bytes: subject.bytes}) : new Gio.FileIcon({file: subject.file}), icon_size: 48})
+                : new St.Icon({icon_name: 'text-x-generic-symbolic', icon_size: 24, y_align: Clutter.ActorAlign.CENTER});
+            row.add_child(icon);
+            const column = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, y_align: Clutter.ActorAlign.CENTER});
+            column.add_child(new St.Label({style_class: 'amethystora-agent-act-what', text: subject.name}));
+            column.add_child(new St.Label({style_class: 'amethystora-agent-act-how',
+                text: subject.kind === 'picture' ? _('1 picture, %s').format(GLib.format_size(subject.size))
+                    : _('A text file, %s').format(GLib.format_size(subject.size))}));
+            row.add_child(column);
+            box.add_child(row);
+            const entry = new St.Entry({style_class: 'amethystora-agent-field', hint_text: _('What is this error?'), can_focus: true, x_expand: true});
+            entry.clutter_text.max_length = 600;
+            entry.text = this._typed;
+            entry.clutter_text.connect('activate', () => this._sendAbout(entry.text));
+            this._entry = entry;
+            box.add_child(entry);
+            // What goes, and to whom, before it goes
+            box.add_child(this._text(subject.kind === 'picture'
+                ? _('This picture goes to the maker of %s. What is on it goes with it.').format(name)
+                : _('The start of this text goes to the maker of %s.').format(name), 'amethystora-agent-act-how'));
+            buttons.push(cardButton(_('Cancel'), () => this._leave(), {small: true}),
+                cardButton(_('Send and ask'), () => this._sendAbout(entry.text), {small: true, primary: true}));
             GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
                 if (this._entry === entry && entry.get_stage())
                     entry.grab_key_focus();

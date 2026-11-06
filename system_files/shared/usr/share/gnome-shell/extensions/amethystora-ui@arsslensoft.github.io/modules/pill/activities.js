@@ -24,6 +24,7 @@
 // battery, which is no ALONE, it may be the bubble beside it.
 //
 // Present mode's mark (modules/present.js) follows a recording: it says what the screen is for now.
+// A routine that ran (modules/agent/routines.js) comes right after the agent's changes: it says what happened by itself, once.
 // The agent's own question and the questions its tools ask (modules/agent/ask.js) come right before its changes: they wait for the
 // person. The agent's changes (modules/agent/changes.js) come after the battery's question: the agent may be waiting for the
 // person. Reading aloud (modules/access/speech.js) comes after what waits for the person and before what runs by
@@ -44,7 +45,7 @@
 // battery (pill/through.js) only says how things are, beside saving data. A print job that has stood still for ten minutes
 // steps back behind what plays and what is ready (printing-stuck), still in the card.
 
-export const ORDER = ['call', 'recording', 'flat', 'present', 'meeting', 'link', 'code', 'battery', 'ask', 'agent', 'waiting', 'drop', 'hello', 'stick',
+export const ORDER = ['call', 'recording', 'flat', 'present', 'meeting', 'link', 'code', 'battery', 'ask', 'agent', 'routine', 'waiting', 'drop', 'hello', 'stick',
     'reading', 'timer', 'timer2', 'printing', 'resume', 'news', 'media', 'moving', 'update', 'printing-stuck', 'through', 'saving', 'quiet', 'focus'];
 
 // At most this many others are listed in a card

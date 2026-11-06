@@ -14,6 +14,8 @@
 //!                                                    into the account's own index (paths and vectors only)
 //!   amethystora-agent-tools files-search [-k N] [--dir DIR] [--model DIR] -- WORDS...
 //!                                                    the files nearest to WORDS, as JSON, for the desktop's search
+//!   amethystora-agent-tools routines check FILE | list | show ID | add FILE | pause|resume|remove ID | run ID | undo ID | triggers
+//!                                                    little routines, sealed in the Vault (ame agent routines)
 //!   amethystora-agent-tools policy [--json|--level|--ceiling]
 //!                                                    what this account may use, and the administrator's settings
 //!   amethystora-agent-tools conf allow act|know|off|default [ACCOUNT] | conf root MODE
@@ -154,6 +156,8 @@ fn main() -> ExitCode {
             println!("{}", Value::Array(found));
             ExitCode::SUCCESS
         }
+        // Little routines (R7-15): sealed in the Vault, run by the desktop's triggers
+        "routines" => amethystora_agent_tools::routines::main(rest),
         "read" if rest.len() == 1 => say(Server::default().call("read", &json!({"id": rest[0]}))),
         "state" if !rest.is_empty() => {
             say(Server::default().call("state", &json!({"topic": rest[0], "filter": rest.get(1).cloned().unwrap_or_default()})))

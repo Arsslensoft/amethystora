@@ -229,6 +229,20 @@ fn ame_refusal(args: &[String]) -> Option<String> {
         ["agent", "pill"] | ["agent", "pill", "off", ..] | ["desktop", "pill"] | ["desktop", "pill", "off", ..] => {
             Some("the live pill's list of what the agent changes is the user's to turn off".into())
         }
+        // The pill's own question, its card for the tools' questions and the line about what is read are the person's view of the agent,
+        // as the pill's list of changes is
+        ["agent", "ask-here" | "ask-questions" | "doing", ..] => {
+            Some("the live pill's question, its questions and its line about what the agent reads are the user's to change".into())
+        }
+        // Sending a picture or a file to the agent's maker is a choice only the person makes
+        ["agent", "ask-about"] | ["agent", "ask-about", "on", ..] => {
+            Some("sending a picture or a file to the agent's maker is the user's choice: the user turns it on".into())
+        }
+        // A routine runs commands by itself, later: keeping one, starting one again, running one and taking one away are the person's,
+        // behind a yes in a terminal. The agent may read them, check a file it wrote, and pause one
+        ["agent", "routines", verb, ..] if !matches!(*verb, "list" | "show" | "check" | "pause") => {
+            Some("a routine runs by itself later: the agent writes one and checks it, and the user keeps it, runs it and takes it away".into())
+        }
         ["apps", "aur", ..] => Some("turning the AUR on is the user's choice alone".into()),
         // Anyone holding the computer reads it at the login and lock screens: its words are chosen by the person
         ["system", "if-found", ..] => Some("the line on the login and lock screens is the user's own words: the user writes it".into()),
@@ -421,6 +435,23 @@ mod tests {
             "just -f /usr/share/amethystora/just/agent.just",
             "ame agent pill off",
             "ame agent pill",
+            // The pill's question, its questions, its line, pictures for the agent's maker, and routines: the person's
+            "ame agent ask-here off",
+            "ame agent ask-questions off",
+            "ame agent doing off",
+            "ame agent ask-about on",
+            "ame agent ask-about",
+            "ame agent routines add /tmp/routine.json",
+            "ame agent routines resume office-morning",
+            "ame agent routines remove office-morning",
+            "ame agent routines run office-morning",
+            "ame agent routines undo office-morning",
+            "ame agent routines on",
+            "ame agent routines off",
+            "ame agent::routines add x.json",
+            "just -f /usr/share/amethystora/just/agent.just routines add x.json",
+            "gsettings set org.gnome.shell.extensions.amethystora-ui.agent routines true",
+            "gsettings set org.gnome.shell.extensions.amethystora-ui.agent ask-about true",
             "ame -q agent::pill off",
             "gsettings set org.gnome.shell.extensions.amethystora-ui.agent pill false",
             "gsettings set org.gnome.shell.extensions.amethystora-ui.agent ask-selection []",
@@ -561,6 +592,11 @@ mod tests {
             "ame agent pill on",
             "ame agent history",
             "ame agent status",
+            "ame agent routines",
+            "ame agent routines list",
+            "ame agent routines show office-morning",
+            "ame agent routines check /tmp/routine.json",
+            "ame agent routines pause office-morning",
             "ame agent search updates",
             "amethystora-changes list --json",
             "just -f /usr/share/amethystora/just/security.just status",

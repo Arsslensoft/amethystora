@@ -31,6 +31,7 @@
 #   amethystora-agent status           print whether they are on; exits 1 when off
 #   amethystora-agent policy [--json]  what this account may use, the administrator's lock and root mode
 #   amethystora-agent sync             link or unlink the skills to match, run at every login
+#   amethystora-agent routines ...     little routines, sealed in the Vault (ame agent routines)
 #   amethystora-agent search|read|state|history ...
 #                                      the agent's tools' answers in a terminal (amethystora-agent-tools)
 #
@@ -706,6 +707,9 @@ case "${1:-}" in
         [[ -z ${OPENCODE_CONFIG_CONTENT:-} ]] || printf 'env:OPENCODE_CONFIG_CONTENT=%s\n' "${OPENCODE_CONFIG_CONTENT}"
         [[ -z ${OPENCODE_PERMISSION:-} ]] || printf 'env:OPENCODE_PERMISSION=%s\n' "${OPENCODE_PERMISSION}"
         ;;
+    # Little routines (R7-15), sealed in the Vault: the tools program's own, with nothing of the agentic features asked, since they are
+    # the person's and run whether or not an agent is
+    routines) shift; exec "${TOOLS}" routines "$@" ;;
     # The command the pill's question would start, for 20-tests.sh
     argv-here)
         [[ -n ${2:-} ]] || die "usage: amethystora-agent argv-here AGENT"

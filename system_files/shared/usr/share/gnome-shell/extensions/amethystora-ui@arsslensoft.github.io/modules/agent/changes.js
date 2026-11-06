@@ -627,7 +627,8 @@ export class AgentChanges {
             const word = this._undoing.has(record.id) ? (waiting ? _('Waiting in its terminal') : _('Undoing…'))
                 : this._undone(record) ? _('Undone')
                     : record.result === 'running' && this._servers.size === 0 ? _('Not finished')
-                        : {failed: _('Failed'), declined: _('Declined'), refused: _('Refused'), 'not run': _('Not run'), running: _('Running…')}[record.result] ?? '';
+                        : {failed: _('Failed'), declined: _('Declined'), refused: _('Refused'), 'not run': _('Not run'), running: _('Running…'),
+                            asking: _('Waiting for you')}[record.result] ?? '';
             if (word)
                 end = new St.Label({style_class: 'amethystora-agent-act-state', text: word, y_align: Clutter.ActorAlign.CENTER});
         }

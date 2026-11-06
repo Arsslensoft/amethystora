@@ -365,6 +365,12 @@ export class Pill {
         this._activities?.update('ask');
     }
 
+    // A routine that just ran (modules/agent/routines.js), or null
+    setRoutine(activity) {
+        if (this._activities && this._activities.get('routine') !== activity)
+            this._activities.set('routine', activity);
+    }
+
     // Whether there is a pill with a card to ask in
     canAsk() {
         return !!this._clock;

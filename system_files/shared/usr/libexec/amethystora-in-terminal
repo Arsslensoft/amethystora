@@ -4,7 +4,7 @@
 # The Security app (amethystora-security) opens the recipes it offers this way.
 #
 #   amethystora-in-terminal <command> [<argument>...]
-#   amethystora-in-terminal [--agent REASON] [--report DIR] -- <command> [<argument>...]
+#   amethystora-in-terminal [--agent REASON] [--approved] [--report DIR] -- <command> [<argument>...]
 #   amethystora-in-terminal --done DIR -- <command> [<argument>...]
 #
 # The two options are the AI agent's tools' (amethystora-agent-tools), for a command the agent hands to the
@@ -13,6 +13,9 @@
 # (the exit code, or "declined") after DIR/output (the last 8 KB of what it printed), since neither this nor
 # xdg-terminal-exec tells its caller anything. --done writes DIR/status alone and keeps nothing the command
 # printed: an app that shows what the command changed reads its state again as soon as it is there.
+#
+# --approved is for a command the person has already said yes to in the live pill's card (modules/agent/ask.js): it is shown the same
+# way and run without asking again. It is no more than running the command, which any program of the account can do.
 #
 # xdg-terminal-exec is how amethystora-menu reopens itself from a keybinding, too.
 
@@ -25,10 +28,11 @@ if [[ ! -t 1 ]]; then
     exec xdg-terminal-exec "$0" "$@"
 fi
 
-AGENT=false REASON="" REPORT="" KEEP_OUTPUT=false
+AGENT=false REASON="" REPORT="" KEEP_OUTPUT=false APPROVED=false
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --agent) AGENT=true REASON="${2:-}"; shift 2 ;;
+        --approved) APPROVED=true; shift ;;
         --report) REPORT="${2:-}" KEEP_OUTPUT=true; shift 2 ;;
         --done) REPORT="${2:-}"; shift 2 ;;
         --) shift; break ;;
@@ -47,7 +51,11 @@ ended() {
 }
 
 if [[ "${AGENT}" == true ]]; then
-    echo "The AI agent asks to run this:"
+    if [[ "${APPROVED}" == true ]]; then
+        echo "The AI agent runs this, as you allowed in the pill:"
+    else
+        echo "The AI agent asks to run this:"
+    fi
     echo
     printf '    '
     printf '%q ' "$@"
@@ -56,7 +64,11 @@ if [[ "${AGENT}" == true ]]; then
     echo "Its reason, in its own words: $(/usr/libexec/amethystora-security-text --max 600 "${REASON}")"
     [[ -z "${REPORT}" ]] || echo "What the command prints goes back to the agent."
     echo
-    read -rp "Run it? [y/N] " answer || answer=""
+    if [[ "${APPROVED}" == true ]]; then
+        answer=y
+    else
+        read -rp "Run it? [y/N] " answer || answer=""
+    fi
     if [[ ${answer,,} != y* ]]; then
         ended declined
         echo "Not run."

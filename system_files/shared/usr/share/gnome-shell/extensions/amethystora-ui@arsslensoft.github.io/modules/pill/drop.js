@@ -194,7 +194,7 @@ export class DropTargets {
         if (agent?.on) {
             targets.push({
                 id: 'agent', label: _('Ask the agent'), icon: 'dialog-question-symbolic',
-                run: files => agent.askAbout(files.map(f => f.path).join('\n')),
+                run: files => agent.askAbout(files),
             });
         }
         return targets;

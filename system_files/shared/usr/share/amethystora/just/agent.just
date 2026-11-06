@@ -187,3 +187,136 @@ pill ACTION="":
             exit 64
             ;;
     esac
+
+# Super+/ opens a field in the live pill's card, and the AI agent answers there with the tools that only read, while the agentic features are on (ACTION: on or off; without it, it flips)
+[positional-arguments]
+ask-here ACTION="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.agent
+    state="${1:-}"
+    if [[ -z "${state}" ]]; then
+        if [[ "$(gsettings get "${schema}" ask-here)" == *"'<"* ]]; then state=off; else state=on; fi
+    fi
+    case "${state}" in
+        on)
+            gsettings reset "${schema}" ask-here
+            echo "$(gettext "Ask the agent in the pill: on. Press Super+/.")"
+            ;;
+        off)
+            gsettings set "${schema}" ask-here "[]"
+            echo "$(gettext "Ask the agent in the pill: off.")"
+            ;;
+        *)
+            echo "usage: ame agent ask-here on|off"
+            exit 64
+            ;;
+    esac
+
+# The AI agent's tools ask before they run a command for you as a card in the live pill, with the exact command, Allow and Not now; off, they ask in a terminal (ACTION: on or off; without it, it flips)
+[positional-arguments]
+ask-questions ACTION="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.agent
+    state="${1:-}"
+    if [[ -z "${state}" ]]; then
+        if [[ "$(gsettings get "${schema}" ask-questions)" == true ]]; then state=off; else state=on; fi
+    fi
+    case "${state}" in
+        on)
+            gsettings set "${schema}" ask-questions true
+            echo "$(gettext "The agent's questions in the pill: on.")"
+            ;;
+        off)
+            gsettings set "${schema}" ask-questions false
+            echo "$(gettext "The agent's questions in the pill: off. They ask in a terminal.")"
+            ;;
+        *)
+            echo "usage: ame agent ask-questions on|off"
+            exit 64
+            ;;
+    esac
+
+# The live pill says in a few words which of the AI agent's tools is reading, with a tick when it is done: only the tool's name, never what it read (ACTION: on or off; without it, it flips)
+[positional-arguments]
+doing ACTION="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.agent
+    state="${1:-}"
+    if [[ -z "${state}" ]]; then
+        if [[ "$(gsettings get "${schema}" doing)" == true ]]; then state=off; else state=on; fi
+    fi
+    case "${state}" in
+        on)
+            gsettings set "${schema}" doing true
+            echo "$(gettext "What the agent is reading, in the pill: on.")"
+            ;;
+        off)
+            gsettings set "${schema}" doing false
+            echo "$(gettext "What the agent is reading, in the pill: off.")"
+            ;;
+        *)
+            echo "usage: ame agent doing on|off"
+            exit 64
+            ;;
+    esac
+
+# Ask the AI agent about a picture or a text file: drop it on the pill's Ask the agent, or copy a picture and press Super+Shift+A. It shows what will be sent, and to whom, before anything is (ACTION: on or off; without it, it flips)
+[positional-arguments]
+ask-about ACTION="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.agent
+    state="${1:-}"
+    if [[ -z "${state}" ]]; then
+        if [[ "$(gsettings get "${schema}" ask-about)" == true ]]; then state=off; else state=on; fi
+    fi
+    case "${state}" in
+        on)
+            echo "$(gettext "A picture or text file you ask about goes to the maker of your agent, with what is on it. It shows you that first, every time, and never while your screen is shared.")"
+            gsettings set "${schema}" ask-about true
+            echo "$(gettext "Ask about a picture or a file: on.")"
+            ;;
+        off)
+            gsettings set "${schema}" ask-about false
+            echo "$(gettext "Ask about a picture or a file: off.")"
+            ;;
+        *)
+            echo "usage: ame agent ask-about on|off"
+            exit 64
+            ;;
+    esac
+
+# Little routines: "when I join the office Wi-Fi, open Slack and mute", one readable file each, sealed in the Vault (VERB: list, show ID, check FILE, add FILE, pause ID, resume ID, remove ID, run ID, undo ID, on, off)
+[positional-arguments]
+routines VERB="list" *ARGS:
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    schema=org.gnome.shell.extensions.amethystora-ui.agent
+    case "${1:-list}" in
+        list | show | check | add | pause | resume | remove | run | undo) exec amethystora-agent routines "$@" ;;
+        on)
+            gsettings set "${schema}" routines true
+            echo "$(gettext "Routines: on.")"
+            ;;
+        off)
+            gsettings set "${schema}" routines false
+            echo "$(gettext "Routines: off. None runs.")"
+            ;;
+        *)
+            echo "usage: ame agent routines list | show ID | check FILE | add FILE | pause|resume|remove|run|undo ID | on|off"
+            exit 64
+            ;;
+    esac

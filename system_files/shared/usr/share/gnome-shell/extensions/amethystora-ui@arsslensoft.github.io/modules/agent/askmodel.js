@@ -85,3 +85,38 @@ export function outcome(status, stdout) {
     return {kind: 'failed', why: {2: 'off', 3: 'missing', 4: 'headless', 124: 'slow', 137: 'slow'}[status] ?? 'error',
         detail: tidy(stdout, 160)};
 }
+
+// --- Ask about this (R7-14): what may be asked about ---------------------------------------------------------------------------
+
+// The pictures an agent reads, and the plain text files whose start is sent as text. A name's ending is only the first guess: the
+// launcher looks at a picture's first bytes again and refuses what is not one
+export const PICTURES = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
+export const TEXTS = ['txt', 'log', 'md', 'json', 'yaml', 'yml', 'toml', 'conf', 'ini', 'csv', 'xml', 'html', 'css', 'py', 'js', 'ts',
+    'sh', 'rs', 'c', 'h', 'cpp', 'java', 'go', 'service', 'desktop', 'rules', 'patch', 'diff'];
+// The most a picture is, and how much of a text file is read (the launcher keeps 4000 characters of it)
+export const PICTURE_MAX = 5 * 1024 * 1024;
+export const TEXT_READ = 65536;
+
+// 'picture', 'text' or null, from a file's name
+export function kindOfName(name) {
+    const end = /\.([A-Za-z0-9]+)$/.exec(typeof name === 'string' ? name : '')?.[1]?.toLowerCase() ?? '';
+    return PICTURES.includes(end) ? 'picture' : TEXTS.includes(end) ? 'text' : null;
+}
+
+// The ending a copy of a picture is kept under: only one of the list
+export function pictureEnd(name) {
+    const end = /\.([A-Za-z0-9]+)$/.exec(typeof name === 'string' ? name : '')?.[1]?.toLowerCase() ?? '';
+    return PICTURES.includes(end) ? end : 'png';
+}
+
+// What a dropped file can be asked about, or why not: {kind, name} or {why}. `file` is {name, size}; one file at a time
+export function aboutFiles(files) {
+    if (files.length !== 1)
+        return {why: 'one'};
+    const kind = kindOfName(files[0].name);
+    if (!kind)
+        return {why: 'kind'};
+    if (kind === 'picture' && files[0].size > PICTURE_MAX)
+        return {why: 'big'};
+    return {kind, name: files[0].name, size: files[0].size};
+}

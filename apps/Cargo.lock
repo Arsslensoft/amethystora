@@ -59,6 +59,8 @@ name = "amethystora-agent-tools"
 version = "1.0.0"
 dependencies = [
  "amethystora-control-core",
+ "amethystora-vault-client",
+ "base64",
  "icu_normalizer",
  "icu_properties",
  "libc",

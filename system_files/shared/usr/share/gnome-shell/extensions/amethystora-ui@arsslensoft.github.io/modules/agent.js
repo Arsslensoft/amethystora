@@ -17,8 +17,10 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as Util from 'resource:///org/gnome/shell/misc/util.js';
 
 import {AgentAsk} from './agent/ask.js';
+import {kindOfName} from './agent/askmodel.js';
 import {AgentChanges} from './agent/changes.js';
-import {AskCard, readSelection} from './agent/selection.js';
+import {AskCard, readPicture, readSelection} from './agent/selection.js';
+import {Routines} from './agent/routines.js';
 import {AgentStatus, agentTitle} from './agent/status.js';
 
 const AGENT = 'amethystora-agent';
@@ -42,6 +44,7 @@ export class Agent {
             'changed::doing', () => this._sync(),
             `changed::${ASK_KEY}`, () => this._sync(),
             'changed::ask-questions', () => this._sync(),
+            'changed::routines', () => this._sync(),
             this);
         this._ask = new AgentAsk(this);
         this._status.start();
@@ -57,6 +60,7 @@ export class Agent {
         this._stopChanges();
         this._ask?.stop();
         this._ask = null;
+        this._stopRoutines();
         // Disposed now rather than by the collector (dock.js says why)
         this._settings?.run_dispose();
         this._settings = null;
@@ -105,6 +109,11 @@ export class Agent {
             this._startChanges(what);
         else
             this._stopChanges();
+        // Little routines (R7-15) belong to the person, not to the agent: they run whether or not the agentic features are on
+        if (this._settings.get_boolean('routines'))
+            this._startRoutines();
+        else
+            this._stopRoutines();
         // The pill's question, and where the tools' hand-off questions are put to the person: only while the features are on
         const ask = this.on && this._settings.get_strv(ASK_KEY).some(accelerator => accelerator !== '');
         if (ask)
@@ -139,6 +148,32 @@ export class Agent {
         this._reading = null;
         this._card?.destroy();
         this._card = null;
+    }
+
+    _startRoutines() {
+        if (this._routines)
+            return;
+        this._routines = new Routines(this);
+        try {
+            this._routines.start();
+        } catch (e) {
+            console.error(`Amethystora UI: the routines did not start: ${e.message}\n${e.stack}`);
+            this._stopRoutines();
+        }
+    }
+
+    _stopRoutines() {
+        const routines = this._routines;
+        this._routines = null;
+        try {
+            routines?.stop();
+        } catch (e) {
+            console.error(`Amethystora UI: the routines did not stop cleanly: ${e.message}`);
+        }
+    }
+
+    get routines() {
+        return this._routines ?? null;
     }
 
     _bindAsk() {
@@ -176,6 +211,12 @@ export class Agent {
             return;
         this._reading = null;
         if (!text) {
+            // Ask about this (R7-14), once the person chose it: no text, but a picture that was copied
+            const picture = this._settings?.get_boolean('ask-about') ? await readPicture(new Gio.Cancellable()) : null;
+            if (picture && this.on && this._ask) {
+                this._ask.aboutPicture(picture);
+                return;
+            }
             this._pill?.notice?.(_('Select some text first'), 'edit-select-all-symbolic', 3);
             return;
         }
@@ -185,8 +226,18 @@ export class Agent {
         this._card.open();
     }
 
-    // The card for text handed over by something else: the pill's Ask the agent target, with the paths dropped on it
-    askAbout(text) {
+    // What the pill's Ask the agent target is given: the files dropped on it. Once the person chose Ask about this (R7-14), a picture or
+    // a text file is shown with where it goes and asked about in the pill; otherwise, and for any other file, their paths are text for
+    // the card that asks in a terminal
+    askAbout(files) {
+        if (this._settings?.get_boolean('ask-about') && this._ask && files.length === 1 && kindOfName(files[0].path)) {
+            this._ask.aboutFiles(files.map(f => f.path));
+            return;
+        }
+        this._askAboutText(files.map(f => f.path).join('\n'));
+    }
+
+    _askAboutText(text) {
         if (!this.on || this._card || !text)
             return;
         this._card = new AskCard(text, this.agentName, this._gicon, () => {

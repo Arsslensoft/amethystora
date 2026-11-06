@@ -14,6 +14,7 @@ pub mod mcp;
 pub mod never;
 pub mod policy;
 pub mod root;
+pub mod routines;
 pub mod run;
 pub mod server;
 pub mod state;

@@ -60,6 +60,40 @@ export function readSelection(cancellable) {
     });
 }
 
+// A picture on the clipboard (a screenshot copied with its region), for Ask about this (R7-14): its bytes, or null when there is none,
+// it is larger than `most`, or nobody hands it over within PATIENCE. Read only on the key, held in memory, and given to the card.
+const PICTURE_TYPES = ['image/png', 'image/jpeg'];
+
+export function readPicture(cancellable, most = 5 * 1024 * 1024) {
+    return new Promise(resolve => {
+        const selection = global.display.get_selection();
+        const offered = selection.get_mimetypes(Meta.SelectionType.SELECTION_CLIPBOARD);
+        const type = PICTURE_TYPES.find(t => offered.includes(t));
+        if (!type) {
+            resolve(null);
+            return;
+        }
+        const stream = Gio.MemoryOutputStream.new_resizable();
+        let timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, PATIENCE, () => {
+            timer = 0;
+            cancellable.cancel();
+            return GLib.SOURCE_REMOVE;
+        });
+        selection.transfer_async(Meta.SelectionType.SELECTION_CLIPBOARD, type, most + 1, stream, cancellable, (s, result) => {
+            if (timer)
+                GLib.source_remove(timer);
+            try {
+                s.transfer_finish(result);
+                stream.close(null);
+                const bytes = stream.steal_as_bytes();
+                resolve(bytes.get_size() > 0 && bytes.get_size() <= most ? bytes : null);
+            } catch {
+                resolve(null);
+            }
+        });
+    });
+}
+
 // Text somebody else wrote, made fit to show and hand on: no control characters, tabs as spaces, CRLF and the other
 // line breaks (NEL, U+2028, U+2029) as LF, no half character left where the read stopped, at most LONGEST characters
 export function clean(text) {
