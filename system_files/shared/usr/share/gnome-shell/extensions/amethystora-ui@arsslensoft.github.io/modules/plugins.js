@@ -152,8 +152,11 @@ export class Plugins {
         const plugin = clampPlugin(raw);
         if (!plugin || !this._plugins)
             return;
+        // The pill goes to the plugin whose words changed last: one that prints the same again does not take it
+        const changed = JSON.stringify(this._plugins.get(plugin.id)?.output ?? null) !== JSON.stringify(plugin.output);
         this._plugins.set(plugin.id, plugin);
-        this._order.set(plugin.id, ++this._seq);
+        if (changed || !this._order.has(plugin.id))
+            this._order.set(plugin.id, ++this._seq);
         this._render();
     }
 

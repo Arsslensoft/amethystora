@@ -493,9 +493,12 @@ fn settings_pipe(env: &Env, id: &str) -> Result<std::fs::File, String> {
 }
 
 /// What kind of stop a failed run was, for the rules that pause a plugin: `slow` (it hit the 30 seconds), `memory`, `vault` (its secret
-/// settings are in a closed Vault, which is waited for and not a fault), or `other`
+/// settings are in a closed Vault, which is waited for and not a fault), `gap` (it ran a moment ago: nothing happened) or `other`
 pub fn classify(failure: &str) -> &'static str {
-    if failure.starts_with("vault-closed") {
+    if failure.starts_with("it ran a moment ago") || failure.starts_with("it is still running") {
+        // Flow control, not a fault: a click and the timer met, or a run was still going
+        "gap"
+    } else if failure.starts_with("vault-closed") {
         "vault"
     } else if failure.contains("longer than 30 seconds") {
         "slow"
@@ -517,4 +520,20 @@ fn oom_kills() -> u64 {
         .ok()
         .and_then(|t| t.lines().find_map(|l| l.strip_prefix("oom_kill ")?.trim().parse().ok()))
         .unwrap_or(0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::classify;
+
+    #[test]
+    fn a_failure_is_told_by_its_kind_for_the_rules_that_pause_a_plugin() {
+        assert_eq!(classify("it took longer than 30 seconds, and was stopped"), "slow");
+        assert_eq!(classify("it went over its 256 MB memory limit, and was stopped"), "memory");
+        assert_eq!(classify("its state folder grew past 8 MiB, and it was stopped"), "memory");
+        assert_eq!(classify("vault-closed: its secret settings are in the Vault, which is closed"), "vault");
+        assert_eq!(classify("it ran a moment ago: a plugin runs at most once in five seconds"), "gap");
+        assert_eq!(classify("it is still running from the last time"), "gap");
+        assert_eq!(classify("it ended with exit status: 1"), "other");
+    }
 }

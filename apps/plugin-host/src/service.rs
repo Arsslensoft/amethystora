@@ -182,6 +182,10 @@ impl State {
                 if !self.plugins.borrow().contains_key(&id) {
                     return;
                 }
+                // A run that was refused for coming too soon changed nothing: it is neither an error nor a result
+                if result.as_ref().is_err_and(|why| classify(why) == "gap") {
+                    return;
+                }
                 let mut pause = None;
                 {
                     let mut plugins = self.plugins.borrow_mut();

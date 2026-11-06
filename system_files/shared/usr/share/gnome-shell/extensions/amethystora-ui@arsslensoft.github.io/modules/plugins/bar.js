@@ -16,6 +16,7 @@ import {reachWords} from './card.js';
 import {reach} from './clamp.js';
 
 const CLASS_COLORS = {accent: 'accent', good: 'color2', warning: 'color3', critical: 'color1'};
+const EMPTY = {text: '', icon: '', class: '', click: null, hidden: false, private: false, progress: null, until: null, menu: [], card: []};
 
 function inert(text) {
     const item = new PopupMenu.PopupMenuItem(text, {reactive: false, can_focus: false});
@@ -56,19 +57,23 @@ class AmethystoraPluginButton extends PanelMenu.Button {
     // A new state of the same plugin: drawn again only when something it shows changed
     set(plugin) {
         this.plugin = plugin;
-        const out = plugin.output ?? plugin.sample;
-        this.visible = Boolean(out) && !out.hidden && !this._ui.hidden({output: out});
-        if (!out)
+        const shown = plugin.output ?? plugin.sample;
+        // A plugin that failed or paused with nothing to show is a warning sign with a menu that says why and can resume it
+        const failed = !shown && (plugin.paused || plugin.error !== '');
+        const out = shown ?? EMPTY;
+        this.visible = failed || (Boolean(shown) && !shown.hidden && !this._ui.hidden({output: shown}));
+        if (!shown && !failed)
             return;
-        this._icon.visible = out.icon !== '';
-        if (out.icon)
-            this._icon.gicon = new Gio.ThemedIcon({name: out.icon});
-        const words = plugin.draft ? `${_('Draft')} ${out.text}`.trim() : out.text;
+        const symbol = failed ? 'dialog-warning-symbolic' : out.icon;
+        this._icon.visible = symbol !== '';
+        if (symbol)
+            this._icon.gicon = new Gio.ThemedIcon({name: symbol});
+        const words = plugin.draft && !failed ? `${_('Draft')} ${out.text}`.trim() : out.text;
         this._label.visible = words !== '';
         this._label.text = words;
-        const colour = this._ui.palette[plugin.paused ? 'color3' : CLASS_COLORS[out.class]];
+        const colour = this._ui.palette[plugin.paused || failed ? 'color3' : CLASS_COLORS[out.class]];
         this._box.style = colour ? `color: ${colour};` : null;
-        const key = JSON.stringify([out.menu, out.card, plugin.paused, plugin.reason, plugin.error, plugin.granted]);
+        const key = JSON.stringify([out.menu, out.card, plugin.paused, plugin.reason, plugin.error, plugin.granted, plugin.waiting]);
         if (key !== this._key) {
             this._key = key;
             this._fill(out);
@@ -78,8 +83,8 @@ class AmethystoraPluginButton extends PanelMenu.Button {
     _fill(out) {
         const plugin = this.plugin;
         this.menu.removeAll();
-        if (plugin.paused || plugin.error) {
-            this.menu.addMenuItem(inert(plugin.paused ? this._ui.pausedWords(plugin) : plugin.error));
+        if (plugin.paused || plugin.waiting || plugin.error) {
+            this.menu.addMenuItem(inert(plugin.paused || plugin.waiting ? this._ui.pausedWords(plugin) : plugin.error));
             this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         }
         for (const item of out.menu) {

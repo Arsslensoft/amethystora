@@ -1033,6 +1033,9 @@ PRESENT_SCHEMA=org.gnome.shell.extensions.amethystora-ui.present
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${PRESENT_SCHEMA}" scribble)" == "['<Super><Alt>d']" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys org.gnome.shell.extensions.amethystora-ui.deskwidgets)" == enabled ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.deskwidgets enabled)" == false ]]
+# Plugins in the shell (R7-01, 03, 07): on, one key, and its module starts right after the pill
+[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys org.gnome.shell.extensions.amethystora-ui.plugins)" == show ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.plugins show)" == true ]]
 # In order, not side by side: other groups' modules may come between (focus is last, checked with Focus profiles)
 [[ "$(grep -oE "^    \['(pill|glass|tiling|present|deskwidgets|focus)'," "${UI_EXTENSION}/extension.js" | paste -sd ' ')" == \
     "    ['pill',     ['glass',     ['tiling',     ['present',     ['deskwidgets',     ['focus'," ]]
