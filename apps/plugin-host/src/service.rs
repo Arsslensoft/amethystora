@@ -44,7 +44,9 @@ struct State {
     plugins: RefCell<HashMap<String, Value>>,
     paused: RefCell<HashSet<String>>,
     failures: RefCell<HashMap<String, u32>>,
-    scheduled: RefCell<HashSet<String>>,
+    /// The plugins started, each with its interval's timer: a plugin turned off and on again before its timer ticked would
+    /// otherwise have two, and every second run would fail as one too soon
+    scheduled: RefCell<HashMap<String, Option<glib::SourceId>>>,
     clients: RefCell<HashSet<String>>,
     callers: RefCell<HashMap<String, bool>>,
     tx: Mutex<UnboundedSender<Msg>>,
@@ -99,9 +101,10 @@ impl State {
 
     /// Starts a plugin's timer: one run now, then one each interval while it stays on
     fn start(self: &Rc<Self>, id: &str) {
-        if !self.scheduled.borrow_mut().insert(id.to_string()) {
+        if self.scheduled.borrow().contains_key(id) {
             return;
         }
+        self.scheduled.borrow_mut().insert(id.to_string(), None);
         let loaded = load(&self.env, id);
         let interval = loaded.as_ref().ok().and_then(|l| l.manifest.interval);
         {
@@ -122,17 +125,16 @@ impl State {
         }
         self.run(id, None);
         if let Some(seconds) = interval {
-            let (state, id) = (self.clone(), id.to_string());
-            glib::timeout_add_seconds_local(seconds as u32, move || {
-                if !state.env.enabled().contains(&id) {
-                    state.scheduled.borrow_mut().remove(&id);
-                    return glib::ControlFlow::Break;
-                }
+            let (state, ticking) = (self.clone(), id.to_string());
+            let timer = glib::timeout_add_seconds_local(seconds as u32, move || {
                 if !state.locked() {
-                    state.run(&id, None);
+                    state.run(&ticking, None);
                 }
                 glib::ControlFlow::Continue
             });
+            if let Some(slot) = self.scheduled.borrow_mut().get_mut(id) {
+                *slot = Some(timer);
+            }
         }
     }
 
@@ -143,7 +145,12 @@ impl State {
             self.start(id);
         }
         self.plugins.borrow_mut().retain(|id, _| on.contains(id));
-        self.scheduled.borrow_mut().retain(|id| on.contains(id));
+        let gone: Vec<String> = self.scheduled.borrow().keys().filter(|id| !on.contains(*id)).cloned().collect();
+        for id in gone {
+            if let Some(Some(timer)) = self.scheduled.borrow_mut().remove(&id) {
+                timer.remove();
+            }
+        }
         if on.is_empty() {
             self.main_loop.quit();
         }
