@@ -1181,7 +1181,8 @@ env LD_LIBRARY_PATH=/apps-stage/usr/lib64 NODE_ICU_DATA="$(echo /apps-stage/usr/
 (
     export HOME="$(mktemp -d)" XDG_CONFIG_HOME="" XDG_RUNTIME_DIR="$(mktemp -d)" SHELL=/usr/bin/bash
     ame agent toggle on
-    topics="$(/usr/libexec/amethystora-agent-tools state no-such-topic 2>&1 | sed -n 's/.*Topics: //p' | tr -d ',' | tr -d '\n')"
+    # The tool refuses a topic it does not know and lists its topics: the refusal is the answer here, so its status is not
+    topics="$({ /usr/libexec/amethystora-agent-tools state no-such-topic 2>&1 || true; } | sed -n 's/.*Topics: //p' | tr -d ',' | tr -d '\n')"
     shell="$(sed -n '/^export const TOPICS/,/];/p' "${UI_EXTENSION}/modules/agent/doingmodel.js" | grep -oE "'[a-z-]+'" | tr -d "'" | paste -sd ' ')"
     [[ -n "${topics}" && "${topics}" == "${shell}" ]]
     rm -rf "${HOME}" "${XDG_RUNTIME_DIR}"
