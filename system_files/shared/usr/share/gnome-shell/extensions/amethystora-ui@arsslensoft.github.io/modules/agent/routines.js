@@ -24,7 +24,7 @@ import * as Util from 'resource:///org/gnome/shell/misc/util.js';
 
 import {buttonRow, cardButton, retire} from '../pill/clock.js';
 import {plain} from '../pill/text.js';
-import {SHOWN, nextDue, parseRan, parseTriggers, routinesFor, sourcesNeeded} from './routinesmodel.js';
+import {SHOWN, actionsRan, nextDue, parseRan, parseTriggers, routinesFor, sourcesNeeded, stateOf} from './routinesmodel.js';
 
 const TOOLS = '/usr/libexec/amethystora-agent-tools';
 const VAULT_APP = 'amethystora-vault';
@@ -38,6 +38,8 @@ Gio._promisify(Gio.Subprocess.prototype, 'communicate_utf8_async');
 // about a closed vault has been said
 let stoppedByLock = false;
 let saidClosed = false;
+// The routines said once to have been missed because the Vault was closed
+const saidMissed = new Set();
 
 // What the helper printed for `args`, or '' when it could not run
 async function helper(args, cancellable = null) {
@@ -165,7 +167,7 @@ class RoutineRan {
         this._state = _('Undoing…');
         this._fill();
         if (this.ran.undoable)
-            await helper(['undo', this.ran.id, '--json']);
+            await helper(['undo', this.ran.id, '--ran', String(actionsRan(this.ran)), '--json']);
         const running = Shell.AppSystem.get_default();
         for (const id of this._started)
             running.lookup_app(id)?.request_quit();
@@ -193,19 +195,15 @@ export class Routines {
         this._routines = [];
         this._last = new Map();
         this._sources = new Map();
-        GLib.mkdir_with_parents(FOLDER, 0o700);
-        try {
-            this._monitor = Gio.File.new_for_path(FOLDER).monitor_directory(Gio.FileMonitorFlags.NONE, this._cancellable);
-            this._monitor.connect('changed', () => this._later());
-        } catch (e) {
-            console.warn(`Amethystora UI: the routines cannot be watched: ${e.message}`);
-        }
-        this.reload();
-        // Back from a lock: an unlock is an event of its own
-        if (stoppedByLock) {
-            stoppedByLock = false;
-            this._event({kind: 'screen', state: 'unlocks'});
-        }
+        this._chain = Promise.resolve();
+        // Nothing is made and nothing is watched until a sealed file exists: reload() looks for it, and `ame agent routines add` says
+        // when it was made. Back from a lock, an unlock is an event of its own, once the routines are known
+        const unlocked = stoppedByLock;
+        stoppedByLock = false;
+        this.reload().then(() => {
+            if (unlocked && this._cancellable)
+                this._event({kind: 'screen', state: 'unlocks'});
+        });
     }
 
     stop() {
@@ -216,8 +214,8 @@ export class Routines {
         }
         this._cancellable?.cancel();
         this._cancellable = null;
-        this._monitor?.cancel();
-        this._monitor = null;
+        this._unwatch();
+        this._closed = false;
         if (this._wait)
             GLib.source_remove(this._wait);
         this._wait = 0;
@@ -237,35 +235,101 @@ export class Routines {
         });
     }
 
-    // Which routines there are: nothing to ask when there is no sealed file, else the helper, which opens the Vault with its
-    // background key and never prompts
+    // The folder is watched only while the sealed file is there
+    _watch() {
+        if (this._monitor || !this._cancellable)
+            return;
+        try {
+            this._monitor = Gio.File.new_for_path(FOLDER).monitor_directory(Gio.FileMonitorFlags.NONE, this._cancellable);
+            this._monitor.connect('changed', () => this._later());
+        } catch (e) {
+            console.warn(`Amethystora UI: the routines cannot be watched: ${e.message}`);
+        }
+    }
+
+    _unwatch() {
+        this._monitor?.cancel();
+        this._monitor = null;
+        this._unwait();
+    }
+
+    // Which routines there are: nothing to ask, make or watch when there is no sealed file, else the helper, which opens the Vault with
+    // its background key and never prompts. A Vault that is closed (and has no such key) leaves nothing to connect: the routines are
+    // looked for again while the Vault's own window is open, which is the one way it gets opened
     async reload() {
         const cancellable = this._cancellable;
         if (!cancellable)
             return;
+        const serial = this._serial = (this._serial ?? 0) + 1;
         let exists = false;
         try {
             await Gio.File.new_for_path(SEALED).query_info_async('standard::name', Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, cancellable);
             exists = true;
         } catch {}
-        if (cancellable !== this._cancellable)
+        if (cancellable !== this._cancellable || serial !== this._serial)
             return;
         let read = {state: 'none', routines: []};
         if (exists) {
+            this._watch();
             read = parseTriggers(await helper(['triggers'], cancellable));
-            if (cancellable !== this._cancellable)
+            if (cancellable !== this._cancellable || serial !== this._serial)
                 return;
+        } else {
+            this._unwatch();
         }
         this._routines = read.routines;
-        // Closed with no background key: said once, with the way to open it, never asked for
-        if (read.state === 'closed' && !saidClosed) {
-            saidClosed = true;
-            this.pill?.notice?.(_('Your routines wait for the Vault'), 'dialog-password-symbolic', 8, '', null,
-                {label: _('Open Vault'), run: () => Util.spawn([VAULT_APP])});
+        this._closed = read.state === 'closed';
+        if (this._closed) {
+            this._sayClosed(_('Your routines wait for the Vault'));
+            this._await();
+        } else {
+            this._unwait();
         }
         this._closeSources(sourcesNeeded(this._routines));
         this._openSources(sourcesNeeded(this._routines));
         this._arm();
+    }
+
+    // Said once for a session, with the way to open the Vault, never asked for
+    _sayClosed(words) {
+        if (saidClosed)
+            return;
+        saidClosed = true;
+        this.pill?.notice?.(words, 'dialog-password-symbolic', 8, '', null, {label: _('Open Vault'), run: () => Util.spawn([VAULT_APP])});
+    }
+
+    // While the Vault is closed and its own window is open, the helper is asked again every so often: the person is opening it, and
+    // nothing else tells the desktop that they have
+    _await() {
+        if (this._awaiting) {
+            this._look?.();
+            return;
+        }
+        const system = Shell.AppSystem.get_default();
+        const tag = this._awaiting = {};
+        const look = () => {
+            const open = system.lookup_app(`${VAULT_APP}.desktop`)?.state === Shell.AppState.RUNNING;
+            if (open && !this._retry) {
+                this._retry = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 15, () => {
+                    this._retry = 0;
+                    this.reload();
+                    return GLib.SOURCE_REMOVE;
+                });
+            }
+        };
+        this._look = look;
+        system.connectObject('app-state-changed', look, tag);
+        look();
+    }
+
+    _unwait() {
+        if (this._awaiting)
+            Shell.AppSystem.get_default().disconnectObject(this._awaiting);
+        this._awaiting = null;
+        this._look = null;
+        if (this._retry)
+            GLib.source_remove(this._retry);
+        this._retry = 0;
     }
 
     // --- The sources: each connected only while a routine names it ---------------------------------------------------------
@@ -314,6 +378,14 @@ export class Routines {
         });
     }
 
+    // Let go of a proxy's signal now, rather than leaving it to the collector (the extension starts again at every unlock)
+    _closeBus(holder) {
+        holder.closed = true;
+        if (holder.proxy && holder.handler)
+            holder.proxy.disconnect(holder.handler);
+        holder.proxy = null;
+    }
+
     _bus(name, path, iface, changed) {
         const cancellable = this._cancellable;
         const holder = {proxy: null};
@@ -327,7 +399,7 @@ export class Routines {
                 holder.proxy = null;
                 return;
             }
-            holder.proxy.connect('g-properties-changed', (proxy, props) => changed(proxy, props));
+            holder.handler = holder.proxy.connect('g-properties-changed', (proxy, props) => changed(proxy, props));
             changed(holder.proxy, null);
         });
         return holder;
@@ -336,7 +408,10 @@ export class Routines {
     // The connection NetworkManager says the machine is on: its name is the one Network settings shows
     _watchNetwork() {
         let current = null;
-        const holder = this._bus('org.freedesktop.NetworkManager', '/org/freedesktop/NetworkManager', 'org.freedesktop.NetworkManager', async proxy => {
+        const holder = this._bus('org.freedesktop.NetworkManager', '/org/freedesktop/NetworkManager', 'org.freedesktop.NetworkManager', async (proxy, props) => {
+            // Any other property of NetworkManager changing is not a different connection
+            if (props && !props.lookup_value('PrimaryConnection', null))
+                return;
             const path = proxy.get_cached_property('PrimaryConnection')?.deepUnpack() ?? '/';
             let name = '';
             if (path !== '/') {
@@ -361,10 +436,7 @@ export class Routines {
             if (!first && name)
                 this._event({kind: 'network', name});
         });
-        return () => {
-            holder.closed = true;
-            holder.proxy = null;
-        };
+        return () => this._closeBus(holder);
     }
 
     // Whether the machine runs on its battery and how full it is, from UPower
@@ -394,8 +466,8 @@ export class Routines {
                 was = {onBattery: proxies.power.get_cached_property('OnBattery')?.deepUnpack() === true, percent: proxy.get_cached_property('Percentage')?.deepUnpack() ?? 100};
         });
         return () => {
-            power.closed = true;
-            display.closed = true;
+            this._closeBus(power);
+            this._closeBus(display);
         };
     }
 
@@ -412,7 +484,8 @@ export class Routines {
         global.display.connectObject('in-fullscreen-changed', () => {
             if (!Main.layoutManager.monitors.some(monitor => monitor.inFullscreen))
                 return;
-            const app = Shell.WindowTracker.get_default().get_window_app(global.display.focus_window);
+            const window = global.display.focus_window;
+            const app = window ? Shell.WindowTracker.get_default().get_window_app(window) : null;
             if (app)
                 this._event({kind: 'app', id: app.get_id(), state: 'fullscreen'});
         }, tag);
@@ -451,13 +524,34 @@ export class Routines {
             this._fire(routine, at);
     }
 
-    // One routine, by the helper: it checks again, runs each action as the account and stops at the first that fails
-    async _fire(routine, at = Math.floor(Date.now() / 1000)) {
-        const cancellable = this._cancellable;
+
+    // One routine, by the helper: it checks again, runs each action as the account and stops at the first that fails. One after the
+    // other, since each keeps the whole store's state
+    _fire(routine, at = Math.floor(Date.now() / 1000)) {
         this._last.set(routine.id, at);
+        this._chain = this._chain.then(() => this._fireNow(routine)).catch(() => {});
+    }
+
+    async _fireNow(routine) {
+        const cancellable = this._cancellable;
+        if (!cancellable)
+            return;
         const before = new Set(Shell.AppSystem.get_default().get_running().map(app => app.get_id()));
-        const ran = parseRan(await helper(['fire', routine.id, '--json'], cancellable));
-        if (!ran || cancellable !== this._cancellable)
+        const text = await helper(['fire', routine.id, '--json'], cancellable);
+        if (cancellable !== this._cancellable)
+            return;
+        // The Vault closed since the routines were read: this run is missed, said once, and the routines are looked for again
+        if (stateOf(text) === 'closed') {
+            if (!saidMissed.has(routine.id)) {
+                saidMissed.add(routine.id);
+                this.pill?.notice?.(_('%s could not run: the Vault was closed').format(plain(routine.name, 40)), 'dialog-password-symbolic', 8, '', null,
+                    {label: _('Open Vault'), run: () => Util.spawn([VAULT_APP])});
+            }
+            this.reload();
+            return;
+        }
+        const ran = parseRan(text);
+        if (!ran)
             return;
         // What it opened that was not open before: the only apps Undo closes
         const started = ran.results.filter(r => r.kind === 'open' && r.ok && !before.has(r.what) && !before.has(`${r.what}.desktop`)).map(r => r.what);

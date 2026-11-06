@@ -5,7 +5,7 @@
 // A failure throws, which makes node exit with an error.
 
 const UI = '../../system_files/shared/usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules';
-const {COOL_OFF, nextDue, onDay, parseRan, parseTriggers, routinesFor, sourcesNeeded, wakes} = await import(`${UI}/agent/routinesmodel.js`);
+const {COOL_OFF, actionsRan, nextDue, onDay, parseRan, parseTriggers, routinesFor, sourcesNeeded, stateOf, wakes} = await import(`${UI}/agent/routinesmodel.js`);
 
 const say = globalThis.print ?? console.log;
 const failures = [];
@@ -77,6 +77,10 @@ same('what ran, and nothing of another kind', ran.results.map(r => r.kind), ['op
 same('and that it can be undone', ran.undoable, true);
 same('a paused routine did not run', parseRan('{"state":"paused","id":"a"}'), null);
 same('a failure says why', parseRan('{"state":"ran","id":"a","name":"A","failed":"ame x did not work","results":[]}').failed, 'ame x did not work');
+
+same('a closed Vault is its own answer, not a run', [stateOf('{"state":"closed"}'), stateOf('{"state":"ran"}'), stateOf('{"state":"paused"}'), stateOf('{nope'), stateOf('{"state":"x"}')], ['closed', 'ran', 'paused', '', '']);
+const partly = parseRan(JSON.stringify({state: 'ran', id: 'a', name: 'A', failed: 'x', results: [{kind: 'ame', what: 'a', ok: true}, {kind: 'ame', what: 'b', ok: false}]}));
+same('a way back is asked only for what ran', actionsRan(partly), 1);
 
 if (failures.length) {
     for (const failure of failures)

@@ -475,8 +475,12 @@ goes before it goes, copied into `$XDG_RUNTIME_DIR/amethystora/ask` (0700) only 
 (`routines`, `apps/agent-tools/src/routines.rs`, `ame agent routines`): one JSON file with one trigger and up to eight actions, each an app's launcher id or `ame` words, never a
 shell line, root, `ame security|vault|agent|plugin`, anything `never.rs` refuses or a literal secret; sealed under the Vault's `background` key (record `routines`, the one purpose served
 with the vault closed) in `~/.local/share/amethystora/routines/routines.avs`; the agent writes and `check`s, only the person `add`s (in a terminal, no `--yes`), `resume`s,
-`run`s and removes (`never.rs`). With no such file nothing is asked of any vault; the shell connects only the sources the routines name. A lock stops the extension, so nothing runs while
-the screen is locked but a routine for the lock itself, which must say `while_locked`.
+`run`s and removes (`never.rs`). `ame` words are resolved with `ame --show` (a one-word alias stands for its recipe) before the refusals, at `check` and at every `fire`; an `open` action runs
+with its output nowhere and never waits for the app. With no sealed file there is no folder, no watch and no call to any vault: the routines start only while the agentic features are on, look for
+the file, and are told by `add`/`pause`/`resume`/`remove` over `org.amethystora.Agent.RoutinesChanged`; the shell connects only the sources the routines name. They run only while the Vault is open unless its
+background key is on (a lock closes it: the routines are looked for again while its window is open; a run that meets it closed is missed and said once). A lock stops the extension, so nothing runs while
+the screen is locked but a routine for the lock itself, which must say `while_locked`; the unlock event is fired once the routines are read. The hand-off's `Ask` carries the SHA-256 of `ask.json` and is accepted only
+from a child of the tool server named in it; a question nobody answered (lock, features off, the hour) is `org.amethystora.Agent.Unanswered`, recorded `not run`, never a no.
 
 ### The Amethystora apps
 

@@ -52,6 +52,10 @@ args="$(grep '^ARGS:' <<<"${out}")"
 for tool in search read state logs history; do check grep -q "mcp__amethystora__${tool}" <<<"${args}"; done
 for tool in change software run undo; do check test -z "$(grep "mcp__amethystora__${tool}" <<<"${args}" || true)"; done
 check grep -q 'READ_ONLY=1 PWD=ask TMPDIR=ask' <<<"${out}"
+# ... and the tool server's own entry says so too, so that it does not depend on the environment the agent passes on
+mcp="$(grep -oE '\[--mcp-config\] \[[^]]+\]' <<<"${args}" | sed -E 's/.*\[([^]]+)\]$/\1/')"
+check test "$(jq -r '.mcpServers.amethystora.env.AMETHYSTORA_READ_ONLY' "${mcp}")" = 1
+check test "$(jq -r '.mcpServers.amethystora.command' "${mcp}")" = /usr/libexec/amethystora-agent-tools
 check grep -q -- '--strict-mcp-config' <<<"${args}"
 # Selected text is data: each line behind a bar, with the warning before it
 check grep -q '^│ line one$' <<<"${out}"

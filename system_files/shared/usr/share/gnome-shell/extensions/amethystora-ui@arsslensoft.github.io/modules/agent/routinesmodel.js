@@ -130,3 +130,18 @@ export function parseRan(text) {
         results: body.results.filter(r => r && ['open', 'ame'].includes(r.kind)).map(r => ({kind: r.kind, what: String(r.what ?? '').slice(0, 120), ok: r.ok === true})),
     };
 }
+
+// What a `fire` answered, as its state word: `ran`, `paused`, `closed` (the Vault is closed, so nothing was run) or '' for anything else
+export function stateOf(text) {
+    try {
+        const state = JSON.parse(text)?.state;
+        return ['ran', 'paused', 'closed'].includes(state) ? state : '';
+    } catch {
+        return '';
+    }
+}
+
+// How many of a run's actions did their work: the ones its way back may be asked for (the run stops at the first that fails)
+export function actionsRan(ran) {
+    return ran.results.filter(r => r.ok).length;
+}

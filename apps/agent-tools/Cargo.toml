@@ -23,6 +23,7 @@ amethystora-control-core.workspace = true
 # Little routines are sealed under the Vault's background key, which the service gives to nothing else but a program asking as the account
 amethystora-vault-client.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 libc.workspace = true
 regex.workspace = true
 # The embedding model's tokenizer takes accents off (NFD) and splits at punctuation, as BERT's does: the

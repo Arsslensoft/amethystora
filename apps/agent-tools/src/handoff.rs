@@ -53,6 +53,10 @@ pub fn result(id: &str) -> Option<String> {
     if status == "declined" {
         return Some("The user declined: it was not run.".into());
     }
+    // The question was up and the person did not answer it (the screen locked, the features went off): not a no, and not run
+    if status == "unanswered" {
+        return Some("Nobody answered the question in the desktop's pill (it was closed, the screen locked or it timed out): it was not run.".into());
+    }
     let output = std::fs::read(dir.join("output")).unwrap_or_default();
     let output = run::strip_ansi(&String::from_utf8_lossy(&output));
     let lines: Vec<String> = run::tail(&output, 4096).lines().map(str::to_string).collect();
@@ -71,6 +75,8 @@ pub enum Pill {
     Declined,
     /// Nobody asks in a pill here (no extension, the key off, a command too long): the terminal asks
     Unavailable,
+    /// The question was up and nobody answered it: a lock, the features turned off, the hour running out. Not a no
+    Unanswered,
 }
 
 /// What the pill is asked: written to `ask.json` for the shell to read, so that the command a person reads is the one that runs
@@ -82,6 +88,12 @@ pub struct Question {
     pub root: bool,
     /// A setting's name for a change
     pub title: Option<String>,
+}
+
+/// The SHA-256 of `bytes` in hex: what the shell is told to find in the question file, so that what a person reads is what was written
+fn digest(bytes: &[u8]) -> String {
+    use sha2::{Digest, Sha256};
+    Sha256::digest(bytes).iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
 /// How the shell's reply reads: a yes, a no, or neither
@@ -100,23 +112,25 @@ fn ask_pill(id: &str, dir: &std::path::Path, question: &Question, reason: &str) 
         "kind": question.kind, "command": question.command, "root": question.root, "title": question.title,
         "reason": text::field(reason, 600), "server": std::process::id(),
     });
+    let bytes = file.to_string();
     let written = std::fs::OpenOptions::new()
         .create(true)
         .truncate(true)
         .write(true)
         .mode(0o600)
         .open(dir.join("ask.json"))
-        .and_then(|mut out| std::io::Write::write_all(&mut out, file.to_string().as_bytes()));
+        .and_then(|mut out| std::io::Write::write_all(&mut out, bytes.as_bytes()));
     if written.is_err() || !std::path::Path::new(GDBUS).exists() {
         return Pill::Unavailable;
     }
     let mut command = Command::new(GDBUS);
     command
         .args(["call", "--session", "--timeout", &ASK_PATIENCE.to_string(), "--dest", "org.gnome.Shell", "--object-path", "/org/amethystora/Agent"])
-        .args(["--method", "org.amethystora.Agent.Ask", &format!("'{id}'")])
+        // The file's digest goes with the id, in this child's own arguments: a file rewritten after it was written is not shown
+        .args(["--method", "org.amethystora.Agent.Ask", &format!("'{id}'"), &format!("'{}'", digest(bytes.as_bytes()))])
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
-        .stderr(Stdio::null());
+        .stderr(Stdio::piped());
     unsafe {
         command.pre_exec(|| {
             libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGKILL);
@@ -131,6 +145,7 @@ fn ask_pill(id: &str, dir: &std::path::Path, question: &Question, reason: &str) 
     match reply(&String::from_utf8_lossy(&output.stdout)) {
         Some(true) => Pill::Allowed,
         Some(false) => Pill::Declined,
+        None if String::from_utf8_lossy(&output.stderr).contains("org.amethystora.Agent.Unanswered") => Pill::Unanswered,
         // An error: a refusal at once is "not here"; one after the person had time to answer is no answer, which is a no
         None if started.elapsed() < UNAVAILABLE_WITHIN => Pill::Unavailable,
         None => Pill::Declined,
@@ -165,9 +180,11 @@ pub fn open(
     let reason = reason.to_string();
     std::thread::spawn(move || {
         phase("asking");
-        let approved = match ask_pill(&id, &dir, &question, &reason) {
-            Pill::Declined => {
-                let _ = std::fs::write(dir.join("status"), "declined\n");
+        let pill = ask_pill(&id, &dir, &question, &reason);
+        let answered = pill != Pill::Unanswered;
+        let approved = match pill {
+            Pill::Declined | Pill::Unanswered => {
+                let _ = std::fs::write(dir.join("status"), if answered { "declined\n" } else { "unanswered\n" });
                 let said = result(&id).unwrap_or_default();
                 ended(&said);
                 jobs.finish(&id, said);

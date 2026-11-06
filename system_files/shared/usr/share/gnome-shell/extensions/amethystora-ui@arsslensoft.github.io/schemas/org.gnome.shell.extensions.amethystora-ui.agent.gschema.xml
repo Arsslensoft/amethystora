@@ -33,7 +33,7 @@
     <key name="routines" type="b">
       <default>true</default>
       <summary>Little routines</summary>
-      <description>Routines you made (ame agent routines): each is sealed in the Vault and names one trigger (a time, a network, an app, the screen, the battery, a phone) and what to do, as apps to open and ame commands, never root and never a shell line. Only what a routine names is listened for, each run shows in the pill once with Undo and Pause, and with no routine made nothing is asked. Off, none runs.</description>
+      <description>Routines you made (ame agent routines): each is sealed in the Vault and names one trigger (a time, a network, an app, the screen, the battery, a phone) and what to do, as apps to open and ame commands, never root and never a shell line. Only what a routine names is listened for, each run shows in the pill once with Undo and Pause, and with no routine made nothing is made, watched or asked. Only while the agentic features are on. Off, none runs.</description>
     </key>
     <key name="doing" type="b">
       <default>true</default>

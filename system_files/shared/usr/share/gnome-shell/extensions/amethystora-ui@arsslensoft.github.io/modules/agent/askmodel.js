@@ -34,6 +34,9 @@ export function commandLine(words) {
     return words.map(word => (/^[A-Za-z0-9_./:=@+,%-]+$/.test(word) ? word : `'${word.replace(/'/g, "'\\''")}'`)).join(' ');
 }
 
+// Not global, so that `test` keeps no place between words
+const ODD = new RegExp(UNSEEN.source + '|\n');
+
 export function isId(id) {
     return typeof id === 'string' && /^[0-9a-f]{8}$/.test(id);
 }
@@ -54,11 +57,14 @@ export function parseQuestion(text) {
         !command.every(word => typeof word === 'string' && word.length > 0 && word.length <= 4096 && !word.includes('\0')))
         return null;
     const line = commandLine(command);
+    // A word with a character that turns text round, hides part of it or breaks a line is not shown in a card: the terminal prints the
+    // command with each such character spelled out
+    const odd = command.some(word => ODD.test(word));
     return {
         kind: body.kind,
         command,
         line,
-        tooLong: [...line].length > COMMAND_SHOWN,
+        tooLong: odd || [...line].length > COMMAND_SHOWN,
         root: body.root === true,
         reason: tidy(typeof body.reason === 'string' ? body.reason : '', 600),
         title: tidy(typeof body.title === 'string' ? body.title : '', 120),

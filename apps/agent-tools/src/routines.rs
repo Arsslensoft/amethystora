@@ -13,6 +13,7 @@
 
 use std::io::Write;
 use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
+use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::sync::LazyLock;
@@ -79,7 +80,7 @@ static TIME: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^([01][0-9]|2[0-3])
 /// tokens, and any long run of token characters. A routine is a readable file in plain view; the Vault is where secrets go.
 static SECRET: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
-        r"(?i)(-----BEGIN|(password|passwd|secret|token|api[-_ ]?key|bearer|authorization)\s*[=:]|\bgh[pousr]_[A-Za-z0-9]{20,}|github_pat_|\bsk-[A-Za-z0-9_-]{16,}|\bxox[abprs]-|\bAKIA[0-9A-Z]{16}|[A-Za-z0-9+/_-]{32,})",
+        r"(?i)(-----BEGIN|(password|passwd|secret|token|api[-_ ]?key|bearer|authorization)\s*[=:]|\bgh[pousr]_[A-Za-z0-9]{20,}|github_pat_|\bsk-[A-Za-z0-9_-]{16,}|\bxox[abprs]-|\bAKIA[0-9A-Z]{16}|[A-Za-z0-9+/_-]{33,})",
     )
     .unwrap()
 });
@@ -208,16 +209,22 @@ fn parse_words(value: &Value, what: &str) -> Result<Vec<String>, String> {
     if words.iter().any(|word| looks_secret(word)) {
         return Err(format!("{what} holds a word that looks like a secret: secrets belong in the Vault"));
     }
-    // Security stays in Security, the Vault and the agent's own levers are the person's, and a routine never starts a routine
+    forbidden(&words, what)?;
+    Ok(words)
+}
+
+/// Security stays in Security, the Vault and the agent's own levers are the person's, and a routine never starts a routine; and
+/// nothing the agent's never list refuses. Held to the words as written and, in `parse`, to what they resolve to
+fn forbidden(words: &[String], what: &str) -> Result<(), String> {
     if matches!(words[0].as_str(), "security" | "vault" | "agent" | "plugin") {
         return Err(format!("{what} may not be an `ame {}` command: those are the person's own, never a routine's", words[0]));
     }
     let mut argv = vec!["ame".to_string()];
     argv.extend(words.iter().cloned());
-    if let Some(why) = never::refusal(&argv) {
-        return Err(format!("{what} is refused: {why}"));
+    match never::refusal(&argv) {
+        Some(why) => Err(format!("{what} is refused: {why}")),
+        None => Ok(()),
     }
-    Ok(words)
 }
 
 fn parse_action(action: &Value) -> Result<Action, String> {
@@ -244,8 +251,13 @@ fn parse_action(action: &Value) -> Result<Action, String> {
     }
 }
 
-/// A routine as a file says it, checked. `exists` says whether an `ame` command is one the image has (a test stands in for it).
-pub fn parse(file: &Value, exists: &dyn Fn(&[String]) -> bool) -> Result<Routine, String> {
+/// What an `ame` command's words stand for: `Some(canonical words)` when the image has it, with a one-word alias (`toggle-agentic` is
+/// `agent::toggle`, and takes the words after it) given back as the recipe it is, or None. A test stands in for it.
+pub type Resolve<'a> = &'a dyn Fn(&[String]) -> Option<Vec<String>>;
+
+/// A routine as a file says it, checked: every `ame` command has to exist, and what it resolves to is held to the same refusals as what
+/// it says, so that a private alias is no way round them.
+pub fn parse(file: &Value, resolve: Resolve) -> Result<Routine, String> {
     let object = file.as_object().ok_or("a routine is one JSON object")?;
     if let Some(extra) = object.keys().find(|key| !matches!(key.as_str(), "name" | "when" | "do" | "while_locked" | "paused" | "failed")) {
         return Err(format!("a routine has no {extra}: name, when, do, while_locked"));
@@ -265,9 +277,11 @@ pub fn parse(file: &Value, exists: &dyn Fn(&[String]) -> bool) -> Result<Routine
     let actions = list.iter().map(parse_action).collect::<Result<Vec<_>, _>>()?;
     for action in &actions {
         for words in [&action.ame, &action.undo] {
-            if !words.is_empty() && !exists(words) {
-                return Err(format!("`ame {}` is not a command this image has", words.join(" ")));
+            if words.is_empty() {
+                continue;
             }
+            let canon = resolve(words).ok_or_else(|| format!("`ame {}` is not a command this image has", words.join(" ")))?;
+            forbidden(&canon, &format!("`ame {}`", words.join(" ")))?;
         }
     }
     Ok(Routine {
@@ -362,14 +376,26 @@ impl Routine {
     }
 }
 
-/// Whether the image has this `ame` command, as `ame --show` says
-pub fn ame_has(words: &[String]) -> bool {
-    let path = match words {
-        [one] => one.clone(),
-        [group, recipe, ..] => format!("{group}::{recipe}"),
-        [] => return false,
-    };
-    run::run(&[AME, "--show", &path], Duration::from_secs(20)).ok()
+/// `ame --show` for a recipe path: its text, or None when there is no such recipe
+fn ame_show(path: &str) -> Option<String> {
+    let output = run::run(&[AME, "--show", path], Duration::from_secs(20));
+    output.ok().then_some(output.stdout)
+}
+
+/// What the image's `ame` makes of these words (see [`Resolve`]): a first word that is a private alias (`alias toggle-agentic :=
+/// agent::toggle`) is replaced by its recipe's words; otherwise the words must name `GROUP RECIPE` or a top-level recipe that exists
+pub fn ame_resolve(words: &[String]) -> Option<Vec<String>> {
+    let first = words.first()?;
+    if let Some(shown) = ame_show(first) {
+        if let Some(target) = shown.lines().next().and_then(|line| line.strip_prefix("alias ")).and_then(|line| line.split_once(":=")) {
+            let mut canon: Vec<String> = target.1.trim().split("::").map(str::to_string).collect();
+            canon.extend(words[1..].iter().cloned());
+            // An alias of an alias is one step too far to trust
+            return (!canon[0].is_empty() && ame_show(&canon[..canon.len().min(2)].join("::")).is_some()).then_some(canon);
+        }
+        return (words.len() == 1).then(|| words.to_vec());
+    }
+    (words.len() >= 2 && ame_show(&format!("{}::{}", words[0], words[1])).is_some()).then(|| words.to_vec())
 }
 
 // --- The sealed store ---------------------------------------------------------------------------------------------------------
@@ -395,7 +421,7 @@ impl Trouble {
     pub fn say(&self) -> String {
         match self {
             Trouble::NotSetUp => "Routines are kept sealed in the Vault, which is not set up on this account: ame vault setup".into(),
-            Trouble::Closed => "The Vault is closed, and its background key is off, so the routines wait: open the Vault, or turn the background key on (ame vault methods background on)".into(),
+            Trouble::Closed => "The Vault is closed, and its background key is off, so the routines cannot run: open the Vault, or turn the background key on (ame vault methods background on, which needs a TPM)".into(),
             Trouble::Other(why) => why.clone(),
         }
     }
@@ -410,7 +436,7 @@ fn trouble(refusal: Refusal) -> Trouble {
 }
 
 /// Every routine kept, or an empty list when none was ever made (the Vault is not asked then)
-pub fn load_at(socket: &Path, file: &Path) -> Result<Vec<Routine>, Trouble> {
+pub fn load_at(socket: &Path, file: &Path, resolve: Resolve) -> Result<Vec<Routine>, Trouble> {
     let sealed = match std::fs::read(file) {
         Ok(bytes) => bytes,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
@@ -419,8 +445,8 @@ pub fn load_at(socket: &Path, file: &Path) -> Result<Vec<Routine>, Trouble> {
     let plain = vault::open_at(socket, PURPOSE, RECORD, &sealed).map_err(trouble)?;
     let body: Value = serde_json::from_slice(&plain).map_err(|_| Trouble::Other("the routines could not be read".into()))?;
     let list = body["routines"].as_array().ok_or_else(|| Trouble::Other("the routines could not be read".into()))?;
-    // What was kept was checked when it was kept; it is checked again for what runs (never list, words), `ame` commands aside
-    list.iter().map(|one| parse(one, &|_| true).map_err(Trouble::Other)).collect()
+    // What was kept was checked when it was kept; it is checked again for what runs
+    list.iter().map(|one| parse(one, resolve).map_err(Trouble::Other)).collect()
 }
 
 pub fn save_at(socket: &Path, file: &Path, routines: &[Routine]) -> Result<(), Trouble> {
@@ -444,7 +470,7 @@ pub fn save_at(socket: &Path, file: &Path, routines: &[Routine]) -> Result<(), T
 }
 
 fn load() -> Result<Vec<Routine>, Trouble> {
-    load_at(Path::new(vault::SOCKET), &store_path())
+    load_at(Path::new(vault::SOCKET), &store_path(), &|words| Some(words.to_vec()))
 }
 
 fn save(routines: &[Routine]) -> Result<(), Trouble> {
@@ -459,6 +485,30 @@ pub struct Ran {
     pub failed: Option<String>,
 }
 
+/// Opens an app and goes on: its output goes nowhere, so that nothing of it holds a pipe open and the routine does not wait for the app to
+/// quit (a program the launcher starts itself inherits what it is given). The launcher's own exit says whether it could start it.
+fn open_app(argv: &[&str]) -> bool {
+    let Some((program, args)) = argv.split_first() else { return false };
+    let started = std::process::Command::new(program)
+        .args(args)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .process_group(0)
+        .spawn();
+    let Ok(mut child) = started else { return false };
+    // The launcher returns once the app is started; a launcher that does not within the limit is left to itself
+    let deadline = std::time::Instant::now() + Duration::from_secs(20);
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => return status.success(),
+            Ok(None) if std::time::Instant::now() >= deadline => return true,
+            Ok(None) => std::thread::sleep(Duration::from_millis(25)),
+            Err(_) => return false,
+        }
+    }
+}
+
 /// Runs a routine's actions in order, stopping at the first that fails. `ame` is the program to run `ame` actions with and
 /// `launch` the one that opens an app, so that a test can stand in for both.
 pub fn run_actions(routine: &Routine, ame: &str, launch: &str) -> Ran {
@@ -470,11 +520,15 @@ pub fn run_actions(routine: &Routine, ame: &str, launch: &str) -> Ran {
             None => ("ame", format!("ame {}", action.ame.join(" ")), std::iter::once(ame.to_string()).chain(action.ame.iter().cloned()).collect()),
         };
         let words: Vec<&str> = argv.iter().map(String::as_str).collect();
-        let output = run::run_env(&words, &[], ACTION_TIME);
-        let ok = output.ok();
+        let (ok, timed_out) = if kind == "open" {
+            (open_app(&words), false)
+        } else {
+            let output = run::run_env(&words, &[], ACTION_TIME);
+            (output.ok(), output.timed_out)
+        };
         results.push(json!({"kind": kind, "what": what, "ok": ok, "undo": !action.undo.is_empty()}));
         if !ok {
-            failed = Some(if output.timed_out { format!("{what} took too long") } else { format!("{what} did not work") });
+            failed = Some(if timed_out { format!("{what} took too long") } else { format!("{what} did not work") });
             break;
         }
     }
@@ -483,9 +537,10 @@ pub fn run_actions(routine: &Routine, ame: &str, launch: &str) -> Ran {
 
 /// Puts back what a routine's actions say how to, newest first: its `ame` commands' own way back. The apps it opened are the
 /// shell's to close, which it knew were not running before.
-pub fn undo_actions(routine: &Routine, ame: &str) -> Vec<Value> {
+pub fn undo_actions(routine: &Routine, ame: &str, ran: usize) -> Vec<Value> {
     let mut results = Vec::new();
-    for action in routine.actions.iter().rev().filter(|action| !action.undo.is_empty()) {
+    // Only what ran: a run that stopped at its second action never did the third, so it has nothing of the third to put back
+    for action in routine.actions.iter().take(ran).rev().filter(|action| !action.undo.is_empty()) {
         let argv: Vec<&str> = std::iter::once(ame).chain(action.undo.iter().map(String::as_str)).collect();
         let output = run::run_env(&argv, &[], ACTION_TIME);
         results.push(json!({"what": format!("ame {}", action.undo.join(" ")), "ok": output.ok()}));
@@ -527,6 +582,19 @@ fn ask_yes() -> bool {
     std::io::stdin().read_line(&mut answer).is_ok() && answer.trim().to_lowercase().starts_with('y')
 }
 
+/// What a person is told when a routine is kept, since it decides whether it will run
+const CLOSED_NOTE: &str = "A routine runs only while the Vault is open, unless the Vault's background key is on (ame vault methods background on, which needs a TPM). \
+    Locking the screen closes the Vault; without that key the routines wait until you open it again, and what happens meanwhile is missed, and said once.";
+
+/// Tells the desktop that routines were kept, paused or taken away, so that it listens again: it watches nothing until a sealed
+/// file exists. Best effort: no desktop, no harm.
+fn tell_the_desktop() {
+    let _ = run::run(
+        &["/usr/bin/gdbus", "call", "--session", "--timeout", "3", "--dest", "org.gnome.Shell", "--object-path", "/org/amethystora/Agent", "--method", "org.amethystora.Agent.RoutinesChanged"],
+        Duration::from_secs(5),
+    );
+}
+
 fn fail(text: impl AsRef<str>) -> ExitCode {
     eprintln!("{}", text.as_ref());
     ExitCode::FAILURE
@@ -547,7 +615,7 @@ pub fn main(args: &[String]) -> ExitCode {
     let words: Vec<&str> = args.iter().map(String::as_str).filter(|arg| *arg != "--json").collect();
     match words.as_slice() {
         // A file's check, without keeping it
-        ["check", file] => match read_file(file).and_then(|value| parse(&value, &ame_has)) {
+        ["check", file] => match read_file(file).and_then(|value| parse(&value, &ame_resolve)) {
             Ok(routine) if json_out => {
                 println!("{}", json!({"ok": true, "routine": routine.summary()}));
                 ExitCode::SUCCESS
@@ -612,7 +680,7 @@ pub fn main(args: &[String]) -> ExitCode {
         },
         // Keeping one is the person's, in a terminal, after reading what it does: there is no --yes
         ["add", file] => {
-            let routine = match read_file(file).and_then(|value| parse(&value, &ame_has)) {
+            let routine = match read_file(file).and_then(|value| parse(&value, &ame_resolve)) {
                 Ok(routine) => routine,
                 Err(why) => return fail(why),
             };
@@ -631,6 +699,8 @@ pub fn main(args: &[String]) -> ExitCode {
             match save(&routines) {
                 Ok(()) => {
                     println!("Kept as {}. It is sealed in the Vault.", routine.id);
+                    println!("{}", CLOSED_NOTE);
+                    tell_the_desktop();
                     ExitCode::SUCCESS
                 }
                 Err(trouble) => fail(trouble.say()),
@@ -663,6 +733,7 @@ pub fn main(args: &[String]) -> ExitCode {
             match save(&routines) {
                 Ok(()) => {
                     println!("{id}: {}", match *verb { "pause" => "paused", "resume" => "running", _ => "removed" });
+                    tell_the_desktop();
                     ExitCode::SUCCESS
                 }
                 Err(trouble) => fail(trouble.say()),
@@ -683,7 +754,12 @@ pub fn main(args: &[String]) -> ExitCode {
                 println!("{}", json!({"state": "paused", "id": routine.id}));
                 return ExitCode::SUCCESS;
             }
-            let ran = run_actions(&routine, AME, LAUNCH);
+            // Every command is held to the refusals once more, against this image, before anything runs: a file, an alias or an image
+            // that changed since it was kept is no way round them
+            let ran = match parse(&routine.to_value(), &ame_resolve) {
+                Ok(checked) => run_actions(&checked, AME, LAUNCH),
+                Err(why) => Ran { results: Vec::new(), failed: Some(why.chars().take(160).collect()) },
+            };
             if let Some(why) = &ran.failed {
                 // A routine that fails says so once and stops
                 if let Ok(routine) = find(&mut routines, id) {
@@ -697,13 +773,25 @@ pub fn main(args: &[String]) -> ExitCode {
             if json_out { println!("{said}") } else { println!("{}: {}", routine.name, ran.failed.as_deref().unwrap_or("done")) }
             ExitCode::SUCCESS
         }
-        ["undo", id] => {
+        ["undo", id] | ["undo", id, "--ran", _] => {
+            let ran = match words.as_slice() {
+                [_, _, _, count] => match count.parse::<usize>() {
+                    Ok(count) => count.min(MAX_ACTIONS),
+                    Err(_) => return fail("--ran takes the number of actions that ran"),
+                },
+                _ => MAX_ACTIONS,
+            };
             let routines = match load() {
                 Ok(routines) => routines,
                 Err(trouble) => return trouble_exit(json_out, &trouble),
             };
             let Some(routine) = routines.iter().find(|routine| routine.id == *id) else { return fail(format!("There is no routine {id}")) };
-            let results = undo_actions(routine, AME);
+            // Its commands are held to the refusals again, as for a run
+            let routine = match parse(&routine.to_value(), &ame_resolve) {
+                Ok(routine) => routine,
+                Err(why) => return fail(why),
+            };
+            let results = undo_actions(&routine, AME, ran);
             println!("{}", json!({"state": "undone", "id": routine.id, "results": results}));
             ExitCode::SUCCESS
         }
@@ -718,8 +806,8 @@ mod tests {
     use std::os::unix::fs::PermissionsExt;
     use std::os::unix::net::UnixListener;
 
-    fn yes(_: &[String]) -> bool {
-        true
+    fn yes(words: &[String]) -> Option<Vec<String>> {
+        Some(words.to_vec())
     }
 
     fn office() -> Value {
@@ -815,7 +903,7 @@ mod tests {
 
     #[test]
     fn a_command_the_image_lacks_is_said() {
-        let none = |_: &[String]| false;
+        let none = |_: &[String]| None;
         assert!(parse(&office(), &none).unwrap_err().contains("not a command this image has"));
         assert!(parse(&json!({"name": "x", "when": {"network": "n"}, "do": [{"open": "a.desktop"}]}), &none).is_ok());
     }
@@ -827,7 +915,7 @@ mod tests {
         let socket = dir.join("vault.sock");
         let file = dir.join("routines").join("routines.avs");
         // No store: nothing is asked of any vault (there is none here)
-        assert_eq!(load_at(&socket, &file), Ok(Vec::new()));
+        assert_eq!(load_at(&socket, &file, &yes), Ok(Vec::new()));
         // A vault of this test: it seals by reversing the bytes and says what it was asked, so that the purpose is seen
         let listener = UnixListener::bind(&socket).unwrap();
         let seen = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
@@ -854,7 +942,7 @@ mod tests {
         let on_disk = std::fs::read(&file).unwrap();
         assert!(!String::from_utf8_lossy(&on_disk).contains("Office"));
         assert_eq!(std::fs::metadata(&file).unwrap().permissions().mode() & 0o777, 0o600);
-        assert_eq!(load_at(&socket, &file), Ok(vec![routine]));
+        assert_eq!(load_at(&socket, &file, &yes), Ok(vec![routine]));
         thread.join().unwrap();
         // The only purpose served with the vault closed, under this store's own record
         assert_eq!(*seen.lock().unwrap(), [("seal".to_string(), "background".to_string(), "routines".to_string()), ("open".to_string(), "background".to_string(), "routines".to_string())]);
@@ -884,7 +972,57 @@ mod tests {
         let ran = run_actions(&routine, "false", "true");
         assert_eq!(ran.results.len(), 1);
         assert!(ran.failed.unwrap().contains("did not work"));
-        let back = undo_actions(&routine, "true");
+        let back = undo_actions(&routine, "true", 3);
         assert_eq!(back.iter().map(|r| r["what"].as_str().unwrap()).collect::<Vec<_>>(), ["ame never-back", "ame a-back"]);
+    }
+
+    #[test]
+    fn a_private_alias_is_no_way_round_the_refusals() {
+        // `ame` has one-word aliases of recipes of groups a routine may never use: `toggle-agentic` is `agent::toggle`
+        let aliased = |words: &[String]| match words.first().map(String::as_str) {
+            Some("toggle-agentic") => Some(["agent".to_string(), "toggle".to_string()].into_iter().chain(words[1..].iter().cloned()).collect()),
+            Some("toggle-tpm2") => Some(vec!["security".to_string(), "tpm2".to_string()]),
+            Some("volume") => Some(vec!["desktop".to_string(), "volume".to_string()]),
+            _ => Some(words.to_vec()),
+        };
+        let with = |words: Value| parse(&json!({"name": "x", "when": {"network": "n"}, "do": [{"ame": words}]}), &aliased);
+        assert!(with(json!(["toggle-agentic"])).unwrap_err().contains("never a routine's"));
+        assert!(with(json!(["toggle-agentic", "off"])).is_err());
+        assert!(with(json!(["toggle-tpm2"])).is_err());
+        assert!(with(json!(["volume"])).is_ok());
+        // and the undo is held to it too
+        let undo = json!({"name": "x", "when": {"network": "n"}, "do": [{"ame": ["desktop", "x"], "undo": ["toggle-agentic"]}]});
+        assert!(parse(&undo, &aliased).is_err());
+    }
+
+    #[test]
+    fn opening_an_app_does_not_wait_for_it() {
+        let dir = std::env::temp_dir().join(format!("amethystora-open-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        // A launcher that starts a program which keeps its output open for a while, as an app a launcher starts itself does
+        let launcher = dir.join("launch");
+        std::fs::write(&launcher, "#!/usr/bin/bash\nsleep 4 &\nexit 0\n").unwrap();
+        std::fs::set_permissions(&launcher, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let routine = parse(&json!({"name": "x", "when": {"network": "n"}, "do": [{"open": "a.desktop"}, {"ame": ["a", "b"]}]}), &yes).unwrap();
+        let started = std::time::Instant::now();
+        let ran = run_actions(&routine, "true", launcher.to_str().unwrap());
+        assert!(started.elapsed() < Duration::from_secs(3), "{:?}", started.elapsed());
+        assert!(ran.failed.is_none());
+        assert_eq!(ran.results.len(), 2);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn undo_goes_back_only_over_what_ran() {
+        let routine = parse(
+            &json!({"name": "x", "when": {"network": "n"}, "do": [
+                {"ame": ["a"], "undo": ["a-back"]}, {"ame": ["b"], "undo": ["b-back"]}, {"ame": ["c"], "undo": ["c-back"]}]}),
+            &yes,
+        )
+        .unwrap();
+        let said = |ran| undo_actions(&routine, "true", ran).iter().map(|r| r["what"].as_str().unwrap().to_string()).collect::<Vec<_>>();
+        assert_eq!(said(2), ["ame b-back", "ame a-back"]);
+        assert_eq!(said(0), Vec::<String>::new());
+        assert_eq!(said(8), ["ame c-back", "ame b-back", "ame a-back"]);
     }
 }

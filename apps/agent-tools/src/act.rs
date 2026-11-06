@@ -118,7 +118,7 @@ fn change_to(cache: &Cache, jobs: &Jobs, entry: &str, value: &str, undoing: Opti
                 let _ = history::record(&at);
             }),
             Box::new(move |said| {
-                done["result"] = json!(if said.contains("exited with 0") { "ok" } else if said.contains("declined") { "declined" } else { "failed" });
+                done["result"] = json!(if said.contains("exited with 0") { "ok" } else if said.contains("declined") { "declined" } else if said.contains("Nobody answered") { "not run" } else { "failed" });
                 done["time"] = json!(history::now());
                 let _ = history::record(&done);
             }),
@@ -315,7 +315,7 @@ pub fn run_command(jobs: &Jobs, root: &std::sync::Arc<Root>, policy: &Policy, ar
                 let _ = history::record(&at);
             }),
             Box::new(move |said| {
-                opened["result"] = json!(if said.contains("exited with 0") { "ok" } else if said.contains("declined") { "declined" } else { "failed" });
+                opened["result"] = json!(if said.contains("exited with 0") { "ok" } else if said.contains("declined") { "declined" } else if said.contains("Nobody answered") { "not run" } else { "failed" });
                 opened["time"] = json!(history::now());
                 let _ = history::record(&opened);
             }),

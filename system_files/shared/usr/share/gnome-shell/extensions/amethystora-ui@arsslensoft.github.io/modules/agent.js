@@ -109,8 +109,8 @@ export class Agent {
             this._startChanges(what);
         else
             this._stopChanges();
-        // Little routines (R7-15) belong to the person, not to the agent: they run whether or not the agentic features are on
-        if (this._settings.get_boolean('routines'))
+        // Little routines (R7-15): only while the agentic features are on, the key is on and (the routines asking) a sealed file exists
+        if (this.on && this._settings.get_boolean('routines'))
             this._startRoutines();
         else
             this._stopRoutines();
@@ -120,10 +120,14 @@ export class Agent {
             this._bindAsk();
         else
             this._unbindAsk();
-        if (this.on && this._settings.get_boolean('ask-questions'))
+        // The bus object answers the tools' questions while the key is on, and tells the desktop that routines changed; with the features off
+        // it is gone, and what was asked is answered as not answered
+        if (this.on)
             this._ask?.export();
         else
             this._ask?.unexport();
+        if (!this.questionsOn)
+            this._ask?.dropQuestions();
         // The not-responding dialog offers the agent only while it is on
         this._ext.modules?.get('quit')?.agentChanged?.();
     }
@@ -174,6 +178,16 @@ export class Agent {
 
     get routines() {
         return this._routines ?? null;
+    }
+
+    // Whether the tools' questions are asked in the pill
+    get questionsOn() {
+        return this.on && !!this._settings?.get_boolean('ask-questions');
+    }
+
+    // `ame agent routines add|pause|resume|remove` says so, through the bus
+    routinesChanged() {
+        this._routines?.reload();
     }
 
     _bindAsk() {

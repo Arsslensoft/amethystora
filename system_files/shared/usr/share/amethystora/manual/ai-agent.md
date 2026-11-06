@@ -179,7 +179,8 @@ to the agent; Not now tells the agent no. A command too long to read in a card i
 where it is printed whole, and a root command still asks for your password there, from sudo.
 
 Your yes is a click in the desktop, answered over the session bus: no file the agent could write stands for
-it. `ame agent ask-questions off` makes them ask in a terminal again. Installing an app or changing a setting
+it, and the command you read is checked against what the tools wrote. A question that nobody answered (the screen
+locked, the features went off, an hour passed) is told to the agent as not answered, never as a no. `ame agent ask-questions off` makes them ask in a terminal again. Installing an app or changing a setting
 with the agent's own tools is still asked for in the agent itself.
 
 ## Asking about a picture or a file
@@ -219,11 +220,17 @@ before). A routine that fails says so once and pauses itself until you start it 
 ten seconds runs it once. While the screen is locked this extension is off, so a time that falls then is missed;
 a routine for the screen locking has to say `"while_locked": true`.
 
-What a routine names tells a stranger about you, so they are all **sealed in the [Vault](vault.md)**, under
-its background key, the one it gives without being asked while it is closed. Without that key
-(`ame vault methods background on`) the routines wait for you to open the Vault, and a notice says so once;
-with no Vault set up none can be kept. Only the sources a routine names are listened for, and with none made
-nothing is asked. `ame agent routines off` stops them all.
+What a routine names tells a stranger about you, so they are all **sealed in the [Vault](vault.md)**, under its
+background key. **A routine runs only while the Vault is open, unless that key is on** (`ame vault methods
+background on`, which needs a TPM): locking the screen closes the Vault, and without the key the routines stop
+until you open it again. Nothing waits for you and nothing is queued: what happens meanwhile is missed, a notice
+says once that your routines wait for the Vault (with **Open Vault**), and a routine that finds the Vault closed
+when its trigger fires says so once. While the Vault's own window is open the desktop looks again every
+fifteen seconds and starts listening as soon as it can. `ame agent routines add` says all this before it keeps one.
+
+Routines are part of the agentic features: they run only while those are on (`ame agent routines off` stops them
+too), and with none made nothing is made, watched or asked: no folder, no listening, and no call to the Vault.
+Only the sources a routine names are listened for.
 
 ## Asking about a selection
 

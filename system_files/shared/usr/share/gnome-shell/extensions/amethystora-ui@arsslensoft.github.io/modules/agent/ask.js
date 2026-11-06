@@ -31,14 +31,21 @@ const INTERFACE = `
   <interface name="org.amethystora.Agent">
     <method name="Ask">
       <arg type="s" direction="in" name="id"/>
+      <arg type="s" direction="in" name="digest"/>
       <arg type="b" direction="out" name="allowed"/>
     </method>
+    <method name="RoutinesChanged"/>
   </interface>
 </node>`;
 const ERROR = 'org.amethystora.Agent.Unavailable';
+// The question went unanswered (the screen locked, the features went off, the hour ran out): the tool server says so, and does not take it for a no
+const UNANSWERED = 'org.amethystora.Agent.Unanswered';
+// Milliseconds a question's Allow ignores a click after the question appears, so that one meant for a button that was there before it is not taken for it
+const SETTLE = 700;
 
 Gio._promisify(Gio.Subprocess.prototype, 'communicate_utf8_async');
 Gio._promisify(Gio.File.prototype, 'load_contents_async');
+Gio._promisify(Gio.DBusConnection.prototype, 'call', 'call_finish');
 Gio._promisify(Gio.File.prototype, 'query_info_async');
 Gio._promisify(Gio.File.prototype, 'read_async');
 Gio._promisify(Gio.File.prototype, 'delete_async');
@@ -64,7 +71,7 @@ export class AgentAsk {
         this._unstage();
         this._subject = null;
         for (const question of [...this._questions])
-            this._reply(question, false);
+            this._reply(question, null);
         this._mode = null;
         this._typed = '';
         this._answer = null;
@@ -83,28 +90,63 @@ export class AgentAsk {
         this._dbus.export(Gio.DBus.session, PATH);
     }
 
+    // What is still asked is answered as not answered, not left on the card for a click nobody can send back
     unexport() {
+        for (const question of [...this._questions])
+            this._reply(question, null);
         this._dbus?.unexport();
         this._dbus = null;
     }
 
+    // The key went off: what is asked is not asked here any more
+    dropQuestions() {
+        for (const question of [...this._questions])
+            this._reply(question, null);
+    }
+
+    // Routines were kept, paused or taken away (`ame agent routines`): the desktop listens again
+    RoutinesChanged() {
+        this._host.routinesChanged?.();
+    }
+
+    // The process that made a bus call, and its parent: the tool server's own `gdbus`, which the server started
+    async _callerParent(sender) {
+        try {
+            const reply = await Gio.DBus.session.call('org.freedesktop.DBus', '/org/freedesktop/DBus', 'org.freedesktop.DBus',
+                'GetConnectionUnixProcessID', new GLib.Variant('(s)', [sender]), null, Gio.DBusCallFlags.NONE, 2000, null);
+            const pid = reply.deepUnpack()[0];
+            const [bytes] = await Gio.File.new_for_path(`/proc/${pid}/stat`).load_contents_async(null);
+            const stat = new TextDecoder().decode(bytes);
+            return Number(stat.slice(stat.lastIndexOf(')') + 2).split(' ')[1]);
+        } catch {
+            return 0;
+        }
+    }
+
     // The tool server asks, by the id of its hand-off: the question is in a file of the account's own runtime folder, written by
     // the server, so that the command a person reads is never made of a bus message. The reply is the person's click.
-    async AskAsync([id], invocation) {
-        if (!this._host.on || !isId(id)) {
+    async AskAsync([id, digest], invocation) {
+        // Nobody can see a question without a live pill, and the key may be off: the terminal asks, as it always did
+        if (!this._host.questionsOn || !isId(id) || typeof digest !== 'string' || !this._host.pill?.canAsk?.()) {
             invocation.return_dbus_error(ERROR, 'not asked here');
             return;
         }
         const file = Gio.File.new_for_path(GLib.build_filenamev([GLib.get_user_runtime_dir(), 'amethystora', 'agent-tools', id, 'ask.json']));
         let question;
+        let bytes = null;
         try {
-            const [bytes] = await file.load_contents_async(null);
+            [bytes] = await file.load_contents_async(null);
             question = parseQuestion(new TextDecoder().decode(bytes));
         } catch {
             question = null;
         }
+        // What is read is what the tool server wrote (its digest comes in its own call's arguments), and the call is the server's
+        // own child's: a file rewritten between the two, or a question from anywhere else, is not shown
+        if (question && (GLib.compute_checksum_for_data(GLib.ChecksumType.SHA256, bytes) !== digest ||
+            !question.server || await this._callerParent(invocation.get_sender()) !== question.server))
+            question = null;
         // The extension may have stopped while the file was read
-        if (!this._dbus || !this._host.on) {
+        if (!this._dbus || !this._host.questionsOn) {
             invocation.return_dbus_error(ERROR, 'not asked here');
             return;
         }
@@ -116,17 +158,19 @@ export class AgentAsk {
         question.invocation = invocation;
         // The caller going away (its server ended) takes the question back
         question.watch = Gio.bus_watch_name_on_connection(Gio.DBus.session, invocation.get_sender(), Gio.BusNameWatcherFlags.NONE, null,
-            () => this._reply(question, false, true));
+            () => this._reply(question, null, true));
         question.timer = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, QUESTION_KEPT, () => {
             question.timer = 0;
-            this._reply(question, false);
+            this._reply(question, null);
             return GLib.SOURCE_REMOVE;
         });
+        question.since = GLib.get_monotonic_time();
         this._questions.push(question);
         this._sync();
     }
 
-    // The person's answer (or no one's: `gone`), sent back, and the question off the card
+    // The person's answer, true or false, or none (null: it went unanswered), sent back, and the question off the card; `gone`: the
+    // caller went away, so there is nobody to answer
     _reply(question, allowed, gone = false) {
         const at = this._questions.indexOf(question);
         if (at < 0)
@@ -140,7 +184,10 @@ export class AgentAsk {
         question.watch = 0;
         if (!gone) {
             try {
-                question.invocation.return_value(new GLib.Variant('(b)', [allowed]));
+                if (allowed === null)
+                    question.invocation.return_dbus_error(UNANSWERED, 'nobody answered');
+                else
+                    question.invocation.return_value(new GLib.Variant('(b)', [allowed]));
             } catch (e) {
                 console.warn(`Amethystora UI: the agent's question could not be answered: ${e.message}`);
             }
@@ -322,6 +369,12 @@ export class AgentAsk {
         const subject = this._subject;
         if (!subject)
             return;
+        // A share that began while the card was open: nothing is sent, and the picture is not left showing on it
+        if (this._host.pill?.sharing?.()) {
+            this._host.pill.notice?.(_('Not while your screen is shared'), 'dialog-question-symbolic', 4);
+            this._leave();
+            return;
+        }
         const question = text.replace(/\s+/g, ' ').trim() || _('What is this, and is anything wrong?');
         let picture = '';
         if (subject.kind === 'picture') {
@@ -521,7 +574,11 @@ export class AgentAsk {
             : _('It runs in a terminal, and what it prints goes back to the agent.'), 'amethystora-agent-act-how'));
         block.add_child(buttonRow([
             cardButton(_('Not now'), () => this._reply(question, false), {small: true}),
-            cardButton(_('Allow'), () => this._reply(question, true), {small: true, primary: true}),
+            // A click right after the question came is one meant for what was under the pointer before it
+            cardButton(_('Allow'), () => {
+                if ((GLib.get_monotonic_time() - question.since) / 1000 >= SETTLE)
+                    this._reply(question, true);
+            }, {small: true, primary: true}),
         ]));
         return block;
     }

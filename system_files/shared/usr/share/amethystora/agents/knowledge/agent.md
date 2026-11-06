@@ -37,7 +37,9 @@ amethystora-agent-root`). A command that asks questions always opens in a termin
   command, Allow and Not now (`ame agent ask-questions`). Only their click on the desktop answers; no file does. A root command's password is still
   asked by sudo in the terminal that opens after an Allow. Where there is no live pill the terminal asks, as it always did.
 - **Routines**: `ame agent routines` keeps small things the desktop does by itself when something happens. You write and check one
-  (`references/routines.md` of the amethystora skill); only the user keeps, runs or removes it. They are sealed in the Vault.
+  (`references/routines.md` of the amethystora skill); only the user keeps, runs or removes it. They are sealed in the Vault and run only while it is
+  open, unless its background key is on (it needs a TPM). A routine's `ame` words are resolved first: a private alias of an `agent`, `security`, `vault`
+  or `plugin` recipe is refused like the recipe.
 
 ## The lock
 

@@ -505,6 +505,10 @@ here_command() {
             tools_options claude
             # Without the tools there is nothing to ask with
             [[ ${#AGENT_OPTIONS[@]} -gt 0 ]] || return 1
+            # The tool server is told to offer no tool that changes things in its own settings, which it gets whatever environment the
+            # agent hands its servers (AMETHYSTORA_READ_ONLY only ever lowers the level). The file is this question's own
+            AGENT_OPTIONS[1]="$(runtime_file claude-mcp-here.json "$(jq -nc --argjson entry "${TOOLS_ENTRY}" \
+                '{mcpServers: {amethystora: ($entry + {env: {AMETHYSTORA_READ_ONLY: "1"}})}}')")"
             if [[ -n ${picture} ]]; then
                 # The picture is one more thing it may read, by its own path (// is how a rule names an absolute one): the last
                 # option is --allowedTools' list

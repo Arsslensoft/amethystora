@@ -52,6 +52,10 @@ same('an empty word is refused', parseQuestion(ask({command: ['a', '']})), null)
 same('not JSON is refused', parseQuestion('{nope'), null);
 same('a command too long for a card says so', parseQuestion(ask({command: ['echo', 'x'.repeat(COMMAND_SHOWN)]}))?.tooLong, true);
 same('a short one does not', parseQuestion(ask({}))?.tooLong, false);
+same('a command with a direction override is not shown in a card', parseQuestion(ask({command: ['echo', `a${chr(0x202e)}b`]}))?.tooLong, true);
+same('nor one with a line break in a word', parseQuestion(ask({command: ['echo', 'a\nb']}))?.tooLong, true);
+same('nor a zero-width character', parseQuestion(ask({command: ['echo', `a${chr(0x200b)}b`]}))?.tooLong, true);
+same('a plain one is', parseQuestion(ask({command: ['echo', 'a b']}))?.tooLong, false);
 same('an id is eight hex digits', [isId('ab12cd34'), isId('AB12CD34'), isId('../../etc'), isId('ab12cd3'), isId(12345678)], [true, false, false, false, false]);
 
 // --- What goes to the launcher ----------------------------------------------------------------------------------------------------
