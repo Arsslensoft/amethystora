@@ -5643,6 +5643,54 @@ msgid "While the agent may make changes, the live pill lists each one as it is m
 msgstr ""
 
 #: usr/libexec/amethystora-control-list
+msgid "Ask the agent in the pill"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Super+/ opens a field in the pill's card: the agent answers there, looking at this computer with its tools that only read, and changes nothing. Your words go to its maker."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "The agent's questions in the pill"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "When the agent's tools ask to run a command, the question is a card in the pill with the exact command, Allow and Not now. A password for a root command is still asked by sudo. Off, they ask in a terminal."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "What the agent is reading, in the pill"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "While the agent's tools read, the pill says which one in a few words, with a tick when it is done. Only the tool's name, never what it read."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Ask about a picture or a file"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Drop a picture or a text file on the pill's Ask the agent, or copy a picture and press Super+Shift+A. It shows what will be sent, and to whom, before it goes, and never while your screen is shared."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Little routines"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Routines you kept run by themselves when their trigger happens: a time, a network, an app, the screen, the battery, your phone. Each run shows in the pill once, with Undo and Pause. They are sealed in the Vault."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Your routines"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Each routine's name and when it runs. Ask the agent to write one, then keep it with ame agent routines add FILE: it shows what it does and asks first."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
 msgid "For every account, set by an administrator"
 msgstr ""
 
@@ -7317,7 +7365,7 @@ msgid "I have the recovery key"
 msgstr ""
 
 #. Translators: choices of a menu that turns automatic updates on or off
-#: usr/libexec/amethystora-private-folder usr/libexec/amethystora-windows-program usr/share/amethystora/just/apps.just usr/share/amethystora/just/backup.just usr/share/amethystora/just/desktop.just usr/share/amethystora/just/security.just usr/share/amethystora/just/system.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/selection.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/appgrid/dialogs.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/bazaar/dialog.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/printing.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/timer.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/quit/list.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/prefs.js apps/connect/src/service.rs apps/connect/src/transfers.rs
+#: usr/libexec/amethystora-private-folder usr/libexec/amethystora-windows-program usr/share/amethystora/just/apps.just usr/share/amethystora/just/backup.just usr/share/amethystora/just/desktop.just usr/share/amethystora/just/security.just usr/share/amethystora/just/system.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/selection.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/appgrid/dialogs.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/bazaar/dialog.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/printing.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/timer.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/quit/list.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/prefs.js apps/connect/src/service.rs apps/connect/src/transfers.rs
 msgid "Cancel"
 msgstr ""
 
@@ -8867,7 +8915,7 @@ msgid "{count} file older than a month went into a folder for its month."
 msgstr ""
 
 #. Translators: a desk's name, then the things it set, as a list of noun phrases ("the sound output", "the dock",
-#: usr/libexec/amethystora-tidy-downloads usr/libexec/amethystora-changes usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/changes.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/appgrid/looks.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/bazaar.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/desks.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/later.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/power/slept.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/toolbar.js
+#: usr/libexec/amethystora-tidy-downloads usr/libexec/amethystora-changes usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/changes.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/routines.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/appgrid/looks.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/bazaar.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/desks.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/later.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/power/slept.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/toolbar.js
 msgid "Undo"
 msgstr ""
 
@@ -9576,7 +9624,7 @@ msgid "Show as QR code"
 msgstr ""
 
 #. Translators: a choice about the private folder, which is open: close it.
-#: usr/share/gnome-shell/extensions/amethystora-clipboard@arsslensoft.github.io/textActions.js usr/share/amethystora/just/security.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/cover.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/pins.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/today/year.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/tools/opener.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/tools/qr.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/tools/room.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/tools/users.js
+#: usr/share/gnome-shell/extensions/amethystora-clipboard@arsslensoft.github.io/textActions.js usr/share/amethystora/just/security.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/cover.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/pins.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/today/year.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/tools/opener.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/tools/qr.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/tools/room.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/tools/users.js
 msgid "Close"
 msgstr ""
 
@@ -9598,6 +9646,50 @@ msgstr ""
 
 #: usr/share/amethystora/just/agent.just
 msgid "The agent's changes in the live pill: off."
+msgstr ""
+
+#: usr/share/amethystora/just/agent.just
+msgid "Ask the agent in the pill: on. Press Super+/."
+msgstr ""
+
+#: usr/share/amethystora/just/agent.just
+msgid "Ask the agent in the pill: off."
+msgstr ""
+
+#: usr/share/amethystora/just/agent.just
+msgid "The agent's questions in the pill: on."
+msgstr ""
+
+#: usr/share/amethystora/just/agent.just
+msgid "The agent's questions in the pill: off. They ask in a terminal."
+msgstr ""
+
+#: usr/share/amethystora/just/agent.just
+msgid "What the agent is reading, in the pill: on."
+msgstr ""
+
+#: usr/share/amethystora/just/agent.just
+msgid "What the agent is reading, in the pill: off."
+msgstr ""
+
+#: usr/share/amethystora/just/agent.just
+msgid "A picture or text file you ask about goes to the maker of your agent, with what is on it. It shows you that first, every time, and never while your screen is shared."
+msgstr ""
+
+#: usr/share/amethystora/just/agent.just
+msgid "Ask about a picture or a file: on."
+msgstr ""
+
+#: usr/share/amethystora/just/agent.just
+msgid "Ask about a picture or a file: off."
+msgstr ""
+
+#: usr/share/amethystora/just/agent.just
+msgid "Routines: on."
+msgstr ""
+
+#: usr/share/amethystora/just/agent.just
+msgid "Routines: off. None runs."
 msgstr ""
 
 #: usr/share/amethystora/just/apps.just
@@ -9711,7 +9803,7 @@ msgid "Start"
 msgstr ""
 
 #. Translators: a choice in a menu: to stop Android
-#: usr/share/amethystora/just/apps.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/access/speech.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/capture.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/privacy.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/present.js
+#: usr/share/amethystora/just/apps.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/access/speech.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/capture.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/privacy.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/present.js
 msgid "Stop"
 msgstr ""
 
@@ -15846,19 +15938,180 @@ msgstr ""
 msgid "1×"
 msgstr ""
 
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "Not while your screen is shared"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "One file at a time"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "That picture is too large to send"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "I can look at a picture or a text file"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "The picture you copied"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "The live pill is off, so there is nowhere to ask"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "What is this, and is anything wrong?"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "The picture could not be read."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/changes.js
+msgid "Agent asks for root"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/changes.js
+msgid "Agent asks you"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "Ask %s"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "Ask about this"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "%s is looking…"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "%s answered"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "No answer"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "May I change a setting?"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "May I run this as root?"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "May I run this?"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "Its reason, in its own words: %s"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "It runs in a terminal, where sudo asks for your password."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "It runs in a terminal, and what it prints goes back to the agent."
+msgstr ""
+
+#. Translators: the version updated to, and the one before it
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/backupdisk.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/desks.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/focus.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/battery.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/phone.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/resume.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/through.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/whatsnew.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/power/busy.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/today/weather.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/windows/handover.js
+msgid "Not now"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "Allow"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/selection.js
+msgid "What do you want to know?"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "It can look at this computer, and it changes nothing. Your words go to the maker of %s."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/selection.js
+msgid "Ask"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "1 picture, %s"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "A text file, %s"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "What is this error?"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "This picture goes to the maker of %s. What is on it goes with it."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "The start of this text goes to the maker of %s."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "Send and ask"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "It can look at this computer, and it changes nothing."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "Your question left this computer, for the maker of %s."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/connect.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/code.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/phone.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/card.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/cover.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/pins.js
+msgid "Copy"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "Open it in a terminal"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "%s has no way here to answer without changing anything. It can open in a terminal instead."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "%s is not installed yet. Open it once in a terminal to install it."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "The agent is off for this account."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "%s took too long to answer, so it was stopped."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "%s gave no answer."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js
+msgid "%s could not answer."
+msgstr ""
+
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/changes.js
 msgid "Agent made %d change"
 msgid_plural "Agent made %d changes"
 msgstr[0] ""
 msgstr[1] ""
-
-#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/changes.js
-msgid "Agent asks for root"
-msgstr ""
-
-#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/changes.js
-msgid "Agent asks you"
-msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/changes.js
 msgid "Agent · removing an app"
@@ -15885,6 +16138,10 @@ msgid "Waiting for you"
 msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/changes.js
+msgid "What it is doing"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/changes.js
 msgid "Changes so far"
 msgstr ""
 
@@ -15900,6 +16157,15 @@ msgstr ""
 msgid "History"
 msgstr ""
 
+#. Translators: the heading of the notifications that wait, with how many
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/changes.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/later.js
+msgid "Now"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/changes.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/routines.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/guide/walk.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/quick.js
+msgid "Done"
+msgstr ""
+
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/changes.js
 msgid "Undo: %s"
 msgstr ""
@@ -15908,11 +16174,11 @@ msgstr ""
 msgid "Waiting in its terminal"
 msgstr ""
 
-#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/changes.js
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/changes.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/routines.js
 msgid "Undoing…"
 msgstr ""
 
-#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/changes.js
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/changes.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/routines.js
 msgid "Undone"
 msgstr ""
 
@@ -15920,7 +16186,7 @@ msgstr ""
 msgid "Not finished"
 msgstr ""
 
-#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/changes.js
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/changes.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/routines.js
 msgid "Failed"
 msgstr ""
 
@@ -16004,20 +16270,196 @@ msgstr ""
 msgid "It could not be undone."
 msgstr ""
 
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Looking over this computer"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Looked over this computer"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Checking its health"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Checked its health"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Reading the settings"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Read the settings"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Reading the security report"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Read the security report"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Reading the security settings"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Read the security settings"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Checking what apps may reach"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Checked what apps may reach"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Looking at the software"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Looked at the software"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Checking the updates"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Checked the updates"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Checking the backups"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Checked the backups"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Checking the disks"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Checked the disks"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Comparing your setup"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Compared your setup"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Checking the services"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Checked the services"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Looking at the crashes"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Looked at the crashes"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Searching the manual"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Searched the manual"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Reading the manual"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Read the manual"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Checking this computer"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Checked this computer"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Reading the logs"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Read the logs"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Looking at what changed"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "Looked at what changed"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/routines.js
+msgid "%s stopped"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/routines.js
+msgid "%s ran"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/routines.js
+msgid "Opened %s"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/routines.js
+msgid "Ran %s"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/routines.js
+msgid "It is paused until you start it again: %s"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/routines.js
+msgid "Pause this routine"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/routines.js
+msgid "Paused. ame agent routines resume %s starts it again."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/routines.js
+msgid "Your routines wait for the Vault"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/routines.js
+msgid "Open Vault"
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/routines.js
+msgid "%s could not run: the Vault was closed"
+msgstr ""
+
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/selection.js
 msgid "Ask about the selected text"
 msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/selection.js
-msgid "What do you want to know?"
-msgstr ""
-
-#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/selection.js
 msgid "Opens %s in a terminal"
-msgstr ""
-
-#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/selection.js
-msgid "Ask"
 msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/appgrid/dialogs.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/dock/folders.js
@@ -16176,11 +16618,6 @@ msgstr[1] ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/backupdisk.js
 msgid "Your backup disk"
-msgstr ""
-
-#. Translators: the version updated to, and the one before it
-#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/backupdisk.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/desks.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/focus.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/battery.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/phone.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/resume.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/through.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/whatsnew.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/power/busy.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/today/weather.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/windows/handover.js
-msgid "Not now"
 msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/backupdisk.js
@@ -16534,10 +16971,6 @@ msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/connect.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/hello.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/phone.js
 msgid "Your phone"
-msgstr ""
-
-#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/connect.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/code.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/phone.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/card.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/cover.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/pins.js
-msgid "Copy"
 msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/connect.js
@@ -17143,10 +17576,6 @@ msgstr ""
 msgid "Open {app}"
 msgstr ""
 
-#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/guide/walk.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/quick.js
-msgid "Done"
-msgstr ""
-
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/guide/walk.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/media.js
 msgid "Next"
 msgstr ""
@@ -17548,11 +17977,6 @@ msgstr ""
 #. Translators: the heading of the notifications that wait, with how many
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/later.js
 msgid "Later · %d"
-msgstr ""
-
-#. Translators: the heading of the notifications that wait, with how many
-#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/later.js
-msgid "Now"
 msgstr ""
 
 #. Translators: the heading of the notifications that wait, with how many

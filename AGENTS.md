@@ -1371,7 +1371,7 @@ between paints and shows a stale one after a partial redraw (Focus's desaturate 
 context's redraw-clip region from GJS (`get_extents()`, `get_rectangle()`: the shell dies on signal 11); testing it for null
 is safe. `Clutter.Event.add_filter` never sees a press on a Wayland window: Mutter's filter takes it first. A new
 `themed/shell-<module>.css.tpl` reaches an existing account only when its theme is applied again: raise `11-theme.sh`'s
-version (17 for round 4, 23 for rounds 5 and 6, 25 with round 7). GNOME 51 dropped `St.BoxLayout`'s `vertical`: write `orientation`.
+version (17 for round 4, 23 for rounds 5 and 6, 25 with round 7, 26 with its second wave). GNOME 51 dropped `St.BoxLayout`'s `vertical`: write `orientation`.
 
 The modules, and what each replaced:
 
