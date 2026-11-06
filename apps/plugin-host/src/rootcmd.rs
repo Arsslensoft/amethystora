@@ -196,9 +196,15 @@ impl Ctx {
         }
         let dest = self.store.store_dir(digest);
         std::fs::create_dir_all(dest.parent().unwrap_or(&dest)).map_err(|e| e.to_string())?;
-        if dest.exists() {
-            self.store.verify(&dest, digest)?;
-        } else {
+        // The store is by digest, and the frozen files were just held to it: a folder of that name that no longer is (changed by
+        // root, or left half-written) is replaced with them, which repairs it for every account that has it
+        if dest.exists() && self.store.verify(&dest, digest).is_err() {
+            let aside = dest.with_extension("bad");
+            let _ = std::fs::remove_dir_all(&aside);
+            std::fs::rename(&dest, &aside).map_err(|e| e.to_string())?;
+            let _ = std::fs::remove_dir_all(&aside);
+        }
+        if !dest.exists() {
             std::fs::rename(&frozen, &dest).map_err(|e| e.to_string())?;
         }
         let mut grants = self.store.grants(uid)?;
@@ -384,6 +390,12 @@ mod tests {
         assert_eq!(grant.perms, ["network=api.example.com", "notify"]);
         assert_eq!(grant.limits["api.example.com"], 2097152);
         assert!(ctx.store.store_dir(&digest).join("run.sh").exists());
+        // Its folder changed in the store: adding the same files again puts them back
+        std::fs::write(ctx.store.store_dir(&digest).join("run.sh"), "echo changed\n").unwrap();
+        assert!(ctx.store.verify(&ctx.store.store_dir(&digest), &digest).is_err());
+        let again = call(&ctx, "prepare", &archive(&manifest_with(needs))).unwrap();
+        call(&ctx, &format!("commit dev.example.t {} notify network=api.example.com", field(&again, "digest")), b"").unwrap();
+        assert!(ctx.store.verify(&ctx.store.store_dir(&digest), &digest).is_ok());
         assert!(ctx.store.grants(1001).unwrap().plugins.is_empty());
         // Blocks, revokes and removal
         call(&ctx, "block dev.example.t api.example.com", b"").unwrap();
