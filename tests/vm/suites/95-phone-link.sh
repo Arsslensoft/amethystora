@@ -3,7 +3,7 @@
 # there and off, `ame desktop phone on` starts it and nothing else, it listens where the firewall lets phones in and
 # where the security watcher expects it, and `off` takes every listener away again. A pairing needs a phone, which the
 # lab has not: apps/connect/tests holds the interop test against Fedora's KDE Connect daemon.
-# vmlab-paths: apps/connect/* apps/phone/* @ui/*connect* @sf/*just/desktop.just
+# vmlab-paths: apps/connect/* apps/phone/* @ui/*connect* @sf/*just/desktop.just @sf/usr/lib/firewalld/* @sf/*Connect.gschema.xml
 source "$(dirname "$0")/lib.sh"
 
 UNIT=amethystora-connect.service
