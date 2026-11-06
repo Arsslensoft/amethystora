@@ -29,6 +29,11 @@
       <summary>Timers from search</summary>
       <description>"tea 4 min" starts a timer called Tea in the live pill, with Enter.</description>
     </key>
+    <key name="put-away" type="b">
+      <default>true</default>
+      <summary>Bring back what was put away, from search</summary>
+      <description>Typing the name of a workspace put away offers to bring it back, with Enter. Only names this session knows are searched; a list sealed in Vault that has not been opened is not read for a search.</description>
+    </key>
     <key name="settings" type="b">
       <default>true</default>
       <summary>Settings from Control</summary>

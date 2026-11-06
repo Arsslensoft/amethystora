@@ -1,5 +1,5 @@
-// The Sets part of the workspace menu: Save this workspace, and under it the saved sets, newest first, each with the
-// icons of its first apps, its name and its apps. A set opens with a click (or Enter, or Space); the cross that shows
+// The Sets part of the workspace menu: Save this workspace, Put this workspace away (R7-34, workspaces/putaway.js; its card is the
+// pill's), and under them the saved sets, newest first, each with the icons of its first apps, its name and its apps. A set opens with a click (or Enter, or Space); the cross that shows
 // on a set under the pointer or the keyboard forgets it. The rows exist only while the menu is open.
 
 import Clutter from 'gi://Clutter';
@@ -7,6 +7,7 @@ import Shell from 'gi://Shell';
 import St from 'gi://St';
 
 import {gettext as _, ngettext} from 'resource:///org/gnome/shell/extensions/extension.js';
+import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 // The icons of a set's first apps, at the board's size
@@ -24,8 +25,9 @@ function plainLabel(text, styleClass) {
 }
 
 export class SetsMenu {
-    // module: the workspaces module (its `sets`, openSet()); menu: the workspace menu
-    constructor(module, menu) {
+    // module: the workspaces module (its `sets`, openSet()); menu: the workspace menu; `sets` whether the saved sets show, `putAway`
+    // whether the row that puts a workspace away does
+    constructor(module, menu, {sets = true, putAway = false} = {}) {
         this._module = module;
         this._menu = menu;
         this._items = [];
@@ -36,31 +38,51 @@ export class SetsMenu {
         const separator = new PopupMenu.PopupSeparatorMenuItem();
         this._add(separator);
 
-        const saveItem = new PopupMenu.PopupBaseMenuItem({reactive: false, can_focus: false});
-        this._save = new St.Button({
-            style_class: 'amethystora-workspaces-save',
-            can_focus: true,
-            x_align: Clutter.ActorAlign.START,
-            y_align: Clutter.ActorAlign.CENTER,
-        });
-        this._saveLabel = plainLabel('', 'amethystora-workspaces-save-label');
-        this._save.set_child(this._saveLabel);
-        this._save.label_actor = this._saveLabel;
-        this._save.connect('clicked', () => this._saved());
-        saveItem.add_child(this._save);
-        this._add(saveItem);
+        if (sets) {
+            const saveItem = new PopupMenu.PopupBaseMenuItem({reactive: false, can_focus: false});
+            this._save = new St.Button({
+                style_class: 'amethystora-workspaces-save',
+                can_focus: true,
+                x_align: Clutter.ActorAlign.START,
+                y_align: Clutter.ActorAlign.CENTER,
+            });
+            this._saveLabel = plainLabel('', 'amethystora-workspaces-save-label');
+            this._save.set_child(this._saveLabel);
+            this._save.label_actor = this._saveLabel;
+            this._save.connect('clicked', () => this._saved());
+            saveItem.add_child(this._save);
+            this._add(saveItem);
+        }
 
-        this._listItem = new PopupMenu.PopupBaseMenuItem({reactive: false, can_focus: false});
-        this._list = new St.BoxLayout({
-            style_class: 'amethystora-workspaces-sets',
-            orientation: Clutter.Orientation.VERTICAL,
-            x_expand: true,
-        });
-        this._heading = plainLabel(_('Sets'), 'amethystora-workspaces-sets-heading');
-        this._list.add_child(this._heading);
-        this._listItem.add_child(this._list);
-        this._add(this._listItem);
-        this._listItem.hide();
+        if (putAway) {
+            this._putItem = new PopupMenu.PopupBaseMenuItem({reactive: false, can_focus: false});
+            this._put = new St.Button({
+                style_class: 'amethystora-workspaces-save',
+                can_focus: true,
+                x_align: Clutter.ActorAlign.START,
+                y_align: Clutter.ActorAlign.CENTER,
+            });
+            this._putLabel = plainLabel(_('Put this workspace away'), 'amethystora-workspaces-save-label');
+            this._put.set_child(this._putLabel);
+            this._put.label_actor = this._putLabel;
+            this._put.connect('clicked', () => this._putAway());
+            this._putItem.add_child(this._put);
+            this._add(this._putItem);
+        }
+
+        if (sets) {
+            this._listItem = new PopupMenu.PopupBaseMenuItem({reactive: false, can_focus: false});
+            this._list = new St.BoxLayout({
+                style_class: 'amethystora-workspaces-sets',
+                orientation: Clutter.Orientation.VERTICAL,
+                x_expand: true,
+            });
+            this._heading = plainLabel(_('Sets'), 'amethystora-workspaces-sets-heading');
+            this._list.add_child(this._heading);
+            this._listItem.add_child(this._list);
+            this._add(this._listItem);
+            this._listItem.hide();
+        }
 
         // The rows go once the menu is out of sight, not while it fades
         this._menu.actor.connectObject('hide', () => this._clear(), this);
@@ -82,11 +104,28 @@ export class SetsMenu {
         this._touch = touch;
         const sets = this._module.sets;
         const can = !!workspace && !!sets && sets.windowsOf(workspace).length > 0;
-        this._saveLabel.text = can ? _('Save this workspace') : _('Nothing to save here');
-        this._save.reactive = can;
-        this._save.can_focus = can;
-        this._save.checked = false;
+        if (this._save) {
+            this._saveLabel.text = can ? _('Save this workspace') : _('Nothing to save here');
+            this._save.reactive = can;
+            this._save.can_focus = can;
+            this._save.checked = false;
+        }
+        if (this._put) {
+            // The row needs the pill's card to ask in: without the live pill it is not offered
+            const card = !!this._module._ext.modules?.get('pill')?.putAway && !!this._module.putAway;
+            this._putItem.visible = card;
+            this._put.reactive = can;
+            this._put.can_focus = can;
+            this._putLabel.text = can ? _('Put this workspace away') : _('Nothing to put away here');
+        }
         this._fill();
+    }
+
+    // The row puts nothing away by itself: it asks, in the pill's card, and the windows close only when the person says yes
+    _putAway() {
+        const asked = this._module.putAway?.ask(this._workspace);
+        if (asked)
+            this._menu.close(BoxPointer.PopupAnimation.FULL);
     }
 
     _saved() {
@@ -117,6 +156,8 @@ export class SetsMenu {
 
     _fill() {
         this._clear();
+        if (!this._listItem)
+            return;
         const sets = this._module.sets?.list ?? [];
         this._listItem.visible = sets.length > 0;
         if (!sets.length)

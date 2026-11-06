@@ -1,0 +1,65 @@
+#!/usr/bin/python3 -I
+# Keeping a script's data under the account's key in Amethystora Vault, without holding that key: the data goes in on standard
+# input and comes back on standard output, through the same socket and lines of JSON as apps/vault-client (plans/PLAN-vault.md).
+#
+#   amethystora-vault-keep seal PURPOSE RECORD   < plain  > sealed
+#   amethystora-vault-keep open PURPOSE RECORD   < sealed > plain
+#
+# PURPOSE is [a-z0-9-]{1,40} and RECORD at most 128 characters without a control character; the data is never an argument, so it
+# is never in a process list or an audit log. A refusal is its name on standard error and a number as the exit status: 3 closed
+# (say "Open Vault", never ask for it), 4 not set up, 5 refused, 6 too large, 7 anything else. Nothing here ever writes a file.
+# The backup's `background` key works with the vault closed (amethystora-backup-secret); every other purpose waits for the vault.
+# --socket PATH is for the tests, which give a stand-in; it is never read from the environment.
+
+import base64
+import json
+import re
+import socket
+import sys
+
+SOCKET = "/run/amethystora/vault.sock"
+MAX_DATA = 1024 * 1024
+WAIT = 10
+CODES = {"closed": 3, "not-set-up": 4, "refused": 5, "too-large": 6}
+
+
+def fail(why):
+    print(why, file=sys.stderr)
+    sys.exit(CODES.get(why, 7))
+
+
+def exchange(path, request):
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
+            connection.settimeout(WAIT)
+            connection.connect(path)
+            connection.sendall(json.dumps(request).encode() + b"\n")
+            reply = connection.makefile("rb").readline(MAX_DATA // 3 * 4 + 4096 + 1)
+        return json.loads(reply)
+    except (OSError, ValueError):
+        fail("failed")
+
+
+def main(argv):
+    path = SOCKET
+    if len(argv) >= 2 and argv[0] == "--socket":
+        path, argv = argv[1], argv[2:]
+    if len(argv) != 3 or argv[0] not in ("seal", "open"):
+        print("usage: amethystora-vault-keep [--socket PATH] seal|open PURPOSE RECORD", file=sys.stderr)
+        sys.exit(2)
+    op, purpose, record = argv
+    if not re.fullmatch(r"[a-z0-9-]{1,40}", purpose) or len(record) > 128 or re.search(r"[\x00-\x1f\x7f]", record):
+        fail("bad-request")
+    data = sys.stdin.buffer.read(MAX_DATA + 64)
+    if len(data) > MAX_DATA + 32:
+        fail("too-large")
+    reply = exchange(path, {"v": 1, "op": op, "purpose": purpose, "record": record, "data": base64.b64encode(data).decode()})
+    if reply.get("ok") is not True:
+        fail(reply.get("why") if isinstance(reply.get("why"), str) else "failed")
+    try:
+        sys.stdout.buffer.write(base64.b64decode(reply["data"], validate=True))
+    except (KeyError, ValueError, TypeError):
+        fail("failed")
+
+
+main(sys.argv[1:])

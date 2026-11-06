@@ -509,3 +509,7 @@
 }
 .amethystora-pill-stick-row { spacing: 6px; }
 .amethystora-pill-stick-card { spacing: 8px; min-width: 280px; }
+
+/* Put this away for tomorrow (pill/putaway.js): a row of the list */
+.amethystora-pill-putaway-row { spacing: 8px; }
+.amethystora-pill-putaway-row > StLabel { y-align: center; }

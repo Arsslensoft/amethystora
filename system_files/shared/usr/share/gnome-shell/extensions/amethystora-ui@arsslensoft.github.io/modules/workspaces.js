@@ -35,6 +35,7 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {ACCENTS, SCHEMA as THEME_SCHEMA, accentName, workspaceAccent} from './theme/accents.js';
 import {OverviewNames} from './workspaces/overview.js';
 import {Resume, forgetUnread} from './workspaces/resume.js';
+import {PutAway} from './workspaces/putaway.js';
 import {Sets} from './workspaces/sets.js';
 import {SetsMenu} from './workspaces/setsmenu.js';
 
@@ -321,7 +322,8 @@ export class Workspaces {
         this._themeSettings.connectObject('changed::accent-per-workspace', () => this._buildAccents(), this);
         this._buildAccents();
         // Saved sets, while they are on
-        this._settings.connectObject('changed::sets', () => this._syncSets(), 'changed::resume', () => this._syncSets(), this);
+        this._settings.connectObject('changed::sets', () => this._syncSets(), 'changed::resume', () => this._syncSets(),
+            'changed::put-away', () => this._syncSets(), this);
         this._syncSets();
         // A window dragged in the overview: the label under it lights up
         Main.overview.connectObject(
@@ -699,9 +701,10 @@ export class Workspaces {
     _syncSets() {
         const menu = this._settings?.get_boolean('sets') ?? false;
         const resume = this._settings?.get_boolean('resume') ?? false;
+        const putAway = this._settings?.get_boolean('put-away') ?? false;
         if (!resume)
             forgetUnread();
-        if ((menu || resume) && !this.sets && this._menu) {
+        if ((menu || resume || putAway) && !this.sets && this._menu) {
             this.sets = new Sets(this);
             try {
                 this.sets.enable();
@@ -710,21 +713,43 @@ export class Workspaces {
                 this._stopSets();
                 return;
             }
-        } else if (!menu && !resume) {
+        } else if (!menu && !resume && !putAway) {
             this._stopSets();
             return;
         }
         if (!this.sets)
             return;
-        if (menu && !this._setsMenu) {
+        // The menu's part: the saved sets and the row that puts a workspace away, built again when either key changes
+        const shape = `${menu}${putAway}`;
+        if ((menu || putAway) && this._setsMenuShape !== shape) {
+            this._setsMenu?.destroy();
+            this._setsMenu = null;
+        }
+        if ((menu || putAway) && !this._setsMenu) {
             try {
-                this._setsMenu = new SetsMenu(this, this._menu);
+                this._setsMenu = new SetsMenu(this, this._menu, {sets: menu, putAway});
+                this._setsMenuShape = shape;
             } catch (e) {
                 console.error(`Amethystora UI: the saved sets' menu did not start: ${e.message}`);
             }
-        } else if (!menu && this._setsMenu) {
+        } else if (!menu && !putAway && this._setsMenu) {
             this._setsMenu.destroy();
             this._setsMenu = null;
+        }
+        if (putAway && !this.putAway) {
+            this.putAway = new PutAway(this);
+            try {
+                this.putAway.enable();
+            } catch (e) {
+                console.error(`Amethystora UI: putting a workspace away did not start: ${e.message}`);
+                this.putAway.disable();
+                this.putAway = null;
+            }
+            this._ext.modules?.get('pill')?.putAway?.refresh();
+        } else if (!putAway && this.putAway) {
+            this.putAway.disable();
+            this.putAway = null;
+            this._ext.modules?.get('pill')?.putAway?.refresh();
         }
         if (resume && !this.resume) {
             this.resume = new Resume(this);
@@ -742,6 +767,8 @@ export class Workspaces {
     }
 
     _stopSets() {
+        this.putAway?.disable();
+        this.putAway = null;
         this.resume?.disable();
         this.resume = null;
         this._setsMenu?.destroy();

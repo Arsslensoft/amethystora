@@ -30,5 +30,10 @@
       <summary>Pick up where you left off after an update's restart</summary>
       <description>When an update restarts the computer, the apps that were open and their places are kept (app IDs and places only, never a title or a file), and the first session after it offers to open them again, once. ame desktop resume and Control write it.</description>
     </key>
+    <key name="put-away" type="b">
+      <default>true</default>
+      <summary>Put a workspace away for tomorrow</summary>
+      <description>The workspace menu can put a whole workspace away, by name, and bring it back days later with every window in place. What is put away (names and apps, never a title or a file) is kept sealed under the account's key in Amethystora Vault, and only in memory while the vault is closed or not set up. ame desktop put-away and Control write it.</description>
+    </key>
   </schema>
 </schemalist>

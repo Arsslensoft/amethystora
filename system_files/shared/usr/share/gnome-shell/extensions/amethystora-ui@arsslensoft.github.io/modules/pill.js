@@ -36,6 +36,7 @@ import {Phone} from './pill/phone.js';
 import {Printing} from './pill/printing.js';
 import {Privacy} from './pill/privacy.js';
 import {ResumeCard} from './pill/resume.js';
+import {PutAwayCards} from './pill/putaway.js';
 import {Saving} from './pill/saving.js';
 import {Stacks} from './pill/stacks.js';
 import {Stick} from './pill/stick.js';
@@ -456,6 +457,8 @@ export class Pill {
             ['_update', () => new Update(this._activities)],
             ['_news', () => new News(this._activities, this._settings)],
             ['_resume', () => new ResumeCard(this._activities, () => this._ext.modules?.get('workspaces')?.resume ?? null)],
+            ['_putaway', () => new PutAwayCards(this._activities, () => this._ext.modules?.get('workspaces')?.putAway ?? null,
+                id => this._clock?.openCard(id))],
             ['_battery', () => new Battery(this._activities, notice, this._comfort, () => this._glass(), () => this._through)],
         ];
         const connect = this._ext.modules?.get('connect');
@@ -630,6 +633,11 @@ export class Pill {
 
     get resume() {
         return this._resume;
+    }
+
+    // Put this away for tomorrow's cards (pill/putaway.js), which workspaces/putaway.js asks to draw
+    get putAway() {
+        return this._putaway ?? null;
     }
 
     get saving() {

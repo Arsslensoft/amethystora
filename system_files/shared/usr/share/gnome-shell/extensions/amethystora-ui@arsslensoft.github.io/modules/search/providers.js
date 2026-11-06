@@ -37,6 +37,7 @@ import {PhotosProvider} from './photos.js';
 import {WordsProvider} from './wordsProvider.js';
 import {RememberedProvider} from './rememberProvider.js';
 import {PluginsProvider} from './plugins.js';
+import {PutAwayProvider} from './putawayProvider.js';
 
 // The key that turns each on, its place, and how many rows it shows at most; GNOME's own come between 4 and 6
 const PROVIDERS = [
@@ -46,6 +47,7 @@ const PROVIDERS = [
     {key: 'reminders', rank: 1, max: 2},
     {key: 'old-words', rank: 1, max: 3},
     {key: 'timers', rank: 1, max: 1},
+    {key: 'put-away', rank: 1, max: 2},
     {key: 'settings', rank: 2, max: 5},
     {key: 'windows', rank: 3, max: 5},
     // Before GNOME's own, whose forgiving app search finds something in almost any few words and would take Enter. It
@@ -129,6 +131,7 @@ export class Providers {
         case 'times': return new TimesProvider();
         case 'reminders': return new RemindProvider();
         case 'timers': return new TimerProvider(this._ext);
+        case 'put-away': return new PutAwayProvider(this._ext);
         case 'bookmarks': return new BookmarksProvider();
         case 'notes': return new NotesProvider();
         case 'meaning': return new MeaningProvider();
@@ -150,6 +153,7 @@ export class Providers {
             times: {},
             reminders: {title: _('Remind me')},
             timers: {},
+            'put-away': {title: _('Put away')},
             settings: {title: _('Do it')},
             'old-words': {title: _('Here it is')},
             remembered: {title: _('By what you remember'), note: _('Also understood: kinds of file, dates and sizes.')},

@@ -41,19 +41,21 @@
 // timer comes after the first. What is moving (pill/moving.js) runs by itself, after music: the music stays in the pill
 // and it sits beside it.
 // A print job
+// Putting a workspace away (pill/putaway.js, R7-34): its question is the person's own moment and comes after reopening the apps;
+// what is put away is a mark like Focus's, just before them, since it says how things are and is never the bubble.
 // (pill/printing.js) runs by itself but may wait for paper, so it comes before what only reads; getting through on the
 // battery (pill/through.js) only says how things are, beside saving data. A print job that has stood still for ten minutes
 // steps back behind what plays and what is ready (printing-stuck), still in the card.
 
 export const ORDER = ['call', 'recording', 'flat', 'present', 'meeting', 'link', 'code', 'battery', 'ask', 'agent', 'routine', 'waiting', 'drop', 'hello', 'stick',
-    'reading', 'timer', 'timer2', 'printing', 'resume', 'news', 'media', 'moving', 'update', 'printing-stuck', 'through', 'saving', 'extra', 'quiet', 'focus'];
+    'reading', 'timer', 'timer2', 'printing', 'resume', 'putaway', 'news', 'media', 'moving', 'update', 'printing-stuck', 'through', 'saving', 'extra', 'putaway-kept', 'quiet', 'focus'];
 
 // At most this many others are listed in a card
 const OTHERS = 3;
 // These keep the place alone
 const ALONE = new Set(['call', 'recording', 'present']);
 // These say how the desktop is set, not what is happening: never the bubble
-const MARKS = new Set(['saving', 'quiet', 'focus']);
+const MARKS = new Set(['saving', 'quiet', 'focus', 'putaway-kept']);
 
 export class Activities {
     constructor(changed) {

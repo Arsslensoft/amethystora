@@ -326,6 +326,14 @@ export class Sets {
         this._openSet(set, null, true);
     }
 
+    // A set that is not in the list (a put-away's, workspaces/putaway.js): opened as the menu opens a saved one
+    openGiven(set) {
+        if (!this._data)
+            return;
+        this._clearQueue();
+        this._openSet(set, null, true);
+    }
+
     // The apps open before an update's restart (workspaces/resume.js): each entry ({index, layout, windows}) on the
     // workspace at its own place, one after another, and the workspace that was in front shown at the end
     openQueue(entries, active) {
