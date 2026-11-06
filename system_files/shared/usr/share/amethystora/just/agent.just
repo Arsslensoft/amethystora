@@ -1,6 +1,44 @@
 # vim: set ft=make :
 
-set default-list
+# No default-list here: `ame agent`, alone, opens the agent as amethystora-agent does (`ame --list agent` lists the group)
+
+# Open the AI agent in a terminal, as Super+Ctrl+Shift+A does (`ame agent`, alone, runs this)
+[default]
+open:
+    @amethystora-agent
+
+# Open the AI agent with a first question
+[positional-arguments]
+ask +QUESTION:
+    @amethystora-agent ask -- "$@"
+
+# Find out why something broke, changing nothing: a process number, a unit, or what went wrong in your words (without one, it asks)
+[positional-arguments]
+diagnose *WHAT:
+    @amethystora-agent diagnose "$@"
+
+# Each AI agent, whether it is installed, and its name
+list:
+    @amethystora-agent list
+
+# Whether the agentic features are on for your account, and which agent
+status:
+    @amethystora-agent status
+
+# Search the manual and the image's reference as the agent does (-k N for N passages)
+[positional-arguments]
+search +ARGS:
+    @amethystora-agent search "$@"
+
+# Read a whole passage a search found, by its id
+[positional-arguments]
+read ID:
+    @amethystora-agent read "$1"
+
+# This machine's state as the agent reads it, by topic: overview, health, settings, security, software, updates, backups, disks, units, crashes... (FILTER: only what matches)
+[positional-arguments]
+state TOPIC *FILTER:
+    @amethystora-agent state "$@"
 
 # Turn the AI agent on or off for your account, off until you turn it on: its menu entry, Super+Ctrl+Shift+A, and the skill that tells it about this system (ACTION: on or off; without it, it flips)
 [positional-arguments]

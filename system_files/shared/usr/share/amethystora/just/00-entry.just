@@ -6,7 +6,7 @@
 set ignore-comments
 set default-list
 
-# The AI agent: install it, or turn it off
+# The AI agent: open it (`ame agent`, alone, as amethystora-agent does), install it, or turn it off
 mod agent
 
 # Apps from Flathub and Homebrew, and the Arch User Repository for ame pkg
