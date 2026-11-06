@@ -15,7 +15,9 @@ This document provides essential information for coding agents working with the 
 ## Repository Structure
 
 ### Root Directory Files
-- `Containerfile` - Main container build definition (stages: `ctx`, `brew`, `fprintd`, `base`)
+- `Containerfile` - The image's own build, on its layers (stages: `brew`, `ctx`, `apps`, `assets`, `base`)
+- `layers/` - The build's layers (see Build layers): one Containerfile each, `lib.sh`, which finds or builds them, and
+  the scripts the packages layers run
 - `Containerfile.sealed` - The sealed variant of a built image (`just seal`; see Sealed images)
 - `secure-boot.crt` - The certificate of the Secure Boot key sealed images are signed with, once `just secure-boot-key` has made it
 - `Justfile` - Build automation recipes (like a Makefile but more readable)
@@ -31,7 +33,7 @@ This document provides essential information for coding agents working with the 
   - `dx/` - `amethystora-dx` only, copied in by `build_files/shared/build-dx.sh`
   - `sealed/` - the sealed images only, copied in by `build_files/sealed/00-sealed.sh`
 - `apps/` - The Amethystora apps (Manual, Security, Updates, Notes, Logs, Backups, Control, Help): one Rust
-  program, a Cargo workspace built in the Containerfile's `apps` stage (see The Amethystora apps); the same
+  program, a Cargo workspace built in the apps layer (see The Amethystora apps, Build layers); the same
   workspace builds `amethystora-sensor` and the AI agent's tools (`agent-tools`, see Agentic features); the Vault is
   `apps/vault*`, seven crates (see The Vault)
 - `build_files/` - Build scripts organized as base/, dx/, shared/
@@ -41,7 +43,7 @@ This document provides essential information for coding agents working with the 
   - `shared/` - Common build utilities and helper scripts
 - `branding/` - Source of the artwork; `node branding/generate.mjs` draws it, and `node branding/icons.mjs` the icon packs (see The icon packs)
 - `iso/` - `iso.toml`, the bootc-image-builder configuration of the installer ISO; `product/`, which `build-iso.yml` adds to the ISO as `images/product.img`: the installer's Amethystora look (a stylesheet and artwork drawn by `branding/generate.mjs`), crash reporting (libreport files that send crash reports to Amethystora's issue tracker instead of Fedora's Bugzilla) and the Anaconda profile that keeps Fedora's installer settings although the installer's os-release says `generic`; `installer-packages.py`, which lists what the installer is made of; and `live/`, the live system of the live ISO: a `Containerfile` built `FROM` the published image with `build.sh`, which adds Fedora's live boot, live session and Anaconda's web installer, a copy of the image for an offline install (`installer.ks`), a profile for the image's own os-release ID, and the boot menu Titanoboa reads (`iso.yaml`)
-- `packaging/` - Packages Amethystora rebuilds, each in its folder with a README: `fprintd/` is Fedora's fprintd with the duress finger's patches, built in the Containerfile's `fprintd` stage on every image build. Renovate looks for a new fprintd release every Monday. The `.patch` files are kept byte for byte (`.gitattributes`, and the pre-commit whitespace hooks skip them)
+- `packaging/` - Packages Amethystora rebuilds, each in its folder with a README: `fprintd/` is Fedora's fprintd with the duress finger's patches, built in the fprintd layer (see Build layers). Renovate looks for a new fprintd release every Monday. The `.patch` files are kept byte for byte (`.gitattributes`, and the pre-commit whitespace hooks skip them)
 - `po/` - The gettext catalogs of the shell programs that are translated, the security report and the app permissions (text domain `amethystora`): `amethystora.pot`, which `node build_files/shared/check-translations.js --write --po po system_files/shared` writes from the scripts, and one `<language>.po` each, which `14-security.sh` compiles into `/usr/share/locale`
 - `tests/vm/` - The VM lab: a privileged container with QEMU, KVM, Secure Boot firmware, a TPM and the build's
   tools. `run.sh` builds the last commit, installs it onto a disk, boots it and runs `suites/` in it; an MCP
@@ -430,7 +432,8 @@ the image is built: the manual, the skills, the knowledge and a reference genera
 passages of about 300 tokens whose ids are the manual's links, ranked by BM25F and by meaning with
 potion-base-8M (Model2Vec, MIT), whose tokenizer and safetensors reader are in the crate and are held to the
 model's own output (`tests/model-reference.jsonl`). `apps/agent-tools/tests/golden.tsv` is asked of the
-source tree's index by cargo and of the image's by `20-tests.sh`, at recall@3 of at least 0.9: add a question
+image's index by `20-tests.sh` (cargo's golden test skips in the apps layer, which has no manual, and asks them of the
+source tree's own index when run in a checkout), at recall@3 of at least 0.9: add a question
 when you add a page an agent should find. `/usr/libexec/amethystora-doctor` (`ame system doctor`, `state
 health`) is the read-only health check outside security, about ten seconds, no password.
 
@@ -487,7 +490,7 @@ from a child of the tool server named in it; a question nobody answered (lock, f
 The Manual, Security, Updates, Notes, Logs, Backups, Control and Help are one program, written in Rust with
 GTK 4 and libadwaita: the Cargo workspace in `apps/`, one crate for each app beside `common` (the
 crate `amethystora-ui`, which they share) and `launcher`, which picks the app by the name it was started
-as. The Containerfile's `apps` stage builds it on the same pinned base with Fedora's Rust
+as. The apps layer builds it on the same pinned base with Fedora's Rust
 (`build_files/shared/build-apps.sh`), once every crate's tests pass, and `13-apps.sh` hard-links it to
 each app's own path, `/usr/lib/amethystora-<app>/amethystora-<app>`, which the `/usr/bin` launchers
 start. They were Electron windows of some 300 MB each until October 2026, and look as those did: keep
@@ -513,9 +516,11 @@ the look when you change one.
   each as one group. The licences of the crates built into the program ship in
   `/usr/share/licenses/amethystora-apps/crates`, beside `CRATES`, their list, and `build-apps.sh` fails
   on a crate without a licence file of its own.
-- The apps stage has Node as well, which runs `20-tests.sh`'s checks written in JavaScript
-  (`check-manual.js`, `check-translations.js`) from where the stage is mounted, `/apps-stage`, and
-  Notes' compatibility tests: the image carries no Node.
+- The apps layer has Node as well, with its own libraries and whole ICU data, which runs `20-tests.sh`'s checks
+  written in JavaScript (`check-manual.js`, `check-translations.js`) from where the layer is mounted, `/apps-stage`,
+  and Notes' compatibility tests: the image carries no Node. The tests that compare the apps with `system_files`
+  (Control's contrast, two of the Vault's) read the files `layers/apps.Containerfile` copies, through
+  `AMETHYSTORA_ROOT`: a test that reads another file needs a COPY line there, or it skips.
 - The VM lab drives a window as a person would, through its accessibility tree
   (`tests/vm/suites/atspi.py`).
 
@@ -856,7 +861,7 @@ find accounts by their folders in `/var/home` as well, and never filter on `uid 
   login and lock screens (`duress=allow` in `fingerprint-auth`), is refused at sudo, polkit and the text
   consoles (`duress=deny` in `system-auth`), and runs the owner's action as root either way, once per boot.
   pam_fprintd tells the finger apart only in the image's own fprintd build (`packaging/fprintd`, built in
-  the Containerfile's `fprintd` stage): upstream's `VerifyFingerMatched` signal and its signals sent only to the
+  the fprintd layer): upstream's `VerifyFingerMatched` signal and its signals sent only to the
   claiming client, both unreleased after 1.94.5, plus Amethystora's patch to pam_fprintd. The feature
   `with-duress-fingerprint` is the per-machine switch: `08-hardening.sh` turns the link to `system-auth` and
   `fingerprint-auth` in the vendor `local`, `sssd` and `winbind` profiles into copies with one `{if}` each,
@@ -1002,7 +1007,7 @@ place only what the vault's key then fits. The program holds the key only while 
 attachment only to show or save it. A note's Markdown is rendered as the Manual's is
 (`apps/common/src/markdown.rs`), with raw HTML shown as text. Keep both properties. The files are the
 ones the Electron window wrote, in the same formats: `apps/notes/tests/compat.rs` opens what that
-window wrote, and has its own code (`electron.js`, on the apps stage's Node) read what this one writes.
+window wrote, and has its own code (`electron.js`, on the apps layer's Node) read what this one writes.
 Its manual page is `notes.md`. Its lock screen lifts the gem's stem while the passphrase is checked.
 
 A passkey (**Settings**, **Add a passkey**) opens the notes beside the passphrase, never in its place:
@@ -1092,7 +1097,7 @@ approval**: those two halves are the whole design, and every rule below serves o
 - **Backup and moving**: `ame vault backup` writes `~/.local/share/amethystora/vault-backup/vault-DATE.avb`, the sealed items and the key under the **recovery slot
   alone**, which needs no open vault; `amethystora-backup` runs it before each restic run, seven kept; `ame vault restore FILE` asks for the recovery key. There is one
   recovery key a vault, never split, and nobody (not Amethystora) can make another.
-- **Tested** by cargo in the apps stage (`VAULT_VERIFIERS_REQUIRED=1`, with `openssl`, `osslsigncode`, `pdfsig`, `certutil`, `jarsigner`, `ssh` and `oathtool` as separate programs, so
+- **Tested** by cargo in the apps layer (`VAULT_VERIFIERS_REQUIRED=1`, with `openssl`, `osslsigncode`, `pdfsig`, `certutil`, `jarsigner`, `ssh` and `oathtool` as separate programs, so
   that no test passes by skipping; also on OpenSSL 4), by `build_files/shared/test-vault.sh` from `20-tests.sh` (the unit, the policy, the sockets, the recipes, the sentences,
   the crates, the data), and by `tests/vm/suites/74-vault.sh` on a booted image (real polkit, SELinux enforcing, a virtual fingerprint reader, the TPM, `ssh`, `pdfsig`,
   a Vaultwarden in a container). **By hand, and not in CI**: BackMyCodes' own app reading what this writes, Bitwarden's own server, Acrobat, Bitwarden's extension,
@@ -2285,36 +2290,67 @@ Do not assume the streams sit on different Fedora releases. They frequently
 resolve to the same major version, so anything version-dependent must key off
 the value this recipe returns rather than off the stream name.
 
-### Containerfile Multi-Stage Build
-The `Containerfile` uses a multi-stage build process:
+### Build layers
+`plans/done/PLAN-build-layers.md`. A commit rebuilds only what it changed: what the image is built on is images of
+their own, each tagged by a key over what it is made of (its Containerfile in `layers/`, every file its `COPY` lines
+name, the values `layers/lib.sh` gives beside it and the key of the layer under it), from the bottom up:
 
-1. **Stage `ctx`** (FROM scratch): Copies all build context (system_files, build_files, packaging, etc.)
-2. **Stage `fprintd`** (FROM the same pinned silverblue-main): `build_files/shared/build-fprintd.sh` builds
-   `packaging/fprintd` with rpmbuild into `/out`. Its build tools never reach the image: `base` mounts `/out`
-   for `build.sh`, and `05-override-install.sh` installs fprintd and fprintd-pam from it in place of
-   Fedora's, refusing a base whose fprintd is past the spec's, and puts the source package in
-   `/usr/src/amethystora`
-3. **Stage `apps`** (FROM the same pinned silverblue-main): `build_files/shared/build-apps.sh` installs
-   Fedora's Rust, downloads the agent's embedding model (potion-base-8M, at one Hugging Face revision, each
-   file checked against its SHA-256), runs the tests of every crate in `apps/` and builds the one program,
-   `amethystora-sensor` and the agent's two tools into `/out`, with the licences of their crates, then clears
-   its build away. `base` mounts the whole stage at `/apps-stage`:
-   `13-apps.sh` installs from its `/out`, and `20-tests.sh` runs its Node. Neither Rust nor Node reaches
-   the image
-4. **Stage `base`** (FROM silverblue-main): Base Amethystora image
-   - Mounts build context from `ctx` stage
-   - Runs in three steps: `/ctx/build_files/shared/prepare.sh`, then
-     `03-install-kernel-akmods.sh`, the only step the kernel module signing key (`AKMODS_PRIVKEY`,
-     and for a throwaway key `AKMODS_CERT`) is mounted for, before any of the build's own
-     third-party repositories is added, then `/ctx/build_files/shared/build.sh`, which runs the rest
-5. **dx**: not a stage of its own. `just build amethystora-dx` passes `IMAGE_FLAVOR=dx`, and
+| Layer | Made by | Key, besides its files | Shared by |
+|---|---|---|---|
+| `amethystora-fprintd` | `build-fprintd.sh`: `/out`, three packages | base digest | all six |
+| `amethystora-cargo` | the crates from crates.io, compiled | `Cargo.lock`, every `Cargo.toml`, ISO week | all six |
+| `amethystora-apps` | `build-apps.sh`: `/out`, and Node with its own libraries, on scratch | base digest | all six |
+| `amethystora-assets` | the `make` halves of `09-fonts.sh`, `09-emoji.sh`, `11-gtk-theme.sh` (`/out`) | base digest | all six |
+| `amethystora-kernel` | `prepare.sh`, then `03-install-kernel-akmods.sh` | base, akmods digests, kernel, stream, module key, epoch | a flavor |
+| `amethystora-packages` | `layers/packages.sh`: 04, the missing-command index, 05, the build tools, source packages, debranding | kernel's, fprintd's | a flavor |
+| `amethystora-packages-dx` | `layers/packages-dx.sh`: the repositories off, 00-dx, source packages, debranding | packages' | a flavor's dx |
+
+- **Freshness.** The kernel and packages layers install from repositories, so their key carries an epoch: the UTC
+  date on latest and beta, the workflow run on stable (`run<id>`: a release and a security rebuild install the
+  packages of their moment), or `AMETHYSTORA_PACKAGES_EPOCH` (the lab may keep its own). They are built with
+  `--layers=false`, so buildah's cache never hands back yesterday's packages.
+- **Finding a layer** (`layers/lib.sh`): `localhost/<name>:<tag>`, else `ghcr.io/arsslensoft/<name>:<tag>` checked
+  with cosign against `cosign.pub` and pulled by digest, else built. A build without the release module key takes
+  the release key's packages layer first. `AMETHYSTORA_LAYERS` is `fprintd`, `shared` (cargo, apps, assets),
+  `flavor` (kernel, packages, packages-dx) or `fetch` (pull, build nothing), and stops after them; unset, it finds or
+  builds what the image needs and goes on. Every layer built is listed in `/tmp/amethystora-layers-built`. After an
+  image builds, the older tags of the layers it used are untagged, so that a prune reclaims them.
+- **In CI** (`reusable-build.yml`): a `plan` job works out the epoch; where `PUBLISH` holds, `layers (fprintd)`, then
+  `layers (<flavor>)` for each flavor, and `layers (apps, assets)` beside them build what is new, and
+  `.github/actions/push-layers` pushes, signs and verifies it; each image job pulls them in `Fetch layers` (a login,
+  no build) before its build step, which still has no token. Pull requests build what they do not find on GHCR and
+  publish nothing. `clean.yml` deletes old layers. The layers are packages of their own on GHCR, linked to the
+  repository by `org.opencontainers.image.source`.
+- **Order.** `system_files` is copied over the packages now (`build.sh`), not under them: ours win over a package's
+  file of the same path, and a package's file triggers never see ours, so `build.sh` and its scripts run what they
+  need themselves (schemas, icon and font caches, the MIME and launcher databases). dx's packages install before
+  17-cleanup, with only Fedora's repositories on (`disable_third_party_repos` in `copr-helpers.sh`, which 17-cleanup
+  runs too), and so are in the initramfs's view. The build tools (`glib2-devel`, `gettext`) are installed once in the
+  packages layer, listed in `tools.list`, and taken out by `build.sh` less what another package needs. Debranding
+  reads every file in the packages layers and, in the image (`debrand.py --newer`), only what came after them.
+- `build.sh` prints how long each step took, and one `::notice::` with all of them.
+
+### Containerfile Multi-Stage Build
+The `Containerfile` is the image's own build, once per commit, on the layers the Justfile found:
+
+1. **Stage `brew`** and **`ctx`** (FROM scratch): the build context (system_files with brew's files under it,
+   build_files, branding fonts, `po/`, `apps/` for `20-tests.sh`)
+2. **Stages `apps` and `assets`**: the apps and assets layers (`APPS_IMAGE`, `ASSETS_IMAGE`), mounted at
+   `/apps-stage` and `/assets`: `13-apps.sh` installs from `/apps-stage/out`, `20-tests.sh` runs its Node, and
+   `build.sh` copies `/assets/out` in. Neither Rust, Node nor ImageMagick reaches the image
+3. **Stage `base`** (FROM the packages layer, `PACKAGES_IMAGE`, packages-dx's for a dx image): one `RUN` of
+   `build.sh`, which ends with the `/opt` link, then `bootc container lint`. The kernel module signing key
+   (`AKMODS_PRIVKEY`, and for a throwaway key `AKMODS_CERT`) is mounted only for the kernel layer's
+   `03-install-kernel-akmods.sh`, before any of the build's own third-party repositories is added
+4. **dx**: not a stage of its own. `just build amethystora-dx` passes `IMAGE_FLAVOR=dx`, and
    `build.sh` runs `build-dx.sh` inside the `base` stage once the rest has finished
 
 **Build Arguments:**
-- `AKMODS_DIGEST`, `AKMODS_ZFS_DIGEST`, `AKMODS_NVIDIA_DIGEST` - The kernel and module images, resolved to a digest and checked with cosign by the Justfile once; step 03 copies them by that digest
+- `PACKAGES_IMAGE`, `APPS_IMAGE`, `ASSETS_IMAGE` - The layers the image builds on (see Build layers)
+- `AKMODS_DIGEST`, `AKMODS_ZFS_DIGEST`, `AKMODS_NVIDIA_DIGEST` - The kernel layer's: the kernel and module images, resolved to a digest and checked with cosign by the Justfile once; step 03 copies them by that digest
 - `BASE_IMAGE_CREATED` - When the base image was built (seconds since the epoch), which `00-image-info.sh` writes into `image-info.json` as `base-created` for the report's image-age check
 - `BASE_IMAGE_NAME` - Upstream base (silverblue/kinoite)
-- `BASE_IMAGE_SHA` - Digest of the base image, resolved from `image-versions.yml`
+- `BASE_IMAGE_SHA` - The layers': digest of the base image, resolved from `image-versions.yml`
 - `FEDORA_MAJOR_VERSION` - Dynamically set by Just (43/44)
 - `IMAGE_NAME` - Target image name (amethystora/amethystora-dx)
 - `KERNEL` - Pinned kernel version (optional)
@@ -2370,36 +2406,41 @@ The `main` ruleset asks of everyone but the repository's administrators, who byp
 an approval from a code owner, the `Checks` workflow's three jobs, and the merge queue, which squashes.
 
 ### Build Script Execution Order
-The build runs the scripts in `build_files/base/` in this order, which is not the numerical one:
-`build_files/shared/prepare.sh` the first, `03-install-kernel-akmods.sh` as a step of its own, and
-`build_files/shared/build.sh` the rest. Before the first of them, `prepare.sh` removes the base image's
+The build runs the scripts in `build_files/base/` in this order, which is not the numerical one. The kernel layer runs
+`build_files/shared/prepare.sh` and then `03-install-kernel-akmods.sh`, a step of its own; the packages layer
+`04-packages.sh`, `build-missing-command-index.sh` and `05-override-install.sh` (`layers/packages.sh`); the packages-dx
+layer `00-dx.sh`; and the image `build_files/shared/build.sh`, which copies `system_files/shared` over the packages
+first and runs the rest. `prepare.sh` removes the base image's
 `ublue-os-*` packages that `system_files` replaces, and swaps Fedora's logo and release packages for
 Fedora's generic ones, as its trademark guidelines ask of a remix: `fedora-logos` for `generic-logos`,
 and the `fedora-release` packages for `generic-release` in the package database only, their files
 staying in place.
-1. `00-image-info.sh` - Sets image metadata and os-release info, and takes Fedora's name out of the other release files (`/usr/lib/fedora-release`, the CPE, the software identification tags)
-2. `03-install-kernel-akmods.sh` - Installs the kernel and the kmods beside it: v4l2loopback, xpadneo and xone from Universal Blue's `akmods` image, evdi built here, ZFS on stable, and on the NVIDIA images the driver of `akmods-nvidia-open` or `akmods-nvidia-lts` (see Drivers)
-3. `04-packages.sh` - Installs Fedora and COPR packages
-4. `05-override-install.sh` - Overrides base image packages. Among them the multimedia stack: the base image installs negativo17's FFmpeg, built with `--enable-nonfree` and labelled by FFmpeg itself "nonfree and unredistributable", and its `pipewire-libs-extra`, whose LC3plus plugin links `liblc3plus`, which has no licence to redistribute. Both are replaced with Fedora's `ffmpeg-free` and `fdk-aac-free`, RPM Fusion's `libavcodec-freeworld`, and RPM Fusion's aptX plugin. negativo17's repository is `fedora-multimedia` in the base image and outranks Fedora's, so `17-cleanup.sh` turns it off; do not install FFmpeg, codec or PipeWire packages from it. `20-tests.sh` fails on any FFmpeg library that reports itself unredistributable. The script also deletes `/usr/share/doc`, after moving the licence, copyright and NOTICE files that some 120 packages keep only there into `/usr/share/licenses`, and installs Starship from a pinned release checked against its published checksum (the pin is bumped by Renovate)
+In the kernel layer:
+1. `03-install-kernel-akmods.sh` - Installs the kernel and the kmods beside it: v4l2loopback, xpadneo and xone from Universal Blue's `akmods` image, evdi built here, ZFS on stable, and on the NVIDIA images the driver of `akmods-nvidia-open` or `akmods-nvidia-lts` (see Drivers)
+In the packages layer:
+2. `04-packages.sh` - Installs Fedora and COPR packages
+3. `05-override-install.sh` - Overrides base image packages. Among them the multimedia stack: the base image installs negativo17's FFmpeg, built with `--enable-nonfree` and labelled by FFmpeg itself "nonfree and unredistributable", and its `pipewire-libs-extra`, whose LC3plus plugin links `liblc3plus`, which has no licence to redistribute. Both are replaced with Fedora's `ffmpeg-free` and `fdk-aac-free`, RPM Fusion's `libavcodec-freeworld`, and RPM Fusion's aptX plugin. negativo17's repository is `fedora-multimedia` in the base image and outranks Fedora's, so `17-cleanup.sh` turns it off; do not install FFmpeg, codec or PipeWire packages from it. `20-tests.sh` fails on any FFmpeg library that reports itself unredistributable. The script also deletes `/usr/share/doc`, after moving the licence, copyright and NOTICE files that some 120 packages keep only there into `/usr/share/licenses`, and installs Starship from a pinned release checked against its published checksum (the pin is bumped by Renovate)
+In the image (`build.sh`):
+4. `00-image-info.sh` - Sets image metadata and os-release info, and takes Fedora's name out of the other release files (`/usr/lib/fedora-release`, the CPE, the software identification tags)
 5. `06-branding.sh` - Puts the Amethystora artwork (generated by `node branding/generate.mjs`) where the boot menu, the boot splash and GDM look for it: the GRUB font, the Plymouth theme, and Fedora's own logo files, which GDM, the Settings About page and the fallback splash look up by fixed path
 6. `build_files/shared/build-gnome-extensions.sh` - Sets up the GNOME Shell extensions written for this image: their licences, schemas and entries in `enabled-extensions` (nothing is built from a git submodule any more)
-6a. `09-fonts.sh` - The themes' interface fonts Fedora does not package, from Google Fonts' repository at one pinned commit, each file checked by SHA-256, into `/usr/share/fonts/amethystora` with their OFL texts in `/usr/share/licenses/google-fonts`, and Quicksand from `branding/fonts`; it fails when a theme's `font.theme` names a family that is not installed. The packaged ones are in `04-packages.sh`
-7. `10-icons.sh` - Builds the icon caches of the Amethystora icon packs, which come with `system_files` (see The icon packs); nothing is downloaded. candy-icons, the pack the desktop shipped with until 2026-10-23, is gone, with its keep list, its aliases and the Security shield and Notes icon drawn from it (the Glass pack draws those two now, into `hicolor`). Nobody else's logo is drawn: an app of another maker keeps the icon it ships. `user-setup.hooks.d/16-retire-jetbrains-icons.sh` takes back the links an earlier image made to the IDE drawings
-8. `11-gtk-theme.sh` - Installs the Amethystora GTK theme: EliverLara's Sweet, with every cool colour in it rotated onto the amethyst palette by `build_files/shared/recolor.py` (its stylesheets and drawings) and ImageMagick (the bitmaps named in the script, where the build fails on any still drawn in a cool colour: `recolor.py --check-bitmaps`). It ships under Amethystora's own name because the palette is no longer Sweet's. Only the `amethystora` and `amethystora-light` themes name it in their `gtk.theme`, for GTK 3; the rest stay on adw-gtk3. libadwaita ignores `gtk-theme` and a Flatpak cannot see `/usr/share/themes` at all, so the theme reaches them through `theme-set.hooks.d/20-gtk-apps.sh`: it mirrors the active theme into `~/.themes`, which `/etc/flatpak/overrides/global` grants every sandbox read-only, and writes the `~/.config/gtk-4.0/gtk.css` with the palette layer (see Colours in applications)
-9. `12-login-screen.sh` - Patches the login screen background into GNOME Shell's own stylesheet. GNOME reads it from the `#lockDialogGroup` rule inside `gnome-shell-theme.gresource` and from nowhere else, so the bundle is unpacked, the rule appended and the bundle rebuilt. The picture is the default dark theme's wallpaper (Facets), drawn smaller by `branding/generate.mjs`. The boot splash before it is the mark alone on plain black: a picture over the whole screen made every frame of it slow
-10. `12-tour.sh` - Swaps the picture on GNOME Tour's first page, which Fedora builds with Fedora's logo on it, for Amethystora's, in the resource bundle the Tour reads its pictures from (`/usr/share/gnome-tour/resources.gresource`), unpacked and rebuilt as `12-login-screen.sh` does. The picture is the boot splash at the top of its glow, drawn by `branding/generate.mjs` into `/usr/share/amethystora/tour/welcome.svg`
-11. `13-apps.sh` - Installs the Amethystora apps (the Manual, `Super+F1`; Security; Updates; Notes; Logs; Backups; Control; Help): the one program the Containerfile's `apps` stage built from `apps/` (`build_files/shared/build-apps.sh`, see The Amethystora apps), hard-linked to each app's own path in `/usr/lib/amethystora-<app>`, Quicksand for the wordmark from `branding/fonts`, which the `ctx` stage copies in, and the licences of the crates built into it. It also writes the apps' launchers in the languages the apps are translated into (`translate-desktop.py`). Each app's translations stay in `system_files/shared/usr/lib/amethystora-<app>/resources/app/locale`
-12. `14-security.sh` - What Amethystora Security reports on, beside its window: derives network protection's Suricata configuration (`/usr/share/amethystora/ips/suricata.yaml`) from the one the suricata package ships, with `build_files/shared/ips-config.py`, so that it fits Suricata 7 and 8 alike, and compiles `po/*.po`, the report's and the app permissions' translations, into `/usr/share/locale/<language>/LC_MESSAGES/amethystora.mo` with `msgfmt --check`
-13. `07-debrand.sh` - Renames every remaining Universal Blue file, command, service and reference to Amethystora (logic in `build_files/shared/debrand.py`; `20-tests.sh` fails the build if any is left). Licence files, copyright lines and the comments that credit an author keep upstream's names
-14. `08-hardening.sh` - Signature-verified updates, firewall default zone, account lockout, Parental Controls' allowed hours at the text consoles and over SSH (see Logins), kernel lockdown, and the sudo PATH that `ublue-os/main` leaves open. The polkit and udev fixes are made in the files themselves (`org.amethystora.privileged.user.setup.policy`; `50-zsa.rules`, `60-arduino-mbed.rules`, `88-neutron_hifi_dac.rules` and `92-viia.rules`, which give their devices to the user at the seat with `uaccess` instead of to every account: a keyboard's hidraw device carries every key typed on it, and `20-tests.sh` fails on a rule the image adds that gives a hidraw device or a vendor's devices to everyone). Lockdown is skipped on the NVIDIA images, whose driver is an akmods build signed with the machine owner key: forcing lockdown on a machine with Secure Boot off would leave it without a graphics driver. With Secure Boot on, Fedora's kernel locks itself down whatever the arguments say (`20-tests.sh` checks its config), so the argument only matters without; `ame security lockdown` adds or takes it off per machine. It takes setuid root off what a desktop never runs (`chfn`, `chage`, `gpasswd`, `newgrp`, `ksu`, `mount.davfs`), masks systemd's SSH-over-vsock generator in `/etc` (`ame security ssh-settings off` unmasks it) and sets BlueZ's privacy and 30-second visibility in its own `main.conf`, which reads no drop-ins (`ame security bluetooth-privacy`). The settings that are plain files live in `system_files/shared` (`usr/lib/sysctl.d`, `usr/lib/modprobe.d`, `usr/lib/bootc/kargs.d`, `etc/ssh/sshd_config.d`, `etc/security/faillock.conf`, `etc/flatpak/overrides/global`, `etc/audit/rules.d`)
-15. `17-cleanup.sh` - Cleanup operations, and the systemd units the image enables, the per-user ones with `systemctl --global` (`amethystora-pkg-upgrade.timer`, `amethystora-update-alert.service`, `amethystora-dns-portal.service`). It also makes the `amepkg` link, since the build's rsync skips links in `system_files`. Two things here are deliberately *disabled*: `input-remapper.service`, which runs as root and reads every input device, and `usbguard.service`, which would block the keyboard on a machine where nobody had allowed it yet. Both are turned on per machine by an `ame security` command (`usb`, `input-remapper`). So are `waydroid-container.service` and `scx_loader.service` (`ame apps android`, `ame system scheduler`). `usbguard-dbus.service` is *masked*, not disabled, since D-Bus activation would start it and GNOME's USB protection plugin would then allow every new device while the screen is unlocked: only `ame security usb locked` unmasks it. It enables `fwupd-refresh.timer`, which Fedora leaves to GNOME Software, the pools of disks' `amethystora-raid-check.timer`, `amethystora-raid-scrub.timer`, `amethystora-raid-boot.service` and `amethystora-raid-mirror.service`, and `clamd@scan.socket` with `amethystora-clamd-idle.timer` in place of clamd itself
-16. `18-workarounds.sh` - Temporary fixes/workarounds
-17. `19-initramfs.sh` - Regenerates initramfs, adding dracut's `tpm2-tss` module where dracut has it so that `ame security disk-unlock` can hand the disk key to the TPM, and without what changes with every build, so that two builds of the same packages make the same initramfs and an update between them can finish with a soft reboot (see The Updates app)
-18. `build_files/shared/build-dx.sh` - dx only: copies `system_files/dx`, runs `build_files/dx/00-dx.sh` and then `01-tests-dx.sh`
-18a. `build_files/shared/open-anything-types.py` - Run by `build.sh` after dx, once every package and launcher is in place: writes the kinds of file nothing in the image opens into `zz-amethystora-open-anything.desktop` and has the launchers' index made again (see Round 7's other groups)
-18b. `build_files/shared/build-agent-index.sh` - The AI agent's index (`amethystora-agent-tools index --write`), once every name is final and every unit enabled or not, of the image as it then is, dx's files included (see Agentic features)
-19. `build_files/shared/source-manifest.sh` - Writes `/usr/share/licenses/amethystora/SOURCES`: every package with its licence, source package and where that source is, which the GPL asks for and the written offer in `NOTICE` points to. Fedora keeps its own in Koji. RPM Fusion, negativo17 and Copr publish only their current builds, so the script fetches the source packages of theirs that are under a licence asking for the source into `/usr/src/amethystora`, and the build fails when one cannot be fetched; a Copr project the image starts installing from goes in its `COPR_PROJECTS`. NVIDIA's own repository, which the NVIDIA images take the container toolkit from, publishes no source packages at all, so its packages are listed with the address of their source instead (`NO_SOURCE_PACKAGES`); a GPL package from any other maker the script does not know still fails the build. `20-tests.sh` fails if a package is missing from the list or a source package from the image
-20. `20-tests.sh` - Runs last, after the repositories are validated and the build cleaned up; fails the build on anything missing or left behind, including a GNOME Shell extension shipped without its licence
+7. `09-fonts.sh` - The themes' interface fonts Fedora does not package, from Google Fonts' repository at one pinned commit, each file checked by SHA-256, into `/usr/share/fonts/amethystora` with their OFL texts in `/usr/share/licenses/google-fonts`, and Quicksand from `branding/fonts`; it fails when a theme's `font.theme` names a family that is not installed. The packaged ones are in `04-packages.sh`
+8. `10-icons.sh` - Builds the icon caches of the Amethystora icon packs, which come with `system_files` (see The icon packs); nothing is downloaded. candy-icons, the pack the desktop shipped with until 2026-10-23, is gone, with its keep list, its aliases and the Security shield and Notes icon drawn from it (the Glass pack draws those two now, into `hicolor`). Nobody else's logo is drawn: an app of another maker keeps the icon it ships. `user-setup.hooks.d/16-retire-jetbrains-icons.sh` takes back the links an earlier image made to the IDE drawings
+9. `11-gtk-theme.sh` - Installs the Amethystora GTK theme: EliverLara's Sweet, with every cool colour in it rotated onto the amethyst palette by `build_files/shared/recolor.py` (its stylesheets and drawings) and ImageMagick (the bitmaps named in the script, where the build fails on any still drawn in a cool colour: `recolor.py --check-bitmaps`). It ships under Amethystora's own name because the palette is no longer Sweet's. Only the `amethystora` and `amethystora-light` themes name it in their `gtk.theme`, for GTK 3; the rest stay on adw-gtk3. libadwaita ignores `gtk-theme` and a Flatpak cannot see `/usr/share/themes` at all, so the theme reaches them through `theme-set.hooks.d/20-gtk-apps.sh`: it mirrors the active theme into `~/.themes`, which `/etc/flatpak/overrides/global` grants every sandbox read-only, and writes the `~/.config/gtk-4.0/gtk.css` with the palette layer (see Colours in applications)
+10. `12-login-screen.sh` - Patches the login screen background into GNOME Shell's own stylesheet. GNOME reads it from the `#lockDialogGroup` rule inside `gnome-shell-theme.gresource` and from nowhere else, so the bundle is unpacked, the rule appended and the bundle rebuilt. The picture is the default dark theme's wallpaper (Facets), drawn smaller by `branding/generate.mjs`. The boot splash before it is the mark alone on plain black: a picture over the whole screen made every frame of it slow
+11. `12-tour.sh` - Swaps the picture on GNOME Tour's first page, which Fedora builds with Fedora's logo on it, for Amethystora's, in the resource bundle the Tour reads its pictures from (`/usr/share/gnome-tour/resources.gresource`), unpacked and rebuilt as `12-login-screen.sh` does. The picture is the boot splash at the top of its glow, drawn by `branding/generate.mjs` into `/usr/share/amethystora/tour/welcome.svg`
+12. `13-apps.sh` - Installs the Amethystora apps (the Manual, `Super+F1`; Security; Updates; Notes; Logs; Backups; Control; Help): the one program the Containerfile's `apps` stage built from `apps/` (`build_files/shared/build-apps.sh`, see The Amethystora apps), hard-linked to each app's own path in `/usr/lib/amethystora-<app>`, Quicksand for the wordmark from `branding/fonts`, which the `ctx` stage copies in, and the licences of the crates built into it. It also writes the apps' launchers in the languages the apps are translated into (`translate-desktop.py`). Each app's translations stay in `system_files/shared/usr/lib/amethystora-<app>/resources/app/locale`
+13. `14-security.sh` - What Amethystora Security reports on, beside its window: derives network protection's Suricata configuration (`/usr/share/amethystora/ips/suricata.yaml`) from the one the suricata package ships, with `build_files/shared/ips-config.py`, so that it fits Suricata 7 and 8 alike, and compiles `po/*.po`, the report's and the app permissions' translations, into `/usr/share/locale/<language>/LC_MESSAGES/amethystora.mo` with `msgfmt --check`
+14. `07-debrand.sh` - Renames every remaining Universal Blue file, command, service and reference to Amethystora (logic in `build_files/shared/debrand.py`; `20-tests.sh` fails the build if any is left). Licence files, copyright lines and the comments that credit an author keep upstream's names
+15. `08-hardening.sh` - Signature-verified updates, firewall default zone, account lockout, Parental Controls' allowed hours at the text consoles and over SSH (see Logins), kernel lockdown, and the sudo PATH that `ublue-os/main` leaves open. The polkit and udev fixes are made in the files themselves (`org.amethystora.privileged.user.setup.policy`; `50-zsa.rules`, `60-arduino-mbed.rules`, `88-neutron_hifi_dac.rules` and `92-viia.rules`, which give their devices to the user at the seat with `uaccess` instead of to every account: a keyboard's hidraw device carries every key typed on it, and `20-tests.sh` fails on a rule the image adds that gives a hidraw device or a vendor's devices to everyone). Lockdown is skipped on the NVIDIA images, whose driver is an akmods build signed with the machine owner key: forcing lockdown on a machine with Secure Boot off would leave it without a graphics driver. With Secure Boot on, Fedora's kernel locks itself down whatever the arguments say (`20-tests.sh` checks its config), so the argument only matters without; `ame security lockdown` adds or takes it off per machine. It takes setuid root off what a desktop never runs (`chfn`, `chage`, `gpasswd`, `newgrp`, `ksu`, `mount.davfs`), masks systemd's SSH-over-vsock generator in `/etc` (`ame security ssh-settings off` unmasks it) and sets BlueZ's privacy and 30-second visibility in its own `main.conf`, which reads no drop-ins (`ame security bluetooth-privacy`). The settings that are plain files live in `system_files/shared` (`usr/lib/sysctl.d`, `usr/lib/modprobe.d`, `usr/lib/bootc/kargs.d`, `etc/ssh/sshd_config.d`, `etc/security/faillock.conf`, `etc/flatpak/overrides/global`, `etc/audit/rules.d`)
+16. `17-cleanup.sh` - Cleanup operations, and the systemd units the image enables, the per-user ones with `systemctl --global` (`amethystora-pkg-upgrade.timer`, `amethystora-update-alert.service`, `amethystora-dns-portal.service`). It also makes the `amepkg` link, since the build's rsync skips links in `system_files`. Two things here are deliberately *disabled*: `input-remapper.service`, which runs as root and reads every input device, and `usbguard.service`, which would block the keyboard on a machine where nobody had allowed it yet. Both are turned on per machine by an `ame security` command (`usb`, `input-remapper`). So are `waydroid-container.service` and `scx_loader.service` (`ame apps android`, `ame system scheduler`). `usbguard-dbus.service` is *masked*, not disabled, since D-Bus activation would start it and GNOME's USB protection plugin would then allow every new device while the screen is unlocked: only `ame security usb locked` unmasks it. It enables `fwupd-refresh.timer`, which Fedora leaves to GNOME Software, the pools of disks' `amethystora-raid-check.timer`, `amethystora-raid-scrub.timer`, `amethystora-raid-boot.service` and `amethystora-raid-mirror.service`, and `clamd@scan.socket` with `amethystora-clamd-idle.timer` in place of clamd itself
+17. `18-workarounds.sh` - Temporary fixes/workarounds
+18. `19-initramfs.sh` - Regenerates initramfs, adding dracut's `tpm2-tss` module where dracut has it so that `ame security disk-unlock` can hand the disk key to the TPM, and without what changes with every build, so that two builds of the same packages make the same initramfs and an update between them can finish with a soft reboot (see The Updates app)
+19. `build_files/shared/build-dx.sh` - dx only: copies `system_files/dx`, enables the units dx's packages (the packages-dx layer, `00-dx.sh`) need from it, and runs `01-tests-dx.sh`. Before it, `build.sh` takes the build tools out (`tools.list`)
+20. `build_files/shared/open-anything-types.py` - Run by `build.sh` after dx, once every package and launcher is in place: writes the kinds of file nothing in the image opens into `zz-amethystora-open-anything.desktop` and has the launchers' index made again (see Round 7's other groups)
+21. `build_files/shared/build-agent-index.sh` - The AI agent's index (`amethystora-agent-tools index --write`), once every name is final and every unit enabled or not, of the image as it then is, dx's files included (see Agentic features)
+22. `build_files/shared/source-manifest.sh` - Writes `/usr/share/licenses/amethystora/SOURCES`: every package with its licence, source package and where that source is, which the GPL asks for and the written offer in `NOTICE` points to. Fedora keeps its own in Koji. RPM Fusion, negativo17 and Copr publish only their current builds, so the script fetches the source packages of theirs that are under a licence asking for the source into `/usr/src/amethystora`, and the build fails when one cannot be fetched; a Copr project the image starts installing from goes in its `COPR_PROJECTS`. NVIDIA's own repository, which the NVIDIA images take the container toolkit from, publishes no source packages at all, so its packages are listed with the address of their source instead (`NO_SOURCE_PACKAGES`); a GPL package from any other maker the script does not know still fails the build. `20-tests.sh` fails if a package is missing from the list or a source package from the image
+23. `20-tests.sh` - Runs last, after the repositories are validated and the build cleaned up; fails the build on anything missing or left behind, including a GNOME Shell extension shipped without its licence
 
 The sealed images then run `build_files/sealed/` from `Containerfile.sealed`, on the finished image (see Sealed images).
 

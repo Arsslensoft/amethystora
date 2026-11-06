@@ -67,17 +67,18 @@ jobs:
               awk '$1 ~ /^[-dlcbps][-rwxsStT]{9}/ { print $1, $5, $NF }' | LC_ALL=C sort -k3 >"${to}.initrd"
             sudo podman run --rm "${image}" sh -c 'systemctl list-unit-files --no-legend --no-pager' | LC_ALL=C sort >"${to}.units"
           }
+          # The new layout first, so that a failure in it shows at once
+          start="${SECONDS}"
+          sudo "$(command -v just)" build "${IMAGE}" latest "${FLAVOR}"
+          echo "::notice::the new layout built in $(((SECONDS - start) / 60)) min"
+          dump "localhost/${name}:latest" "${out}/new"
+          sudo podman rmi -a -f >/dev/null
+          sudo podman system prune -a -f >/dev/null
           start="${SECONDS}"
           git worktree add -q "${RUNNER_TEMP}/old" origin/main
           (cd "${RUNNER_TEMP}/old" && sudo "$(command -v just)" build "${IMAGE}" latest "${FLAVOR}")
           echo "::notice::the old layout built in $(((SECONDS - start) / 60)) min"
           dump "localhost/${name}:latest" "${out}/old"
-          sudo podman rmi -a -f >/dev/null
-          sudo podman system prune -a -f >/dev/null
-          start="${SECONDS}"
-          sudo "$(command -v just)" build "${IMAGE}" latest "${FLAVOR}"
-          echo "::notice::the new layout built in $(((SECONDS - start) / 60)) min"
-          dump "localhost/${name}:latest" "${out}/new"
           for kind in list sha rpms initrd units; do
             diff "${out}/old.${kind}" "${out}/new.${kind}" >"${out}/diff.${kind}" || true
             echo "${kind}: $(grep -c '^[<>]' "${out}/diff.${kind}" || true) lines differ"
