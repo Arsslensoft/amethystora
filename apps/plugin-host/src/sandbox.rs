@@ -107,13 +107,15 @@ pub fn bwrap_args(spec: &Spec) -> Vec<String> {
 
 /// The budgets of the transient scope the sandbox runs in (the user's manager enforces them). MemoryMax counts no swap, and
 /// with zram a plugin held to 256 MB of memory filled a gigabyte: MemorySwapMax=0 is what makes the limit one. The slice of
-/// their own is where the user manager reports a plugin's OOM kill, which under app.slice read as the session running out
+/// their own is where the user manager reports a plugin's OOM kill, which under app.slice read as the session running out.
+/// OOMPolicy=continue: the kernel still kills what went over, but the scope does not fail with "oom-kill", which GNOME's
+/// housekeeping reports as "Application Stopped: Device memory is nearly full" for any unit; the host says whose limit it was
 pub const SLICE: &str = "amethystora-plugins.slice";
 /// Its cgroup under the user manager's: a dash in a slice's name is a level, so it is inside amethystora.slice
 pub const SLICE_CGROUP: &str = "amethystora.slice/amethystora-plugins.slice";
 pub const SCOPE_ARGS: &[&str] = &[
     "--user", "--scope", "--quiet", "--collect", "--slice=amethystora-plugins.slice", "-p", "MemoryMax=256M", "-p", "MemorySwapMax=0", "-p",
-    "CPUQuota=25%", "-p", "TasksMax=64",
+    "OOMPolicy=continue", "-p", "CPUQuota=25%", "-p", "TasksMax=64",
 ];
 
 /// The whole command line: the scope, then bubblewrap
@@ -186,7 +188,7 @@ mod tests {
         let line = command_line(&spec(&command, &[], None, &[], None));
         assert_eq!(&line[..3], ["systemd-run", "--user", "--scope"]);
         assert!(line.iter().any(|x| *x == format!("--slice={SLICE}")));
-        assert!(has(&line, &["-p", "MemoryMax=256M", "-p", "MemorySwapMax=0", "-p", "CPUQuota=25%", "-p", "TasksMax=64"]) && has(&line, &["bwrap", "--unshare-all"]));
+        assert!(has(&line, &["-p", "MemoryMax=256M", "-p", "MemorySwapMax=0", "-p", "OOMPolicy=continue", "-p", "CPUQuota=25%", "-p", "TasksMax=64"]) && has(&line, &["bwrap", "--unshare-all"]));
     }
 
     #[test]

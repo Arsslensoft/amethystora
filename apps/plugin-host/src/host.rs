@@ -342,7 +342,7 @@ impl Runner {
         }
         let text = String::from_utf8_lossy(&text).into_owned();
         match status {
-            // The kernel kills one process, and the user manager stops the rest of the scope (SIGTERM to bubblewrap)
+            // The kernel killed what went over (OOMPolicy=continue leaves the rest to end by itself) and the run failed with it
             Some(s) if !s.success() && oom_kills() > ooms => {
                 // The user manager says only "the OOM killer killed some processes" of the slice: this says whose, and that it was
                 // the plugin's own limit
