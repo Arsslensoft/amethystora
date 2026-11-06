@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 #
 # Files' scripts menu: Folder colour (the six colours and No colour), Back in time, Earlier versions, Copy without hidden
-# data and What is using this?, in the account's language, as tiny scripts in ~/.local/share/nautilus/scripts that hand Files' arguments to
+# data, What is using this? and Send to nearby, in the account's language, as tiny scripts in ~/.local/share/nautilus/scripts that hand Files' arguments to
 # /usr/libexec/amethystora-folder-colour, /usr/libexec/amethystora-back-in-time, /usr/libexec/amethystora-clean-copy and
 # /usr/libexec/amethystora-what-uses show. Files shows them under Scripts in the menu of a selection. Convert, which is
 # offered and off, is written by /usr/libexec/amethystora-convert menu instead (ame desktop files-convert).
@@ -15,7 +15,7 @@ source /usr/lib/amethystora/setup-services/libsetup.sh
 
 command -v jq >/dev/null || exit 0
 
-version-script files-menu user 4 || exit 0
+version-script files-menu user 5 || exit 0
 
 set -uo pipefail
 
@@ -133,6 +133,9 @@ entry "${SCRIPTS}/$(entry_name "$(gettext "Copy without hidden data")" "Copy wit
 # Translators: an entry of Files' Scripts menu, which lists the programs of the person's own that hold the file, folder
 # or drive picked (one that will not eject), each with Quit
 entry "${SCRIPTS}/$(entry_name "$(gettext "What is using this?")" "What is using this?")" /usr/libexec/amethystora-what-uses show
+# Translators: an entry of Files' Scripts menu, which opens the phone link's send window on the files picked, with the paired phones
+# and computers that can take them shown as round avatars
+entry "${SCRIPTS}/$(entry_name "$(gettext "Send to nearby")" "Send to nearby")" amethystora-phone send
 
 # The list, written whole beside a copy, so that a file cut short never loses it
 mkdir -p -- "${STATE%/*}"

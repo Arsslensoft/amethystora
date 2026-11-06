@@ -475,6 +475,7 @@ gsettings_read clipboard-send org.amethystora.Connect clipboard-send
 gsettings_read clipboard-receive org.amethystora.Connect clipboard-receive
 gsettings_read phone-photos org.amethystora.Connect photo-folder
 gsettings_read phone-computers org.amethystora.Connect computers
+gsettings_read phone-ask-first org.amethystora.Connect ask-first
 gsettings_read phone-music org.amethystora.Connect music
 gsettings_read phone-clicker org.amethystora.Connect clicker
 gsettings_read phone-codes org.amethystora.Connect codes
@@ -2763,6 +2764,19 @@ choice downloads "${ gettext "Downloads"; }" "" false ame desktop phone photos d
 USAGE="ame desktop phone photos pictures|downloads"
 item desktop phone-photos choice "${ gettext "Photos from the phone go to"; }" \
     "${ gettext "Pictures a paired phone sends."; }" "${PHOTOS}" phone#photos
+
+# Send to nearby (R7-27): whose files wait for a card with Accept before they arrive
+case "${ said phone-ask-first; }" in
+    "'all'") ASKING=all ;;
+    "'never'") ASKING=never ;;
+    *) ASKING=computers ;;
+esac
+choice computers "${ gettext "Other computers"; }" "" false ame desktop phone ask-first computers
+choice all "${ gettext "Phones and computers"; }" "" false ame desktop phone ask-first all
+choice never "${ gettext "Nobody"; }" "" false ame desktop phone ask-first never
+USAGE="ame desktop phone ask-first computers|all|never"
+item desktop phone-ask-first choice "${ gettext "Files wait for Accept from"; }" \
+    "${ gettext "A file another computer sends shows a card with Accept, and nothing arrives by itself. Choose Phones and computers to be asked for your phones too, or Nobody for files to arrive at once."; }" "${ASKING}" phone#send-to-nearby
 GROUP=""
 
 # --- Apps ------------------------------------------------------------------------------------------

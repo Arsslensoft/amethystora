@@ -11,6 +11,9 @@ export GSETTINGS_SCHEMA_DIR=/tmp/schemas GSETTINGS_BACKEND=keyfile
 # Fedora's KDE Connect in the other container is a desktop: another computer, which the program talks to only while
 # the switch `computers` is on (plans/beyond/spec-r4-later.md, part A); run.sh turns it off and on again once
 gsettings set org.amethystora.Connect computers true
+# The checks send files from that computer and look at them landing: Send to nearby's card (R7-27) has a run of its own in
+# tests/computers.rs
+gsettings set org.amethystora.Connect ask-first never
 ADDRESS=$(dbus-daemon --session --fork --print-address)
 echo "$ADDRESS" > /tmp/bus-address
 export DBUS_SESSION_BUS_ADDRESS="$ADDRESS"

@@ -23,6 +23,7 @@ use std::rc::Rc;
 
 use amethystora_connect::dbus::{self, BUS_NAME};
 use amethystora_connect::notify::Desktop;
+use amethystora_connect::ask::AskFirst;
 use amethystora_connect::service::{Config, PhotoFolder, Service, Settings};
 use gio::prelude::*;
 
@@ -111,6 +112,7 @@ fn main() -> ExitCode {
             music: s.boolean("music"),
             clicker: s.boolean("clicker"),
             codes: s.boolean("codes"),
+            ask_first: AskFirst::from_key(&s.string("ask-first")),
         },
         None => Settings::default(),
     };
@@ -140,6 +142,7 @@ fn main() -> ExitCode {
                 service.set_computers(s.boolean("computers"));
                 service.set_media_switches(s.boolean("music"), s.boolean("clicker"));
                 service.codes.set(s.boolean("codes"));
+                service.ask_first.set(AskFirst::from_key(&s.string("ask-first")));
                 service.set_name(&s.string("device-name"), pretty_host().as_deref());
             }
         };

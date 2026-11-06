@@ -65,8 +65,32 @@ async fn scenario(root: &Path) {
     std::fs::write(source.join("report.pdf"), &data).unwrap();
     let ids = laptop.service.send_files(&did, &[file_uri(&source.join("report.pdf"))]).unwrap();
     let landed = desk.downloads().join("Phone/Studio laptop/report.pdf");
+    // Send to nearby (R7-27): another computer's file waits for Accept, and nothing arrives by itself
+    until("the desk's card", || !desk.notices.raised_with_prefix(&format!("ask:{lid}:")).is_empty()).await;
+    pause(300).await;
+    assert!(!landed.exists(), "nothing arrived before Accept");
+    let card = desk.notices.raised_with_prefix(&format!("ask:{lid}:")).pop().unwrap();
+    assert!(card.body.contains("report.pdf"), "the card says what: {}", card.body);
+    desk.notices.press(&card.key, "accept");
     until("the file on the desk", || state_of(&laptop, "finished", &ids[0]) && landed.exists()).await;
     assert_eq!(std::fs::read(&landed).unwrap(), data);
+
+    // A second file, declined: the laptop is sent away, and nothing lands
+    std::fs::write(source.join("declined.txt"), b"no").unwrap();
+    laptop.service.send_files(&did, &[file_uri(&source.join("declined.txt"))]).unwrap();
+    until("the second card", || desk.notices.raised_with_prefix(&format!("ask:{lid}:")).len() > 1).await;
+    let card = desk.notices.raised_with_prefix(&format!("ask:{lid}:")).pop().unwrap();
+    desk.notices.press(&card.key, "decline");
+    pause(500).await;
+    assert!(!desk.downloads().join("Phone/Studio laptop/declined.txt").exists(), "a declined file never lands");
+
+    // With the key `never` the file arrives as it did before
+    desk.service.ask_first.set(amethystora_connect::ask::AskFirst::Never);
+    std::fs::write(source.join("straight.txt"), b"yes").unwrap();
+    let ids = laptop.service.send_files(&did, &[file_uri(&source.join("straight.txt"))]).unwrap();
+    let straight = desk.downloads().join("Phone/Studio laptop/straight.txt");
+    until("the file with no card", || state_of(&laptop, "finished", &ids[0]) && straight.exists()).await;
+    desk.service.ask_first.set(amethystora_connect::ask::AskFirst::Computers);
 
     // --- The clipboard, only while the switches say so --------------------------------------------------------
     laptop.service.push_clipboard("not sent: the switch is off");

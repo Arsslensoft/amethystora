@@ -1774,6 +1774,7 @@ missing-command ACTION="":
 # service is enabled. `phone clipboard send|receive [on|off]` shares the clipboard one way or the other, both off;
 # `phone photos [pictures|downloads]` says where pictures a phone sends go, Pictures/Phone as the image ships;
 # `phone computers [on|off]` lets other computers with the phone link pair too, for files and the clipboard, off;
+# `phone ask-first [computers|all|never]` says whose files wait for a card with Accept (computers, as the image ships);
 # `phone ring` rings the paired phones, even on silent; `phone music [on|off]` shows the music of either side on the
 # other, and `phone clicker [on|off]` lets a phone go to the next or previous slide while Present mode presents, both off;
 # `phone codes [on|off]` shows a one-time code from a text in the pill for a minute, off, and it says first that it reads texts
@@ -1901,6 +1902,27 @@ phone *ARGS:
                 ;;
             *)
                 echo "usage: ame desktop phone computers [on|off]"
+                exit 64
+                ;;
+        esac
+        exit 0
+    fi
+    if [[ "${1:-}" == ask-first ]]; then
+        case "${2:-}" in
+            computers)
+                gsettings set org.amethystora.Connect ask-first computers
+                echo "$(gettext "A file another computer sends waits for a card with Accept. Phones you paired send as before.")"
+                ;;
+            all)
+                gsettings set org.amethystora.Connect ask-first all
+                echo "$(gettext "A file from any paired phone or computer waits for a card with Accept.")"
+                ;;
+            never)
+                gsettings set org.amethystora.Connect ask-first never
+                echo "$(gettext "Files from paired phones and computers arrive at once, as before.")"
+                ;;
+            *)
+                echo "usage: ame desktop phone ask-first computers|all|never"
                 exit 64
                 ;;
         esac

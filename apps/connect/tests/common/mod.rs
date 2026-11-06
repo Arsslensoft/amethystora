@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::time::Duration;
 
+use amethystora_connect::ask::AskFirst;
 use amethystora_connect::device::Device;
 use amethystora_connect::notify::{Notice, Recorder};
 use amethystora_connect::packet::Packet;
@@ -90,9 +91,9 @@ pub fn make(root: &Path, name: &str, kind: &str, phone: bool, udp: bool) -> Peer
 pub fn make_with(root: &Path, name: &str, kind: &str, phone: bool, udp: bool, tweak: impl FnOnce(&mut Config)) -> Peer {
     let (cfg, dir) = config_for(root, name, kind, phone, udp, tweak);
     let notices = Rc::new(Recorder::default());
-    // A copy playing a phone talks to computers, as a phone's app does; a computer talks to computers only while
+    // A copy playing a phone talks to computers, as a phone's app does, and takes a file at once (R7-27's card is this computer's); a computer talks to computers only while
     // its switch is on, off here as the image ships
-    let service = Service::new(cfg, Box::new(notices.clone()), Settings { name: name.into(), computers: phone, ..Settings::default() }, None).unwrap();
+    let service = Service::new(cfg, Box::new(notices.clone()), Settings { name: name.into(), computers: phone, ask_first: if phone { AskFirst::Never } else { AskFirst::default() }, ..Settings::default() }, None).unwrap();
     started(service, notices, dir)
 }
 

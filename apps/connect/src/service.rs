@@ -114,6 +114,8 @@ pub struct Settings {
     pub clicker: bool,
     /// A code from your phone (the key codes): each new text is looked at for one, off as the image ships
     pub codes: bool,
+    /// Whose files wait for Accept (the key ask-first)
+    pub ask_first: crate::ask::AskFirst,
 }
 
 /// Where pictures from a phone go (the GSettings key photo-folder)
@@ -183,6 +185,8 @@ pub struct Service {
     pub clicker: Cell<bool>,
     /// Whether a new text is looked at for a one-time code (R7-23); only its digits are ever sent to the module
     pub codes: Cell<bool>,
+    /// Whose files wait for the person's Accept (ask.rs)
+    pub ask_first: Cell<crate::ask::AskFirst>,
     /// This computer's players while a phone is shown them (players.rs)
     pub players: RefCell<Option<crate::players::Watcher>>,
     /// The module's connections that said they are presenting (Presenting): the clicker's keys reach the module only
@@ -270,6 +274,7 @@ impl Service {
             music: Cell::new(settings.music),
             clicker: Cell::new(settings.clicker),
             codes: Cell::new(settings.codes),
+            ask_first: Cell::new(settings.ask_first),
             players: RefCell::default(),
             presenters: RefCell::default(),
             home,
@@ -1544,6 +1549,8 @@ impl Service {
                 let _ = self.mute_ringer(id);
             }
             ("got", Some(what)) | ("batch", Some(what)) => self.on_received_event(rest, what),
+            // Dismissing the card is a no, as Decline is
+            ("ask", what) => self.on_ask_event(&dev, rest, what.unwrap_or("decline")),
             ("text", Some(what)) => self.on_text_event(&dev, rest, what),
             ("xfer", Some("cancel")) => self.cancel_transfer_by_id(rest),
             _ => {}

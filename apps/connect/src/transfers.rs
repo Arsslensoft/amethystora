@@ -114,6 +114,13 @@ impl Service {
     // --- From a phone ---------------------------------------------------------------------------------------
 
     pub fn receive_file(self: &Rc<Self>, dev: &Rc<Device>, link: &Rc<Link>, p: &Packet, name: String, modified: Option<i64>, batch: Option<Batch>) {
+        // Whose files wait for Accept (ask.rs): the others are fetched at once, as they always were
+        if !self.hold_for_accept(dev, link, p, &name, modified, batch) {
+            self.receive_file_now(dev, link, p, name, modified, batch);
+        }
+    }
+
+    pub(crate) fn receive_file_now(self: &Rc<Self>, dev: &Rc<Device>, link: &Rc<Link>, p: &Packet, name: String, modified: Option<i64>, batch: Option<Batch>) {
         let tid = format!("t{}", self.next_id());
         let shown = text::file_name(&name);
         let payload_ = match p.payload() {

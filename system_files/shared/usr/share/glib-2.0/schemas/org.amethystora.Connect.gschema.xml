@@ -33,6 +33,16 @@
       <summary>Pair with other computers</summary>
       <description>Other computers with the phone link on are listed, paired with the same key check and talked to, on the networks named home, for files and the clipboard. Off as the image ships: only phones and tablets are. A computer paired before is kept while it is off, and connects again once it is on.</description>
     </key>
+    <key name="ask-first" type="s">
+      <choices>
+        <choice value="computers"/>
+        <choice value="all"/>
+        <choice value="never"/>
+      </choices>
+      <default>'computers'</default>
+      <summary>Whose files wait for Accept</summary>
+      <description>computers: a file that another computer offers waits for a card with Accept, and nothing arrives by itself; a phone you paired sends as before. all: phones too. never: every file arrives at once, as it did before this existed.</description>
+    </key>
     <key name="music" type="b">
       <default>false</default>
       <summary>Music from either side</summary>

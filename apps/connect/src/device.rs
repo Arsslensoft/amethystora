@@ -127,6 +127,8 @@ pub struct State {
     pub players: media::Phone,
     /// When the phone last made a click of the clicker, which comes no faster than one in `limits::CLICK_SPACING`
     pub last_click: Option<Instant>,
+    /// Files offered and not yet accepted, and how many more the person's Accept covers (ask.rs)
+    pub asking: crate::ask::Asking,
 }
 
 pub struct Device {
@@ -175,6 +177,7 @@ impl Device {
                 offers: Offers::default(),
                 players: media::Phone::default(),
                 last_click: None,
+                asking: Default::default(),
             }),
         })
     }

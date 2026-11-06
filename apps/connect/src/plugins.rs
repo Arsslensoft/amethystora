@@ -193,7 +193,7 @@ impl Service {
 
     // --- Notifications -------------------------------------------------------------------------------------
 
-    fn refuse_payload(self: &Rc<Self>, link: &Rc<Link>, dev: &Rc<Device>, payload_: Option<packet::Payload>) {
+    pub(crate) fn refuse_payload(self: &Rc<Self>, link: &Rc<Link>, dev: &Rc<Device>, payload_: Option<packet::Payload>) {
         let (Some(pl), Some(pin)) = (payload_, self.pin_of(&dev.id)) else { return };
         let (ip, scope, cert) = (link.ip(), link.peer.2, self.me.tls.clone());
         self.spawn_task(async move { payload::refuse(ip, scope, pl.port, &cert, pin).await });

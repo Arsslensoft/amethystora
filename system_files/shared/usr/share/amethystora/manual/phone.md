@@ -83,6 +83,26 @@ whose **Show** opens a window with the words as text: select and copy them, and 
 in the browser. A web link the phone shares waits in the [live pill](desktop.md#the-live-pill) until you open or
 copy it; **Not now** leaves it in the notification list, with **Open** and **Copy**.
 
+## Send to nearby
+
+Select files in Files and choose **Scripts → Send to nearby**, or drop them on Phone in the dock: the send window shows the
+phones and computers that can take them now, paired and on a network you named home, as round avatars. Pick one and press
+**Send**. Nothing is sent to a device that is not paired, and nothing reaches one that is away.
+
+On the other side, a file from **another computer** waits: a card says who sends what, with **Accept** and **Decline**, and
+nothing arrives by itself. Accept once for a folder's worth of files: it covers the rest of what the sender announced, for ten
+minutes. Declining, closing the card or leaving it a minute tells the sender to stand down. A phone you paired sends as before,
+because it is the one in your hand. To change whose files wait:
+
+```bash
+ame desktop phone ask-first computers   # the default: another computer's files wait
+ame desktop phone ask-first all         # phones' too
+ame desktop phone ask-first never       # every file arrives at once
+```
+
+or **Files wait for Accept from** on [Control](control.md)'s **Desktop** page. A file never overwrites one that is there, and lands in
+`~/Downloads/Phone/`, as [above](#files-and-links).
+
 ## Photos
 
 A picture the phone shares with this computer, from its gallery or its camera, goes to `Phone` in your Pictures folder

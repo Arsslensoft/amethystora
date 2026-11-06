@@ -436,6 +436,34 @@ button.option {
     color: var(--fg);
 }
 
+/* Send to nearby: who can take the files, as round avatars; the one chosen is ringed */
+.nearby {
+    padding: 4px 0;
+}
+
+button.nearby-pick {
+    padding: 8px 10px;
+    border: 1px solid transparent;
+    border-radius: 14px;
+    background: transparent;
+    color: var(--fg);
+}
+
+button.nearby-pick:hover {
+    background: var(--tint);
+}
+
+button.nearby-pick.checked {
+    border-color: var(--accent);
+    background: var(--tint);
+}
+
+.nearby-disc {
+    min-width: 52px;
+    min-height: 52px;
+    border-radius: 26px;
+}
+
 button.option:hover {
     border-color: color-mix(in oklab, var(--accent) 45%, transparent);
 }

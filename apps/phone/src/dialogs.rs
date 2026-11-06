@@ -365,29 +365,27 @@ impl Phone {
             body.append(&Self::dialog_actions(vec![close.clone()]));
             return (body, Some(close.upcast()));
         }
-        // Which phone, when there is more than one
+        // Who is nearby, when there is more than one: round avatars, the one chosen ringed (R7-27)
         if sendable.len() > 1 {
-            let options = widgets::role_box(gtk::Orientation::Vertical, 8, &["options"], gtk::AccessibleRole::RadioGroup);
-            options.update_property(&[gtk::accessible::Property::Label(&t!("Phone"))]);
+            let options = widgets::role_box(gtk::Orientation::Horizontal, 10, &["nearby"], gtk::AccessibleRole::RadioGroup);
+            options.set_halign(gtk::Align::Center);
+            options.update_property(&[gtk::accessible::Property::Label(&t!("Send to"))]);
             for phone in &sendable {
                 let chosen = device.as_deref() == Some(phone.id.as_str());
-                let content = ui::hbox(10, &[]);
-                let dot = ui::hbox(0, &["dot"]);
-                dot.set_valign(gtk::Align::Center);
-                dot.set_hexpand(false);
-                if chosen {
-                    let fill = ui::hbox(0, &["dot-fill"]);
-                    fill.set_halign(gtk::Align::Center);
-                    fill.set_valign(gtk::Align::Center);
-                    fill.set_hexpand(true);
-                    dot.append(&fill);
-                }
-                content.append(&dot);
-                content.append(&crate::icons::device(&phone.kind, 18));
-                let name = ui::line(&phone.title(), &["strong"]);
-                name.set_hexpand(true);
+                let content = ui::vbox(6, &[]);
+                let disc = ui::hbox(0, &["avatar", "nearby-disc"]);
+                disc.set_halign(gtk::Align::Center);
+                disc.set_hexpand(false);
+                let mark = crate::icons::device(&phone.kind, 26);
+                mark.set_hexpand(true);
+                disc.append(&mark);
+                content.append(&disc);
+                let name = ui::line(&phone.title(), &["strong", "small"]);
+                name.set_ellipsize(gtk::pango::EllipsizeMode::End);
+                name.set_max_width_chars(14);
+                name.set_halign(gtk::Align::Center);
                 content.append(&name);
-                let option = gtk::Button::builder().accessible_role(gtk::AccessibleRole::Radio).child(&content).css_classes(["plain", "option"]).build();
+                let option = gtk::Button::builder().accessible_role(gtk::AccessibleRole::Radio).child(&content).css_classes(["plain", "nearby-pick"]).build();
                 if chosen {
                     option.add_css_class("checked");
                 }
