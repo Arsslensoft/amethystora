@@ -1689,6 +1689,12 @@ grep -A2 -x "\[org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/c
 # Theme switching: the CLI, its library, the templates every theme renders, and the themes themselves
 test -x /usr/bin/amethystora-theme
 test -x /usr/bin/amethystora-menu
+# gum 2's filter prints a preselected entry on Enter whatever was typed, which left the theme picker
+# (Super+Ctrl+Shift+Space) applying the current theme again: its choose() is gum filter, so no --selected
+if grep -n -- '| choose .*--selected\|gum filter.*--selected' /usr/bin/amethystora-menu; then
+    echo "amethystora-menu passes --selected to gum filter, which then ignores the choice" >&2
+    exit 1
+fi
 
 # Web apps: a launcher that reopens the site through amethystora-webapp, in Firefox by default, with
 # the window class GNOME needs to show it under its own name; anything but http(s) is refused. Firefox
