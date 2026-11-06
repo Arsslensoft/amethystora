@@ -47,7 +47,12 @@ impl Env {
         // SAFETY: getuid has no arguments and cannot fail
         let uid = unsafe { libc::getuid() };
         let home = PathBuf::from(std::env::var_os("HOME").ok_or("HOME is not set")?);
-        let runtime = std::env::var_os("XDG_RUNTIME_DIR").map(PathBuf::from).unwrap_or_else(|| format!("/run/user/{uid}").into());
+        // The account's own runtime folder only: one inherited from another account (runuser from root keeps /run/user/0) is not
+        // where its proxies and passwd belong, and is not writable for it anyway
+        let runtime = std::env::var_os("XDG_RUNTIME_DIR")
+            .map(PathBuf::from)
+            .filter(|dir| std::fs::metadata(dir).is_ok_and(|m| std::os::unix::fs::MetadataExt::uid(&m) == uid))
+            .unwrap_or_else(|| format!("/run/user/{uid}").into());
         let state = std::env::var_os("XDG_STATE_HOME").map(PathBuf::from).unwrap_or_else(|| home.join(".local/state"));
         Ok(Env {
             store: Store::production(),
