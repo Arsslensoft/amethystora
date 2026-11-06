@@ -4,8 +4,8 @@ echo "::group:: ===$(basename "$0")==="
 
 set -eoux pipefail
 
-# The login screen's background: the crown the boot splash ends on, without the gem, so the handover from
-# Plymouth to GDM is one picture carried across. branding/generate.mjs draws it. GNOME reads it from inside
+# The login screen's background: the default dark theme's wallpaper (Facets), so that the desktop starts from
+# the picture the person logged in on. branding/generate.mjs draws it. GNOME reads it from inside
 # GNOME Shell's own theme bundle and nowhere else, which the helper rebuilds with it; an image of one's own
 # built on this one puts its picture there with the same helper (amethystora-brand). The helper also gives the lock
 # screen its look, which no extension reaches: the large clock and date in Quicksand, and its cards of glass. It checks
