@@ -93,6 +93,9 @@ pub fn bwrap_args(spec: &Spec) -> Vec<String> {
         }
         command.extend([s(HOST_EXE), s("shim"), format!("{PROXY_DIR}/proxy.sock"), s("--")]);
     }
+    // Every mount is in place: the root bubblewrap made, with the folders it made for them, is read-only from here, so that
+    // only /tmp, the state folder and a files=...:rw permission can be written
+    a.extend(["--remount-ro".into(), s("/")]);
     for (key, value) in &env {
         a.extend(["--setenv".into(), key.clone(), value.clone()]);
     }
@@ -148,6 +151,10 @@ mod tests {
         assert!(has(&a, &["--cap-drop", "ALL"]) && has(&a, &["--ro-bind", "/usr", "/usr"]) && has(&a, &["--tmpfs", "/tmp"]));
         assert!(has(&a, &["--ro-bind", "/var/lib/amethystora/plugins/store/abc", "/plugin"]));
         assert!(has(&a, &["--seccomp", "9", "--", "./run.sh"]));
+        // The root is read-only once the last mount is made
+        let remount = a.iter().position(|x| x == "--remount-ro").unwrap();
+        assert_eq!(a[remount + 1], "/");
+        assert!(!a[remount..].iter().any(|x| x.ends_with("bind") || x == "--tmpfs" || x == "--symlink"));
         // --clearenv comes before every --setenv, and what the plugin does not hold is nowhere in it
         let clear = a.iter().position(|x| x == "--clearenv").unwrap();
         assert!(a.iter().enumerate().filter(|(_, x)| *x == "--setenv").all(|(i, _)| i > clear));
