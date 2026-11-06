@@ -1,5 +1,5 @@
 name: Compare build layouts
-# Temporary, for plans/PLAN-build-layers.md's equivalence test: builds the same image the old way (origin/main) and
+# Temporary, for plans/PLAN-build-layers.md's equivalence test: builds the same image the old way (the commit the branch starts from) and
 # the new way (this branch) on one runner, the same hour, and lists every file, package and initramfs entry that
 # differs. Publishes nothing and holds no secret.
 on:
@@ -75,7 +75,8 @@ jobs:
           sudo podman rmi -a -f >/dev/null
           sudo podman system prune -a -f >/dev/null
           start="${SECONDS}"
-          git worktree add -q "${RUNNER_TEMP}/old" origin/main
+          # The commit this branch starts from, so that only the layout differs
+          git worktree add -q "${RUNNER_TEMP}/old" "$(git merge-base origin/main HEAD)"
           (cd "${RUNNER_TEMP}/old" && sudo "$(command -v just)" build "${IMAGE}" latest "${FLAVOR}")
           echo "::notice::the old layout built in $(((SECONDS - start) / 60)) min"
           dump "localhost/${name}:latest" "${out}/old"
