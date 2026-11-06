@@ -260,7 +260,7 @@ fn ame_refusal(args: &[String]) -> Option<String> {
             Some("installing a plugin and widening what it may do are the user's, with an administrator's approval".into())
         }
         // A draft is marked as the agent's by the command itself: choosing the mark (--by) would let it pass for the person's
-        ["plugin", "draft", rest @ ..] if rest.iter().any(|a| a == "--by") => Some("the agent's drafts carry the agent's own mark: it does not choose it".into()),
+        ["plugin", "draft", rest @ ..] if rest.iter().any(|a| *a == "--by") => Some("the agent's drafts carry the agent's own mark: it does not choose it".into()),
         // External screens' brightness gives the person at the machine the displays' i2c buses, which reach other chips
         // of the graphics card too: an access grant only the machine's owner makes (taking it back is fine)
         ["desktop", "phone", "codes"] | ["desktop", "phone", "codes", "on", ..] => {
