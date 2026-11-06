@@ -144,7 +144,8 @@ fn l9_secret_numbers_are_wiped_when_freed() {
     );
 
     let group = EcGroup::from_curve_name(Nid::X9_62_PRIME256V1).unwrap();
-    let ec = EcKey::generate(&group).unwrap();
+    // A scalar with a zero in front is a byte short (one in 256), too short for the pattern's middle: draw again
+    let ec = std::iter::repeat_with(|| EcKey::generate(&group).unwrap()).find(|ec| ec.private_key().num_bytes() == 32).unwrap();
     let scalar = ec.private_key().to_vec();
     let scalar_pattern = masked_limbs(&scalar, 16, 16);
     let mut context = openssl::bn::BigNumContext::new().unwrap();
