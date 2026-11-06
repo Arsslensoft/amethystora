@@ -49,8 +49,10 @@ done
 mv /usr/lib/sysctl.d/60-amethystora-hardening.conf "${HIDDEN}/"
 
 export DRACUT_NO_XATTR=1
+# Never multipath, which no image's initramfs had: dx's packages bring its tools (device-mapper-multipath), and they are
+# installed before this now (the packages-dx layer, plans/PLAN-build-layers.md), where they came after it before
 /usr/bin/dracut --no-hostonly --kver "$QUALIFIED_KERNEL" --reproducible -v \
-    --add "${DRACUT_MODULES[*]}" -f "/lib/modules/$QUALIFIED_KERNEL/initramfs.img"
+    --add "${DRACUT_MODULES[*]}" --omit multipath -f "/lib/modules/$QUALIFIED_KERNEL/initramfs.img"
 chmod 0600 "/lib/modules/$QUALIFIED_KERNEL/initramfs.img"
 
 mv -f "${HIDDEN}/os-release" /etc/os-release
