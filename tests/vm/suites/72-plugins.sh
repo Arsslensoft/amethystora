@@ -10,6 +10,8 @@
 #      or not a tar (refused by prepare); a file swapped in the folder after it was packed (the frozen copy is what counts);
 #      a commit whose digest is not the ticket's, with a space or a newline in an argument, or a permission the manifest does not
 #      name; the quarantine's quota; one changed byte in the store, as root, which stops the plugin.
+#   5. a batch of updates kept to what was given, commit-dev kept to one plugin, and the bus methods any program may call (Hand,
+#      Ask, Focused) refusing what is not theirs.
 #   2. The hostile plugin with no permission: the files, the buses, the network and the kernel (fixtures/hostile/plugin/run.sh), a
 #      fork bomb and a memory bomb.
 #   3. The same plugin granted a host that /etc/hosts points at 192.168.7.7: the proxy refuses it after resolving, a port other
@@ -202,6 +204,23 @@ jq -e '.findings | any(.id | startswith("plugin-grants-changed:"))' <<<"${audit}
     not_ok "the audit missed grants changed outside the helper" "${audit}"
 refused "the audit is root's" as_tester "${HOST}" audit --json
 cp -a "${WORK}/grants.json.kept" "${grants}"
+
+# --- 5. A batch of updates, and what any program of the account may ask the host ------------------------------------------------------
+# The batch keeps what was given (and puts the store's folder back) and refuses, whole, a version that asks for more
+out="$(as_tester "${HOST}" pack "${WORK}/plugin" | helper prepare)"
+if helper commit-updates "${ID}=$(field digest <<<"${out}")" >/dev/null 2>&1; then ok "an update in a batch keeps its grant"; else not_ok "a batch of one update was refused"; fi
+make_plugin "${WORK}/wider"
+jq '.needs.notify = {"why": "More"}' "${WORK}/wider/manifest.json" >"${WORK}/wider/m" && mv "${WORK}/wider/m" "${WORK}/wider/manifest.json"
+chmod 0644 "${WORK}/wider/manifest.json"
+out="$(as_tester "${HOST}" pack "${WORK}/wider" | helper prepare)"
+refused "a batch with an update that asks for more" helper commit-updates "${ID}=$(field digest <<<"${out}")"
+refused "commit-dev of more than one plugin" helper commit-dev "${ID}=$(field digest <<<"${out}")" "${ID}=$(field digest <<<"${out}")"
+grep -c auth_admin_keep /usr/share/polkit-1/actions/org.amethystora.plugins.policy | grep -qx 1 && ok "one kept approval, commit-dev's" ||
+    not_ok "the policy keeps more than commit-dev's approval"
+# Hand, Ask and Focused: a file only for a plugin that takes files, a tool only a plugin offers, and the app in front only from the shell
+refused "a file handed to a plugin that takes none" user_bus busctl --user call org.amethystora.Plugins /org/amethystora/Plugins org.amethystora.Plugins Hand ss "${ID}" /etc/hostname
+refused "a tool a plugin does not offer" user_bus busctl --user call org.amethystora.Plugins /org/amethystora/Plugins org.amethystora.Plugins Ask ss "${ID}" fs
+refused "the app in front, told by a program that is not the shell" user_bus busctl --user call org.amethystora.Plugins /org/amethystora/Plugins org.amethystora.Plugins Focused s org.gnome.Nautilus
 
 # Off is off: nothing of the host is running, and the bus name is gone
 as_tester "${HOST}" disable "${ID}" 2>/dev/null
