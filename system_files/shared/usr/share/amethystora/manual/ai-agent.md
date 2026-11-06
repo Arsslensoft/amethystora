@@ -148,6 +148,83 @@ Undo is your own yes, and goes through the agent's own tools: an undo they refus
 offered, a record whose way back does not match what it says it did) is refused, and the row says why. The
 agent's tools will not turn this list off: `ame agent pill off` does, and is yours to run.
 
+## What it is doing
+
+While the agent's tools read, the pill says which one in a few words: **Searching the manual**, **Checking
+the updates**, **Reading the logs**, with its mark breathing, and a tick when the step is done. Click it for
+the last few steps, each Done or Now, and **Stop the agent**. It shows only the name of the tool, never what
+you asked or what it read, and it is gone a few seconds after the last step. `ame agent doing off` turns it
+off.
+
+## Asking in the pill
+
+Press `Super+/` (`Super+Shift+Space` is the next keyboard layout) and the pill's card opens with a field.
+Type your question and press Enter: your agent answers there, with no terminal. It looks at this computer
+with Amethystora's tools that only read (the manual, the machine's state, the log), and nothing else: it
+cannot change anything and cannot read your files. The card says whose answer it is, and that your question
+left this computer, for the maker of the agent you chose. The answer is shown as plain text, kept for ten
+minutes at most, and nothing of it is written to a file by Amethystora.
+
+It works with Claude Code. The other agents have no way to ask a question that changes nothing which this
+image has checked, so for them the card offers to open the agent in a terminal instead. `ame agent ask-here
+off` turns the key off. If the live pill is off there is nowhere to answer, and the key opens the agent in a
+terminal.
+
+## Questions in the pill
+
+When the agent's tools ask to run a command for you, a setting that asks something, or a command as root in a
+terminal, the pill says **Agent asks you** and its card shows the exact command, the agent's reason in its
+own words, and **Allow** and **Not now**. Allow opens the terminal that runs it and sends what it prints back
+to the agent; Not now tells the agent no. A command too long to read in a card is asked in the terminal,
+where it is printed whole, and a root command still asks for your password there, from sudo.
+
+Your yes is a click in the desktop, answered over the session bus: no file the agent could write stands for
+it. `ame agent ask-questions off` makes them ask in a terminal again. Installing an app or changing a setting
+with the agent's own tools is still asked for in the agent itself.
+
+## Asking about a picture or a file
+
+Off until you turn it on with `ame agent ask-about on`. Then drop a picture or a text file on the pill's
+**Ask the agent**, or copy a picture (a screenshot of a region, say) and press `Super+Shift+A` with no text
+selected. A card shows the file and says what goes and to whom: "This picture goes to the maker of Claude
+Code. What is on it goes with it." Nothing is read past the first bytes of a text file, copied or sent until you
+press **Send and ask**; a picture is copied for the moment the question takes into a folder only you can
+read, and taken away again. It is refused while your screen is shared or recorded.
+
+## Little routines
+
+A routine is something done by itself when something happens: "when I join the office Wi-Fi, open Files and
+mute". One readable file names **one trigger**, a time (with days), a network, an app opening, closing or going
+fullscreen, the screen unlocking or locking, the battery below a level or unplugged or plugged in, or your
+phone coming near or going away, and up to eight **actions**: an app to open by its launcher's id, or an `ame`
+command as words, with an optional `undo` command that puts it back:
+
+```json
+{"name": "Office morning",
+ "when": {"network": "Office Wi-Fi"},
+ "do": [{"open": "org.gnome.Nautilus.desktop"},
+        {"ame": ["desktop", "volume", "mute"], "undo": ["desktop", "volume", "unmute"]}]}
+```
+
+Ask the agent to write one; it checks it with `ame agent routines check FILE`. **Keeping it is yours**:
+`ame agent routines add FILE` shows what it does in words and asks in a terminal, and the agent's tools will
+not run it. A routine runs as you, never as root, never a shell line, never an `ame security`, `vault`,
+`agent` or `plugin` command, and never anything the agent itself may not run; a file with something that
+looks like a password or a token in it is refused. `list`, `show`, `pause`, `resume`, `remove`, `run` and
+`undo` manage them.
+
+Each run shows in the pill once: **Office morning ran**, what it did, **Pause this routine** and **Undo** for
+a minute (Undo runs the way back the file gave, and closes the apps the routine opened that were not open
+before). A routine that fails says so once and pauses itself until you start it again. The same trigger twice in
+ten seconds runs it once. While the screen is locked this extension is off, so a time that falls then is missed;
+a routine for the screen locking has to say `"while_locked": true`.
+
+What a routine names tells a stranger about you, so they are all **sealed in the [Vault](vault.md)**, under
+its background key, the one it gives without being asked while it is closed. Without that key
+(`ame vault methods background on`) the routines wait for you to open the Vault, and a notice says so once;
+with no Vault set up none can be kept. Only the sources a routine names are listened for, and with none made
+nothing is asked. `ame agent routines off` stops them all.
+
 ## Asking about a selection
 
 Select text in any window, an error in a terminal, a paragraph on a web page, a line in a log, and press

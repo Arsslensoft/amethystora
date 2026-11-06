@@ -14,6 +14,7 @@
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import Pango from 'gi://Pango';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
 
@@ -129,8 +130,11 @@ class RoutineRan {
             body.add_child(row);
         }
         if (this.ran.failed) {
-            const failed = new St.Label({style_class: 'amethystora-agent-act-how', text: _('It is paused until you start it again: %s').format(plain(this.ran.failed, 100))});
+            const failed = new St.Label({style_class: 'amethystora-agent-act-how amethystora-agent-note', text: _('It is paused until you start it again: %s').format(plain(this.ran.failed, 100))});
             failed.clutter_text.use_markup = false;
+            failed.clutter_text.line_wrap = true;
+            failed.clutter_text.line_wrap_mode = Pango.WrapMode.WORD_CHAR;
+            failed.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
             body.add_child(failed);
         }
         const buttons = [];
@@ -140,7 +144,7 @@ class RoutineRan {
             if (this.ran.undoable || this._started.length > 0)
                 buttons.push(cardButton(_('Undo'), () => this._undo(), {small: true, primary: true}));
         } else {
-            body.add_child(new St.Label({style_class: 'amethystora-agent-act-how', text: this._state}));
+            body.add_child(new St.Label({style_class: 'amethystora-agent-act-how amethystora-agent-note', text: this._state}));
         }
         if (buttons.length) {
             const row = buttonRow(buttons);

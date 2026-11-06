@@ -459,6 +459,25 @@ every `--` passed over, `a::b` as two words, an option that runs something other
 `--evaluate`...) refused, and a group's own justfile named with `-f` or `--justfile` (`just -f .../agent.just pill off`)
 matched both as given and with the group in front.
 
+**The agent in the pill** (round 7, `plans/ui-ideas/r7/spec-agent.md`, `modules/agent/{ask,askmodel,doingmodel,routines,routinesmodel}.js`; keys of the
+agent's schema, none in the setup file but `ask-here`). **What it reads** (`doing`, on): the tool server writes the fixed name of the read tool it runs (and
+`state`'s topic from its list) into its own session file in `$XDG_RUNTIME_DIR/amethystora/agent-sessions/PID` (`history.rs` `working`/`worked`), never an
+argument, and the pill says it with a tick. **Ask right there** (`ask-here`, `Super+/`: `Super+Shift+Space` is GNOME's next layout): `amethystora-agent
+ask-here` takes `{question, quoted?, picture?}` on standard input (never a command line) and runs the agent without a terminal and without any tool but the five
+that read: `HEADLESS` in the launcher names the agents whose options were read from their own `--help` (Claude Code, 2026-11-06; the others open in a terminal),
+`AMETHYSTORA_READ_ONLY=1` makes the tool server drop the tools that change things (it can only lower the level), and its answer is shown as text, kept ten minutes,
+never written. **Yes or no** (`ask-questions`, on): a hand-off (a `run`, a terminal `change`) is put to the person over the session bus,
+`org.amethystora.Agent.Ask(id)` on GNOME Shell, which answers with their click; the question is `ask.json` in the hand-off's own folder, written by the tools, and
+**no file stands for a yes**, so nothing an agent can write answers for the person. After an Allow the terminal opens with `--approved`; with no live pill, a command too long
+to read in a card, or the key off, the terminal asks as it always did. A password for root is sudo's, and the root helper's modes are not touched. **Ask about this**
+(`ask-about`, offered, off, and never in the setup file): a picture or text file dropped on the pill's Ask target or a copied picture with `Super+Shift+A`, shown with where it
+goes before it goes, copied into `$XDG_RUNTIME_DIR/amethystora/ask` (0700) only on Send and taken away after, refused while the screen is shared. **Routines**
+(`routines`, `apps/agent-tools/src/routines.rs`, `ame agent routines`): one JSON file with one trigger and up to eight actions, each an app's launcher id or `ame` words, never a
+shell line, root, `ame security|vault|agent|plugin`, anything `never.rs` refuses or a literal secret; sealed under the Vault's `background` key (record `routines`, the one purpose served
+with the vault closed) in `~/.local/share/amethystora/routines/routines.avs`; the agent writes and `check`s, only the person `add`s (in a terminal, no `--yes`), `resume`s,
+`run`s and removes (`never.rs`). With no such file nothing is asked of any vault; the shell connects only the sources the routines name. A lock stops the extension, so nothing runs while
+the screen is locked but a routine for the lock itself, which must say `while_locked`.
+
 ### The Amethystora apps
 
 The Manual, Security, Updates, Notes, Logs, Backups, Control and Help are one program, written in Rust with

@@ -28,6 +28,17 @@ Written for AI agents, so that the agent can explain to the user what it may do 
 Every root command is shown in a notification and written to the journal (`journalctl -t
 amethystora-agent-root`). A command that asks questions always opens in a terminal, whatever the mode.
 
+## In the pill
+
+- **What it reads**: while a read tool runs, the live pill says so by the tool's name (`ame agent doing off` hides it).
+- **Ask right there**: `Super+/` opens a field in the pill's card; the chosen agent answers there with the five read tools and nothing else
+  (`amethystora-agent ask-here`, for Claude Code only: the other agents open in a terminal). `Super+Shift+Space` is the next keyboard layout.
+- **Questions**: a command or a setting you hand to the user (`run`, a `change` that asks) is put to them as a card in the pill, with the exact
+  command, Allow and Not now (`ame agent ask-questions`). Only their click on the desktop answers; no file does. A root command's password is still
+  asked by sudo in the terminal that opens after an Allow. Where there is no live pill the terminal asks, as it always did.
+- **Routines**: `ame agent routines` keeps small things the desktop does by itself when something happens. You write and check one
+  (`references/routines.md` of the amethystora skill); only the user keeps, runs or removes it. They are sealed in the Vault.
+
 ## The lock
 
 An administrator sets the most any account may turn on (`ame agent lock act|know|off`), or one account's own

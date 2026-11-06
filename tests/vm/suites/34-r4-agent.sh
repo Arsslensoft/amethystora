@@ -13,7 +13,7 @@
 #   - a dialog over the card keeping the keyboard, servers ended by SIGTERM, SIGHUP and SIGKILL, a refused undo, a
 #     way back that is not its inverse, a command line built to close the data block;
 #   - ten disables and enables with everything open, with and without animations, Control and the setup file.
-# vmlab-paths: @ui/extension.js @ui/*agent* @ui/*quit* @ui/*pill* @sf/*themed/shell-agent* @sf/*themed/shell-quit* @sf/usr/bin/amethystora-agent @sf/usr/libexec/amethystora-agent-* @sf/usr/libexec/amethystora-notify-users @sf/usr/libexec/amethystora-scan-alert @sf/usr/libexec/amethystora-driver-status @sf/*just/agent.just @sf/*just/desktop.just @sf/usr/libexec/amethystora-control-list apps/agent-tools/*
+# vmlab-paths: @ui/extension.js @ui/*agent* @ui/*quit* @ui/*pill* @sf/*themed/shell-agent* @sf/*themed/shell-quit* @sf/usr/bin/amethystora-agent @sf/usr/libexec/amethystora-agent-* @sf/usr/libexec/amethystora-in-terminal @sf/usr/libexec/amethystora-notify-users @sf/usr/libexec/amethystora-scan-alert @sf/usr/libexec/amethystora-driver-status @sf/*just/agent.just @sf/*just/desktop.just @sf/usr/libexec/amethystora-control-list apps/agent-tools/*
 source "$(dirname "$0")/lib.sh"
 
 UUID=amethystora-ui@arsslensoft.github.io

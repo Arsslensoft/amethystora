@@ -101,3 +101,6 @@ a program calling itself asks to use an item from the vault	knowledge/vault#ques
 keep my aws credentials file away from other programs	manual/vault#protected-files*|manual/vault#using-a-secret-without-handing-it-over*
 a vault that is not listed anywhere	manual/vault#several-vaults-and-hidden-ones*
 back up the vault and restore it with the recovery key	manual/vault#backing-up-and-moving*|manual/vault#the-recovery-key
+make the computer mute and open an app when i join the office wifi	skill/amethystora/routines*|knowledge/agent#in-the-pill*|manual/ai-agent#little-routines*
+ask my agent a question without opening a terminal	manual/ai-agent#asking-in-the-pill*|knowledge/agent#in-the-pill*
+why does the pill ask me allow or not now for a command	manual/ai-agent#questions-in-the-pill*|knowledge/agent#in-the-pill*

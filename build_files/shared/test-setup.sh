@@ -823,6 +823,9 @@ for bad in '{"version": 1, "token": "x"}' '{"version": 2}' \
     '{"version": 1, "settings": {"quit": {"frozen-dialog": "on"}}}' \
     '{"version": 1, "settings": {"quit": {"force-quit": ["<Super>q"]}}}' \
     '{"version": 1, "settings": {"agent": {"pill": false}}}' \
+    '{"version": 1, "settings": {"agent": {"routines": true}}}' \
+    '{"version": 1, "settings": {"agent": {"ask-about": true}}}' \
+    '{"version": 1, "settings": {"keybindings": {"org.gnome.shell.extensions.amethystora-ui.agent": {"doing": ["<Super>a"]}}}}' \
     '{"version": 1, "settings": {"keybindings": {"org.gnome.shell.extensions.amethystora-ui.agent": {"pill": ["<Super>a"]}}}}' \
     '{"version": 1, "settings": {"keybindings": {"org.gnome.shell.extensions.amethystora-ui.quit": {"frozen-dialog": ["<Super>a"]}}}}' \
     '{"version": 1, "settings": {"bezel": {"round-corners": "on"}}}' \

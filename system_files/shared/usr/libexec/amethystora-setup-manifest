@@ -113,7 +113,7 @@ SEARCH_KEYS=(answers settings manual windows clipboard agent glance times remind
 EMOJI=org.gnome.shell.extensions.amethystora-ui.emoji
 EMOJI_KEYS=(skin-tone)
 # The not-responding question's look, which amethystora-setup's QUIT_KEYS takes; force quit's key (force-quit) is kept
-# with the other keybindings, and so is the agent's selection key (ask-selection). Never the agent's pill, the person's view
+# with the other keybindings, and so are the agent's selection key (ask-selection) and its question in the pill (ask-here). Never the agent's pill, the person's view
 # of what the agent changes
 QUIT=org.gnome.shell.extensions.amethystora-ui.quit
 QUIT_KEYS=(frozen-dialog)

@@ -58,8 +58,9 @@
 #                (DESKWIDGETS_KEYS; never a widget, which is a command), how the shelf opens (SHELF_KEYS; never what
 #                it holds), whether desks are on and learn (DESKS_KEYS; never the desks, which name this machine's
 #                screens by serial number), the not-responding question's look (QUIT_KEYS; force quit's key and the
-#                agent's selection key are keybindings; never the agent's pill, which shows what the agent changes
-#                and is the person's own to turn off), the share guard, the shield and network by app (PRIVACY_KEYS; walk-away lock is a
+#                agent's selection key and its pill question (ask-here) are keybindings; never the agent's pill, which shows what the
+#                agent changes and is the person's own to turn off, nor its questions, its line, pictures for its maker or routines,
+#                which hold or send what is the person's), the share guard, the shield and network by app (PRIVACY_KEYS; walk-away lock is a
 #                security switch, never in the file), the tools module's switches (TOOLS_KEYS; the colour picker's and
 #                the microphone's keys are keybindings), the keyboard GNOME keeps out of sight: each window's own layout and
 #                the xkb options (INPUT_KEYS), Num Lock at start and the repeat delay (KEYBOARD_KEYS), middle-click paste
@@ -514,7 +515,7 @@ if type != "object" then "it is not a JSON object" else
                                 or IN(.key; "snap-chooser", "drop-down-key", "keep-on-top-key", "reopen-key", "simple-desktop-leave"))
                             and ($s != "org.gnome.shell.extensions.amethystora-ui.search" or .key == "open")
                             and ($s != "org.gnome.shell.extensions.amethystora-ui.emoji" or .key == "emoji-picker")
-                            and ($s != "org.gnome.shell.extensions.amethystora-ui.agent" or .key == "ask-selection")
+                            and ($s != "org.gnome.shell.extensions.amethystora-ui.agent" or .key == "ask-selection" or .key == "ask-here")
                             and ($s != "org.gnome.shell.extensions.amethystora-ui.quit" or .key == "force-quit")
                             and ($s != "org.gnome.shell.extensions.amethystora-ui.tools"
                                 or .key == "colour-picker" or .key == "mute-microphone")

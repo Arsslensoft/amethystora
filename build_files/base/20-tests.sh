@@ -1154,9 +1154,72 @@ bash /ctx/build_files/shared/test-captions.sh
 # their place among the modules (after the pill, before focus, the agent before force quit, whose dialog asks it)
 AGENT_UI=org.gnome.shell.extensions.amethystora-ui.agent
 QUIT_UI=org.gnome.shell.extensions.amethystora-ui.quit
-[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${AGENT_UI}" | sort | paste -sd ' ')" == "ask-selection pill" ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${AGENT_UI}" | sort | paste -sd ' ')" == \
+    "ask-about ask-here ask-questions ask-selection doing pill routines" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${AGENT_UI}" ask-selection)" == "['<Super><Shift>a']" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${AGENT_UI}" pill)" == true ]]
+# Round 7's agent in the pill (plans/ui-ideas/r7/spec-agent.md): Super+Shift+Space is the next keyboard layout, so the pill's question is
+# Super+/, which nothing else binds; what it reads, its questions and routines are on, pictures for the agent's maker off
+[[ "$(GSETTINGS_BACKEND=memory gsettings get "${AGENT_UI}" ask-here)" == "['<Super>slash']" ]]
+[[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.desktop.wm.keybindings switch-input-source)" == "['<Shift><Super>space']" ]]
+for key in doing ask-questions routines; do
+    [[ "$(GSETTINGS_BACKEND=memory gsettings get "${AGENT_UI}" "${key}")" == true ]]
+done
+[[ "$(GSETTINGS_BACKEND=memory gsettings get "${AGENT_UI}" ask-about)" == false ]]
+[[ "$(grep -rl --include='*.xml' --include='*.override' '<Super>slash' /usr/share/glib-2.0/schemas "${UI_EXTENSION}/schemas" /etc/dconf 2>/dev/null |
+    xargs -r -n1 basename | sort -u | paste -sd ' ')" == "org.gnome.shell.extensions.amethystora-ui.agent.gschema.xml" ]]
+env LD_LIBRARY_PATH=/apps-stage/usr/lib64 NODE_ICU_DATA="$(echo /apps-stage/usr/share/node-*/icudata)" /apps-stage/usr/bin/node /ctx/build_files/shared/test-agent-doing.mjs
+env LD_LIBRARY_PATH=/apps-stage/usr/lib64 NODE_ICU_DATA="$(echo /apps-stage/usr/share/node-*/icudata)" /apps-stage/usr/bin/node /ctx/build_files/shared/test-agent-ask.mjs
+env LD_LIBRARY_PATH=/apps-stage/usr/lib64 NODE_ICU_DATA="$(echo /apps-stage/usr/share/node-*/icudata)" /apps-stage/usr/bin/node /ctx/build_files/shared/test-agent-routines.mjs
+# The tools' state topics are one list in Rust and in the shell, which has words for each
+(
+    export HOME="$(mktemp -d)" XDG_CONFIG_HOME="" XDG_RUNTIME_DIR="$(mktemp -d)" SHELL=/usr/bin/bash
+    ame agent toggle on
+    topics="$(/usr/libexec/amethystora-agent-tools state no-such-topic 2>&1 | sed -n 's/.*Topics: //p' | tr -d ',' | tr -d '\n')"
+    shell="$(sed -n '/^export const TOPICS/,/];/p' "${UI_EXTENSION}/modules/agent/doingmodel.js" | grep -oE "'[a-z-]+'" | tr -d "'" | paste -sd ' ')"
+    [[ -n "${topics}" && "${topics}" == "${shell}" ]]
+    rm -rf "${HOME}" "${XDG_RUNTIME_DIR}"
+)
+for file in ask askmodel doingmodel routines routinesmodel; do
+    test -s "${UI_EXTENSION}/modules/agent/${file}.js"
+    if grep -nE "[a-z]_sync\(|file_get_contents|file_test|query_exists|communicate_utf8\(|\.spawn_sync|wait_check\(" "${UI_EXTENSION}/modules/agent/${file}.js"; then
+        echo "the agent's ${file}.js blocks the shell"
+        exit 1
+    fi
+done
+# A routine is checked before it is kept: an app by its id, `ame` as words, never a shell line, root, a security command or a secret
+(
+    export HOME="$(mktemp -d)" XDG_RUNTIME_DIR="$(mktemp -d)"
+    routine="${HOME}/routine.json"
+    echo '{"name": "Office morning", "when": {"network": "Office Wi-Fi"}, "do": [{"open": "org.gnome.Nautilus.desktop"}]}' >"${routine}"
+    ame agent routines check "${routine}" >/dev/null
+    for bad in '{"name": "x", "when": {"network": "n"}, "do": [{"ame": ["security", "usb", "off"]}]}' \
+        '{"name": "x", "when": {"network": "n"}, "do": [{"ame": ["desktop", "x; rm -rf ~"]}]}' \
+        '{"name": "x", "when": {"network": "n"}, "do": [{"sh": ["id"]}]}' \
+        '{"name": "x", "when": {"network": "password=hunter2"}, "do": [{"open": "a.desktop"}]}'; do
+        echo "${bad}" >"${routine}"
+        ! ame agent routines check "${routine}" >/dev/null 2>&1
+    done
+    rm -rf "${HOME}" "${XDG_RUNTIME_DIR}"
+)
+# The pill's question starts the agent that only looks: Amethystora's five read tools and nothing else, none of the options that turn its own
+# checks off, and a hand-off the person said yes to in the pill is run without asking twice
+(
+    export HOME="$(mktemp -d)" XDG_CONFIG_HOME="" XDG_RUNTIME_DIR="$(mktemp -d)" SHELL=/usr/bin/bash
+    ame agent toggle on
+    words=" $(amethystora-agent argv-here claude | sed -E 's/^(--[a-z-]+)=/\1 /' | tr '\n' ' ') "
+    [[ "${words}" == *" --permission-mode dontAsk "* && "${words}" == *" --no-session-persistence "* ]]
+    for tool in search read state logs history; do [[ "${words}" == *"mcp__amethystora__${tool}"* ]]; done
+    for tool in change software run undo; do [[ "${words}" != *"mcp__amethystora__${tool}"* ]]; done
+    while IFS=$'\t' read -r name flag; do
+        [[ "${name}" == claude && "${flag}" != env:* ]] || continue
+        [[ "${words}" != *" ${flag} "* ]]
+    done < <(grep -v '^#' /usr/share/amethystora/agent-cli-flags)
+    ! amethystora-agent argv-here codex >/dev/null 2>&1
+    rm -rf "${HOME}" "${XDG_RUNTIME_DIR}"
+)
+grep -q -- '--approved) APPROVED=true' /usr/libexec/amethystora-in-terminal
+bash /ctx/build_files/shared/test-agent-ask-here.sh
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${QUIT_UI}" | sort | paste -sd ' ')" == "force-quit frozen-dialog" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${QUIT_UI}" force-quit)" == "['<Super><Control><Shift>Escape']" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${QUIT_UI}" frozen-dialog)" == true ]]
@@ -1169,7 +1232,7 @@ test -s /usr/share/amethystora/themed/shell-quit.css.tpl
 # In order, not side by side: other groups' modules may come between (focus is last, checked with Focus profiles)
 [[ "$(grep -oE "^    \['(bezel|agent|quit|focus)'," "${UI_EXTENSION}/extension.js" | paste -sd ' ')" == \
     "    ['bezel',     ['agent',     ['quit',     ['focus'," ]]
-grep -q "'agent', 'waiting'" "${UI_EXTENSION}/modules/pill/activities.js"
+grep -q "'ask', 'agent', 'routine', 'waiting'" "${UI_EXTENSION}/modules/pill/activities.js"
 [[ -z "$(grep -rnE 'use_markup = true|use_markup: true|set_markup\(' "${UI_EXTENSION}/modules/agent.js" "${UI_EXTENSION}/modules/agent" \
     "${UI_EXTENSION}/modules/quit.js" "${UI_EXTENSION}/modules/quit")" ]]
 # The selection reaches the agent only as the one argument after --, from a read with a size, never the clipboard's

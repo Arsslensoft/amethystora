@@ -87,6 +87,7 @@ own apps.
 | `Ctrl+Alt+Space` | Smile, the emoji app |
 | `Super+Ctrl+Shift+A` | An AI agent that knows this system, once you turn it on (`ame agent toggle on`) |
 | `Super+Shift+A` | Ask the AI agent about the text selected in any window, while it is on |
+| `Super+/` | Ask the AI agent a question in the pill's card, while it is on: it answers there, with no terminal |
 | `Super+Ctrl+Shift+C` | Control: the theme, windows, games, the agent, the image and Amethystora's other settings |
 | `Super+F1` | This manual |
 | `Super+Alt+N` | A quick note into Notes' inbox |

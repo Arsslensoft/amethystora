@@ -90,6 +90,7 @@ Read the one you need, when you need it:
 | GNOME, keybindings, extensions, windows, widgets, the terminal | `/usr/share/amethystora/agents/skills/amethystora/references/gnome.md` |
 | Updates, deployments, firmware, logs, backups and earlier versions of files | `/usr/share/amethystora/agents/skills/amethystora/references/updates.md` |
 | Security: switches, the watcher, network protection, logins, DNS, disks | `/usr/share/amethystora/agents/skills/amethystora/references/security.md` |
+| A routine for something the desktop should do by itself (when I join a network, at a time) | `/usr/share/amethystora/agents/skills/amethystora/references/routines.md` |
 
 To find out why something crashed or stopped working, follow the `amethystora-diagnose` skill. For
 something in the top bar, follow the `amethystora-widgets` skill.
