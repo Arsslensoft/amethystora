@@ -490,7 +490,13 @@ mod tests {
         let m = Manifest::parse(GOOD).unwrap();
         assert_eq!(m.places["bar"]["position"], "right");
         assert!(m.places["pill"].as_object().unwrap().is_empty());
-        let edited = |surface: &str, options: Value| Manifest::parse(&with(|v| v["contributes"] = serde_json::json!({ surface: options.clone() })));
+        let edited = |surface: &str, options: Value| {
+            Manifest::parse(&with(|v| {
+                let mut places = Map::new();
+                places.insert(surface.to_string(), options.clone());
+                v["contributes"] = Value::Object(places);
+            }))
+        };
         assert_eq!(edited("dock", serde_json::json!({"app": "org.gnome.Nautilus.desktop"})).unwrap().places["dock"]["app"], "org.gnome.Nautilus.desktop");
         assert_eq!(edited("search", serde_json::json!({"prefix": "ci:"})).unwrap().places["search"]["prefix"], "ci:");
         assert_eq!(edited("desktop", serde_json::json!({})).unwrap().places["desktop"]["corner"], "top-right");

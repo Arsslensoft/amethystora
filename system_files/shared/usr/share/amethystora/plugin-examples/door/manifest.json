@@ -23,7 +23,7 @@
   "settings": [
     {
       "name": "instance",
-      "label": "Your Home Assistant's cloud address, such as abc123.ui.nabu.casa"
+      "label": "Your Home Assistant's cloud address"
     },
     {
       "name": "token",

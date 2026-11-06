@@ -91,6 +91,11 @@ fn element(value: &Value, actions: &[String]) -> Result<Value, String> {
     })
 }
 
+/// The lines of a text, for a card on the desktop (a clock's time and its day): each cleaned, at most six, none empty. `text` is the same words on one line
+fn lines_of(raw: &str) -> Vec<String> {
+    raw.split('\n').map(|l| clean(l, 80)).filter(|l| !l.is_empty()).take(6).collect()
+}
+
 /// The update in what one run printed: all of it when it is one JSON object, else the last line that holds anything
 pub fn last_update(stdout: &str) -> &str {
     let whole = stdout.trim();
@@ -110,7 +115,7 @@ pub fn parse(stdout: &str, actions: &[String]) -> Result<Value, String> {
         return Err("it printed nothing; print {\"hidden\": true} to hide the plugin".into());
     }
     if !line.starts_with('{') {
-        return Ok(json!({"text": clean(line, 200), "icon": "", "class": "", "click": null, "hidden": false, "private": false, "progress": null, "until": null, "menu": [], "card": []}));
+        return Ok(json!({"text": clean(line, 200), "lines": lines_of(line), "icon": "", "class": "", "click": null, "hidden": false, "private": false, "progress": null, "until": null, "menu": [], "card": []}));
     }
     let data: Value = serde_json::from_str(line).map_err(|e| format!("what it printed is not JSON ({e}); print each update on one line"))?;
     let m = data.as_object().ok_or("what it printed has to be one JSON object")?;
@@ -158,8 +163,10 @@ pub fn parse(stdout: &str, actions: &[String]) -> Result<Value, String> {
             return Err(format!("\"{key}\" has to be {kind}"));
         }
     }
+    let lines = lines_of(m.get("text").and_then(Value::as_str).unwrap_or(""));
     Ok(json!({
         "text": string(m, "text", 200)?,
+        "lines": lines,
         "icon": m.get("icon").map(icon).transpose()?.unwrap_or_default(),
         "class": class,
         "click": click,
@@ -192,6 +199,7 @@ mod tests {
     fn clamps_and_cleans() {
         let out = parse(r#"{"text":"a\u202eb\u0007c\nd","progress":7,"until":1700000000,"card":[{"type":"meter","label":"x","value":500,"max":10},{"type":"progress","label":"p","value":-1}]}"#, &[]).unwrap();
         assert_eq!(out["text"], "abc d");
+        assert_eq!(out["lines"], json!(["abc", "d"]));
         assert_eq!(out["progress"], 1.0);
         assert_eq!(out["card"][0]["value"], 10.0);
         assert_eq!(out["card"][1]["value"], 0.0);

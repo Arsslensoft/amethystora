@@ -25,6 +25,7 @@ application/vnd.appimage=noop.desktop
 application/vnd.debian.binary-package=amethystora-pkg-install.desktop
 application/x-rpm=amethystora-pkg-install.desktop
 application/x-amethystora-look=amethystora-look.desktop
+application/x-amethystora-pill=amethystora-pill.desktop
 application/vnd.microsoft.portable-executable=amethystora-windows-program.desktop
 application/x-msdownload=amethystora-windows-program.desktop
 application/x-ms-dos-executable=amethystora-windows-program.desktop

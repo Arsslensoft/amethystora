@@ -111,4 +111,70 @@ for pattern in '"amethystora-plugin-root"' '"org.amethystora.plugins"' '"plugin"
     grep -qF -- "${pattern}" "${SRC}/agent-tools/src/never.rs" || fail "never.rs lacks ${pattern}"
 done
 
+# --- What the shell draws (R7-01, 03, 07, 09): nothing a plugin says can pass for the system -----------------------------------------
+UI=/usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io
+MODULES="${UI}/modules"
+# `extra` comes after everything the system shows and before quiet and a focus profile's mark; the plugins module right after the pill
+ORDER_LINE="$(grep -E "^export const ORDER" -A1 "${MODULES}/pill/activities.js" | tr -d '\n')"
+[[ "${ORDER_LINE}" == *"'saving', 'extra', 'quiet', 'focus'];"* ]] || fail "ORDER does not put extra between saving and quiet"
+for system in call recording flat present meeting link code battery agent; do
+    before="${ORDER_LINE%%\'extra\'*}"
+    [[ "${before}" == *"'${system}'"* ]] || fail "${system} does not come before extra"
+done
+grep -qE "^    \['pill', Pill\],$" "${UI}/extension.js" || fail "the pill module is not a line of its own"
+grep -A1 -E "^    \['pill', Pill\],$" "${UI}/extension.js" | grep -qE "^    \['plugins', Plugins\],$" || fail "the plugins module does not start right after the pill"
+# A plugin's activity has no plate, and nothing the plugins draw names a system look or builds one from what a plugin printed
+grep -qE "this\.plate = '';" "${MODULES}/plugins/pill.js" || fail "a plugin's pill activity has a plate"
+if grep -rnE "plate: *[^'\" ]|\.plate *= *[^' ]|plateTint|'call'|'recording'|'agent-ask'|'battery'" "${MODULES}/plugins" "${MODULES}/plugins.js"; then
+    fail "the plugins module names a system plate or look"
+fi
+# Text only: never markup, never a path as an icon, never a command typed by a plugin
+if grep -rnE "use_markup = true|set_use_markup\(true\)|markup" "${MODULES}/plugins" "${MODULES}/plugins.js" "${MODULES}/search/plugins.js" | grep -v '^[^:]*:[0-9]*: *//' | grep -v 'never markup\|no markup\|Markup\|use_markup = false'; then
+    fail "the plugins' drawing reads markup"
+fi
+if grep -rnE "FileIcon|new_for_path\(.*(output|plugin\.)|Gio\.File\.new_for_path\(path" "${MODULES}/plugins/bar.js" "${MODULES}/plugins/tile.js" "${MODULES}/plugins/card.js" "${MODULES}/plugins/pill.js"; then
+    fail "a plugin's icon is drawn from a path"
+fi
+# Nothing blocks the compositor in what the plugins add, and nothing is spawned but a fixed program
+if grep -rnE "[a-z]_sync\(|file_get_contents|load_contents\(|spawn_command_line|spawn_sync|Subprocess" "${MODULES}/plugins" "${MODULES}/plugins.js" "${MODULES}/search/plugins.js"; then
+    fail "the plugins module blocks the shell, or spawns through a shell"
+fi
+if grep -nE "spawn\(\[[^]]*\\$\{" "${MODULES}/plugins.js"; then
+    fail "the plugins module spawns a program it built from a plugin's words"
+fi
+# The shell reads neither a draft nor the shipped folder: the host tells it everything
+if grep -rnE "plugin-drafts|amethystora/plugins|\.local/state/amethystora/plugins" "${MODULES}/plugins" "${MODULES}/plugins.js" "${MODULES}/deskwidgets.js" "${MODULES}/search/plugins.js"; then
+    fail "a shell module reads a plugin's folder"
+fi
+# The host's owner is checked by the file it runs, and only its signals are believed
+grep -q "HOST_EXE = '/usr/libexec/amethystora-plugin-host'" "${MODULES}/plugins/host.js" || fail "the shell does not check who owns the host's name"
+grep -q "sender !== this._owner" "${MODULES}/plugins/host.js" || fail "the shell believes a signal from anyone"
+# Every key off costs nothing: nothing but the settings is connected, and the dispose of the settings is there
+grep -q "run_dispose" "${MODULES}/plugins.js" || fail "the plugins module does not dispose its settings"
+# The script pills: the shell reads only plain files of a few bytes, never a path it was given
+grep -q "FileType.REGULAR" "${MODULES}/plugins/script.js" || fail "a script's pill file is read without being a plain file"
+grep -q "NOFOLLOW_SYMLINKS" "${MODULES}/plugins/script.js" || fail "a script's pill file may be a link"
+# Secrets: never an argument, never the environment
+if grep -nE 'setting-set .*"\$\{?(value|3|4)' "${COMMAND}"; then
+    fail "a setting's value is given as an argument"
+fi
+grep -q "SETTINGS_FD" "${SRC}/plugin-host/src/sandbox.rs" || fail "settings have no pipe"
+if grep -nE 'setenv.*(token|secret|password)' "${SRC}/plugin-host/src/sandbox.rs" "${SRC}/plugin-host/src/host.rs"; then
+    fail "a secret reaches the environment"
+fi
+# The image ships plugins and examples, and no widget extension
+[[ ! -e /usr/share/gnome-shell/extensions/amethystora-widgets@arsslensoft.github.io ]] || fail "the widgets extension is still in the image"
+test -s /usr/libexec/amethystora-pill || fail "ame pill's helper is missing"
+test -x /usr/libexec/amethystora-pill || fail "ame pill's helper is not executable"
+grep -q '^mod pill$' /usr/share/amethystora/just/00-entry.just || fail "00-entry.just does not declare the pill group"
+grep -q '^name: amethystora-plugins$' /usr/share/amethystora/agents/skills/amethystora-plugins/SKILL.md || fail "the plugins skill is missing"
+# The agent reads and writes drafts only through the commands: keep and open are the person's
+for pattern in '"keep" | "open"'; do
+    grep -qF -- "${pattern}" "${SRC}/agent-tools/src/never.rs" || fail "never.rs lacks ${pattern}"
+done
+node_test="${CTX}/build_files/shared/test-plugins-clamp.mjs"
+if [[ -x /apps-stage/usr/bin/node ]]; then
+    env LD_LIBRARY_PATH=/apps-stage/usr/lib64 NODE_ICU_DATA="$(echo /apps-stage/usr/share/node-*/icudata)" /apps-stage/usr/bin/node "${node_test}" "${CTX}" || fail "the shell's clamp of what a plugin printed fails its test"
+fi
+
 echo "Plugins: the helper, the host, the policy, the sandbox and the agent's list are as the plan has them"

@@ -4,7 +4,7 @@
 
 use std::path::PathBuf;
 
-use amethystora_plugin_host::check::check;
+use amethystora_plugin_host::check::{check, check_as};
 use amethystora_plugin_host::manifest::{Manifest, shipped_refuses};
 use amethystora_plugin_host::output;
 
@@ -20,7 +20,7 @@ fn every_shipped_plugin_passes_the_check_and_reaches_nothing_outside() {
     let all = folders("plugins");
     assert!(all.len() >= 7, "the six widgets and hello are shipped");
     for folder in all {
-        let report = check(&folder);
+        let report = check_as(&folder, true);
         assert!(report.errors.is_empty(), "{}: {:?}", folder.display(), report.errors);
         let manifest = Manifest::parse_with(&std::fs::read_to_string(folder.join("manifest.json")).unwrap(), true).unwrap();
         assert_eq!(folder.file_name().unwrap().to_str().unwrap(), manifest.id);
@@ -53,4 +53,21 @@ fn every_example_passes_the_check_and_has_a_sample_the_shell_could_draw() {
             }
         }
     }
+}
+
+/// A developer's helper, not a check (cargo test -- --ignored with AMETHYSTORA_PLUGIN_TEST_GRANTS=FILE UID=N): writes the grants of every shipped
+/// plugin, as `commit-shipped` would give them, so that a debug build of the host can be tried on a machine that has no image yet
+/// (AMETHYSTORA_PLUGIN_TEST_IMAGE, see host.rs)
+#[test]
+#[ignore]
+fn write_grants_for_a_trial() {
+    let Some(file) = std::env::var_os("AMETHYSTORA_PLUGIN_TEST_GRANTS") else { return };
+    let mut plugins = serde_json::Map::new();
+    for folder in folders("plugins") {
+        let manifest = Manifest::parse_with(&std::fs::read_to_string(folder.join("manifest.json")).unwrap(), true).unwrap();
+        let entries = amethystora_plugin_host::tree::read_dir(&folder).unwrap();
+        let perms: Vec<String> = manifest.permissions().into_iter().collect();
+        plugins.insert(manifest.id.clone(), serde_json::json!({"digest": amethystora_plugin_host::tree::digest(&entries), "perms": perms, "shipped": true}));
+    }
+    std::fs::write(file, serde_json::json!({"plugins": plugins}).to_string()).unwrap();
 }

@@ -485,7 +485,7 @@ test -x /usr/bin/amethystora-widgets
 for plugin in /usr/share/amethystora/plugins/*/; do
     id="$(basename "${plugin}")"
     test -x "${plugin}run.sh"
-    /usr/libexec/amethystora-plugin-host check "${plugin}" >/dev/null
+    /usr/libexec/amethystora-plugin-host check "${plugin}" --system >/dev/null
     [[ "$(jq -r .id "${plugin}manifest.json")" == "${id}" ]]
     # What the helper refuses to a shipped plugin (rootcmd.rs shipped_refuses)
     ! jq -e '.needs // {} | has("network") or has("network-local") or has("files") or has("window") or has("change")' "${plugin}manifest.json" >/dev/null
@@ -2481,6 +2481,10 @@ grep -q '^application/x-amethystora-look' /usr/share/mime/globs2 2>/dev/null || 
 grep -qx "application/x-amethystora-look=amethystora-look.desktop" /etc/xdg/mimeapps.list
 grep -qx "Exec=/usr/libexec/amethystora-in-terminal /usr/bin/ame desktop theme look %f" /usr/share/applications/amethystora-look.desktop
 grep -qx "Exec=/usr/libexec/amethystora-in-terminal /usr/bin/ame desktop theme import %f" /usr/share/applications/amethystora-theme-import.desktop
+# A plugin shared as a file (R7-05) is a type of its own, opened in a terminal that shows what it runs and reaches first
+grep -q '^application/x-amethystora-pill' /usr/share/mime/globs2 2>/dev/null || grep -q 'amethystora-pill' /usr/share/mime/globs
+grep -qx "application/x-amethystora-pill=amethystora-pill.desktop" /etc/xdg/mimeapps.list
+grep -qx "Exec=/usr/libexec/amethystora-in-terminal /usr/bin/ame plugin open %f" /usr/share/applications/amethystora-pill.desktop
 if grep -q "=amethystora-theme-import.desktop" /etc/xdg/mimeapps.list; then echo "a colour file opens as a theme by default"; exit 1; fi
 # Light by day, dark by night: the theme module's keys, off as the image ships; only the two pairs it names have a pair
 [[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-ui.theme day-night)" == false ]]

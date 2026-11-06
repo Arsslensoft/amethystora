@@ -216,7 +216,7 @@ same "6 Control's gallery" "$(jq -r '.items[] | select(.id == "plugins-shipped")
     "amethystora.calendar,amethystora.clock,amethystora.do-not-disturb,amethystora.hello,amethystora.now-playing,amethystora.pomodoro,amethystora.system"
 same "6 none is added" "$(in_session "/usr/libexec/amethystora-plugins list --json | jq length" 2>/dev/null)" 0
 for example in /usr/share/amethystora/plugins/*/; do
-    check "6 $(basename "${example}") passes the plugins' check" in_session "/usr/libexec/amethystora-plugin-host check ${example}"
+    check "6 $(basename "${example}") passes the plugins' check" in_session "/usr/libexec/amethystora-plugin-host check ${example} --system"
 done
 if in_session "ame desktop widgets add nothing-such bar" >/dev/null 2>&1; then
     not_ok "6 an example that is not there is refused"

@@ -22,14 +22,13 @@ export function label(text, styleClass = 'amethystora-pill-card-text') {
 // A bar from 0 to 1: a track and a fill, both plain widgets
 function bar(fraction) {
     const track = new St.Widget({style_class: 'amethystora-plugin-track', layout_manager: new Clutter.BinLayout(), x_expand: true});
-    const fill = new St.Widget({style_class: 'amethystora-plugin-fill', x_align: Clutter.ActorAlign.START, y_expand: true});
+    const fill = new St.Widget({style_class: 'amethystora-plugin-fill', x_align: Clutter.ActorAlign.START, x_expand: true, y_expand: true});
     track.add_child(fill);
     const set = f => {
         if (track.has_allocation())
             fill.width = Math.round(track.width * f);
     };
     track.connect('notify::width', () => set(fraction));
-    fill.set_style(`width: ${Math.round(fraction * 100)}%;`);
     return track;
 }
 

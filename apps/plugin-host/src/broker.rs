@@ -307,7 +307,8 @@ mod tests {
     use crate::store::{Grant, Grants, Store};
 
     fn env_with(perms: &[&str]) -> (Arc<Env>, std::path::PathBuf) {
-        let dir = std::env::temp_dir().join(format!("amethystora-broker-{}-{}", std::process::id(), perms.join("").len()));
+        static COUNT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+        let dir = std::env::temp_dir().join(format!("amethystora-broker-{}-{}", std::process::id(), COUNT.fetch_add(1, Ordering::Relaxed)));
         let _ = std::fs::remove_dir_all(&dir);
         let store = Store { root: dir.clone(), shipped: dir.join("shipped") };
         let mut grants = Grants::default();
@@ -369,6 +370,31 @@ mod tests {
         for op in ["open", "clipboard", "control", "notify"] {
             assert_eq!(b.handle(&json!({"op": op, "url": "https://example.org", "title": "x", "name": "media"}))["ok"], false, "{op}");
         }
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn the_client_in_the_sandbox_asks_the_socket_and_says_what_it_heard() {
+        let dir = std::env::temp_dir().join(format!("amethystora-client-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let socket = dir.join("broker.sock");
+        let listener = UnixListener::bind(&socket).unwrap();
+        let server = std::thread::spawn(move || {
+            for answer in [r#"{"ok":true,"data":{"format":"24h"}}"#, r#"{"ok":false,"why":"it was not allowed to read x"}"#] {
+                let (stream, _) = listener.accept().unwrap();
+                let mut line = String::new();
+                BufReader::new(stream.try_clone().unwrap()).read_line(&mut line).unwrap();
+                assert!(line.contains(r#""op":"state""#));
+                (&stream).write_all(format!("{answer}\n").as_bytes()).unwrap();
+            }
+        });
+        // SAFETY of the environment: no other test reads PLUGIN_BROKER
+        unsafe { std::env::set_var("PLUGIN_BROKER", &socket) };
+        assert_eq!(client(&["state".into(), "clock".into()]), 0);
+        assert_eq!(client(&["state".into(), "x".into()]), 1);
+        assert_eq!(client(&["fly".into()]), 64);
+        server.join().unwrap();
         std::fs::remove_dir_all(dir).unwrap();
     }
 

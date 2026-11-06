@@ -2,7 +2,7 @@
 //! (/usr/libexec/amethystora-plugins runs them). With no arguments it is the service, `org.amethystora.Plugins`, which runs
 //! while a plugin is on. The commands read the store and never write it: that is amethystora-plugin-root's, behind pkexec.
 //!
-//!   check DIR [--json]        what installing would refuse, and what the author should know (runs nothing)
+//!   check DIR [--json] [--system]   what installing would refuse, and what the author should know (runs nothing); --system for the image's own plugins
 //!   pack DIR                  a tar of the folder on standard output, for `amethystora-plugin-root prepare`
 //!   list [--json]             the account's plugins
 //!   show ID [--json]          one of them: what it may do, what it asked for, its files, its sandbox
@@ -132,7 +132,7 @@ fn draft_summary(env: &Env, id: &str) -> Option<Value> {
 
 fn cmd_check(args: &[String]) -> ExitCode {
     let Some(dir) = args.first() else { return usage() };
-    let report = check::check(Path::new(dir));
+    let report = check::check_as(Path::new(dir), args.iter().any(|a| a == "--system"));
     if args.iter().any(|a| a == "--json") {
         let perms: Vec<String> = report.manifest.iter().flat_map(|m| m.permissions()).collect();
         println!("{}", json!({"ok": report.errors.is_empty(), "errors": report.errors, "warnings": report.warnings, "permissions": perms}));

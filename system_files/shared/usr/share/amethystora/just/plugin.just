@@ -143,3 +143,8 @@ try ID *ACTION:
 # Remove everything the AI agent made, plugins and drafts, with what they kept; asks first
 remove-agent-made:
     @/usr/libexec/amethystora-plugins remove-agent-made
+
+# Write a plugin or a draft as a .amethystora-pill file to send to someone: whoever opens it reads what it runs and reaches first, and decides (FILE: where; the default is your home folder)
+[positional-arguments]
+share ID *FILE:
+    @/usr/libexec/amethystora-plugins share "$@"

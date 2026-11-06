@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Amethystora Plugin
+GenericName=Plugin Opener
+Comment=Show what a shared plugin runs and reaches, and ask before keeping it
+Exec=/usr/libexec/amethystora-in-terminal /usr/bin/ame plugin open %f
+Icon=application-x-addon
+Terminal=false
+NoDisplay=true
+MimeType=application/x-amethystora-pill;
+Categories=Settings;DesktopSettings;
+Keywords=plugin;pill;widget;

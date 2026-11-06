@@ -18,8 +18,6 @@ import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js'
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
-import {lines} from './plugins/clamp.js';
-
 const SCHEMA = 'org.gnome.shell.extensions.amethystora-ui.deskwidgets';
 const CLASS_COLORS = {accent: 'accent', good: 'color2', warning: 'color3', critical: 'color1'};
 // From the work area's edges, and between two cards in a corner
@@ -76,7 +74,7 @@ class Card {
         this.actor.destroy_all_children();
         this.actor.visible = Boolean(out) && !out.hidden;
         if (out) {
-            const text = lines(out.text.replace(/\n/g, ' '), MOST_LINES);
+            const text = out.lines.slice(0, MOST_LINES);
             const rows = plugin.draft ? [`${_('Draft')}`, ...text] : text;
             if (rows.length === 0)
                 rows.push(plugin.name);

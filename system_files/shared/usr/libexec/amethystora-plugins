@@ -18,6 +18,7 @@
 #   draft ID [--by me]                        a draft the agent wrote is checked, marked as the agent's and shown (it has no permissions)
 #   keep ID | discard ID                      a draft: keep it as a plugin (the same consent as any) or throw it away
 #   settings ID | set ID NAME                 what a plugin asks you for, and giving it a value (a secret goes into the Vault)
+#   share ID [FILE]                           a plugin or draft as a .amethystora-pill file to send (nothing of yours is in it)
 #   open FILE                                 what a .amethystora-pill file does: add it (you read what it runs and reaches first)
 set -euo pipefail
 # shellcheck source=/dev/null
@@ -40,7 +41,7 @@ die() {
 }
 
 usage() {
-    echo "usage: ame plugin list|show|add|update|remove|check|verify|history|rollback|on|off|grant|revoke|block|unblock|shipped|examples|new|try|make|change|fix|draft|keep|discard|remove-agent-made|settings|set|open" >&2
+    echo "usage: ame plugin list|show|add|update|remove|check|verify|history|rollback|on|off|grant|revoke|block|unblock|shipped|examples|new|try|make|change|fix|draft|keep|discard|remove-agent-made|settings|set|share|open" >&2
     exit 64
 }
 
@@ -583,6 +584,32 @@ cmd_set() {
     echo
 }
 
+# A plugin's folder as one file: a draft's own, an installed plugin's files in the store (which anyone can read), or one the image ships
+cmd_share() {
+    valid_id "${1:-}" || usage
+    local id="$1" out="${2:-${HOME}/$1.amethystora-pill}" folder digest
+    if [[ -d "${DRAFTS}/${id}" ]]; then
+        folder="${DRAFTS}/${id}"
+    elif [[ -d "${SHIPPED}/${id}" ]]; then
+        folder="${SHIPPED}/${id}"
+    else
+        digest="$("${HOST}" show "${id}" | field digest)"
+        [[ "${digest}" =~ ^[0-9a-f]{64}$ && -d "/var/lib/amethystora/plugins/store/${digest}" ]] || die "$(gettext "There is no such plugin.")"
+        folder="/var/lib/amethystora/plugins/store/${digest}"
+    fi
+    [[ ! -e "${out}" ]] || die "$(gettext "That file exists already.")"
+    local work
+    work="$(mktemp -d)"
+    cp -a -- "${folder}/." "${work}/"
+    # What was kept for the pill's sake, and what the account wrote, is not part of what is shared
+    rm -f -- "${work}/origin.json"
+    "${HOST}" pack "${work}" >"${out}"
+    rm -rf -- "${work}"
+    export out
+    eval_gettext "Written to \${out}. Whoever opens it reads what it runs and reaches first, and decides."
+    echo
+}
+
 cmd_open() {
     [[ -f "${1:-}" ]] || usage
     install_from "$1" "" ""
@@ -611,6 +638,7 @@ case "${1:-}" in
     settings) shift; cmd_settings "$@" ;;
     set) shift; cmd_set "$@" ;;
     open) shift; cmd_open "$@" ;;
+    share) shift; cmd_share "$@" ;;
     examples) cmd_examples ;;
     new) shift; cmd_new "$@" ;;
     try) shift; cmd_try "$@" ;;

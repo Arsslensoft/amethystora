@@ -85,6 +85,8 @@ export function output(raw, actions = null) {
     const until = Number.isSafeInteger(raw.until) && raw.until > 0 && raw.until < 2 ** 40 ? raw.until : null;
     return {
         text: line(raw.text, 200),
+        // The same words as lines, for a card on the desktop (the host splits them; at most six)
+        lines: (Array.isArray(raw.lines) ? raw.lines : []).slice(0, 6).map(l => line(l, 80)).filter(l => l !== ''),
         icon: icon(raw.icon),
         class: CLASSES.includes(raw.class) ? raw.class : '',
         click: action(raw.click, actions),

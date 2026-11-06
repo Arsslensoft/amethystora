@@ -360,7 +360,8 @@ impl Runner {
         let _running = Running(&self.running, id.to_string());
         {
             let mut last = self.last.lock().unwrap();
-            if last.get(id).is_some_and(|t| t.elapsed() < MIN_GAP) {
+            // A person's click is not made to wait for the timer's gap; a flood of them is the update rule's (service.rs)
+            if action.is_none() && last.get(id).is_some_and(|t| t.elapsed() < MIN_GAP) {
                 return Err("it ran a moment ago: a plugin runs at most once in five seconds".into());
             }
             last.insert(id.to_string(), Instant::now());

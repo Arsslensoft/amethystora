@@ -64,6 +64,7 @@ A plugin whose secret settings are in a closed [Vault](vault.md) waits and says 
 A plugin is a folder, and a folder can be sent as a file:
 
 ```bash
+ame plugin share site-deploy        # writes site-deploy.amethystora-pill in your home folder
 ame plugin open site-deploy.amethystora-pill
 ```
 

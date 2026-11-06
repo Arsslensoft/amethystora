@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A plugin shared as a file (ame plugin share): a tar of its folder, which amethystora-pill.desktop opens in a terminal to show what it
+     runs and reaches before anything is kept (R7-05). The name says "pill" because that is where most of them show. -->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-amethystora-pill">
+    <comment>Amethystora plugin</comment>
+    <sub-class-of type="application/x-tar"/>
+    <glob pattern="*.amethystora-pill" weight="90"/>
+    <glob pattern="*.amethystora-plugin" weight="90"/>
+  </mime-type>
+</mime-info>

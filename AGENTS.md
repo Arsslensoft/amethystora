@@ -1285,22 +1285,14 @@ that call before adding a GNOME to its `shell-version`, which `20-tests.sh` requ
 
 ### Widgets
 
-Amethystora Widgets (`amethystora-widgets@arsslensoft.github.io`, in `system_files` like the transitions)
-is the top bar's counterpart of Omarchy's bar plugins, made for agents to write. A widget is a folder in
-`~/.config/amethystora/widgets` holding `widget.json` and a command; the extension runs the command and
-shows what it prints as a label, an icon and a menu, and loads a widget again whenever its folder
-changes. Widgets are deliberately not code inside GNOME Shell: on Wayland the shell is the compositor,
-so a mistake in it ends the session, and new code only loads after logging out. `protocol.js` is the one
-definition of the format and `runner.js` the one way a command runs (its own session, a fixed `PATH`,
-`WIDGET_ID`, `WIDGET_DIR`, `WIDGET_STATE`, 30 seconds per run); `check.js`, which `amethystora-widgets
-run` is, imports both, so what the check passes is what the bar shows. Keep it that way. The
-`amethystora-widgets` skill documents the format for agents and `widgets.md` for users: change them with
-`protocol.js`. `amethystora-widgets make` and `fix` hand the work to `amethystora-agent`, and the
-examples in `/usr/share/amethystora/widgets/examples` pass the check in `20-tests.sh`. Nothing here may
-run as root or ship a widget that is on by default. A widget whose `widget.json` says `"place": "desktop"` is a card in
-its corner on the wallpaper, drawn by Amethystora UI's `deskwidgets` module with this extension's own `runner.js` and
-`protocol.js` (imported by file, so that a missing widgets extension stops nothing), and only while `ame desktop
-desktop-widgets` is on; the bar leaves it alone.
+Widgets are plugins (see Plugins), since 2026-11-06: the extension that ran them as the account's own code, `amethystora-widgets@arsslensoft.github.io`
+(`runner.js`, `protocol.js`, `check.js`), is gone, and nothing is read from `~/.config/amethystora/widgets` or run unsandboxed. A widget is a
+plugin whose manifest contributes `bar` or `desktop`; the six of the gallery and `hello` are `/usr/share/amethystora/plugins/amethystora.*`
+(the image's own, read-only, added with a click and no administrator, so none may ask for `network`, `files`, `window` or `change`: `20-tests.sh`
+and `apps/plugin-host/tests/shipped.rs` hold it), and `plugin-examples/` holds the ones that reach a service for an agent or a person to start
+from (`ame plugin new ID EXAMPLE`). `amethystora-widgets` and `ame desktop widgets` stay as other names for `ame plugin` (`/usr/bin/amethystora-widgets`).
+The `amethystora-plugins` skill documents the format for agents and `plugins.md` for users. A card on the desktop is drawn by Amethystora UI's
+`deskwidgets` module from what the `plugins` module hands it (`desktopPlugins()`), and only while `ame desktop desktop-widgets` is on.
 
 ### The logo menu
 
@@ -1772,9 +1764,36 @@ crate (no GTK; only the host's `service.rs` links GLib) with two programs: `amet
   `list`, `show`.
 - **Tests:** cargo (manifest, output, tar refusals, proxy address rules, the helper's flow), `build_files/shared/test-plugins.sh` (from
   `20-tests.sh`), and `tests/vm/suites/72-plugins.sh` with `tests/vm/fixtures/hostile` (a hostile plugin and a hostile account; the suite
-  was written and has not been run). Not built yet: the shell module, the pill and every other surface, Control's page, Security's
-  section and report check, `plugin-approval`, the watcher and `amethystora-sends`, `pick`, `change`, the broker, `new|dev|run`,
-  `update --all`, drafts and the agent's skill; the widgets still run unsandboxed until phase 3 moves them over.
+  was written and has not been run). Phases 2 and 3 are built (2026-11-06, round 7's plugins group): see the next section. Not built yet: Control's settings form for a plugin
+  (`ame plugin set` is the way), Security's section and report check, `plugin-approval`, the watcher and `amethystora-sends`, `pick`, `change`, `events`,
+  `network-local`, panels, Files' menu, keybindings and the agent's tools from a plugin.
+
+### Plugins in the shell
+
+`modules/plugins.js` (Amethystora UI, right after `pill`, key `show` of `org.gnome.shell.extensions.amethystora-ui.plugins`, `ame desktop plugins on|off`,
+on) is the one client of the host: it watches the bus name `org.amethystora.Plugins` (nothing else while no plugin is on, and with the key off not even
+that), believes only the connection whose `/proc/PID/exe` is `/usr/libexec/amethystora-plugin-host` and only its signals, and draws what `List` and
+`Updated` hand it from the fixed set of elements, **clamped again** (`modules/plugins/clamp.js`, run under node by `build_files/shared/test-plugins-clamp.mjs`):
+text only, a theme icon's name, 20 elements, no plate. The places are the manifest's `contributes`, each with the options the shell reads
+(`manifest.rs` `surface_options`, nothing else): the pill's `extra` activity (`plugins/pill.js`, `ORDER` after `saving` and before `quiet`; one activity for
+all, the latest change in the pill and the rest rows of its card, countdown counted by the shell while shown, `private` hidden while the screen is shared),
+the bar (`bar.js`, status area `amethystora-plugin-ID`, layout id `plugin-ID` in `bars/arrange.js`), a tile (`tile.js`, `_amethystoraQuickId`, added with
+`quickSettings.menu.addItem`), search (`search/plugins.js`: the plugin's last output for its prefix; what is typed never reaches a sandbox), a dock badge
+(`dock/launcher.js` `setPlugin`, a number in `text` is the count) and the desktop (`deskwidgets.js`). `hidden: true` hides only the pill, the bar and the
+desktop; a tile and a search answer stay. Every card ends with the plugin's name, what it may reach and Pause, drawn by the shell.
+
+**The host** (`apps/plugin-host`) gained: surfaces in the manifest, `author` and `settings` (a secret one is sealed with `vault-client` under purpose
+`plugin-<16 hex of sha256(id)>` and reaches the sandbox on descriptor 10, `secrets.rs`; a closed Vault makes the plugin wait, never pause), drafts
+(`~/.local/share/amethystora/plugin-drafts/ID`: run with nothing granted, with `sample.json` shown when the run finds nothing to reach, `ame plugin draft|keep|
+discard|make|change|fix|new|examples|try|settings|set|open`), the broker (`broker.rs`: a socket per plugin that may ask for anything, `/broker/broker.sock` and
+the host's own binary as `plugin` inside the sandbox: `state clock|disk|media|do-not-disturb`, `control media|do-not-disturb` and `open`/`clipboard` only in a
+run that a click started (an action), `notify` once a minute; a draft is answered from samples), and the rules that pause a plugin by itself (five failed runs in
+a row, three that hit 30 seconds, two over their memory, more than 30 results a minute; the `Paused` signal says it once with its reason; the shell offers Ask the
+agent to fix it while the features are on). `ame pill start|update|end` (`/usr/libexec/amethystora-pill`, group `pill`) is the account's own script live in the
+pill with no sandbox: one file per pill in `$XDG_RUNTIME_DIR/amethystora/pill`, watched by `plugins/script.js` (plain files of a few bytes only, a waiter on the
+script's process takes it away), and the agent may run it. Control lists everything as `rows` (`plugins`, `plugins-agent` "Made by the agent", `plugins-shipped`,
+`plugins-show`); `ame plugin keep` and `open` are on `never.rs`. A debug build of the host honours `AMETHYSTORA_PLUGIN_TEST_IMAGE` (a folder with `shipped/`,
+`store-root/`, `seccomp.bpf`, `plugins.conf`) so that it can be tried without an image; a release build has no such seam.
 
 ### The icon packs
 

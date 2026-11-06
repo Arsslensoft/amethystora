@@ -131,7 +131,7 @@ impl State {
                 entry["actions"] = l.manifest.actions.clone().into();
                 if l.draft {
                     // What the agent said it would show, for the run that finds nothing to reach
-                    entry["sample"] = std::fs::read_to_string(l.folder.join("sample.json")).ok().and_then(|t| crate::output::parse(&t, &l.manifest.actions).ok()).unwrap_or(Value::Null);
+                    entry["sample"] = std::fs::read_to_string(l.folder.join("sample.json")).ok().and_then(|t| amethystora_plugin_host::output::parse(&t, &l.manifest.actions).ok()).unwrap_or(Value::Null);
                 }
             } else if let Err(e) = &loaded {
                 entry["error"] = e.clone().into();
@@ -213,7 +213,7 @@ impl State {
                                 entry["waiting"] = "vault".into();
                             } else {
                                 let count = match failures.get_mut(&id) {
-                                    Some((k, n)) if k == kind => {
+                                    Some((k, n)) if k.as_str() == kind => {
                                         *n += 1;
                                         *n
                                     }

@@ -26,6 +26,11 @@ fn words(line: &str) -> impl Iterator<Item = &str> {
 }
 
 pub fn check(folder: &Path) -> Report {
+    check_as(folder, false)
+}
+
+/// `system` lets the id start with amethystora., which the image's own plugins in /usr/share/amethystora/plugins have and an author's never does
+pub fn check_as(folder: &Path, system: bool) -> Report {
     let mut report = Report::default();
     let entries = match tree::read_dir(folder) {
         Ok(entries) => entries,
@@ -38,7 +43,7 @@ pub fn check(folder: &Path) -> Report {
         report.errors.push("there is no manifest.json".into());
         return report;
     };
-    let manifest = match std::str::from_utf8(&entry.data).map_err(|_| "manifest.json is not text".to_string()).and_then(Manifest::parse) {
+    let manifest = match std::str::from_utf8(&entry.data).map_err(|_| "manifest.json is not text".to_string()).and_then(|text| Manifest::parse_with(text, system)) {
         Ok(m) => m,
         Err(e) => {
             report.errors.push(e);
