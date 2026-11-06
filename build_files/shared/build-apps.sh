@@ -76,6 +76,8 @@ cargo build --release --locked -p amethystora-agent-tools
 cargo build --release --locked -p amethystora-clipboard-seal
 # The phone link's program (no GTK): it speaks the KDE Connect protocol, so that the phone's app works with it
 cargo build --release --locked -p amethystora-connect
+# Move to this computer: the two ends of a move over the home network (no GTK)
+cargo build --release --locked -p amethystora-move
 # The plugin system (plans/PLAN-plugins.md): the host that runs plugins in a sandbox, the root helper that is the only writer of
 # their store, and the sandbox's seccomp filter, written by a small C program with libseccomp (the version the image has)
 cargo build --release --locked -p amethystora-plugin-host
@@ -88,7 +90,7 @@ cargo build --release --locked -p amethystora-vault-service -p amethystora-vault
 mkdir -p /out/licenses
 install -Dpm0755 "${CARGO_TARGET_DIR}/release/amethystora-apps" /out/amethystora-apps
 install -Dpm0755 "${CARGO_TARGET_DIR}/release/amethystora-sensor" /out/amethystora-sensor
-for program in amethystora-agent-tools amethystora-agent-root amethystora-clipboard-seal amethystora-connect amethystora-plugin-host amethystora-plugin-root \
+for program in amethystora-agent-tools amethystora-agent-root amethystora-clipboard-seal amethystora-connect amethystora-move amethystora-plugin-host amethystora-plugin-root \
     amethystora-vault-service amethystora-vault-cli amethystora-vault-work amethystora-vault-net \
     git-credential-amethystora docker-credential-amethystora; do
     install -Dpm0755 "${CARGO_TARGET_DIR}/release/${program}" "/out/${program}"
@@ -108,14 +110,14 @@ ldd "${CARGO_TARGET_DIR}/release/amethystora-sensor" | grep -q 'libbpf\.so\.1' |
 # Every crate built into the program (its normal dependencies: build tools and test-only crates are not in
 # it), with its licence, and the licence and notice files it ships: most are MIT or Apache-2.0, whose
 # terms ask for their notices to travel with the program
-cargo tree --locked -p amethystora-apps -p amethystora-sensor -p amethystora-agent-tools -p amethystora-clipboard-seal -p amethystora-connect -p amethystora-plugin-host \
+cargo tree --locked -p amethystora-apps -p amethystora-sensor -p amethystora-agent-tools -p amethystora-clipboard-seal -p amethystora-connect -p amethystora-move -p amethystora-plugin-host \
     -p amethystora-vault-service -p amethystora-vault-pkcs11 -p amethystora-vault-net -e normal --prefix none --format '{p}' |
     sed -n 's/^\([^ ]*\) v\([^ ]*\)\( (\*)\)\{0,1\}$/\1\t\2/p' | sort -u >/tmp/built.tsv
 cargo metadata --locked --format-version 1 >/tmp/metadata.json
 jq -r '.packages[] | select(.source != null)
     | [.name, .version, (.license // "see its licence file"), (.repository // ""), (.manifest_path | sub("/Cargo.toml$"; ""))]
     | @tsv' /tmp/metadata.json | sort -u >/tmp/packages.tsv
-printf '# The Rust crates built into the Amethystora apps, amethystora-sensor, the agent tools, the clipboard seal, the phone link, the plugin host and the Vault: name, version, licence, source\n' \
+printf '# The Rust crates built into the Amethystora apps, amethystora-sensor, the agent tools, the clipboard seal, the phone link, the move, the plugin host and the Vault: name, version, licence, source\n' \
     >/out/licenses/CRATES
 missing=()
 while IFS=$'\t' read -r name version licence repository folder; do
