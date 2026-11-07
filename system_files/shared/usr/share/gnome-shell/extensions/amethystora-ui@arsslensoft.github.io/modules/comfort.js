@@ -46,6 +46,10 @@ const PROFILES = 'org.freedesktop.UPower.PowerProfiles';
 const PROFILES_PATH = '/org/freedesktop/UPower/PowerProfiles';
 const POWER_SAVER = 'power-saver';
 
+// The power saver as last read, for the next enable: a screen lock stops the extension, and starting each unlock from "off"
+// until the daemon answers had the glass build its frost and throw it away again, a restyle of the stage each way
+let lastSaver = false;
+
 export class Comfort {
     constructor(ext) {
         this._ext = ext;
@@ -54,7 +58,7 @@ export class Comfort {
 
     enable() {
         this._listeners = new Set();
-        this._powerSaver = false;
+        this._powerSaver = lastSaver;
         this._settings = new Gio.Settings({schema_id: A11Y});
         // A GNOME without the key (before 50) has only its Animations switch
         this._hasKey = this._settings.settings_schema.has_key(REDUCED_MOTION);
@@ -159,6 +163,7 @@ export class Comfort {
         const proxy = this._proxy;
         const value = proxy?.g_name_owner ? proxy.get_cached_property('ActiveProfile') : null;
         const saver = value?.get_type_string() === 's' && value.unpack() === POWER_SAVER;
+        lastSaver = saver;
         if (saver === this._powerSaver)
             return;
         this._powerSaver = saver;

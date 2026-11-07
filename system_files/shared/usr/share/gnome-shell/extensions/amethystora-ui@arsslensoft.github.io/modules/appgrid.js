@@ -88,7 +88,10 @@ export class AppGrid {
         this._removeRow();
         this._unFullPages();
         this._unfolders();
-        Main.layoutManager.overviewGroup.remove_style_class_name(GROUP_CLASS);
+        // Kept through a screen lock, which stops the extension: off and on again, it restyled the whole app grid at the
+        // first overview after every unlock (with the stylesheets unloaded while locked, it matches nothing)
+        if (!Main.sessionMode.isLocked)
+            Main.layoutManager.overviewGroup.remove_style_class_name(GROUP_CLASS);
         this._appDisplay = null;
         // Disposed now rather than by the collector (dock.js says why)
         this._settings?.run_dispose();

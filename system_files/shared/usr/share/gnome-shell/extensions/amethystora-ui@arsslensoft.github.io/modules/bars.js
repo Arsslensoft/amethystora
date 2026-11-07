@@ -276,8 +276,9 @@ export class Bars {
         this._spacers = null;
         this._syncMenus();
         this._turned = null;
+        // Kept through a screen lock (style.js says why); the unlock's enable puts the ones the settings say right
         const group = Main.layoutManager.uiGroup;
-        for (const name of [...Object.values(SIZES), BOTTOM])
+        for (const name of Main.sessionMode.isLocked ? [] : [...Object.values(SIZES), BOTTOM])
             group.remove_style_class_name(name);
 
         // The others let go of the bars before they go
@@ -620,6 +621,9 @@ export class Bars {
                 layout.uiGroup.remove_style_class_name(BOTTOM);
                 layout.panelBox.disconnectObject(this);
             }
+        } else if (!bottom) {
+            // A bottom bar turned off while the screen was locked (disable keeps the class through a lock)
+            layout.uiGroup.remove_style_class_name(BOTTOM);
         }
         layout._updateBoxes();
         this._eachBar(bar => bar.place(bar.monitor));

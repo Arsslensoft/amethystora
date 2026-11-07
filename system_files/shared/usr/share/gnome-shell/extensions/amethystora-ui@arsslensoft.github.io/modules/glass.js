@@ -165,9 +165,12 @@ export class Glass {
         this._lastStats = null;
         this.shader?.destroy();
         this.shader = null;
+        // Kept through a screen lock (style.js says why); the unlock's enable puts them right
         const group = Main.layoutManager.uiGroup;
-        group.remove_style_class_name(SOLID);
-        group.remove_style_class_name(CONTRAST);
+        if (!Main.sessionMode.isLocked) {
+            group.remove_style_class_name(SOLID);
+            group.remove_style_class_name(CONTRAST);
+        }
         this._solid = false;
     }
 
