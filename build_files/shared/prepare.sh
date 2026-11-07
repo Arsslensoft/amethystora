@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-# The first step of the kernel layer (layers/kernel.Containerfile, plans/PLAN-build-layers.md): what comes before
+# The first step of the kernel layer (layers/kernel.Containerfile, plans/done/PLAN-build-layers.md): what comes before
 # the kernel. The kernel and its modules are a step of their own, the only one the module signing key is mounted
 # for. system_files is copied in by build.sh, over the packages.
 

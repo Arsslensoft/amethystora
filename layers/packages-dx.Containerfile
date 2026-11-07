@@ -1,4 +1,4 @@
-# Layer 7 (plans/PLAN-build-layers.md), on the packages layer: dx's packages (00-dx.sh), their source packages and
+# Layer 7 (plans/done/PLAN-build-layers.md), on the packages layer: dx's packages (00-dx.sh), their source packages and
 # debranding's pass again (layers/packages-dx.sh). One per flavor and day, for its dx image
 ARG PACKAGES_IMAGE=""
 

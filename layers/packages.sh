@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-# The packages layer (layers/packages.Containerfile, plans/PLAN-build-layers.md): what the image's build did with
+# The packages layer (layers/packages.Containerfile, plans/done/PLAN-build-layers.md): what the image's build did with
 # the packages, before system_files is copied over them (build.sh)
 
 set -eoux pipefail

@@ -70,7 +70,7 @@ rpmfusion_master() {
 # anything installed after this, here or by the user. The base image turns that one on in
 # /etc/dnf/repos.override.d, which dnf5 and rpm-ostree read after the repository files, wherever those are
 # (Fedora's own are in /usr/share/dnf5/repos.d from 45), so they are turned off there too, by setopt.
-# 17-cleanup.sh runs it, and the packages-dx layer before dx's packages (plans/PLAN-build-layers.md)
+# 17-cleanup.sh runs it, and the packages-dx layer before dx's packages (plans/done/PLAN-build-layers.md)
 disable_third_party_repos() {
     local own=(fedora updates updates-archive) ids repo enabled
     [[ "${UBLUE_IMAGE_TAG:-}" == beta ]] && own+=(updates-testing)

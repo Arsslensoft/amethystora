@@ -1,4 +1,4 @@
-# Layers 2 and 3 (plans/PLAN-build-layers.md): the Amethystora apps (apps/), built and tested on the base they run
+# Layers 2 and 3 (plans/done/PLAN-build-layers.md): the Amethystora apps (apps/), built and tested on the base they run
 # on. The default target is the apps layer: /out (the programs, the agent's model, the crates' licences) and the
 # Node that 20-tests.sh runs its checks written in JavaScript with, which the image mounts at /apps-stage. The
 # cargo target is the crates compiled from crates.io, which the next build of a changed apps/ starts from

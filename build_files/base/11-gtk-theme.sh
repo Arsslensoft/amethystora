@@ -17,7 +17,7 @@ set -eoux pipefail
 # (nord, gruvbox, catppuccin and the rest) stay on adw-gtk3, which follows the GNOME accent colour
 # and so goes on matching whatever palette they set, where a purple theme would fight them.
 
-# In two halves (plans/PLAN-build-layers.md): `make` in the assets layer (layers/assets.Containerfile), which writes
+# In two halves (plans/done/PLAN-build-layers.md): `make` in the assets layer (layers/assets.Containerfile), which writes
 # the theme under ${ASSETS}, and `install` in the image, whose build copies the layer in (build.sh) and checks it
 if [[ "${1:-}" == install ]]; then
     test -s /usr/share/themes/Amethystora/gtk-4.0/gtk-dark.css

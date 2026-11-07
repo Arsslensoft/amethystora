@@ -25,7 +25,7 @@ jobs:
           keep-n-tagged: 7
           keep-n-untagged: 7
 
-  # The build's layers (plans/PLAN-build-layers.md), each kept as long as a build can still find it: the packages
+  # The build's layers (plans/done/PLAN-build-layers.md), each kept as long as a build can still find it: the packages
   # layers have a day's or a run's epoch, the crates an ISO week's, the rest change with what they are built from
   delete-old-layers:
     runs-on: ubuntu-latest

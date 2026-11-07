@@ -5,7 +5,7 @@ The ublue-os base image, ublue-os/brew and the ublue COPR packages install files
 services and settings under their own names. This renames all of them to Amethystora and
 rewrites every reference, so the image carries no upstream names.
 
-    debrand.py          apply the changes (the packages layers, plans/PLAN-build-layers.md)
+    debrand.py          apply the changes (the packages layers, plans/done/PLAN-build-layers.md)
     debrand.py --newer FILE
                         the same, reading only the files changed since FILE was: the image's run
                         (07-debrand.sh), after the packages layers read the rest

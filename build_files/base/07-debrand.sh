@@ -7,7 +7,7 @@ set -eoux pipefail
 # Rename everything the upstream layers (the ublue-os base image, ublue-os/brew and the ublue COPR
 # packages) ship as Universal Blue to Amethystora: paths, commands, services, settings and text.
 # Amethystora's own files in system_files already use the final names and win over upstream ones. The packages
-# layers read every file of the packages once (plans/PLAN-build-layers.md): this reads only what came after them,
+# layers read every file of the packages once (plans/done/PLAN-build-layers.md): this reads only what came after them,
 # system_files and brew's files among it, though it renames and retargets every name
 python3 /ctx/build_files/shared/debrand.py --newer /usr/lib/amethystora-build/debranded
 

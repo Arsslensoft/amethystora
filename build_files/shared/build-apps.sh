@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-# The apps layer (layers/apps.Containerfile, plans/PLAN-build-layers.md): the Amethystora apps (apps/, a Cargo workspace), built with Fedora's Rust
+# The apps layer (layers/apps.Containerfile, plans/done/PLAN-build-layers.md): the Amethystora apps (apps/, a Cargo workspace), built with Fedora's Rust
 # on the same base image they run on, so that they link against the GTK and libadwaita the image has. The
 # tests run first: the shared crate's, which hold every date, number and list to what the Electron windows
 # wrote, and every app's, Notes' among them reading and writing the Electron window's own files. Only the

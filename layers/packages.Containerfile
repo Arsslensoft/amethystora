@@ -1,4 +1,4 @@
-# Layer 6 (plans/PLAN-build-layers.md), on the kernel layer: the packages (04-packages.sh, 05-override-install.sh
+# Layer 6 (plans/done/PLAN-build-layers.md), on the kernel layer: the packages (04-packages.sh, 05-override-install.sh
 # with fprintd from layer 1), the image's build tools, the source packages and debranding's full pass
 # (layers/packages.sh). One per flavor and day, shared by its base and dx images
 ARG KERNEL_IMAGE=""

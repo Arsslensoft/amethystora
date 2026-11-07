@@ -14,7 +14,7 @@ set -eoux pipefail
 # at the tag of the 17.0 release, which holds 16.0's files byte for byte as www.unicode.org publishes them: that
 # server timed out every build of 2026-10-31 (Cloudflare 522).
 #
-# In two halves (plans/PLAN-build-layers.md): `make` in the assets layer (layers/assets.Containerfile), which writes
+# In two halves (plans/done/PLAN-build-layers.md): `make` in the assets layer (layers/assets.Containerfile), which writes
 # under ${ASSETS}, and `install` in the image, whose build copies the layer in (build.sh) and checks it
 if [[ "${1:-}" == install ]]; then
     test -s /usr/share/amethystora/emoji/emoji.json || ls /usr/share/amethystora/emoji/*.json >/dev/null

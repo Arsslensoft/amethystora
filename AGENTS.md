@@ -2336,6 +2336,14 @@ name, the values `layers/lib.sh` gives beside it and the key of the layer under 
   packages layer, listed in `tools.list`, and taken out by `build.sh` less what another package needs. Debranding
   reads every file in the packages layers and, in the image (`debrand.py --newer`), only what came after them.
 - `build.sh` prints how long each step took, and one `::notice::` with all of them.
+- **The Vault's users come first.** The kernel layer makes them from their sysusers files before `prepare.sh`, as
+  they were when `system_files` came first: without them every package's system user and group number shifts, and a
+  machine installed earlier keeps its own `/etc/group`, so a file such as dx's `dumpcap` would belong to another group
+  there. A new sysusers file in `system_files` goes there too, or numbers move.
+- **The push** (`.github/actions/push-layers`) reads its list on descriptor 3: cosign reads the key's password from
+  standard input when there is no terminal.
+- **Times** (2026-11-07, Latest): an image job 36–46 min with its layers found (Build Image 13.5–17, mostly
+  `20-tests.sh`), against 64–94 before; the layer jobs 3–5 min when every layer is there, 26–38 when all are built.
 
 ### Containerfile Multi-Stage Build
 The `Containerfile` is the image's own build, once per commit, on the layers the Justfile found:

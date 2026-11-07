@@ -108,7 +108,7 @@ done < <(awk -F'\t' -v copyleft="${COPYLEFT}" '$4 != "Fedora Project" && $2 ~ co
     print $4 "\t" $3 "\t" ($2 ~ /GPL/ ? "gpl" : "other") }' "${PACKAGES}" | sort -u)
 
 # The packages layers fetch the source packages of what they installed, and leave SOURCES to the image's run
-# (plans/PLAN-build-layers.md)
+# (plans/done/PLAN-build-layers.md)
 if [[ -n "${SOURCES_FETCH_ONLY:-}" ]]; then
     rm -f "${PACKAGES}"
     echo "::endgroup::"

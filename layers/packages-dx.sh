@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-# The packages-dx layer (layers/packages-dx.Containerfile, plans/PLAN-build-layers.md): dx's packages, on the
+# The packages-dx layer (layers/packages-dx.Containerfile, plans/done/PLAN-build-layers.md): dx's packages, on the
 # packages layer, before system_files is copied over them (build.sh, build-dx.sh)
 
 set -eoux pipefail

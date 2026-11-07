@@ -11,7 +11,7 @@ set -eoux pipefail
 # no licence file, so its OFL.txt is pinned here without the font. A new commit is pinned by hand, with every sum
 # again.
 #
-# In two halves (plans/PLAN-build-layers.md): `make` in the assets layer (layers/assets.Containerfile) downloads under
+# In two halves (plans/done/PLAN-build-layers.md): `make` in the assets layer (layers/assets.Containerfile) downloads under
 # ${ASSETS}, and `install` in the image, whose build copies the layer in (build.sh), adds Quicksand, builds the cache
 # and checks every theme's fonts
 GOOGLE_FONTS_COMMIT="6c1dbe27dcf7d817d4b62cec033ba77fa8e2a5ec"

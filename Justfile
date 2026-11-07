@@ -210,7 +210,7 @@ build $image="amethystora" $tag="latest" $flavor="main" rechunk="0" ghcr="0" pip
         KERNEL_LAYER_ARGS+=(--secret "id=AKMODS_CERT,src=${module_keys}/cert.der")
     fi
 
-    # The layers the image builds on, found here, on GHCR or built (layers/lib.sh, plans/PLAN-build-layers.md).
+    # The layers the image builds on, found here, on GHCR or built (layers/lib.sh, plans/done/PLAN-build-layers.md).
     # AMETHYSTORA_LAYERS=shared, flavor or fetch stops after them
     echo "::endgroup::"
     echo "::group:: Layers"

@@ -48,7 +48,7 @@ jobs:
             echo "epoch=$(date -u +%Y%m%d)" >> "$GITHUB_OUTPUT"
           fi
 
-  # The build's layers (plans/PLAN-build-layers.md), built once here when their keys are new, pushed to GHCR and
+  # The build's layers (plans/done/PLAN-build-layers.md), built once here when their keys are new, pushed to GHCR and
   # signed, for the six image jobs to pull. Only where the images publish: elsewhere each image job builds what it
   # does not find, and publishes nothing. fprintd first, which the flavors' packages layers take
   layers-fprintd:

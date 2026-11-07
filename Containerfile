@@ -1,4 +1,4 @@
-# The image, on its layers (plans/PLAN-build-layers.md), which the Justfile finds or builds first (layers/lib.sh):
+# The image, on its layers (plans/done/PLAN-build-layers.md), which the Justfile finds or builds first (layers/lib.sh):
 # the packages layer of the flavor (packages-dx's for a dx image), the apps and the assets
 ARG PACKAGES_IMAGE=""
 ARG APPS_IMAGE=""

@@ -1,4 +1,4 @@
-# Layer 4 (plans/PLAN-build-layers.md): what is made only from pinned downloads, each checked by its SHA-256: Sweet
+# Layer 4 (plans/done/PLAN-build-layers.md): what is made only from pinned downloads, each checked by its SHA-256: Sweet
 # recoloured (11-gtk-theme.sh), the themes' fonts from Google Fonts (09-fonts.sh) and the emoji picker's lists
 # (09-emoji.sh). Each script's make half writes under /out here; its install half copies it into the image
 ARG BASE_IMAGE="ghcr.io/ublue-os/silverblue-main"

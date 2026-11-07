@@ -2,7 +2,7 @@
 
 set -eoux pipefail
 
-# The image's own build, on the packages layer (plans/PLAN-build-layers.md): the base image prepared, the kernel,
+# The image's own build, on the packages layer (plans/done/PLAN-build-layers.md): the base image prepared, the kernel,
 # the packages and dx's packages are layers of their own (layers/), found or built by the Justfile, and so are the
 # apps (mounted at /apps-stage) and the assets (at /assets). This is what changes with every commit.
 

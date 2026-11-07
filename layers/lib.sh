@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 # shellcheck disable=SC2154,SC2034 # the build recipe's variables, and the references it reads back
-# The build's layers (plans/PLAN-build-layers.md), sourced by the Justfile's build recipe once it has resolved and
+# The build's layers (plans/done/PLAN-build-layers.md), sourced by the Justfile's build recipe once it has resolved and
 # checked every digest. Each layer is an image of its own, tagged by a key over what it is made of: its
 # Containerfile in this folder, every file its COPY lines name, the values given beside it below and the key of the
 # layer under it. A layer is used from localhost if it is there, else pulled from GHCR by digest once its signature

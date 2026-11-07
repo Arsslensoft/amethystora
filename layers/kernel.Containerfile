@@ -1,4 +1,4 @@
-# Layer 5 (plans/PLAN-build-layers.md): the base image as the build starts it (prepare.sh: the upstream packages
+# Layer 5 (plans/done/PLAN-build-layers.md): the base image as the build starts it (prepare.sh: the upstream packages
 # system_files replaces, Fedora's logos and release packages), then the kernel and its modules
 # (03-install-kernel-akmods.sh), the only step the module signing key is mounted for. One per flavor and day,
 # shared by its base and dx images

@@ -1,4 +1,4 @@
-# Layer 1 (plans/PLAN-build-layers.md): fprintd with the duress finger's patches (packaging/fprintd), built on the
+# Layer 1 (plans/done/PLAN-build-layers.md): fprintd with the duress finger's patches (packaging/fprintd), built on the
 # base it is installed into. Only the three packages in /out leave it (05-override-install.sh installs them)
 ARG BASE_IMAGE="ghcr.io/ublue-os/silverblue-main"
 ARG FEDORA_MAJOR_VERSION="44"
