@@ -37,6 +37,8 @@ if ldd /usr/libexec/amethystora-vault-service | grep -q 'libcrypto\|libssl'; the
 fi
 grep -q '^u amethystora-vault ' /usr/lib/sysusers.d/amethystora-vault.conf || fail "no sysusers line for the service's user"
 grep -q '^u amethystora-vault-net ' /usr/lib/sysusers.d/amethystora-vault-net.conf || fail "no sysusers line for the network service's user"
+# A TPM slot is bound to the service's uid: a build that gave it another number would leave every such slot unable to open
+[[ "$(id -u amethystora-vault 2>/dev/null)" == 956 && "$(id -u amethystora-vault-net 2>/dev/null)" == 957 ]] || fail "the Vault's users are not 956 and 957"
 
 # --- The unit: its sandbox is all there ------------------------------------------------------------------------------------
 for line in User=amethystora-vault StateDirectory=amethystora/vault StateDirectoryMode=0700 PrivateNetwork=yes \
