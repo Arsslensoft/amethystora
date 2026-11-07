@@ -36,7 +36,7 @@ const STACK = 250;
 const DRAG_EDGE = 12;
 // How far a finger moves along the top bar before the strip follows it
 const DECIDE = 16;
-// With several screens: how often the pointer's screen is looked at
+// With several screens: how often, at most, the pointer's screen is looked at once the pointer moved
 const MONITOR_POLL = 100;
 // Where the pointer is put, off the edge, once staying there went to the window beyond it
 const NUDGE = 3;
@@ -83,6 +83,8 @@ export class Pointer {
             edge.destroy();
         this._edges = null;
         Main.layoutManager.disconnectObject(this);
+        global.backend.get_cursor_tracker().disconnectObject(this);
+        this._tracking = false;
         global.display.disconnectObject(this);
         global.stage.disconnectObject(this);
         if (this._pan)
@@ -994,22 +996,38 @@ export class Pointer {
 
     // ---- Several screens ----
 
+    // Looked at only once the pointer has moved (the cursor tracker says so, as for GNOME's magnifier), so that a
+    // still pointer wakes nothing
     _syncMonitorPoll() {
         const several = Main.layoutManager.monitors.length > 1;
-        if (several && !this._monitorTimer) {
+        const tracker = global.backend.get_cursor_tracker();
+        if (several && !this._tracking) {
             this._lastMonitor = global.display.get_current_monitor();
-            this._monitorTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, MONITOR_POLL, () => {
-                this._followPointer();
-                return GLib.SOURCE_CONTINUE;
-            });
-        } else if (!several && this._monitorTimer) {
-            GLib.source_remove(this._monitorTimer);
+            tracker.connectObject('position-invalidated', () => this._queueFollow(), this);
+            this._tracking = true;
+        } else if (!several && this._tracking) {
+            tracker.disconnectObject(this);
+            this._tracking = false;
+            if (this._monitorTimer)
+                GLib.source_remove(this._monitorTimer);
             this._monitorTimer = 0;
         }
     }
 
-    // The pointer is on another screen than the keyboard: that screen's strip's window gets it. Looked at every time,
-    // not only as the pointer crosses, so that a screen left while following was held off is followed after.
+    _queueFollow() {
+        if (this._monitorTimer)
+            return;
+        // Again while a screen to follow is held off, until it is followed
+        this._monitorTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, MONITOR_POLL, () => {
+            if (this._followPointer())
+                return GLib.SOURCE_CONTINUE;
+            this._monitorTimer = 0;
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    // The pointer is on another screen than the keyboard: that screen's strip's window gets it. True while that is
+    // held off, so that it is looked at again and the screen followed after.
     _followPointer() {
         const monitor = global.display.get_current_monitor();
         // A tiled window resized by its edge onto another screen leaves the strip for the floating layer, and keeps
@@ -1018,13 +1036,16 @@ export class Pointer {
             const strip = this._engine.stripOf(this._resizing);
             if (strip && strip.monitor !== monitor)
                 this._engine.float(this._resizing, {glide: false});
-            return;
+            return true;
         }
         // The search box (search.js) is not modal, and a window on a screen the pointer crosses on its way there
         // would take the keyboard from it and close it: the screen is followed once the box is gone
         if (Main.overview.visible || this._engine.session || Main.modalCount > 0 ||
-            this._tiling._ext.modules?.get('search')?.open)
-            return;
+            this._tiling._ext.modules?.get('search')?.open) {
+            return this._engine.screens.separate
+                ? this._engine.screens.shownOn(monitor) !== global.workspace_manager.get_active_workspace()
+                : monitor !== this._lastMonitor;
+        }
         const screens = this._engine.screens;
         // With a workspace on each screen, the one under the pointer becomes GNOME's, even while a window is dragged
         // (it is dropped on that workspace)
@@ -1032,16 +1053,19 @@ export class Pointer {
             const workspace = screens.shownOn(monitor);
             if (workspace !== global.workspace_manager.get_active_workspace())
                 screens.bring(workspace, monitor);
-            return;
+            return false;
         }
-        if (monitor === this._lastMonitor || this._drag)
-            return;
+        if (monitor === this._lastMonitor)
+            return false;
+        if (this._drag)
+            return true;
         this._lastMonitor = monitor;
         const focus = global.display.focus_window;
         if (focus && this._engine.focusMonitor() === monitor)
-            return;
+            return false;
         const strip = this._engine.activeStrip(monitor);
         if (strip.selected)
             this._engine.focus(strip);
+        return false;
     }
 }
