@@ -227,7 +227,6 @@ jobs:
 
   build_container:
     name: image
-    # After the layers where they ran; where they did not (pull requests), each image builds its own
     # After the layers where they ran, whatever came of them: an image job builds a layer it does not find. Where
     # they did not run (pull requests), each image builds its own
     needs: [plan, layers-shared, layers-flavor]
