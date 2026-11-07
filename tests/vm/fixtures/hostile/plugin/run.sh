@@ -13,13 +13,13 @@ probe() {
     timeout 5 "$@" >/dev/null 2>&1 && value=LEAK
     rows+=("{\"type\":\"row\",\"label\":\"${label}\",\"value\":\"${value}\"}")
 }
-# syscall NUMBER ARGS...: whether the call worked (python's ctypes; a refusal is -1)
-syscall() {
-    python3 -c 'import ctypes, sys
+# syscall NUMBER ARGS...: whether the call reached the kernel (python's ctypes). Only EPERM or ENOSYS, what the seccomp filter
+# and a refusing kernel answer, counts as blocked: the arguments are nonsense, and EFAULT or EINVAL means nothing stopped the call.
+# An array, not a function: probe runs its command under timeout, which cannot run a shell function
+syscall=(python3 -c 'import ctypes, errno, sys
 libc = ctypes.CDLL(None, use_errno=True)
 args = [int(a, 0) for a in sys.argv[1:]]
-sys.exit(0 if libc.syscall(*args) >= 0 else 1)' "$@"
-}
+sys.exit(0 if libc.syscall(*args) >= 0 or ctypes.get_errno() not in (errno.EPERM, errno.ENOSYS) else 1)')
 card() {
     local joined
     joined="$(
@@ -66,13 +66,13 @@ case "${PLUGIN_ACTION:-}" in
         card net
         ;;
     proc)
-        probe ptrace syscall 101 16 1 0 0
-        probe mount syscall 165 0 0 0 0 0
-        probe io-uring syscall 425 1 0
-        probe bpf syscall 321 0 0 0
-        probe keyctl syscall 250 0 0 0 0 0
+        probe ptrace "${syscall[@]}" 101 16 1 0 0
+        probe mount "${syscall[@]}" 165 0 0 0 0 0
+        probe io-uring "${syscall[@]}" 425 1 0
+        probe bpf "${syscall[@]}" 321 0 0 0
+        probe keyctl "${syscall[@]}" 250 0 0 0 0 0
         probe new-user-namespace unshare -U true
-        probe new-user-namespace-by-syscall syscall 272 0x10000000
+        probe new-user-namespace-by-syscall "${syscall[@]}" 272 0x10000000
         probe tiocsti python3 -c 'import fcntl, termios; fcntl.ioctl(0, termios.TIOCSTI, b"x")'
         probe other-process pgrep -x gnome-shell
         # Signals to the namespace's init from inside it are dropped and kill says nothing: only an init that went counts
