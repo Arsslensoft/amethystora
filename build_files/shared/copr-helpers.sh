@@ -78,8 +78,13 @@ disable_third_party_repos() {
     readarray -t enabled < <(grep -vxF -f <(printf '%s\n' "${own[@]}") <<<"${ids}")
     for repo in "${enabled[@]}"; do
         dnf5 config-manager setopt "${repo}.enabled=0"
-        # and in its own file, for what reads no overrides: bootc-image-builder depsolves the installer ISO
-        # with every repository a file calls enabled, and cannot open the keys pinned in the image
+    done
+    # Off in their own files too, the ones an override turned off already included, for what reads no
+    # overrides: bootc-image-builder depsolves the installer ISO with every repository a file calls enabled,
+    # and cannot open the keys pinned in the image
+    ids="$(dnf5 repo list --all --json | jq -r '.[].id')"
+    readarray -t enabled < <(grep -vxF -f <(printf '%s\n' "${own[@]}") <<<"${ids}")
+    for repo in "${enabled[@]}"; do
         { grep -lxF "[${repo}]" /etc/yum.repos.d/*.repo 2>/dev/null || true; } |
             xargs -r sed -i "/^\[${repo}\]\$/,/^\[/ s/^enabled[[:space:]]*=.*/enabled=0/"
     done
