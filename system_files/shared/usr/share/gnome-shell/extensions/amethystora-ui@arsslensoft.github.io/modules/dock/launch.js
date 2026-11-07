@@ -170,14 +170,10 @@ export class Launch {
             if (!container)
                 return show;
             const size = Math.round((state.dash.iconSize + HALO.outside) * scaleFactor());
-            const layer = new Layer();
+            const layer = new Layer({centred: true});
             const ring = new Ring(size);
             layer.add_child(ring);
             container.add_child(layer);
-            const place = () => ring.set_position(Math.round((layer.width - size) / 2),
-                Math.round((layer.height - size) / 2));
-            layer.connect('notify::allocation', place);
-            place();
             show.ring = ring;
             show.layer = layer;
             // The dock's container can go first (a screen added or taken away): then there is nothing to hide

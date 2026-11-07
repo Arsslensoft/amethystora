@@ -198,10 +198,8 @@ class AmethystoraDockDash extends Dash.Dash {
             'hidden', () => this.swell.sync(), this);
         this.connect('icon-size-changed', () => this._syncSizes());
         this.connect('notify::mapped', () => this._syncWiggle());
-        this.connect('notify::allocation', () => {
-            this._queueGeometry();
-            this._placeCaption();
-        });
+        // The caption is placed with the geometry, before the next frame: from inside the layout it asked for another
+        this.connect('notify::allocation', () => this._queueGeometry());
         this.connect('notify::hover', () => {
             this._syncCaption();
             // A folder coloured in Files since: the stacks' own icons are read again as the pointer comes to the dock
@@ -1306,6 +1304,7 @@ class AmethystoraDockDash extends Dash.Dash {
             return;
         this._geometryId = global.compositor.get_laters().add(Meta.LaterType.BEFORE_REDRAW, () => {
             this._geometryId = 0;
+            this._placeCaption();
             for (const state of this._items.values()) {
                 if (!state.button.mapped || state.key.folder || state.key.stack)
                     continue;

@@ -37,10 +37,12 @@ export function slowed(ms) {
 
 // A widget that lays its children out where they are put and asks for no room of its own, so that what is added to
 // an item (its mark, its number, a ring round its icon) never changes the size of anything around it, and that is
-// never picked
+// never picked. Made with centred: true, it centres its children itself as it is laid out (a ring round an icon):
+// moved from a notify::allocation handler instead, they would ask for another layout from inside this one, which
+// Clutter warns about on every frame and lays the dock out again for
 export const Layer = GObject.registerClass(
 class AmethystoraDockLayer extends St.Widget {
-    _init(params = {}) {
+    _init({centred = false, ...params} = {}) {
         super._init({
             layout_manager: new Clutter.FixedLayout(),
             x_expand: true,
@@ -48,6 +50,21 @@ class AmethystoraDockLayer extends St.Widget {
             reactive: false,
             ...params,
         });
+        this._centred = centred;
+    }
+
+    vfunc_allocate(box) {
+        if (!this._centred) {
+            super.vfunc_allocate(box);
+            return;
+        }
+        this.set_allocation(box);
+        const [width, height] = box.get_size();
+        for (const child of this.get_children()) {
+            const [, , w, h] = child.get_preferred_size();
+            const x = Math.round((width - w) / 2), y = Math.round((height - h) / 2);
+            child.allocate(new Clutter.ActorBox({x1: x, y1: y, x2: x + w, y2: y + h}));
+        }
     }
 
     vfunc_get_preferred_width() {

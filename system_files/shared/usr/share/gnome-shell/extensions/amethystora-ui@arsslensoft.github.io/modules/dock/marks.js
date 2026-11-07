@@ -4,6 +4,7 @@
 // row as it swells, but never grows with it.
 
 import Clutter from 'gi://Clutter';
+import Meta from 'gi://Meta';
 import St from 'gi://St';
 
 import {EASE, Layer, scaleFactor} from './util.js';
@@ -35,10 +36,12 @@ export class ItemMarks {
         this._state = state;
         this.layer = new Layer();
         state.item.add_child(this.layer);
-        this.layer.connect('notify::allocation', () => this.place());
+        // Placed before the next frame, not from inside the layout (util.js's Layer says why)
+        this.layer.connect('notify::allocation', () => this._queuePlace());
         // The item may go first, and take the layer with it
         this.layer.connect('destroy', () => {
             this._gone = true;
+            this._unqueuePlace();
             this.mark = this.disc = null;
         });
         this.kind = null;
@@ -49,9 +52,26 @@ export class ItemMarks {
     }
 
     destroy() {
+        this._unqueuePlace();
         if (!this._gone)
             this.layer.destroy();
         this.mark = this.disc = null;
+    }
+
+    _queuePlace() {
+        if (this._placeLater)
+            return;
+        this._placeLater = global.compositor.get_laters().add(Meta.LaterType.BEFORE_REDRAW, () => {
+            this._placeLater = 0;
+            this.place();
+            return false;
+        });
+    }
+
+    _unqueuePlace() {
+        if (this._placeLater)
+            global.compositor.get_laters().remove(this._placeLater);
+        this._placeLater = 0;
     }
 
     // kind: bar, dot or glow; windows: how many the item counts

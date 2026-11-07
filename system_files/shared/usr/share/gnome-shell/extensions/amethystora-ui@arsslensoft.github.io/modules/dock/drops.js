@@ -227,14 +227,10 @@ export class Drops {
         }
         if (ring && state.button._iconContainer) {
             const size = Math.round((state.dash.iconSize + 14) * scaleFactor());
-            const layer = new Layer();
+            const layer = new Layer({centred: true});
             const halo = new Ring(size);
             layer.add_child(halo);
             state.button._iconContainer.add_child(layer);
-            const place = () => halo.set_position(Math.round((layer.width - size) / 2),
-                Math.round((layer.height - size) / 2));
-            layer.connect('notify::allocation', place);
-            place();
             halo.ease({opacity: 255, duration: 210, mode: EASE.inOut});
             if (this._dock.motionLevel() === 'full')
                 halo.ease({rotation_angle_z: 360, duration: PHONE_TURN, mode: EASE.linear, repeatCount: -1});
