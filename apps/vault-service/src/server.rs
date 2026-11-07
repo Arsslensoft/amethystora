@@ -35,6 +35,8 @@ const CLIENTS_PER_ACCOUNT: usize = 16;
 /// Work waiting for the thread, an account's and everyone's: each is a request somebody is waiting on
 const JOBS_PER_ACCOUNT: usize = 4;
 const MOST_JOBS: usize = 32;
+/// An answer past which the heap is trimmed once it has been written (a list of every account, a chunk of a backup)
+const LARGE_ANSWER: usize = 64 * 1024;
 /// A connection with nothing asked of the service, a line started included, is let go after this
 const IDLE_CONNECTION: Duration = Duration::from_secs(5);
 /// An answer not taken
@@ -665,10 +667,16 @@ impl Server {
                 Err(_) => return self.gone(id),
             }
         }
+        let large = client.output.len() > LARGE_ANSWER;
         client.output.zeroize();
         client.output = Vec::new();
         client.written = 0;
         client.deadline = Some(Instant::now() + IDLE_CONNECTION);
+        if large {
+            // What a large answer was made from is free now, and handed back, or the service stays that size
+            // SAFETY: malloc_trim only releases free memory, and is safe to call at any time
+            unsafe { libc::malloc_trim(0) };
+        }
         if client.closing {
             self.gone(id);
         }
