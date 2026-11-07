@@ -16,13 +16,21 @@ if [[ "${UBLUE_IMAGE_TAG:-}" == "beta" ]]; then
 fi
 
 mkdir -p "$(dirname "${OUT}")"
-# A line "@@NAME" before each package's files; the files of /usr/bin and /usr/sbin kept, by their base name
-dnf5 -q repoquery "${REPOS[@]}" --latest-limit=1 --arch="$(uname -m),noarch" --qf '@@%{name}\n%{files}\n' 2>/dev/null |
-    awk '/^@@/ { package = substr($0, 3); next }
-        /^\/usr\/s?bin\/[^\/]+$/ { name = $0; sub(/.*\//, "", name); if (name ~ /^[A-Za-z0-9_+][A-Za-z0-9._+-]*$/) print name "\t" package }' |
-    LC_ALL=C sort -u -t "$(printf '\t')" -k1,1 >"${OUT}.new"
-# Fedora's release has tens of thousands of commands: far fewer means the query did not work
-[[ "$(wc -l <"${OUT}.new")" -gt 10000 ]]
+# A line "@@NAME" before each package's files; the files of /usr/bin and /usr/sbin kept, by their base name. A mirror
+# that stalls makes dnf give up with a short list, so it is asked up to three times, and says why when it gave up.
+for attempt in 1 2 3; do
+    dnf5 -q repoquery "${REPOS[@]}" --latest-limit=1 --arch="$(uname -m),noarch" --qf '@@%{name}\n%{files}\n' 2>/tmp/repoquery.err |
+        awk '/^@@/ { package = substr($0, 3); next }
+            /^\/usr\/s?bin\/[^\/]+$/ { name = $0; sub(/.*\//, "", name); if (name ~ /^[A-Za-z0-9_+][A-Za-z0-9._+-]*$/) print name "\t" package }' |
+        LC_ALL=C sort -u -t "$(printf '\t')" -k1,1 >"${OUT}.new" || true
+    # Fedora's release has tens of thousands of commands: far fewer means the query did not work
+    [[ "$(wc -l <"${OUT}.new")" -gt 10000 ]] && break
+    echo "repoquery attempt ${attempt} listed $(wc -l <"${OUT}.new") commands:" >&2
+    tail -n 5 /tmp/repoquery.err >&2
+    ((attempt < 3)) || exit 1
+    sleep 30
+done
+rm -f /tmp/repoquery.err
 mv "${OUT}.new" "${OUT}"
 chmod 0644 "${OUT}"
 echo "$(wc -l <"${OUT}") commands in ${OUT}"
