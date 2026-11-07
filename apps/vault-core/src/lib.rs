@@ -1,4 +1,4 @@
-//! Amethystora Vault's core, with no GTK and no socket (plans/PLAN-vault.md). The service, the window and the
+//! Amethystora Vault's core, with no GTK and no socket (plans/done/PLAN-vault.md). The service, the window and the
 //! command line all use it.
 
 pub mod seal;

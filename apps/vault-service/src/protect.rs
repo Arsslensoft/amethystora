@@ -1,4 +1,4 @@
-//! Protected files (plans/PLAN-vault.md): a file or folder taken out of the home and into the vault, sealed, and reached only
+//! Protected files (plans/done/PLAN-vault.md): a file or folder taken out of the home and into the vault, sealed, and reached only
 //! through `ame vault run`, which has it in a namespace of that one command for as long as it runs. All of this runs as the account, in
 //! the command line: the service has no home, and holds the sealed item like any other.
 //!
@@ -619,7 +619,7 @@ fn write_file(path: &str, text: &str) -> Result<(), Why> {
 
 /// Goes into a user, mount and process namespace of this process's own, with the same user: the next process it starts is the first in
 /// the new one, and nothing started in there outlives it. Before any thread: the kernel refuses a process with
-/// more than one. A namespace is worse than nothing for what is only a variable, which is why only a file comes here (plans/PLAN-vault.md).
+/// more than one. A namespace is worse than nothing for what is only a variable, which is why only a file comes here (plans/done/PLAN-vault.md).
 pub fn enter_namespace() -> Result<(), Why> {
     // SAFETY: getuid and getgid cannot fail; unshare and mount are given live strings and flags
     unsafe {

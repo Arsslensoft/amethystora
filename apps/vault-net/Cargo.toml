@@ -1,4 +1,4 @@
-# amethystora-vault-net: the only part of Amethystora Vault with the network (plans/PLAN-vault.md, "Sync with Vaultwarden and
+# amethystora-vault-net: the only part of Amethystora Vault with the network (plans/done/PLAN-vault.md, "Sync with Vaultwarden and
 # Bitwarden"). Its own user, no key, no state, no home: one request at a time from the vault's service, to the one server
 # that account is connected to. TLS is Fedora's libcrypto through the openssl crate the workspace has already; HTTP/1.1 is
 # written here (src/http.rs), which is less than a crate for it would bring.

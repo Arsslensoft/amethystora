@@ -1027,7 +1027,7 @@ no passkey.
 
 ### The Vault
 
-Amethystora Vault (`amethystora-vault`, **Vault** in the app grid, `ame vault`; the design is `plans/PLAN-vault.md`, its brief
+Amethystora Vault (`amethystora-vault`, **Vault** in the app grid, `ame vault`; the design is `plans/done/PLAN-vault.md`, its brief
 `plans/vault/IMPLEMENTERS.md`) keeps passwords, authenticator codes, backup codes, keys, certificates and protected files, away from the
 programs of the account that owns them. **A secret is out of the account's reach, and a program of the account that asks needs the person's
 approval**: those two halves are the whole design, and every rule below serves one of them. Its manual page is `vault.md`.

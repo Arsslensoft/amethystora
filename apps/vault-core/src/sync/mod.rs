@@ -1,4 +1,4 @@
-//! Keeping one account on a Vaultwarden or Bitwarden server in step with the first vault (plans/PLAN-vault.md, "Sync with
+//! Keeping one account on a Vaultwarden or Bitwarden server in step with the first vault (plans/done/PLAN-vault.md, "Sync with
 //! Vaultwarden and Bitwarden"). Written from plans/vault-sync/spec-protocol.md alone, under the clean-room rule of
 //! plans/vault-sync/IMPLEMENTERS.md: wire names are the protocol's, everything else is ours.
 //!

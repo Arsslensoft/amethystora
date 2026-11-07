@@ -7,7 +7,7 @@
   <vendor>Amethystora</vendor>
   <vendor_url>https://github.com/arsslensoft/amethystora</vendor_url>
 
-  <!-- Amethystora Vault's approvals (plans/PLAN-vault.md). A program running as the person can ask, so the person approves: the
+  <!-- Amethystora Vault's approvals (plans/done/PLAN-vault.md). A program running as the person can ask, so the person approves: the
        person at the machine, with the account's own password or finger, every time, and no rule lets anyone through. The
        service's user is each action's owner, which is what lets it ask for the process that connected and pass the sentence
        that names the program (polkit.message), checked in the lab on 2026-11-02. -->

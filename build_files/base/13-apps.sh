@@ -59,7 +59,7 @@ install -Dpm0755 /apps-stage/out/amethystora-plugin-host /usr/libexec/amethystor
 install -Dpm0755 /apps-stage/out/amethystora-plugin-root /usr/libexec/amethystora-plugin-root
 install -Dpm0644 /apps-stage/out/seccomp.bpf /usr/share/amethystora/plugins/seccomp.bpf
 
-# Amethystora Vault (plans/PLAN-vault.md; the window is the app above). The service holds the keys, started by
+# Amethystora Vault (plans/done/PLAN-vault.md; the window is the app above). The service holds the keys, started by
 # amethystora-vault.socket as its own user; the command line is what `ame vault` runs; the work child is the only one of
 # them that loads libcrypto (keys and certificates), one job at a time; the PKCS#11 module is what pdfsig loads to sign through
 # the service (the key never leaves it); and the network service is the only thing sync reaches a server through (a user of its own, no key, no state).

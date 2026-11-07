@@ -1,4 +1,4 @@
-//! amethystora-vault-net, the Vault's only way out (plans/PLAN-vault.md, "Sync with Vaultwarden and Bitwarden"). The vault's
+//! amethystora-vault-net, the Vault's only way out (plans/done/PLAN-vault.md, "Sync with Vaultwarden and Bitwarden"). The vault's
 //! service, which has no network, hands it one request at a time over a socket only that service can open, and it hands
 //! back what the server said. It holds no key and keeps nothing: Bitwarden's protocol encrypts on the client, so what passes
 //! through here is ciphertext, a token and at a password login the master password's hash, each for the one request.

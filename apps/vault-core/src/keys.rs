@@ -1,4 +1,4 @@
-//! Keys: making them, their public forms, export, and importing an existing SSH key (plans/PLAN-vault.md, Cryptographic
+//! Keys: making them, their public forms, export, and importing an existing SSH key (plans/done/PLAN-vault.md, Cryptographic
 //! keys). No socket and no files: bytes in and out, private ones in memory that wipes itself.
 //!
 //! A private key is kept as its PKCS#8 DER, an AES key as its 32 bytes. It only becomes an OpenSSL key for the length of

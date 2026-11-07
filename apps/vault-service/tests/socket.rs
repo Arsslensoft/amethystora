@@ -963,7 +963,7 @@ fn it_goes_away_when_nothing_is_open_and_stays_while_something_is() {
     assert!(thread_gone);
 }
 
-/// The sealed backup (plans/PLAN-vault.md, Backup and moving): taken with the vault closed and no question asked, holding a hidden vault
+/// The sealed backup (plans/done/PLAN-vault.md, Backup and moving): taken with the vault closed and no question asked, holding a hidden vault
 /// like any other, and bringing back everything from the recovery key and a new way in
 #[test]
 fn a_backup_is_taken_closed_and_brings_every_vault_back_from_its_recovery_key() {

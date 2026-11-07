@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-# Amethystora Vault (plans/PLAN-vault.md, Tests) as a person goes through it, on a booted image with SELinux enforcing, real polkit
+# Amethystora Vault (plans/done/PLAN-vault.md, Tests) as a person goes through it, on a booted image with SELinux enforcing, real polkit
 # and the real service under systemd. Everything here is something a build cannot start: cargo holds the formats, the crypto and the
 # protocol against separate programs, and build_files/shared/test-vault.sh holds what the image ships. In three phases (74 comes
 # after 72 and 73, which are the plugins'):

@@ -1,5 +1,5 @@
 //! Keeping a feature's data under a key in Amethystora Vault, without ever holding that key: data goes in and comes
-//! back, and the key stays in the service (plans/PLAN-vault.md, plans/done/PLAN-ui-ideas-r7-build.md).
+//! back, and the key stays in the service (plans/done/PLAN-vault.md, plans/done/PLAN-ui-ideas-r7-build.md).
 //!
 //! The socket is `/run/amethystora/vault.sock`, a Unix stream, and every message either way is one line of JSON, so
 //! that GNOME Shell can speak it through Gio without blocking. A connection may carry any number of requests, each

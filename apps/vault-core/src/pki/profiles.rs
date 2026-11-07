@@ -1,5 +1,5 @@
 //! The one table of what the machine's CAs may issue. A request names a row, and says nothing else about a certificate's
-//! purposes, key usage or validity. plans/PLAN-vault.md has the fields; the choices it leaves open are marked here.
+//! purposes, key usage or validity. plans/done/PLAN-vault.md has the fields; the choices it leaves open are marked here.
 
 use crate::keys::KeyType;
 

@@ -1,5 +1,5 @@
 //! The SSH agent: the agent protocol on `/run/amethystora/vault-ssh.sock`, which the same loop serves beside the vault's own
-//! socket, with the account from `SO_PEERCRED` as there (plans/PLAN-vault.md, Using a secret). It lists the public keys of what
+//! socket, with the account from `SO_PEERCRED` as there (plans/done/PLAN-vault.md, Using a secret). It lists the public keys of what
 //! is open and signs. A key never leaves the service, and nothing that adds, removes or locks is ever honoured: the vault holds
 //! the keys, and this is only a way to use them.
 //!

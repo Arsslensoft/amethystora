@@ -1,4 +1,4 @@
-//! Keys against programs that are not this crate: `openssl` and `ssh-keygen`, as separate programs (plans/PLAN-vault.md,
+//! Keys against programs that are not this crate: `openssl` and `ssh-keygen`, as separate programs (plans/done/PLAN-vault.md,
 //! Tests). See `common` for what happens when one is not installed.
 
 mod common;

@@ -1,4 +1,4 @@
-//! The part of the command line that lets tools use a secret without holding it (plans/PLAN-vault.md, Using a secret): the SSH agent's
+//! The part of the command line that lets tools use a secret without holding it (plans/done/PLAN-vault.md, Using a secret): the SSH agent's
 //! switch, `get` for a tool's own settings, `run`, protected files and the helpers' settings. Its words come from `vault.just`, as the rest.
 //!
 //! More exit numbers than `cli.rs` says: 10 not in the home, through a link or not a plain file, 11 nothing there, 12 holds no secret,

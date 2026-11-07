@@ -1,4 +1,4 @@
-//! A PKCS#11 module with the fewest entry points NSS needs to sign, and no key in it (plans/PLAN-vault.md, Signing
+//! A PKCS#11 module with the fewest entry points NSS needs to sign, and no key in it (plans/done/PLAN-vault.md, Signing
 //! certificates). `pdfsig` loads it through an NSS database, finds each certificate the [`Backend`] lists with a private
 //! key object beside it, and each signature comes back from the backend. Everything else a PKCS#11 module may do answers
 //! `CKR_FUNCTION_NOT_SUPPORTED`.

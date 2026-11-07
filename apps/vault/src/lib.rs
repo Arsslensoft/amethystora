@@ -1,4 +1,4 @@
-//! Amethystora Vault's window (plans/PLAN-vault.md): passwords, authenticator codes, backup codes, keys, certificates and protected
+//! Amethystora Vault's window (plans/done/PLAN-vault.md): passwords, authenticator codes, backup codes, keys, certificates and protected
 //! files, in one or several vaults. The keys are the service's: this window holds the list of names, and a secret only while it is
 //! shown, in memory that wipes itself, and never on the window's thread does it wait for the socket, a file or a program.
 

@@ -1,4 +1,4 @@
-//! A sync run (plans/PLAN-vault.md; spec 5 and 6): log in if need be, read `/sync`, check what it says of the account
+//! A sync run (plans/done/PLAN-vault.md; spec 5 and 6): log in if need be, read `/sync`, check what it says of the account
 //! before reading any cipher, then for each cipher the vault knows decide what moved where, write to the server, and say
 //! what the vault should write. The vault is the source and nothing is lost: a change on both sides keeps both, a deletion
 //! goes to the other side's trash, a counter never goes back, and a server that rolls back, swaps or empties is refused.

@@ -1,4 +1,4 @@
-//! Each kind, plain and sealed, with files (plans/PLAN-vault.md, "Each kind is one switch"; plans/vault-sync/spec-attachments.md): the
+//! Each kind, plain and sealed, with files (plans/done/PLAN-vault.md, "Each kind is one switch"; plans/vault-sync/spec-attachments.md): the
 //! choices and which wins, every mapping both ways, the edges of a field, a note and a file, and what a server that refuses, lies
 //! or loses a file leads to. The server is `fake.rs`, which keeps every request.
 

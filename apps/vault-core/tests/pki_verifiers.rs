@@ -1,5 +1,5 @@
 //! Certificates against verifiers that are not this crate, as separate programs: `openssl`, NSS's `certutil` and `pk12util`,
-//! `osslsigncode`, `pdfsig`, `curl` (plans/PLAN-vault.md, Tests). Each machine's root takes seconds to make, so a test binary
+//! `osslsigncode`, `pdfsig`, `curl` (plans/done/PLAN-vault.md, Tests). Each machine's root takes seconds to make, so a test binary
 //! makes two and shares them. See `common` for what happens when a program is not installed.
 
 mod common;

@@ -1,4 +1,4 @@
-//! amethystora-vault-cli: what `ame vault` runs (plans/PLAN-vault.md). It talks to the service's socket, and reads a password from
+//! amethystora-vault-cli: what `ame vault` runs (plans/done/PLAN-vault.md). It talks to the service's socket, and reads a password from
 //! the terminal with its echo off or from standard input, never from an argument, which any process can read. Its words come
 //! from `vault.just`, through `--say-...` options, which is where gettext has them; it prints only values and tab-separated lines.
 //!

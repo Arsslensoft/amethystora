@@ -1,6 +1,6 @@
 //! The machine's root and its two CAs, in `<state>/machine/`, each one file written whole, so that a crash leaves the old one or
 //! the new one. The key is sealed to the TPM behind the same `Chip` as a vault's slots, or where there is none is a file only the
-//! service reaches, which leaves only the disk's encryption protecting it at rest (plans/PLAN-vault.md, The machine's root).
+//! service reaches, which leaves only the disk's encryption protecting it at rest (plans/done/PLAN-vault.md, The machine's root).
 //! None of this needs libcrypto: the jobs that make and use them do. It all runs on the work thread, one at a time, which is
 //! what makes "made once, whichever account asks first" hold.
 

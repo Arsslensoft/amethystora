@@ -1,6 +1,6 @@
 #!/usr/bin/python3 -I
 # Keeping a script's data under the account's key in Amethystora Vault, without holding that key: the data goes in on standard
-# input and comes back on standard output, through the same socket and lines of JSON as apps/vault-client (plans/PLAN-vault.md).
+# input and comes back on standard output, through the same socket and lines of JSON as apps/vault-client (plans/done/PLAN-vault.md).
 #
 #   amethystora-vault-keep seal PURPOSE RECORD   < plain  > sealed
 #   amethystora-vault-keep open PURPOSE RECORD   < sealed > plain

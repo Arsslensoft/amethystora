@@ -5440,7 +5440,7 @@ done
     rm -rf "${HOME}" "${XDG_RUNTIME_DIR}"
 )
 
-# The Vault (plans/PLAN-vault.md): its service's sandbox, its polkit policy with no yes and no kept answer, its sockets enabled,
+# The Vault (plans/done/PLAN-vault.md): its service's sandbox, its polkit policy with no yes and no kept answer, its sockets enabled,
 # every recipe, every sentence of the service a line of the recipes' catalog, no rsa crate, the data and licences it ships
 # (tests/vm/suites/74-vault.sh is what runs it)
 bash /ctx/build_files/shared/test-vault.sh /ctx

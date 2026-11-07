@@ -1,4 +1,4 @@
-//! amethystora-vault-service: holds the Vault's keys (plans/PLAN-vault.md). Started by `amethystora-vault.socket`, as its own
+//! amethystora-vault-service: holds the Vault's keys (plans/done/PLAN-vault.md). Started by `amethystora-vault.socket`, as its own
 //! user, with no network: it takes the listening socket from systemd, and exits when nothing is open.
 
 use std::os::fd::{FromRawFd, RawFd};

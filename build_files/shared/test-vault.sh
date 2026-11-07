@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-# The Vault (plans/PLAN-vault.md, Tests) as the image has it, for 20-tests.sh: what keeps its keys out of reach is in the
+# The Vault (plans/done/PLAN-vault.md, Tests) as the image has it, for 20-tests.sh: what keeps its keys out of reach is in the
 # files the image ships and is checked here, since a build never starts the service. The unit's sandbox is all there, its
 # polkit policy lets nobody through and keeps no answer, the sockets are enabled and listen where the clients look, every
 # recipe the manual, the window and the agent's knowledge name exists, `never.rs` refuses the agent every spelling, every

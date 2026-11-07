@@ -37,7 +37,7 @@ const PATHS: &[&str] = &[
     "amethystora-kargs", "/run/amethystora/kargs.json", "/run/ostree/staged-deployment",
     // The guard's two levers in /boot, which reach the same place without its name: its count and the file it writes
     "ame_boot_tries", "/boot/grub2/custom.cfg", "/boot/grub2/grubenv",
-    // The Vault (plans/PLAN-vault.md): its programs and units, its socket and its files, in any spelling that names them
+    // The Vault (plans/done/PLAN-vault.md): its programs and units, its socket and its files, in any spelling that names them
     "amethystora-vault", "org.amethystora.vault", "/run/amethystora/vault", "/var/lib/amethystora/vault",
     // ...and its helpers for git and docker, which hand a password to whoever asks while the vault is open
     "git-credential-amethystora", "docker-credential-amethystora",

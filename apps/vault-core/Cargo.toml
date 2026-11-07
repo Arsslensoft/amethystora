@@ -1,5 +1,5 @@
 # What the Vault is, with no GTK and no socket: sealing, items, generators, one-time codes, the formats it reads and
-# writes, keys and certificates. plans/PLAN-vault.md says why each is here.
+# writes, keys and certificates. plans/done/PLAN-vault.md says why each is here.
 [package]
 name = "amethystora-vault-core"
 version.workspace = true

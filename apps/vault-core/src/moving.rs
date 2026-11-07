@@ -1,4 +1,4 @@
-//! The sealed backup of an account's vaults, and putting one back (plans/PLAN-vault.md, Backup and moving).
+//! The sealed backup of an account's vaults, and putting one back (plans/done/PLAN-vault.md, Backup and moving).
 //!
 //! It holds only what is already sealed: every vault's files as they lie on the disk, and the table of **recovery** records. The
 //! password table, the slots on the chip or a security key, the machine's root and the `background` key are not in it, so a stolen

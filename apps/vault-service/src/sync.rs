@@ -1,4 +1,4 @@
-//! Sync with a Vaultwarden or Bitwarden server, the service's side (plans/PLAN-vault.md, "Sync with Vaultwarden and
+//! Sync with a Vaultwarden or Bitwarden server, the service's side (plans/done/PLAN-vault.md, "Sync with Vaultwarden and
 //! Bitwarden"; the protocol is `apps/vault-core/src/sync`, written from plans/vault-sync/spec-protocol.md).
 //!
 //! This service has no network. It reaches `amethystora-vault-net` (its own user, the network, no key) by a socket only this

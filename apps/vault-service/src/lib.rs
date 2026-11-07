@@ -1,4 +1,4 @@
-//! The service that holds Amethystora Vault's keys, and what its command line shares with it (plans/PLAN-vault.md). No GTK
+//! The service that holds Amethystora Vault's keys, and what its command line shares with it (plans/done/PLAN-vault.md). No GTK
 //! and no GLib: it speaks to the system bus itself (`bus.rs`), and its memory budget is 8 MB.
 
 pub mod alloc;

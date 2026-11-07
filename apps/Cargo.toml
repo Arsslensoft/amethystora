@@ -29,7 +29,7 @@ sha2 = "0.11"
 getrandom = "0.4"
 base64 = "0.23"
 flate2 = "1"
-# The Vault (plans/PLAN-vault.md): key generation, X.509 and PKCS#12 from Fedora's libcrypto, and memory that wipes itself
+# The Vault (plans/done/PLAN-vault.md): key generation, X.509 and PKCS#12 from Fedora's libcrypto, and memory that wipes itself
 openssl = "0.10"
 zeroize = "1"
 amethystora-ui = { path = "common" }

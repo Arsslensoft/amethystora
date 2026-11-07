@@ -1,4 +1,4 @@
-//! What each vault item becomes on the server, and back (plans/PLAN-vault.md's table): a password is a Login, an
+//! What each vault item becomes on the server, and back (plans/done/PLAN-vault.md's table): a password is a Login, an
 //! authenticator account the `totp` of its Login or a Login of its own, backup codes a secure note, and a key or certificate,
 //! when the person chooses it, a sealed secure note that only this vault opens. Nothing else ever goes.
 //!

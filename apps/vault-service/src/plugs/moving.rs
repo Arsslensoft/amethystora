@@ -1,4 +1,4 @@
-//! The sealed backup and its restore (plans/PLAN-vault.md, Backup and moving). A backup holds only what is sealed, so `vault-backup`
+//! The sealed backup and its restore (plans/done/PLAN-vault.md, Backup and moving). A backup holds only what is sealed, so `vault-backup`
 //! needs no vault open and no approval; it is read a chunk at a time, since the answer to a line is bounded and a vault may be
 //! larger. A restore is the other way: `vault-restore-put` stages the file's chunks in memory, `vault-restore` puts the vaults back
 //! that a recovery key opens, once the person has approved it as a new vault, and the client then opens one by the recovery key and sets the way in.

@@ -1,5 +1,5 @@
 # A PKCS#11 module that holds no key: NSS loads it into pdfsig, and each signature is forwarded to the Vault, so that a PDF is
-# signed without the key leaving the service (plans/PLAN-vault.md, Signing certificates).
+# signed without the key leaving the service (plans/done/PLAN-vault.md, Signing certificates).
 [package]
 name = "amethystora-vault-pkcs11"
 version.workspace = true

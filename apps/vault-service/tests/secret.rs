@@ -1,4 +1,4 @@
-//! Using a secret without holding it (plans/PLAN-vault.md), with real tools where this machine has them: `ssh`, `ssh-add`, `ssh-keygen`, `sshd`
+//! Using a secret without holding it (plans/done/PLAN-vault.md), with real tools where this machine has them: `ssh`, `ssh-add`, `ssh-keygen`, `sshd`
 //! and `git`, against the service on a real socket, with stand-ins for polkit and logind. A test that needs a tool or a namespace this
 //! machine does not have says so and passes: the VM suite runs them all.
 

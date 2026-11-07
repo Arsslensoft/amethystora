@@ -1,4 +1,4 @@
-//! `ame vault backup` and `restore FILE` (plans/PLAN-vault.md, Backup and moving).
+//! `ame vault backup` and `restore FILE` (plans/done/PLAN-vault.md, Backup and moving).
 //!
 //! A backup is the account's vaults as they lie sealed in the service's folder, with the recovery records and nothing a password
 //! or this machine's chip opens (`apps/vault-core/src/moving.rs`). The service hands it over a chunk at a time, with no vault open

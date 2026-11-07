@@ -1,4 +1,4 @@
-//! The machine's root, its CAs, and every certificate profile (plans/PLAN-vault.md, Signing certificates, The machine's
+//! The machine's root, its CAs, and every certificate profile (plans/done/PLAN-vault.md, Signing certificates, The machine's
 //! root, Its other purposes). What a certificate may say is the table in `profiles`, chosen in code and never in a
 //! request. No socket and no files: bytes in and out, a key an OpenSSL key only for the length of one call.
 

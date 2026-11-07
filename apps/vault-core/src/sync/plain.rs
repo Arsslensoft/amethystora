@@ -1,4 +1,4 @@
-//! What a key, a certificate and a protected file become when the person chooses Plain (plans/PLAN-vault.md's table), and back: a
+//! What a key, a certificate and a protected file become when the person chooses Plain (plans/done/PLAN-vault.md's table), and back: a
 //! secure note Bitwarden's apps open, or for an SSH key an SSH key item. The private part is in a hidden field (an SSH item's own
 //! three strings), and a file, or text that does not fit its field, is the note's attachment (spec 7, spec-attachments 4.4 and 8).
 //!

@@ -1,6 +1,6 @@
 # The Vault
 
-Walk on a real machine with the beta image, as a person would. The design is `plans/PLAN-vault.md`, the manual `vault.md`, and the lab's
+Walk on a real machine with the beta image, as a person would. The design is `plans/done/PLAN-vault.md`, the manual `vault.md`, and the lab's
 checks `tests/vm/suites/74-vault.sh`. Every approval is polkit's question, answered with the account's own password: an item that needs one
 needs the person at the machine. Mark each line `→ PASS` or `→ FAIL: what was seen`.
 
@@ -33,3 +33,11 @@ needs the person at the machine. Mark each line `→ PASS` or `→ FAIL: what wa
 - [x] V-19 Every file dialog and link. How: Give out your CA, Sign a PDF, Protect another file, Save of an export, the browser page's two buttons. Expect: each opens its dialog or page. → FIXED 79336a8f: the window is not dumpable and the portals refuse what they cannot read, so all of them did nothing; they go through the window's helper now, whose portal calls also passed their options in the wrong type (the screen's and camera's QR codes too). The save dialog and a link seen opening; the maintainer to press the rest
 - [x] V-20 Which items sync. How: with a server connected, a key's page › Sync › Sealed; a password set to ask › Sync › Syncs. Expect: each is asked once and then goes. → FIXED 9f1712c7: keys and certificates could be chosen only in a terminal; each item's page has the choice now. The maintainer's key went sealed
 - [x] V-21 What did not go. How: a certificate set to Sealed, then Sync now. Expect: the Sync page and the certificate's card say it stayed on this computer, and why. → FIXED 2fab6af7: nothing said so (and conflicts were read from the wrong field, and the last sync's date read January 21, 1970). A certificate with its key and chain is about 13,400 characters sealed and one note holds 7,439: it stays local until attachments are built, which needs the sync specs (plans/vault-sync) on this machine first
+
+## The second walk (2026-11-07, beta-45.20261107.1 with main on the /usr overlay)
+
+- [x] V-22 Nobody without a vault starts the service. How: stop the service; `sudo /usr/libexec/amethystora-sends --json`; the same as an account with no sync marker; `systemctl is-active amethystora-vault.service` after each. Expect: inactive after both; the account with a marker still has its sync row. → FIXED ba1a21e6: the watcher's report and the daily backup started it on every machine; inactive after both now, and the maintainer's sync row still listed
+- [x] V-23 A way in that fails says so. How: `ame vault open` with a way in that does not open. Expect: a sentence that says it was refused, not just an exit code. → FIXED feac69fd: the recipe sent the sentence to /dev/null with the program's output; "No: that was refused, or it did not match." now
+- [!] V-24 The TPM slot survives an update. How: `ame vault open` on the vault set up on 2026-11-03 with no prompt. Expect: it opens. → FAIL: systemd-creds "Decryption failed (incorrect key?)": the slot was sealed as uid 955 on the 11-03 /usr overlay and the images run the service as 956. Fixed for every later machine in bf2c715d (the uids pinned, test-vault.sh holds them); this machine needs the recovery key once, then `ame vault methods add no-prompt`
+- [x] V-25 A backup of several chunks. How: the socket test `a_backup_is_taken_closed_and_brings_every_vault_back_from_its_recovery_key` with two items of 300 KB; `ame vault backup` here. Expect: every chunk read from one making; the restore brings it back. → FIXED 951346b4: the archive was made again for every chunk on the service's one loop; the test reads two chunks and restores, and `ame vault backup` of this machine's vault took 0.17 s
+
