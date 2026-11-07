@@ -279,10 +279,12 @@ desktop_style() {
     echo "${DEFAULT_STYLE}"
 }
 
-# Whether fontconfig knows a family of exactly that name. The list is read to its end, never with grep -q, which
-# would stop fc-list mid-write and, under pipefail, fail the whole pipe now and then.
+# Whether fontconfig knows a family of exactly that name. The families are read once per run (fc-list takes some 30 ms
+# to start, and a theme switch asks four times), into one line each, between newlines so that a name is matched whole.
 font_installed() {
-    [[ -n $1 ]] && fc-list : family 2>/dev/null | tr ',' '\n' | grep -Fx -- "$1" >/dev/null
+    [[ -n $1 ]] || return 1
+    [[ -n ${FONT_FAMILIES:-} ]] || FONT_FAMILIES=$'\n'"$(fc-list : family 2>/dev/null | tr ',' '\n')"$'\n'
+    [[ ${FONT_FAMILIES} == *$'\n'"$1"$'\n'* ]]
 }
 
 # The interface font's family: the account's own choice (ame desktop font), else its image's, else the theme's, else the
@@ -831,6 +833,46 @@ fill_template() {
     printf '%s' "${text}"
 }
 
+# Every template of a list filled as fill_template fills one, in one awk run rather than a grep, a sort and a bash pass each:
+# the table, named by the first argument, then pairs of a template and the file to write it to. A value is put in as text
+# (index and substr, never gsub, which reads & and \ in it), a {{ key }} not in the table is left as it is, and the whole
+# file is written, its last newline included. A value cannot hold a newline (a colour, a font, a name).
+fill_templates() {
+    local -n table="$1"
+    shift
+    (($#)) || return 0
+    local key
+    for key in "${!table[@]}"; do
+        [[ ${table[${key}]} != *$'\n'* ]] || { echo "fill_templates: ${key} holds a newline" >&2; return 1; }
+        printf '%s\n%s\n' "${key}" "${table[${key}]}"
+    done | LC_ALL=C awk '
+        BEGIN {
+            while ((getline key < "/dev/stdin") > 0 && (getline value < "/dev/stdin") > 0)
+                values["{{ " key " }}"] = value
+            RS = "^$"
+            for (n = 1; n + 1 < ARGC; n += 2) {
+                text = ""
+                getline text < ARGV[n]
+                close(ARGV[n])
+                out = ""
+                while ((at = index(text, "{{ ")) > 0) {
+                    out = out substr(text, 1, at - 1)
+                    text = substr(text, at)
+                    if (match(text, /^\{\{ [A-Za-z0-9_]+ \}\}/) && (substr(text, 1, RLENGTH) in values)) {
+                        out = out values[substr(text, 1, RLENGTH)]
+                        text = substr(text, RLENGTH + 1)
+                    } else {
+                        out = out "{"
+                        text = substr(text, 2)
+                    }
+                }
+                printf "%s", out text > ARGV[n + 1]
+                close(ARGV[n + 1])
+            }
+            exit
+        }' "$@"
+}
+
 # Render every *.tpl into dest, substituting {{ key }}, {{ key_strip }} (no leading #) and
 # {{ key_rgb }} (decimal r,g,b) from colors.toml. A file the theme ships itself is left alone, so a
 # theme can hand-write any config a template would otherwise generate. Any further key=value pairs
@@ -862,7 +904,7 @@ render_templates() {
         fi
         values["${key}"]="${value}"
         values["${key}_strip"]="${value#\#}"
-        values["${key}_rgb"]="$(hex_to_rgb "${value}")"
+        values["${key}_rgb"]="$((16#${value:1:2})),$((16#${value:3:2})),$((16#${value:5:2}))"
     done <"${dest}/colors.toml"
 
     # A palette needs its ground and its text to be worked from
@@ -882,7 +924,7 @@ render_templates() {
         values["${key}"]="${value}"
         if [[ ${value} =~ ^#[0-9a-fA-F]{6}$ ]]; then
             values["${key}_strip"]="${value#\#}"
-            values["${key}_rgb"]="$(hex_to_rgb "${value}")"
+            values["${key}_rgb"]="$((16#${value:1:2})),$((16#${value:3:2})),$((16#${value:5:2}))"
         fi
     done < <(derive_palette "${dest}")
     [[ -n ${values[accent_fg]:-} ]] || { echo "The theme in ${dest##*/} is refused: its palette could not be worked out." >&2; return 1; }
@@ -901,17 +943,24 @@ render_templates() {
         [[ -f "${dest}/style-${style}.gtk.css" ]] && own_styles+=("${style}")
     done
 
+    local -A pairs=()
+    local -a order=()
     shopt -s nullglob
     for template in "${USER_TEMPLATES_DIR}"/*.tpl "${SYSTEM_TEMPLATES_DIR}"/*.tpl; do
         # The shape every style is drawn in is a template of its own, filled once for each style below
         [[ ${template##*/} == style-base.gtk.css.tpl ]] && continue
         # Only the templates asked for, when the caller asks for some (an accent's set: the shell's and the apps')
         [[ -z ${RENDER_ONLY:-} || ${template##*/} =~ ${RENDER_ONLY} ]] || continue
-        output="${dest}/$(basename "${template}" .tpl)"
+        output="${template##*/}"
+        output="${dest}/${output%.tpl}"
         [[ -f ${output} ]] && continue
-        fill_template values "${template}" >"${output}"
+        # A user's template of the same name wins over the image's, as it did when each was written in turn
+        [[ -n ${pairs[${output}]:-} ]] && continue
+        pairs["${output}"]="${template}"
+        order+=("${template}" "${output}")
     done
     shopt -u nullglob
+    fill_templates values "${order[@]}" || return 1
     [[ -z ${RENDER_ONLY:-} ]] || return 0
 
     # Each style's file in the applications: the shape, filled with the style's radii, and then the style's own (lines,
@@ -962,7 +1011,24 @@ render_templates() {
 dconf_write_string() {
     local value="${2//\\/\\\\}"
     value="${value//\'/\\\'}"
+    # Gathered while a caller batches (DCONF_BATCH, then dconf_flush): a theme writes some fifteen keys, a process each
+    if [[ -n ${DCONF_BATCH:-} ]]; then
+        DCONF_PENDING+=("$1" "'${value}'")
+        return 0
+    fi
     dconf write "$1" "'${value}'"
+}
+
+# The writes gathered since DCONF_PENDING=() in one dconf load: one process, and one change for everything that watches
+# them. A key's folder is its group; a folder named twice is written as two groups, which dconf load reads as one.
+dconf_flush() {
+    local i path
+    ((${#DCONF_PENDING[@]})) || return 0
+    for ((i = 0; i < ${#DCONF_PENDING[@]}; i += 2)); do
+        path="${DCONF_PENDING[i]#/}"
+        printf '[%s]\n%s=%s\n' "${path%/*}" "${path##*/}" "${DCONF_PENDING[i + 1]}"
+    done | dconf load /
+    DCONF_PENDING=()
 }
 
 have() {

@@ -76,6 +76,11 @@ stage_theme() {
         "ptyxis_palette_name=Amethystora ${slug}"
     ACCENTS_KEEP=1 render_accent_sets "${staging}" "${slug}"
 
+    # The screen is held from here only (theme_set): rendering changes nothing the shell or the apps read
+    if [[ ${HOLD_AT_SWAP:-0} == 1 ]]; then
+        transition Hold
+        trap 'transition Release' EXIT
+    fi
     rm -rf "${CURRENT_THEME_DIR}"
     mv "${staging}" "${CURRENT_THEME_DIR}"
     echo "${slug}" >"${CURRENT_THEME_NAME}"
@@ -209,8 +214,11 @@ transition() {
 }
 
 apply_all() {
+    local DCONF_BATCH=1
+    DCONF_PENDING=()
     apply_gnome
     apply_ptyxis
+    dconf_flush
     apply_kitty
     apply_btop
     apply_starship
@@ -239,9 +247,10 @@ theme_set() {
     slug="$(theme_slug "${1:?usage: amethystora-theme set <theme>}")"
     theme_exists "${slug}" || die "no theme '${slug}'. Try: amethystora-theme list"
 
-    # Held first: the shell's stylesheets and the apps follow current/ as soon as stage_theme swaps it in
-    transition Hold
-    trap 'transition Release' EXIT
+    # Held once stage_theme has rendered the theme, right before it swaps current/, which the shell's stylesheets and the
+    # apps follow at once. The fonts are listed here once, for every subshell that asks (font_installed).
+    local HOLD_AT_SWAP=1
+    font_installed "${slug}" || true
     stage_theme "${slug}"
     apply_all
     # A wallpaper that cannot be set is worth a warning, not a half-applied theme
@@ -350,10 +359,13 @@ background_set() {
 
 # The desktop's and the lock screen's picture, a picture or Daylight's slideshow
 background_uri() {
+    local DCONF_BATCH=1
+    DCONF_PENDING=()
     dconf_write_string /org/gnome/desktop/background/picture-uri "$1"
     dconf_write_string /org/gnome/desktop/background/picture-uri-dark "$1"
     dconf_write_string /org/gnome/desktop/background/picture-options "zoom"
     dconf_write_string /org/gnome/desktop/screensaver/picture-uri "$1"
+    dconf_flush
     mkdir -p "${CURRENT_DIR}"
 }
 
