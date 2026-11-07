@@ -99,7 +99,8 @@ grep -q 'flatpak install' "${FLATPAK_LOG}" && fail "a lookup installed something
 
 # What it says with no list, and of a file that says nothing
 same "no catalogue yet" "$(AMETHYSTORA_CATALOGUE="${T}/none" "${OPEN}" lookup --json -- "${FILE}" | jq -c '[.catalogue, .apps]')" '[false,[]]'
-head -c 3000 /dev/urandom >"${T}/noise.qqqq"
+# The same bytes every time: of random ones, about 1 in 170 starts with a magic number (a '%' is MATLAB's)
+python3 -I -c 'import random, sys; r = random.Random(1); sys.stdout.buffer.write(bytes(r.randrange(256) for _ in range(3000)))' >"${T}/noise.qqqq"
 same "a file that says nothing" "$("${OPEN}" lookup --json -- "${T}/noise.qqqq" | jq -r .unknown)" true
 
 # Only a ref of its own shape is ever passed on; the file goes as one argument, between Flatpak's own markers
