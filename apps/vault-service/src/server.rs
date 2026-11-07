@@ -454,6 +454,7 @@ impl Server {
             }
             Next::Slow { job, then } => {
                 client.busy = true;
+                client.deadline = None;
                 let token = self.fresh_id();
                 self.slow.insert(token, Slow::Client { client: id, then });
                 self.start_slow(token, job);
