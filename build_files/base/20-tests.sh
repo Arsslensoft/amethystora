@@ -1805,7 +1805,7 @@ fi
 # Amethystora ones in 06-amethystora-keybindings included
 CUSTOM_KEYBINDINGS="$(GSETTINGS_BACKEND=memory gsettings get org.gnome.settings-daemon.plugins.media-keys custom-keybindings)"
 grep -q "custom0/'" <<<"${CUSTOM_KEYBINDINGS}"
-for index in 20 21 22 23 24 25 26 27 28 29 30; do
+for index in 20 21 22 23 24 25 26 27 28 29 30 31; do
     grep -q "custom${index}/'" <<<"${CUSTOM_KEYBINDINGS}"
     grep -q "^\[org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom${index}\]$" \
         /etc/dconf/db/distro.d/06-amethystora-keybindings

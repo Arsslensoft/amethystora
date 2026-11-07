@@ -101,6 +101,7 @@ own apps.
 | --- | --- |
 | `Super+Alt+Space` | The Amethystora menu |
 | `Super+Ctrl+Shift+Space` | Pick a theme |
+| `Super+Ctrl+T` | The next theme, round again at the end |
 | `Super+Ctrl+Space` | Next wallpaper for this theme |
 | `Super+Ctrl+D` | Switch between the light and dark theme |
 | `Super+Ctrl+R` | Show or hide the reading ruler, once you choose one (`ame desktop access ruler band`) |
@@ -110,7 +111,7 @@ own apps.
 | `Super+Ctrl+P` | The pen's tools, once you turn them on (`ame desktop touch pen-ring ring`) |
 
 The same from a terminal: `amethystora-theme list`, `amethystora-theme set <name>`,
-`amethystora-theme bg next`, or `ame desktop theme`.
+`amethystora-theme next`, `amethystora-theme bg next`, or `ame desktop theme`.
 
 ## The desktop
 

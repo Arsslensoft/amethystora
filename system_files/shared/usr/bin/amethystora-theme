@@ -6,6 +6,8 @@
 #   amethystora-theme list                 the themes available, with the current one marked
 #   amethystora-theme set "Tokyo Night"    apply a theme
 #   amethystora-theme toggle               flip between a theme and its light or dark counterpart
+#   amethystora-theme next                 apply the next theme in the list, wrapping round to the first
+#                                          after the last (Super+Ctrl+T)
 #   amethystora-theme current              print the current theme
 #   amethystora-theme reload               apply the current theme again, after an image update or a new
 #                                          style, font or icon pack
@@ -293,6 +295,25 @@ theme_toggle() {
         fi
     fi
     theme_set "${pair}"
+}
+
+# Step to the next theme in amethystora-theme list's order (shipped and user-made, sorted), wrapping
+# round to the first after the last, so the key always lands on a theme. With no theme set yet, or
+# the current one gone from the list, it starts at the first.
+theme_next() {
+    local current first next found=
+    current="$(theme_current 2>/dev/null || true)"
+    while read -r name; do
+        [[ -z ${first:-} ]] && first="${name}"
+        if [[ -n ${found} ]]; then
+            next="${name}"
+            break
+        fi
+        [[ ${name} == "${current}" ]] && found=1
+    done < <(theme_list)
+    next="${next:-${first:-}}"
+    [[ -n ${next} ]] || die "no themes are installed"
+    theme_set "${next}"
 }
 
 # --- Backgrounds ------------------------------------------------------------------------------
@@ -791,7 +812,7 @@ daynight_command() {
 # Every command that writes takes the account's lock first (theme_lock)
 case "${1:-list} ${2:-}" in
     "bg list" | "background list" | "daylight now" | "daylight status" | "daylight " | "pattern previews") ;;
-    set\ * | toggle\ * | reload\ * | bg\ * | background\ * | daylight\ * | colours\ * | accents\ * | pattern\ * | daynight\ *) theme_lock ;;
+    set\ * | toggle\ * | next\ * | reload\ * | bg\ * | background\ * | daylight\ * | colours\ * | accents\ * | pattern\ * | daynight\ *) theme_lock ;;
 esac
 
 case "${1:-list}" in
@@ -804,6 +825,7 @@ case "${1:-list}" in
     current) theme_current || die "no theme is set yet" ;;
     set) shift; theme_set "$@" ;;
     toggle) theme_toggle ;;
+    next) theme_next ;;
     reload)
         current="$(theme_current)" || die "no theme is set yet"
         # A drawn wallpaper is drawn again under a new name when the palette or the accent changed: it is shown again

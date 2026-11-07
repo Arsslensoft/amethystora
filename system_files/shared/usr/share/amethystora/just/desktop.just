@@ -2,10 +2,10 @@
 
 set default-list
 
-# Pick the desktop theme: colours, terminal palette, prompt and wallpaper (Super+Ctrl+Shift+Space); or save NAME (a
-# palette on stdin, from Control's theme maker), import FILE (a kitty, Alacritty, base16, base24 or Xresources colour
-# file), share [THEME] [FILE] (the look as one .amethystora-look file) and look FILE (open one, while ame desktop
-# look-files is on)
+# Pick the desktop theme: colours, terminal palette, prompt and wallpaper (Super+Ctrl+Shift+Space); next (the next theme
+# in the list, round again at the end, Super+Ctrl+T); or save NAME (a palette on stdin, from Control's theme maker),
+# import FILE (a kitty, Alacritty, base16, base24 or Xresources colour file), share [THEME] [FILE] (the look as one
+# .amethystora-look file) and look FILE (open one, while ame desktop look-files is on)
 [positional-arguments]
 theme *ARGS:
     #!/usr/bin/bash
@@ -179,6 +179,9 @@ theme *ARGS:
             done
             AMETHYSTORA_THEME_QUIET=1 amethystora-theme set "${slug}" >/dev/null
             echo "$(eval_gettext "The look \${name} is applied.")"
+            ;;
+        next)
+            amethystora-theme next
             ;;
         "")
             ;;

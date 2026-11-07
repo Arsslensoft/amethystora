@@ -15,6 +15,7 @@ that reads: see [Colours in applications](#colours-in-applications).
 | Key | Does |
 | --- | --- |
 | `Super+Ctrl+Shift+Space` | Pick a theme |
+| `Super+Ctrl+T` | The next theme, round again to the first at the end |
 | `Super+Ctrl+D` | Flip between the light and dark version of the theme |
 | `Super+Ctrl+Space` | Next wallpaper of the current theme |
 
@@ -22,6 +23,7 @@ The same from a terminal:
 
 ```bash
 ame desktop theme                   # pick one from a list, or name it: ame desktop theme Nord
+ame desktop theme next              # step to the next theme, round again at the end
 amethystora-theme list              # the themes, with the current one marked
 amethystora-theme set "Tokyo Night" # apply one by name
 amethystora-theme toggle            # light or dark

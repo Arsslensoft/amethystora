@@ -57,3 +57,8 @@ name='Amethystora Control'
 binding='<Super><Alt>n'
 command='amethystora-notes capture'
 name='Quick note'
+
+[org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom31]
+binding='<Super><Control>t'
+command='amethystora-theme next'
+name='Next theme'

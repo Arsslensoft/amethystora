@@ -1,6 +1,7 @@
 # Themes
 
-`amethystora-theme list | set "<name>" | toggle | current | reload | bg next|list|set`.
+`amethystora-theme list | set "<name>" | toggle | next | current | reload | bg next|list|set`
+(`next` steps to the next theme in the list, round again at the end; `Super+Ctrl+T`).
 
 A theme is a directory of small files (see `/usr/lib/amethystora/theme/lib.sh` for the full list):
 `colors.toml` (the palette), `accent.theme`, `light.mode`, `pair.theme`, `gtk.theme`,
