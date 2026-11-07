@@ -20,8 +20,8 @@ import {finished, output} from './run.js';
 
 const LIST = '/usr/libexec/amethystora-control-list';
 const IN_TERMINAL = '/usr/libexec/amethystora-in-terminal';
-// Seconds a copy of the list is used before it is read again
-const FRESH = 60;
+// Seconds a copy of the list is used before it is read again (a change made from here reads it again at once)
+const FRESH = 600;
 // The rows of each kind, at most
 const CHOICES = 3;
 const OPENS = 2;
@@ -48,6 +48,8 @@ export class SettingsProvider {
         // open a row of the last search after the next has begun (Enter while its search was still waiting)
         this._found = new Map();
         this._previous = new Map();
+        // Each entry's words, split once per list read rather than at every key typed
+        this._words = new WeakMap();
     }
 
     destroy() {
@@ -108,6 +110,20 @@ export class SettingsProvider {
             return Promise.resolve([]);
 
         const headings = this._headings();
+        const wordsOf = item => {
+            let known = this._words.get(item);
+            if (!known) {
+                const title = words(item.title);
+                known = {
+                    title,
+                    entry: [...title, ...words(item.group), ...words(headings[item.page])],
+                    sentence: words(item.text),
+                    choices: new Map(),
+                };
+                this._words.set(item, known);
+            }
+            return known;
+        };
         // Words of a setting's sentence find it only when no app answers to them either: Enter is the app's
         const appNamed = Shell.AppSystem.search(typed.join(' ')).length > 0;
         const startsAll = (list, also = []) => typed.every(word =>
@@ -116,8 +132,7 @@ export class SettingsProvider {
         const choices = [];
         const opens = [];
         this._items.forEach((item, order) => {
-            const entry = [...words(item.title), ...words(item.group), ...words(headings[item.page])];
-            const sentence = words(item.text);
+            const {title, entry, sentence, choices: choiceWords} = wordsOf(item);
             const current = Array.isArray(item.choices)
                 ? item.choices.find(choice => choice?.value === item.state) ?? null : null;
 
@@ -126,18 +141,20 @@ export class SettingsProvider {
                     if (!choice || choice.value === item.state || typeof choice.title !== 'string' ||
                         typeof choice.value !== 'string' || !runnable(choice.command))
                         continue;
-                    const own = words(choice.title);
+                    let own = choiceWords.get(choice);
+                    if (!own)
+                        choiceWords.set(choice, own = words(choice.title));
                     if (!startsAll([...own, ...entry]))
                         continue;
                     const rank = typed.some(word => own.some(other => other.startsWith(word))) ? 0
-                        : typed.some(word => words(item.title).some(other => other.startsWith(word))) ? 1 : 2;
+                        : typed.some(word => title.some(other => other.startsWith(word))) ? 1 : 2;
                     choices.push({
                         rank, order, id: `set:${item.id}:${choice.value}`, name: item.title,
                         description: choice.title, command: choice.command, terminal: choice.terminal === true,
                     });
                 }
                 if (item.kind === 'action' && runnable(item.command) && startsAll(entry)) {
-                    const rank = typed.some(word => words(item.title).some(other => other.startsWith(word))) ? 1 : 2;
+                    const rank = typed.some(word => title.some(other => other.startsWith(word))) ? 1 : 2;
                     choices.push({
                         rank, order, id: `act:${item.id}`, name: item.title,
                         description: (item.button ?? '').replace(/[….]+$/u, ''), command: item.command,
@@ -147,7 +164,7 @@ export class SettingsProvider {
             }
             if (startsAll(entry, appNamed ? [] : sentence)) {
                 opens.push({
-                    rank: typed.some(word => words(item.title).some(other => other.startsWith(word))) ? 1 : 2,
+                    rank: typed.some(word => title.some(other => other.startsWith(word))) ? 1 : 2,
                     order, id: `open:${item.id}`, name: _('Control › %s').format(item.title),
                     description: typeof current?.title === 'string' ? current.title : '', page: item.page,
                 });
