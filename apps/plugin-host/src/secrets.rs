@@ -1,4 +1,4 @@
-//! A plugin's settings (plans/PLAN-ui-ideas-r7-build.md, "Changes to other plans"): the values a person gave it, declared in
+//! A plugin's settings (plans/done/PLAN-ui-ideas-r7-build.md, "Changes to other plans"): the values a person gave it, declared in
 //! its manifest. Every one is kept sealed under a key of the plugin's own in the Vault (they are what the person named or did: a
 //! tracking number, an address, a token), so that none is a file in the clear, an argument or an environment variable. Only an
 //! account with no Vault at all (`not-set-up`) keeps a plain setting in a plain file, and never a secret one; a closed Vault gives

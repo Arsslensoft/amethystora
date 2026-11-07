@@ -1501,8 +1501,9 @@ The modules, and what each replaced:
   `gst-vosk`; nothing in its pipeline writes or sends the sound, which `20-tests.sh` greps for). `ame desktop captions on`
   asks, then downloads Vosk's small English model once, pinned by SHA-256, into `~/.local/share/amethystora/captions`
   (`amethystora-sends` names it from then on). It listens only while an app's stream plays, never while the screen is locked,
-  and a valve stops recognition after 2 s of silence; while words show, a full-screen window is composited. The model is
-  English only: Dictation (`plans/PLAN-dictation.md`) is not built.
+  and a valve stops recognition after 2 s of silence; while words show, a full-screen window is composited. English is the
+  first one fetched; `ame desktop captions language LANG` picks another, and dictation (R5-38, under Later below)
+  hears through the same engine.
 - `access` and `touch` (each part off): colour filters (`filter`, `filter-on`, `filter-strength`), the reading ruler
   (`Super+Ctrl+R`) and read aloud (`Super+Ctrl+S`); touch mode and the pen's ring of tools (`Super+Ctrl+P`, or the pen's
   button once `ame desktop touch pen-button on` set GNOME's stylus action). The board's `Super+Alt+R` and `Super+Alt+S` were

@@ -1,6 +1,6 @@
 //! What may cross, and how it lands. One place, asked by both sides: the old computer leaves out what the rules below refuse,
 //! and the new one refuses it again when it arrives, since what comes over a network is somebody's text and the other side may
-//! be anything. The rules are what the maintainer set for the move (plans/PLAN-ui-ideas-r7-build.md, R7-25):
+//! be anything. The rules are what the maintainer set for the move (plans/done/PLAN-ui-ideas-r7-build.md, R7-25):
 //!
 //! - **The person's own things:** the folders in the home that are not hidden (Documents, Pictures, Music, Videos, Downloads,
 //!   Desktop and the person's own), the data of their Flatpak apps (`.var/app/ID`, less caches), and the Vault's own backup

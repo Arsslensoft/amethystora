@@ -462,7 +462,7 @@ fn an_account_with_no_session_is_not_served() {
     assert_eq!(running.ask(json!({"op": "status"}))["ok"], json!(true));
 }
 
-/// Round 7's unattended work (plans/PLAN-ui-ideas-r7-build.md, Keys): a backup timer at night runs as an account that is
+/// Round 7's unattended work (plans/done/PLAN-ui-ideas-r7-build.md, Keys): a backup timer at night runs as an account that is
 /// logged out and lingers, and takes its `background` key from the chip. That account is served that and nothing else.
 #[test]
 fn an_account_logged_out_and_lingering_is_served_its_background_key_and_nothing_else() {

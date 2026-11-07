@@ -5,7 +5,7 @@
 // too-large, bad-request or failed (as closed). A connection idle for five seconds is dropped, so each call makes its own. Nothing here
 // blocks the shell: the connect, the write and the read are asynchronous, and a call that is not answered in time is cancelled.
 //
-// Called only after a person's own click (plans/PLAN-ui-ideas-r7-build.md, Keys): nothing asks the Vault unasked, and what is
+// Called only after a person's own click (plans/done/PLAN-ui-ideas-r7-build.md, Keys): nothing asks the Vault unasked, and what is
 // sealed is never kept in the clear when the Vault says no.
 
 import Gio from 'gi://Gio';

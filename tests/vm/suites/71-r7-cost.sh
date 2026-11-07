@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-# What round 7 costs the shell at rest (plans/PLAN-ui-ideas-r7-build.md, Performance): its memory, how often it wakes,
+# What round 7 costs the shell at rest (plans/done/PLAN-ui-ideas-r7-build.md, Performance): its memory, how often it wakes,
 # what it uses and how many frames it draws while nothing happens, and how long it takes to start. The numbers are
 # printed; with a baseline beside this file (71-r7-cost.baseline, the numbers of an image without round 7) they are held
 # to the plan's limits. Only the maintainer raises a limit. R7_COST_IDLE: seconds at rest (default 300).
