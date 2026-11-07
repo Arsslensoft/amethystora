@@ -5,6 +5,7 @@ set default-list
 # What every recipe here says when the service says no, in one place: `run` is the command line with its refusal turned into a
 # sentence, and the command line's own words come from here through its --say options
 words := '''
+    # On standard error, so that a recipe that leaves the program's own output out (open, protect) still says why it failed
     vault_says() {
         case "$1" in
             0) return 0 ;;
@@ -29,7 +30,7 @@ words := '''
             21) gettext "Something took the file's place away while the command ran, and nothing was sealed."; echo ;;
             22) gettext "That variable changes how programs start, so a secret is never put in it. Name another: VARIABLE=NAME"; echo ;;
             *) gettext "The vault's service could not do that. Try again in a moment."; echo ;;
-        esac
+        esac >&2
         exit "$1"
     }
     run() {
