@@ -15,6 +15,11 @@ COPY /system_files/shared/etc/pki/akmods/certs/amethystora-modules.der /system_f
 # first: the base image's asks ghcr.io/ublue-os for a signature skopeo cannot find, where the Justfile has checked
 # each digest with cosign already
 COPY /system_files/shared/etc/containers/policy.json /system_files/shared/etc/containers/policy.json
+# The Vault's two system users, made before any package's, as they were when system_files came first: the packages'
+# own users then get the numbers they have on every machine installed before the layers (dx's dumpcap is 0:941, the
+# wireshark group, which one number lower would hand to another group on those machines)
+COPY /system_files/shared/usr/lib/sysusers.d/amethystora-vault.conf /system_files/shared/usr/lib/sysusers.d/amethystora-vault.conf
+COPY /system_files/shared/usr/lib/sysusers.d/amethystora-vault-net.conf /system_files/shared/usr/lib/sysusers.d/amethystora-vault-net.conf
 
 FROM ${BASE_IMAGE}:${FEDORA_MAJOR_VERSION}@${BASE_IMAGE_SHA}
 
@@ -31,6 +36,8 @@ ARG UBLUE_IMAGE_TAG="stable"
 RUN --mount=type=cache,dst=/var/cache/libdnf5 \
     --mount=type=cache,dst=/var/cache/rpm-ostree \
     --mount=type=bind,from=ctx,source=/,target=/ctx \
+    install -Dpm0644 -t /usr/lib/sysusers.d /ctx/system_files/shared/usr/lib/sysusers.d/amethystora-vault*.conf && \
+    systemd-sysusers && \
     /ctx/build_files/shared/prepare.sh
 
 RUN --mount=type=cache,dst=/var/cache/libdnf5 \
