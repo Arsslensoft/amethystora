@@ -21,6 +21,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {IDS, SCHEMA, workspaceAccent} from './theme/accents.js';
 import {DayNight} from './theme/daynight.js';
+import {replaceStylesheets} from './theme/stylesheets.js';
 
 const CONFIG = GLib.build_filenamev([GLib.get_user_config_dir(), 'amethystora']);
 const CURRENT = GLib.build_filenamev([CONFIG, 'current']);
@@ -272,43 +273,9 @@ export class Theme {
 
     // ---- The stylesheets ----
 
-    // The shell's theme made again with every stylesheet it had, less those to drop and with those to add, and put in
-    // place in one go, as GNOME Shell itself does when its theme changes (Main.loadTheme): loading or unloading a single
-    // stylesheet restyles the whole stage, so this is one restyle whatever the number of files. Gives back what it added.
-    _replace(drop, add) {
-        const context = St.ThemeContext.get_for_stage(global.stage);
-        const old = context.get_theme();
-        const theme = new St.Theme({
-            application_stylesheet: old.application_stylesheet,
-            theme_stylesheet: old.theme_stylesheet,
-            default_stylesheet: old.default_stylesheet,
-        });
-        for (const file of old.get_custom_stylesheets()) {
-            if (drop.some(each => each.equal(file)))
-                continue;
-            // Another extension's stylesheet that has gone from the disk since it was loaded is left out, not fatal
-            try {
-                theme.load_stylesheet(file);
-            } catch (e) {
-                console.warn(`Amethystora UI: ${file.get_path()} was not loaded again: ${e.message}`);
-            }
-        }
-        const added = [];
-        for (const [name, file] of add) {
-            try {
-                theme.load_stylesheet(file);
-                added.push([name, file]);
-            } catch (e) {
-                console.warn(`Amethystora UI: the theme's ${name} was not loaded: ${e.message}`);
-            }
-        }
-        context.set_theme(theme);
-        return added;
-    }
-
     _unload() {
         if (this._loaded?.size)
-            this._replace([...this._loaded.values()], []);
+            replaceStylesheets([...this._loaded.values()], []);
         this._loaded?.clear();
     }
 
@@ -350,7 +317,7 @@ export class Theme {
         this._markUnthemed();
         const stale = [...this._loaded.values()];
         this._loaded.clear();
-        for (const [name, file] of this._replace(stale, [...this._wanted()]))
+        for (const [name, file] of replaceStylesheets(stale, [...this._wanted()]))
             this._loaded.set(name, file);
         this._apply();
         this._writeState(this._accent);

@@ -4,12 +4,11 @@
 // and says why in the journal. A module's stylesheet, stylesheets/<module>.css, is loaded while it runs; the
 // colours that follow the theme are in /usr/share/amethystora/themed/shell-<module>.css.tpl (modules/theme.js).
 
-import St from 'gi://St';
-
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 // Before anything else makes a settings object
 import './modules/keepsettings.js';
+import {replaceStylesheets} from './modules/theme/stylesheets.js';
 import {Theme} from './modules/theme.js';
 import {Style} from './modules/style.js';
 import {Comfort} from './modules/comfort.js';
@@ -133,12 +132,15 @@ export default class AmethystoraUI extends Extension {
             this.disable();
         // The running modules by name, for a module that needs another's actors (the glass, the dock's)
         this.modules = new Map();
+        const stylesheets = [];
         for (const [name, Module] of MODULES) {
             const module = new Module(this);
             try {
                 module.enable();
                 this.modules.set(name, module);
-                this._loadStylesheet(name, module);
+                const file = this.dir.get_child('stylesheets').get_child(`${name}.css`);
+                if (file.query_exists(null))
+                    stylesheets.push([name, file]);
             } catch (e) {
                 console.error(`Amethystora UI: the ${name} module did not start: ${e.message}\n${e.stack}`);
                 // A module stops cleanly from wherever it got to
@@ -147,6 +149,8 @@ export default class AmethystoraUI extends Extension {
                 } catch {}
             }
         }
+        // All in one restyle of the stage, after the theme's own: one at a time they cost some 2 s at every unlock
+        this.stylesheets = replaceStylesheets([], stylesheets).map(([, file]) => file);
     }
 
     disable() {
@@ -165,22 +169,9 @@ export default class AmethystoraUI extends Extension {
             } catch (e) {
                 console.error(`Amethystora UI: the ${name} module did not stop cleanly: ${e.message}`);
             }
-            if (module.stylesheet)
-                St.ThemeContext.get_for_stage(global.stage).get_theme().unload_stylesheet(module.stylesheet);
         }
-        this.modules = null;
-    }
-
-    _loadStylesheet(name, module) {
-        const file = this.dir.get_child('stylesheets').get_child(`${name}.css`);
-        if (!file.query_exists(null))
-            return;
-        try {
-            St.ThemeContext.get_for_stage(global.stage).get_theme().load_stylesheet(file);
-            module.stylesheet = file;
-        } catch (e) {
-            console.error(`Amethystora UI: stylesheets/${name}.css: ${e.message}`);
-        }
+        if (this.stylesheets?.length)
+            replaceStylesheets(this.stylesheets, []);
+        this.modules = this.stylesheets = null;
     }
 }
-
