@@ -1199,3 +1199,39 @@ Input Remapper runs as root and reads every key typed into every application. Th
 remapping needs, and a keylogger in every other respect, so it ships switched off. If you remap keys
 or mouse buttons, turn it on with `ame security input-remapper`; `ame security input-remapper off`
 turns it off again and keeps your mappings.
+
+## The chip under the system
+
+Most Intel computers have a second, small processor in the chipset, the Management Engine (ME), with
+firmware of its own in the board's flash. It runs below the operating system whenever the board has
+power, and no operating system, Amethystora included, can turn it off. On business machines sold as
+**vPro**, it carries Active Management Technology (AMT), which lets an administrator control the computer
+over the network, even switched off. AMT's network traffic is taken off the network card before the
+system sees it, so the firewall here never sees it either. There is no documented case of ME spying on
+the people using a computer, but there have been serious flaws in it, most of them in AMT. AMD's
+processors have a chip of the same kind.
+
+A machine has AMT if it has a vPro sticker or says vPro in its specifications, or if its firmware setup
+(the menu a key opens as it starts) has an **Intel AMT** or **MEBx** entry. On such a machine:
+
+1. **Set a firmware setup password, and change the MEBx password.** MEBx's password is `admin` until it
+   is changed, and anyone with half a minute at the machine can use it to set up AMT for themselves, past
+   the disk's encryption and a TPM PIN. This holds whether you keep AMT or not, so do it first.
+2. **Turn AMT off** in the firmware setup, unless your organisation manages the machine with it.
+3. **Block ports 16992 to 16995, 623 and 664** to the machine on your router, so that AMT cannot be
+   reached from the internet. It does not help against someone on the same network.
+
+On every Intel machine, ME's fixes come as [firmware updates](updates.md#firmware) from the computer's
+maker, which **Updates** installs; `fwupdmgr security` names ME's version and says whether it is one with
+known flaws. A computer its maker no longer updates keeps the flaws it has, and the oldest chips (before
+the 10th generation) have one in ME's boot code that no update can fix.
+
+Some computers are sold with ME disabled as far as it can be (System76, Purism, Tuxedo and Minifree sell
+such machines). Disabling it yourself means rewriting the board's flash, which can leave a computer unable
+to start and can take its firmware TPM with it, so Amethystora offers no command for it. It does not block
+ME's drivers either: they bring protected video playback, Intel Arc cards' firmware updates, and fwupd's
+reading of ME's version, which is how you learn that ME needs an update.
+
+Amethystora installs nothing that talks to AMT from the computer itself (Intel's LMS). The keyboards and
+input methods it comes with, for Chinese, Japanese, Korean and the rest, send nothing of what you type:
+Chinese Pinyin's cloud suggestions are off, and Fedora builds it without the network code they need.

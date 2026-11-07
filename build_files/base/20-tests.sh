@@ -5116,6 +5116,25 @@ for package in kmod-wl broadcom-wl kmod-openrazer openrazer; do
     rpm -q "${package}" >/dev/null 2>&1 && { echo "${package} is in the image"; exit 1; }
 done
 grep -rlE '^[[:space:]]*blacklist[[:space:]]+(brcmfmac|brcmsmac|bcma|b43|ssb)$' /usr/lib/modprobe.d && false
+# Nothing that talks to Intel's AMT from the machine (security.md#the-chip-under-the-system): Intel's LMS, as its
+# project (intel/lms) installs it, the program, its unit and its bus name
+for path in /usr/bin/lms /usr/sbin/lms /usr/lib/systemd/system/lms.service; do
+    [[ -e "${path}" ]] && { echo "${path}: Intel's LMS is in the image"; exit 1; }
+done
+grep -rqs 'com\.intel\.amt\.lms' /usr/share/dbus-1 /etc/dbus-1 && { echo "Intel's LMS is in the image"; exit 1; }
+# ...and no input method that can send what is typed: no engine IBus starts links an HTTP library, and Pinyin's
+# cloud input is built without one and off. If this ever fails, the fix is a row with a switch in
+# amethystora-sends, never a locked key
+for engine in $(sed -n 's:.*<exec>\([^ <]*\).*:\1:p' /usr/share/ibus/component/*.xml | sort -u); do
+    [[ -x "${engine}" ]] || continue
+    [[ "$(ldd "${engine}" 2>/dev/null || true)" =~ lib(soup|curl) ]] && { echo "${engine} can send what is typed"; exit 1; }
+done
+if rpm -q ibus-libpinyin >/dev/null 2>&1; then
+    rpm -q --requires ibus-libpinyin | grep -E 'soup|curl' && { echo "ibus-libpinyin has cloud input"; exit 1; }
+    for schema in libpinyin libbopomofo; do
+        [[ "$(GSETTINGS_BACKEND=memory gsettings get "com.github.libpinyin.ibus-libpinyin.${schema}" enable-cloud-input)" == false ]]
+    done
+fi
 
 # The NVIDIA images: NVIDIA's open module on -nvidia-open, its closed one of the 580 branch on -nvidia-lts
 NVIDIA_KO="$(find "/usr/lib/modules/${KERNEL_VERSION}" -name 'nvidia.ko*' | head -n1)"
