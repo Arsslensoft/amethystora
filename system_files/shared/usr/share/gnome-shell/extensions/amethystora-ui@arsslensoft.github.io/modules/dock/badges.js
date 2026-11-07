@@ -47,6 +47,15 @@ export function sayUpdating(name) {
         _('%s is being updated. Try again later.').format(name));
 }
 
+// A label drawn at its size from a drawing `factor` times as large, from its outer corner: while the dock grows its
+// icon, the label is drawn at the grown size, so that it stays sharp as the icon's picture does (dash.js's peakIcon).
+// Its margin lies outside what is scaled.
+export function drawnAt(label, factor) {
+    const rtl = label.get_text_direction() === Clutter.TextDirection.RTL;
+    label.set_pivot_point(rtl ? 0 : 1, 0);
+    label.set_scale(1 / factor, 1 / factor);
+}
+
 // The count and the bar of one icon, in parent, which is as large as the icon's tile; inset is the room in the tile
 // around the picture of the icon. The picture itself is the BaseIcon's.
 export class IconBadge {
@@ -54,6 +63,7 @@ export class IconBadge {
         this._baseIcon = baseIcon;
         this._inset = inset;
         this.count = 0;
+        this._factor = 1;
         this.badge = new St.Label({
             style_class: 'amethystora-dock-badge',
             x_align: Clutter.ActorAlign.END,
@@ -143,8 +153,23 @@ export class IconBadge {
         const height = Math.max(3, Math.round(5 * f));
         this.progress.set_style(`margin: 0 ${side}px ${bottom}px ${side}px; height: ${height}px;`);
         // The count shrinks less than the icon does, and never below half
-        const shrink = SHRINK.find(([smallest]) => size >= smallest)?.[1] ?? 0.5;
-        this.badge.set_style(`font-size: ${(0.9 * shrink).toFixed(2)}em; margin-left: ${Math.round(3 * shrink)}px;`);
+        this._shrink = SHRINK.find(([smallest]) => size >= smallest)?.[1] ?? 0.5;
+        this._styleCount();
+    }
+
+    // The count drawn for an icon `factor` times its size, while the dock grows it
+    grow(factor) {
+        if (factor === this._factor)
+            return;
+        this._factor = factor;
+        this._styleCount();
+    }
+
+    _styleCount() {
+        const shrink = this._shrink ?? 1;
+        this.badge.set_style(`font-size: ${(0.9 * shrink * this._factor).toFixed(2)}em; ` +
+            `margin-left: ${Math.round(3 * shrink)}px;`);
+        drawnAt(this.badge, this._factor);
     }
 
     _syncFill() {

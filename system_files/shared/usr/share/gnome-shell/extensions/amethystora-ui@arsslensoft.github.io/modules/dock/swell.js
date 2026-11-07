@@ -26,6 +26,18 @@ const TAU_OUT = 40;
 const SETTLE_SCALE = 0.002;
 const SETTLE_PX = 0.25;
 
+// The icon an item draws: the first St.Icon inside it
+function pictureOf(actor) {
+    for (const child of actor.get_children()) {
+        if (child instanceof St.Icon)
+            return child;
+        const found = pictureOf(child);
+        if (found)
+            return found;
+    }
+    return null;
+}
+
 export class Swell {
     constructor(dash, dock) {
         this._dash = dash;
@@ -259,6 +271,9 @@ export class Swell {
         this._inside = Boolean(pointer);
         const along = pointer ? pointer[this._dash.edge.long === 'x' ? 0 : 1] : 0;
         const per = this._dash.iconSize / 48 * scaleFactor();
+        // The peak exactly the size its picture was made at (dash.js's peakIcon), so that it is drawn pixel for pixel
+        const size = this._dash.iconSize;
+        const exact = scale => Math.round(size * scale) / size;
 
         // The scale and the lift away from the edge of each item
         const scales = items.map(() => [1, 0]);
@@ -269,7 +284,7 @@ export class Swell {
                     return;
                 const d = Math.abs(along - item.centre);
                 const f = d < reach ? (Math.cos(Math.PI * d / reach) + 1) / 2 : 0;
-                scales[i][0] = 1 + (this._amount - 1) * f;
+                scales[i][0] = 1 + (exact(this._amount) - 1) * f;
             });
         } else if (pointer && this._mode === 'lift') {
             let nearest = -1;
@@ -282,7 +297,7 @@ export class Swell {
                 }
             });
             if (nearest >= 0 && best <= this._dash.iconSize * scaleFactor()) {
-                scales[nearest] = [LIFT.scale, LIFT.away * per];
+                scales[nearest] = [exact(LIFT.scale), LIFT.away * per];
                 const apps = items.map((item, i) => [item, i]).filter(([item]) => !item.separator);
                 const at = apps.findIndex(([, i]) => i === nearest);
                 for (const next of [apps[at - 1], apps[at + 1]]) {
@@ -330,6 +345,7 @@ export class Swell {
             for (const item of items)
                 item.shown = {...item.target};
             this._write();
+            this._snap();
             return;
         }
         this._start();
@@ -376,6 +392,7 @@ export class Swell {
         this._write();
         this._dock.noteFrame((GLib.get_monotonic_time() - began) / 1000);
         if (!moving) {
+            this._snap();
             this._timeline.stop();
             this._running = false;
             if (this._mode === 'off')
@@ -429,6 +446,25 @@ export class Swell {
             actor.set_translation(along, edge.away * lift, 0);
         else
             actor.set_translation(edge.away * lift, along, 0);
+    }
+
+    // Once the row is still, each grown picture is moved by under a pixel onto whole pixels: one drawn across them is
+    // resampled, and looks soft. Undone by the next value written.
+    _snap() {
+        for (const item of this._items) {
+            const {actor} = item;
+            if (item.separator || item.shown.scale === 1 || !actor || actor._amethystoraBusy || actor._amethystoraGone)
+                continue;
+            const picture = pictureOf(actor);
+            if (!picture)
+                continue;
+            const scale = picture.get_resource_scale();
+            const {origin} = picture.get_transformed_extents();
+            const dx = (Math.round(origin.x * scale) - origin.x * scale) / scale;
+            const dy = (Math.round(origin.y * scale) - origin.y * scale) / scale;
+            if (dx || dy)
+                actor.set_translation(actor.translation_x + dx, actor.translation_y + dy, 0);
+        }
     }
 
     // Something drawn beyond the row for a while (the numbers): the row is not cut meanwhile

@@ -22,7 +22,7 @@ import * as DND from 'resource:///org/gnome/shell/ui/dnd.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
-import {Badges, IconBadge} from './badges.js';
+import {Badges, IconBadge, drawnAt} from './badges.js';
 import {Clicks} from './clicks.js';
 import {folderPicture} from './folders.js';
 import {ItemMarks} from './marks.js';
@@ -1050,11 +1050,22 @@ class AmethystoraDockDash extends Dash.Dash {
     followSwell(items) {
         const long = this.edge.long;
         let recentMoved = false;
+        const peak = this._dock.peak;
         for (const item of items) {
             const container = item.container;
             container._amethystoraShown = item.shown;
             const state = this._items.get(item.actor);
             state?.marks?.follow(item.shown.along, long);
+            // The counts are drawn at the grown size from halfway there: once on the way up, once on the way down
+            const grown = peak > 1 && item.shown.scale > (1 + peak) / 2 ? peak : 1;
+            if (state && grown !== (state.grown ?? 1)) {
+                state.grown = grown;
+                state.badge?.grow(grown);
+                if (state.arrivals) {
+                    state.arrivals.set_style(`font-size: ${grown}em;`);
+                    drawnAt(state.arrivals, grown);
+                }
+            }
             this._labelFollow(container);
             // GNOME's menu reads where its icon is only when it is laid out: the swollen icon going back to rest as its
             // menu opens would otherwise leave the menu high, until something lays it out and it drops
