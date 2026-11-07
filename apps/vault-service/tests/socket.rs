@@ -972,11 +972,17 @@ fn a_backup_is_taken_closed_and_brings_every_vault_back_from_its_recovery_key() 
     let hidden_recovery = running.new_vault("Not listed", true, "the hidden password");
     let hidden = opened(&running).iter().find(|vault| vault["hidden"] == json!(true)).unwrap()["id"].as_str().unwrap().to_string();
     assert_eq!(running.ask(json!({"op": "put", "kind": "password", "id": "h", "name": "In the hidden one", "value": "s3cret", "approval": "while-open", "vault": hidden}))["ok"], json!(true));
+    // Larger than a chunk, so that the file made at the first is the one the rest are read from
+    for id in ["big-1", "big-2"] {
+        assert_eq!(running.ask(json!({"op": "put", "kind": "password", "id": id, "name": id, "value": "x".repeat(300 * 1024), "approval": "while-open"}))["ok"], json!(true));
+    }
     running.ask(json!({"op": "lock"}));
     let asked = running.outside.asked();
     // A chunk at a time, as the command line reads it; the vault is closed and nobody is asked
     let mut file = Vec::new();
+    let mut chunks = 0;
     loop {
+        chunks += 1;
         let answer = running.ask(json!({"op": "vault-backup", "offset": file.len()}));
         assert_eq!(answer["ok"], json!(true), "{answer}");
         use base64::Engine;
@@ -985,6 +991,7 @@ fn a_backup_is_taken_closed_and_brings_every_vault_back_from_its_recovery_key() 
             break;
         }
     }
+    assert!(chunks >= 2, "{chunks} chunk");
     assert_eq!(running.outside.asked(), asked);
     let text = String::from_utf8_lossy(&file);
     assert!(!text.contains("Not listed") && !text.contains("In the hidden one") && !text.contains(PASSWORD));

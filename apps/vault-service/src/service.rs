@@ -140,6 +140,8 @@ pub struct Service {
     drafts: HashMap<u32, (Draft, Instant)>,
     /// A backup being brought in, a chunk at a time, until a restore uses it or it is not wanted (`plugs/moving.rs`)
     pub(crate) staged: HashMap<u32, (Vec<u8>, Instant)>,
+    /// A backup being read out, a chunk at a time: made once at its first chunk and let go after its last (`plugs/moving.rs`)
+    pub(crate) made: HashMap<u32, (Vec<u8>, Instant)>,
     /// Counts closings, each account's and everyone's, so that an opening that took its time does not undo one that came
     /// meanwhile. An account's own, or another's lock would stop this one's opening.
     closes: HashMap<u32, u64>,
@@ -157,7 +159,7 @@ fn no_secret<T>(_: T) -> Next {
 impl Service {
     pub fn new(config: Config, chip: Arc<dyn Chip>, outside: Box<dyn Outside>) -> Service {
         vaults::sweep_forgotten(&config.state);
-        Service { config, chip, outside, sessions: HashMap::new(), drafts: HashMap::new(), staged: HashMap::new(), closes: HashMap::new(), closes_of_all: 0, closed: Vec::new(), sync: crate::sync::Hub::default() }
+        Service { config, chip, outside, sessions: HashMap::new(), drafts: HashMap::new(), staged: HashMap::new(), made: HashMap::new(), closes: HashMap::new(), closes_of_all: 0, closed: Vec::new(), sync: crate::sync::Hub::default() }
     }
 
     /// Whether the account is served at all: it has a login session, or it has none and lingers. The second is served the
@@ -186,7 +188,7 @@ impl Service {
 
     /// Whether anything keeps the service from going away
     pub fn is_quiet(&self) -> bool {
-        self.sessions.is_empty() && self.drafts.is_empty() && self.staged.is_empty()
+        self.sessions.is_empty() && self.drafts.is_empty() && self.staged.is_empty() && self.made.is_empty()
     }
 
     pub fn is_open(&self, uid: u32) -> bool {
@@ -197,7 +199,7 @@ impl Service {
     pub fn deadline(&self) -> Option<Instant> {
         let idle = self.sessions.values().map(|session| session.last_use + session.idle);
         let drafts = self.drafts.values().map(|(_, since)| *since + DRAFT_PATIENCE);
-        let staged = self.staged.values().map(|(_, since)| *since + DRAFT_PATIENCE);
+        let staged = self.staged.values().chain(self.made.values()).map(|(_, since)| *since + DRAFT_PATIENCE);
         idle.chain(drafts).chain(staged).chain(self.sync.deadline()).min()
     }
 
@@ -209,6 +211,7 @@ impl Service {
         }
         self.drafts.retain(|_, (_, since)| *since + DRAFT_PATIENCE > now);
         self.staged.retain(|_, (_, since)| *since + DRAFT_PATIENCE > now);
+        self.made.retain(|_, (_, since)| *since + DRAFT_PATIENCE > now);
     }
 
     /// Closes what this account has open: the keys are wiped as they drop

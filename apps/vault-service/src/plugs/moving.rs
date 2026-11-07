@@ -20,17 +20,26 @@ use crate::service::{Next, Service};
 /// A chunk, well inside what one line may carry
 const CHUNK: usize = MAX_DATA / 2;
 
-/// A backup's bytes from `offset`, and its whole size so that the client knows when it has it all. The file is made again for each
-/// chunk and the client checks its sum at the end: a vault written between two chunks makes a copy that does not add up, and it asks again.
+/// A backup's bytes from `offset`, and its whole size so that the client knows when it has it all. The file is made at the first
+/// chunk and kept for the rest, so that a large vault is read once and not once a chunk on the loop every account waits on; a chunk
+/// after it was let go makes it again, and the client's check of its sum at the end finds a copy that does not add up and asks again.
 pub fn backup(service: &mut Service, peer: &Rc<Peer>, body: &Value) -> Result<Next, Refusal> {
     let offset = number(body, "offset", 0..=MAX_BACKUP as u64)?.unwrap_or(0) as usize;
-    let account = service.account(peer.uid)?;
-    let made = moving::make(&account).map_err(|trouble| if trouble == amethystora_vault_core::store::Trouble::Full { Refusal::TooLarge } else { Refusal::Failed })?;
+    if offset == 0 || !service.made.contains_key(&peer.uid) {
+        service.made.remove(&peer.uid);
+        let account = service.account(peer.uid)?;
+        let made = moving::make(&account).map_err(|trouble| if trouble == amethystora_vault_core::store::Trouble::Full { Refusal::TooLarge } else { Refusal::Failed })?;
+        service.made.insert(peer.uid, (made, Instant::now()));
+    }
+    let Some((made, since)) = service.made.get_mut(&peer.uid) else { return Err(Refusal::Failed) };
+    *since = Instant::now();
     let end = (offset + CHUNK).min(made.len());
     let chunk = made.get(offset..end).unwrap_or(&[]);
     let answer = json!({"ok": true, "size": made.len(), "data": amethystora_vault_core::protocol::encode(chunk)});
-    drop(made);
-    give_back();
+    if end >= made.len() {
+        service.made.remove(&peer.uid);
+        give_back();
+    }
     Ok(Next::Answer(answer))
 }
 
