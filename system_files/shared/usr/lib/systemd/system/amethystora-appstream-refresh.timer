@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh the AppStream metadata cache daily, ten minutes after boot
+
+[Timer]
+# Monotonic, so it never sits on the boot path: ten minutes after each boot and
+# daily thereafter, when the desktop is already up and idle.
+OnBootSec=10min
+OnUnitActiveSec=1d
+
+[Install]
+WantedBy=timers.target

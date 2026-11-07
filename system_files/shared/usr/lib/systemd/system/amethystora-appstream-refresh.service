@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh the AppStream metadata cache off the boot path
+
+[Service]
+Type=oneshot
+# Not --force: only downloads when the cache is actually stale, so a run that
+# finds it fresh costs almost nothing. The heavy --force refresh that the
+# inherited fedora-atomic-desktop-appstream-cache-refresh.service ran on every
+# boot added ~6-11 s to the critical chain to graphical.target; this timer does
+# the same work after boot instead.
+ExecStart=/usr/bin/appstreamcli refresh

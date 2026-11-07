@@ -103,6 +103,15 @@ rm -f /etc/modprobe.d/l2tp_netlink-blacklist.conf /etc/modprobe.d/l2tp_ppp-black
 # device while the screen is unlocked, which undoes `ame security usb on`. Only `ame security usb locked`
 # unmasks it.
 systemctl mask usbguard-dbus.service
+# The base image's appstream cache refresh runs `appstreamcli refresh --force`
+# ordered Before=multi-user.target on every boot, which gated graphical.target by
+# ~6-11 s (measured on the critical chain). GNOME Software is not in the image, so
+# the only consumers are libdnf5's appstream plugin and Flathub metadata, neither of
+# which needs a fresh cache at boot. Masked, not disabled, so a leftover /etc wants
+# symlink on an upgraded machine cannot start it either; amethystora-appstream-refresh
+# .timer keeps the cache fresh daily, after boot.
+systemctl mask fedora-atomic-desktop-appstream-cache-refresh.service
+systemctl enable amethystora-appstream-refresh.timer
 systemctl enable rpm-ostree-countme.timer
 systemctl enable tailscaled.service
 systemctl enable amethystora-system-setup.service

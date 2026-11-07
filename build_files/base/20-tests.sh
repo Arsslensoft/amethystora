@@ -4579,6 +4579,11 @@ grep -qx 'BindReadOnlyPaths=/usr/lib/amethystora/kconfig:/boot' \
 # the GNOME keys it reads are set and locked, so that no account turns it off from Settings.
 rpm -q usbguard-dbus >/dev/null
 [[ "$(systemctl is-enabled usbguard-dbus.service 2>/dev/null)" == masked ]]
+# The base image's boot-time appstream refresh is masked (it gated graphical.target by ~6-11 s), and the
+# cache is kept fresh by a daily off-boot timer instead. A base bump must not quietly re-add the stall.
+[[ "$(systemctl is-enabled fedora-atomic-desktop-appstream-cache-refresh.service 2>/dev/null)" == masked ]]
+[[ "$(systemctl is-enabled amethystora-appstream-refresh.timer 2>/dev/null)" == enabled ]]
+systemd-analyze verify --man=no --recursive-errors=no /usr/lib/systemd/system/amethystora-appstream-refresh.{service,timer}
 USB_RULE=/usr/share/polkit-1/rules.d/50-amethystora-usb-lockscreen.rules
 [[ "$(grep -v '^//' "${USB_RULE}" | grep -o 'org\.usbguard[A-Za-z0-9.]*' | sort | paste -sd ' ')" == \
     "org.usbguard.Devices1.applyDevicePolicy org.usbguard.Policy1.appendRule org.usbguard1.setParameter" ]]
