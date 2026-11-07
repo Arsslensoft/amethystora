@@ -14,6 +14,8 @@ const DISC_OUT = 6;
 const DISC = {fade: 160, grow: 200, stagger: 18, from: 0.6};
 // The glow sits 1 px in from the pill's edge, the bar 3 px: 2 px nearer the edge than the tile's
 const GLOW_NEARER = 2;
+// While the icons grow no tile has a plate, so the mark of an app that has not the focus is dimmed instead
+const UNFOCUSED = 140;
 
 // Where actor's allocation lies in ancestor's own coordinates, through the allocations between them
 function boxIn(actor, ancestor) {
@@ -70,8 +72,16 @@ export class ItemMarks {
                 this.mark.remove_style_class_name('amethystora-dock-bar-wide');
         }
         this.mark.visible = windows > 0;
+        this.mark.opacity = this._dim ? UNFOCUSED : 255;
         this._catchUp();
         this.place();
+    }
+
+    // focused: the item's app has the focus; plain: the dock shows the focus with a plate, so no mark is dimmed
+    focus(focused, plain) {
+        this._dim = !focused && !plain;
+        if (this.mark && !this._gone)
+            this.mark.opacity = this._dim ? UNFOCUSED : 255;
     }
 
     _make(kind, windows) {

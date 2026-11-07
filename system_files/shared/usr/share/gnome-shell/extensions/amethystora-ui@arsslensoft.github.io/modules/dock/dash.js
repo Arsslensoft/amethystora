@@ -1187,9 +1187,11 @@ class AmethystoraDockDash extends Dash.Dash {
         const app = key instanceof Shell.App;
         const entry = app ? this._launcher.get(key.get_id()) : null;
 
+        const focused = key === this.focusedKey();
+        state.marks?.focus(focused, !this.has_style_class_name('amethystora-dock-swells'));
         state.marks?.sync(this._dock.indicator, windows.length);
 
-        if (key === this.focusedKey())
+        if (focused)
             button.add_style_class_name('amethystora-dock-focused');
         else
             button.remove_style_class_name('amethystora-dock-focused');

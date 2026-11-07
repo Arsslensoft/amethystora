@@ -230,6 +230,7 @@ export class Dock {
             this._sites.push(site);
             site.build();
             site.dash.swell.setMode(this.settings.get_string('magnify'), this.settings.get_double('magnify-amount'));
+            site.dash.remark();
         }
         this._syncFilters();
         this._syncScheme();
@@ -371,6 +372,8 @@ export class Dock {
         this._lastPeak = this.peak;
         this._each(dash => {
             dash.swell.setMode(this.settings.get_string('magnify'), this.settings.get_double('magnify-amount'));
+            // The marks show the focus while no tile has a plate
+            dash.remark();
             if (peak !== this.peak)
                 dash.reloadIcons();
         });
