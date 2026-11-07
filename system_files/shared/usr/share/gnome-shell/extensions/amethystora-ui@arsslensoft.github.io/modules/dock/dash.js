@@ -1196,7 +1196,7 @@ class AmethystoraDockDash extends Dash.Dash {
 
         const count = app ? this._badges.unread(key) : 0;
         if (state.badge?.sync(count, entry))
-            button.accessible_name = Badges.accessibleName(app ? key.get_name() : key.name, count);
+            button.accessible_name = Badges.accessibleName(app ? key.get_name() : key.name, count, app ? key : null);
 
         const urgent = Boolean(entry?.urgent) || windows.some(window => this._attention.has(window));
         if (urgent && !state.urgent)

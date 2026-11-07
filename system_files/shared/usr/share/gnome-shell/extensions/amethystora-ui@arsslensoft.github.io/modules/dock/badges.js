@@ -3,6 +3,8 @@
 // the bottom for a task under way; and, while the app is being updated, the icon at half strength and a word instead
 // of a launch when it is clicked. The counts come from the message tray, the rest from the launcher protocol
 // (dock/launcher.js), which says nothing while notifications are silenced. The dock adds its own on top (dash.js).
+// A terminal's icon counts its windows instead: its notifications are its commands' (one ended, one wants attention),
+// read in the window and left to pile up in the tray, so a count of them said nothing about the terminal.
 
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
@@ -26,6 +28,17 @@ function shortCount(count) {
         return count.toLocaleString(undefined, {useGrouping: false});
     const fractions = Math.floor(Math.log10(count)) % 3 === 2 ? 0 : 1;
     return new Intl.NumberFormat(undefined, {notation: 'compact', maximumFractionDigits: fractions}).format(count);
+}
+
+// A terminal emulator, by its launcher's categories
+function isTerminal(app) {
+    return (app.get_app_info()?.get_categories() ?? '').split(';').includes('TerminalEmulator');
+}
+
+// A terminal's windows, from two: one is already the running app's mark
+function terminalWindows(app) {
+    const count = app.get_windows().filter(window => !window.skip_taskbar).length;
+    return count > 1 ? count : 0;
 }
 
 // Said in place of opening an app that is being updated
@@ -228,6 +241,8 @@ export class Badges extends EventEmitter {
         const entry = this._launcher.get(app.get_id());
         if (entry?.countVisible && Number(entry.count) > 0)
             return Number(entry.count);
+        if (isTerminal(app))
+            return terminalWindows(app);
         if (this._launcher.quiet)
             return 0;
         if (!this._counts) {
@@ -244,7 +259,9 @@ export class Badges extends EventEmitter {
     }
 
     // The name an icon is read out by, with its count
-    static accessibleName(name, count) {
+    static accessibleName(name, count, app = null) {
+        if (count > 0 && app && isTerminal(app))
+            return ngettext('%s, %d window', '%s, %d windows', count).format(name, count);
         return count > 0 ? ngettext('%s, %d unread', '%s, %d unread', count).format(name, count) : name;
     }
 
@@ -324,11 +341,14 @@ export class Badges extends EventEmitter {
             this._icons?.get(id)?.delete(icon);
             icon._amethystoraBadge = null;
         }, this);
+        if (isTerminal(icon.app))
+            icon.app.connectObject('windows-changed', () => this._syncIcon(icon), icon);
         this._syncIcon(icon);
     }
 
     _undecorate(icon) {
         icon.disconnectObject(this);
+        icon.app?.disconnectObject(icon);
         icon._amethystoraBadge?.destroy();
         icon._amethystoraOverlay?.destroy();
         icon._amethystoraBadge = icon._amethystoraOverlay = null;
@@ -368,7 +388,7 @@ export class Badges extends EventEmitter {
             if (!('_amethystoraName' in icon))
                 icon._amethystoraName = icon.accessible_name;
             icon.accessible_name = count > 0
-                ? Badges.accessibleName(icon.app.get_name(), count) : icon._amethystoraName;
+                ? Badges.accessibleName(icon.app.get_name(), count, icon.app) : icon._amethystoraName;
         }
     }
 }

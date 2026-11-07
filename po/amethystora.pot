@@ -18216,6 +18216,12 @@ msgid "%s is being updated. Try again later."
 msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/dock/badges.js
+msgid "%s, %d window"
+msgid_plural "%s, %d windows"
+msgstr[0] ""
+msgstr[1] ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/dock/badges.js
 msgid "%s, %d unread"
 msgid_plural "%s, %d unread"
 msgstr[0] ""

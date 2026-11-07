@@ -1423,7 +1423,7 @@ Scan** in Security, and **Appearance** and **System** in Control.
 
 An app's icon, on the dock and in the app grid alike, shows how many notifications it has waiting,
 a bar while it is busy with something long, and is greyed out while the app is being updated. Do
-Not Disturb hides all of that.
+Not Disturb hides all of that. A terminal's icon counts its open windows instead, from two.
 
 ### How the dock moves
 
