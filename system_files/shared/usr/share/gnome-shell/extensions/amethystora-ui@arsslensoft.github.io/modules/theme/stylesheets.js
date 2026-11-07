@@ -5,7 +5,30 @@
 
 import St from 'gi://St';
 
+// While the extension starts or stops (extension.js), what each caller drops and adds is gathered and put in place in one
+// rebuild at the end: the theme's files and the modules' together, one restyle at a lock and one at an unlock
+let batch = null;
+
+export function batchStylesheets(work) {
+    batch = {drop: [], add: []};
+    try {
+        work();
+    } finally {
+        const {drop, add} = batch;
+        batch = null;
+        if (drop.length || add.length)
+            replaceStylesheets(drop, add);
+    }
+}
+
 export function replaceStylesheets(drop, add) {
+    // In a batch every file is taken as added: one that fails to load is said in the journal when the batch ends, and
+    // dropping it later does nothing
+    if (batch) {
+        batch.drop.push(...drop);
+        batch.add.push(...add);
+        return add;
+    }
     const context = St.ThemeContext.get_for_stage(global.stage);
     const old = context.get_theme();
     const theme = new St.Theme({

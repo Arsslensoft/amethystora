@@ -8,7 +8,7 @@ import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 // Before anything else makes a settings object
 import './modules/keepsettings.js';
-import {replaceStylesheets} from './modules/theme/stylesheets.js';
+import {batchStylesheets, replaceStylesheets} from './modules/theme/stylesheets.js';
 import {Theme} from './modules/theme.js';
 import {Style} from './modules/style.js';
 import {Comfort} from './modules/comfort.js';
@@ -130,6 +130,11 @@ export default class AmethystoraUI extends Extension {
         // reached are stopped first, or they would run on, unseen, beside the new ones (their laters included)
         if (this.modules)
             this.disable();
+        // One rebuild of the shell's theme for the theme's stylesheets and the modules' (stylesheets.js)
+        batchStylesheets(() => this._enable());
+    }
+
+    _enable() {
         // The running modules by name, for a module that needs another's actors (the glass, the dock's)
         this.modules = new Map();
         const stylesheets = [];
@@ -149,11 +154,15 @@ export default class AmethystoraUI extends Extension {
                 } catch {}
             }
         }
-        // All in one restyle of the stage, after the theme's own: one at a time they cost some 2 s at every unlock
+        // All at once, after the theme's own: one at a time they cost some 2 s at every unlock
         this.stylesheets = replaceStylesheets([], stylesheets).map(([, file]) => file);
     }
 
     disable() {
+        batchStylesheets(() => this._disable());
+    }
+
+    _disable() {
         // Before anything stops, while every module still runs: what a module keeps of the desktop as it is (a lock
         // keeping the open apps for an update's restart, workspaces/resume.js)
         for (const [name, module] of this.modules ?? []) {
