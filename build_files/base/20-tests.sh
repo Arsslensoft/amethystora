@@ -2235,7 +2235,8 @@ test -f /usr/bin/gettext.sh
 grep -q '^source gettext.sh' /usr/libexec/amethystora-notify-users
 grep -q '^export TEXTDOMAIN=amethystora$' /usr/bin/ame
 # gettext reads LANGUAGE only outside the C locale, so the helper needs the account's own locale to be there
-locale -a | grep -qix 'fr_FR.utf-\?8'
+# grep -q stops at the first match, and locale -a, still writing, then dies of SIGPIPE under pipefail
+locale -a | grep -ix 'fr_FR.utf-\?8' >/dev/null
 for po in /ctx/po/*.po; do
     [[ -e "${po}" ]] || continue
     test -s "/usr/share/locale/$(basename "${po}" .po)/LC_MESSAGES/amethystora.mo"
