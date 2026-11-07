@@ -20,7 +20,7 @@
     </key>
     <key name="duration" type="u">
       <range min="200" max="5000"/>
-      <default>1200</default>
+      <default>700</default>
       <summary>How long the transition takes, in milliseconds</summary>
     </key>
     <key name="reveal" type="b">

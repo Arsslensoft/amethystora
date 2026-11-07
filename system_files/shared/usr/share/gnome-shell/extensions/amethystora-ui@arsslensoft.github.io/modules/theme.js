@@ -33,8 +33,10 @@ const THEME_COMMAND = '/usr/bin/amethystora-theme';
 // The way an image of one's own takes colours from the wallpaper (amethystora-setup bake), after the account's
 const IMAGE_COLOURS = '/usr/share/amethystora/image-setup/colours';
 const STYLESHEET = /^shell-[a-z]+\.css$/;
-// Milliseconds for a theme switch (a folder taken away, another moved in, the name written) to settle
+// Milliseconds for a theme switch (a folder taken away, another moved in, the name written) to settle, and, once the
+// name is written (amethystora-theme writes it right after the folder is in place), for the switch to be over
 const SETTLE = 300;
+const NAMED = 30;
 // What a theme switch touches in the current folder: the theme's own folder and the file that names it. A new
 // wallpaper touches others (the `background` link, `backgrounds/`), and none of those changes a stylesheet.
 const UNTHEMED_LIGHT = 'amethystora-unthemed-light';
@@ -75,7 +77,9 @@ export class Theme {
             // A move names both of its ends (the folder it was built in, then the one it became)
             this._monitor.connect('changed', (monitor, file, other) => {
                 if ([file, other].some(each => SWITCH.includes(each?.get_basename()))) {
-                    this._later('switch', SETTLE, () => {
+                    // Loaded under the screen the switch holds, before it is let go (the transitions extension)
+                    const named = [file, other].some(each => each?.get_basename() === 'theme.name');
+                    this._later('switch', named ? NAMED : SETTLE, () => {
                         // A new theme: a focus profile's accent is rendered for it once more
                         this._focusAsked = false;
                         this._load();

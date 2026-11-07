@@ -37,6 +37,8 @@ const GNOME_MAJOR = parseInt(Config.PACKAGE_VERSION, 10);
 // How long the desktop has to stay unchanged before it is revealed: long enough for the apps to
 // repaint in the new theme, and for a burst of settings to count as one change
 const SETTLE_MS = 300;
+// After Release: the caller has said the change is over, and the shell has done its restyles by the time it answers it
+const RELEASE_SETTLE_MS = 100;
 const MAX_HOLD_MS = 5000;
 
 // swww's default curve: a slow start, then the new desktop sweeps in
@@ -278,7 +280,7 @@ export default class TransitionsExtension extends Extension {
     _release() {
         this._held = false;
         if (this._frozen)
-            this._scheduleReveal();
+            this._scheduleReveal(RELEASE_SETTLE_MS);
     }
 
     // Freeze the screen as it is now. Returns false when there is to be no animation, and the change

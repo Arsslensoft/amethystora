@@ -199,7 +199,7 @@ ame desktop transition wave    # or name it
 | `random` | One of the first four, at any angle |
 | `none` | No animation: the wallpaper fades as GNOME fades it |
 
-A transition takes 1.2 seconds. To change that, give it in milliseconds after the transition, from 200
+A transition takes 0.7 seconds. To change that, give it in milliseconds after the transition, from 200
 to 5000, or move the slider on Control's **Appearance** page:
 
 ```bash
