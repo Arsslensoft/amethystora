@@ -51,6 +51,8 @@
 #  22  Amethystora Light's own dawn, dusk and night (amethystora-facets-l-*.png), which were the dark theme's: the same copy.
 #  23  Round 5 and 6's shell colours (themed/shell-tools.css.tpl, shell-audio.css.tpl, and the other groups' of those
 #      rounds), written only when the theme is applied again.
+#  28  The lights over the terminal's own window buttons, on a strip of the theme's background
+#      (themed/shell-windows.css.tpl), written only when the theme is applied again.
 
 source /usr/lib/amethystora/setup-services/libsetup.sh
 
@@ -59,7 +61,7 @@ source /usr/lib/amethystora/setup-services/libsetup.sh
 # chose in GNOME Settings included: the theme is applied again without picking a new one.
 PREVIOUS="$(jq -r '.version.user.theme // 0' "${SETUP_CHECKER_FILE}" 2>/dev/null || echo 0)"
 
-version-script theme user 27 || exit 0
+version-script theme user 28 || exit 0
 
 [[ "$(cat "${XDG_CONFIG_HOME:-${HOME}/.config}/amethystora/icons" 2>/dev/null)" == candy-icons ]] &&
     rm -f "${XDG_CONFIG_HOME:-${HOME}/.config}/amethystora/icons"

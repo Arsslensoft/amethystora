@@ -330,3 +330,80 @@
 .amethystora-windows-simple-home {
   spacing: 6px;
 }
+
+/* The window buttons' lights over the terminal's own (windows/lights.js): the same red, amber and green in every
+   theme, as themed/window-controls-gtk4.css.tpl draws them in the applications; the strip's colour is the theme's
+   (shell-windows.css.tpl), this one only stands in until a theme has been applied */
+.amethystora-windows-lights {
+  background-color: #1e1e2e;
+  padding: 0 2px;
+}
+
+.amethystora-windows-light {
+  padding: 0;
+}
+
+.amethystora-windows-light-glyph {
+  icon-size: 8px;
+  padding: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.22);
+  border-radius: 99px;
+  color: transparent;
+  background-gradient-direction: vertical;
+}
+
+.amethystora-windows-lights:hover .amethystora-windows-light-glyph {
+  color: rgba(0, 0, 0, 0.62);
+}
+
+.amethystora-windows-light-close .amethystora-windows-light-glyph {
+  background-color: #f2566a;
+  background-gradient-start: #f68997;
+  background-gradient-end: #f2566a;
+}
+
+.amethystora-windows-light-minimize .amethystora-windows-light-glyph {
+  background-color: #f4b740;
+  background-gradient-start: #f7cd79;
+  background-gradient-end: #f4b740;
+}
+
+.amethystora-windows-light-maximize .amethystora-windows-light-glyph {
+  background-color: #3fca7e;
+  background-gradient-start: #79daa5;
+  background-gradient-end: #3fca7e;
+}
+
+.amethystora-windows-light-close:active .amethystora-windows-light-glyph {
+  background-gradient-direction: none;
+  background-color: #c64757;
+}
+
+.amethystora-windows-light-minimize:active .amethystora-windows-light-glyph {
+  background-gradient-direction: none;
+  background-color: #c89634;
+}
+
+.amethystora-windows-light-maximize:active .amethystora-windows-light-glyph {
+  background-gradient-direction: none;
+  background-color: #34a667;
+}
+
+/* A window in the background: grey lights, until the pointer comes back to them */
+.amethystora-windows-lights.backdrop .amethystora-windows-light-glyph {
+  background-gradient-direction: none;
+  background-color: rgba(128, 128, 128, 0.35);
+  border-color: rgba(128, 128, 128, 0.2);
+}
+
+.amethystora-windows-lights.backdrop:hover .amethystora-windows-light-close .amethystora-windows-light-glyph {
+  background-color: #f2566a;
+}
+
+.amethystora-windows-lights.backdrop:hover .amethystora-windows-light-minimize .amethystora-windows-light-glyph {
+  background-color: #f4b740;
+}
+
+.amethystora-windows-lights.backdrop:hover .amethystora-windows-light-maximize .amethystora-windows-light-glyph {
+  background-color: #3fca7e;
+}

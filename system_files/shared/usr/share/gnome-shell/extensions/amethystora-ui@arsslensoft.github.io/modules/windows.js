@@ -3,11 +3,12 @@
 // by clicking the wallpaper, touchpad gestures, windows that go back to their places for each arrangement of screens,
 // a live copy of a window kept in view, dimming the windows not in use, the drop-down terminal and the scratchpad,
 // windows kept on top that show it, see-through windows, a frame round the window in use, sizes for recording and
-// opening again the app just closed, handing one window over and a simple desktop. Each is a key of its own, read live; the parts that
-// belong to the classic layout stand aside while the tiling is on and come back when it is off.
+// opening again the app just closed, handing one window over and a simple desktop. Each is a key of its own, read live;
+// the parts that belong to the classic layout stand aside while the tiling is on and come back when it is off. The
+// window buttons' lights on the terminal, which draws its own title bar, have no key: every other window has them.
 //
 // The parts are in windows/: snap.js, switcher.js, hold.js, corners.js, desktop.js, gestures.js, places.js, keep.js,
-// dim.js, scratch.js, ontop.js, seethrough.js, frame.js, sizes.js, reopen.js, handover.js and simple.js; menu.js puts their lines
+// dim.js, scratch.js, ontop.js, seethrough.js, frame.js, sizes.js, reopen.js, handover.js, simple.js and lights.js; menu.js puts their lines
 // in the window menu. None of them runs anything while nothing happens: they listen, and only while they are on.
 
 import GLib from 'gi://GLib';
@@ -30,11 +31,12 @@ import {Sizes} from './windows/sizes.js';
 import {Reopen} from './windows/reopen.js';
 import {HandOver} from './windows/handover.js';
 import {Simple} from './windows/simple.js';
+import {Lights} from './windows/lights.js';
 
 const GESTURES = ['pinch', 'spread', 'down', 'today'];
 // In the order they start; they stop in the opposite one
 const PARTS = ['snap', 'switcher', 'hold', 'desktop', 'corners', 'gestures', 'places', 'keep', 'dimmer',
-    'scratch', 'ontop', 'seeThrough', 'frame', 'sizes', 'reopen', 'handOver', 'simple'];
+    'scratch', 'ontop', 'seeThrough', 'frame', 'sizes', 'reopen', 'handOver', 'simple', 'lights'];
 
 export class Windows {
     constructor(ext) {
@@ -68,6 +70,7 @@ export class Windows {
         this.reopen = new Reopen(this);
         this.handOver = new HandOver(this);
         this.simple = new Simple(this);
+        this.lights = new Lights(this);
         this._running = new Set();
         // The window menu's lines of the parts that run (a copy kept in view, the scratchpad, the sizes)
         this.menu = new MenuHook((menu, window) => ['keep', 'scratch', 'sizes', 'handOver']
@@ -136,6 +139,7 @@ export class Windows {
             reopen: s.get_boolean('reopen'),
             handOver: s.get_boolean('hand-over'),
             simple: s.get_boolean('simple-desktop'),
+            lights: true,
         };
     }
 

@@ -344,8 +344,9 @@ tail -n +"$((before + 1))" "${HISTORY}" | grep -q '"key":"chains"' && fail "the 
 rm -f /var/tmp/watch-chain
 
 # What an ordinary boot and login write, as a real machine's audit log had it: the rules loaded at boot are no
-# change at all, GNOME Shell taking away a file that is not there changed nothing, and SSH meeting a new host
-# is the image's allowlist's; an autostart entry is still said
+# change at all, GNOME Shell taking away a file that is not there changed nothing, SSH meeting a new host
+# is the image's allowlist's, and the user manager symlinking a unit into a .wants directory (a login's own
+# enable-and-disable churn) is recorded only; an autostart entry is still said
 printf 'PERSISTENCE=on\nHARDENING=on\n' >>"${AMETHYSTORA_SECURITY_CONF}"
 STEP=210
 {
@@ -358,6 +359,13 @@ STEP=210
     printf 'type=PROCTITLE msg=audit(%s.100:902): proctitle=2F7573722F62696E2F676E6F6D652D7368656C6C\n' "$((BEGAN + STEP))"
     opened 903 41 /usr/bin/ssh /var/home/alice/.ssh/known_hosts persistence
     opened 904 42 /usr/bin/cp /var/home/alice/.config/autostart/watch-start.desktop persistence
+    # The user manager enabling a unit at login: a symlink into graphical-session.target.wants, which the
+    # plugin host writes and removes every session. Recorded, not announced; the unit it points to is watched.
+    printf 'type=SYSCALL msg=audit(%s.100:906): arch=c000003e syscall=266 success=yes exit=0 a0=ffffff9c a1=55d1 a2=55d2 a3=0 items=2 ppid=1 pid=1830 auid=4500 uid=4500 gid=4500 euid=4500 suid=4500 fsuid=4500 egid=4500 sgid=4500 fsgid=4500 tty=(none) ses=2 comm="systemd" exe="/usr/lib/systemd/systemd" subj=unconfined_u:unconfined_r:unconfined_t:s0 key="persistence"\n' "$((BEGAN + STEP))"
+    printf 'type=CWD msg=audit(%s.100:906): cwd="/var/home/alice"\n' "$((BEGAN + STEP))"
+    printf 'type=PATH msg=audit(%s.100:906): item=0 name="/var/home/alice/.config/systemd/user/graphical-session.target.wants/" inode=10 dev=00:01 mode=040755 ouid=4500 ogid=4500 rdev=00:00 nametype=PARENT\n' "$((BEGAN + STEP))"
+    printf 'type=PATH msg=audit(%s.100:906): item=1 name="/var/home/alice/.config/systemd/user/graphical-session.target.wants/amethystora-plugin-host.service" inode=11 dev=00:01 mode=0120777 ouid=4500 ogid=4500 rdev=00:00 nametype=CREATE\n' "$((BEGAN + STEP))"
+    printf 'type=PROCTITLE msg=audit(%s.100:906): proctitle=73797374656D64\n' "$((BEGAN + STEP))"
     # sssd.service setting the mode of its folder, which the allowlist names without the mode it was given
     printf 'type=SYSCALL msg=audit(%s.100:905): arch=c000003e syscall=268 success=yes exit=0 a0=ffffff9c a1=55d1 a2=1e8 a3=0 items=1 ppid=1 pid=43 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none) ses=4294967295 comm="chmod" exe="/usr/bin/chmod" subj=system_u:system_r:unconfined_service_t:s0 key="hardening"\n' "$((BEGAN + STEP))"
     printf 'type=CWD msg=audit(%s.100:905): cwd="/"\n' "$((BEGAN + STEP))"
@@ -368,11 +376,12 @@ STEP=210
 before="$(wc -l <"${HISTORY}")"
 timeout 120 "${WATCH}" >/dev/null || fail "the run with a boot's and a login's writes failed"
 FOUND="$(tail -n +"$((before + 1))" "${HISTORY}" | jq -c 'select(.key == "persistence" or .key == "hardening")')"
-jq -se 'length == 4
+jq -se 'length == 5
     and all(.[]; (.text | test("add_rule")) | not)
     and any(.[]; .key == "hardening" and .level == "quiet" and .allow == "/etc/sssd" and .allowed == "yes")
     and any(.[]; .level == "quiet" and (.text | test("unsuccessfully deleted /var/home/alice/.local/share/dbus-1/services/")))
     and any(.[]; .level == "quiet" and .allowed == "yes" and (.text | test("/var/home/alice/.ssh/known_hosts using /usr/bin/ssh")))
+    and any(.[]; .level == "quiet" and (.text | test("symlinked to /var/home/alice/.config/systemd/user/graphical-session.target.wants/ using /usr/lib/systemd/systemd")))
     and any(.[]; .level == "normal" and (.text | test("autostart/watch-start.desktop")))' <<<"${FOUND}" >/dev/null ||
     fail "a boot's and a login's writes: ${FOUND}"
 

@@ -120,3 +120,8 @@
   -amethystora-frame-middle: {{ accent }};
   -amethystora-frame-end: {{ color6 }};
 }
+
+/* The strip under the terminal's lights: kitty's title bar, which kitty-theme.conf.tpl gives the theme's background */
+#uiGroup .amethystora-windows-lights {
+  background-color: {{ background }};
+}

@@ -365,6 +365,14 @@ read_audit() {
             # An autostart entry turned off the way GNOME has always let an account do it (Control's Starting with
             # you, amethystora-startup): a file of exactly that shape starts nothing, and is recorded only
             [[ "${key}" == persistence && -n "${object}" ]] && hidden_autostart "${object}" && level=quiet
+            # The systemd manager reflecting a unit's enable state: a .wants/.requires/.upholds symlink, or the
+            # directory that holds it, made or removed under the user's or the system's unit tree. This churns
+            # at every login as units enable and disable themselves (the plugin host writes its own each
+            # session), and the unit a symlink points to is itself watched where its file was written, so the
+            # enablement is recorded only, never announced. A unit file written straight into the tree, or a
+            # link made by anything other than the manager, is still said.
+            [[ "${key}" == persistence && "${exe}" == /usr/lib/systemd/systemd &&
+                "${event}" =~ \.(wants|requires|upholds)(/|$|[[:space:]]) ]] && level=quiet
             text="${AUDIT_WHAT[${key}]}: ${event}"
             [[ "${count}" -gt 1 ]] && text+=" (${count} times)"
             # The first run has no "since": it only makes the checkpoints

@@ -19,8 +19,10 @@
 #   57.9  reopen: a closed window's app back on its workspace at its place with Super+Alt+T, five deep, nothing on disk;
 #   57.10 a screen lock keeps the drop-down terminal; ten disables leave nothing behind;
 #   57.11 Control's entries, each an ame command;
+#   57.12 the lights over kitty's own window buttons: three, in GNOME's order, kitty's buttons clipped off its title bar,
+#         grey in the background, a real click on each, none on the drop-down terminal;
 #   and nothing of Amethystora UI throws meanwhile.
-# vmlab-paths: @ui/extension.js @ui/modules/windows.js @ui/modules/windows/* @ui/modules/privacy/guard.js @ui/schemas/*windows* @ui/stylesheets/windows.css @sf/*themed/shell-windows* @sf/*just/desktop.just @sf/usr/libexec/amethystora-control-list @sf/usr/libexec/amethystora-setup*
+# vmlab-paths: @ui/extension.js @ui/modules/windows.js @ui/modules/windows/* @ui/modules/privacy/guard.js @ui/schemas/*windows* @ui/stylesheets/windows.css @sf/*themed/shell-windows* @sf/etc/xdg/kitty/* @sf/*just/desktop.just @sf/usr/libexec/amethystora-control-list @sf/usr/libexec/amethystora-setup*
 source "$(dirname "$0")/lib.sh"
 
 UUID=amethystora-ui@arsslensoft.github.io
@@ -373,6 +375,39 @@ for id in windows-drop-down windows-scratchpad windows-keep-on-top windows-see-t
     check "Control lists ${id}" jq -e --arg id "${id}" '.items[] | select(.id == $id)' <<<"${LIST}" >/dev/null
 done
 check "every one of their commands is an ame desktop command" test -z "$(jq -r '.items[] | select(.id | test("^windows-(drop|scratch|keep-on|see|frame|recording|reopen)|^window-settings")) | (.choices[]?.command, .extra.command?) | select(. != null) | .[0:3] | join(" ")' <<<"${LIST}" | grep -vE '^ame desktop (windows|window-settings)$')"
+
+# --- 57.12 The terminal's lights -----------------------------------------------------------------------------------
+L="${W}.lights"
+K="$(byclass org.vmlab.Kitty57)"
+S="${L}.strip(${K})"
+user_bus systemd-run --user --collect --quiet -- kitty --class org.vmlab.Kitty57 -o confirm_os_window_close=0
+check "a kitty window gets the lights" wait_for 30 is_true "!!${K} && ${L}.windows.includes(${K})"
+sleep 2
+same "three of them, in GNOME's button order" "$(ev "${S}.box.get_children().map(b => b.style_class.split('-').at(-1)).join(',')")" \
+    "$(ev "${L}.order.join(',')")"
+check "on the right end of kitty's title bar, as high as it" is_true "(() => { const w = ${K}, f = w.get_frame_rect(), b = w.get_buffer_rect(), box = ${S}.box; return box.visible && box.height === b.y - f.y && box.y === f.y - b.y && box.x + box.width === f.x + f.width - b.x; })()"
+check "kitty's own buttons are clipped off its title bar" is_true "${S}.clipped?.has_clip && ${S}.clipped.get_clip()[2] === ${S}.box.x"
+check "the drop-down terminal, which has no title bar, gets none" is_true "!${T} || !${L}.windows.includes(${T})"
+ev "${K}.activate(global.get_current_time()); 'x'" >/dev/null
+check "focused, they are not grey" wait_for 5 is_true "!${S}.box.has_style_class_name('backdrop')"
+light() { ev "(() => { const box = ${S}.box, b = box.get_children().find(c => c.has_style_class_name('amethystora-windows-light-$1')); const [x, y] = b.get_transformed_position(); return ((x + b.width / 2) / global.screen_width).toFixed(5) + ',' + ((y + b.height / 2) / global.screen_height).toFixed(5); })()"; }
+classic
+ev "${K}.move_frame(true, 200, 150); ${K}.activate(global.get_current_time()); 'x'" >/dev/null
+sleep 1
+keys "click:$(light maximize)"
+check "a click on the green light maximizes kitty" wait_for 5 is_true "${K}.maximized_horizontally && ${K}.maximized_vertically"
+sleep 1
+keys "click:$(light maximize)"
+check "and again puts it back" wait_for 5 is_true "!${K}.maximized_horizontally"
+sleep 1
+keys "click:$(light minimize)"
+check "a click on the amber light minimizes it" wait_for 5 is_true "${K}.minimized"
+ev "${K}.unminimize(); ${K}.activate(global.get_current_time()); 'x'" >/dev/null
+sleep 1
+keys "click:$(light close)"
+check "a click on the red light closes it" wait_for 10 none_of org.vmlab.Kitty57
+same "and its strip goes with it" "$(ev "${L}.windows.length")" 0
+[[ "${was_tiling}" == true ]] && tiling
 
 # Back as it was
 ev "${WIN}.filter(w => ['org.vmlab.Plain57', 'org.amethystora.DropDown'].includes(w.get_wm_class())).forEach(w => w.delete(global.get_current_time())); 'x'" >/dev/null

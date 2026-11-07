@@ -3204,11 +3204,11 @@ msgstr ""
 msgid "Right-click a title bar"
 msgstr ""
 
-#: usr/libexec/amethystora-control-list
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/windows/lights.js
 msgid "Maximize"
 msgstr ""
 
-#: usr/libexec/amethystora-control-list
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/windows/lights.js
 msgid "Minimize"
 msgstr ""
 
@@ -10527,7 +10527,7 @@ msgid "Show as QR code"
 msgstr ""
 
 #. Translators: a choice about the private folder, which is open: close it.
-#: usr/share/gnome-shell/extensions/amethystora-clipboard@arsslensoft.github.io/textActions.js usr/share/amethystora/just/security.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/cover.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/pins.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/translate.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/today/year.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/tools/opener.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/tools/qr.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/tools/room.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/tools/users.js
+#: usr/share/gnome-shell/extensions/amethystora-clipboard@arsslensoft.github.io/textActions.js usr/share/amethystora/just/security.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/cover.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/pins.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/screenshot/translate.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/today/year.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/tools/opener.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/tools/qr.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/tools/room.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/tools/users.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/windows/lights.js
 msgid "Close"
 msgstr ""
 

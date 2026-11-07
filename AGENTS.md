@@ -342,6 +342,10 @@ listed a kitty icon under Open With. Files' Open in Console asks only for `org.g
   `~/.config/kitty/kitty.conf` (a line of the account's wins; checked against kitty 0.47). Keep the title bar
   (`hide_window_decorations no`: the Hyprland era's config hid it and left GNOME windows without a close button), keep
   `update_check_interval 0` and `allow_remote_control no`.
+- **Its window buttons are the shell's lights**: kitty draws its own title bar, which no GTK stylesheet reaches and no kitty
+  option changes, so Amethystora UI's `windows/lights.js` clips kitty's buttons off its title bar's surface and draws the
+  three lights there, as a child of the window's actor, in GNOME's button order. Firefox draws its buttons inside its own
+  page and is left as Mozilla ships it (see The browser).
 - **Its colours are the theme's**: `themed/kitty-theme.conf.tpl`, rendered into `~/.config/amethystora/current/theme`
   and included by the image's config from there; `apply_kitty` in `amethystora-theme` sends SIGUSR1 to the account's
   own open kitty windows so that they take a new theme at once. `test-theme-render.sh` has kitty and starship load
@@ -1389,7 +1393,7 @@ between paints and shows a stale one after a partial redraw (Focus's desaturate 
 context's redraw-clip region from GJS (`get_extents()`, `get_rectangle()`: the shell dies on signal 11); testing it for null
 is safe. `Clutter.Event.add_filter` never sees a press on a Wayland window: Mutter's filter takes it first. A new
 `themed/shell-<module>.css.tpl` reaches an existing account only when its theme is applied again: raise `11-theme.sh`'s
-version (17 for round 4, 23 for rounds 5 and 6, 25 with round 7, 26 with its second wave, 27 for plugins in Today). GNOME 51 dropped `St.BoxLayout`'s `vertical`: write `orientation`.
+version (17 for round 4, 23 for rounds 5 and 6, 25 with round 7, 26 with its second wave, 27 for plugins in Today, 28 for the terminal's lights). GNOME 51 dropped `St.BoxLayout`'s `vertical`: write `orientation`.
 
 The modules, and what each replaced:
 
