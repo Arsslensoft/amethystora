@@ -1753,7 +1753,7 @@ grep -q "kitty', '--class', DROP_DOWN_CLASS" "${UI_EXTENSION}/modules/windows/sc
 # take a name for markup, send files to a phone itself (only the Phone app may), or carry another maker's names
 DOCK=org.gnome.shell.extensions.amethystora-ui.dock
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-recursively "${DOCK}" | cut -d' ' -f2- | LC_ALL=C sort | paste -sd ';')" == \
-    "autohide 'off';edge 'bottom';folders @a{sas} {};icon-size 48;indicator 'bar';launch 'halo';magnify 'swell';magnify-amount 1.6000000000000001;previews true;recent true;screens 'primary';stacks ['xdg:DOWNLOAD'];updating true;workspace-apps false" ]] ||
+    "autohide 'off';edge 'bottom';folders @a{sas} {};icon-size 48;indicator 'bar';launch 'halo';magnify 'swell';magnify-amount 1.3999999999999999;previews true;recent true;screens 'primary';stacks ['xdg:DOWNLOAD'];updating true;workspace-apps false" ]] ||
     { echo "the dock's keys or defaults are not the spec's"; exit 1; }
 for key in magnify launch indicator edge screens autohide; do
     schema="$(GSETTINGS_BACKEND=memory gsettings range "${DOCK}" "${key}" | sed -n '2,$p' | tr -d "'" | LC_ALL=C sort | xargs)"

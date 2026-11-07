@@ -1,8 +1,9 @@
 // How the dock's icons grow under the pointer (spec 1.1). Swell: every item grows with its distance from the pointer,
 // a cosine wave reaching 2.34 pitches either side, the neighbours parting so that nothing overlaps and the row staying
-// centred where it rests. Lift: only the item under the pointer rises, its two neighbours a little. Each item's
-// picture (the tile inside its container) is scaled and moved; the containers, whose allocation is where the item
-// rests, are never touched, so nothing is laid out again while the dock moves. The pill lengthens with the row.
+// growing out to either side of the point under the pointer, which stays where it is. Lift: only the item under the
+// pointer rises, its two neighbours a little. Each item's picture (the tile inside its container) is scaled from its
+// base and moved; the containers, whose allocation is where the item rests, are never touched. The pill is made longer
+// with the row, never stretched, so its ends keep their curve, and keeps its height: the icons rise out of it.
 //
 // The values follow the pointer with a first-order lag (95 % in 90 ms inside, 120 ms on the way back to rest), on one
 // timeline that runs only while some value is still moving: a still pointer over a settled dock costs nothing, and so
@@ -45,6 +46,11 @@ export class Swell {
     // off, swell or lift; with the amount Swell grows to
     setMode(mode, amount) {
         this._amount = amount;
+        // A growing icon carries no plate behind it (dock.css)
+        if (mode === 'off')
+            this._dash.remove_style_class_name('amethystora-dock-swells');
+        else
+            this._dash.add_style_class_name('amethystora-dock-swells');
         if (mode === this._mode)
             return;
         const was = this._mode;
@@ -68,7 +74,7 @@ export class Swell {
         this._timeline = null;
         for (const item of this._items)
             this._writeItem(item, 1, 0, 0);
-        this._dash.pill?.set({scale_x: 1, scale_y: 1});
+        this._dash.growPill(0, 0);
         this._setClip(true);
         this._items = [];
     }
@@ -216,10 +222,6 @@ export class Swell {
             this._rowLength = last.start + last.len - first.start;
         }
         this._gaps = items.slice(1).map((item, i) => item.start - (items[i].start + items[i].len));
-        const pill = dash.pill;
-        this._pillLength = 0;
-        if (pill)
-            this._pillLength = long === 'x' ? pill.width : pill.height;
         this._dashRect = dash.restRect();
         this._appCount = apps.length;
     }
@@ -285,10 +287,27 @@ export class Swell {
             }
         }
 
-        // The row as it is drawn, centred where it rests
-        const swollen = items.reduce((sum, item, i) => sum + item.len * scales[i][0], 0) +
-            this._gaps.reduce((sum, gap) => sum + gap, 0);
-        let edge = this._centre - swollen / 2;
+        // The row as it is drawn: the point under the pointer is drawn where it rests, so the row grows out to either
+        // side of it; with nothing pointed at, the row is where it rests
+        let edge = items[0].start;
+        if (pointer) {
+            const at = Math.min(Math.max(along, edge), edge + this._rowLength);
+            let drawn = edge;
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+                // In the gap before it, which does not grow
+                if (at < item.start) {
+                    drawn -= item.start - at;
+                    break;
+                }
+                if (at <= item.start + item.len) {
+                    drawn += (at - item.start) * scales[i][0];
+                    break;
+                }
+                drawn += item.len * scales[i][0] + (this._gaps[i] ?? 0);
+            }
+            edge += at - drawn;
+        }
         items.forEach((item, i) => {
             const len = item.len * scales[i][0];
             item.target = {scale: scales[i][0], along: edge + len / 2 - item.centre, away: scales[i][1]};
@@ -358,15 +377,16 @@ export class Swell {
     // ---- Drawing ----
 
     _write() {
-        const {long} = this._dash.edge;
         let away = false;
-        let swollen = 0;
+        // Where the row is drawn: an item gone since the row was measured still counts, since the row's length was
+        // measured with it, and a pill worked out without it would stay one item short once the row is still
+        let start = Infinity;
+        let end = -Infinity;
         const changed = [];
         this._items.forEach(item => {
             const {scale, along, away: lift} = item.shown;
-            // An item gone since the row was measured still counts: the row's length was measured with it, and a
-            // pill worked out without it would stay one item short once the row is still
-            swollen += item.len * scale;
+            start = Math.min(start, item.centre + along - item.len * scale / 2);
+            end = Math.max(end, item.centre + along + item.len * scale / 2);
             if (item.actor._amethystoraGone) {
                 this._stale = true;
                 return;
@@ -383,17 +403,8 @@ export class Swell {
             if (scale !== 1 || along !== 0 || lift !== 0)
                 away = true;
         });
-        swollen += this._gaps.reduce((sum, gap) => sum + gap, 0);
-        const pill = this._dash.pill;
-        if (pill && this._rowLength) {
-            const outside = this._pillLength - this._rowLength;
-            const stretch = (swollen + outside) / (this._rowLength + outside);
-            pill.set_pivot_point(0.5, 0.5);
-            if (long === 'x')
-                pill.scale_x = stretch;
-            else
-                pill.scale_y = stretch;
-        }
+        if (this._rowLength && start < end)
+            this._dash.growPill(end - start - this._rowLength, (start + end) / 2 - this._centre);
         this._setClip(!away);
         if (changed.length)
             this._dash.followSwell(changed);

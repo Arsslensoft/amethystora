@@ -47,6 +47,14 @@
     background-color: rgba(238, 238, 238, 0.2);
 }
 
+/* While the icons grow under the pointer, none has a plate: it would grow with the icon and stand out over the pill.
+   The selectors start from the shell's top group, so that they are above the theme's own (shell-dock.css.tpl) */
+#uiGroup #dash.amethystora-dock-dash.amethystora-dock-swells .dash-item-container .overview-tile:hover .overview-icon,
+#uiGroup #dash.amethystora-dock-dash.amethystora-dock-swells .dash-item-container .show-apps:hover .overview-icon,
+#uiGroup #dash.amethystora-dock-dash.amethystora-dock-swells .dash-item-container .amethystora-dock-focused .overview-icon {
+    background-color: transparent;
+}
+
 #dash.amethystora-dock-dash .dash-separator {
     margin: 0 1px;
     background-color: rgba(255, 255, 255, 0.1);

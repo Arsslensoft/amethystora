@@ -152,7 +152,7 @@ dock_defaults() {
     [[ "$(in_session "gsettings list-recursively ${DOCK_SCHEMA}" | cut -d' ' -f2- | LC_ALL=C sort | paste -sd ';')" == "$1" ]]
 }
 check "the dock's keys have the spec's defaults" wait_for 10 dock_defaults \
-    "autohide 'off';edge 'bottom';folders @a{sas} {};icon-size 48;indicator 'bar';launch 'halo';magnify 'swell';magnify-amount 1.6000000000000001;previews true;recent true;screens 'primary';stacks ['xdg:DOWNLOAD'];updating true;workspace-apps false"
+    "autohide 'off';edge 'bottom';folders @a{sas} {};icon-size 48;indicator 'bar';launch 'halo';magnify 'swell';magnify-amount 1.3999999999999999;previews true;recent true;screens 'primary';stacks ['xdg:DOWNLOAD'];updating true;workspace-apps false"
 bad=""
 while read -r setting value key want shown; do
     in_session "ame desktop dock ${setting} ${value}" >/dev/null 2>&1 || bad+="ame desktop dock ${setting} ${value} failed; "
@@ -196,6 +196,8 @@ away
 # Item N's state as "scale translation away"
 apps_at() { wait_for 10 ev_ge "items().filter(i => i.kind === 'app').length" $(($1 + 1)); vp "const a = items().filter(i => i.kind === 'app'); const p = mid(a[$1].rest); move(p[0] + ($2), p[1]); 1" >/dev/null; settle; }
 row() { ev "JSON.stringify(items().filter(i => i.kind === 'app').map(i => [i.scale, i.translation, i.translationAway]))"; }
+# The spec's reference values are at 160 per cent; the dock's own is 140
+in_session "ame desktop dock amount 160" >/dev/null
 apps_at 4 0
 values="$(row)"
 pitch="$(ev "${S}.docks[0].pitch")"
@@ -211,11 +213,14 @@ done
 if [[ -z "${bad}" ]]; then ok "Swell at item 4: the spec's scales and translations (pitch ${pitch})"; else not_ok "Swell at item 4" "${bad}" "${values}"; fi
 no_overlap="$(ev "(() => { const it = items(); for (let i = 1; i < it.length; i++) if (it[i - 1].shown.x + it[i - 1].shown.width > it[i].shown.x + 0.5) return 'overlap at ' + i; return 'none'; })()")"
 check "no two items overlap while swollen" test "${no_overlap}" == none
-pill="$(ev "(() => { const d = ${S}.docks[0]; const it = d.items; const T = it[it.length - 1].rest.x + it[it.length - 1].rest.width - it[0].rest.x; const P = d.pill.width - T; const swollen = it.reduce((a, i) => a + i.rest.width * i.scale, 0) + d.gaps.reduce((a, g) => a + g, 0); return [(swollen + P) / (T + P), d.pill.scaleLong].join(' '); })()")"
-check "the pill lengthens with the row" near "${pill% *}" "${pill#* }" 0.005
+pill="$(ev "(() => { const d = ${S}.docks[0]; const it = d.items; const T = it[it.length - 1].rest.x + it[it.length - 1].rest.width - it[0].rest.x; const swollen = it.reduce((a, i) => a + i.rest.width * i.scale, 0) + d.gaps.reduce((a, g) => a + g, 0); return [swollen - T, d.pill.grown].join(' '); })()")"
+check "the pill lengthens with the row" near "${pill% *}" "${pill#* }" 1
+# Made longer, never stretched: its ends keep their curve, and it keeps its height
+check "the pill is not scaled" test "$(ev "(() => { const p = ${DOCK}.docks[0].dash.pill; return [p.scale_x, p.scale_y].join(' '); })()")" == "1 1"
+check "the pill is drawn as long as the row grew" sh -c "$(declare -f near); near $(ev "(() => { const p = ${S}.docks[0].pill; return p.shown.width - p.width - p.grown; })()") 0 1"
 # An item gone since the row was measured still counts, or the pill stays one item short when the row comes to rest
-gone="$(ev "(() => { const d = ${DOCK}.docks[0].dash; const it = d.swell.items[0]; const was = d.pill.scale_x; it.actor._amethystoraGone = true; d.swell._write(); const now = d.pill.scale_x; it.actor._amethystoraGone = false; d.swell._write(); return [was, now].join(' '); })()")"
-check "an item gone in the last frame leaves the pill's length alone" near "${gone% *}" "${gone#* }" 0.005
+gone="$(ev "(() => { const d = ${DOCK}.docks[0].dash; const it = d.swell.items[0]; const was = d._pillGrown; it.actor._amethystoraGone = true; d.swell._write(); const now = d._pillGrown; it.actor._amethystoraGone = false; d.swell._write(); return [was, now].join(' '); })()")"
+check "an item gone in the last frame leaves the pill's length alone" near "${gone% *}" "${gone#* }" 1
 tex="$(ev "${S}.docks[0].items.filter(i => i.kind === 'app')[4].iconTexture")"
 check "the icon is drawn at the size it grows to (77 px)" test "${tex}" == 77
 apps_at 4 32
@@ -223,7 +228,8 @@ values="$(row)"
 check "half a pitch away, items 4 and 5 are 1.535" sh -c "$(declare -f near); near $(jq '.[4][0]' <<<"${values}") 1.535 0.01 && near $(jq '.[5][0]' <<<"${values}") 1.535 0.01"
 apps_at 0 0
 values="$(row)"
-check "at item 0: 1.6, moved -12, item 1 +17" sh -c "$(declare -f near); near $(jq '.[0][0]' <<<"${values}") 1.6 0.01 && near $(jq '.[0][1]' <<<"${values}") -11.96 1 && near $(jq '.[1][1]' <<<"${values}") 17.08 1"
+# The point under the pointer stays where it is: item 0 does not move, and the row grows away from it
+check "at item 0: 1.6, not moved, item 1 +29" sh -c "$(declare -f near); near $(jq '.[0][0]' <<<"${values}") 1.6 0.01 && near $(jq '.[0][1]' <<<"${values}") 0 1 && near $(jq '.[1][1]' <<<"${values}") 29.04 1"
 in_session "ame desktop dock amount 200" >/dev/null
 apps_at 4 0
 values="$(row)"

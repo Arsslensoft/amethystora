@@ -262,11 +262,54 @@ class AmethystoraDockDash extends Dash.Dash {
         return {x, y, width: this.width, height: this.height};
     }
 
-    // The pill where it rests: its allocation in the dock, which the swell never changes
+    // The pill where it rests: the box GNOME gave it, before the swell made it longer
     pillRect() {
         const [x, y] = this.get_transformed_position();
-        const box = this._background.get_allocation_box();
+        const box = this._pillBox ?? this._background.get_allocation_box();
         return {x: x + box.x1, y: y + box.y1, width: box.get_width(), height: box.get_height()};
+    }
+
+    // The swell makes the pill longer by `grown` px and moves it `along` the row. GNOME gives the pill the dash's own
+    // box, so it is given a longer one here, never stretched: its ends keep their curve and its edge its width. It is
+    // allocated on its own, so that nothing else is laid out again while the dock moves
+    growPill(grown, along) {
+        // Even, so that both ends move by whole pixels
+        grown = Math.max(0, Math.round(grown / 2) * 2);
+        along = Math.round(along);
+        if (this._pillGrown === grown && this._pillAlong === along)
+            return;
+        this._pillGrown = grown;
+        this._pillAlong = along;
+        this._allocatePill();
+    }
+
+    vfunc_allocate(box) {
+        super.vfunc_allocate(box);
+        this._pillBox = this._background.get_allocation_box();
+        if (this._pillGrown || this._pillAlong)
+            this._allocatePill();
+    }
+
+    _allocatePill() {
+        if (!this._pillBox)
+            return;
+        // The box the pill was given is inside its margins, which allocating it takes off again
+        const pill = this._background;
+        const box = this._pillBox.copy();
+        box.x1 -= pill.margin_left;
+        box.x2 += pill.margin_right;
+        box.y1 -= pill.margin_top;
+        box.y2 += pill.margin_bottom;
+        const half = (this._pillGrown ?? 0) / 2;
+        const along = this._pillAlong ?? 0;
+        if (this.edge.vertical) {
+            box.y1 += along - half;
+            box.y2 += along + half;
+        } else {
+            box.x1 += along - half;
+            box.x2 += along + half;
+        }
+        pill.allocate(box);
     }
 
     stripRect() {

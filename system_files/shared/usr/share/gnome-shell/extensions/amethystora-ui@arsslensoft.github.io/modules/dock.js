@@ -668,7 +668,6 @@ export class Dock {
                 return {monitor: site.monitorIndex, edge: site.edgeName, items: []};
             const pill = dash.pillRect();
             const swellItems = dash.swell.items;
-            const scaleLong = dash.edge.long === 'x' ? dash.pill.scale_x : dash.pill.scale_y;
             const area = Main.layoutManager.getWorkAreaForMonitor(site.monitorIndex);
             const items = swellItems.map(entry => {
                 const container = entry.container;
@@ -726,7 +725,8 @@ export class Dock {
                     translationY: site.strip?.translation_y ?? 0,
                 },
                 workArea: {x: area.x, y: area.y, width: area.width, height: area.height},
-                pill: {...pill, scaleLong},
+                // Where the pill rests, and what the swell adds to its length and where it draws it
+                pill: {...pill, grown: dash._pillGrown ?? 0, shown: stageRect(dash.pill)},
                 pitch: dash.swell._pitch ?? 0,
                 gaps: dash.swell._gaps ?? [],
                 items,
