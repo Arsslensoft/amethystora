@@ -4,6 +4,8 @@
 // and says why in the journal. A module's stylesheet, stylesheets/<module>.css, is loaded while it runs; the
 // colours that follow the theme are in /usr/share/amethystora/themed/shell-<module>.css.tpl (modules/theme.js).
 
+import GLib from 'gi://GLib';
+
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 // Before anything else makes a settings object
@@ -124,41 +126,88 @@ const MODULES = [
     ['focus', Focus],
 ];
 
+// A pump tick enables modules until it has spent this long, then hands the main loop back for a frame
+const PUMP_BUDGET_US = 8000;
+
 export default class AmethystoraUI extends Extension {
     enable() {
         // GNOME turns an extension on and off asynchronously: modules still running from an enable that no disable
         // reached are stopped first, or they would run on, unseen, beside the new ones (their laters included)
         if (this.modules)
             this.disable();
-        // One rebuild of the shell's theme for the theme's stylesheets and the modules' (stylesheets.js)
-        batchStylesheets(() => this._enable());
-    }
-
-    _enable() {
         // The running modules by name, for a module that needs another's actors (the glass, the dock's)
         this.modules = new Map();
-        const stylesheets = [];
-        for (const [name, Module] of MODULES) {
-            const module = new Module(this);
-            try {
-                module.enable();
-                this.modules.set(name, module);
+        this._queue = MODULES.slice();
+        // One rebuild of the shell's theme for every stylesheet at once (stylesheets.js): the static module sheets
+        // here and the themed shell-*.css the theme module loads, together. The modules then start already styled,
+        // so none of the ones started below adds a restyle of its own.
+        batchStylesheets(() => {
+            const stylesheets = [];
+            for (const [name] of MODULES) {
                 const file = this.dir.get_child('stylesheets').get_child(`${name}.css`);
                 if (file.query_exists(null))
                     stylesheets.push([name, file]);
-            } catch (e) {
-                console.error(`Amethystora UI: the ${name} module did not start: ${e.message}\n${e.stack}`);
-                // A module stops cleanly from wherever it got to
-                try {
-                    module.disable();
-                } catch {}
+            }
+            this.stylesheets = replaceStylesheets([], stylesheets).map(([, file]) => file);
+            // The theme module inside the batch, so its themed sheets join the one restyle at the batch's end
+            this._enableNext();
+        });
+        // The rest start a few at a time, below the redraw's priority, so the main loop paints between ticks:
+        // starting all of them in one go froze it for most of a second at every login and unlock, which stuttered
+        // the login reveal and the unlock. A module still sees only the modules before it in the list, enabled or
+        // not, as it did when they all started together.
+        this._schedulePump();
+    }
+
+    // Enables the next module in the list, in order. Returns false once the queue is empty.
+    _enableNext() {
+        const entry = this._queue?.shift();
+        if (!entry)
+            return false;
+        const [name, Module] = entry;
+        const module = new Module(this);
+        try {
+            module.enable();
+            this.modules.set(name, module);
+        } catch (e) {
+            console.error(`Amethystora UI: the ${name} module did not start: ${e.message}\n${e.stack}`);
+            // A module stops cleanly from wherever it got to
+            try {
+                module.disable();
+            } catch {}
+        }
+        return true;
+    }
+
+    _schedulePump() {
+        if (this._pumpId || !this._queue?.length)
+            return;
+        // Below the redraw's priority, so the shell paints between ticks and resolves the actors each tick added
+        this._pumpId = GLib.idle_add(GLib.PRIORITY_LOW, () => {
+            this._pumpId = 0;
+            this._pump();
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    // As many modules as fit in a short budget, then back to the main loop for a frame
+    _pump() {
+        const started = GLib.get_monotonic_time();
+        while (this._enableNext()) {
+            if (this._queue.length && GLib.get_monotonic_time() - started > PUMP_BUDGET_US) {
+                this._schedulePump();
+                return;
             }
         }
-        // All at once, after the theme's own: one at a time they cost some 2 s at every unlock
-        this.stylesheets = replaceStylesheets([], stylesheets).map(([, file]) => file);
     }
 
     disable() {
+        // Nothing left of a start that had not finished: the pump, and its queue
+        if (this._pumpId) {
+            GLib.source_remove(this._pumpId);
+            this._pumpId = 0;
+        }
+        this._queue = null;
         batchStylesheets(() => this._disable());
     }
 
