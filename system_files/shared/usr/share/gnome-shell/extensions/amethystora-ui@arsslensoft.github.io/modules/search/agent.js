@@ -9,6 +9,7 @@ import GLib from 'gi://GLib';
 
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
+import {agentStatus} from '../agent/status.js';
 import {finished} from './run.js';
 
 const AGENT = 'amethystora-agent';
@@ -62,7 +63,7 @@ export class AgentProvider {
     // Exit 0 is on; only the latest answer counts
     _ask() {
         const serial = ++this._serial;
-        finished([AGENT, 'status']).then(on => {
+        agentStatus().then(({on}) => {
             if (serial === this._serial && on !== this._on) {
                 this._on = on;
                 this.changed?.();

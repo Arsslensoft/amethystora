@@ -49,6 +49,42 @@ export function output(argv) {
     });
 }
 
+// The account's files the answers depend on: its switch, the agent's level, its chosen agent, and the administrator's
+const config = name => GLib.build_filenamev([GLib.get_user_config_dir(), 'amethystora', name]);
+const watchedFiles = () => [config('agentic'), config('agent-tools'), config('agent'), CONF];
+
+// The last answer, with the files it was read from as they were. A screen lock stops the extension, and asking again at
+// every unlock ran amethystora-agent three times; asked again only when one of the files changed. Both callers (the
+// module, the search's row) share one answer, also one still on its way.
+let cache = null;
+
+function stamp() {
+    return watchedFiles().map(path => {
+        try {
+            const info = Gio.File.new_for_path(path).query_info('time::modified,time::modified-usec,standard::size',
+                Gio.FileQueryInfoFlags.NONE, null);
+            return `${info.get_attribute_uint64('time::modified')}.${info.get_attribute_uint32('time::modified-usec')}` +
+                `.${info.get_size()}`;
+        } catch {
+            return '-';
+        }
+    }).join(':');
+}
+
+// {on, act, agent}: whether the features are on, whether the agent may make changes, and the chosen agent's name
+export function agentStatus() {
+    const now = stamp();
+    if (cache?.stamp !== now) {
+        cache = {stamp: now, answer: (async () => {
+            const status = await output([AGENT, 'status']);
+            const act = status.ok && await finished([AGENT, 'tools', 'status']);
+            // "Agentic features: on (claude)", or "(cursor-agent, not installed yet)"
+            return {on: status.ok, act, agent: /\(([a-z-]+)/.exec(status.text)?.[1] ?? ''};
+        })()};
+    }
+    return cache.answer;
+}
+
 export class AgentStatus {
     // changed() is called when either answer changes
     constructor(changed) {
@@ -91,15 +127,12 @@ export class AgentStatus {
     // Only the latest answer counts
     async ask() {
         const serial = ++this._serial;
-        const status = await output([AGENT, 'status']);
-        const act = status.ok && await finished([AGENT, 'tools', 'status']);
+        const {on, act, agent} = await agentStatus();
         if (serial !== this._serial)
             return;
-        // "Agentic features: on (claude)", or "(cursor-agent, not installed yet)"
-        const agent = /\(([a-z-]+)/.exec(status.text)?.[1] ?? '';
-        if (status.ok === this.on && act === this.act && agent === this.agent)
+        if (on === this.on && act === this.act && agent === this.agent)
             return;
-        this.on = status.ok;
+        this.on = on;
         this.act = act;
         this.agent = agent;
         this._changed?.();

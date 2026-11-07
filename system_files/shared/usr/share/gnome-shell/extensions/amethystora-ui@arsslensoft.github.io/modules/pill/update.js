@@ -28,6 +28,9 @@ Gio._promisify(Gio.Subprocess.prototype, 'communicate_utf8_async');
 // Tonight's end (ms since the epoch), kept outside the module so that a lock (which turns the extension off) does not
 // bring the update back before eight
 let hiddenUntil = 0;
+// The staged version and the helper's answer for it, through a screen lock: the helper goes through pkexec and bootc,
+// and asking it again at every unlock while an update waits cost a second of another process's time each time
+const kept = {staged: null, quick: null};
 
 export class Update {
     constructor(activities) {
@@ -41,8 +44,8 @@ export class Update {
         if (GLib.file_test(SEALED, GLib.FileTest.EXISTS))
             return;
         this._cancellable = new Gio.Cancellable();
-        this._quick = null;
-        this._staged = null;
+        this._staged = kept.staged;
+        this._quick = kept.quick;
         this._armTonight();
         this._watch();
     }
@@ -91,6 +94,7 @@ export class Update {
         if (!ready) {
             this._quick = null;
             this._staged = null;
+            kept.staged = kept.quick = null;
             this._end();
             return;
         }
@@ -99,6 +103,8 @@ export class Update {
         if (staged !== this._staged) {
             this._staged = staged;
             this._quick = null;
+            kept.staged = staged;
+            kept.quick = null;
         }
         if (this._quick === null) {
             this._quick = false;
@@ -115,6 +121,8 @@ export class Update {
             const [out] = await process.communicate_utf8_async(null, this._cancellable);
             const answer = JSON.parse(out);
             this._quick = answer?.quick === true;
+            if (kept.staged === this._staged)
+                kept.quick = this._quick;
         } catch (e) {
             if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
                 console.debug(`Amethystora UI: the soft reboot's helper did not answer: ${e.message}`);

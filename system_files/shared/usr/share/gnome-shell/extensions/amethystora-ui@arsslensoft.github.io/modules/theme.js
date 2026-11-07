@@ -50,6 +50,9 @@ const NIGHT_LIGHT = 'org.gnome.settings-daemon.plugins.color';
 const NIGHT_LIGHT_KEYS = ['night-light-enabled', 'night-light-schedule-automatic', 'night-light-schedule-from',
     'night-light-schedule-to'];
 
+// The offset from UTC when the slideshow was last written again, kept through a screen lock
+let daylightOffset = null;
+
 export class Theme {
     constructor(ext) {
         this._ext = ext;
@@ -108,9 +111,13 @@ export class Theme {
         // Light by day, dark by night: nothing while its key is off
         this._dayNight = new DayNight(this._settings, this._nightLight, (kind, args, then) => this._run(kind, args, then));
         // A session that starts (or comes back from the lock screen) after the clocks changed shows the slideshow an
-        // hour off until it is written again
-        if (this._daylightShown())
+        // hour off until it is written again: asked at the session's start and when the offset from UTC moved since
+        // (summer time, another time zone), not at every unlock, where it ran the theme's script for nothing
+        const offset = GLib.DateTime.new_now_local().get_utc_offset();
+        if (this._daylightShown() && offset !== daylightOffset) {
+            daylightOffset = offset;
             this._run('daylight', ['daylight', 'refresh']);
+        }
     }
 
     disable() {
