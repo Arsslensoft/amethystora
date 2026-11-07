@@ -39,6 +39,8 @@ const PATHS: &[&str] = &[
     "ame_boot_tries", "/boot/grub2/custom.cfg", "/boot/grub2/grubenv",
     // The Vault (plans/PLAN-vault.md): its programs and units, its socket and its files, in any spelling that names them
     "amethystora-vault", "org.amethystora.vault", "/run/amethystora/vault", "/var/lib/amethystora/vault",
+    // ...and its helpers for git and docker, which hand a password to whoever asks while the vault is open
+    "git-credential-amethystora", "docker-credential-amethystora",
     // The plugin system's root helper and its polkit actions, in any spelling (plans/done/PLAN-plugins.md): installing and widening are a person's
     "amethystora-plugin-root", "org.amethystora.plugins",
     // A plugin's change goes through the agent's tools without the agent's level (the plugin host asks, for what the plugin was granted):
@@ -91,6 +93,10 @@ pub fn refusal(argv: &[String]) -> Option<String> {
     }
     if matches!(program, "visudo" | "passwd" | "chpasswd" | "usermod" | "gpasswd" | "useradd" | "groupmod" | "authselect" | "cryptsetup") {
         return Some(format!("{program} changes who may log in or become root, or a disk's keys: the user runs it"));
+    }
+    // git's own way to the same helpers: `git credential fill` prints a stored password
+    if program == "git" && git_subcommand(&argv[1..]) == Some("credential") {
+        return Some("git credential prints a stored password, which the agent may never read".into());
     }
     if program == "restic" && argv.iter().any(|arg| matches!(arg.as_str(), "forget" | "prune" | "key" | "rewrite")) {
         return Some("it deletes from the backup, which nothing on this machine does".into());
@@ -162,6 +168,21 @@ pub fn refusal(argv: &[String]) -> Option<String> {
     // ...and the guest login's own helper (ame security guest-login), which makes an account with no password
     if program.starts_with("amethystora-security") || program == "amethystora-hardening" || program == "amethystora-guest" {
         return Some("security switches are changed only through ame security, and only to turn protection on".into());
+    }
+    None
+}
+
+/// git's subcommand: the first word after its own options, those that take a value passed over with it
+fn git_subcommand(args: &[String]) -> Option<&str> {
+    let mut words = args.iter();
+    while let Some(word) = words.next() {
+        match word.as_str() {
+            "-C" | "-c" | "--git-dir" | "--work-tree" | "--namespace" | "--config-env" | "--super-prefix" => {
+                words.next();
+            }
+            option if option.starts_with('-') => {}
+            subcommand => return Some(subcommand),
+        }
     }
     None
 }
@@ -378,6 +399,10 @@ mod tests {
     fn refuses_the_never_list() {
         for words in [
             "ame security duress setup",
+            "git credential fill",
+            "git -c credential.helper=amethystora -C /tmp credential get",
+            "git-credential-amethystora get",
+            "/usr/bin/docker-credential-amethystora get",
             "cat /etc/amethystora/duress.d/fingers",
             "tee /etc/sudoers.d/agent",
             "cp rule /etc/polkit-1/rules.d/00.rules",
@@ -631,6 +656,8 @@ mod tests {
     #[test]
     fn hands_over_the_rest() {
         for words in [
+            "git commit -m credential",
+            "git -C /tmp status",
             "rpm-ostree install htop",
             "systemctl restart NetworkManager.service",
             "ame security firewall on",
