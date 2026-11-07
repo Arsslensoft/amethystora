@@ -18,7 +18,7 @@ This document provides essential information for coding agents working with the 
 - `Containerfile` - The image's own build, on its layers (stages: `brew`, `ctx`, `apps`, `assets`, `base`)
 - `layers/` - The build's layers (see Build layers): one Containerfile each, `lib.sh`, which finds or builds them, and
   the scripts the packages layers run
-- `Containerfile.sealed` - The sealed variant of a built image (`just seal`; see Sealed images)
+- `Containerfile.sealed`, `Containerfile.sealed-uki` - The sealed variant of a built image, in two builds (`just seal`; see Sealed images)
 - `secure-boot.crt` - The certificate of the Secure Boot key sealed images are signed with, once `just secure-boot-key` has made it
 - `Justfile` - Build automation recipes (like a Makefile but more readable)
 - `.pre-commit-config.yaml` - Pre-commit hooks for basic validation
@@ -2140,7 +2140,13 @@ ostree images stay the default.
   too): quay.io stops serving a digest of `fedora:44` as soon as Fedora moves the tag, which it does
   daily, and that broke sealing in October 2026. `20-tests-sealed.sh` checks the signatures, the
   digest and the command line. The UKI's kernel arguments are the image's `kargs.d`,
-  there is no other way to add one, and they never include a debug shell.
+  there is no other way to add one, and they never include a debug shell: `rd.shell=0
+  rd.emergency=halt` stop a boot that fails in the initramfs, where dracut's emergency mode would,
+  with root locked, go on into an unchecked `/sysroot` with the disk unlocked.
+  **Two builds**: `Containerfile.sealed` prepares, rechunks into `sealed_build` and ends with the tools
+  image; `Containerfile.sealed-uki` reads the tree back with `FROM oci:` and builds, signs and tests the
+  UKI. buildah does not wait for a `FROM oci:`, and in one build that stage started before chunkah had
+  written the tree (2026-11-06): keep them two.
 - **Keys: shim and MOK** (the maintainer's choice of 2026-10-04, over replacing the firmware's PK, KEK
   and db). The private key is the `SECUREBOOT_KEY` secret, separate from the cosign key; its certificate
   is `secure-boot.crt`, which `just seal` checks the key against. Until both exist, and always for pull
@@ -2152,7 +2158,7 @@ ostree images stay the default.
   the disk. It has no SBOM of its own. A failure fails a pull request, but never keeps the stable image
   from publishing (`continue-on-error`).
 - **Installed** only by `iso/live/amethystora-install-sealed`, in the live ISO, since Anaconda cannot
-  install the composefs backend: a whole disk, a 2 GiB ESP, a discoverable root partition (LUKS2, btrfs,
+  install the composefs backend: a whole disk, a 2 GiB ESP, a discoverable root partition (LUKS2, always, btrfs,
   subvolume `root`), `bootc install to-filesystem --composefs-backend`, then shim placed in
   `EFI/amethystora` in front of systemd-boot (`grubx64.efi`), a firmware boot entry, and every
   `/usr/share/amethystora/secure-boot/*.der` of the image queued with `mokutil`.
@@ -2443,7 +2449,7 @@ In the image (`build.sh`):
 22. `build_files/shared/source-manifest.sh` - Writes `/usr/share/licenses/amethystora/SOURCES`: every package with its licence, source package and where that source is, which the GPL asks for and the written offer in `NOTICE` points to. Fedora keeps its own in Koji. RPM Fusion, negativo17 and Copr publish only their current builds, so the script fetches the source packages of theirs that are under a licence asking for the source into `/usr/src/amethystora`, and the build fails when one cannot be fetched; a Copr project the image starts installing from goes in its `COPR_PROJECTS`. NVIDIA's own repository, which the NVIDIA images take the container toolkit from, publishes no source packages at all, so its packages are listed with the address of their source instead (`NO_SOURCE_PACKAGES`); a GPL package from any other maker the script does not know still fails the build. `20-tests.sh` fails if a package is missing from the list or a source package from the image
 23. `20-tests.sh` - Runs last, after the repositories are validated and the build cleaned up; fails the build on anything missing or left behind, including a GNOME Shell extension shipped without its licence
 
-The sealed images then run `build_files/sealed/` from `Containerfile.sealed`, on the finished image (see Sealed images).
+The sealed images then run `build_files/sealed/` from `Containerfile.sealed` and `Containerfile.sealed-uki`, on the finished image (see Sealed images).
 
 ## Development Guidelines
 

@@ -323,3 +323,23 @@ What is different on a sealed machine:
   sealed layout stable.
 - **The boot loader is placed once,** by the installer. Updates bring a new kernel image each time, but
   not a new systemd-boot or shim.
+
+### Moving to a sealed image
+
+A regular installation cannot become a sealed one, so moving means installing again and bringing your
+things back from a backup:
+
+1. On the old system, make sure the [backup](security.md#backups) is set up and recent: **Back up now**
+   in Backups. Then make a recovery key with `ame backup recovery-key` and write it down. The backup
+   has to be somewhere other than this disk (a backup disk, an address, your other computer): the
+   hourly snapshots are on the disk the installer erases.
+2. If you use the [Vault](vault.md), have its recovery key at hand as well.
+3. Install the sealed image from the live ISO, as [Installing](installing.md#sealed-images) describes.
+   It erases the disk. Create your account with the **same account name** as before: files come back
+   only into the same home folder.
+4. At the first look, choose **Have a backup?** (or run `ame backup restore-from`). It asks for the
+   recovery key and brings back your files, your apps and setup, and your Vault, each step chosen first.
+   [Starting from your backup](security.md#starting-from-your-backup) says what each one does.
+
+What does not come back: layered packages (a sealed machine has none) and changes to `/etc` made by
+hand. Security settings are the machine's: set them again in Security.

@@ -10,4 +10,10 @@
 # amethystora-sealed-verity, or set root's password, SSH keys, udev rules and files through systemd's own
 # units: an ESP credential needs only to be TPM-encrypted, which anyone who can start the machine from a
 # signed live USB can do. Nothing in the image uses them.
-kargs = ["rw", "rootflags=compress=zstd:1,subvol=root", "quiet", "rhgb", "systemd.import_credentials=no"]
+#
+# rd.shell=0 rd.emergency=halt: a boot that fails in the initramfs stops there. Without them dracut's
+# emergency mode asks for root's password, and since the root account is locked it goes on with the boot,
+# which then switches into whatever is on the disk without the system mounted or checked (bootc's root
+# setup failing goes there too, before amethystora-sealed-verity can run), with the disk already unlocked
+# when the TPM holds its key. The live ISO can still read a disk that does not start.
+kargs = ["rw", "rootflags=compress=zstd:1,subvol=root", "quiet", "rhgb", "systemd.import_credentials=no", "rd.shell=0", "rd.emergency=halt"]

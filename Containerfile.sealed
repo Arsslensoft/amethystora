@@ -11,10 +11,15 @@
 # Adapted from Fedora's sealed test images (https://github.com/travier/fedora-atomic-desktops-sealed,
 # CC0-1.0) and the pattern in bootc's experimental-composefs documentation.
 #
+# Two builds, this one and Containerfile.sealed-uki. This one prepares the tree, rechunks it into
+# /run/src (a volume on an empty folder) and ends with the tools that build the UKI; the second reads the
+# rechunked tree back with `FROM oci:` and builds, signs and tests the UKI from it. They are two because
+# buildah does not count `FROM oci:` as a dependency: in one build, a stage waiting for another lends its
+# turn, and the stage that reads the tree could start before chunkah had written it (it did, 2026-11-06).
+#
 # Secrets: SECUREBOOT_KEY and SECUREBOOT_CERT, mounted for the steps that sign, which run in the signer
 # stage, Fedora's own image with sbsigntools, never in one built from the image, and never written into
-# a layer. Built with --skip-unused-stages=false, so that the lint and the tests run, and with a volume on
-# /run/src, an empty folder chunkah writes the rechunked tree into for `FROM oci:` to read back.
+# a layer. Built with --skip-unused-stages=false, so that the lint runs.
 
 ARG BASE_IMAGE=overridden
 
@@ -32,13 +37,6 @@ RUN --mount=type=cache,dst=/var/cache/libdnf5 \
 
 FROM rootfs-base AS lint
 RUN bootc container lint
-
-# What builds the UKI, kept out of the image: the image's own bootc, so that the digest is the one the
-# machine computes, with ukify beside it, and sbverify for the tests. It signs nothing: the image holds
-# packages from third-party repositories, so the key is never mounted in a stage built from it
-FROM rootfs-base AS tools
-RUN --mount=type=cache,dst=/var/cache/libdnf5 \
-    dnf -y install systemd-ukify sbsigntools
 
 # What signs: Fedora's own image, pinned by digest, with sbsigntools from Fedora's repositories and
 # nothing else. The Secure Boot key is mounted in this stage's children only. From Fedora's registry,
@@ -64,32 +62,13 @@ FROM quay.io/coreos/chunkah:v0.7.1@sha256:71e593421c5de7dcc7c8c5c50e98d3bac57205
 RUN --mount=type=bind,from=rootfs,source=/,target=/chunkah,ro \
     chunkah build --max-layers 128 --prune /ostree --prune /sysroot/ostree --output oci:/run/src/oci
 
-FROM oci:sealed_build/oci AS chunked
-ENV container=oci
-STOPSIGNAL SIGRTMIN+3
-CMD ["/sbin/init"]
-
-# The UKI: the composefs digest of the rechunked tree and the kernel arguments of its kargs.d...
-FROM tools AS uki-unsigned
-RUN --mount=type=bind,from=chunked,source=/,target=/run/target,ro \
-    --mount=type=bind,from=rootfs-base,source=/usr/lib/modules,target=/run/kernel,ro \
-    --mount=type=bind,from=ctx,source=/,target=/ctx \
-    /ctx/build_files/sealed/10-uki.sh
-
-# ...signed
-FROM signer AS uki
-RUN --mount=type=bind,from=uki-unsigned,source=/out,target=/run/unsigned,ro \
-    --mount=type=bind,from=ctx,source=/,target=/ctx \
-    --mount=type=secret,id=SECUREBOOT_KEY \
-    --mount=type=secret,id=SECUREBOOT_CERT \
-    /ctx/build_files/sealed/15-sign-uki.sh
-
-FROM tools AS tests
-RUN --mount=type=bind,from=chunked,source=/,target=/run/target,ro \
-    --mount=type=bind,from=uki,source=/out,target=/run/uki,ro \
-    --mount=type=bind,from=rootfs-base,source=/usr/lib/modules,target=/run/kernel,ro \
-    --mount=type=bind,from=ctx,source=/,target=/ctx \
-    /ctx/build_files/sealed/20-tests-sealed.sh
-
-FROM chunked AS final
-COPY --from=uki /out/ /boot/EFI/Linux/
+# What builds the UKI, kept out of the image, and this build's result, which Containerfile.sealed-uki
+# starts from: the image's own bootc, so that the digest is the one the machine computes, with ukify
+# beside it and sbverify for the tests, and the kernel and initramfs in /usr/lib/modules. It signs
+# nothing: the image holds packages from third-party repositories, so the key is never mounted in a stage
+# built from it. Last, after chunkah's tree, which the mount makes it wait for
+FROM rootfs-base AS tools
+RUN --mount=type=cache,dst=/var/cache/libdnf5 \
+    --mount=type=bind,from=chunkah,source=/,target=/run/chunkah,ro \
+    test -s /run/src/oci/index.json && \
+    dnf -y install systemd-ukify sbsigntools

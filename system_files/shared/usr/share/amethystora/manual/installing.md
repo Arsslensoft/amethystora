@@ -175,6 +175,8 @@ experimental, so they are offered beside the regular images rather than instead 
 
 - **Only a new installation makes one.** A regular installation cannot switch to a sealed image, nor a
   sealed one back, without installing again.
+- **Moving from a regular installation** goes through a backup: [Moving to a sealed
+  image](updates.md#moving-to-a-sealed-image).
 - **It takes a whole disk.** The sealed installer erases one disk, and cannot install beside Windows
   yet.
 - **It needs a network connection.** The installer downloads the system, about 5 GB.
@@ -183,7 +185,8 @@ experimental, so they are offered beside the regular images rather than instead 
 
 To install one, start the live ISO, [amethystora.iso](https://download.amethystora.org/amethystora.iso),
 and open **Install Amethystora, sealed (experimental)** from the app grid. It asks which image and
-which disk, then for a disk passphrase. The passphrase is typed before the system starts, on a US
+which disk, then for a disk passphrase: a sealed system is always encrypted, since the seal covers the
+system's files and not yours. The passphrase is typed before the system starts, on a US
 (QWERTY) keyboard layout whatever yours is, so choose one whose characters are where you expect them on
 that layout.
 

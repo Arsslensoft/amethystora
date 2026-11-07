@@ -5,7 +5,7 @@
 # (https://github.com/travier/fedora-atomic-desktops-sealed, CC0-1.0):
 #
 #   1. a GPT with a 2 GiB ESP, which holds the UKIs, and a root partition of the discoverable type, which
-#      systemd finds without a root= argument: LUKS2, then btrfs with the `root` subvolume the UKI's
+#      systemd finds without a root= argument: LUKS2, always, then btrfs with the `root` subvolume the UKI's
 #      command line mounts (kargs.d/00-amethystora-sealed.toml)
 #   2. the image, pulled from the registry and checked against its signing key by policy.json, into a
 #      store on the new disk, since the live session runs in memory
@@ -111,13 +111,15 @@ CONFIRM="$(gum input --placeholder "Type ERASE to erase ${DISK}")"
 
 # --- Encryption --------------------------------------------------------------------------------------
 
+# Always encrypted: the seal covers the system's files, not /etc, /var or your own, and someone holding the
+# disk could otherwise change those, or start an older signed system that reads them
 say "The disk is encrypted, and its passphrase is asked for at every start, unless the TPM holds the key (ame security disk-unlock, once installed)." "" \
     "It is typed before the system has started, on a US (QWERTY) keyboard layout, whatever this computer's layout is: choose one whose letters are where you expect them on that layout."
 PASSPHRASE=""
 while true; do
-    PASSPHRASE="$(gum input --password --placeholder "Disk passphrase (leave empty for no encryption)")"
+    PASSPHRASE="$(gum input --password --placeholder "Disk passphrase")"
     if [[ -z "${PASSPHRASE}" ]]; then
-        gum confirm --default=no "Install without encryption? Anyone holding the disk could read it." && break
+        echo "A sealed system is always encrypted: choose a passphrase."
         continue
     fi
     [[ "$(gum input --password --placeholder "The same passphrase again")" == "${PASSPHRASE}" ]] && break
@@ -138,13 +140,10 @@ readarray -t PARTS < <(lsblk -lnpo NAME,TYPE "${DISK}" | awk '$2 == "part" { pri
 ESP="${PARTS[0]}"
 ROOT="${PARTS[1]}"
 mkfs.vfat -F 32 -n ESP "${ESP}" >/dev/null
-DEVICE="${ROOT}"
-if [[ -n "${PASSPHRASE}" ]]; then
-    echo "Encrypting..."
-    printf '%s' "${PASSPHRASE}" | cryptsetup luksFormat --batch-mode --type luks2 --key-file - "${ROOT}"
-    printf '%s' "${PASSPHRASE}" | cryptsetup open --key-file - "${ROOT}" "${MAPPED}"
-    DEVICE="/dev/mapper/${MAPPED}"
-fi
+echo "Encrypting..."
+printf '%s' "${PASSPHRASE}" | cryptsetup luksFormat --batch-mode --type luks2 --key-file - "${ROOT}"
+printf '%s' "${PASSPHRASE}" | cryptsetup open --key-file - "${ROOT}" "${MAPPED}"
+DEVICE="/dev/mapper/${MAPPED}"
 PASSPHRASE=""
 mkfs.btrfs --quiet --force --label amethystora "${DEVICE}" >/dev/null
 mkdir -p "${TOP}" "${TARGET}"
@@ -221,4 +220,4 @@ sync
 say "Installed ${IMAGE}, sealed." "" \
     "Restart and remove the USB stick. A blue screen, the MOK manager, comes first: choose \"Enroll MOK\", then \"Continue\", \"Yes\", type \"${MOK_PASSWORD}\" (on a QWERTY layout) and choose \"Reboot\". Without that, Secure Boot refuses the new system." \
     "" \
-    "Then the disk passphrase, if you set one, and the first-start setup, which creates your account."
+    "Then the disk passphrase, and the first-start setup, which creates your account."

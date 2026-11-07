@@ -1,0 +1,49 @@
+# The second half of sealing (`just seal`, after Containerfile.sealed): the UKI, built from the tree
+# chunkah rechunked, signed, tested, and added under /boot, which the digest does not cover. It is the
+# only thing added after the digest: nothing may change the tree once the UKI names it.
+#
+# Adapted from Fedora's sealed test images (https://github.com/travier/fedora-atomic-desktops-sealed,
+# CC0-1.0). Secrets as in Containerfile.sealed: the key is mounted in the signer stage only. Built with
+# --skip-unused-stages=false, so that the tests run, and from the folder chunkah wrote, sealed_build.
+
+ARG TOOLS_IMAGE=overridden
+
+FROM scratch AS ctx
+COPY /build_files /build_files
+
+FROM oci:sealed_build/oci AS chunked
+ENV container=oci
+STOPSIGNAL SIGRTMIN+3
+CMD ["/sbin/init"]
+
+# Containerfile.sealed's tools: ukify and sbverify, and the kernel and initramfs in /usr/lib/modules
+FROM ${TOOLS_IMAGE} AS tools
+
+# What signs, the same image as in Containerfile.sealed
+FROM registry.fedoraproject.org/fedora:44@sha256:b414c09be79dd1f32529b55b096b6bb30435d82ee16fbdbbabf8985eb5f86db0 AS signer
+RUN dnf -y install sbsigntools && dnf clean all
+
+# The UKI: the composefs digest of the rechunked tree and the kernel arguments of its kargs.d...
+FROM tools AS uki-unsigned
+RUN --mount=type=bind,from=chunked,source=/,target=/run/target,ro \
+    --mount=type=bind,from=tools,source=/usr/lib/modules,target=/run/kernel,ro \
+    --mount=type=bind,from=ctx,source=/,target=/ctx \
+    /ctx/build_files/sealed/10-uki.sh
+
+# ...signed
+FROM signer AS uki
+RUN --mount=type=bind,from=uki-unsigned,source=/out,target=/run/unsigned,ro \
+    --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=secret,id=SECUREBOOT_KEY \
+    --mount=type=secret,id=SECUREBOOT_CERT \
+    /ctx/build_files/sealed/15-sign-uki.sh
+
+FROM tools AS tests
+RUN --mount=type=bind,from=chunked,source=/,target=/run/target,ro \
+    --mount=type=bind,from=uki,source=/out,target=/run/uki,ro \
+    --mount=type=bind,from=tools,source=/usr/lib/modules,target=/run/kernel,ro \
+    --mount=type=bind,from=ctx,source=/,target=/ctx \
+    /ctx/build_files/sealed/20-tests-sealed.sh
+
+FROM chunked AS final
+COPY --from=uki /out/ /boot/EFI/Linux/

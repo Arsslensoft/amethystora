@@ -44,11 +44,12 @@ fi
 [[ " ${CMDLINE} " != *" composefs="\?* && " ${CMDLINE} " != *" composefs.digest="\?* ]]
 
 # ...and the kernel arguments of kargs.d: read-write btrfs root, the splash, no credentials from the
-# firmware or the ESP, the hardening, no console size query, and lockdown on every image but the NVIDIA
-# ones, as 08-hardening.sh sets it. No debug shell: nothing can be added to
+# firmware or the ESP, an initramfs that halts when it fails rather than going on with the boot, the
+# hardening, no console size query, and lockdown on every image but the NVIDIA ones, as 08-hardening.sh
+# sets it. No debug shell: nothing can be added to
 # this command line on the machine, and a shell there would be root's, with the disk already unlocked.
-for karg in rw rootflags=compress=zstd:1,subvol=root quiet rhgb systemd.import_credentials=no \
-    slab_nomerge init_on_alloc=1 page_alloc.shuffle=1 randomize_kstack_offset=on vsyscall=none \
+for karg in rw rootflags=compress=zstd:1,subvol=root quiet rhgb systemd.import_credentials=no rd.shell=0 \
+    rd.emergency=halt slab_nomerge init_on_alloc=1 page_alloc.shuffle=1 randomize_kstack_offset=on vsyscall=none \
     proc_mem.force_override=ptrace systemd.tty.term.console=dumb; do
     [[ " ${CMDLINE} " == *" ${karg} "* ]]
 done
@@ -57,7 +58,7 @@ if [[ "$(jq -r '."image-flavor"' "${T}/usr/share/amethystora/image-info.json")" 
 else
     [[ " ${CMDLINE} " == *" lockdown=integrity "* ]]
 fi
-[[ "${CMDLINE}" != *debug_shell* ]]
+[[ "${CMDLINE}" != *debug_shell* && " ${CMDLINE} " != *" rd.shell "* && " ${CMDLINE} " != *" rd.shell=1 "* ]]
 
 # The kernel and the initramfs are only in the UKI. The initramfs mounts composefs (bootc's module), stops
 # a boot where it was mounted without fs-verity (amethystora-sealed), and can ask the TPM for the disk

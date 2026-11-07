@@ -221,10 +221,10 @@
       "matchPackageNames": ["ghcr.io/jasonn3/build-container-installer"],
       "automerge": false
     },
-    // Containerfile.sealed's Fedora is where the Secure Boot key is mounted to sign the UKI, and nothing
+    // The sealing Containerfiles' Fedora is where the Secure Boot key is mounted to sign the UKI, and nothing
     // checks its signature: a new digest of it is read before it is merged
     {
-      "matchFileNames": ["Containerfile.sealed"],
+      "matchFileNames": ["Containerfile.sealed", "Containerfile.sealed-uki"],
       "automerge": false
     },
     {

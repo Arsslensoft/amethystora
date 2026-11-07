@@ -388,10 +388,14 @@ seal $image="amethystora" $tag="stable" $flavor="main":
     readarray -t LABELS < <(${PODMAN} inspect "${base}" | jq -r '.[0].Config.Labels // {} | to_entries[]
         | select(.key == "ostree.linux" or (.key | startswith("ostree.") | not)) | "--label=\(.key)=\(.value)"')
 
-    # chunkah writes the rechunked tree into sealed_build for FROM oci: to read back. The stages built
-    # from the image are removed afterwards, or `just rechunk` could not remove the image itself.
+    # chunkah writes the rechunked tree into sealed_build, and the second build reads it back with FROM
+    # oci:, starting from the first's tools. Two builds, since buildah does not wait for a FROM oci: (see
+    # Containerfile.sealed). The stages built from the image are removed afterwards, or `just rechunk`
+    # could not remove the image itself.
     rm -rf sealed_build
     mkdir sealed_build
+    tools="localhost/${image_name}:${tag}-sealed-tools"
+    trap 'rm -rf "${keys}" sealed_build; ${PODMAN} rmi --ignore "${tools}" >/dev/null' EXIT
     echo "::endgroup::"
     ${PODMAN} build --file Containerfile.sealed \
         --build-arg "BASE_IMAGE=${base}" \
@@ -399,10 +403,18 @@ seal $image="amethystora" $tag="stable" $flavor="main":
         --secret "id=SECUREBOOT_CERT,src=${keys}/cert" \
         --volume "${PWD}/sealed_build:/run/src" --security-opt label=disable \
         --skip-unused-stages=false --layers=false \
+        --tag "${tools}" .
+    ${PODMAN} build --file Containerfile.sealed-uki \
+        --build-arg "TOOLS_IMAGE=${tools}" \
+        --secret "id=SECUREBOOT_KEY,src=${keys}/key" \
+        --secret "id=SECUREBOOT_CERT,src=${keys}/cert" \
+        --security-opt label=disable \
+        --skip-unused-stages=false --layers=false \
         "${LABELS[@]}" \
         --label "org.opencontainers.image.created=$(date -u +%Y\-%m\-%d\T%H\:%M\:%S\Z)" \
         --label "org.amethystora.secure-boot-key=${key}" \
         --tag "localhost/${image_name}:${tag}-sealed" .
+    ${PODMAN} rmi "${tools}"
     ${PODMAN} image prune -f
     echo "Sealed localhost/${image_name}:${tag}-sealed with the ${key} key"
 
