@@ -1,4 +1,4 @@
-//! What the security watcher asks of the store (plans/PLAN-plugins.md, "Security, Control and the rest of the image"), run as
+//! What the security watcher asks of the store (plans/done/PLAN-plugins.md, "Security, Control and the rest of the image"), run as
 //! root by `amethystora-plugin-host audit --json`: a plugin whose files no longer match the digest a person approved, a
 //! grants.json that is not the one the helper's last history line names, a file of the store that is not root's or that others
 //! may write, something in an account's folder the helper never writes, a plugin's process that left its scope, and each approval

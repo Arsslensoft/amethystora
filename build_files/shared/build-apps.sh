@@ -88,7 +88,7 @@ cargo build --release --locked -p amethystora-clipboard-seal
 cargo build --release --locked -p amethystora-connect
 # Move to this computer: the two ends of a move over the home network (no GTK)
 cargo build --release --locked -p amethystora-move
-# The plugin system (plans/PLAN-plugins.md): the host that runs plugins in a sandbox, the root helper that is the only writer of
+# The plugin system (plans/done/PLAN-plugins.md): the host that runs plugins in a sandbox, the root helper that is the only writer of
 # their store, and the sandbox's seccomp filter, written by a small C program with libseccomp (the version the image has)
 cargo build --release --locked -p amethystora-plugin-host
 gcc -Wall -O2 -o /tmp/seccomp-gen /tmp/apps/plugin-host/seccomp/gen.c -lseccomp

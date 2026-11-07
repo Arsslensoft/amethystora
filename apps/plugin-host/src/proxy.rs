@@ -1,4 +1,4 @@
-//! The one way out of a sandbox (plans/PLAN-plugins.md, "Blocking what a plugin sends"). A plugin's network namespace
+//! The one way out of a sandbox (plans/done/PLAN-plugins.md, "Blocking what a plugin sends"). A plugin's network namespace
 //! has only loopback; what it may reach is an HTTPS proxy on a unix socket the host holds for it, which takes `CONNECT
 //! host:443` for the hosts it was granted and nothing else. The proxy cannot read inside HTTPS: what it acts on is the
 //! name (resolved here, and refused if any address is the machine's own or a private network's, so that DNS cannot

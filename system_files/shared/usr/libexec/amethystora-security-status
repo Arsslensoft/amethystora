@@ -1203,7 +1203,7 @@ if [[ ${EUID} -ne 0 ]] && command -v flatpak >/dev/null; then
     fi
 fi
 
-# Plugins against what a person approved (PLUGINS, plans/PLAN-plugins.md): the security watcher's audit of the store, of
+# Plugins against what a person approved (PLUGINS, plans/done/PLAN-plugins.md): the security watcher's audit of the store, of
 # which only how many and how many it found reach this report (each finding is said, to whom it is about, in the events).
 # The account's own plugins, and what each may reach, are its own `ame plugin list`, read as it.
 PLUGINS_SEEN="$(jq -c '.plugins // empty' "${WATCH_STATUS}" 2>/dev/null)"

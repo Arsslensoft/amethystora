@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-# The plugin system, phase 1 (plans/PLAN-plugins.md, Tests): the root helper and the store, the host and its sandbox, with a
+# The plugin system, phase 1 (plans/done/PLAN-plugins.md, Tests): the root helper and the store, the host and its sandbox, with a
 # hostile plugin and a hostile account, as far as phase 1 reaches. Nothing of the shell is here: the pill, the card and the dialog
 # read through AT-SPI are later phases, and so are the broker's calls, the agent's drafts and a finger through polkit (suite 73).
 # One phase. Every line of the hostile plugin must fail as itself, and every attempt of the account must be refused by the

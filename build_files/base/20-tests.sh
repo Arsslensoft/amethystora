@@ -486,7 +486,7 @@ jq -e '.["shell-version"] | index("50") and index("51")' \
     /usr/share/gnome-shell/extensions/amethystora-transitions@arsslensoft.github.io/metadata.json
 grep -q "'amethystora-transitions@arsslensoft.github.io'" /usr/share/glib-2.0/schemas/zz0-amethystora-modifications.gschema.override
 [[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-transitions style)" == "'grow'" ]]
-# Widgets are plugins now (plans/PLAN-plugins.md): the extension that ran them unsandboxed is gone, the image's own are plugins in
+# Widgets are plugins now (plans/done/PLAN-plugins.md): the extension that ran them unsandboxed is gone, the image's own are plugins in
 # /usr/share/amethystora/plugins (read-only, in the sandbox of everyone's), and none holds a permission that reaches outside the machine
 # (a click is all it takes to add one, with no administrator). amethystora-widgets stays as a name, over amethystora-plugins
 test ! -e /usr/share/gnome-shell/extensions/amethystora-widgets@arsslensoft.github.io
@@ -5445,7 +5445,7 @@ done
 # (tests/vm/suites/74-vault.sh is what runs it)
 bash /ctx/build_files/shared/test-vault.sh /ctx
 
-# The plugin system (plans/PLAN-plugins.md): the root helper and the host installed, the polkit policy with an administrator for
+# The plugin system (plans/done/PLAN-plugins.md): the root helper and the host installed, the polkit policy with an administrator for
 # every verb that gives more and no kept answer, `grant` with no --yes, the host's unit with no namespace setting and enabled for
 # nobody, the sandbox recipe, the agent's never list (tests/vm/suites/72-plugins.sh is what runs it)
 bash /ctx/build_files/shared/test-plugins.sh /ctx

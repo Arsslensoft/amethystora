@@ -411,7 +411,7 @@ impl Runner {
         self.run_with(id, action, click, false)
     }
 
-    /// A panel (plans/PLAN-plugins.md, `window`): the action its manifest names, in its sandbox with the Wayland socket, open until the person
+    /// A panel (plans/done/PLAN-plugins.md, `window`): the action its manifest names, in its sandbox with the Wayland socket, open until the person
     /// closes it (or PANEL_LIMIT), under the same budgets. One at a time for each plugin, beside its usual runs. Started by a click
     pub fn panel(&self, id: &str, action: &str) -> Result<(), String> {
         let loaded = load(&self.env, id)?;

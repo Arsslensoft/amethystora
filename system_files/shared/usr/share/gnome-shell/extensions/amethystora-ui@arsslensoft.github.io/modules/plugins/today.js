@@ -1,4 +1,4 @@
-// Plugins in Today, the calendar menu's column (plans/PLAN-plugins.md, "What everything reaches"): one section under GNOME's
+// Plugins in Today, the calendar menu's column (plans/done/PLAN-plugins.md, "What everything reaches"): one section under GNOME's
 // events, a card for each plugin that contributes `today`, drawn from the same fixed elements as the pill's card (card.js) with
 // the plugin's name over it. Built only while such a plugin is on, and gone with the last of them.
 

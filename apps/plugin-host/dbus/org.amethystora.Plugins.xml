@@ -1,7 +1,7 @@
 <!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
  "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <!--
-  The plugin host on the session bus (plans/PLAN-plugins.md). amethystora-plugin-host owns the name org.amethystora.Plugins
+  The plugin host on the session bus (plans/done/PLAN-plugins.md). amethystora-plugin-host owns the name org.amethystora.Plugins
   while at least one plugin is on; the shell's `plugins` module (a later phase), Control and Security are its clients. This file
   is the contract between them: change it with the plan.
 

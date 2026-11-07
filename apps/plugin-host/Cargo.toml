@@ -1,4 +1,4 @@
-# amethystora-plugin-host and amethystora-plugin-root: the plugin system (plans/PLAN-plugins.md, phase 1). The host is a user
+# amethystora-plugin-host and amethystora-plugin-root: the plugin system (plans/done/PLAN-plugins.md, phase 1). The host is a user
 # service that runs each plugin in a bubblewrap sandbox, checks what it prints and stands between it and the network; the
 # root helper, started only through pkexec, is the one writer of /var/lib/amethystora/plugins. No GTK: the apps stage
 # builds both on their own, and 13-apps.sh installs them in /usr/libexec. The library holds what both and the tests need;

@@ -349,7 +349,7 @@ const SHELL = ['usr/libexec/amethystora-security-status', 'usr/libexec/amethysto
     'usr/libexec/amethystora-driver-status', 'usr/libexec/amethystora-gpu-check', 'usr/libexec/amethystora-raid',
     'usr/libexec/amethystora-disk-health', 'usr/libexec/amethystora-update-check',
     'usr/libexec/amethystora-security-watch', 'usr/libexec/amethystora-sends',
-    // The plugin system's command (plans/PLAN-plugins.md); its group's recipes are in the list of groups below
+    // The plugin system's command (plans/done/PLAN-plugins.md); its group's recipes are in the list of groups below
     'usr/libexec/amethystora-plugins',
     // What `ame pill` runs: a script live in the pill (R7-03)
     'usr/libexec/amethystora-pill',

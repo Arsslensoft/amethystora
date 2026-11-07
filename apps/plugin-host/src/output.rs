@@ -1,4 +1,4 @@
-//! What a plugin prints (plans/PLAN-plugins.md, "What it prints"): the widget format plus `progress`, `until` and `card`.
+//! What a plugin prints (plans/done/PLAN-plugins.md, "What it prints"): the widget format plus `progress`, `until` and `card`.
 //! The host reads it, refuses what is not the format and cleans the rest, so that the shell draws only what passed:
 //! text and no markup, theme icon names and no paths, a bounded number of elements, every number clamped.
 //!

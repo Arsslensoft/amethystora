@@ -1,4 +1,4 @@
-//! What `amethystora-plugin-root` does, one verb at a time (plans/PLAN-plugins.md, Integrity). It is started by pkexec,
+//! What `amethystora-plugin-root` does, one verb at a time (plans/done/PLAN-plugins.md, Integrity). It is started by pkexec,
 //! one polkit action per verb (org.amethystora.plugins.policy), and trusts nothing it is given: the account is pkexec's
 //! `PKEXEC_UID`, never an argument; every argument is held to a short set of characters and parsed here, not by a shell;
 //! what is granted is checked against the manifest in the frozen files, and never against what the caller says it holds.
@@ -197,7 +197,7 @@ impl Ctx {
         self.commit_as(uid, id, digest, perms, self.approval_off)
     }
 
-    /// Several updates, one approval (plans/PLAN-plugins.md, How a person approves): every one is checked before any is written, so that
+    /// Several updates, one approval (plans/done/PLAN-plugins.md, How a person approves): every one is checked before any is written, so that
     /// the batch is all or nothing as far as the checks go
     fn commit_updates(&self, uid: u32, args: &[String]) -> Result<(), String> {
         if args.is_empty() || args.len() > 32 {
@@ -365,7 +365,7 @@ impl Ctx {
     }
 
     /// The history line of a commit. With plugin-approval off its rule lets a commit through with nobody asked (grant, unblock and
-    /// rollback still ask): the line says so, and the account is told, which only notices afterwards (plans/PLAN-plugins.md, How a
+    /// rollback still ask): the line says so, and the account is told, which only notices afterwards (plans/done/PLAN-plugins.md, How a
     /// person approves)
     fn given(&self, uid: u32, mut line: serde_json::Value) -> Result<(), String> {
         if !self.approval_off {

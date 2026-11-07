@@ -1,4 +1,4 @@
-// The plugin system's root helper (plans/PLAN-plugins.md, Integrity; org.amethystora.plugins.policy). What can only give a plugin
+// The plugin system's root helper (plans/done/PLAN-plugins.md, Integrity; org.amethystora.plugins.policy). What can only give a plugin
 // less, or has the person read what was kept, or adds a plugin of the image itself (its files are the signed image's, and the
 // helper grants exactly what its manifest names), is allowed to the person at the machine without a password. What gives a plugin
 // more (commit, grant, unblock, rollback) is not named here and asks an administrator every time: 20-tests.sh holds this list.

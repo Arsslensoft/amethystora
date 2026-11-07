@@ -52,7 +52,7 @@ install -Dpm0755 /apps-stage/out/amethystora-connect /usr/libexec/amethystora-co
 # Move to this computer (R7-25, `ame system move`): the two ends of a move over a network named home, run in a terminal and gone with the move
 install -Dpm0755 /apps-stage/out/amethystora-move /usr/libexec/amethystora-move
 
-# The plugin system (plans/PLAN-plugins.md): the host, a user service nobody has enabled (amethystora-plugin-host.service) that
+# The plugin system (plans/done/PLAN-plugins.md): the host, a user service nobody has enabled (amethystora-plugin-host.service) that
 # runs each plugin in a sandbox; the root helper, started only through pkexec (org.amethystora.plugins.policy), the one writer of
 # /var/lib/amethystora/plugins; and the sandbox's seccomp filter, which build-apps.sh wrote with libseccomp
 install -Dpm0755 /apps-stage/out/amethystora-plugin-host /usr/libexec/amethystora-plugin-host

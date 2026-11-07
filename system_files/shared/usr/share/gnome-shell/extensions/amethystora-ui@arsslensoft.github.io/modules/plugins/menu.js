@@ -1,4 +1,4 @@
-// Plugins in the logo menu (plans/PLAN-plugins.md, "What everything reaches"): a section at the end of Amethystora's menu, one line
+// Plugins in the logo menu (plans/done/PLAN-plugins.md, "What everything reaches"): a section at the end of Amethystora's menu, one line
 // for each plugin that contributes `menu`, its name and what it printed, a click running its `click` action in the sandbox as any
 // click does. The menu is the logo menu extension's; this only adds a section to it while such a plugin is on, and takes it away.
 

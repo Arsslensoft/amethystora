@@ -1,4 +1,4 @@
-/* The seccomp filter of a plugin's sandbox (plans/PLAN-plugins.md, "The sandbox"), written as the BPF program bubblewrap's
+/* The seccomp filter of a plugin's sandbox (plans/done/PLAN-plugins.md, "The sandbox"), written as the BPF program bubblewrap's
  * --seccomp takes. build-apps.sh compiles this with libseccomp, runs it, and 13-apps.sh installs the result as
  * /usr/share/amethystora/plugins/seccomp.bpf. Everything is allowed but what a plugin never needs and an escape would:
  * a system call listed here fails with EPERM, so a program that tries gets an error and goes on.

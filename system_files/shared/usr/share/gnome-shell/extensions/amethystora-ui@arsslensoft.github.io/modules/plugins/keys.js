@@ -1,4 +1,4 @@
-// A plugin's shortcut (plans/PLAN-plugins.md, "What everything reaches": keybindings): one combination a plugin declared and was granted
+// A plugin's shortcut (plans/done/PLAN-plugins.md, "What everything reaches": keybindings): one combination a plugin declared and was granted
 // (`key`), which runs one of its actions as a click. Never one that is bound already: Mutter refuses only a combination grabbed the same
 // way, so every shortcut GNOME, Amethystora's extensions and the person keep in GSettings is read first (each time one is about to be
 // grabbed, never while idle), and a combination found there is said once and left. Grabbed only while the plugin is on and not paused,

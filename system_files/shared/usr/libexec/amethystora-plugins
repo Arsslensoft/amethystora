@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-# What `ame plugin` runs (plans/PLAN-plugins.md). It reads with amethystora-plugin-host, which only reads the store, and changes
+# What `ame plugin` runs (plans/done/PLAN-plugins.md). It reads with amethystora-plugin-host, which only reads the store, and changes
 # the store only through pkexec amethystora-plugin-root, one polkit action for each verb. Nothing here grants anything by itself:
 # `grant` and `add` ask in a terminal, for each permission on its own, and cannot be answered in advance; an administrator's approval comes after,
 # from polkit's own dialog. The agent never runs them (never.rs).
@@ -358,7 +358,7 @@ update_all() {
     echo
 }
 
-# The author's loop (plans/PLAN-plugins.md, Around the store): a folder installed as it is now, with the usual consent the first time, then
+# The author's loop (plans/done/PLAN-plugins.md, Around the store): a folder installed as it is now, with the usual consent the first time, then
 # every change installed again with no more than it has, through commit-dev, whose approval polkit keeps five minutes. What asks for
 # more stops the loop: it is a new consent, `ame plugin update ID FOLDER`. A draft needs none of this: it runs with nothing
 cmd_dev() {
@@ -426,7 +426,7 @@ install_from() {
     consent "${id}" "${digest}" "$(pkexec "${ROOT}" inspect "${ticket}")" "${previous}"
 }
 
-# A plugin of data alone needs no sandbox, since nothing of it runs (plans/PLAN-plugins.md, "What everything reaches"): a theme's colours or a
+# A plugin of data alone needs no sandbox, since nothing of it runs (plans/done/PLAN-plugins.md, "What everything reaches"): a theme's colours or a
 # look go where theme files go, through their own checks (contrast, fixed names, the picture decoded again)
 data_only() {
     case "$1" in

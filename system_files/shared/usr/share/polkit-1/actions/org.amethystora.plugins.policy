@@ -7,7 +7,7 @@
   <vendor>Amethystora</vendor>
   <vendor_url>https://github.com/arsslensoft/amethystora</vendor_url>
 
-  <!-- The plugin system's root helper (plans/PLAN-plugins.md, Integrity), one action for each verb, so that the dialog says what
+  <!-- The plugin system's root helper (plans/done/PLAN-plugins.md, Integrity), one action for each verb, so that the dialog says what
        the approval gives. pkexec picks the action by the helper's path and its first argument. What gives a plugin more (installing
        or updating its code, a permission, lifting a block, going back to older code) asks an administrator, every time: no
        kept approval and no yes on those, and the message shows $(command_line), which is the plugin's id and each permission being
@@ -39,7 +39,7 @@
     <annotate key="org.freedesktop.policykit.exec.argv1">commit-updates</annotate>
   </action>
 
-  <!-- The one kept approval (plans/PLAN-plugins.md): `ame plugin dev`, where an author tries each change of a plugin that holds
+  <!-- The one kept approval (plans/done/PLAN-plugins.md): `ame plugin dev`, where an author tries each change of a plugin that holds
        permissions. The helper commits one plugin with no more than it holds, so what is kept for five minutes cannot widen anything -->
   <action id="org.amethystora.plugins.commit-dev">
     <description>Install a new version of a plugin you are making, with no more than it has</description>

@@ -259,7 +259,7 @@ if [[ -d "${PHOTOS_DIR}" ]]; then
         "ame desktop search photos"
 fi
 
-# Each plugin of the account's that was given a host (plans/PLAN-plugins.md): only while it runs, only to those hosts, through the
+# Each plugin of the account's that was given a host (plans/done/PLAN-plugins.md): only while it runs, only to those hosts, through the
 # plugins' proxy, which counts what goes out and stops it at the hour's limit. Its name and hosts are its own words, cleaned; the
 # count is the host's, kept in the account's sent.json as each run ends.
 SENT="${XDG_STATE_HOME:-${HOME:-/nonexistent}/.local/state}/amethystora/plugins/sent.json"

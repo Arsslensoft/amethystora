@@ -106,7 +106,7 @@ EXTENSIONS=dconf/db/local.d/60-amethystora-user-extensions
 EXTENSIONS_LOCK=dconf/db/local.d/locks/60-amethystora-user-extensions
 NO_X11=systemd/user/org.gnome.Shell@.service.d/60-amethystora-no-x11.conf
 FLATPAK_PASSWORD=polkit-1/rules.d/49-amethystora-flatpak-password.rules
-# Off, a plugin is installed with nobody asked (plans/PLAN-plugins.md, How a person approves); amethystora-plugin-root looks for it
+# Off, a plugin is installed with nobody asked (plans/done/PLAN-plugins.md, How a person approves); amethystora-plugin-root looks for it
 PLUGIN_APPROVAL=polkit-1/rules.d/49-amethystora-plugin-approval.rules
 COREDUMP=systemd/coredump.conf.d/60-amethystora-off.conf
 COOLDOWN_ENV=environment.d/60-amethystora-cooldown.conf

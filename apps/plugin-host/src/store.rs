@@ -1,4 +1,4 @@
-//! /var/lib/amethystora/plugins, the store of what a person approved (plans/PLAN-plugins.md, Integrity). It is root's:
+//! /var/lib/amethystora/plugins, the store of what a person approved (plans/done/PLAN-plugins.md, Integrity). It is root's:
 //! the host and the commands only read it, and `amethystora-plugin-root` is the one writer.
 //!
 //!   store/<digest>/                  a plugin's files, written once

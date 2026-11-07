@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-# The top bar's widgets are plugins now (plans/PLAN-plugins.md): this is the old name for `ame plugin`, kept so that what people and agents
+# The top bar's widgets are plugins now (plans/done/PLAN-plugins.md): this is the old name for `ame plugin`, kept so that what people and agents
 # already type still works. A widget is a plugin that contributes `bar` or `desktop`, runs in a sandbox of its own and reaches only what a
 # person allowed. Nothing is read from ~/.config/amethystora/widgets any more.
 #

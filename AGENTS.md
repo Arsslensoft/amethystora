@@ -1767,9 +1767,8 @@ in `plans/amethystora-connect/` are the protocol, the plugins and the desktop si
 
 ### Plugins
 
-`plans/PLAN-plugins.md` is the design, every decision in it final; **phase 1 is built** (the root helper, the store, the host, the
-sandbox, the proxy, `ame plugin`), and nothing of the shell, Control, Security, the watcher, the broker's `state`/`control`/`events`
-or the widgets' move onto it is. **A plugin's code never runs in the shell**: it runs in bubblewrap as a process of its own and prints
+`plans/done/PLAN-plugins.md` is the design, every decision in it final; **it is built and closed** (2026-11-07), and what stays open
+is at its top. **A plugin's code never runs in the shell**: it runs in bubblewrap as a process of its own and prints
 what to show, which the host reads, refuses or cleans, and the shell will draw from a fixed set of elements. `apps/plugin-host` is one
 crate (no GTK; only the host's `service.rs` links GLib) with two programs: `amethystora-plugin-root` and `amethystora-plugin-host`.
 

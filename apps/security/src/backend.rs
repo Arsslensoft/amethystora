@@ -1340,7 +1340,7 @@ pub struct App {
 #[derive(Debug, Clone, Default)]
 pub struct Permissions {
     pub apps: Vec<App>,
-    /// The account's plugins, as `ame plugin list` gives them (plans/PLAN-plugins.md: Security keeps the reach)
+    /// The account's plugins, as `ame plugin list` gives them (plans/done/PLAN-plugins.md: Security keeps the reach)
     pub plugins: Vec<Plugin>,
     pub error: Option<String>,
 }

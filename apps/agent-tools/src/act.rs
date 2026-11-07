@@ -147,7 +147,7 @@ fn change_to(cache: &Cache, jobs: &Jobs, entry: &str, value: &str, undoing: Opti
     Ok(said)
 }
 
-/// A plugin's `plugin change ENTRY VALUE` (plans/PLAN-plugins.md, the permissions: `change`), which the plugin host asks only for an
+/// A plugin's `plugin change ENTRY VALUE` (plans/done/PLAN-plugins.md, the permissions: `change`), which the plugin host asks only for an
 /// entry the plugin was granted and after a click on the plugin's own element: Control's entry set as the agent's change sets it, held
 /// to the same never list and recorded with its way back, under the plugin's name. An entry that asks something in a terminal is
 /// refused: a plugin cannot answer, and the person did not ask for the question
@@ -180,7 +180,7 @@ pub fn plugin_change(plugin: &str, entry: &str, value: &str) -> Result<String, S
     if output.ok() { Ok(format!("{} is {value}", item.title)) } else { Err(format!("{} was not set", item.title)) }
 }
 
-/// The agent's `plugin` tool (plans/PLAN-plugins.md, "What everything reaches": the agent's tools from a plugin): the actions plugins that
+/// The agent's `plugin` tool (plans/done/PLAN-plugins.md, "What everything reaches": the agent's tools from a plugin): the actions plugins that
 /// are on offer as a "tool", listed, or one run through the plugin host's Ask, no click, in the plugin's sandbox. Everything a plugin said
 /// comes back marked as data. Nothing is recorded: a run changes nothing outside the sandbox
 pub fn plugin_tool(args: &Value) -> Result<String, String> {

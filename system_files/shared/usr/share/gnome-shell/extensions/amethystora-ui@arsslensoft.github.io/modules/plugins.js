@@ -1,4 +1,4 @@
-// Plugins in the shell (plans/PLAN-plugins.md, phases 2 and 3; R7-01, 03, 07, 09). A plugin's code never runs here: the plugin host runs
+// Plugins in the shell (plans/done/PLAN-plugins.md, phases 2 and 3; R7-01, 03, 07, 09). A plugin's code never runs here: the plugin host runs
 // it in a sandbox and tells this module what to show, and this module draws it from a fixed set of elements, clamped again (plugins/
 // clamp.js): the pill's `extra` place, the top bar, a card on the desktop (deskwidgets.js asks this module for them), a tile of quick
 // settings, an answer in search and a badge on a dock icon. A script's pill (`ame pill`) is a file this module watches (plugins/script.js).

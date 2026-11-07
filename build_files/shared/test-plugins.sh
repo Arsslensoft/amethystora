@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-# The plugin system (plans/PLAN-plugins.md, Tests) as the image has it, for 20-tests.sh: what keeps a plugin's code and grants out of
+# The plugin system (plans/done/PLAN-plugins.md, Tests) as the image has it, for 20-tests.sh: what keeps a plugin's code and grants out of
 # the account's hands is in files the image ships, and is checked here since a build never starts a plugin. The root helper and the
 # host are installed, the polkit policy gives every verb an action, asks an administrator for each that gives more and keeps no
 # answer, the rule lets nobody through for those, `grant` has no --yes, the host's unit has no setting that needs a namespace and

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Plugins in the shell (modules/plugins.js, plans/PLAN-plugins.md): the pill's extra place, the bar, a tile, search and a dock badge, drawn from
+<!-- Plugins in the shell (modules/plugins.js, plans/done/PLAN-plugins.md): the pill's extra place, the bar, a tile, search and a dock badge, drawn from
      what the plugin host passes. A plugin's code never runs in the shell. Written by ame desktop plugins, Control and the setup file. -->
 <schemalist>
   <schema id="org.gnome.shell.extensions.amethystora-ui.plugins" path="/org/gnome/shell/extensions/amethystora-ui/plugins/">

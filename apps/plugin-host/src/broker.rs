@@ -1,4 +1,4 @@
-//! What a plugin may ask the host for (plans/PLAN-plugins.md, the permissions table): the broker's side. A sandbox has no bus, no
+//! What a plugin may ask the host for (plans/done/PLAN-plugins.md, the permissions table): the broker's side. A sandbox has no bus, no
 //! display and no home, so a plugin that wants the time's format, the disk's fullness or what plays asks `plugin state NAME`, and
 //! one that wants to tell a person something asks `plugin notify`. The sandbox sees one socket, `/broker/broker.sock`, held for it
 //! by the host; every request is one line of JSON and gets one line back, and is judged by grants.json as it is *now*, so that a

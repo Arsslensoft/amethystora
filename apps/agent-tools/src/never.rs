@@ -39,7 +39,7 @@ const PATHS: &[&str] = &[
     "ame_boot_tries", "/boot/grub2/custom.cfg", "/boot/grub2/grubenv",
     // The Vault (plans/PLAN-vault.md): its programs and units, its socket and its files, in any spelling that names them
     "amethystora-vault", "org.amethystora.vault", "/run/amethystora/vault", "/var/lib/amethystora/vault",
-    // The plugin system's root helper and its polkit actions, in any spelling (plans/PLAN-plugins.md): installing and widening are a person's
+    // The plugin system's root helper and its polkit actions, in any spelling (plans/done/PLAN-plugins.md): installing and widening are a person's
     "amethystora-plugin-root", "org.amethystora.plugins",
     // A plugin's change goes through the agent's tools without the agent's level (the plugin host asks, for what the plugin was granted):
     // the agent changes a setting with its own change tool, which its level and the person decide

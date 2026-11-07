@@ -1,4 +1,4 @@
-// What a plugin printed, as the shell will draw it (plans/PLAN-plugins.md, "What keeps the shell up"). The host has read and
+// What a plugin printed, as the shell will draw it (plans/done/PLAN-plugins.md, "What keeps the shell up"). The host has read and
 // cleaned it already; the shell is the compositor, so it clamps it again and never trusts the host's work, a script's file or
 // anything else it was handed: text only (never markup), a theme icon's name and never a path, at most twenty elements, every
 // number inside its range, and no system plate, whatever the plugin said. No gi imports: build_files/shared/test-plugins-clamp.mjs

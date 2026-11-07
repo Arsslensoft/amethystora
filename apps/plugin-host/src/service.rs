@@ -104,7 +104,7 @@ impl State {
         reply.ok().and_then(|r| r.get::<(glib::Variant,)>()).and_then(|(v,)| v.get::<bool>()).unwrap_or(false)
     }
 
-    /// News from the system (plans/PLAN-plugins.md, the permissions: `events`): each plugin that is on and was granted `events=NAME`
+    /// News from the system (plans/done/PLAN-plugins.md, the permissions: `events`): each plugin that is on and was granted `events=NAME`
     /// runs once for it, with no click, and its `plugin event` says what happened. A burst of news is one run with the latest of it,
     /// after the five seconds between runs; while the screen is locked only the unlock itself is news
     fn event(self: &Rc<Self>, name: &str, value: &str) {

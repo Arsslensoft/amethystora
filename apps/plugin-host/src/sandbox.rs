@@ -1,4 +1,4 @@
-//! The sandbox recipe of plans/PLAN-plugins.md ("The sandbox"), in one function, which `amethystora-plugin-host
+//! The sandbox recipe of plans/done/PLAN-plugins.md ("The sandbox"), in one function, which `amethystora-plugin-host
 //! sandbox ID` prints and the host runs. A plugin starts with its own folder (read-only), a private state folder, a
 //! private /tmp and the image's /usr: no home, no network, no bus, no display, no other process. A permission is a
 //! bind mount added here, or a socket to the host's proxy; nothing is a promise.
