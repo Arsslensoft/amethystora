@@ -193,6 +193,7 @@ fn setup(args: &Args) -> Result<(), u8> {
         request["secret"] = json!(encode(password.as_bytes()));
     }
     let answer = call(request)?;
+    moving::mark();
     let recovery = Zeroizing::new(answer["recovery"].as_str().unwrap_or("").to_string());
     type_back(args, &recovery)
 }
@@ -297,6 +298,9 @@ fn open(args: &Args) -> Result<(), u8> {
 
 fn status(args: &Args) -> Result<(), u8> {
     let answer = call(json!({"op": "status"}))?;
+    if answer["set_up"] == json!(true) {
+        moving::mark();
+    }
     if args.option("json").is_some() {
         println!("{answer}");
         return Ok(());

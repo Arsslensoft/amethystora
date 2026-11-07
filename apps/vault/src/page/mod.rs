@@ -24,6 +24,7 @@ use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::future::Future;
 use std::rc::{Rc, Weak};
+use std::os::unix::fs::DirBuilderExt;
 use std::time::Duration;
 
 use amethystora_ui::adw::prelude::*;
@@ -430,6 +431,11 @@ impl Vault {
             }
         };
         let set_up = status["set_up"] == json!(true);
+        if set_up {
+            // The account has a vault: the folder its sealed backups go in is the mark the daily backup and the report go by,
+            // so that they never start the service for an account that has none
+            let _ = std::fs::DirBuilder::new().recursive(true).mode(0o700).create(glib::user_data_dir().join("amethystora/vault-backup"));
+        }
         crate::measure::screen_ready("the first screen");
         let vaults = status["vaults"].as_array().cloned().unwrap_or_default();
         let any_open = vaults.iter().any(|vault| vault["open"] == json!(true));

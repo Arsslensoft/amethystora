@@ -23,6 +23,14 @@ const KEPT: usize = 7;
 /// What one chunk of an upload carries
 const CHUNK: usize = MAX_DATA / 4;
 
+/// The account has a vault: the folder its backups go in is made, which is the mark the daily backup and the report go by, so that
+/// neither starts the service for an account that has none
+pub fn mark() {
+    if let Ok(folder) = folder() {
+        let _ = std::fs::DirBuilder::new().recursive(true).mode(0o700).create(folder);
+    }
+}
+
 fn folder() -> Result<PathBuf, u8> {
     let data = std::env::var_os("XDG_DATA_HOME").filter(|path| !path.is_empty()).map(PathBuf::from).or_else(|| std::env::var_os("HOME").filter(|home| !home.is_empty()).map(|home| PathBuf::from(home).join(".local/share"))).ok_or(6u8)?;
     Ok(data.join("amethystora").join("vault-backup"))

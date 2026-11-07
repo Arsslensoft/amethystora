@@ -62,8 +62,9 @@ EXCLUDES="${CONFIG_DIR}/backup-excludes"
 
 # The Vault's sealed backup first, if the account has a vault, so that this run carries it (~/.local/share/amethystora/vault-backup,
 # seven kept). It holds only what is already sealed and needs no open vault and no question. A service that answers closed (nobody is
-# logged in at night) or no vault is not a failure of this run, and neither is anything else: it is said, and the run goes on.
-if [[ -x /usr/libexec/amethystora-vault-cli ]]; then
+# logged in at night) or no vault is not a failure of this run, and neither is anything else: it is said, and the run goes on. The
+# folder is the mark of an account with a vault (the window and `ame vault` make it), so that no other account starts the service.
+if [[ -x /usr/libexec/amethystora-vault-cli && -d "${XDG_DATA_HOME:-${HOME}/.local/share}/amethystora/vault-backup" ]]; then
     vault_code=0
     /usr/libexec/amethystora-vault-cli backup >/dev/null || vault_code=$?
     case "${vault_code}" in

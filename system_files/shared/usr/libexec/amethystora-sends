@@ -207,10 +207,11 @@ if [[ -e "${VAULT_LOGOS}" ]]; then
 fi
 
 # Amethystora Vault's sync, once a server was connected to the vault. The service says so while the vault is open; closed, the
-# marker `ame vault sync` keeps in the account's own folder (an address is nothing secret) is all there is to go by.
+# marker `ame vault sync` keeps in the account's own folder (an address is nothing secret) is all there is to go by. The service is
+# asked only by an account with that marker: root (the watcher, every 15 minutes) and an account that never connected would start it.
 VAULT_SYNC="${XDG_CONFIG_HOME:-${HOME:-/nonexistent}/.config}/amethystora/vault-sync"
 SYNC_ADDRESS=""
-if [[ -x /usr/libexec/amethystora-vault-cli ]]; then
+if [[ ${EUID} -ne 0 && -s "${VAULT_SYNC}" && -x /usr/libexec/amethystora-vault-cli ]]; then
     SYNC_ADDRESS="$(timeout 5 /usr/libexec/amethystora-vault-cli sync status 2>/dev/null | awk -F'	' '$1=="connected"{c=$2} $1=="address"{a=$2} END{if(c=="yes")print a}' | tr -d '[:cntrl:]' | cut -c1-200)"
 fi
 if [[ -z "${SYNC_ADDRESS}" && -s "${VAULT_SYNC}" ]]; then
