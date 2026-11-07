@@ -227,6 +227,12 @@ impl State {
         });
     }
 
+    /// Whether a plugin that is on declared this action: one it did not is refused at the call, so that no program of the account can
+    /// fill a plugin's error with refusals until it is paused
+    fn declares(&self, id: &str, action: &str) -> bool {
+        valid_action(action) && self.plugins.borrow().get(id).and_then(|p| p["actions"].as_array()).is_some_and(|a| a.iter().any(|x| x.as_str() == Some(action)))
+    }
+
     /// Starts a plugin's timer: one run now, then one each interval while it stays on
     fn start(self: &Rc<Self>, id: &str) {
         // (below)
@@ -551,7 +557,7 @@ pub fn serve(env: Env) -> ExitCode {
             // Run is any program of the account's (`ame plugin run`, a script): it is no click, so it opens, copies and controls nothing
             if method == "Run" {
                 return match (id_arg(&params, 0), params.child_value(1).get::<String>()) {
-                    (Some(id), Some(action)) if (action.is_empty() || valid_action(&action)) && state.plugins.borrow().contains_key(&id) => {
+                    (Some(id), Some(action)) if (action.is_empty() || state.declares(&id, &action)) && state.plugins.borrow().contains_key(&id) => {
                         state.run_as(&id, (!action.is_empty()).then_some(action), false);
                         invocation.return_value(None)
                     }
@@ -590,7 +596,7 @@ pub fn serve(env: Env) -> ExitCode {
                         });
                         invocation.return_value(None);
                     }
-                    (Some(id), Some(action)) if valid_action(&action) && state.plugins.borrow().contains_key(&id) => {
+                    (Some(id), Some(action)) if state.declares(&id, &action) => {
                         state.run(&id, Some(action));
                         invocation.return_value(None);
                     }
