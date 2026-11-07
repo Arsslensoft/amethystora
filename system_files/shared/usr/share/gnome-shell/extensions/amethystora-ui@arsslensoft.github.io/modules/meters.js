@@ -545,7 +545,8 @@ export class Meters {
     }
 
     async _look() {
-        if (this._walking)
+        // The processes are listed in the processor's and the memory's menus: the network's alone open walks none of them
+        if (this._walking || !this._meters?.some(meter => meter !== this._network && meter.button.menu.isOpen))
             return;
         this._walking = true;
         const cancellable = this._cancellable;

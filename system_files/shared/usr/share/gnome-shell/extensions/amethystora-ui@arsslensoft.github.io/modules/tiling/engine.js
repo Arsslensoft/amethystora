@@ -1426,7 +1426,9 @@ export class Engine {
         const active = this.session ? this.session.strip === strip : focus === window;
         box.opacity = active ? 255 : INACTIVE;
         box.show();
-        if (box.get_parent() === actor.get_parent())
+        // Only when out of place: Clutter takes the box out and puts it back otherwise too, a relayout and a redraw of
+        // the window group on every frame of a glide
+        if (box.get_parent() === actor.get_parent() && box.get_next_sibling() !== actor)
             global.window_group.set_child_below_sibling(box, actor);
     }
 
@@ -1474,7 +1476,7 @@ export class Engine {
         for (const strip of this.strips()) {
             const actor = strip.selected?.get_compositor_private();
             const box = this._boxes.get(strip);
-            if (box && actor && box.get_parent() === actor.get_parent())
+            if (box && actor && box.get_parent() === actor.get_parent() && box.get_next_sibling() !== actor)
                 global.window_group.set_child_below_sibling(box, actor);
         }
     }

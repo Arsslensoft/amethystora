@@ -202,8 +202,11 @@ export class Glass {
     attach(actor, look, {classes = [], scheme = false} = {}) {
         let surface = this._surfaces.get(actor);
         if (surface) {
-            Object.assign(surface.look, look);
-            surface.effect?.update({});
+            // Drawn again only when the look changed: every focus change attaches every window's pane again
+            if (Object.keys(look).some(key => surface.look[key] !== look[key])) {
+                Object.assign(surface.look, look);
+                surface.effect?.update({});
+            }
             return surface.effect;
         }
         const widget = actor instanceof St.Widget;

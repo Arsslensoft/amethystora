@@ -80,7 +80,7 @@ export class WorkspaceBackgrounds {
             global.window_group.insert_child_at_index(this.layer, 0);
         // A restack lowers the windows under every other actor of their group: the pictures go back under them
         global.display.connectObject('restacked', () => {
-            if (group?.get_parent() === global.window_group)
+            if (group?.get_parent() === global.window_group && this.layer.get_previous_sibling() !== group)
                 global.window_group.set_child_above_sibling(this.layer, group);
         }, this);
         this._shown = new Map();

@@ -130,7 +130,12 @@ export class Swell {
             return Clutter.EVENT_PROPAGATE;
         this._dock.motionCount++;
         this._pointer = event.get_coords();
-        this._retarget();
+        // While the clock runs, the targets are worked out once at its next frame rather than at every motion (a mouse
+        // reports up to a thousand a second); at rest, at once, which starts the clock
+        if (this._running)
+            this._pointerMoved = true;
+        else
+            this._retarget();
         return Clutter.EVENT_PROPAGATE;
     }
 
@@ -345,6 +350,10 @@ export class Swell {
     }
 
     _frame() {
+        if (this._pointerMoved) {
+            this._pointerMoved = false;
+            this._retarget();
+        }
         const began = GLib.get_monotonic_time();
         const dt = Math.min(100, Math.max(0, (began - this._last) / 1000));
         this._last = began;

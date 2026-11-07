@@ -97,7 +97,9 @@ export class FlatpakUpdates {
         // since (when it was seen), locked (its lock was seen)}
         this._pulls = new Map();
         this._monitors = new Map();
-        this._watch(CACHE_PARENT, () => this._scanCaches(false));
+        // Only Flatpak's own cache folders: /var/tmp changes with whatever else runs (podman, systemd, builds), and each
+        // change read it whole on the shell's thread
+        this._watch(CACHE_PARENT, () => this._scanCaches(false), name => name.startsWith(CACHE_PREFIX));
         for (const repo of ['/var/lib/flatpak/repo', `${GLib.get_user_data_dir()}/flatpak/repo`])
             this._watch(`${repo}/tmp`, () => this._scanStaging(`${repo}/tmp`, false));
         // What is already there counts only if it is alive
@@ -140,7 +142,7 @@ export class FlatpakUpdates {
         return new Set([...this._pulls?.values() ?? []].map(pull => pull.app).filter(Boolean));
     }
 
-    _watch(path, changed) {
+    _watch(path, changed, wanted = null) {
         if (this._monitors.has(path))
             return;
         let monitor;
@@ -149,8 +151,8 @@ export class FlatpakUpdates {
         } catch {
             return;
         }
-        monitor.connect('changed', () => {
-            if (this._started)
+        monitor.connect('changed', (m, file, other) => {
+            if (this._started && (!wanted || [file, other].some(each => each && wanted(each.get_basename()))))
                 changed();
         });
         this._monitors.set(path, monitor);
