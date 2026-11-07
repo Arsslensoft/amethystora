@@ -69,7 +69,7 @@ const MOST_STEPS: u32 = 20;
 
 /// What a request of the person's changes, and so wants a run soon: the plugs that write items. The generic writes call `changed`
 /// themselves once they have written to the first vault.
-const CHANGING_PLUGS: &[&str] = &["auth-add", "auth-update", "auth-code", "codes-add", "codes-used", "codes-update", "import-merge", "key-new", "key-import", "cert-new", "cert-renew"];
+const CHANGING_PLUGS: &[&str] = &["auth-add", "auth-update", "codes-add", "codes-used", "codes-update", "import-merge", "key-new", "key-import", "cert-new", "cert-renew"];
 
 /// Whether a plug of this request writes items that sync, and when nothing but the first vault is open to write them to. With a
 /// hidden vault open as well the plug may be writing there, and the run would be a timing the plan forbids; the next interval
