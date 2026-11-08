@@ -13,7 +13,7 @@ use std::time::Duration;
 
 use amethystora_ui::adw::prelude::*;
 use amethystora_ui::app::{self, App, Shell, Spec};
-use amethystora_ui::{gdk, gio, glib, gtk, t};
+use amethystora_ui::{gdk, gio, glib, gtk, process, t};
 
 use backend::{Entry, Events, Found, Inventory, Label, Network, Permissions, Report, Scanner, Signatures, Switches};
 
@@ -144,8 +144,6 @@ pub struct Security {
     opened: Cell<bool>,
     /// How many columns the grids have: three, then two and one in a narrow window
     columns: Cell<i32>,
-    /// A change was just launched (in a terminal): the next focus reloads even if the last read is recent
-    pending_reload: Cell<bool>,
 }
 
 impl App for Security {
@@ -166,11 +164,10 @@ impl App for Security {
         }
     }
 
-    /// Back from a terminal where something may have been fixed: the page checks again if a change was
-    /// just launched from here, or if the report is old
+    /// Back from a terminal where something may have been fixed: the page checks again if the report is old
     fn focus(&self) {
-        let stale = self.state.borrow().report.as_ref().is_some_and(|report| backend::now() - report.checked > 15.0);
-        if self.pending_reload.replace(false) || stale {
+        let old = self.state.borrow().report.as_ref().is_some_and(|report| backend::now() - report.checked > 15.0);
+        if old {
             let this = self.rc();
             glib::spawn_future_local(async move { this.reload().await });
         }
@@ -199,7 +196,6 @@ impl Security {
             machine_bus: RefCell::new(None),
             opened: Cell::new(false),
             columns: Cell::new(3),
-            pending_reload: Cell::new(false),
         });
         this.history.replace(backend::load_history(&this.home));
         shell.window.set_title(Some(&t!("Amethystora Security")));
@@ -755,11 +751,19 @@ impl Security {
         self.watch_machine();
     }
 
-    /// Launch a switch or profile change in a terminal, and remember that the page must reload when
-    /// focus returns — even if the last read was only moments ago, so the UI updates instantly
+    /// Launch a switch or profile change in a terminal, and reload the page the moment the command
+    /// finishes, so the UI reflects the new state at once rather than only on the next focus
     pub(crate) fn change(&self, kind: backend::Kind, key: &str, value: &str, argument: &str) {
-        self.pending_reload.set(true);
-        backend::change(self.state.borrow().switches.as_ref(), kind, key, value, argument);
+        let Some(command) = backend::change_command(self.state.borrow().switches.as_ref(), kind, key, value, argument) else {
+            return;
+        };
+        let args: Vec<&str> = command.iter().map(String::as_str).collect();
+        let weak = self.me.clone();
+        process::in_terminal_then(&args, move || {
+            if let Some(this) = weak.upgrade() {
+                glib::spawn_future_local(async move { this.reload().await });
+            }
+        });
     }
 
     /// Everything read again, once at a time

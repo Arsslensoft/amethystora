@@ -581,13 +581,6 @@ pub fn change_command(switches: Option<&Switches>, kind: Kind, key: &str, value:
     }
 }
 
-pub fn change(switches: Option<&Switches>, kind: Kind, key: &str, value: &str, argument: &str) {
-    if let Some(command) = change_command(switches, kind, key, value, argument) {
-        let args: Vec<&str> = command.iter().map(String::as_str).collect();
-        process::in_terminal(&args);
-    }
-}
-
 /// The steps of `ame security duress` a button starts, by the recipe's own names for them
 pub const DURESS_STEPS: [&str; 8] = ["setup", "test", "action-fingerprint", "remove", "setup-password", "action-password", "remove-password", "off"];
 
