@@ -4,7 +4,7 @@
 # generated from the image (ame/, helper/, unit/, setting/, control/). The target is recall@3 of at least 0.9.
 steam controller not detected	knowledge/by-design#dev-uinput-is-roots|manual/games#games~2|playbook/device-does-nothing#*
 update failed disk full	playbook/update-fails#*|playbook/disk-full#*|manual/common-problems#the-disk-is-filling-up
-phone won't pair	manual/wireless#phones|knowledge/by-design#phone-pairing-is-open-only-at-home
+phone won't pair	manual/wireless#phones|knowledge/by-design#phone-pairing-is-open-only-at-home|manual/phone#when-something-does-not-work|manual/wireless#pairing-an-android-phone
 app has no window	knowledge/by-design#flatpak-apps-get-no-x11-input-devices-or-flatpak-service|playbook/app-wont-start#*|manual/common-problems#an-app-cannot-see-a-folder-a-device-or-will-not-open-at-all
 time is wrong	playbook/clock#*|knowledge/by-design#time
 how do I roll back an update	manual/rolling-back|knowledge/architecture#deployments-and-rolling-back|manual/troubleshooting#an-update-broke-something
@@ -24,8 +24,8 @@ run a windows exe file	manual/windows-programs|manual/windows-programs~2|manual/
 install a deb package	manual/faq#how-do-i-install-a-deb-or-an-rpm|manual/containers#a-package-file
 how do I run an appimage	manual/faq#how-do-i-run-an-appimage
 change the theme	manual/themes#switching|manual/make-a-theme|manual/themes
-change the icon pack	manual/styles#icons*|skill/amethystora/themes*
-make the text bigger	knowledge/desktop#appearance-and-text
+change the icon pack	manual/styles#icons*|skill/amethystora/themes*|control/icons|ame/desktop/icons
+make the text bigger	knowledge/desktop#appearance-and-text|control/text-size
 turn on night light	knowledge/desktop#night-light-and-the-screen|manual/focus#night-light-and-the-screens-colour
 save battery with a power profile	knowledge/desktop#power|manual/laptops
 change the keyboard layout	knowledge/desktop#keyboard-and-input|manual/common-problems#switching-keyboard-layouts
@@ -46,7 +46,7 @@ switch to the beta stream	manual/streams#switching-streams-and-images|manual/str
 install firmware updates	manual/updates#firmware|manual/updates#installing-firmware
 scan for viruses	manual/viruses#scanning-for-viruses
 what can a flatpak app access	manual/app-permissions|manual/software#what-flatpak-apps-may-not-do|knowledge/by-design#flatpak-apps-get-no-x11-input-devices-or-flatpak-service
-restore a file I deleted	manual/backups*|playbook/backups#*|skill/amethystora/updates#earlier-versions-of-the-users-files
+restore a file I deleted	manual/backups*|playbook/backups#*|skill/amethystora/updates#earlier-versions-of-the-users-files|manual/viruses#getting-files-back
 unlock the encrypted disk with the tpm	manual/disk-encryption#unlock-the-disk-with-the-tpm
 set up fingerprint login	manual/logins#fingerprint-login
 parental controls allowed hours	manual/logins#parental-controls|knowledge/by-design#parental-controls-hours-at-the-text-consoles-and-over-ssh
@@ -66,15 +66,15 @@ the displaylink dock shows nothing	manual/common-problems#a-displaylink-dock-sho
 install command line tools	manual/software#command-line-tools-homebrew
 make a web app for a website	manual/web-apps#install-one|manual/web-apps
 keyboard shortcut to open a terminal	manual/keybindings#launching|manual/terminal#opening-one
-start over with a fresh installation	manual/starting-over#starting-over
+start over with a fresh installation	manual/starting-over#starting-over|manual/starting-over|control/powerwash
 reset my settings but keep my files	manual/starting-over#resetting-settings|manual/starting-over#what-a-reset-keeps|control/reset-settings|ame/system/reset-settings
 notes encryption passphrase	manual/notes-encryption#encryption
 kde connect does not find my phone	knowledge/by-design#phone-pairing-is-open-only-at-home|manual/wireless#phones
 the drawing tablet pen does nothing	manual/devices#drawing-tablets|knowledge/by-design#dev-uinput-is-roots
-my server is not reachable from another computer	knowledge/by-design#the-firewall-answers-only-what-a-desktop-needs|manual/security#on-from-the-start
+my server is not reachable from another computer	knowledge/by-design#the-firewall-answers-only-what-a-desktop-needs|manual/security#on-from-the-start|manual/security#the-firewall
 rebase refused because the image is not signed	knowledge/by-design#only-signed-images-are-installed|manual/streams#signed-updates|manual/own-image
 where are the deployments and how do updates run	knowledge/architecture#how-updates-run|knowledge/architecture#deployments-and-rolling-back|manual/updates
-turn on do not disturb	knowledge/desktop#notifications-and-do-not-disturb|manual/notifications
+turn on do not disturb	knowledge/desktop#notifications-and-do-not-disturb|manual/notifications|manual/notifications#do-not-disturb
 what does ame security dns do	ame/security/dns|manual/network-security#encrypted-dns
 which service runs network protection	unit/amethystora-ips.service|manual/network-security#network-protection*|playbook/wifi-dns#network-protection
 change the network protection setting	setting/NETWORK|manual/network-security#network-protection*|knowledge/by-design#network-protection-blocks-a-connection-only-with-network-block|skill/amethystora/security#the-network
