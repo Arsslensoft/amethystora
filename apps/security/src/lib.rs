@@ -144,8 +144,8 @@ pub struct Security {
     opened: Cell<bool>,
     /// How many columns the grids have: three, then two and one in a narrow window
     columns: Cell<i32>,
-    /// Fallback for when terminal-completion monitoring is unavailable: a change was launched, so the
-    /// next focus reloads. Cleared only when a reload completes, never by focus itself.
+    /// Fallback for when terminal-completion monitoring is unavailable: a change was launched, so every
+    /// focus reloads until the completion callback fires and clears it (focus never consumes it).
     pending_reload: Cell<bool>,
     /// A reload was asked for while one was already running: run another afterwards, so a change always
     /// gets a read that lands after it completed
@@ -773,6 +773,7 @@ impl Security {
         let weak = self.me.clone();
         process::in_terminal_then(&args, move || {
             if let Some(this) = weak.upgrade() {
+                this.pending_reload.set(false);
                 glib::spawn_future_local(async move { this.reload().await });
             }
         });
@@ -819,7 +820,6 @@ impl Security {
             if machine_running {
                 self.watch_machine();
             }
-            self.pending_reload.set(false);
             self.render();
             if !self.reload_again.get() {
                 break;
