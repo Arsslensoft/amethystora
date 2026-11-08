@@ -186,14 +186,15 @@ grep -qx "Exec=/usr/libexec/amethystora-terminal-here" /usr/share/dbus-1/service
 grep -qx "terminal='kitty'" /usr/share/glib-2.0/schemas/zz0-amethystora-modifications.gschema.override
 # The image's kitty.conf loads, and takes the theme's colours from the account's own folder
 grep -q "^include ~/.config/amethystora/current/theme/kitty-theme.conf$" /etc/xdg/kitty/kitty.conf
+# (kitty's Python runs with -OO, which drops every assert: a check here raises SystemExit)
 kitty +runpy '
 from kitty.cli import create_default_opts
 o = create_default_opts()
-assert o.font_size == 11.0 and o.update_check_interval == 0, (o.font_size, o.update_check_interval)
+if not (o.font_size == 11.0 and o.update_check_interval == 0): raise SystemExit((o.font_size, o.update_check_interval))
 # ...splits and new windows start in the folder in front, and a link shows its target (terminal.md)
-assert o.enabled_layouts[0] == "splits" and o.show_hyperlink_targets == "always", (o.enabled_layouts, o.show_hyperlink_targets)
+if not (o.enabled_layouts[0] == "splits" and o.show_hyperlink_targets == "always"): raise SystemExit((o.enabled_layouts, o.show_hyperlink_targets))
 maps = {x.definition for v in o.keyboard_modes[""].keymap.values() for x in v}
-assert {"launch --cwd=current --location=split", "new_tab_with_cwd"} <= maps, maps'
+if not {"launch --cwd=current --location=split", "new_tab_with_cwd"} <= maps: raise SystemExit(maps)'
 
 # Time and the terminal (plans/ui-ideas/spec-time.md). kitty says when a long command ends while its window is behind
 # (its own setting), and reads the options `ame desktop` writes for the account last, which user-setup makes for
@@ -201,7 +202,7 @@ assert {"launch --cwd=current --location=split", "new_tab_with_cwd"} <= maps, ma
 kitty +runpy '
 from kitty.cli import create_default_opts
 n = create_default_opts().notify_on_cmd_finish
-assert (n.when, n.duration, n.action) == ("unfocused", 10.0, "notify"), n'
+if (n.when, n.duration, n.action) != ("unfocused", 10.0, "notify"): raise SystemExit(n)'
 [[ "$(grep -v '^#' /etc/xdg/kitty/kitty.conf | grep -v '^$' | tail -n1)" == "include ~/.config/amethystora/kitty.conf" ]]
 test -x /usr/share/amethystora/user-setup.hooks.d/28-kitty-options.sh
 # ...the search's time and reminder answers and the pill's meetings, whose link the helper reads from Evolution Data

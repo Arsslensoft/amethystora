@@ -89,7 +89,7 @@ import os
 from kitty.config import load_config
 bad = []
 load_config(os.environ["KITTY_THEME"], accumulate_bad_lines=bad)
-assert not bad, bad' || fail "${slug}: kitty does not accept its theme"
+if bad: raise SystemExit(bad)' || fail "${slug}: kitty does not accept its theme"
     fi
 done
 # A value is text: & is not the matched pattern, \ is not an escape
