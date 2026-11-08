@@ -145,8 +145,11 @@ pub struct Security {
     /// How many columns the grids have: three, then two and one in a narrow window
     columns: Cell<i32>,
     /// Fallback for when terminal-completion monitoring is unavailable: a change was launched, so the
-    /// next focus reloads without waiting out the 15s window
+    /// next focus reloads. Cleared only when a reload completes, never by focus itself.
     pending_reload: Cell<bool>,
+    /// A reload was asked for while one was already running: run another afterwards, so a change always
+    /// gets a read that lands after it completed
+    reload_again: Cell<bool>,
 }
 
 impl App for Security {
@@ -171,7 +174,7 @@ impl App for Security {
     /// unreflected (the completion-callback fallback), or if the report is old
     fn focus(&self) {
         let old = self.state.borrow().report.as_ref().is_some_and(|report| backend::now() - report.checked > 15.0);
-        if self.pending_reload.replace(false) || old {
+        if self.pending_reload.get() || old {
             let this = self.rc();
             glib::spawn_future_local(async move { this.reload().await });
         }
@@ -201,6 +204,7 @@ impl Security {
             opened: Cell::new(false),
             columns: Cell::new(3),
             pending_reload: Cell::new(false),
+            reload_again: Cell::new(false),
         });
         this.history.replace(backend::load_history(&this.home));
         shell.window.set_title(Some(&t!("Amethystora Security")));
@@ -769,51 +773,59 @@ impl Security {
         let weak = self.me.clone();
         process::in_terminal_then(&args, move || {
             if let Some(this) = weak.upgrade() {
-                this.pending_reload.set(false);
                 glib::spawn_future_local(async move { this.reload().await });
             }
         });
     }
 
-    /// Everything read again, once at a time
+    /// Everything read again, once at a time. A reload requested while one is running is queued (via
+    /// reload_again) and run afterwards, so a change always gets a read that lands after it completed.
     pub(crate) async fn reload(&self) {
         if self.reloading.replace(true) {
+            self.reload_again.set(true);
             return;
         }
-        let report = glib::spawn_future_local(backend::report());
-        let scanner = glib::spawn_future_local(backend::scanner());
-        let network = glib::spawn_future_local(backend::network());
-        let inventory = glib::spawn_future_local(backend::inventory());
-        let permissions = glib::spawn_future_local(backend::permissions());
-        let switches = glib::spawn_future_local(backend::switches());
-        let events = glib::spawn_future_local(backend::events());
-        let report = report.await.unwrap_or_default();
-        let scanner = scanner.await.unwrap_or_default();
-        let network = network.await.unwrap_or_default();
-        let inventory = inventory.await.unwrap_or_default();
-        let permissions = permissions.await.unwrap_or_default();
-        let switches = switches.await.unwrap_or_default();
-        let events = events.await.unwrap_or_default();
-        self.permissions.replace(permissions.apps.clone());
-        let machine_running = scanner.machine.running;
-        {
-            let mut state = self.state.borrow_mut();
-            state.report = Some(report);
-            state.scanner = Some(scanner);
-            state.network = Some(network);
-            state.inventory = Some(inventory);
-            state.permissions = Some(permissions);
-            state.switches = Some(switches);
-            state.events = Some(events);
-            if let Some(progress) = self.progress() {
-                state.running = Some(progress);
+        loop {
+            self.reload_again.set(false);
+            let report = glib::spawn_future_local(backend::report());
+            let scanner = glib::spawn_future_local(backend::scanner());
+            let network = glib::spawn_future_local(backend::network());
+            let inventory = glib::spawn_future_local(backend::inventory());
+            let permissions = glib::spawn_future_local(backend::permissions());
+            let switches = glib::spawn_future_local(backend::switches());
+            let events = glib::spawn_future_local(backend::events());
+            let report = report.await.unwrap_or_default();
+            let scanner = scanner.await.unwrap_or_default();
+            let network = network.await.unwrap_or_default();
+            let inventory = inventory.await.unwrap_or_default();
+            let permissions = permissions.await.unwrap_or_default();
+            let switches = switches.await.unwrap_or_default();
+            let events = events.await.unwrap_or_default();
+            self.permissions.replace(permissions.apps.clone());
+            let machine_running = scanner.machine.running;
+            {
+                let mut state = self.state.borrow_mut();
+                state.report = Some(report);
+                state.scanner = Some(scanner);
+                state.network = Some(network);
+                state.inventory = Some(inventory);
+                state.permissions = Some(permissions);
+                state.switches = Some(switches);
+                state.events = Some(events);
+                if let Some(progress) = self.progress() {
+                    state.running = Some(progress);
+                }
+            }
+            if machine_running {
+                self.watch_machine();
+            }
+            self.pending_reload.set(false);
+            self.render();
+            if !self.reload_again.get() {
+                break;
             }
         }
-        if machine_running {
-            self.watch_machine();
-        }
         self.reloading.set(false);
-        self.render();
     }
 
     /// The permissions list read again after a change, for both the page and what acts on it
