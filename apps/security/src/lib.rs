@@ -144,6 +144,8 @@ pub struct Security {
     opened: Cell<bool>,
     /// How many columns the grids have: three, then two and one in a narrow window
     columns: Cell<i32>,
+    /// A change was just launched (in a terminal): the next focus reloads even if the last read is recent
+    pending_reload: Cell<bool>,
 }
 
 impl App for Security {
@@ -164,10 +166,11 @@ impl App for Security {
         }
     }
 
-    /// Back from a terminal where something may have been fixed: the page checks again if the report is old
+    /// Back from a terminal where something may have been fixed: the page checks again if a change was
+    /// just launched from here, or if the report is old
     fn focus(&self) {
-        let old = self.state.borrow().report.as_ref().is_some_and(|report| backend::now() - report.checked > 15.0);
-        if old {
+        let stale = self.state.borrow().report.as_ref().is_some_and(|report| backend::now() - report.checked > 15.0);
+        if self.pending_reload.replace(false) || stale {
             let this = self.rc();
             glib::spawn_future_local(async move { this.reload().await });
         }
@@ -196,6 +199,7 @@ impl Security {
             machine_bus: RefCell::new(None),
             opened: Cell::new(false),
             columns: Cell::new(3),
+            pending_reload: Cell::new(false),
         });
         this.history.replace(backend::load_history(&this.home));
         shell.window.set_title(Some(&t!("Amethystora Security")));
@@ -749,6 +753,13 @@ impl Security {
         }
         self.show("scanning", None);
         self.watch_machine();
+    }
+
+    /// Launch a switch or profile change in a terminal, and remember that the page must reload when
+    /// focus returns — even if the last read was only moments ago, so the UI updates instantly
+    pub(crate) fn change(&self, kind: backend::Kind, key: &str, value: &str, argument: &str) {
+        self.pending_reload.set(true);
+        backend::change(self.state.borrow().switches.as_ref(), kind, key, value, argument);
     }
 
     /// Everything read again, once at a time

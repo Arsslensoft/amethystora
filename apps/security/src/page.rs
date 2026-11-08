@@ -1508,7 +1508,7 @@ impl Security {
         children.extend(self.notice_widget());
         if off {
             let turn = self.button(&t!("Turn it on…"), Opts { icon: Some("terminal"), primary: true, ..Default::default() }, |this| {
-                backend::change(this.state.borrow().switches.as_ref(), Kind::Setting, "VIRUS_SCAN", "", "")
+                this.change(Kind::Setting, "VIRUS_SCAN", "", "")
             });
             children.push(
                 callout(
@@ -2846,7 +2846,7 @@ impl Security {
         let values: Vec<(String, String)> = entry.allowed.iter().map(|value| (value.clone(), value_words(value))).collect();
         let key = entry.key.clone();
         let group = self.segmented(&entry.title, &values, &entry.value, move |this, value| {
-            backend::change(this.state.borrow().switches.as_ref(), Kind::Setting, &key, value, "")
+            this.change(Kind::Setting, &key, value, "")
         });
         group.set_valign(gtk::Align::Start);
         row.append(&group);
@@ -2872,7 +2872,7 @@ impl Security {
             if !entry.fixed {
                 let (name, argument) = (entry.name.clone(), item.argument.clone());
                 let link = self.link_button(&if item_on { t!("Turn off…") } else { t!("Turn on…") }, None, false, true, move |this| {
-                    backend::change(this.state.borrow().switches.as_ref(), Kind::Hardening, &name, if item_on { "off" } else { "on" }, &argument)
+                    this.change(Kind::Hardening, &name, if item_on { "off" } else { "on" }, &argument)
                 });
                 link.set_valign(gtk::Align::Center);
                 line.append(&link);
@@ -2884,7 +2884,7 @@ impl Security {
             let values: Vec<(String, String)> = levels.iter().map(|value| (value.clone(), value_words(value))).collect();
             let name = entry.name.clone();
             let group = self.segmented(&entry.title, &values, &entry.level, move |this, value| {
-                backend::change(this.state.borrow().switches.as_ref(), Kind::Hardening, &name, value, "")
+                this.change(Kind::Hardening, &name, value, "")
             });
             group.set_valign(gtk::Align::Start);
             row.append(&group);
@@ -2894,7 +2894,7 @@ impl Security {
             side.append(&pill(&if on { t!("On") } else { t!("Off") }, if on { "ok" } else { "" }, false, false));
             let name = entry.name.clone();
             let button = self.button(&if on { t!("Turn off…") } else { t!("Turn on…") }, Opts { small: true, ..Default::default() }, move |this| {
-                backend::change(this.state.borrow().switches.as_ref(), Kind::Hardening, &name, if on { "off" } else { "on" }, "")
+                this.change(Kind::Hardening, &name, if on { "off" } else { "on" }, "")
             });
             button.set_valign(gtk::Align::Center);
             side.append(&button);
@@ -2981,13 +2981,13 @@ impl Security {
         let profile = switches.as_ref().map(|s| s.profile.clone()).filter(|p| !p.is_empty()).unwrap_or_else(|| "custom".into());
         let profiles: Vec<(String, String)> = vec![("light".into(), t!("Light")), ("balanced".into(), t!("Balanced")), ("thorough".into(), t!("Thorough"))];
         let choose = self.segmented(&t!("Profile"), &profiles, &profile, |this, name| {
-            backend::change(this.state.borrow().switches.as_ref(), Kind::Profile, name, "", "")
+            this.change(Kind::Profile, name, "", "")
         });
         let off = self.button(&t!("Turn everything off…"), Opts { icon: Some("terminal"), disabled: profile == "off", ..Default::default() }, |this| {
-            backend::change(this.state.borrow().switches.as_ref(), Kind::Profile, "off", "", "")
+            this.change(Kind::Profile, "off", "", "")
         });
         let defaults = self.button(&t!("Back to the defaults…"), Opts { icon: Some("terminal"), disabled: profile == "default", ..Default::default() }, |this| {
-            backend::change(this.state.borrow().switches.as_ref(), Kind::Profile, "default", "", "")
+            this.change(Kind::Profile, "default", "", "")
         });
         let mut children: Vec<gtk::Widget> = vec![
             page_head(
