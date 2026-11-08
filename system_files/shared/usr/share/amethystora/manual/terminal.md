@@ -26,6 +26,17 @@ your name and machine, the folder, and in a git repository its branch, each on a
 colours, then the command on a line of its own. The arrows and icons are Nerd Fonts symbols, which kitty
 carries and Ptyxis finds among the image's fonts.
 
+### Splits, search and picking
+
+A new window, tab or split opens in the folder you are in. `Ctrl+Shift+Return` splits the window in front
+along its longer side, `Ctrl+Shift+]` and `Ctrl+Shift+[` move between the splits, and `Ctrl+Shift+L` shows one
+at a time and back. A tab whose window printed something while it was behind carries a ●. Pointing at a link
+shows where it really goes.
+
+`Ctrl+Shift+/` searches what scrolled past, `Ctrl+Shift+G` shows the last command's output alone,
+`Ctrl+Shift+E` picks a link to open with the keyboard, `Ctrl+Shift+P` then `F` a path to type, and
+`Ctrl+Shift+U` a character by its name. `Ctrl+Shift+F3` lists every action and its keys.
+
 ## The greeting
 
 The first terminal you open in a session says hello with the Amethystora logo, a summary of the machine,

@@ -189,7 +189,11 @@ grep -q "^include ~/.config/amethystora/current/theme/kitty-theme.conf$" /etc/xd
 kitty +runpy '
 from kitty.cli import create_default_opts
 o = create_default_opts()
-assert o.font_size == 11.0 and o.update_check_interval == 0, (o.font_size, o.update_check_interval)'
+assert o.font_size == 11.0 and o.update_check_interval == 0, (o.font_size, o.update_check_interval)
+# ...splits and new windows start in the folder in front, and a link shows its target (terminal.md)
+assert o.enabled_layouts[0] == "splits" and o.show_hyperlink_targets == "always", (o.enabled_layouts, o.show_hyperlink_targets)
+maps = {x.definition for v in o.keyboard_modes[""].keymap.values() for x in v}
+assert {"launch --cwd=current --location=split", "new_tab_with_cwd"} <= maps, maps'
 
 # Time and the terminal (plans/ui-ideas/spec-time.md). kitty says when a long command ends while its window is behind
 # (its own setting), and reads the options `ame desktop` writes for the account last, which user-setup makes for
