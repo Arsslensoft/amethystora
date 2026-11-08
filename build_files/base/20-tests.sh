@@ -191,10 +191,13 @@ kitty +runpy '
 from kitty.cli import create_default_opts
 o = create_default_opts()
 if not (o.font_size == 11.0 and o.update_check_interval == 0): raise SystemExit((o.font_size, o.update_check_interval))
-# ...splits and new windows start in the folder in front, and a link shows its target (terminal.md)
+# ...splits and new windows start in the folder in front, a link shows its target, and the character picker has a key
+# IBus does not take first (Ctrl+Shift+I: terminal.md)
 if not (o.enabled_layouts[0] == "splits" and o.show_hyperlink_targets == "always"): raise SystemExit((o.enabled_layouts, o.show_hyperlink_targets))
 maps = {x.definition for v in o.keyboard_modes[""].keymap.values() for x in v}
-if not {"launch --cwd=current --location=split", "new_tab_with_cwd"} <= maps: raise SystemExit(maps)'
+if not {"launch --cwd=current --location=split", "new_tab_with_cwd"} <= maps: raise SystemExit(maps)
+keys = o.keyboard_modes[""].keymap
+if not any(k.key == ord("i") and k.mods == 5 and "unicode_input" in x.definition for k, v in keys.items() for x in v): raise SystemExit("Ctrl+Shift+I")'
 
 # Time and the terminal (plans/ui-ideas/spec-time.md). kitty says when a long command ends while its window is behind
 # (its own setting), and reads the options `ame desktop` writes for the account last, which user-setup makes for

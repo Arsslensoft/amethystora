@@ -35,7 +35,8 @@ shows where it really goes.
 
 `Ctrl+Shift+/` searches what scrolled past, `Ctrl+Shift+G` shows the last command's output alone,
 `Ctrl+Shift+E` picks a link to open with the keyboard, `Ctrl+Shift+P` then `F` a path to type, and
-`Ctrl+Shift+U` a character by its name. `Ctrl+Shift+F3` lists every action and its keys.
+`Ctrl+Shift+I` a character by its code, or by its name after `F2`; `Ctrl+Shift+U` then a code types one, as in
+every app. `Ctrl+Shift+F3` lists every action and its keys.
 
 ## The greeting
 
