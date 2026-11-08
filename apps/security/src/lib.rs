@@ -144,6 +144,9 @@ pub struct Security {
     opened: Cell<bool>,
     /// How many columns the grids have: three, then two and one in a narrow window
     columns: Cell<i32>,
+    /// Fallback for when terminal-completion monitoring is unavailable: a change was launched, so the
+    /// next focus reloads without waiting out the 15s window
+    pending_reload: Cell<bool>,
 }
 
 impl App for Security {
@@ -164,10 +167,11 @@ impl App for Security {
         }
     }
 
-    /// Back from a terminal where something may have been fixed: the page checks again if the report is old
+    /// Back from a terminal where something may have been fixed: reload if a change launched here is still
+    /// unreflected (the completion-callback fallback), or if the report is old
     fn focus(&self) {
         let old = self.state.borrow().report.as_ref().is_some_and(|report| backend::now() - report.checked > 15.0);
-        if old {
+        if self.pending_reload.replace(false) || old {
             let this = self.rc();
             glib::spawn_future_local(async move { this.reload().await });
         }
@@ -196,6 +200,7 @@ impl Security {
             machine_bus: RefCell::new(None),
             opened: Cell::new(false),
             columns: Cell::new(3),
+            pending_reload: Cell::new(false),
         });
         this.history.replace(backend::load_history(&this.home));
         shell.window.set_title(Some(&t!("Amethystora Security")));
@@ -758,9 +763,13 @@ impl Security {
             return;
         };
         let args: Vec<&str> = command.iter().map(String::as_str).collect();
+        // Primary: reload the instant the command finishes. Fallback (if terminal-completion monitoring is
+        // unavailable, when in_terminal_then never calls back): the next focus reloads, via pending_reload.
+        self.pending_reload.set(true);
         let weak = self.me.clone();
         process::in_terminal_then(&args, move || {
             if let Some(this) = weak.upgrade() {
+                this.pending_reload.set(false);
                 glib::spawn_future_local(async move { this.reload().await });
             }
         });
