@@ -123,6 +123,23 @@ systemctl disable uupd.timer flatpak-preinstall.service fwupd-refresh.timer amet
 systemctl --global disable amethystora-pkg-upgrade.timer amethystora-update-alert.service \
     amethystora-security-alert.service
 
+# An installation takes long enough for GNOME to lock the screen and suspend the machine, and livesys
+# no longer stops either. Waking a live system from a USB stick can lose the stick, and the session
+# with the installer in it (issue #6), so the live session never locks or suspends by itself. It
+# still blanks: that ends nothing. Sorted after the image's own zz0 and zz1, which set none of these.
+cat >/usr/share/glib-2.0/schemas/zz9-amethystora-live.gschema.override <<'EOF'
+[org.gnome.desktop.screensaver]
+lock-enabled=false
+
+[org.gnome.desktop.lockdown]
+disable-lock-screen=true
+
+[org.gnome.settings-daemon.plugins.power]
+sleep-inactive-ac-type='nothing'
+sleep-inactive-battery-type='nothing'
+EOF
+glib-compile-schemas /usr/share/glib-2.0/schemas
+
 # What Titanoboa makes the ISO from (the container-native ISO contract): its label and boot menu, every
 # entry of which carries the image's kernel arguments from kargs.d, which a live boot does not read
 install -Dpm0644 "${LIVE}/iso.yaml" /usr/lib/bootc-image-builder/iso.yaml
