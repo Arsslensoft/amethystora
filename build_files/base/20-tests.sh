@@ -1977,7 +1977,7 @@ jq -e '.modules.distrobox.disable == true' /etc/uupd/config.json >/dev/null
 # importing reads their file format; the agent's index leaves that sentence out. The embedding model under
 # agents/knowledge/model is a third party's vocabulary, not text of Amethystora's, and is left out of the search.
 PKG_NAMES='\b(vanilla[ -]?os|apx|vso|sideload)\b'
-grep -rliE --exclude-dir=model "${PKG_NAMES}" /usr/bin/amethystora-pkg /usr/share/amethystora/pkg /usr/share/bash-completion/completions/amepkg \
+grep -rliIE --exclude-dir=model "${PKG_NAMES}" /usr/bin/amethystora-pkg /usr/share/amethystora/pkg /usr/share/bash-completion/completions/amepkg \
     /usr/share/bash-completion/completions/amethystora-pkg /usr/share/fish/vendor_completions.d/amepkg.fish \
     /usr/share/fish/vendor_completions.d/amethystora-pkg.fish /usr/share/zsh/site-functions/_amethystora-pkg "${PKG_DESKTOP}" \
     /usr/lib/systemd/user/amethystora-pkg-upgrade.service /usr/lib/systemd/user/amethystora-pkg-upgrade.timer \
@@ -1986,7 +1986,7 @@ grep -rliE --exclude-dir=model "${PKG_NAMES}" /usr/bin/amethystora-pkg /usr/shar
     /usr/share/amethystora/user-setup.hooks.d && false
 # A translation of that page (manual/<language>/containers.md) may say the same, once, in its language.
 SOFTWARE_PAGES='^/usr/share/amethystora/manual/([a-z]{2,3}(-[A-Za-z0-9]{2,8})*/)?containers\.md$'
-[[ -z "$(grep -rliE "${PKG_NAMES}" /usr/share/amethystora/manual | grep -vE "${SOFTWARE_PAGES}")" ]]
+[[ -z "$(grep -rliIE "${PKG_NAMES}" /usr/share/amethystora/manual | grep -vE "${SOFTWARE_PAGES}")" ]]
 for page in /usr/share/amethystora/manual/containers.md /usr/share/amethystora/manual/*/containers.md; do
     [[ -e "${page}" ]] || continue
     [[ "$(grep -ciE "${PKG_NAMES}" "${page}")" -le 1 ]]
