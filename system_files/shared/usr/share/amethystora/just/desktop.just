@@ -1781,7 +1781,7 @@ command-done ACTION="":
     mkdir -p "$(dirname "${FILE}")"
     kept=""
     [[ -f "${FILE}" ]] && kept="$(grep -vx "${LINE}" "${FILE}" || true)"
-    [[ -n "${kept}" ]] || kept="# Written by `ame desktop command-done`. Your own settings go in ~/.config/kitty/kitty.conf."
+    [[ -n "${kept}" ]] || kept='# Written by `ame desktop command-done`. Your own settings go in ~/.config/kitty/kitty.conf.'
     if [[ "$1" == off ]]; then
         printf '%s\n%s\n' "${kept}" "${LINE}" >"${FILE}.new"
     else
