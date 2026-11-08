@@ -14,7 +14,7 @@
 // CARDS_BROWSER names the browser (Chromium's headless_shell, chromium, google-chrome or Edge are looked for), and
 // FFMPEG the ffmpeg to use (an ffmpeg with libvpx-vp9: Fedora's ffmpeg-free has it).
 import {spawn, spawnSync} from 'node:child_process';
-import {copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync} from 'node:fs';
+import {copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {dirname, join} from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
@@ -27,17 +27,16 @@ const SIZE = {width: 150, height: 112, scale: 2};
 const CLIP_MOST = 300 * 1024;
 const POSTER_MOST = 40 * 1024;
 
-// Each card: its loop in seconds, which every animation of its page runs once, and where in it its poster is
-const CARDS = [
-    {id: 'shake-to-find', loop: 3.0, poster: 0.55},
-    {id: 'pinch-apps', loop: 2.6, poster: 0.75},
-    {id: 'super-space', loop: 2.8, poster: 0.5},
-    {id: 'hold-super', loop: 3.0, poster: 0.6},
-    {id: 'super-tab', loop: 2.8, poster: 0.7},
-    {id: 'snap-layouts', loop: 3.0, poster: 0.45},
-    {id: 'spread-desktop', loop: 2.6, poster: 0.7},
-    {id: 'four-left-today', loop: 2.6, poster: 0.4},
-];
+// Each card is branding/cards/<id>.html: its .art sets --loop, the seconds every animation of the page runs once in,
+// and --poster, where in the loop (0 to 1) its poster is
+const CARDS = readdirSync(PAGES).filter(name => name.endsWith('.html')).sort().map(name => {
+    const text = readFileSync(join(PAGES, name), 'utf8');
+    const loop = /--loop:\s*([\d.]+)s/.exec(text);
+    const poster = /--poster:\s*([\d.]+)/.exec(text);
+    if (!loop || !poster)
+        fail(`${name}: .art sets no --loop or no --poster`);
+    return {id: name.slice(0, -'.html'.length), loop: parseFloat(loop[1]), poster: parseFloat(poster[1])};
+});
 
 const BROWSERS = [
     process.env.CARDS_BROWSER,
@@ -194,8 +193,11 @@ try {
     }
     cdp.close();
 } finally {
+    // The profile is written to until the browser has gone, and for a moment after by its helpers
+    const gone = browser.exitCode === null ? new Promise(resolve => browser.once('exit', resolve)) : null;
     browser.kill();
-    rmSync(work, {recursive: true, force: true});
+    await gone;
+    rmSync(work, {recursive: true, force: true, maxRetries: 10, retryDelay: 200});
 }
 if (problems.length)
     fail(problems.join('; '));

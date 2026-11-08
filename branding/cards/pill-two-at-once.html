@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Two at once: a timer in the pill, then music arrives as a small bubble beside it, and goes again */
+.art { --loop: 3s; --poster: 0.55; }
+.bar { position: absolute; left: 0; top: 0; width: 150px; height: 28px; background: rgba(255, 255, 255, 0.07); }
+@keyframes slide { 0%, 18% { transform: translateX(0); } 30%, 78% { transform: translateX(-13px); } 90%, 100% { transform: translateX(0); } }
+@keyframes pop { 0%, 20% { opacity: 0; transform: scale(0.3); } 30% { opacity: 1; transform: scale(1.12); } 36%, 78% { opacity: 1; transform: scale(1); } 88%, 100% { opacity: 0; transform: scale(0.3); } }
+.group { position: absolute; left: 0; top: 0; width: 150px; height: 28px; animation-name: slide; }
+.pill { position: absolute; left: 42px; top: 4px; width: 66px; height: 20px; border-radius: 10px; background: #3b2a5c; }
+.ring { position: absolute; left: 5px; top: 4px; width: 12px; height: 12px; border-radius: 50%; background: conic-gradient(#b37df9 0 68%, rgba(255, 255, 255, 0.2) 0); }
+.ring::after { content: ""; position: absolute; left: 3px; top: 3px; width: 6px; height: 6px; border-radius: 50%; background: #3b2a5c; }
+.pill .line { left: 24px; top: 8px; width: 30px; background: #efe4ff; }
+.bubble { position: absolute; left: 112px; top: 4px; width: 20px; height: 20px; border-radius: 50%; background: #3b2a5c; animation-name: pop; }
+.bubble i { position: absolute; left: 5px; top: 5px; width: 10px; height: 10px; border-radius: 3px; background: linear-gradient(135deg, #b37df9, #6fd3e0); }
+.w1 { left: 12px; top: 40px; width: 78px; height: 64px; }
+.w2 { left: 96px; top: 40px; width: 44px; height: 64px; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="bar"></div>
+  <i class="win w1"></i><i class="win w2"></i>
+  <div class="group">
+    <div class="pill"><i class="ring"></i><i class="line"></i></div>
+    <div class="bubble"><i></i></div>
+  </div>
+</div>
+</body>
+</html>

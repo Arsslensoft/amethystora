@@ -1,8 +1,7 @@
 # Widgets
 
-A widget is a plugin that shows in the top bar or on the desktop. The widgets of earlier images, small programs that ran with everything you
-had, are **plugins** now: each runs in a sandbox of its own and reaches only what you allowed, and what you add is read by you first. Everything
-about them is on the [plugins](plugins.md) page; this one is what changed for widgets.
+A widget is a [plugin](plugins.md) that shows in the top bar or on the desktop. It runs in a sandbox of its own and reaches only what you
+allowed, and you read what you add first. This page is what changed for widgets; everything else is on the plugins page.
 
 ## Ask the agent for one
 
@@ -17,23 +16,31 @@ It appears as a draft with nothing allowed; you keep it, change it or throw it a
 
 ## The gallery
 
-Some come ready, and [Control](control.md)'s **Desktop** page lists them under **Ready to add**: a **Clock** in big type with the day under it, a
-**Calendar** with the date and the week's number, **Now playing** with the player's buttons, **System** with how busy the processor is, the memory and
-the disk, a **Pomodoro** timer in the pill and **Do not disturb**. None is on until you add it, and adding one shows you what it reaches first:
+Some come ready, listed under **Ready to add** on [Control](control.md)'s **Desktop** page. None is on until you add it, and adding one
+shows you what it reaches first.
+
+![Adding a widget](media/widget-add.webm)
+
+- **Clock**: big type, with the day under it.
+- **Calendar**: the date and the week's number.
+- **Now playing**, with the player's buttons.
+- **System**: how busy the processor is, the memory and the disk.
+- **Pomodoro**, a timer in the pill, and **Do not disturb**.
 
 ```bash
 ame plugin shipped
 ame plugin add amethystora.clock
 ```
 
-`amethystora-widgets` and `ame desktop widgets` still work as other names for `ame plugin`. Nothing is read from `~/.config/amethystora/widgets`
-any more: a folder left there runs nothing.
+### Earlier widgets
+
+The widgets of earlier images, small programs that ran with everything you had, are gone. `amethystora-widgets` and `ame desktop widgets`
+still work as other names for `ame plugin`. Nothing is read from `~/.config/amethystora/widgets` any more: a folder left there runs nothing.
 
 ## On the desktop
 
-A plugin that asks for the desktop is a small card on your wallpaper, in the corner it names. Turn plugins on the desktop on in Control
-(**Desktop**, **Plugins on the desktop**) or with `ame desktop desktop-widgets on`. The cards are on the main screen, under your windows, and not in the
-overview.
+A plugin that asks for the desktop is a small card on your wallpaper, in the corner it names: on the main screen, under your windows, and not
+in the overview. Turn it on with `ame desktop desktop-widgets on`, or Control, **Desktop**, **Plugins on the desktop**.
 
 ## Safety
 

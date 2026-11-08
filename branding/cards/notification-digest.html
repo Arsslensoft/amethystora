@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* The digest: banners wait while the day goes by, and come together as one card at the digest time */
+.art { --loop: 3.6s; --poster: 0.06; }
+@keyframes hand { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+@keyframes card { 0%, 16% { opacity: 1; transform: translateY(0); } 26%, 88% { opacity: 0; transform: translateY(6px); } 98%, 100% { opacity: 1; transform: translateY(0); } }
+@keyframes m1 { 0%, 34% { opacity: 0; transform: translateY(-10px); } 40%, 86% { opacity: 1; transform: translateY(0); } 96%, 100% { opacity: 0; transform: translateY(14px); } }
+@keyframes m2 { 0%, 50% { opacity: 0; transform: translateY(-10px); } 56%, 86% { opacity: 1; transform: translateY(0); } 96%, 100% { opacity: 0; transform: translateY(14px); } }
+@keyframes m3 { 0%, 66% { opacity: 0; transform: translateY(-10px); } 72%, 86% { opacity: 1; transform: translateY(0); } 96%, 100% { opacity: 0; transform: translateY(14px); } }
+.face { position: absolute; left: 10px; top: 10px; width: 30px; height: 30px; border-radius: 50%; border: 2px solid #dcbcff; box-sizing: border-box; }
+.hand { position: absolute; left: 13px; top: 4px; width: 2px; height: 10px; border-radius: 1px; background: #efe4ff; transform-origin: 50% 100%; animation-name: hand; animation-timing-function: linear; }
+.hour { position: absolute; left: 13px; top: 8px; width: 2px; height: 6px; border-radius: 1px; background: #b37df9; }
+.card { left: 48px; top: 24px; width: 94px; height: 78px; animation-name: card; }
+.row { position: absolute; left: 8px; display: flex; gap: 6px; align-items: center; }
+.row .line { position: static; width: 50px; }
+.mini { position: absolute; left: 56px; width: 78px; height: 14px; border-radius: 5px; background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.2); box-sizing: border-box; }
+.mini i { position: absolute; left: 4px; top: 3px; width: 6px; height: 6px; border-radius: 2px; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="face"><i class="hour"></i><i class="hand"></i></div>
+  <i class="mini" style="top: 40px; animation-name: m1"><i style="background: #e8c06a"></i></i>
+  <i class="mini" style="top: 58px; animation-name: m2"><i style="background: #6fd3e0"></i></i>
+  <i class="mini" style="top: 76px; animation-name: m3"><i style="background: #8ddba4"></i></i>
+  <div class="pane card">
+    <div class="row" style="top: 10px"><i class="sq" style="background: #e8c06a"></i><i class="line" style="background: #efe4ff"></i></div>
+    <div class="row" style="top: 32px"><i class="sq" style="background: #6fd3e0"></i><i class="line" style="width: 40px"></i></div>
+    <div class="row" style="top: 54px"><i class="sq" style="background: #8ddba4"></i><i class="line" style="width: 46px"></i></div>
+  </div>
+</div>
+</body>
+</html>

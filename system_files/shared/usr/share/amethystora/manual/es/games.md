@@ -21,7 +21,7 @@ en otras aplicaciones X11
 y los juegos de Windows que ejecuta con Proton no dibujan con nada más, así que se vuelve a conceder
 X11 a Steam y a los lanzadores que añada, solo para su cuenta. La página **Aplicaciones** de la
 aplicación Seguridad lo muestra junto con todos los demás permisos
-([Permisos de las aplicaciones](security.md#app-permissions)).
+([Permisos de las aplicaciones](app-permissions.md)).
 
 En las **Propiedades** de un juego en Steam, en **Opciones de lanzamiento**:
 

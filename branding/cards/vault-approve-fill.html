@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* A password filled through the Vault: a prompt asks, the fingerprint is touched, and the password field fills */
+.art { --loop: 3.2s; --poster: 0.5; }
+@keyframes prompt { 0%, 12% { opacity: 0; transform: translateY(6px) scale(0.96); } 20%, 60% { opacity: 1; transform: translateY(0) scale(1); } 68%, 100% { opacity: 0; transform: translateY(0) scale(1); } }
+@keyframes print { 0%, 34% { border-color: #dcbcff; } 42%, 100% { border-color: #8ddba4; } }
+@keyframes tick { 0%, 40% { opacity: 0; } 46%, 60% { opacity: 1; } 68%, 100% { opacity: 0; } }
+@keyframes fill { 0%, 66% { opacity: 0; transform: scale(0.4); } 72%, 92% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1); } }
+@keyframes field { 0%, 64% { border-color: rgba(255, 255, 255, 0.2); } 70%, 92% { border-color: #b37df9; } 100% { border-color: rgba(255, 255, 255, 0.2); } }
+.page { left: 10px; top: 10px; width: 130px; height: 92px; }
+.page .line { left: 12px; }
+.field { position: absolute; left: 12px; width: 106px; height: 14px; border-radius: 4px; background: rgba(0, 0, 0, 0.25); border: 1px solid rgba(255, 255, 255, 0.2); box-sizing: border-box; }
+.pw { top: 54px; animation-name: field; display: flex; gap: 4px; align-items: center; padding-left: 6px; }
+.pw i { width: 5px; height: 5px; border-radius: 50%; background: #efe4ff; animation-name: fill; }
+.ask { left: 34px; top: 22px; width: 82px; height: 62px; background: #3a2c55; animation-name: prompt; }
+.fp { position: absolute; left: 29px; top: 9px; width: 24px; height: 24px; border-radius: 50%; border: 3px double #dcbcff; box-sizing: border-box; animation-name: print; }
+.fp::after { content: ""; position: absolute; left: 6px; top: 6px; width: 6px; height: 6px; border-radius: 50%; border: 2px solid currentColor; color: inherit; border-color: inherit; }
+.ok { position: absolute; left: 33px; top: 46px; width: 16px; height: 4px; border-radius: 2px; background: #8ddba4; animation-name: tick; }
+.no { position: absolute; left: 12px; top: 40px; width: 58px; height: 2px; background: rgba(255, 255, 255, 0.15); }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="win page">
+    <i class="line" style="top: 18px; width: 50px"></i>
+    <div class="field" style="top: 32px"></div>
+    <div class="field pw"><i></i><i style="animation-delay: 0s"></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <i class="sq" style="position: absolute; left: 82px; top: 74px; width: 36px; height: 10px; background: #b37df9"></i>
+  </div>
+  <div class="pane ask">
+    <span class="fp"></span>
+    <i class="ok"></i>
+  </div>
+</div>
+</body>
+</html>

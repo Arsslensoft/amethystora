@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Share guard: the whole screen starts being shared, a private window blurs under its cover, the share ends and it clears */
+.art { --loop: 3.2s; --poster: 0.5; }
+@keyframes share { 0%, 14% { opacity: 0; transform: scale(0.6); } 20%, 80% { opacity: 1; transform: scale(1); } 86%, 100% { opacity: 0; transform: scale(0.6); } }
+@keyframes ring { 0%, 20% { opacity: 0; transform: scale(1); } 30% { opacity: 0.8; transform: scale(1); } 50%, 100% { opacity: 0; transform: scale(2.2); } }
+@keyframes blur { 0%, 22% { filter: blur(0); } 32%, 78% { filter: blur(3px); } 88%, 100% { filter: blur(0); } }
+@keyframes cover { 0%, 22% { opacity: 0; } 32%, 78% { opacity: 1; } 88%, 100% { opacity: 0; } }
+.screen { left: 6px; top: 6px; width: 138px; height: 100px; border-radius: 8px; }
+.edge { position: absolute; left: 6px; top: 6px; width: 138px; height: 100px; border-radius: 8px; box-sizing: border-box; border: 2px solid #ff6b6b; animation-name: cover; }
+.rec { position: absolute; left: 124px; top: 12px; width: 10px; height: 10px; border-radius: 50%; background: #ff6b6b; animation-name: share; }
+.rec2 { position: absolute; left: 124px; top: 12px; width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid #ff6b6b; box-sizing: border-box; animation-name: ring; }
+.w1 { left: 14px; top: 30px; width: 54px; height: 66px; }
+.w2 { left: 76px; top: 30px; width: 60px; height: 66px; }
+.w1 .line, .w2 .line { left: 7px; }
+.inner { position: absolute; inset: 0; animation-name: blur; }
+.key { position: absolute; left: 7px; top: 14px; width: 12px; height: 12px; border-radius: 50%; border: 2.5px solid #e8c06a; box-sizing: border-box; }
+.key::after { content: ""; position: absolute; left: 8px; top: 3px; width: 12px; height: 2.5px; background: #e8c06a; }
+.veil { position: absolute; inset: 7px 0 0 0; border-radius: 0 0 5px 5px; background: rgba(179, 125, 249, 0.28); animation-name: cover; }
+.eye { position: absolute; left: 22px; top: 25px; width: 16px; height: 10px; border-radius: 50%; border: 2px solid #efe4ff; box-sizing: border-box; }
+.eye::after { content: ""; position: absolute; left: -3px; top: 2px; width: 20px; height: 2px; background: #efe4ff; transform: rotate(-30deg); }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="pane screen"></div>
+  <i class="edge"></i>
+  <i class="rec2"></i><i class="rec"></i>
+  <div class="win w1"><i class="line" style="top: 16px; width: 38px"></i><i class="line" style="top: 26px; width: 30px"></i><i class="line" style="top: 36px; width: 36px"></i><i class="line" style="top: 46px; width: 24px"></i></div>
+  <div class="win w2">
+    <div class="inner"><i class="key"></i><i class="line" style="left: 26px; top: 18px; width: 26px"></i><i class="line" style="left: 7px; top: 36px; width: 44px"></i><i class="line" style="left: 7px; top: 46px; width: 34px"></i><i class="line" style="left: 7px; top: 56px; width: 40px"></i></div>
+    <div class="veil"><i class="eye"></i></div>
+  </div>
+</div>
+</body>
+</html>

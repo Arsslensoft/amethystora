@@ -644,7 +644,7 @@ choice muted "${ gettext "Muted"; }" "${ gettext "Glass in quieter colours, for 
 choice theme "${ gettext "Follow the theme"; }" "${ eval_gettext "The theme's own: \${own}"; }" false ame desktop icons theme
 USAGE="ame desktop icons PACK"
 item appearance icons choice "${ gettext "Icons"; }" \
-    "${ gettext "The pack the apps, folders and files are drawn from. Another maker's app keeps its own icon."; }" "${ICONS_SET}" themes#icons
+    "${ gettext "The pack the apps, folders and files are drawn from. Another maker's app keeps its own icon."; }" "${ICONS_SET}" styles#icons
 
 STYLE_SET=theme
 [[ -r "${CONFIG_DIR}/style" ]] && STYLE_SET="$(head -n1 "${CONFIG_DIR}/style")"
@@ -659,7 +659,7 @@ own="${ pretty "${OWN_STYLE}"; }"
 choice theme "${ gettext "Follow the theme"; }" "${ eval_gettext "The theme's own: \${own}"; }" false ame desktop style theme
 USAGE="ame desktop style STYLE"
 item appearance style choice "${ gettext "Style"; }" \
-    "${ gettext "The shape of the top bar, menus, notifications, dialogs, buttons and windows."; }" "${STYLE_SET}" themes#styles
+    "${ gettext "The shape of the top bar, menus, notifications, dialogs, buttons and windows."; }" "${STYLE_SET}" styles#styles
 
 # The glass, and Comfort: Reduce transparency is the glass's own key, Reduce motion and Increase contrast are GNOME's
 # accessibility keys, which the apps follow too, and the power saver is the profile power-profiles-daemon has on
@@ -682,7 +682,7 @@ choice prism "${ gettext "Prism"; }" "${ gettext "Less tint, more colour, a lit 
 choice clear "${ gettext "Clear"; }" "${ gettext "The thinnest glass and the brightest rim; it darkens by itself where text needs it"; }" false ame desktop glass clear
 USAGE="ame desktop glass frost|prism|clear"
 item appearance glass choice "${ gettext "Glass"; }" \
-    "${ gettext "What the top bar, the dock, menus and notifications show of the wallpaper behind them."; }" "${GLASS}" themes#glass
+    "${ gettext "What the top bar, the dock, menus and notifications show of the wallpaper behind them."; }" "${GLASS}" styles#glass
 # The glass in use, its blur and its tint (R6-28), as a share of its own; each glass keeps its own
 for KIND in blur tint; do
     [[ "${ ended glass; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
@@ -693,11 +693,11 @@ for KIND in blur tint; do
     STATE="$(awk -v a="${VALUE}" 'BEGIN { if (a != "") printf "%.0f", a * 100 }')"
     if [[ "${KIND}" == blur ]]; then
         item appearance glass-blur range "${ gettext "Glass blur"; }" \
-            "${ gettext "How deep the glass in use blurs the wallpaper, from light to deep."; }" "${STATE}" themes#glass
+            "${ gettext "How deep the glass in use blurs the wallpaper, from light to deep."; }" "${STATE}" styles#glass
     else
         item appearance glass-tint range "${ gettext "Glass tint"; }" \
             "${ gettext "How dense its tint is, from clear to dense. Text on it stays readable at every strength."; }" \
-            "${STATE}" themes#glass
+            "${STATE}" styles#glass
     fi
 done
 
@@ -708,18 +708,18 @@ switch_choices false ame desktop comfort reduce-transparency
 USAGE="ame desktop comfort reduce-transparency on|off"
 item appearance reduce-transparency switch "${ gettext "Reduce transparency"; }" \
     "${ gettext "The glass becomes the theme's solid surfaces. Nothing is blurred, which also saves power."; }" \
-    "${ [[ "${SOLID}" == true ]] && echo on || echo off; }" themes#comfort
+    "${ [[ "${SOLID}" == true ]] && echo on || echo off; }" comfort#comfort
 [[ "${ said animations; }" == false ]] && DETAIL="${ gettext "Animations are off in Settings, under Accessibility, which is calmer still."; }"
 switch_choices false ame desktop comfort reduce-motion
 USAGE="ame desktop comfort reduce-motion on|off"
 item appearance reduce-motion switch "${ gettext "Reduce motion"; }" \
     "${ gettext "Animations fade in place instead of travelling."; }" \
-    "${ [[ "${MOTION}" == reduce ]] && echo on || echo off; }" themes#comfort
+    "${ [[ "${MOTION}" == reduce ]] && echo on || echo off; }" comfort#comfort
 switch_choices false ame desktop comfort increase-contrast
 USAGE="ame desktop comfort increase-contrast on|off"
 item appearance increase-contrast switch "${ gettext "Increase contrast"; }" \
     "${ gettext "GNOME's High Contrast: stronger outlines, plain text and outlined controls, in the apps as well."; }" \
-    "${ [[ "${CONTRAST}" == true ]] && echo on || echo off; }" themes#comfort
+    "${ [[ "${CONTRAST}" == true ]] && echo on || echo off; }" comfort#comfort
 # How fast animations play (the motion's speed key), the size of text (GNOME's text scaling) and the light desktop
 SPEED="${ value_of "${ said motion; }" speed "'(.*)'\$"; }"
 [[ "${ ended motion; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
@@ -730,20 +730,20 @@ choice relaxed "${ gettext "Relaxed"; }" "" false ame desktop animation-speed re
 choice off "${ gettext "Off"; }" "" false ame desktop animation-speed off
 USAGE="ame desktop animation-speed snappy|normal|relaxed|off"
 item appearance animation-speed choice "${ gettext "Animation speed"; }" \
-    "${ gettext "How long the desktop's animations take. Off changes everything at once."; }" "${SPEED:-normal}" themes#comfort
+    "${ gettext "How long the desktop's animations take. Off changes everything at once."; }" "${SPEED:-normal}" comfort#comfort
 need clock
 TEXT_SIZE="$(value_of "${ said clock; }" text-scaling-factor "(.*)\$" | awk '{ printf "%d", $1 * 100 + 0.5 }')"
 EXTRA='{"min": 90, "max": 150, "step": 5, "unit": "%", "terminal": false, "command": ["ame", "desktop", "text-size", "{value}"]}'
 USAGE="ame desktop text-size 90..150"
 item appearance text-size range "${ gettext "Text size"; }" \
     "${ gettext "The size of text everywhere, apart from the screen's scale. The Amethystora apps follow it at once, other apps at their next start."; }" \
-    "${TEXT_SIZE:-100}" themes#comfort
+    "${TEXT_SIZE:-100}" comfort#comfort
 [[ "${ ended light; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
 switch_choices false ame desktop light-desktop
 USAGE="ame desktop light-desktop on|off"
 item appearance light-desktop switch "${ gettext "Light desktop"; }" \
     "${ gettext "Solid glass, short and simple motion and no live window previews, for a computer without a graphics driver or with little memory."; }" \
-    "${ [[ "${ said light; }" == true ]] && echo on || echo off; }" themes#the-light-desktop
+    "${ [[ "${ said light; }" == true ]] && echo on || echo off; }" comfort#the-light-desktop
 # Live captions: on opens a terminal, since the first time it says what it downloads and asks; off never asks
 CAPTIONS_KEYS="${ said captions; }"
 captions_key() { value_of "${CAPTIONS_KEYS}" "$1" "'?([^']*)'?\$"; }
@@ -755,7 +755,7 @@ choice off "${OFF}" "" false ame desktop captions off
 USAGE="ame desktop captions on|off"
 item appearance captions switch "${ gettext "Live captions"; }" \
     "${ gettext "Captions under speech the computer plays, made on this computer. The first time downloads an English speech model of 39 MiB; while on, they hold about 230 MB of memory."; }" \
-    "${CAPTIONS}" desktop#live-captions
+    "${CAPTIONS}" sound#live-captions
 # The language captions and dictation hear (plans/ui-ideas/spec-later.md, R6-32): one not on this computer yet opens a
 # terminal, which says what it downloads and asks; one that is here is chosen at once. The names are the languages' own
 CAPTIONS_DIR="${XDG_DATA_HOME:-${HOME}/.local/share}/amethystora/captions"
@@ -774,7 +774,7 @@ done
 USAGE="ame desktop captions language en|fr|es|de|it|tr|pt|nl|ru|pl"
 item appearance captions-language choice "${ gettext "Captions language"; }" \
     "${ gettext "The language live captions and dictation hear. Each one's speech model is downloaded once from Vosk's makers when it is chosen; what you hear or say is never sent anywhere."; }" \
-    "${ captions_key language; }" desktop#live-captions
+    "${ captions_key language; }" sound#live-captions
 # Dictation (R5-38): on opens a terminal, since it may fetch the language's model first; off never asks
 [[ -e /usr/lib64/gstreamer-1.0/libgstvosk.so ]] || REASON="${ gettext "The speech recognizer is not in this image."; }"
 choice on "${ON}" "" true ame desktop dictation on
@@ -782,7 +782,7 @@ choice off "${OFF}" "" false ame desktop dictation off
 USAGE="ame desktop dictation on|off"
 item appearance dictation switch "${ gettext "Dictation"; }" \
     "${ gettext "Super+Ctrl+Shift+D listens to the microphone and types what you say into the field in use, made on this computer in the captions' language."; }" \
-    "${ [[ "${ captions_key dictation; }" == true ]] && echo on || echo off; }" desktop#dictation
+    "${ [[ "${ captions_key dictation; }" == true ]] && echo on || echo off; }" sound#dictation
 GROUP=""
 
 # Seeing and reading (org.gnome.shell.extensions.amethystora-ui.access): colour filters, the reading ruler and reading
@@ -802,7 +802,7 @@ access_reason
 USAGE="ame desktop access filter none|protan|deutan|tritan|grey"
 item appearance colour-filter choice "${ gettext "Colour filter"; }" \
     "${ gettext "The whole screen, every app, through a filter. Screenshots are saved without it."; }" \
-    "${ access_key filter; }" themes#colour-filters
+    "${ access_key filter; }" comfort#colour-filters
 choice 50 "${ gettext "Half"; }" "" false ame desktop access strength 50
 choice 75 "${ gettext "¾"; }" "" false ame desktop access strength 75
 choice 100 "${ gettext "Full"; }" "" false ame desktop access strength 100
@@ -810,7 +810,7 @@ access_reason
 [[ "${ access_key filter; }" == none ]] && DETAIL="${ gettext "Used once a filter is chosen."; }"
 USAGE="ame desktop access strength 25-100"
 item appearance colour-filter-strength choice "${ gettext "Filter strength"; }" "" \
-    "${ access_key filter-strength; }" themes#colour-filters
+    "${ access_key filter-strength; }" comfort#colour-filters
 choice off "${ gettext "Off"; }" "" false ame desktop access ruler off
 choice band "${ gettext "Band"; }" "${ gettext "A highlighter's band across the line under the pointer"; }" false ame desktop access ruler band
 choice dim "${ gettext "Dim the rest"; }" "${ gettext "Everything but the line under the pointer veiled"; }" false ame desktop access ruler dim
@@ -819,20 +819,20 @@ access_reason
 USAGE="ame desktop access ruler off|band|dim|underline"
 item appearance reading-ruler choice "${ gettext "Reading ruler"; }" \
     "${ gettext "Follows the pointer, for anyone who loses their line. Super+Ctrl+R shows and hides it."; }" \
-    "${ access_key ruler; }" themes#the-reading-ruler
+    "${ access_key ruler; }" comfort#the-reading-ruler
 switch_choices false ame desktop access read-aloud
 access_reason
 USAGE="ame desktop access read-aloud on|off"
 item appearance read-aloud switch "${ gettext "Read the selection aloud"; }" \
     "${ gettext "Select text and press Super+Ctrl+S: the screen reader's voice reads it, on this computer."; }" \
-    "${ [[ "${ access_key read-aloud; }" == true ]] && echo on || echo off; }" themes#reading-aloud
+    "${ [[ "${ access_key read-aloud; }" == true ]] && echo on || echo off; }" comfort#reading-aloud
 # Click with the keyboard (plans/ui-ideas/spec-later.md, R5-36): offered and off
 switch_choices false ame desktop access letters
 access_reason
 USAGE="ame desktop access letters on|off"
 item appearance click-letters switch "${ gettext "Click with the keyboard"; }" \
     "${ gettext "Super+Alt+K puts a letter on every button and link of the window in use; type it to click."; }" \
-    "${ [[ "${ access_key letters; }" == true ]] && echo on || echo off; }" themes#click-with-the-keyboard
+    "${ [[ "${ access_key letters; }" == true ]] && echo on || echo off; }" comfort#click-with-the-keyboard
 GROUP=""
 
 FONT_SET=theme
@@ -845,7 +845,7 @@ own="${OWN_FONT}"
 choice theme "${ gettext "Follow the theme"; }" "${ eval_gettext "The theme's own: \${own}"; }" false ame desktop font theme
 USAGE="ame desktop font FAMILY"
 item appearance font choice "${ gettext "Font"; }" \
-    "${ gettext "The font of the desktop and the applications."; }" "${FONT_SET}" themes#fonts
+    "${ gettext "The font of the desktop and the applications."; }" "${FONT_SET}" styles#fonts
 
 MONO_SET=theme
 [[ -r "${CONFIG_DIR}/mono-font" ]] && MONO_SET="$(head -n1 "${CONFIG_DIR}/mono-font")"
@@ -856,7 +856,7 @@ own="${OWN_MONO}"
 choice theme "${ gettext "Follow the theme"; }" "${ eval_gettext "The theme's own: \${own}"; }" false ame desktop mono-font theme
 USAGE="ame desktop mono-font FAMILY"
 item appearance mono-font choice "${ gettext "Monospace font"; }" \
-    "${ gettext "The font of the terminal, of code and of Text Editor."; }" "${MONO_SET}" themes#fonts
+    "${ gettext "The font of the terminal, of code and of Text Editor."; }" "${MONO_SET}" styles#fonts
 
 if [[ -z "${THEME}" ]]; then
     REASON="${ gettext "Pick a theme first: each theme has wallpapers of its own."; }"
@@ -879,7 +879,7 @@ done < <(said backgrounds)
 USAGE="ame desktop background"
 item appearance wallpaper wallpapers "${ gettext "Wallpaper"; }" \
     "${ gettext "The pictures of the current theme. Super+Ctrl+Space shows the next one."; }" \
-    "${CURRENT_PICTURE}" themes#wallpapers
+    "${CURRENT_PICTURE}" wallpapers
 
 # Daylight, the theme's first wallpaper by the time of day: on unless the account turned it off
 DAYLIGHT="${ said daylight; }"
@@ -890,7 +890,7 @@ switch_choices false ame desktop daylight
 USAGE="ame desktop daylight on|off"
 item appearance daylight switch "${ gettext "Daylight wallpapers"; }" \
     "${ gettext "The theme's first wallpaper follows the time of day: dawn, day, dusk and night."; }" \
-    "${ [[ "${DAYLIGHT}" == off ]] && echo off || echo on; }" themes#daylight
+    "${ [[ "${DAYLIGHT}" == off ]] && echo off || echo on; }" wallpapers#daylight
 # Living wallpapers (R6-07, offered, off)
 LIVING="${ said living; }"
 LIVING="${LIVING//\'/}"
@@ -904,7 +904,7 @@ choice dusk "${ gettext "Slow dusk"; }" "${ gettext "An evening sky whose colour
 USAGE="ame desktop living-wallpaper off|aurora|facets|rain|dusk"
 item appearance living-wallpaper choice "${ gettext "Living wallpaper"; }" \
     "${ gettext "Moves slowly in the theme's colours while you can see it; still when covered, on battery, in the power saver, under Games and with reduced motion. Each frame costs a little power."; }" \
-    "${LIVING:-off}" themes#living-wallpapers
+    "${LIVING:-off}" wallpapers#living-wallpapers
 
 # --- Make it yours (rounds 5 and 6): a theme of your own, a look in one file, drawn wallpapers, light by day ---------
 
@@ -946,7 +946,7 @@ EXTRA="$(
 USAGE="ame desktop theme save NAME"
 item appearance theme-maker theme-maker "${ gettext "Make a theme"; }" \
     "${ gettext "Start from a theme or the wallpaper, pick the ground, the text, the accent, the selection and the terminal's sixteen colours, and see each pair measured as you pick."; }" \
-    "" themes#make-a-theme
+    "" make-a-theme#make-a-theme
 
 # A look in one file: shared any time; opened only while the account turned that on
 [[ -n "${THEME}" ]] || REASON="${ gettext "Pick a theme first."; }"
@@ -956,14 +956,14 @@ BUTTON="${ gettext "Share"; }"
 USAGE="ame desktop theme share [THEME] [FILE]"
 item appearance look-share action "${ gettext "Share this look"; }" \
     "${ gettext "The colours, the wallpaper and the names of the style, icons, fonts and pointer, in one .amethystora-look file in your home folder. Nothing in it runs."; }" \
-    "" themes#a-look-in-one-file
+    "" make-a-theme#a-look-in-one-file
 LOOK_FILES=""
 [[ -r "${CONFIG_DIR}/look-files" ]] && IFS= read -r LOOK_FILES <"${CONFIG_DIR}/look-files"
 switch_choices false ame desktop look-files
 USAGE="ame desktop look-files on|off"
 item appearance look-files switch "${ gettext "Open looks from files"; }" \
     "${ gettext "Opening a .amethystora-look file shows what it holds and asks before anything changes. Off, since a file from a stranger is still a file from a stranger."; }" \
-    "${ [[ "${LOOK_FILES}" == on ]] && echo on || echo off; }" themes#a-look-in-one-file
+    "${ [[ "${LOOK_FILES}" == on ]] && echo on || echo off; }" make-a-theme#a-look-in-one-file
 
 # A wallpaper drawn from the theme: the theme's own pictures (its first as the tile), then the seven, each tile drawn in the
 # theme's colours
@@ -991,14 +991,14 @@ mapfile -t -O "${#CHOICES[@]}" CHOICES < <(
 USAGE="ame desktop pattern PATTERN|shuffle|off"
 item appearance pattern wallpapers "${ gettext "Drawn wallpapers"; }" \
     "${ gettext "Seven patterns drawn in the theme's colours, drawn again when the theme or the accent changes. Daylight shows them at dawn, day, dusk and night."; }" \
-    "${PATTERN_SET:-off}" themes#drawn-wallpapers
+    "${PATTERN_SET:-off}" wallpapers#drawn-wallpapers
 [[ -n "${PATTERN_SET}" ]] || REASON="${ gettext "Choose a drawn wallpaper first."; }"
 COMMAND=(ame desktop pattern shuffle)
 TERMINAL=false
 BUTTON="${ gettext "Shuffle"; }"
 USAGE="ame desktop pattern shuffle"
 item appearance pattern-shuffle action "${ gettext "Another drawing"; }" \
-    "${ gettext "Another of the seven patterns, drawn afresh."; }" "" themes#drawn-wallpapers
+    "${ gettext "Another of the seven patterns, drawn afresh."; }" "" wallpapers#drawn-wallpapers
 
 # Light by day, dark by night: the theme module's keys
 DAY_NIGHT=off
@@ -1020,7 +1020,7 @@ choice hours "${ gettext "Hours you choose"; }" "${ gettext "The two hours below
 USAGE="ame desktop day-night on|off|hours FROM TO"
 item appearance day-night choice "${ gettext "Light by day, dark by night"; }" \
     "${ gettext "A theme with a light and a dark side switches to its light side when the day starts and to its dark side when the night does."; }" \
-    "${DAY_NIGHT}" themes#light-by-day-dark-by-night
+    "${DAY_NIGHT}" wallpapers#light-by-day-dark-by-night
 for which in day night; do
     [[ "${DAY_NIGHT}" == hours ]] || REASON="${ gettext "Choose Hours you choose first."; }"
     if [[ "${which}" == day ]]; then
@@ -1028,13 +1028,13 @@ for which in day night; do
             command "${| words ame desktop day-night hours "{value}" "${NIGHT_STARTS}"; }"; }"
         USAGE="ame desktop day-night hours FROM TO"
         item appearance day-starts range "${ gettext "The day starts at"; }" "${ gettext "The hour, from 0 to 23."; }" \
-            "${DAY_STARTS}" themes#light-by-day-dark-by-night
+            "${DAY_STARTS}" wallpapers#light-by-day-dark-by-night
     else
         EXTRA="${| object min 0 max 23 step 1 unit '"h"' terminal false \
             command "${| words ame desktop day-night hours "${DAY_STARTS}" "{value}"; }"; }"
         USAGE="ame desktop day-night hours FROM TO"
         item appearance night-starts range "${ gettext "The night starts at"; }" "${ gettext "The hour, from 0 to 23."; }" \
-            "${NIGHT_STARTS}" themes#light-by-day-dark-by-night
+            "${NIGHT_STARTS}" wallpapers#light-by-day-dark-by-night
     fi
 done
 
@@ -1067,14 +1067,14 @@ choice random "${ gettext "Random"; }" "${ gettext "One of the first four, at a 
 choice none "${ gettext "None"; }" "${ gettext "GNOME changes the picture by itself"; }" false ame desktop transition none
 USAGE="ame desktop transition STYLE"
 item appearance transition choice "${ gettext "Transition"; }" \
-    "${ gettext "How a new theme or wallpaper is revealed."; }" "${STYLE}" themes#transitions
+    "${ gettext "How a new theme or wallpaper is revealed."; }" "${STYLE}" wallpapers#transitions
 
 [[ -n "${STYLE}" ]] || REASON="${ gettext "The transitions extension is not installed."; }"
 EXTRA="${| object min 200 max 5000 step 100 unit '"ms"' terminal false \
     command "${| words ame desktop transition "${STYLE:-grow}" "{value}"; }"; }"
 USAGE="ame desktop transition STYLE DURATION"
 item appearance transition-length range "${ gettext "Transition length"; }" \
-    "${ gettext "How long a transition takes, in milliseconds."; }" "${LENGTH}" themes#transitions
+    "${ gettext "How long a transition takes, in milliseconds."; }" "${LENGTH}" wallpapers#transitions
 
 # The reveal at login, a switch of the transitions extension
 if [[ "${ value_of "${ said transitions; }" reveal "(.*)\$"; }" == false ]]; then REVEAL=off; else REVEAL=on; fi
@@ -1082,7 +1082,7 @@ if [[ "${ value_of "${ said transitions; }" reveal "(.*)\$"; }" == false ]]; the
 switch_choices false ame desktop transition reveal
 USAGE="ame desktop transition reveal on|off"
 item appearance transition-reveal switch "${ gettext "Reveal at login"; }" \
-    "${ gettext "The splash's gem flies into the top bar as the desktop appears."; }" "${REVEAL}" desktop#the-reveal-at-login
+    "${ gettext "The splash's gem flies into the top bar as the desktop appears."; }" "${REVEAL}" login#the-reveal-at-login
 
 # The bezel module's one key: a laptop's own screen with rounded corners
 if [[ "${ said bezel; }" == true ]]; then CORNERS=on; else CORNERS=off; fi
@@ -1090,7 +1090,7 @@ if [[ "${ said bezel; }" == true ]]; then CORNERS=on; else CORNERS=off; fi
 switch_choices false ame desktop screen-corners
 USAGE="ame desktop screen-corners on|off"
 item appearance screen-corners switch "${ gettext "Rounded screen corners"; }" \
-    "${ gettext "Round the corners of a laptop's own square screen."; }" "${CORNERS}" themes#rounded-screen-corners
+    "${ gettext "Round the corners of a laptop's own square screen."; }" "${CORNERS}" styles#rounded-screen-corners
 
 # The pointer: its look (a file of the account's, as the icons), and the pointer module's two keys
 GROUP="${ gettext "Pointer"; }"
@@ -1107,7 +1107,7 @@ choice facet "${ gettext "Facet"; }" "${ gettext "Cut like the gem, in two faces
 choice theme "${ gettext "Follow the theme"; }" "${ eval_gettext "The theme's own: \${own}"; }" false ame desktop pointer theme
 USAGE="ame desktop pointer SET"
 item appearance pointer choice "${ gettext "Pointer"; }" \
-    "${ gettext "The pointer's look. A size is chosen in Settings, under Accessibility."; }" "${POINTER_SET}" themes#pointers
+    "${ gettext "The pointer's look. A size is chosen in Settings, under Accessibility."; }" "${POINTER_SET}" styles#pointers
 
 SHAKE="${ said shake; }"
 SHAKE="${SHAKE//\'/}"
@@ -1117,7 +1117,7 @@ choice beacon "${ gettext "Beacon"; }" "${ gettext "The pointer grows a little a
 choice off "${ gettext "Off"; }" "${ gettext "Shaking the mouse does nothing"; }" false ame desktop pointer-shake off
 USAGE="ame desktop pointer-shake MODE"
 item appearance pointer-shake choice "${ gettext "Shake to find"; }" \
-    "${ gettext "Shake the mouse from side to side to see where the pointer is."; }" "${SHAKE}" themes#pointers
+    "${ gettext "Shake the mouse from side to side to see where the pointer is."; }" "${SHAKE}" styles#pointers
 
 if [[ "${ said dense; }" == true ]]; then DENSE=on; else DENSE=off; fi
 [[ "${ ended dense; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
@@ -1125,7 +1125,7 @@ switch_choices false ame desktop pointer-dense
 USAGE="ame desktop pointer-dense on|off"
 item appearance pointer-dense switch "${ gettext "Larger on dense screens"; }" \
     "${ gettext "One size larger on a screen with small pixels shown at 100%. A size chosen in Settings is kept."; }" \
-    "${DENSE}" themes#pointers
+    "${DENSE}" styles#pointers
 GROUP=""
 
 # GRUB keeps its menu in /boot, which a sealed machine, starting with systemd-boot, does not use. Where
@@ -1148,7 +1148,7 @@ switch_choices true ame desktop boot-menu
 GROUP="${ gettext "Starting up"; }"
 USAGE="ame desktop boot-menu on|off"
 item appearance boot-menu switch "${ gettext "Boot menu artwork"; }" \
-    "${ gettext "The Amethystora artwork on the menu the machine shows as it starts."; }" "${BOOT_MENU}" themes#the-boot-menu
+    "${ gettext "The Amethystora artwork on the menu the machine shows as it starts."; }" "${BOOT_MENU}" make-a-theme#the-boot-menu
 GROUP=""
 
 # The desktop's own sounds: the Soft set while its theme is chosen and event sounds are on; another sound theme (one
@@ -1173,7 +1173,7 @@ choice off "${ gettext "Off"; }" "${ gettext "The desktop makes no sound of its 
 GROUP="${ gettext "Sound"; }"
 USAGE="ame desktop sounds SET"
 item appearance sounds choice "${ gettext "Sounds"; }" \
-    "${ gettext "The desktop's own sounds: notifications, screenshots, volume and the rest."; }" "${SOUNDS}" desktop#sounds
+    "${ gettext "The desktop's own sounds: notifications, screenshots, volume and the rest."; }" "${SOUNDS}" sound#sounds
 
 # The audio module (org.gnome.shell.extensions.amethystora-ui.audio): the players paused when the headphones come off,
 # Clear voice and the sound presets; the last two through amethystora-sound, which starts their PipeWire units
@@ -1185,19 +1185,19 @@ switch_choices false ame desktop pause-on-unplug
 USAGE="ame desktop pause-on-unplug on|off"
 item appearance pause-on-unplug switch "${ gettext "Pause when the headphones come off"; }" \
     "${ gettext "Every player pauses when the headphones or a headset in use go away, so nothing plays out loud."; }" \
-    "${ audio_onoff pause-on-unplug; }" desktop#pause-when-the-headphones-come-off
+    "${ audio_onoff pause-on-unplug; }" sound#pause-when-the-headphones-come-off
 audio_reason
 switch_choices false ame desktop clear-voice
 USAGE="ame desktop clear-voice on|off"
 item appearance clear-voice switch "${ gettext "Clear voice"; }" \
     "${ gettext "The microphone without background noise and echo, in every app, through PipeWire's own processing. Only while an app records."; }" \
-    "${ audio_onoff clear-voice; }" desktop#clear-voice
+    "${ audio_onoff clear-voice; }" sound#clear-voice
 audio_reason
 switch_choices false ame desktop sound-presets
 USAGE="ame desktop sound-presets on|off"
 item appearance sound-presets switch "${ gettext "Sound presets"; }" \
     "${ gettext "The output menu offers Flat, Laptop, Speech and Bass for each output. A preset changes every app's sound."; }" \
-    "${ audio_onoff sound-presets; }" desktop#sound-presets
+    "${ audio_onoff sound-presets; }" sound#sound-presets
 # The preset of the output in use, as the key has it for that output's node name
 SINK="${ said sink; }"
 SINK="${SINK%%$'\n'*}"
@@ -1221,7 +1221,7 @@ choice speech "${ gettext "Speech"; }" "${ gettext "Voices and podcasts clearer"
 choice bass "${ gettext "Bass"; }" "${ gettext "More bass, for music"; }" false ame desktop sound-preset bass
 USAGE="ame desktop sound-preset PRESET"
 item appearance sound-preset choice "${ gettext "Preset of the output in use"; }" \
-    "${ gettext "Kept for this output only."; }" "${PRESET}" desktop#sound-presets
+    "${ gettext "Kept for this output only."; }" "${PRESET}" sound#sound-presets
 GROUP=""
 
 # --- Desktop ---------------------------------------------------------------------------------------
@@ -1234,7 +1234,7 @@ choice classic "${ gettext "Classic"; }" \
 GROUP="${ gettext "Windows"; }"
 USAGE="ame desktop layout tiling|classic"
 item desktop layout choice "${ gettext "Window layout"; }" "${ gettext "How windows are arranged."; }" "${LAYOUT}" \
-    desktop#tiling-windows
+    tiling
 
 COMMAND=(ame desktop tiling-settings)
 TERMINAL=false
@@ -1243,7 +1243,7 @@ USAGE="ame desktop tiling-settings"
 [[ "${LAYOUT}" == tiling ]] || DETAIL="${ gettext "They apply once the layout is tiling again."; }"
 item desktop tiling-settings action "${ gettext "Tiling settings"; }" \
     "${ gettext "The gaps, the sizes windows step through, how the strip moves, every shortcut and the window rules."; }" "" \
-    desktop#tiling-settings
+    tiling#tiling-settings
 
 GROUP="${ gettext "Windows"; }"
 EXTRA='{"open": "manual"}'
@@ -1267,43 +1267,43 @@ win_item() {
 GROUP="${ gettext "Windows"; }"
 win_item windows-snap snap "${ gettext "Snap layouts"; }" \
     "${ gettext "Drag a window to the top of the screen, or press Super+Z, and drop it on a layout."; }" \
-    desktop#snap-layouts true
+    classic-layout#snap-layouts true
 win_item windows-switcher switcher "${ gettext "Window switcher you can type into"; }" \
     "${ gettext "Super+Tab and Alt+Tab show every window in a grid; typing keeps the ones whose app or title matches."; }" \
-    desktop#switching-windows true
+    classic-layout#switching-windows true
 win_item windows-hold-super hold-super "${ gettext "Shortcuts while Super is held"; }" \
-    "${ gettext "Hold Super to see the main shortcuts and the dock's numbers."; }" desktop#holding-super false
+    "${ gettext "Hold Super to see the main shortcuts and the dock's numbers."; }" classic-layout#holding-super false
 [[ "${ ended windows; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
 HOLD_DELAY="${ win hold-super-delay; }"
 EXTRA='{"min": 500, "max": 3000, "step": 100, "unit": "ms", "terminal": false,
     "command": ["ame", "desktop", "windows", "hold-super", "{value}"]}'
 USAGE="ame desktop windows hold-super MS"
 item desktop windows-hold-super-delay range "${ gettext "How long to hold Super"; }" "${ gettext "In milliseconds."; }" \
-    "${HOLD_DELAY#int32 }" desktop#holding-super
+    "${HOLD_DELAY#int32 }" classic-layout#holding-super
 win_item windows-show-desktop show-desktop "${ gettext "Click the wallpaper to show the desktop"; }" \
-    "${ gettext "Windows slide to the edges of the screen; a click brings them back."; }" desktop#show-desktop true
+    "${ gettext "Windows slide to the edges of the screen; a click brings them back."; }" classic-layout#show-desktop true
 win_item windows-places places "${ gettext "Windows remember their places"; }" \
-    "${ gettext "For each arrangement of screens, apps' windows open where they were."; }" desktop#places true
+    "${ gettext "For each arrangement of screens, apps' windows open where they were."; }" classic-layout#places true
 COMMAND=(ame desktop windows places forget)
 TERMINAL=false
 BUTTON="${ gettext "Forget"; }"
 USAGE="ame desktop windows places forget"
-item desktop windows-places-forget action "${ gettext "Forget the places"; }" "" "" desktop#places
+item desktop windows-places-forget action "${ gettext "Forget the places"; }" "" "" classic-layout#places
 win_item windows-dim dim "${ gettext "Dim the windows not in use"; }" \
-    "${ gettext "The windows behind the one you are using are drawn a little darker."; }" desktop#dimming false
+    "${ gettext "The windows behind the one you are using are drawn a little darker."; }" windows#dimming false
 # Rounds 5 and 6 (plans/ui-ideas/spec-windows.md): the drop-down terminal and the scratchpad, keep on top, see-through
 # windows and the terminal's own opacity, the frame, sizes for recording and reopening
 win_item windows-drop-down drop-down "${ gettext "Drop-down terminal"; }" \
     "${ gettext "Super+Alt+Return slides a terminal down from the top of the screen, and hides it again, still running."; }" \
-    desktop#drop-down-terminal false
+    windows#drop-down-terminal false
 win_item windows-scratchpad scratchpad "${ gettext "The scratchpad"; }" \
     "${ gettext "A window's menu can move it out of sight, to come back with the drop-down terminal."; }" \
-    desktop#drop-down-terminal true
+    windows#drop-down-terminal true
 win_item windows-keep-on-top keep-on-top "${ gettext "Keep on top, visibly"; }" \
     "${ gettext "Super+Alt+P keeps the window in use above the rest, with a ring and a pin; again lets it go."; }" \
-    desktop#keep-on-top false
+    windows#keep-on-top false
 win_item windows-see-through see-through "${ gettext "See-through windows"; }" \
-    "${ gettext "Hold Super+Alt and scroll over a window to see through it, until it closes."; }" desktop#see-through-windows false
+    "${ gettext "Hold Super+Alt and scroll over a window to see through it, until it closes."; }" windows#see-through-windows false
 # The terminal's windows at an opacity of their own (a rule in see-through-apps); 100 is solid
 TERMINAL_OPACITY=100
 [[ "${ value_of "${WINDOWS}" see-through-apps "(.*)\$"; }" =~ \'kitty\.desktop\':\ ([0-9]+) ]] && TERMINAL_OPACITY="${BASH_REMATCH[1]}"
@@ -1313,17 +1313,17 @@ EXTRA='{"min": 40, "max": 100, "step": 5, "unit": "%", "terminal": false,
     "command": ["ame", "desktop", "windows", "see-through-app", "kitty.desktop", "{value}"]}'
 USAGE="ame desktop windows see-through-app kitty.desktop PERCENT|off"
 item desktop windows-see-through-terminal range "${ gettext "The terminal's opacity"; }" \
-    "${ gettext "The terminal's windows open this see-through; 100 is solid."; }" "${TERMINAL_OPACITY}" desktop#see-through-windows
+    "${ gettext "The terminal's windows open this see-through; 100 is solid."; }" "${TERMINAL_OPACITY}" windows#see-through-windows
 win_item windows-frame frame "${ gettext "A frame in the theme's colours"; }" \
-    "${ gettext "The window you are using has a still line round it, in the theme's colours."; }" desktop#window-frame true
+    "${ gettext "The window you are using has a still line round it, in the theme's colours."; }" windows#window-frame true
 win_item windows-recording-sizes recording-sizes "${ gettext "Sizes for recording"; }" \
     "${ gettext "A window's menu makes it 1280 × 720, 1920 × 1080, square or upright, centred."; }" \
-    desktop#sizes-for-recording false
+    windows#sizes-for-recording false
 win_item windows-reopen reopen "${ gettext "Reopen the app you just closed"; }" \
-    "${ gettext "Super+Alt+T opens it again, at its place; five back. Kept in memory only."; }" desktop#reopen false
-win_item windows-hand-over hand-over "${ gettext "Hand a window over"; }"     "${ gettext "A window's menu pins that window alone until the screen is locked. A courtesy, not a security boundary."; }" desktop#hand-it-over false
+    "${ gettext "Super+Alt+T opens it again, at its place; five back. Kept in memory only."; }" windows#reopen false
+win_item windows-hand-over hand-over "${ gettext "Hand a window over"; }"     "${ gettext "A window's menu pins that window alone until the screen is locked. A courtesy, not a security boundary."; }" people#hand-it-over false
 win_item windows-simple-desktop simple-desktop "${ gettext "A simple desktop"; }" \
-    "${ gettext "Big tiles, large text and one window at a time, for this account. Nothing is taken out of the system, and Super+Alt+Home goes back."; }" desktop#a-simple-desktop false
+    "${ gettext "Big tiles, large text and one window at a time, for this account. Nothing is taken out of the system, and Super+Alt+Home goes back."; }" people#a-simple-desktop false
 # Which apps are its tiles: asked in a terminal, up to six launchers, or none for the four it picks itself
 COMMAND=(ame desktop windows simple-tiles)
 TERMINAL=true
@@ -1331,7 +1331,7 @@ BUTTON="${ gettext "Choose…"; }"
 USAGE="ame desktop windows simple-tiles [LAUNCHER.desktop...]"
 [[ "${ onoff simple-desktop; }" == on ]] || DETAIL="${ gettext "They show once the simple desktop is on."; }"
 item desktop windows-simple-tiles action "${ gettext "The simple desktop's tiles"; }" \
-    "${ gettext "Up to six apps, by their launchers; none, and it picks four itself."; }" "" desktop#a-simple-desktop
+    "${ gettext "Up to six apps, by their launchers; none, and it picks four itself."; }" "" people#a-simple-desktop
 
 # The window settings GNOME keeps out of sight (R5-12): GNOME's own keys, each an ame desktop window-settings command
 WM="${ said wm-prefs; }"
@@ -1343,11 +1343,11 @@ switch_choices false ame desktop window-settings focus-follows-pointer
 USAGE="ame desktop window-settings focus-follows-pointer on|off"
 if [[ "${ wm_key focus-mode; }" == click ]]; then FOCUS_MODE=off; else FOCUS_MODE=on; fi
 item desktop window-settings-focus switch "${ gettext "Focus follows the pointer"; }" \
-    "${ gettext "The window under the pointer takes the keys."; }" "${FOCUS_MODE}" desktop#window-settings
+    "${ gettext "The window under the pointer takes the keys."; }" "${FOCUS_MODE}" windows#window-settings
 switch_choices false ame desktop window-settings centre-new
 USAGE="ame desktop window-settings centre-new on|off"
 if [[ "${ mutter_key center-new-windows; }" == true ]]; then CENTRE=on; else CENTRE=off; fi
-item desktop window-settings-centre switch "${ gettext "New windows centred"; }" "" "${CENTRE}" desktop#window-settings
+item desktop window-settings-centre switch "${ gettext "New windows centred"; }" "" "${CENTRE}" windows#window-settings
 for click in double middle right; do
     case "${click}" in
         double) title="${ gettext "Double-click a title bar"; }" ;;
@@ -1361,25 +1361,25 @@ for click in double middle right; do
     choice none "${ gettext "Nothing"; }" "" false ame desktop window-settings "${click}-click" none
     USAGE="ame desktop window-settings ${click}-click ACTION"
     item desktop "window-settings-${click}-click" choice "${title}" "" "${ wm_key "action-${click}-click-titlebar"; }" \
-        desktop#window-settings
+        windows#window-settings
 done
 choice super "${ gettext "Super"; }" "" false ame desktop window-settings drag-key super
 choice alt "${ gettext "Alt"; }" "" false ame desktop window-settings drag-key alt
 USAGE="ame desktop window-settings drag-key super|alt"
 if [[ "${ wm_key mouse-button-modifier; }" == "<Alt>" ]]; then DRAG_KEY=alt; else DRAG_KEY=super; fi
 item desktop window-settings-drag-key choice "${ gettext "Drag a window with"; }" \
-    "${ gettext "The key held to move a window from anywhere in it."; }" "${DRAG_KEY}" desktop#window-settings
+    "${ gettext "The key held to move a window from anywhere in it."; }" "${DRAG_KEY}" windows#window-settings
 switch_choices false ame desktop window-settings resize-right
 USAGE="ame desktop window-settings resize-right on|off"
 if [[ "${ wm_key resize-with-right-button; }" == true ]]; then RESIZE_RIGHT=on; else RESIZE_RIGHT=off; fi
 item desktop window-settings-resize-right switch "${ gettext "Resize with the right button"; }" \
-    "${ gettext "With the drag key held."; }" "${RESIZE_RIGHT}" desktop#window-settings
+    "${ gettext "With the drag key held."; }" "${RESIZE_RIGHT}" windows#window-settings
 switch_choices false ame desktop window-settings attach-dialogs
 USAGE="ame desktop window-settings attach-dialogs on|off"
 [[ "${LAYOUT}" == tiling ]] && REASON="${ gettext "The tiling keeps dialogs apart while it is on."; }"
 if [[ "${ mutter_key attach-modal-dialogs; }" == true ]]; then ATTACH=on; else ATTACH=off; fi
 item desktop window-settings-attach-dialogs switch "${ gettext "Dialogs stay attached"; }" \
-    "${ gettext "A dialog moves with its window."; }" "${ATTACH}" desktop#window-settings
+    "${ gettext "A dialog moves with its window."; }" "${ATTACH}" windows#window-settings
 GROUP="${ gettext "Windows"; }"
 
 # Force quit (org.gnome.shell.extensions.amethystora-ui.quit): the list's key, and GNOME's not-responding dialog
@@ -1390,14 +1390,14 @@ switch_choices false ame desktop force-quit
 USAGE="ame desktop force-quit on|off"
 item desktop force-quit switch "${ gettext "Force quit"; }" \
     "${ gettext "Super+Ctrl+Shift+Esc lists the running apps with what each uses, one that does not respond first."; }" \
-    "${FORCE_QUIT}" desktop#force-quit
+    "${FORCE_QUIT}" windows#force-quit
 [[ "${ ended quit; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
 switch_choices false ame desktop frozen-dialog
 USAGE="ame desktop frozen-dialog on|off"
 if [[ "${ value_of "${QUIT}" frozen-dialog "(.*)\$"; }" == false ]]; then FROZEN=off; else FROZEN=on; fi
 item desktop frozen-dialog switch "${ gettext "When an app stops responding"; }" \
     "${ gettext "The question over the app offers Wait first, and Ask the agent why while the agentic features are on. Off, GNOME's own."; }" \
-    "${FROZEN}" desktop#force-quit
+    "${FROZEN}" windows#force-quit
 
 # The quick note is offered once the Notes command takes it
 NOTE_CAPTURE=false
@@ -1420,7 +1420,7 @@ for where in top-left top-right bottom-left bottom-right; do
     [[ "${ ended windows; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
     USAGE="ame desktop windows corner ${where} ACTION"
     item desktop "windows-corner-${where}" choice "${title}" \
-        "${ gettext "What pushing the pointer into this corner does."; }" "${ win "corner-${where}"; }" desktop#hot-corners
+        "${ gettext "What pushing the pointer into this corner does."; }" "${ win "corner-${where}"; }" classic-layout#hot-corners
 done
 
 GROUP="${ gettext "Touchpad gestures"; }"
@@ -1435,7 +1435,7 @@ for name in pinch spread down today; do
     [[ "${name}" == spread && "${LAYOUT}" == tiling ]] && DETAIL="${ gettext "They apply once the layout is classic again."; }"
     switch_choices false ame desktop windows gesture "${name}"
     USAGE="ame desktop windows gesture ${name} on|off"
-    item desktop "windows-gesture-${name}" switch "${title}" "" "${ onoff "gesture-${name}"; }" desktop#touchpad-gestures
+    item desktop "windows-gesture-${name}" switch "${title}" "" "${ onoff "gesture-${name}"; }" classic-layout#touchpad-gestures
 done
 GROUP=""
 
@@ -1452,7 +1452,7 @@ touch_reason
 USAGE="ame desktop touch mode off|follow|on"
 item desktop touch-mode choice "${ gettext "Touch mode"; }" \
     "${ gettext "A taller top bar, a larger dock, roomier menus and Today from the right edge."; }" \
-    "${ touch_key touch-mode; }" desktop#touch-mode
+    "${ touch_key touch-mode; }" touch#touch-mode
 choice off "${ gettext "Off"; }" "" false ame desktop touch pen-ring off
 choice ring "${ gettext "Ring"; }" "${ gettext "Six tools around the pen's tip"; }" true ame desktop touch pen-ring ring
 choice strip "${ gettext "Strip"; }" "${ gettext "The tools in a column at the screen's edge"; }" true ame desktop touch pen-ring strip
@@ -1460,14 +1460,14 @@ touch_reason
 USAGE="ame desktop touch pen-ring off|ring|strip"
 item desktop pen-ring choice "${ gettext "The pen's tools"; }" \
     "${ gettext "Scribble, a screenshot of an area, a note, the text in an area, right click and back, from the pen's side button or Super+Ctrl+P."; }" \
-    "${ touch_key pen-ring; }" desktop#the-pen-ring
+    "${ touch_key pen-ring; }" touch#the-pen-ring
 COMMAND=(ame desktop touch pen-button on)
 BUTTON="${ gettext "Set up"; }"
 touch_reason
 [[ "${ touch_key pen-ring; }" == off ]] && DETAIL="${ gettext "Used once the pen's tools are on."; }"
 USAGE="ame desktop touch pen-button on|off"
 item desktop pen-button action "${ gettext "The pen's side button"; }" \
-    "${ gettext "Makes the side button of each pen open the tools, keeping what it did to give back."; }" "" desktop#the-pen-ring
+    "${ gettext "Makes the side button of each pen open the tools, keeping what it did to give back."; }" "" touch#the-pen-ring
 GROUP=""
 
 # The dock (org.gnome.shell.extensions.amethystora-ui.dock): how it moves, what it holds and where it lives, each an
@@ -1483,7 +1483,7 @@ choice off "${ gettext "Still"; }" "${ gettext "Nothing grows"; }" false ame des
 dock_reason
 USAGE="ame desktop dock magnify swell|lift|off"
 item desktop dock-magnify choice "${ gettext "Growing"; }" "${ gettext "How the icons grow under the pointer."; }" \
-    "${ dock_key magnify; }" desktop#how-the-dock-moves
+    "${ dock_key magnify; }" dock#how-the-dock-moves
 dock_reason
 [[ "${ dock_key magnify; }" == swell ]] || DETAIL="${ gettext "Only Swell grows this far."; }"
 EXTRA='{"min": 120, "max": 220, "step": 5, "unit": "%", "terminal": false,
@@ -1491,7 +1491,7 @@ EXTRA='{"min": 120, "max": 220, "step": 5, "unit": "%", "terminal": false,
 USAGE="ame desktop dock amount 120..220"
 item desktop dock-amount range "${ gettext "How far Swell grows"; }" \
     "${ gettext "How large the icon under the pointer becomes, in per cent."; }" \
-    "$(awk -v a="${ dock_key magnify-amount; }" 'BEGIN { if (a != "") printf "%.0f", a * 100 }')" desktop#how-the-dock-moves
+    "$(awk -v a="${ dock_key magnify-amount; }" 'BEGIN { if (a != "") printf "%.0f", a * 100 }')" dock#how-the-dock-moves
 # The icons' size at rest (R6-28)
 dock_reason
 EXTRA='{"min": 40, "max": 64, "step": 2, "unit": "px", "terminal": false,
@@ -1499,7 +1499,7 @@ EXTRA='{"min": 40, "max": 64, "step": 2, "unit": "px", "terminal": false,
 USAGE="ame desktop dock size 40..64|reset"
 item desktop dock-size range "${ gettext "Icon size"; }" \
     "${ gettext "How large the dock's icons are at rest, in pixels. A dock too long for the screen draws them smaller."; }" \
-    "${ dock_key icon-size; }" desktop#how-the-dock-moves
+    "${ dock_key icon-size; }" dock#how-the-dock-moves
 choice halo "${ gettext "Halo"; }" "${ gettext "A ring runs round the icon"; }" false ame desktop dock launch halo
 choice hop "${ gettext "Hop"; }" "${ gettext "The icon hops"; }" false ame desktop dock launch hop
 choice breathe "${ gettext "Breathe"; }" "${ gettext "The icon pulses, nothing moves"; }" false ame desktop dock launch breathe
@@ -1507,58 +1507,58 @@ choice off "${ gettext "Nothing"; }" "${ gettext "No sign"; }" false ame desktop
 dock_reason
 USAGE="ame desktop dock launch halo|hop|breathe|off"
 item desktop dock-launch choice "${ gettext "Starting an app"; }" "${ gettext "What an app's icon does until its window opens."; }" \
-    "${ dock_key launch; }" desktop#how-the-dock-moves
+    "${ dock_key launch; }" dock#how-the-dock-moves
 choice bar "${ gettext "Bar"; }" "${ gettext "Longer with two windows or more"; }" false ame desktop dock indicator bar
 choice dot "${ gettext "Dots"; }" "${ gettext "One for each window"; }" false ame desktop dock indicator dot
 choice glow "${ gettext "Glow"; }" "${ gettext "Light under the icon"; }" false ame desktop dock indicator glow
 dock_reason
 USAGE="ame desktop dock indicator bar|dot|glow"
 item desktop dock-indicator choice "${ gettext "Running apps"; }" "${ gettext "How an app with windows is marked."; }" \
-    "${ dock_key indicator; }" desktop#how-the-dock-moves
+    "${ dock_key indicator; }" dock#how-the-dock-moves
 switch_choices false ame desktop dock recent
 dock_reason
 USAGE="ame desktop dock recent on|off"
 item desktop dock-recent switch "${ gettext "Recent apps"; }" \
     "${ gettext "The last three apps you used that are not pinned, after a divider."; }" "${ dock_onoff recent; }" \
-    desktop#what-the-dock-holds
+    dock#what-the-dock-holds
 switch_choices false ame desktop dock previews
 dock_reason
 USAGE="ame desktop dock previews on|off"
 item desktop dock-previews switch "${ gettext "Window previews"; }" \
-    "${ gettext "Rest the pointer on an app to see its windows."; }" "${ dock_onoff previews; }" desktop#what-the-dock-holds
+    "${ gettext "Rest the pointer on an app to see its windows."; }" "${ dock_onoff previews; }" dock#what-the-dock-holds
 choice bottom "${ gettext "Bottom"; }" "" false ame desktop dock edge bottom
 choice left "${ gettext "Left"; }" "" false ame desktop dock edge left
 choice right "${ gettext "Right"; }" "" false ame desktop dock edge right
 dock_reason
 USAGE="ame desktop dock edge bottom|left|right"
 item desktop dock-edge choice "${ gettext "Edge"; }" "${ gettext "Where the dock is."; }" "${ dock_key edge; }" \
-    desktop#where-the-dock-lives
+    dock#where-the-dock-lives
 choice every "${ gettext "Every screen"; }" "${ gettext "Each with the apps whose windows are on it"; }" false \
     ame desktop dock screens every
 choice primary "${ gettext "Main screen only"; }" "" false ame desktop dock screens primary
 dock_reason
 USAGE="ame desktop dock screens every|primary"
 item desktop dock-screens choice "${ gettext "Screens"; }" "${ gettext "Which screens have a dock."; }" "${ dock_key screens; }" \
-    desktop#where-the-dock-lives
+    dock#where-the-dock-lives
 choice off "${ gettext "Always shown"; }" "${ gettext "Windows stop at the dock"; }" false ame desktop dock autohide off
 choice touch "${ gettext "Hide when a window touches it"; }" "${ gettext "Push the pointer against the edge to bring it back"; }" \
     false ame desktop dock autohide touch
 dock_reason
 USAGE="ame desktop dock autohide off|touch"
 item desktop dock-autohide choice "${ gettext "Hiding"; }" "${ gettext "When the dock gets out of the way."; }" \
-    "${ dock_key autohide; }" desktop#where-the-dock-lives
+    "${ dock_key autohide; }" dock#where-the-dock-lives
 switch_choices false ame desktop dock workspace-apps
 dock_reason
 USAGE="ame desktop dock workspace-apps on|off"
 item desktop dock-workspace-apps switch "${ gettext "This workspace's apps only"; }" \
     "${ gettext "Running apps of other workspaces leave the dock; pinned apps stay."; }" "${ dock_onoff workspace-apps; }" \
-    desktop#where-the-dock-lives
+    dock#where-the-dock-lives
 switch_choices false ame desktop dock updating
 dock_reason
 USAGE="ame desktop dock updating on|off"
 item desktop dock-updating switch "${ gettext "Grey an app while it updates"; }" \
     "${ gettext "Its icon is at half strength from the start of its download until it is installed. It still starts."; }" "${ dock_onoff updating; }" \
-    desktop#what-the-dock-holds
+    dock#what-the-dock-holds
 GROUP=""
 
 # The app grid's row of the apps used most (appgrid module), and the tips (hints module)
@@ -1567,7 +1567,7 @@ if [[ "${ said app-grid; }" == false ]]; then RECENT=off; else RECENT=on; fi
 switch_choices false ame desktop app-grid recent
 USAGE="ame desktop app-grid recent on|off"
 item desktop app-grid-recent switch "${ gettext "Recently used apps"; }" \
-    "${ gettext "The apps you use most, in a row at the top of the app grid."; }" "${RECENT}" desktop#the-app-grid
+    "${ gettext "The apps you use most, in a row at the top of the app grid."; }" "${RECENT}" search#the-app-grid
 # The grid's order (appgrid module): GNOME's own, where each icon was put, or sorted after the folders
 ORDER="${ said app-grid-order; }"
 ORDER="${ORDER//\'/}"
@@ -1580,7 +1580,7 @@ choice use "${ gettext "By use"; }" "${ gettext "The apps you use most first."; 
 choice kind "${ gettext "By kind"; }" "${ gettext "Work, pictures and sound, development, games, then the system's."; }" false ame desktop app-grid order kind
 USAGE="ame desktop app-grid order custom|name|use|kind"
 item desktop app-grid-order choice "${ gettext "The app grid's order"; }" \
-    "${ gettext "Your folders stay first, as you left them."; }" "${ORDER}" desktop#the-app-grid-in-order
+    "${ gettext "Your folders stay first, as you left them."; }" "${ORDER}" search#the-app-grid-in-order
 if [[ "${ said hints; }" == false ]]; then HINTS=off; else HINTS=on; fi
 [[ "${ ended hints; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
 switch_choices false ame desktop hints
@@ -1608,7 +1608,7 @@ choice shrink "${ gettext "Shrink"; }" "${ gettext "The window shrinks and fades
 motion_note
 USAGE="ame desktop minimize droplet|shrink"
 item desktop minimize choice "${ gettext "Minimize"; }" "${ gettext "How a window goes into the dock and comes back."; }" \
-    "${ motion_key minimize; }" desktop#motion
+    "${ motion_key minimize; }" windows#motion
 choice depth "${ gettext "Depth"; }" \
     "${ gettext "The wallpaper slides a third as far as the windows, which step back a little on the way"; }" false \
     ame desktop workspace-switch depth
@@ -1617,7 +1617,7 @@ choice slide "${ gettext "Slide"; }" "${ gettext "Each workspace slides in whole
 motion_note
 USAGE="ame desktop workspace-switch depth|slide"
 item desktop workspace-switch choice "${ gettext "Changing workspace"; }" \
-    "${ gettext "How one workspace gives way to the next."; }" "${ motion_key workspace-switch; }" desktop#motion
+    "${ gettext "How one workspace gives way to the next."; }" "${ motion_key workspace-switch; }" windows#motion
 choice gnome "${ gettext "GNOME's own"; }" "${ gettext "A window grows out of its place, as GNOME draws it"; }" false \
     ame desktop window-motion gnome
 choice pop "${ gettext "Pop"; }" "${ gettext "It grows into place from a little smaller"; }" false ame desktop window-motion pop
@@ -1627,32 +1627,32 @@ motion_note
 USAGE="ame desktop window-motion pop|slide|fade|gnome"
 item desktop window-motion choice "${ gettext "Opening and closing"; }" \
     "${ gettext "How a window arrives and leaves; closing plays it backwards. Dialogs keep GNOME's."; }" \
-    "${ motion_key open-close; }" desktop#motion
+    "${ motion_key open-close; }" windows#motion
 GROUP="${ gettext "Workspaces"; }"
 switch_choices false ame desktop space-names
 [[ "${ ended space-names; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
 USAGE="ame desktop space-names on|off"
 item desktop space-names switch "${ gettext "Name workspaces after their apps"; }" \
     "${ gettext "A workspace you have not named shows the name of the app with most windows on it."; }" \
-    "${ [[ "${ said space-names; }" == true ]] && echo on || echo off; }" desktop#workspaces
+    "${ [[ "${ said space-names; }" == true ]] && echo on || echo off; }" workspaces
 switch_choices false ame desktop sets
 [[ "${ ended sets; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
 USAGE="ame desktop sets on|off"
 item desktop sets switch "${ gettext "Saved sets"; }" \
     "${ gettext "Save a workspace’s apps and their places from its menu, and open them again."; }" \
-    "${ [[ "${ said sets; }" == true ]] && echo on || echo off; }" desktop#saved-sets
+    "${ [[ "${ said sets; }" == true ]] && echo on || echo off; }" workspaces#saved-sets
 switch_choices false ame desktop resume
 [[ "${ ended resume; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
 USAGE="ame desktop resume on|off"
 item desktop resume switch "${ gettext "Pick up where you left off"; }" \
     "${ gettext "When an update restarts the computer, the first login after it offers to open again the apps that were open, in their places."; }" \
-    "${ [[ "${ said resume; }" == true ]] && echo on || echo off; }" updates#picking-up-where-you-left-off
+    "${ [[ "${ said resume; }" == true ]] && echo on || echo off; }" restarting#picking-up-where-you-left-off
 switch_choices false ame desktop put-away
 [[ "${ ended put-away; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
 USAGE="ame desktop put-away on|off"
 item desktop put-away switch "${ gettext "Put a workspace away"; }" \
     "${ gettext "Put a whole workspace away from its menu and bring it back days later with every window in place. What is put away is kept sealed in your Vault."; }" \
-    "${ [[ "${ said put-away; }" == true ]] && echo on || echo off; }" desktop#putting-a-workspace-away
+    "${ [[ "${ said put-away; }" == true ]] && echo on || echo off; }" workspaces#putting-a-workspace-away
 GROUP=""
 
 # How long Amethystora Clipboard, the history on Super+Shift+V, keeps what was copied (keep-history)
@@ -1672,7 +1672,7 @@ GROUP="${ gettext "Clipboard"; }"
 USAGE="ame desktop clipboard always|restart|session"
 item desktop clipboard choice "${ gettext "Clipboard history"; }" \
     "${ gettext "How long what you copy is kept, sealed under a key in your login keyring. Super+Shift+V shows it."; }" \
-    "${KEEP}" desktop#the-clipboard
+    "${KEEP}" clipboard#the-clipboard
 
 # What the search finds besides GNOME's own (org.gnome.shell.extensions.amethystora-ui.search), each a switch
 SEARCH="${ said search; }"
@@ -1683,7 +1683,7 @@ search_item() {
     GROUP="${ gettext "Search"; }"
     USAGE="ame desktop search ${key} on|off"
     item desktop "search-${key}" switch "${title}" "${text}" \
-        "${ [[ "${SEARCH}" == *" ${key} true"* ]] && echo on || echo off; }" desktop#finding-things
+        "${ [[ "${SEARCH}" == *" ${key} true"* ]] && echo on || echo off; }" search
 }
 search_item answers "${ gettext "Sums and units"; }" \
     "${ gettext "Answers sums and conversions as you type, in your language's numbers."; }"
@@ -1725,7 +1725,7 @@ GROUP="${ gettext "Search"; }"
 USAGE="ame desktop search photos on|off"
 item desktop search-photos switch "${ gettext "Your photos, by what is in them"; }" \
     "${ gettext "Type photo: and a few words to find a picture by what it shows. A small model reads each photo once on this computer, on mains power while you are away; what it works out is kept sealed in the Vault, and no photo leaves."; }" \
-    "${ [[ "${SEARCH}" == *" photos true"* ]] && echo on || echo off; }" desktop#your-photos-by-what-is-in-them
+    "${ [[ "${SEARCH}" == *" photos true"* ]] && echo on || echo off; }" search#your-photos-by-what-is-in-them
 GROUP=""
 
 # The skin tone of the hands and people in the emoji picker (Super+.)
@@ -1741,7 +1741,7 @@ choice dark "${ gettext "Dark"; }" "" false ame desktop emoji tone dark
 GROUP="${ gettext "Typing"; }"
 USAGE="ame desktop emoji tone none|light|medium-light|medium|medium-dark|dark"
 item desktop emoji-tone choice "${ gettext "Emoji skin tone"; }" \
-    "${ gettext "The tone of hands and people in the emoji picker, Super+.."; }" "${TONE}" desktop#emoji-and-symbols
+    "${ gettext "The tone of hands and people in the emoji picker, Super+.."; }" "${TONE}" clipboard#emoji-and-symbols
 
 # Text shortcuts (org.gnome.shell.extensions.amethystora-ui.typing): the switch, then the list of them, which holds the
 # abbreviations and how many lines each text has, never a text: the window reads a text with show when Edit is pressed,
@@ -1751,7 +1751,7 @@ switch_choices false ame desktop text-shortcuts
 USAGE="ame desktop text-shortcuts on|off"
 item desktop text-shortcuts switch "${ gettext "Expand text shortcuts"; }" \
     "${ gettext "As you type in apps, Amethystora watches the last few characters for your shortcuts. It keeps nothing it reads, never looks at password fields, and works in apps that use GNOME's input method."; }" \
-    "${ [[ "${ said typing; }" == true ]] && echo on || echo off; }" desktop#text-shortcuts
+    "${ [[ "${ said typing; }" == true ]] && echo on || echo off; }" clipboard#text-shortcuts
 if [[ "${ ended shortcuts; }" == 0 ]] && jq -e 'type == "array"' <<<"${ said shortcuts; }" >/dev/null 2>&1; then
     SHORTCUTS="${ said shortcuts; }"
 else
@@ -1763,7 +1763,7 @@ EXTRA="$(jq -nc --argjson list "${SHORTCUTS}" '{shortcuts: [$list[] | {abbr, lin
     remove: {terminal: false, command: ["ame", "desktop", "text-shortcut", "remove", "{abbr}"]},
     show: {terminal: false, command: ["ame", "desktop", "text-shortcut", "show", "{abbr}"]}}}')"
 USAGE="ame desktop text-shortcut add ABBR"
-item desktop text-shortcut-list shortcuts "${ gettext "Your shortcuts"; }" "" "" desktop#text-shortcuts
+item desktop text-shortcut-list shortcuts "${ gettext "Your shortcuts"; }" "" "" clipboard#text-shortcuts
 GROUP=""
 
 # How old what is in the trash gets before GNOME's housekeeping empties it (org.gnome.desktop.privacy)
@@ -1786,7 +1786,7 @@ GROUP="${ gettext "Privacy"; }"
 USAGE="ame desktop privacy trash DAYS|off"
 item desktop trash choice "${ gettext "Empty the trash"; }" \
     "${ gettext "What was deleted longer ago than this leaves the trash by itself, checked every hour while you are logged in. The snapshots and the backup still have it."; }" \
-    "${TRASH}" desktop#the-trash
+    "${TRASH}" files#the-trash
 
 # Plugins (ame plugin): everything that was added, what the agent made, and what the image ships. A plugin runs in a sandbox of its own and
 # reaches only what was allowed; its words are its own, shown as they come
@@ -1903,14 +1903,14 @@ switch_choices false ame desktop resting-screen
 USAGE="ame desktop resting-screen on|off"
 item desktop resting-screen switch "${ gettext "A resting screen"; }" \
     "${ gettext "Left alone, the desktop shows a large clock over the slowly drifting wallpaper, the windows hidden. Any key brings everything back; the screen locks when it would anyway."; }" \
-    "${ [[ "${ value_of "${REST}" enabled "(.*)$"; }" == true ]] && echo on || echo off; }" desktop#a-resting-screen
+    "${ [[ "${ value_of "${REST}" enabled "(.*)$"; }" == true ]] && echo on || echo off; }" today#a-resting-screen
 rest_reason
 for MINUTES in 1 2 5 10; do
     choice "$((MINUTES * 60))" "${ eval_gettext "After \${MINUTES} min"; }" "" false ame desktop resting-screen after "${MINUTES}"
 done
 USAGE="ame desktop resting-screen after 1..30"
 item desktop resting-screen-after choice "${ gettext "When it rests"; }" "${ gettext "How long the computer is left alone first."; }" \
-    "${ value_of "${REST}" after "(.*)$"; }" desktop#a-resting-screen
+    "${ value_of "${REST}" after "(.*)$"; }" today#a-resting-screen
 GROUP=""
 
 # The greeting at a new account's first login: whether a new account gets it, and seeing it again
@@ -1921,14 +1921,14 @@ switch_choices false ame desktop hello
 USAGE="ame desktop hello on|off"
 item desktop hello switch "${ gettext "A greeting for a new account"; }" \
     "${ gettext "Its first login says hello in every language Amethystora speaks, once, and then goes on to Pick a look. Any key goes straight on."; }" \
-    "${ [[ "${ said hello; }" == true ]] && echo on || echo off; }" desktop#the-first-login
+    "${ [[ "${ said hello; }" == true ]] && echo on || echo off; }" login#the-first-login
 hello_reason
 [[ "${ said hello; }" == true ]] || REASON="${REASON:-${ gettext "The greeting is off."; }}"
 TERMINAL=false
 COMMAND=(ame desktop hello show)
 BUTTON="${ gettext "Show it"; }"
 USAGE="ame desktop hello show"
-item desktop hello-show action "${ gettext "See the greeting again"; }" "${ gettext "Any key or click ends it."; }" "" desktop#the-first-login
+item desktop hello-show action "${ gettext "See the greeting again"; }" "${ gettext "Any key or click ends it."; }" "" login#the-first-login
 # The Manual's Show me (R7-61, on)
 GUIDE="${ said guide; }"
 [[ "${ ended guide; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
@@ -1950,27 +1950,27 @@ if grep -q "'theme'" <<<"${QUICK_HIDDEN}"; then QUICK_THEME=off; else QUICK_THEM
 switch_choices false ame desktop quick-settings theme
 USAGE="ame desktop quick-settings theme on|off"
 item desktop quick-theme switch "${ gettext "Theme in quick settings"; }" \
-    "${ gettext "Every theme as a swatch in quick settings, one tap to switch."; }" "${QUICK_THEME}" desktop#quick-settings
+    "${ gettext "Every theme as a swatch in quick settings, one tap to switch."; }" "${QUICK_THEME}" quick-settings
 [[ "${ ended quick; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
 COMMAND=(ame desktop quick-settings reset)
 TERMINAL=false
 BUTTON="${ gettext "Put back"; }"
 USAGE="ame desktop quick-settings reset"
 item desktop quick-tiles action "${ gettext "Quick settings tiles"; }" \
-    "${ gettext "Hold a tile in quick settings to move or hide it. This puts every tile back."; }" "" desktop#quick-settings
+    "${ gettext "Hold a tile in quick settings to move or hide it. This puts every tile back."; }" "" quick-settings
 quick_onoff() { [[ "${ value_of "${QUICK_KEYS}" "$1" "(.*)\$"; }" == true ]] && echo on || echo off; }
 [[ "${ ended quick; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
 switch_choices false ame desktop quick-settings sounding
 USAGE="ame desktop quick-settings sounding on|off"
 item desktop sounding-apps switch "${ gettext "Which app is making sound"; }" \
     "${ gettext "Playing now in quick settings lists first the apps sending sound, and says Paused of the rest. It never listens to them."; }" \
-    "${ quick_onoff sounding-apps; }" desktop#quick-settings
+    "${ quick_onoff sounding-apps; }" quick-settings
 [[ "${ ended quick; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
 switch_choices false ame desktop send-to-tv
 USAGE="ame desktop send-to-tv on|off"
 item desktop send-to-tv switch "${ gettext "Send to the TV"; }" \
     "${ gettext "A tile in quick settings opens Network Displays, an app from Flathub that looks for TVs nearby, fetched only after you say yes. Nothing has been tried with a real TV yet, and a TV that needs a direct Wi-Fi link is not expected to work."; }" \
-    "${ quick_onoff send-to-tv; }" desktop#send-your-screen-to-a-tv
+    "${ quick_onoff send-to-tv; }" quick-settings#send-your-screen-to-a-tv
 
 # Send to anyone (R7-66), offered and off: Files' Scripts entry, which says where the file passes before it fetches Warp
 if [[ -e "${CONFIG_DIR}/send-anyone" ]]; then SEND_ANYONE=on; else SEND_ANYONE=off; fi
@@ -1994,46 +1994,46 @@ pill_item() {
 GROUP="${ gettext "Top bar"; }"
 PILLKEY=live pill_item pill "${ gettext "Live pill"; }" \
     "${ gettext "The clock shows what is happening now: music, a timer, a call, a recording, a link from the phone, an update ready. Click it for its controls."; }" \
-    desktop#the-live-pill ame desktop pill
+    pill ame desktop pill
 PILLKEY=privacy-dots pill_item privacy-dots "${ gettext "Privacy dots"; }" \
     "${ gettext "A dot in the top bar while the microphone, the camera, the screen or your location is in use. Click it to see which."; }" \
-    desktop#privacy-dots ame desktop pill dots
+    notifications#privacy-dots ame desktop pill dots
 PILLKEY=glow pill_item glow "${ gettext "Recording glow"; }" \
     "${ gettext "A thin red glow round the screen while it is recorded or shared. It shows in a recording of the whole screen."; }" \
-    desktop#privacy-dots ame desktop pill glow
+    notifications#privacy-dots ame desktop pill glow
 PILLKEY=meetings pill_item pill-meetings "${ gettext "Meetings in the pill"; }" \
     "${ gettext "Five minutes before an event of today's calendar that has a video-call link, the live pill shows it with a countdown and Join. The link opens only when you click Join."; }" \
-    desktop#meetings-in-the-pill ame desktop pill meetings
+    pill#meetings-in-the-pill ame desktop pill meetings
 PILLKEY=two-at-once pill_item pill-two "${ gettext "Two at once"; }" \
     "${ gettext "A second thing happening sits as a small bubble beside the pill, and a click on it opens its own card."; }" \
-    desktop#two-at-once ame desktop pill two-at-once
+    pill#two-at-once ame desktop pill two-at-once
 PILLKEY=weight pill_item pill-weight "${ gettext "The pill's weight"; }" \
     "${ gettext "It overshoots a little and settles, gives when pressed, and banners grow out of it. Reduce motion and the animation speed still rule."; }" \
-    desktop#the-pills-weight ame desktop pill weight
+    pill#the-pills-weight ame desktop pill weight
 PILLKEY=timer-feel pill_item pill-timer "${ gettext "A timer you can feel"; }" \
     "${ gettext "The ring drains round the pill, two timers sit side by side, and the end glows as well as sounds."; }" \
-    desktop#a-timer-you-can-feel ame desktop pill timer
+    pill#a-timer-you-can-feel ame desktop pill timer
 PILLKEY=moving pill_item pill-moving "${ gettext "Everything moving"; }" \
     "${ gettext "Downloads, Flatpak updates, copies in Files, backups and the phone's transfers as one thing in the pill, with a card listing each."; }" \
-    desktop#everything-moving ame desktop pill moving
+    pill#everything-moving ame desktop pill moving
 PILLKEY=stay-awake pill_item pill-stay-awake "${ gettext "Stay awake for what is moving"; }" \
     "${ gettext "The computer does not sleep by itself on a copy or download. Closing the lid still sleeps, and on battery it gives way below 15%."; }" \
-    desktop#everything-moving ame desktop pill stay-awake
+    pill#everything-moving ame desktop pill stay-awake
 PILLKEY=hello pill_item pill-hello "${ gettext "Hello, headphones"; }" \
     "${ gettext "A device arriving grows the pill for two seconds, with its name and battery. Quiet during a call, a recording, Focus and quiet hours."; }" \
-    desktop#hello-headphones ame desktop pill hello
+    pill#hello-headphones ame desktop pill hello
 PILLKEY=drop-targets pill_item pill-drop "${ gettext "Drop things on the pill"; }" \
     "${ gettext "Drag a file up to the pill and it opens into targets: Send to phone, Shelf, Convert, Copy without hidden data, Ask the agent."; }" \
-    desktop#drop-things-on-the-pill ame desktop pill drop
+    pill#drop-things-on-the-pill ame desktop pill drop
 PILLKEY=music-see pill_item pill-music "${ gettext "Music you can see"; }" \
     "${ gettext "The pill takes the album's colour, and the position in its card can be dragged."; }" \
-    desktop#music-you-can-see ame desktop pill music
+    pill#music-you-can-see ame desktop pill music
 PILLKEY=music-bars pill_item pill-music-bars "${ gettext "Bars that follow the sound"; }" \
     "${ gettext "The pill's bars follow the real sound of the player, read by a small program that runs only while they show. Off, they play four beats."; }" \
-    desktop#music-you-can-see ame desktop pill music-bars
+    pill#music-you-can-see ame desktop pill music-bars
 PILLKEY=meeting-mirror pill_item pill-mirror "${ gettext "How do I look and sound?"; }" \
     "${ gettext "A meeting's card offers a small window with the camera and a microphone level. The camera opens only while it shows, and nothing is recorded."; }" \
-    desktop#how-do-i-look-and-sound ame desktop pill mirror
+    calls#how-do-i-look-and-sound ame desktop pill mirror
 
 # A top bar on every screen, the bar over fullscreen, Today's tasks and the weather
 # (org.gnome.shell.extensions.amethystora-ui.bars and .today)
@@ -2054,24 +2054,24 @@ ui_switch() {
 GROUP="${ gettext "Top bar"; }"
 ui_switch bars every-screen top-bar-screens "${ gettext "A top bar on every screen"; }" \
     "${ gettext "Each screen's own bar shows the workspace on it and the time."; }" \
-    desktop#several-monitors false ame desktop top-bar screens
+    tiling#several-monitors false ame desktop top-bar screens
 ui_switch bars peek top-bar-peek "${ gettext "The top bar over fullscreen"; }" \
     "${ gettext "Push the pointer against the top edge of a fullscreen window to see the bar."; }" \
-    desktop#the-top-bar false ame desktop top-bar peek
+    top-bar false ame desktop top-bar peek
 ui_switch today tasks today-tasks "${ gettext "Today's tasks in the calendar"; }" \
     "${ gettext "The tasks due today, from Notes while it is open and unlocked."; }" \
-    desktop#today false ame desktop today tasks
+    today#today false ame desktop today tasks
 # It says what it sends before it turns on: in a terminal
 ui_switch today weather weather "${ gettext "Weather beside the clock"; }" \
     "${ gettext "Sends the place you chose in Weather to a weather service."; }" \
-    desktop#the-weather true ame desktop weather
+    today#the-weather true ame desktop weather
 # Getting set in the calendar menu, for an account's first four weeks
 ui_switch today getting-set getting-set "${ gettext "Getting set"; }" \
     "${ gettext "For your first four weeks, the calendar menu lists the steps that protect the machine and make it yours."; }" \
-    desktop#getting-set false ame desktop getting-set
+    today#getting-set false ame desktop getting-set
 ui_switch today your-year your-year "${ gettext "Your year, on this machine"; }" \
     "${ gettext "Around the turn of the year, Today offers one page about your year here, worked out when you open it and never kept."; }" \
-    desktop#your-year false ame desktop your-year
+    today#your-year false ame desktop your-year
 
 # The bar your way: what it holds and where (one entry the window draws as the bar), its size and its edge
 bars_value() { value_of "${BARS}" "$1" "'(.*)'\$"; }
@@ -2084,7 +2084,7 @@ EXTRA="$(jq -c '{bar_items: [.zones as $zs | .items as $it | ("left", "center", 
 USAGE="ame desktop top-bar item ITEM left|center|right|hidden [POSITION]"
 item desktop top-bar-layout bar "${ gettext "What the top bar holds"; }" \
     "${ gettext "Drag an item to the left, the centre or the right of the bar, or onto Hidden. The clock and the system menu stay."; }" \
-    "" desktop#arranging-the-bar
+    "" top-bar#arranging-the-bar
 # Each meter's switch: off is hidden in that layout, where nothing is read for it
 BAR_HIDDEN=""
 bar_hidden='"hidden":\[([^]]*)\]'
@@ -2097,7 +2097,7 @@ meter_switch() {
     USAGE="$* on|off"
     local state=on
     if [[ "${BAR_HIDDEN}" == *"\"${meter}\""* ]]; then state=off; fi
-    item desktop "top-bar-${meter}" switch "${title}" "${text}" "${state}" desktop#arranging-the-bar
+    item desktop "top-bar-${meter}" switch "${title}" "${text}" "${state}" top-bar#arranging-the-bar
 }
 meter_switch processor "${ gettext "Processor meter"; }" "${ gettext "How busy each processor is. Off, nothing is read for it."; }" \
     ame desktop top-bar meter processor
@@ -2112,17 +2112,17 @@ choice roomy "${ gettext "Roomy"; }" "${ gettext "40 pixels, larger targets"; }"
 USAGE="ame desktop top-bar size compact|regular|roomy"
 item desktop top-bar-size choice "${ gettext "Bar size"; }" \
     "${ gettext "The bar and everything on it, together. Touch mode's taller bar still wins."; }" \
-    "${ bars_value size; }" desktop#the-bars-size
+    "${ bars_value size; }" top-bar#the-bars-size
 [[ "${ ended bars; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
 choice top "${ gettext "Top"; }" "" false ame desktop top-bar position top
 choice bottom "${ gettext "Bottom"; }" "${ gettext "Its menus open upwards; a dock at the bottom sits above it"; }" false \
     ame desktop top-bar position bottom
 USAGE="ame desktop top-bar position top|bottom"
 item desktop top-bar-position choice "${ gettext "The bar's edge"; }" \
-    "${ gettext "Where the bar sits on the screen."; }" "${ bars_value position; }" desktop#at-the-bottom-or-hidden
+    "${ gettext "Where the bar sits on the screen."; }" "${ bars_value position; }" top-bar#at-the-bottom-or-hidden
 ui_switch bars autohide top-bar-autohide "${ gettext "Hide the bar until touched"; }" \
     "${ gettext "The bar gives its room to the windows; push the pointer against its edge to bring it in."; }" \
-    desktop#at-the-bottom-or-hidden false ame desktop top-bar autohide
+    top-bar#at-the-bottom-or-hidden false ame desktop top-bar autohide
 
 # The clock: GNOME's own keys, and a second time zone of the pill's
 GROUP="${ gettext "Clock"; }"
@@ -2133,7 +2133,7 @@ choice 24h "${ gettext "24-hour"; }" "" false ame desktop clock format 24h
 choice 12h "${ gettext "12-hour"; }" "" false ame desktop clock format 12h
 USAGE="ame desktop clock format 24h|12h"
 item desktop clock-format choice "${ gettext "Time format"; }" "" "${ value_of "${CLOCK}" clock-format "'(.*)'\$"; }" \
-    desktop#the-clock
+    top-bar#the-clock
 for what in seconds weekday date; do
     case "${what}" in
         seconds) key=clock-show-seconds title="${ gettext "Seconds"; }" text="${ gettext "The clock then changes every second."; }" ;;
@@ -2143,13 +2143,13 @@ for what in seconds weekday date; do
     [[ "${ ended clock; }" == 0 ]] || REASON="${ gettext "This GNOME has no clock settings."; }"
     switch_choices false ame desktop clock "${what}"
     USAGE="ame desktop clock ${what} on|off"
-    item desktop "clock-${what}" switch "${title}" "${text}" "${ clock_onoff "${key}"; }" desktop#the-clock
+    item desktop "clock-${what}" switch "${title}" "${text}" "${ clock_onoff "${key}"; }" top-bar#the-clock
 done
 [[ "${ ended weekdate; }" == 0 ]] || REASON="${ gettext "This GNOME has no calendar settings."; }"
 switch_choices false ame desktop clock week-numbers
 USAGE="ame desktop clock week-numbers on|off"
 item desktop clock-week-numbers switch "${ gettext "Week numbers in the calendar"; }" "" \
-    "${ [[ "${ said weekdate; }" == true ]] && echo on || echo off; }" desktop#the-clock
+    "${ [[ "${ said weekdate; }" == true ]] && echo on || echo off; }" top-bar#the-clock
 ZONE="${ pill_key second-zone; }"
 ZONE="${ZONE//\'/}"
 [[ "${ ended pill; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
@@ -2166,7 +2166,7 @@ for zone in "${ZONES[@]}"; do
 done
 USAGE="ame desktop clock zone AREA/CITY|off"
 item desktop clock-zone choice "${ gettext "A second time zone"; }" \
-    "${ gettext "Its time after the clock, for family or colleagues abroad."; }" "${ZONE:-off}" desktop#the-clock
+    "${ gettext "Its time after the clock, for family or colleagues abroad."; }" "${ZONE:-off}" top-bar#the-clock
 GROUP=""
 
 # GNOME's own rest reminders (org.gnome.desktop.break-reminders)
@@ -2185,12 +2185,12 @@ choice both "${ gettext "Both"; }" "" false ame desktop breaks both
 USAGE="ame desktop breaks on|eyesight|movement|both|off"
 item desktop breaks choice "${ gettext "Rest reminders"; }" \
     "${ gettext "GNOME's reminders to look away or stand up. The times are in Settings, Wellbeing."; }" "${BREAKS}" \
-    desktop#rest-reminders
+    today#rest-reminders
 
 GROUP="${ gettext "Notifications"; }"
 PILLKEY=quiet pill_item quiet "${ gettext "Quiet while fullscreen or sharing"; }" \
     "${ gettext "Banners wait while a window is fullscreen or the screen is shared or recorded. Calls, alarms and urgent ones still come through."; }" \
-    desktop#quiet ame desktop quiet
+    notifications#quiet ame desktop quiet
 # Night Light's times, as HH:MM from its decimal hours
 NIGHT="${ said night-light; }"
 night_key() { value_of "${NIGHT}" "$1" "(.*)\$"; }
@@ -2203,10 +2203,10 @@ elif [[ "${ ended night-light; }" == 0 ]]; then
     DETAIL="${ eval_gettext "Now \${FROM} to \${TO}."; }"
 fi
 PILLKEY=quiet-night pill_item quiet-night "${ gettext "Quiet at night"; }" \
-    "${ gettext "Banners wait between Night Light's times."; }" desktop#quiet ame desktop quiet night
+    "${ gettext "Banners wait between Night Light's times."; }" notifications#quiet ame desktop quiet night
 PILLKEY=digest pill_item digest "${ gettext "Digest"; }" \
     "${ gettext "Banners that are not urgent wait and come together, as one card, at the times you choose."; }" \
-    desktop#the-digest ame desktop digest
+    notifications#the-digest ame desktop digest
 # The digest's times: four sets, or any set from a terminal
 TIMES="${ pill_key digest-times; }"
 TIMES="${TIMES//[]\[\' ]/}"
@@ -2225,7 +2225,7 @@ esac
 [[ "${ ended pill; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
 USAGE="ame desktop digest times HH:MM [HH:MM]..."
 item desktop digest-times choice "${ gettext "Digest times"; }" "${ gettext "When the digest comes."; }" "${TIMES}" \
-    desktop#the-digest
+    notifications#the-digest
 # The digest's two lists (R5-33), each picked from the launchers in a terminal
 for LIST in through wait; do
     [[ "${ ended pill; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
@@ -2237,17 +2237,17 @@ for LIST in through wait; do
     USAGE="ame desktop digest ${LIST} [APP.desktop...]"
     if [[ "${LIST}" == through ]]; then
         item desktop digest-through action "${ gettext "Always come through"; }" \
-            "${ gettext "Apps whose banners show at once while the digest is on."; }" "" desktop#the-digest
+            "${ gettext "Apps whose banners show at once while the digest is on."; }" "" notifications#the-digest
     else
         item desktop digest-wait action "${ gettext "Always wait"; }" \
             "${ gettext "Apps whose banners always wait for the next digest, also while the digest is off."; }" "" \
-            desktop#the-digest
+            notifications#the-digest
     fi
 done
 # Later and mute on banners (in memory only), their two times, and What's new after an update
 PILLKEY=later pill_item later "${ gettext "Later and mute"; }" \
     "${ gettext "Later on any banner brings it back in an hour, this evening, tomorrow or when you next unlock; Mute holds an app's banners for an hour."; }" \
-    desktop#later-and-mute ame desktop notifications later
+    notifications#later-and-mute ame desktop notifications later
 LATER_TIMES="${ pill_key later-times; }"
 LATER_TIMES="${LATER_TIMES//[]\[\' ]/}"
 LATER_TIMES="${LATER_TIMES#@as}"
@@ -2265,7 +2265,7 @@ esac
 USAGE="ame desktop notifications later-times HH:MM HH:MM"
 item desktop later-times choice "${ gettext "This evening and tomorrow morning"; }" \
     "${ gettext "When Later's This evening and Tomorrow morning bring a banner back."; }" "${LATER_TIMES}" \
-    desktop#later-and-mute
+    notifications#later-and-mute
 PILLKEY=whats-new pill_item whats-new "${ gettext "What's new after an update"; }" \
     "${ gettext "The first session after an update, the pill says Updated once and shows what it brought."; }" \
     updates#whats-new ame desktop whats-new
@@ -2274,13 +2274,13 @@ PILLKEY=saving-data pill_item saving-data "${ gettext "Saving data"; }" \
     updates#saving-data ame desktop saving-data
 PILLKEY=removable-writes pill_item removable-writes "${ gettext "What a removable disk is writing"; }" \
     "${ gettext "While a stick is still being written to, the pill says how far it has got and when everything is on it."; }" \
-    desktop#a-usb-stick-that-tells-the-truth ame desktop usb-writes
+    pill#a-usb-stick-that-tells-the-truth ame desktop usb-writes
 PILLKEY=printing pill_item printing "${ gettext "Printing in the pill"; }" \
     "${ gettext "While you print, the pill says how far it is and what is wrong, in words, with Cancel and Try again."; }" \
-    desktop#printing ame desktop printing
+    pill#printing ame desktop printing
 PILLKEY=get-through pill_item get-through "${ gettext "Get me through on a low battery"; }" \
     "${ gettext "At 20% the pill offers one button: the power saver, a dimmer screen, and backups that wait. Plugging in brings everything back."; }" \
-    desktop#get-me-through ame desktop get-through
+    power#get-me-through ame desktop get-through
 GROUP=""
 
 
@@ -2293,7 +2293,7 @@ power_item() {
     [[ "${ ended power; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
     switch_choices false "$@"
     USAGE="$* on|off"
-    item desktop "${id}" switch "${title}" "${text}" "${ power_onoff "${key}"; }" desktop#power-you-can-see
+    item desktop "${id}" switch "${title}" "${text}" "${ power_onoff "${key}"; }" power
 }
 GROUP="${ gettext "Power"; }"
 power_item battery-details battery-details "${ gettext "Battery details"; }" \
@@ -2341,18 +2341,18 @@ choice sleep "${ gettext "Sleep"; }" "${ gettext "Banners held, Night Light at i
 USAGE="ame desktop focus off|work|games|sleep [hour|tomorrow]"
 item desktop focus choice "${ gettext "Focus"; }" \
     "${ gettext "A profile laid over your settings until you turn it off. Quick settings has it too, with an end after an hour or tomorrow."; }" \
-    "${ focus_key profile; }" desktop#focus
+    "${ focus_key profile; }" focus#focus
 focus_reason
 switch_choices false ame desktop focus trigger games
 USAGE="ame desktop focus trigger games on|off"
 item desktop focus-trigger-games switch "${ gettext "Games while a game is in front"; }" \
-    "${ gettext "Games turns on when a game gets the keyboard and ends when it closes."; }" "${ focus_onoff trigger-games; }" desktop#focus
+    "${ gettext "Games turns on when a game gets the keyboard and ends when it closes."; }" "${ focus_onoff trigger-games; }" focus#focus
 focus_reason
 switch_choices false ame desktop focus trigger sleep
 USAGE="ame desktop focus trigger sleep on|off"
 item desktop focus-trigger-sleep switch "${ gettext "Sleep at Night Light's times"; }" \
     "${ gettext "Sleep turns on at Night Light's evening time and ends at its morning time."; }" "${ focus_onoff trigger-sleep; }" \
-    desktop#focus
+    focus#focus
 # The saved workspace sets a profile may open, by name, once there are any
 FOCUS_SETS=()
 if [[ -f "${HOME}/.local/state/amethystora/sets.json" ]]; then
@@ -2369,7 +2369,7 @@ focus_profile() {
     USAGE="ame desktop focus edit ${p} banners shown|apps|held"
     item desktop "focus-${p}-banners" choice "${ gettext "Banners"; }" \
         "${ gettext "Calls, alarms and urgent ones always come through. Held banners wait in the list."; }" \
-        "${ focus_key "${p}-banners"; }" desktop#focus
+        "${ focus_key "${p}-banners"; }" focus#focus
     focus_reason
     DETAIL="${ focus_key "${p}-apps"; }"
     DETAIL="${DETAIL//[]\[\']/}"
@@ -2378,34 +2378,34 @@ focus_profile() {
     BUTTON="${ gettext "Choose"; }"
     USAGE="ame desktop focus edit ${p} apps [APP.desktop...]"
     item desktop "focus-${p}-apps" action "${ gettext "Apps let through"; }" \
-        "${ gettext "Whose banners come through while banners are only from the apps chosen."; }" "" desktop#focus
+        "${ gettext "Whose banners come through while banners are only from the apps chosen."; }" "" focus#focus
     focus_reason
     switch_choices false ame desktop focus edit "${p}" sounds
     USAGE="ame desktop focus edit ${p} sounds on|off"
-    item desktop "focus-${p}-sounds" switch "${ gettext "Notification sounds"; }" "" "${ focus_onoff "${p}-sounds"; }" desktop#focus
+    item desktop "focus-${p}-sounds" switch "${ gettext "Notification sounds"; }" "" "${ focus_onoff "${p}-sounds"; }" focus#focus
     focus_reason
     choice as-set "${ gettext "As set"; }" "" false ame desktop focus edit "${p}" dock as-set
     choice touch "${ gettext "Hides while a window touches it"; }" "" false ame desktop focus edit "${p}" dock touch
     USAGE="ame desktop focus edit ${p} dock as-set|touch"
-    item desktop "focus-${p}-dock" choice "${ gettext "The dock"; }" "" "${ focus_key "${p}-dock"; }" desktop#focus
+    item desktop "focus-${p}-dock" choice "${ gettext "The dock"; }" "" "${ focus_key "${p}-dock"; }" focus#focus
     focus_reason
     switch_choices false ame desktop focus edit "${p}" lighter
     USAGE="ame desktop focus edit ${p} lighter on|off"
     item desktop "focus-${p}-lighter" switch "${ gettext "Solid glass and shorter motion"; }" \
         "${ gettext "What power saver does to the desktop, for games played in a window."; }" "${ focus_onoff "${p}-lighter"; }" \
-        desktop#focus
+        focus#focus
     focus_reason
     choice as-set "${ gettext "As set"; }" "" false ame desktop focus edit "${p}" night-light as-set
     choice paused "${ gettext "Paused"; }" "" false ame desktop focus edit "${p}" night-light paused
     choice warmest "${ gettext "At its warmest"; }" "" false ame desktop focus edit "${p}" night-light warmest
     USAGE="ame desktop focus edit ${p} night-light as-set|paused|warmest"
-    item desktop "focus-${p}-night-light" choice "${ gettext "Night Light"; }" "" "${ focus_key "${p}-night-light"; }" desktop#focus
+    item desktop "focus-${p}-night-light" choice "${ gettext "Night Light"; }" "" "${ focus_key "${p}-night-light"; }" focus#focus
     focus_reason
     choice as-set "${ gettext "As set"; }" "" false ame desktop focus edit "${p}" power as-set
     choice performance "${ gettext "Performance"; }" "" false ame desktop focus edit "${p}" power performance
     choice power-saver "${ gettext "Power saver"; }" "" false ame desktop focus edit "${p}" power power-saver
     USAGE="ame desktop focus edit ${p} power as-set|performance|power-saver"
-    item desktop "focus-${p}-power" choice "${ gettext "Power mode"; }" "" "${ focus_key "${p}-power"; }" desktop#focus
+    item desktop "focus-${p}-power" choice "${ gettext "Power mode"; }" "" "${ focus_key "${p}-power"; }" focus#focus
     focus_reason
     mapfile -t -O "${#CHOICES[@]}" CHOICES < <(
         {
@@ -2417,19 +2417,19 @@ focus_profile() {
             command: ["ame", "desktop", "focus", "edit", $p, "accent", .[0]]}'
     )
     USAGE="ame desktop focus edit ${p} accent theme|ACCENT"
-    item desktop "focus-${p}-accent" choice "${ gettext "Accent"; }" "" "${ focus_key "${p}-accent"; }" desktop#focus
+    item desktop "focus-${p}-accent" choice "${ gettext "Accent"; }" "" "${ focus_key "${p}-accent"; }" focus#focus
     focus_reason
     choice as-set "${ gettext "As set"; }" "" false ame desktop focus edit "${p}" wallpaper as-set
     choice night "${ gettext "The night picture"; }" "${ gettext "Daylight's picture for the night, over yours"; }" false \
         ame desktop focus edit "${p}" wallpaper night
     USAGE="ame desktop focus edit ${p} wallpaper as-set|night"
-    item desktop "focus-${p}-wallpaper" choice "${ gettext "Wallpaper"; }" "" "${ focus_key "${p}-wallpaper"; }" desktop#focus
+    item desktop "focus-${p}-wallpaper" choice "${ gettext "Wallpaper"; }" "" "${ focus_key "${p}-wallpaper"; }" focus#focus
     focus_reason
     switch_choices false ame desktop focus edit "${p}" grey
     USAGE="ame desktop focus edit ${p} grey on|off"
     item desktop "focus-${p}-grey" switch "${ gettext "The screen in grey"; }" \
         "${ gettext "One more pass over the whole screen for every frame while it is on."; }" "${ focus_onoff "${p}-grey"; }" \
-        desktop#focus
+        focus#focus
     if ((${#FOCUS_SETS[@]} > 0)); then
         focus_reason
         choice none "${ gettext "None"; }" "" false ame desktop focus edit "${p}" set none
@@ -2439,7 +2439,7 @@ focus_profile() {
         USAGE="ame desktop focus edit ${p} set NAME|none"
         value="${ focus_key "${p}-set"; }"
         item desktop "focus-${p}-set" choice "${ gettext "A saved set"; }" \
-            "${ gettext "Offered, after asking, when you pick the profile yourself."; }" "${value:-none}" desktop#focus
+            "${ gettext "Offered, after asking, when you pick the profile yourself."; }" "${value:-none}" focus#focus
     fi
 }
 focus_profile work "${ gettext "Focus: Work"; }"
@@ -2460,39 +2460,39 @@ switch_choices false ame desktop present
 USAGE="ame desktop present on|off"
 item desktop present switch "${ gettext "Present mode"; }" \
     "${ gettext "A Present tile in quick settings: the screen stays awake, banners wait and the pointer is easy to follow. Super+Alt+D draws on the screen."; }" \
-    "${ onoff_of "${PRESENT}" enabled; }" desktop#presenting
+    "${ onoff_of "${PRESENT}" enabled; }" focus#presenting
 ui_reason present
 choice halo "${ gettext "Halo"; }" "${ gettext "A disc round the pointer"; }" false ame desktop present mark halo
 choice torch "${ gettext "Torch"; }" "${ gettext "Everything but a circle round the pointer dimmed"; }" false ame desktop present mark torch
 choice none "${ gettext "No mark"; }" "" false ame desktop present mark none
 USAGE="ame desktop present mark halo|torch|none"
-item desktop present-mark choice "${ gettext "The pointer while presenting"; }" "" "${present_mark:-halo}" desktop#presenting
+item desktop present-mark choice "${ gettext "The pointer while presenting"; }" "" "${present_mark:-halo}" focus#presenting
 ui_reason present
 switch_choices false ame desktop present ask
 USAGE="ame desktop present ask on|off"
 item desktop present-ask switch "${ gettext "Ask when a screen is plugged in"; }" \
     "${ gettext "Once for each screen, while Present mode is on. Nothing happens without your click."; }" \
-    "${ onoff_of "${PRESENT}" ask-on-screen; }" desktop#presenting
+    "${ onoff_of "${PRESENT}" ask-on-screen; }" focus#presenting
 GROUP="${ gettext "Screenshots"; }"
 ui_reason screenshot
 switch_choices false ame desktop screenshot thumbnail
 USAGE="ame desktop screenshot thumbnail on|off"
 item desktop screenshot-thumbnail switch "${ gettext "A thumbnail after a screenshot"; }" \
     "${ gettext "Edit, copy, pin, show or delete it from the bottom right corner. Off, GNOME's notification says it was taken."; }" \
-    "${ onoff_of "${SCREENSHOT}" capture-thumbnail; }" desktop#screenshots
+    "${ onoff_of "${SCREENSHOT}" capture-thumbnail; }" screenshots
 ui_reason screenshot
 switch_choices false ame desktop screenshot pin
 USAGE="ame desktop screenshot pin on|off"
 item desktop screenshot-pin switch "${ gettext "Pin pictures on top"; }" \
     "${ gettext "Keep a screenshot above every window while you work below it."; }" \
-    "${ onoff_of "${SCREENSHOT}" capture-pin; }" desktop#pinned-pictures
+    "${ onoff_of "${SCREENSHOT}" capture-pin; }" screenshots#pinned-pictures
 # Hide what's private (R7-67, on)
 ui_reason screenshot
 switch_choices false ame desktop screenshot private
 USAGE="ame desktop screenshot private on|off"
 item desktop screenshot-private switch "${ gettext "Hide what's private"; }" \
     "${ gettext "A button in the screenshot bar covers addresses, card, phone and account numbers with solid boxes, read on this computer. It can miss things, and says so."; }" \
-    "${ onoff_of "${SCREENSHOT}" hide-private; }" desktop#hide-whats-private
+    "${ onoff_of "${SCREENSHOT}" hide-private; }" screenshots#hide-whats-private
 # Any language (R7-47, off until a language was chosen): on opens a terminal, which says what it downloads and asks
 ui_reason screenshot
 choice on "${ON}" "" true ame desktop translate on
@@ -2501,7 +2501,7 @@ USAGE="ame desktop translate on|off"
 if [[ "${ value_of "${SCREENSHOT}" translate-to "'?([^']*)'?\$"; }" == "" ]]; then TRANSLATE=off; else TRANSLATE=on; fi
 item desktop screenshot-translate switch "${ gettext "Read the screen in your language"; }" \
     "${ gettext "A button in the screenshot bar reads what a box holds and translates it on this computer. Choosing languages downloads their models once, and nothing you translate leaves."; }" \
-    "${TRANSLATE}" desktop#read-it-in-your-language
+    "${TRANSLATE}" screenshots#read-it-in-your-language
 # Look good in every call (R7-68, offered and off): on opens a terminal, which says what it downloads, measures what 720p costs on
 # this computer and turns it on only under the limit
 GROUP="${ gettext "Camera"; }"
@@ -2511,7 +2511,7 @@ USAGE="ame desktop camera on|off"
 if [[ -L "${HOME}/.config/systemd/user/graphical-session.target.wants/amethystora-camera.service" ]]; then CAMERA=on; else CAMERA=off; fi
 item desktop camera switch "${ gettext "Look good in every call"; }" \
     "${ gettext "Blur what is behind you and even out the light in every app at once, made on this computer. It runs only while an app uses the camera, and is offered only where it costs little."; }" \
-    "${CAMERA}" desktop#look-good-in-every-call
+    "${CAMERA}" calls#look-good-in-every-call
 # Another screen from what you have, and help from someone you trust (R7-26, R7-50; off): each opens a terminal, which says what
 # it opens, asks, and shows the code. Both need the Security switch remote-screen, which opens the port: said here while it is off
 GROUP="${ gettext "Sharing"; }"
@@ -2526,14 +2526,14 @@ choice off "${OFF}" "" false ame desktop second-screen off
 USAGE="ame desktop second-screen on|off"
 item desktop second-screen switch "${ gettext "Another screen from what you have"; }" \
     "${ gettext "An old laptop or tablet becomes a second screen over your home network, with any remote desktop (RDP) app and a code shown here. Its keyboard and pointer can use this whole computer. It ends when you lock the screen."; }" \
-    "${ [[ "$(<"${HOME}/.local/state/amethystora/share-screen/mode")" == second-screen ]] 2>/dev/null && echo on || echo off; }" desktop#another-screen-from-what-you-have
+    "${ [[ "$(<"${HOME}/.local/state/amethystora/share-screen/mode")" == second-screen ]] 2>/dev/null && echo on || echo off; }" calls#another-screen-from-what-you-have
 REASON="${SHARING_REASON}"
 choice on "${ON}" "" true ame desktop help-me on
 choice off "${OFF}" "" false ame desktop help-me off
 USAGE="ame desktop help-me on|off"
 item desktop help-me switch "${ gettext "Help from someone you trust"; }" \
     "${ gettext "Someone on your home network sees your screen, and cannot touch anything unless you allow it, with a new code each time. It ends when you lock the screen."; }" \
-    "${ [[ "$(<"${HOME}/.local/state/amethystora/share-screen/mode")" == help ]] 2>/dev/null && echo on || echo off; }" desktop#help-from-someone-you-trust
+    "${ [[ "$(<"${HOME}/.local/state/amethystora/share-screen/mode")" == help ]] 2>/dev/null && echo on || echo off; }" calls#help-from-someone-you-trust
 GROUP="${ gettext "Screenshots"; }"
 # Trim a recording (R6-19, offered, off)
 ui_reason screenshot
@@ -2541,7 +2541,7 @@ switch_choices false ame desktop screenshot trim
 USAGE="ame desktop screenshot trim on|off"
 item desktop screenshot-trim switch "${ gettext "Trim a recording"; }" \
     "${ gettext "A screen recording's notice offers Trim: drag its two ends, then save that part as WebM or a short GIF. The recording stays as it was."; }" \
-    "${ onoff_of "${SCREENSHOT}" recording-trim; }" desktop#trim-a-recording
+    "${ onoff_of "${SCREENSHOT}" recording-trim; }" screenshots#trim-a-recording
 # The shelf (shelf module): where things are put down while moving between apps, offered and off
 SHELF="${ said shelf; }"
 SHELF="${SHELF//\'/}"
@@ -2554,7 +2554,7 @@ choice shake "${ gettext "Shake while dragging"; }" "${ gettext "Shake the point
 USAGE="ame desktop shelf off|edge|shake"
 item desktop shelf choice "${ gettext "The shelf"; }" \
     "${ gettext "Hold files, text or pictures at the edge of the screen while you move between apps, then drag them out."; }" \
-    "${SHELF:-off}" desktop#the-shelf
+    "${SHELF:-off}" clipboard#the-shelf
 
 # Desks (desks module): a set of screens brings back the sound output, the dock's place, Focus and the power mode
 DESKS="${ said desks; }"
@@ -2566,20 +2566,20 @@ switch_choices false ame desktop desks
 USAGE="ame desktop desks on|off"
 item desktop desks switch "${ gettext "Desks"; }" \
     "${ gettext "At a set of screens you know, the sound output, the dock, Focus and the power mode come back, with a toast to undo it. The first time, a card asks."; }" \
-    "${ desks_onoff desks; }" desktop#desks
+    "${ desks_onoff desks; }" desks
 desks_reason
 switch_choices false ame desktop desks windows
 USAGE="ame desktop desks windows on|off"
 item desktop desk-windows switch "${ gettext "Screens come back as you left them"; }" \
     "${ gettext "When a set of screens comes back, every window goes back to its screen, place and size. It needs no desk set up."; }" \
-    "${ desks_onoff desk-windows; }" desktop#screens-come-back-as-you-left-them
+    "${ desks_onoff desk-windows; }" desks#screens-come-back-as-you-left-them
 if [[ "${ desks_onoff desks; }" == on ]]; then
     desks_reason
     switch_choices false ame desktop desks learn
     USAGE="ame desktop desks learn on|off"
     item desktop desks-learn switch "${ gettext "Learn from what I change here"; }" \
         "${ gettext "Picking another sound output or moving the dock at a desk asks whether the desk should remember it."; }" \
-        "${ desks_onoff desks-learn; }" desktop#desks
+        "${ desks_onoff desks-learn; }" desks
     # Each desk set up, by its name and what it sets; never its screens' serial numbers
     # (its copy while the file itself cannot be read, as the shell and the recipe read it)
     DESKS_FILE="${XDG_CONFIG_HOME:-${HOME}/.config}/amethystora/desks.json"
@@ -2627,7 +2627,7 @@ if [[ "${ desks_onoff desks; }" == on ]]; then
             BUTTON="${ gettext "Forget"; }"
             USAGE="ame desktop desks forget ${desk_id}"
             item desktop "desk-${desk_id}" action "${desk_name}" \
-                "${ gettext "Forgetting a desk leaves what it set as it is."; }" "" desktop#desks
+                "${ gettext "Forgetting a desk leaves what it set as it is."; }" "" desks
             if ((${#FOCUS_SETS[@]} > 0)); then
                 desks_reason
                 choice none "${ gettext "None"; }" "" false ame desktop desks saved "${desk_id}" none
@@ -2636,7 +2636,7 @@ if [[ "${ desks_onoff desks; }" == on ]]; then
                 done
                 USAGE="ame desktop desks saved ${desk_id} NAME|none"
                 item desktop "desk-${desk_id}-saved" choice "${ gettext "A saved set"; }" \
-                    "${ gettext "Offered, after asking, when the computer arrives at this desk."; }" "${desk_saved:-none}" desktop#desks
+                    "${ gettext "Offered, after asking, when the computer arrives at this desk."; }" "${desk_saved:-none}" desks
             fi
         done < <(jq -r '.desks[]? | [.id, (.name // ""), (.screens | length), (.screens[0].name // ""),
             (.set.sound.label // ""), (.set.dock.edge // ""), (.set.dock.screens // ""), (.set.focus // ""),
@@ -2662,7 +2662,7 @@ choice off "${ gettext "Off"; }" "${ gettext "A shared screen shows every window
 USAGE="ame desktop share-guard blur|card|off"
 item desktop share-guard choice "${ gettext "Share guard"; }" \
     "${ gettext "While the whole screen is shared, the windows of the apps chosen are covered, for everyone and on your screen too. A window shared on its own is uncovered as soon as that is known."; }" \
-    "${ privacy_key share-guard; }" desktop#share-guard
+    "${ privacy_key share-guard; }" screen-privacy#share-guard
 privacy_reason
 DETAIL="${ privacy_key share-guard-apps; }"
 DETAIL="${DETAIL//[]\[\']/}"
@@ -2671,13 +2671,13 @@ COMMAND=(ame desktop share-guard apps)
 BUTTON="${ gettext "Choose"; }"
 USAGE="ame desktop share-guard apps [APP.desktop...]"
 item desktop share-guard-apps action "${ gettext "Apps covered while sharing"; }" \
-    "${ gettext "Notes, Security, Backups, Help and the password managers, as the image ships."; }" "" desktop#share-guard
+    "${ gettext "Notes, Security, Backups, Help and the password managers, as the image ships."; }" "" screen-privacy#share-guard
 privacy_reason
 switch_choices false ame desktop share-guard private
 USAGE="ame desktop share-guard private on|off"
 if [[ "${ privacy_key share-guard-private; }" == true ]]; then value=on; else value=off; fi
 item desktop share-guard-private switch "${ gettext "The Private folder's windows"; }" \
-    "${ gettext "Files windows showing the Private folder are covered while sharing."; }" "${value}" desktop#share-guard
+    "${ gettext "Files windows showing the Private folder are covered while sharing."; }" "${value}" screen-privacy#share-guard
 privacy_reason
 choice tile "${ gettext "Tile"; }" "${ gettext "In quick settings"; }" false ame desktop shield tile
 choice mark "${ gettext "Mark in the bar"; }" "${ gettext "A shield beside the system's icons"; }" false ame desktop shield mark
@@ -2687,21 +2687,21 @@ choice off "${ gettext "Off"; }" "" false ame desktop shield off
 USAGE="ame desktop shield tile|mark|attention|off"
 item desktop shield choice "${ gettext "The shield"; }" \
     "${ gettext "How the machine's protection stands, in one look. It changes nothing: every line opens Security."; }" \
-    "${ privacy_key shield; }" desktop#the-shield
+    "${ privacy_key shield; }" screen-privacy#the-shield
 privacy_reason
 switch_choices false ame desktop network-apps
 USAGE="ame desktop network-apps on|off"
 if [[ "${ privacy_key network-apps; }" == true ]]; then value=on; else value=off; fi
 item desktop network-apps switch "${ gettext "Network by app"; }" \
     "${ gettext "The network meter's menu lists which apps are talking to the network, and to where, while it is open. Nothing is sent anywhere."; }" \
-    "${value}" desktop#network-by-app
+    "${value}" screen-privacy#network-by-app
 privacy_reason
 switch_choices false ame desktop zone-notice
 USAGE="ame desktop zone-notice on|off"
 if [[ "${ privacy_key zone-notice; }" == true ]]; then value=on; else value=off; fi
 item desktop zone-notice switch "${ gettext "A new network's zone"; }" \
     "${ gettext "The first time a network is joined, a notification says which firewall zone it is in, with Open Security. It changes nothing."; }" \
-    "${value}" desktop#a-new-networks-zone
+    "${value}" screen-privacy#a-new-networks-zone
 GROUP=""
 
 # Convert pictures in Files (the tools module), offered and off
@@ -2712,7 +2712,7 @@ USAGE="ame desktop files-convert on|off"
 if [[ "${ said ui-tools; }" == true* ]]; then value=on; else value=off; fi
 item desktop files-convert switch "${ gettext "Convert pictures in Files"; }" \
     "${ gettext "Files' Scripts menu gains Convert: a picture as PNG, JPEG or WebP, smaller, or several in one PDF, each a new file beside it."; }" \
-    "${value}" desktop#convert-and-shrink
+    "${value}" files#convert-and-shrink
 # Earlier versions and the card for a file nothing opens (the tools module, plans/ui-ideas/r7/spec-files.md)
 TOOLS_ALL="${ said ui-tools-all; }"
 tools_switch() {
@@ -2725,10 +2725,10 @@ tools_switch() {
 }
 tools_switch earlier-versions desktop earlier-versions "${ gettext "Earlier versions in Files"; }" \
     "${ gettext "Files' Scripts menu has Earlier versions: each version the snapshots and the backup keep of a file, to look at or keep beside it."; }" \
-    desktop#earlier-versions ame desktop earlier-versions
+    files#earlier-versions ame desktop earlier-versions
 tools_switch open-anything desktop open-anything "${ gettext "A file nothing opens says what it is"; }" \
     "${ gettext "Opening a kind of file nothing here opens says what it is and offers the app on Flathub that does, from the list already on this computer. Off, GNOME says there is no app."; }" \
-    desktop#a-file-nothing-opens ame desktop open-anything
+    files#a-file-nothing-opens ame desktop open-anything
 GROUP=""
 
 # Where a connection breaks (the tools module)
@@ -2739,7 +2739,7 @@ USAGE="ame desktop network-check on|off"
 if [[ "${ said ui-reach; }" == true* ]]; then value=on; else value=off; fi
 item desktop network-check switch "${ gettext "Where a connection breaks"; }" \
     "${ gettext "The Wi-Fi and wired menus draw you, the router and the internet: one ping to the router and one name lookup each time they open."; }" \
-    "${value}" desktop#is-it-me-or-the-internet
+    "${value}" quick-settings#is-it-me-or-the-internet
 GROUP=""
 
 if [[ -e "${CONFIG_DIR}/no-greeting" ]]; then GREETING=off; else GREETING=on; fi
@@ -2783,14 +2783,14 @@ switch_choices false ame desktop phone
 GROUP="${ gettext "Phone"; }"
 USAGE="ame desktop phone on|off"
 item desktop phone switch "${ gettext "Phone pairing"; }" \
-    "${ gettext "Notifications, files, texts and calls shared with an Android phone through KDE Connect, on the networks named home."; }" "${PHONE}" hardware#phones
+    "${ gettext "Notifications, files, texts and calls shared with an Android phone through KDE Connect, on the networks named home."; }" "${PHONE}" wireless#phones
 
 # Other computers with the phone link pair too, for files and the clipboard, only once chosen on both (off as shipped)
 if [[ "${ ended phone-computers; }" == 0 && "${ said phone-computers; }" == true ]]; then COMPUTERS=on; else COMPUTERS=off; fi
 switch_choices false ame desktop phone computers
 USAGE="ame desktop phone computers on|off"
 item desktop phone-computers switch "${ gettext "Pair with other computers"; }" \
-    "${ gettext "Send files and share the clipboard with another computer that has the phone link on, on the networks named home."; }" "${COMPUTERS}" phone#computers
+    "${ gettext "Send files and share the clipboard with another computer that has the phone link on, on the networks named home."; }" "${COMPUTERS}" phone-calls#computers
 
 # The phone, a little further (plans/ui-ideas/spec-phone.md): ring it, even on silent, while the phone link is on; music
 # from either side and the phone as a slide clicker, each offered and off
@@ -2800,17 +2800,17 @@ TERMINAL=false
 BUTTON="${ gettext "Ring"; }"
 USAGE="ame desktop phone ring"
 item desktop phone-ring action "${ gettext "Ring the phone"; }" \
-    "${ gettext "Find a lost phone: it rings at full volume, even when it is silent, until Found it is pressed on it."; }" "" phone#ringing-the-phone
+    "${ gettext "Find a lost phone: it rings at full volume, even when it is silent, until Found it is pressed on it."; }" "" phone-calls#ringing-the-phone
 for key in music clicker; do
     if [[ "${ ended phone-${key}; }" == 0 && "${ said phone-${key}; }" == true ]]; then CHOSEN=on; else CHOSEN=off; fi
     switch_choices false ame desktop phone "${key}"
     USAGE="ame desktop phone ${key} on|off"
     if [[ "${key}" == music ]]; then
         item desktop phone-music switch "${ gettext "Music from either side"; }" \
-            "${ gettext "What plays here shows on your paired phone, and what plays on the phone shows in the clock's pill, each played and paused from the other."; }" "${CHOSEN}" phone#music-from-either-side
+            "${ gettext "What plays here shows on your paired phone, and what plays on the phone shows in the clock's pill, each played and paused from the other."; }" "${CHOSEN}" phone-calls#music-from-either-side
     else
         item desktop phone-clicker switch "${ gettext "The phone as a slide clicker"; }" \
-            "${ gettext "Only while Present mode presents: Next, Previous and Blank from your phone, and nothing else."; }" "${CHOSEN}" phone#the-phone-as-a-slide-clicker
+            "${ gettext "Only while Present mode presents: Next, Previous and Blank from your phone, and nothing else."; }" "${CHOSEN}" phone-calls#the-phone-as-a-slide-clicker
     fi
 done
 
@@ -2819,14 +2819,14 @@ if [[ "${ ended phone-codes; }" == 0 && "${ said phone-codes; }" == true ]]; the
 switch_choices true ame desktop phone codes
 USAGE="ame desktop phone codes on|off"
 item desktop phone-codes switch "${ gettext "A code from your phone"; }" \
-    "${ gettext "A one-time code in a text shows in the clock's pill for 60 seconds, to copy. The phone link looks at each text as it arrives, on this computer, and only the code goes on; nothing is kept."; }" "${CHOSEN}" phone#a-code-from-your-phone
+    "${ gettext "A one-time code in a text shows in the clock's pill for 60 seconds, to copy. The phone link looks at each text as it arrives, on this computer, and only the code goes on; nothing is kept."; }" "${CHOSEN}" phone-sharing#a-code-from-your-phone
 
 # Snap with your phone (R7-69), off: only a phone whose app takes a photo request is offered it, which a current KDE Connect app does not
 if [[ "${ ended phone-photo; }" == 0 && "${ said phone-photo; }" == true ]]; then CHOSEN=on; else CHOSEN=off; fi
 switch_choices false ame desktop phone photo
 USAGE="ame desktop phone photo on|off"
 item desktop phone-photo switch "${ gettext "Snap with your phone"; }" \
-    "${ gettext "A button in the Phone app asks a phone to open its camera, and the picture comes back as a file. Only a phone whose app still takes that request is offered it; a current KDE Connect app does not, and then you take the picture on the phone and share it here."; }" "${CHOSEN}" phone#snap-with-your-phone
+    "${ gettext "A button in the Phone app asks a phone to open its camera, and the picture comes back as a file. Only a phone whose app still takes that request is offered it; a current KDE Connect app does not, and then you take the picture on the phone and share it here."; }" "${CHOSEN}" phone-sharing#snap-with-your-phone
 
 # The clipboard goes between this computer and a phone only when chosen, one way at a time: a phone that can paste
 # into a password field is a risk the person takes on knowingly
@@ -2836,10 +2836,10 @@ for way in send receive; do
     USAGE="ame desktop phone clipboard ${way} on|off"
     if [[ "${way}" == send ]]; then
         item desktop phone-clipboard-send switch "${ gettext "Send the clipboard to the phone"; }" \
-            "${ gettext "What you copy here can be pasted on a phone you paired."; }" "${SHARED}" hardware#phones
+            "${ gettext "What you copy here can be pasted on a phone you paired."; }" "${SHARED}" wireless#phones
     else
         item desktop phone-clipboard-receive switch "${ gettext "Take the phone's clipboard"; }" \
-            "${ gettext "What a paired phone copies is put on this computer's clipboard, where any program can paste it."; }" "${SHARED}" hardware#phones
+            "${ gettext "What a paired phone copies is put on this computer's clipboard, where any program can paste it."; }" "${SHARED}" wireless#phones
     fi
 done
 
@@ -2849,7 +2849,7 @@ choice pictures "${ gettext "Pictures/Phone"; }" "" false ame desktop phone phot
 choice downloads "${ gettext "Downloads"; }" "" false ame desktop phone photos downloads
 USAGE="ame desktop phone photos pictures|downloads"
 item desktop phone-photos choice "${ gettext "Photos from the phone go to"; }" \
-    "${ gettext "Pictures a paired phone sends."; }" "${PHOTOS}" phone#photos
+    "${ gettext "Pictures a paired phone sends."; }" "${PHOTOS}" phone-sharing#photos
 
 # Send to nearby (R7-27): whose files wait for a card with Accept before they arrive
 case "${ said phone-ask-first; }" in
@@ -2862,7 +2862,7 @@ choice all "${ gettext "Phones and computers"; }" "" false ame desktop phone ask
 choice never "${ gettext "Nobody"; }" "" false ame desktop phone ask-first never
 USAGE="ame desktop phone ask-first computers|all|never"
 item desktop phone-ask-first choice "${ gettext "Files wait for Accept from"; }" \
-    "${ gettext "A file another computer sends shows a card with Accept, and nothing arrives by itself. Choose Phones and computers to be asked for your phones too, or Nobody for files to arrive at once."; }" "${ASKING}" phone#send-to-nearby
+    "${ gettext "A file another computer sends shows a card with Accept, and nothing arrives by itself. Choose Phones and computers to be asked for your phones too, or Nobody for files to arrive at once."; }" "${ASKING}" phone-sharing#send-to-nearby
 GROUP=""
 
 # --- Apps ------------------------------------------------------------------------------------------
@@ -2920,7 +2920,7 @@ switch_choices true ame apps opentabletdriver
 USAGE="ame apps opentabletdriver on|off"
 item apps opentabletdriver switch "${ gettext "Drawing tablets"; }" \
     "${ gettext "OpenTabletDriver from Flathub, for most drawing tablets: pressure, the pen's buttons, and the part of the screen the tablet covers."; }" \
-    "${TABLET}" hardware#drawing-tablets
+    "${TABLET}" devices#drawing-tablets
 
 if [[ -e "${CONFIG_DIR}/aur" ]]; then AUR=on; else AUR=off; fi
 # Turning it on shows what the AUR is first, which is the point of it: that one is in a terminal
@@ -2929,7 +2929,7 @@ choice off "${ gettext "Off"; }" "" false ame apps aur off
 USAGE="ame apps aur on|off"
 item apps aur switch "${ gettext "The AUR"; }" \
     "${ gettext "Packages built from the Arch User Repository, in containers. Anyone can upload to it, and nobody reviews it."; }" \
-    "${AUR}" software#the-aur
+    "${AUR}" containers#the-aur
 
 # A web app is removed by its name as the list gives it, which the window puts in the place of {name}
 if [[ "${ ended webapps; }" == 0 ]] && jq -e . <<<"${ said webapps; }" >/dev/null 2>&1; then
@@ -2967,7 +2967,7 @@ if [[ "${ ended app-looks; }" == 0 ]] && EXTRA="$(jq -ec --arg hidden "${ gettex
     USAGE="ame desktop app show|rename|icon ID"
     item apps app-grid-looks rows "${ gettext "Changed in the app grid"; }" \
         "${ gettext "Apps you hid, renamed or gave another icon from their menu in the app grid. Each still opens from a terminal and from Open With."; }" \
-        "" desktop#hide-rename-or-change-an-app
+        "" search#hide-rename-or-change-an-app
 else
     EXTRA=""
 fi
@@ -3035,14 +3035,14 @@ switch_choices false ame desktop tidy-downloads
 USAGE="ame desktop tidy-downloads on|off|undo"
 item apps tidy-downloads switch "${ gettext "Downloads keeps itself tidy"; }" \
     "${ gettext "Once a day, installers opened more than a week ago go to the Trash, and other files older than a month into a folder for their month. Nothing is deleted: the Trash keeps what it is given for 30 days, and Undo puts the last tidying back."; }" \
-    "${TIDY}" desktop#downloads-keeps-itself-tidy
+    "${TIDY}" files#downloads-keeps-itself-tidy
 if [[ "${ said backup-disk; }" == false ]]; then BACKUP_DISK=off; else BACKUP_DISK=on; fi
 [[ "${ ended backup-disk; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
 switch_choices false ame desktop backup-disk
 USAGE="ame desktop backup-disk on|off"
 item apps backup-disk switch "${ gettext "Your backup disk, recognized"; }" \
     "${ gettext "Plugging in the disk your backup goes to asks whether to back up now, and says when it is safe to unplug."; }" \
-    "${BACKUP_DISK}" security#your-backup-disk
+    "${BACKUP_DISK}" backup-other#your-backup-disk
 GROUP=""
 
 GROUP="${ gettext "Add-ons"; }"
@@ -3164,7 +3164,7 @@ BUTTON="${ gettext "Show"; }"
 USAGE="ame agent history"
 [[ "${AGENTIC}" == true ]] || REASON="${ gettext "The agentic features are off."; }"
 item agent agent-history action "${ gettext "What the agent changed"; }" \
-    "${ gettext "Every change the agent's tools made, newest first, each with its id for undoing it."; }" "" ai-agent#history-and-undo
+    "${ gettext "Every change the agent's tools made, newest first, each with its id for undoing it."; }" "" agent-control#history-and-undo
 
 # The agent on the desktop (org.gnome.shell.extensions.amethystora-ui.agent): Super+Shift+A, and its changes in the
 # live pill. The agent's own tools may not change either (never.rs)
@@ -3176,14 +3176,14 @@ switch_choices false ame agent selection
 USAGE="ame agent selection on|off"
 item agent agent-selection switch "${ gettext "Ask about a selection"; }" \
     "${ gettext "Select text in any window and press Super+Shift+A: the agent gets it, quoted as data, with your question, in a terminal."; }" \
-    "${SELECTION}" ai-agent#asking-about-a-selection
+    "${SELECTION}" agent-desktop#asking-about-a-selection
 [[ "${ ended agent-ui; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
 [[ "${AGENTIC}" == true ]] || REASON="${ gettext "The agentic features are off."; }"
 switch_choices false ame agent pill
 USAGE="ame agent pill on|off"
 item agent agent-pill switch "${ gettext "The agent's changes in the live pill"; }" \
     "${ gettext "While the agent may make changes, the live pill lists each one as it is made, with its own Undo, and Stop."; }" \
-    "${ onoff_of "${AGENT_UI}" pill; }" ai-agent#its-changes-in-the-live-pill
+    "${ onoff_of "${AGENT_UI}" pill; }" agent-desktop#its-changes-in-the-live-pill
 
 # Round 7's agent in the pill: asking it there (Super+/, since Super+Shift+Space is the next keyboard layout), its questions as a card,
 # the line about what it reads, pictures and files for it, and little routines
@@ -3194,40 +3194,40 @@ switch_choices false ame agent ask-here
 USAGE="ame agent ask-here on|off"
 item agent agent-ask-here switch "${ gettext "Ask the agent in the pill"; }" \
     "${ gettext "Super+/ opens a field in the pill's card: the agent answers there, looking at this computer with its tools that only read, and changes nothing. Your words go to its maker."; }" \
-    "${ASK_HERE}" ai-agent#asking-in-the-pill
+    "${ASK_HERE}" agent-desktop#asking-in-the-pill
 [[ "${ ended agent-ui; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
 [[ "${AGENTIC}" == true ]] || REASON="${ gettext "The agentic features are off."; }"
 switch_choices false ame agent ask-questions
 USAGE="ame agent ask-questions on|off"
 item agent agent-ask-questions switch "${ gettext "The agent's questions in the pill"; }" \
     "${ gettext "When the agent's tools ask to run a command, the question is a card in the pill with the exact command, Allow and Not now. A password for a root command is still asked by sudo. Off, they ask in a terminal."; }" \
-    "${ onoff_of "${AGENT_UI}" ask-questions; }" ai-agent#questions-in-the-pill
+    "${ onoff_of "${AGENT_UI}" ask-questions; }" agent-desktop#questions-in-the-pill
 [[ "${ ended agent-ui; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
 [[ "${AGENTIC}" == true ]] || REASON="${ gettext "The agentic features are off."; }"
 switch_choices false ame agent doing
 USAGE="ame agent doing on|off"
 item agent agent-doing switch "${ gettext "What the agent is reading, in the pill"; }" \
     "${ gettext "While the agent's tools read, the pill says which one in a few words, with a tick when it is done. Only the tool's name, never what it read."; }" \
-    "${ onoff_of "${AGENT_UI}" doing; }" ai-agent#what-it-is-doing
+    "${ onoff_of "${AGENT_UI}" doing; }" agent-desktop#what-it-is-doing
 [[ "${ ended agent-ui; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
 [[ "${AGENTIC}" == true ]] || REASON="${ gettext "The agentic features are off."; }"
 switch_choices false ame agent ask-about
 USAGE="ame agent ask-about on|off"
 item agent agent-ask-about switch "${ gettext "Ask about a picture or a file"; }" \
     "${ gettext "Drop a picture or a text file on the pill's Ask the agent, or copy a picture and press Super+Shift+A. It shows what will be sent, and to whom, before it goes, and never while your screen is shared."; }" \
-    "${ onoff_of "${AGENT_UI}" ask-about; }" ai-agent#asking-about-a-picture-or-a-file
+    "${ onoff_of "${AGENT_UI}" ask-about; }" agent-desktop#asking-about-a-picture-or-a-file
 [[ "${ ended agent-ui; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
 switch_choices false ame agent routines
 USAGE="ame agent routines on|off"
 item agent agent-routines switch "${ gettext "Little routines"; }" \
     "${ gettext "Routines you kept run by themselves when their trigger happens: a time, a network, an app, the screen, the battery, your phone. Each run shows in the pill once, with Undo and Pause. They are sealed in the Vault."; }" \
-    "${ onoff_of "${AGENT_UI}" routines; }" ai-agent#little-routines
+    "${ onoff_of "${AGENT_UI}" routines; }" routines
 COMMAND=(ame agent routines list)
 TERMINAL=true
 BUTTON="${ gettext "Show"; }"
 USAGE="ame agent routines list"
 item agent agent-routines-list action "${ gettext "Your routines"; }" \
-    "${ gettext "Each routine's name and when it runs. Ask the agent to write one, then keep it with ame agent routines add FILE: it shows what it does and asks first."; }" "" ai-agent#little-routines
+    "${ gettext "Each routine's name and when it runs. Ask the agent to write one, then keep it with ame agent routines add FILE: it shows what it does and asks first."; }" "" routines
 
 # What an administrator sets for every account (/etc/amethystora/agent.conf): how the agent's root commands are
 # allowed, and the lock. Here by the maintainer's choice of 2026-10-18, an exception to Security keeping every
@@ -3243,14 +3243,14 @@ choice terminal "${ gettext "In a terminal"; }" \
 USAGE="ame agent root session|minutes|each|terminal"
 item agent agent-root choice "${ gettext "Root commands"; }" \
     "${ gettext "How the agent may run a command as root, once you let it make changes. It asks you first every time, in the agent."; }" \
-    "${ROOT_MODE}" ai-agent#root-commands
+    "${ROOT_MODE}" agent-control#root-commands
 choice act "${ gettext "Know and change"; }" "${ gettext "Both levels, as each account chooses"; }" true ame agent lock act
 choice know "${ gettext "Only know"; }" "${ gettext "The agent and its read-only tools, but no changes"; }" true ame agent lock know
 choice off "${ gettext "Off"; }" "${ gettext "No agent features for anyone"; }" true ame agent lock off
 USAGE="ame agent lock [ACCOUNT] act|know|off"
 item agent agent-lock choice "${ gettext "Lock for every account"; }" \
     "${ gettext "The most any account may turn on; one account can be given its own with ame agent lock ACCOUNT LEVEL. For a child's account, Parental Controls' app filter is the stronger tool."; }" \
-    "${ALLOW}" ai-agent#the-lock
+    "${ALLOW}" agent-control#the-lock
 GROUP=""
 
 # --- System ----------------------------------------------------------------------------------------
@@ -3284,7 +3284,7 @@ GROUP="${ gettext "The system"; }"
 USAGE="ame system rebase IMAGE STREAM"
 item system image choice "${ gettext "Image"; }" \
     "${ gettext "The system this machine runs. Switching downloads it, checks its signature, and takes effect at the next restart."; }" \
-    "${IMAGE_NAME}" updates#switching-streams-and-images
+    "${IMAGE_NAME}" streams#switching-streams-and-images
 
 while read -r stream; do
     [[ -n "${stream}" ]] || continue
@@ -3308,7 +3308,7 @@ BUTTON="${ gettext "Write the line"; }"
 USAGE="ame system if-found [LINE|off]"
 item system if-found action "${ gettext "If it's lost, it says whose it is"; }" \
     "${ gettext "One line of yours on the login and lock screens, for an honest finder. Anyone holding the computer can read it."; }" \
-    "" hardware#if-its-lost
+    "" laptops#if-its-lost
 GROUP="${ gettext "The system"; }"
 # Start from your backup (R7-55): the first look's card runs this entry too. The recovery key is typed in the terminal it opens, and the files, the
 # setup and the Vault each come back only when chosen
@@ -3318,11 +3318,11 @@ BUTTON="${ gettext "Bring it all back…"; }"
 USAGE="ame backup restore-from"
 item system start-from-backup action "${ gettext "Start from your backup"; }" \
     "${ gettext "On a new computer, or after the old one was lost: your files, apps and setup, and your Vault, from a backup, with the recovery key you wrote down."; }" \
-    "" security#backups
+    "" backups
 GROUP="${ gettext "The system"; }"
 USAGE="ame system rebase IMAGE STREAM"
 item system stream choice "${ gettext "Stream"; }" "${ gettext "How new the builds this machine follows are."; }" \
-    "${IMAGE_TAG}" updates#streams
+    "${IMAGE_TAG}" streams
 
 # Restart while you're away: the night time System Updates offers beside Restart now (amethystora-night-restart)
 NIGHT=""
@@ -3340,7 +3340,7 @@ GROUP="${ gettext "The system"; }"
 USAGE="ame update night-restart off|HH:MM"
 item system night-restart choice "${ gettext "Restart while you're away"; }" \
     "${ gettext "Updates offers Tonight beside Restart now: the computer restarts at this time only if the screen is locked, no app holds the logout and it is on mains power."; }" \
-    "${NIGHT}" updates#restarting-while-youre-away
+    "${NIGHT}" restarting#restarting-while-youre-away
 
 # An update that does not start goes back by itself (amethystora-boot-guard), off until its owner asks: it writes to the
 # boot partition, so it asks for a password in a terminal
@@ -3349,7 +3349,7 @@ switch_choices true ame update boot-guard
 USAGE="ame update boot-guard on|off"
 item system boot-guard switch "${ gettext "If an update does not start, go back"; }" \
     "${ gettext "After a few tries the computer goes back by itself to the system before the update, and says so. Your files and apps are not touched."; }" \
-    "${ [[ -e /var/lib/amethystora/boot-guard/on ]] && echo on || echo off; }" updates#if-an-update-does-not-start
+    "${ [[ -e /var/lib/amethystora/boot-guard/on ]] && echo on || echo off; }" rolling-back#if-an-update-does-not-start
 
 # amethystora-dx and amethystora-dx-nvidia-open are the developer images
 if grep -qE -e "-dx(-|$)" <<<"${IMAGE_NAME}"; then DEVMODE=on; else DEVMODE=off; fi
@@ -3392,7 +3392,7 @@ GROUP="${ gettext "The system"; }"
 USAGE="ame system trust-image REPOSITORY KEY"
 item system trust-image trust-image "${ gettext "An image of your own"; }" \
     "${ gettext "Takes images from your repository only when your key checks their signature. Do this before switching to an image built from the image template."; }" \
-    "" developer#an-image-of-your-own
+    "" own-image
 
 SCHEDULER=""
 if [[ -d /sys/kernel/sched_ext ]]; then
@@ -3477,7 +3477,7 @@ GROUP="${ gettext "Hardware"; }"
 USAGE="ame desktop screen-brightness on|off"
 item system screen-brightness switch "${ gettext "Brightness of external screens"; }" \
     "${ gettext "A slider in quick settings for each screen that speaks DDC/CI. It gives the person at the machine the displays' i2c buses, and asks for an administrator's password."; }" \
-    "${SCREENS}" hardware#external-screens-brightness
+    "${SCREENS}" displays#external-screens-brightness
 
 COMMAND=(ame system clean)
 BUTTON="${ gettext "Free space…"; }"
@@ -3485,11 +3485,11 @@ GROUP="${ gettext "Hardware"; }"
 USAGE="ame system clean"
 item system clean action "${ gettext "Free disk space"; }" \
     "${ gettext "Removes container images and Flatpak runtimes nothing uses, cached update files, and Homebrew's cache, asking first."; }" \
-    "" troubleshooting#the-disk-is-filling-up
+    "" common-problems#the-disk-is-filling-up
 GROUP="${ gettext "Hardware"; }"
 tools_switch offer-room system low-space "${ gettext "Offer to clear space when the disk runs low"; }" \
     "${ gettext "When GNOME's low-space notice fires, it says instead how much can be cleared and that none of it is your work, with one button."; }" \
-    troubleshooting#the-disk-is-filling-up ame desktop low-space
+    common-problems#the-disk-is-filling-up ame desktop low-space
 
 # Moving from another computer: each opens in a terminal, where the six digits are compared and the answers are typed (R7-25)
 GROUP="${ gettext "Moving"; }"
@@ -3643,7 +3643,7 @@ if [[ "${ ended raid; }" == 0 ]] && jq -e '.version == 1' <<<"${RAID}" >/dev/nul
         USAGE="ame system raid status"
         item system disks disks "${ gettext "Pools of disks"; }" \
             "${ gettext "Disks that keep copies of each other, so that one can fail without taking a file with it."; }" \
-            "" hardware#pools-of-disks-raid
+            "" disks#pools-of-disks-raid
     fi
 
     [[ "${SPARE}" -ge 2 ]] || REASON="${ gettext "Needs two disks besides the system's."; }"
@@ -3653,7 +3653,7 @@ if [[ "${ ended raid; }" == 0 ]] && jq -e '.version == 1' <<<"${RAID}" >/dev/nul
     USAGE="ame system raid create"
     item system raid-create action "${ gettext "Make a pool from spare disks"; }" \
         "${ gettext "Two or more disks that keep copies of each other, or join into one, in a folder under /var/mnt. It asks which disks, how to lay them out and whether to encrypt them, and erases them only once you type ERASE."; }" \
-        "" hardware#pools-of-disks-raid
+        "" disks#pools-of-disks-raid
 
     # A system on one disk, laid out as the installer does it, copied onto a new disk at least as large (2b)
     ONTO="${RAID_SAID[1]:-}"
@@ -3665,7 +3665,7 @@ if [[ "${ ended raid; }" == 0 ]] && jq -e '.version == 1' <<<"${RAID}" >/dev/nul
         USAGE="ame system raid mirror DISK"
         item system raid-mirror-disk action "${ gettext "Mirror the system onto a new disk"; }" \
             "${ gettext "Copies the system onto a spare disk at least as large as its own, its EFI partition and /boot included, so that the machine starts from either disk and goes on with one dead. It erases that disk once you type ERASE, then restarts once from it."; }" \
-            "" hardware#the-systems-own-disks
+            "" disks#the-systems-own-disks
     fi
 
     if [[ "${RAID_SAID[2]:-}" == true ]]; then
@@ -3675,7 +3675,7 @@ if [[ "${ ended raid; }" == 0 ]] && jq -e '.version == 1' <<<"${RAID}" >/dev/nul
         USAGE="ame system raid mirror"
         item system raid-mirror action "${ gettext "Protect the system's disks"; }" \
             "${ gettext "The system is spread over several disks with one copy of each file, so either one failing loses everything. This keeps a copy on each, erasing nothing. The machine starts from its first disk, or with another disk dead from the boot menu's Start with a disk missing."; }" \
-            "" hardware#the-systems-own-disks
+            "" disks#the-systems-own-disks
     fi
 
     if [[ "${RAID_SAID[3]:-}" == true ]]; then
@@ -3685,7 +3685,7 @@ if [[ "${ ended raid; }" == 0 ]] && jq -e '.version == 1' <<<"${RAID}" >/dev/nul
         USAGE="ame system raid scrub on|off"
         item system raid-scrub switch "${ gettext "Monthly check of every copy"; }" \
             "${ gettext "Reads everything on the pools once a month, on mains power, and repairs a damaged copy from a good one."; }" \
-            "${SCRUB}" hardware#pools-of-disks-raid
+            "${SCRUB}" disks#pools-of-disks-raid
 
         [[ "${RAID_SAID[5]:-}" == true ]] && REASON="${ gettext "A check is running now."; }"
         COMMAND=(ame system raid scrub now)
@@ -3694,7 +3694,7 @@ if [[ "${ ended raid; }" == 0 ]] && jq -e '.version == 1' <<<"${RAID}" >/dev/nul
         USAGE="ame system raid scrub now"
         item system raid-scrub-now action "${ gettext "Check every copy now"; }" \
             "${ gettext "The same check, now, in the background. After a power cut, do it for a pool with parity."; }" \
-            "" hardware#pools-of-disks-raid
+            "" disks#pools-of-disks-raid
     fi
 fi
 
@@ -3705,7 +3705,7 @@ GROUP="${ gettext "Disks"; }"
 USAGE="ame system disk-warning on|off"
 item system disk-warning switch "${ gettext "A warning before the disk fails"; }" \
     "${ gettext "Reads the health of the system's disk each hour, leaving it asleep if it sleeps, and says once if it begins to fail."; }" \
-    "${DISK_WARNING}" hardware#when-a-disk-may-be-failing
+    "${DISK_WARNING}" disks#when-a-disk-may-be-failing
 GROUP=""
 
 # What the notice after a night's battery kept from waking the computer, with the way back here: that notice is said once,
@@ -3719,7 +3719,7 @@ if [[ "${ ended wake-devices; }" == 0 ]]; then
         USAGE="ame system wake-device on ID"
         item system "wake-device-${wake_id//:/-}" action "${ eval_gettext "Let \${wake_name} wake the computer again"; }" \
             "${ eval_gettext "It was kept from waking the computer (\${wake_id}). This asks for an administrator's password and puts it back."; }" \
-            "" desktop#power-you-can-see
+            "" power
     done <<<"${ said wake-devices; }"
     GROUP=""
 fi
@@ -3731,7 +3731,7 @@ GROUP="${ gettext "Start over"; }"
 USAGE="ame system reset-settings"
 item system reset-settings action "${ gettext "Reset settings"; }" \
     "${ gettext "Puts your account's desktop settings, the machine's settings in /etc, or both back as the image ships them. Your files, apps and accounts stay, and so do your language, networks and everything Security sets. Each is saved first, and the same button can undo it."; }" \
-    "" troubleshooting#resetting-settings
+    "" starting-over#resetting-settings
 
 # A new installation beside this one: nothing is erased, and the old system can still be started. Not
 # on a sealed machine until it has been tried there.
@@ -3743,7 +3743,7 @@ GROUP="${ gettext "Start over"; }"
 USAGE="ame system powerwash"
 item system powerwash action "${ gettext "Start over"; }" \
     "${ gettext "Makes a new installation of this image beside this one, without your accounts, settings or files. Nothing is erased: the old system stays on the disk, and the boot menu can still start it. Experimental. It asks twice."; }" \
-    "" troubleshooting#starting-over
+    "" starting-over#starting-over
 GROUP=""
 
 # --- Keyboard --------------------------------------------------------------------------------------
@@ -3767,7 +3767,7 @@ EXTRA="$(jq -c '{keybindings: [.bindings[] | del(.default)], tiling: (.tiling ==
 USAGE="ame desktop shortcut set SCHEMA KEY ACCEL"
 item keyboard keyboard-shortcuts keybindings "${ gettext "Every shortcut"; }" \
     "${ gettext "GNOME's, the desktop's, the tiling's and your own, in one list. Change one by pressing the new keys; a clash is marked with both names."; }" \
-    "" desktop#every-shortcut
+    "" keyboard#every-shortcut
 
 GROUP="${ gettext "Keyboard"; }"
 XKB="${ value_of "${ said kb-input; }" xkb-options "(.*)\$"; }"
@@ -3792,7 +3792,7 @@ choice backspace "${ gettext "Backspace"; }" "" false ame desktop keyboard caps 
 choice none "${ gettext "Nothing"; }" "" false ame desktop keyboard caps none
 USAGE="ame desktop keyboard caps normal|escape|ctrl|backspace|none"
 item keyboard keyboard-caps choice "${ gettext "Caps Lock acts as"; }" \
-    "${ gettext "Escape suits a text editor; Ctrl a hand that reaches for shortcuts."; }" "${CAPS}" desktop#keyboard-settings
+    "${ gettext "Escape suits a text editor; Ctrl a hand that reaches for shortcuts."; }" "${CAPS}" keyboard#keyboard-settings
 COMPOSE=off
 [[ "${XKB}" =~ \'compose:(ralt|rctrl|menu|rwin|caps)\' ]] && COMPOSE="${BASH_REMATCH[1]}"
 choice off "${ gettext "None"; }" "" false ame desktop keyboard compose off
@@ -3803,7 +3803,7 @@ choice rwin "${ gettext "Right Super"; }" "" false ame desktop keyboard compose 
 choice caps "${ gettext "Caps Lock"; }" "" false ame desktop keyboard compose caps
 USAGE="ame desktop keyboard compose off|ralt|rctrl|menu|rwin|caps"
 item keyboard keyboard-compose choice "${ gettext "Compose key"; }" \
-    "${ gettext "Compose, then ' and e, types é."; }" "${COMPOSE}" desktop#keyboard-settings
+    "${ gettext "Compose, then ' and e, types é."; }" "${COMPOSE}" keyboard#keyboard-settings
 SUPER_ALONE="${ said kb-super; }"
 SUPER_ALONE="${SUPER_ALONE//\'/}"
 [[ "${ ended kb-super; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
@@ -3813,28 +3813,28 @@ choice nothing "${ gettext "Nothing"; }" "" false ame desktop keyboard super not
 USAGE="ame desktop keyboard super overview|search|nothing"
 item keyboard keyboard-super choice "${ gettext "Super on its own opens"; }" \
     "${ gettext "Pressing and letting go of Super, with no other key. Super's shortcuts work either way."; }" \
-    "${SUPER_ALONE:-overview}" desktop#keyboard-settings
+    "${SUPER_ALONE:-overview}" keyboard#keyboard-settings
 switch_choices false ame desktop keyboard middle-paste
 USAGE="ame desktop keyboard middle-paste on|off"
 item keyboard keyboard-middle-paste switch "${ gettext "Middle click pastes"; }" \
     "${ gettext "The middle button pastes the last text selected, anywhere. Off, nothing is pasted by a stray click."; }" \
-    "${ [[ "${ said kb-paste; }" == true ]] && echo on || echo off; }" desktop#keyboard-settings
+    "${ [[ "${ said kb-paste; }" == true ]] && echo on || echo off; }" keyboard#keyboard-settings
 switch_choices false ame desktop keyboard numlock
 USAGE="ame desktop keyboard numlock on|off"
 item keyboard keyboard-numlock switch "${ gettext "Num Lock on at start"; }" \
     "${ gettext "Off, Num Lock starts as it was left."; }" \
     "${ [[ "${ kb_key remember-numlock-state; }" == false && "${ kb_key numlock-state; }" == true ]] && echo on || echo off; }" \
-    desktop#keyboard-settings
+    keyboard#keyboard-settings
 EXTRA='{"min": 150, "max": 1000, "step": 50, "unit": "ms", "terminal": false,
     "command": ["ame", "desktop", "keyboard", "repeat-delay", "{value}"]}'
 USAGE="ame desktop keyboard repeat-delay 150..1000"
 item keyboard keyboard-repeat-delay range "${ gettext "Repeat after"; }" \
-    "${ gettext "How long a key is held before it repeats, in milliseconds."; }" "${ kb_key delay; }" desktop#keyboard-settings
+    "${ gettext "How long a key is held before it repeats, in milliseconds."; }" "${ kb_key delay; }" keyboard#keyboard-settings
 switch_choices false ame desktop keyboard per-window
 USAGE="ame desktop keyboard per-window on|off"
 item keyboard keyboard-per-window switch "${ gettext "Each window keeps its keyboard layout"; }" \
     "${ gettext "The layout chosen in a window comes back when you return to it: one language in a chat, another in mail."; }" \
-    "${ [[ "${ value_of "${ said kb-input; }" per-window "(.*)\$"; }" == true ]] && echo on || echo off; }" desktop#a-layout-for-each-window
+    "${ [[ "${ value_of "${ said kb-input; }" per-window "(.*)\$"; }" == true ]] && echo on || echo off; }" keyboard#a-layout-for-each-window
 
 GROUP="${ gettext "Typing"; }"
 [[ "${ ended kb-accents; }" == 0 ]] || REASON="${ gettext "Amethystora UI is not installed."; }"
@@ -3842,7 +3842,7 @@ switch_choices false ame desktop accents
 USAGE="ame desktop accents on|off"
 item keyboard keyboard-accents switch "${ gettext "Hold a key for accents"; }" \
     "${ gettext "Hold a letter in an app and its accented forms appear over the text cursor; a number types one. Not in terminals or games. It looks at what you type, keeps none of it, and is off until you turn it on."; }" \
-    "${ [[ "${ said kb-accents; }" == true ]] && echo on || echo off; }" desktop#hold-a-key-for-accents
+    "${ [[ "${ said kb-accents; }" == true ]] && echo on || echo off; }" keyboard#hold-a-key-for-accents
 GROUP=""
 
 # --- Your setup ------------------------------------------------------------------------------------
@@ -3865,7 +3865,7 @@ if [[ -r "${CONFIG_DIR}/backup.env" ]]; then
     USAGE="ame restore-setup"
     item setup restore-setup action "${ gettext "Make the setup again from a backup"; }" \
         "${ gettext "On a new machine: the image, apps, containers and theme of your last backup, each step chosen first."; }" \
-        "" security#backups
+        "" backups
 fi
 
 # --- Elsewhere -------------------------------------------------------------------------------------

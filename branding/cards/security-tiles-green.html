@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* See where you stand: the report's one amber line has its fix pressed, the line and the shield turn green */
+.art { --loop: 3s; --poster: 0.62; }
+@keyframes warn { 0%, 44% { background: #e8c06a; } 54%, 88% { background: #8ddba4; } 100% { background: #e8c06a; } }
+@keyframes btn { 0%, 30% { background: rgba(255, 255, 255, 0.2); transform: scale(1); } 36%, 42% { background: #b37df9; transform: scale(0.9); } 50% { background: #b37df9; transform: scale(1); opacity: 1; } 58%, 88% { opacity: 0; } 100% { opacity: 1; background: rgba(255, 255, 255, 0.2); } }
+@keyframes shield { 0%, 48% { background: #e8c06a; } 58%, 88% { background: #8ddba4; } 100% { background: #e8c06a; } }
+@keyframes hand { 0%, 8% { left: 120px; top: 92px; } 30%, 44% { left: 112px; top: 74px; } 60%, 88% { left: 124px; top: 96px; opacity: 0; } 100% { left: 120px; top: 92px; opacity: 1; } }
+.shield { position: absolute; left: 63px; top: 6px; width: 24px; height: 28px; border-radius: 6px 6px 12px 12px; animation-name: shield; }
+.shield::after { content: ""; position: absolute; left: 7px; top: 8px; width: 9px; height: 5px; border-left: 2.5px solid #1a1226; border-bottom: 2.5px solid #1a1226; transform: rotate(-45deg); }
+.row { position: absolute; left: 14px; width: 122px; height: 18px; border-radius: 6px; background: rgba(255, 255, 255, 0.1); }
+.row .dot { left: 5px; top: 4px; width: 10px; height: 10px; background: #8ddba4; }
+.row .line { left: 22px; top: 7px; width: 50px; }
+.row .warn { animation-name: warn; }
+.fix { position: absolute; right: 5px; top: 3px; width: 26px; height: 12px; border-radius: 4px; animation-name: btn; }
+.pointer { position: absolute; width: 14px; height: 18px; animation-name: hand; }
+</style>
+</head>
+<body>
+<div class="art">
+  <i class="shield"></i>
+  <div class="row" style="top: 42px"><i class="dot"></i><i class="line"></i></div>
+  <div class="row" style="top: 64px"><i class="dot warn"></i><i class="line" style="width: 40px"></i><i class="fix"></i></div>
+  <div class="row" style="top: 86px"><i class="dot"></i><i class="line" style="width: 58px"></i></div>
+  <svg class="pointer" viewBox="0 0 24 30"><path d="M4 3L20 16 12.6 17.3 8.7 24Z" fill="#ffffff" stroke="#9148f0" stroke-width="2" stroke-linejoin="round"/></svg>
+</div>
+</body>
+</html>

@@ -506,7 +506,7 @@ impl Updates {
                 let keeping = self.state.borrow().keeping;
                 actions.push(self.button(&t!("Keep this version"), Some("back"), true, false, keeping, |this| this.keep()).upcast());
                 actions.push(self.button(&t!("Restart into the latest"), Some("power"), false, false, false, |_| restart()).upcast());
-                actions.push(self.manual_link(&t!("Rolling back in the manual"), "book", "updates#rolling-back").upcast());
+                actions.push(self.manual_link(&t!("Rolling back in the manual"), "book", "rolling-back").upcast());
             }
             "ready" => {
                 title = t!("Restart to finish");
@@ -666,7 +666,7 @@ impl Updates {
                     "check",
                     &t!("This machine is held on one build"),
                     &t!("It runs {build} and receives no new system until it follows a stream again. Apps and command-line tools still update.", build = &held),
-                    Some(self.manual_link(&t!("Following a stream again"), "book", "updates#holding-on-to-one-build").upcast()),
+                    Some(self.manual_link(&t!("Following a stream again"), "book", "rolling-back#holding-on-to-one-build").upcast()),
                 )
                 .upcast(),
             );
@@ -681,7 +681,7 @@ impl Updates {
             card.append(&Self::version_row(&t!("After the next restart"), next, None));
         }
         if let Some(previous) = &info.previous {
-            let link = self.manual_link(&t!("Going back to it"), "back", "updates#rolling-back");
+            let link = self.manual_link(&t!("Going back to it"), "back", "rolling-back");
             card.append(&Self::version_row(&t!("Kept to go back to"), previous, Some(link.upcast())));
         }
         body.push(card.upcast());
@@ -1042,7 +1042,7 @@ impl Updates {
                 "info",
                 &t!("This version is the one the machine starts now"),
                 &t!("The next update brings the newest back, automatic or not. To stay on this one until a fix is out, turn automatic updates off below, or hold the machine on this build."),
-                Some(self.manual_link(&t!("Holding on to one build"), "book", "updates#holding-on-to-one-build").upcast()),
+                Some(self.manual_link(&t!("Holding on to one build"), "book", "rolling-back#holding-on-to-one-build").upcast()),
             ));
         }
         if let Some(waited) = self.waited_callout(kind) {

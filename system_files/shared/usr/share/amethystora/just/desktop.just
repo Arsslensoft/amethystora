@@ -953,7 +953,7 @@ layout STYLE="":
             ;;
         tiling)
             gsettings set "${schema}" enabled true
-            echo "$(gettext "Tiling: new windows open beside the one you are on, and Super+Left and Super+Right move between them. The keys are in the manual: amethystora-manual desktop#tiling-windows")"
+            echo "$(gettext "Tiling: new windows open beside the one you are on, and Super+Left and Super+Right move between them. The keys are in the manual: amethystora-manual tiling")"
             ;;
         *) exit 0 ;;
     esac

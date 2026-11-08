@@ -7,7 +7,7 @@ Amethystora ist für Menschen gemacht, die die Befehlszeile mögen, genauso wie 
 
 `Super+Return` öffnet ein Terminal, ebenso `Ctrl+Alt+T` und `Ctrl+Alt+Return`. Das Terminal ist
 Ptyxis. Es kennt Container: Das Menü neben dem Knopf für einen neuen Reiter öffnet einen Reiter auf dem
-Host oder in einem Ihrer [Distrobox- und Toolbox-Container](software.md#containers).
+Host oder in einem Ihrer [Distrobox- und Toolbox-Container](containers.md).
 
 Seine Farben folgen dem [Thema](themes.md), ebenso der Prompt.
 
@@ -46,7 +46,7 @@ ame --list --list-submodules  # every command, in every group
 ame -n security status        # print what a command would run, without running it
 ```
 
-`ame pkg` ist [amethystora-pkg](software.md#packages-from-other-distributions). `ujust`, der ältere Name
+`ame pkg` ist [amethystora-pkg](containers.md#packages-from-other-distributions). `ujust`, der ältere Name
 von `ame`, führt dieselben Befehle aus, und ihre Namen aus der Zeit vor der Gruppierung, etwa
 `ujust setup-backup`, funktionieren weiterhin.
 

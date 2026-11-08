@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Super and R step the window's width through three sizes, and its neighbour moves along */
+.art { --loop: 3.2s; --poster: 0.55; }
+@keyframes ksuper { 0%, 6% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } 10%, 76% { transform: translateY(2px); background: #b37df9; } 82%, 100% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } }
+@keyframes kr { 0%, 10% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } 13%, 17% { transform: translateY(2px); background: #b37df9; } 20%, 35% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } 38%, 42% { transform: translateY(2px); background: #b37df9; } 45%, 60% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } 63%, 67% { transform: translateY(2px); background: #b37df9; } 70%, 100% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } }
+@keyframes w { 0%, 14% { width: 46px; } 20%, 39% { width: 61px; } 45%, 64% { width: 76px; } 70%, 100% { width: 46px; } }
+@keyframes n { 0%, 14% { left: 55px; } 20%, 39% { left: 70px; } 45%, 64% { left: 85px; } 70%, 100% { left: 55px; } }
+.screen { left: 8px; top: 6px; width: 134px; height: 66px; background: transparent; border: 1px solid rgba(220, 188, 255, 0.55); overflow: hidden; }
+.screen .win { top: 5px; height: 54px; }
+.wa { left: 5px; box-shadow: 0 0 0 2px #b37df9; animation-name: w; z-index: 1; }
+.wb { width: 60px; animation-name: n; }
+.ks { left: 36px; top: 82px; animation-name: ksuper; }
+.kk { left: 98px; top: 82px; width: 24px; padding: 0; animation-name: kr; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="pane screen"><i class="win wb"></i><i class="win wa"></i></div>
+  <span class="cap ks">Super</span><span class="cap kk">R</span>
+</div>
+</body>
+</html>

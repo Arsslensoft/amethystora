@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* The pen ring: the pen opens six tools round its tip, moves toward one to light it, and the ring closes */
+.art { --loop: 3.4s; --poster: 0.52; }
+@keyframes pen { 0%, 6% { left: 112px; top: 106px; opacity: 0; } 12% { opacity: 1; } 22%, 36% { left: 75px; top: 58px; opacity: 1; } 50%, 66% { left: 92px; top: 50px; opacity: 1; } 80% { left: 120px; top: 82px; opacity: 0; } 100% { left: 112px; top: 106px; opacity: 0; } }
+@keyframes ring { 0%, 22% { opacity: 0; transform: scale(0.4); } 32%, 64% { opacity: 1; transform: scale(1); } 72%, 100% { opacity: 0; transform: scale(0.4); } }
+@keyframes lit { 0%, 46% { background: rgba(255, 255, 255, 0.16); transform: scale(1); } 52%, 64% { background: #b37df9; transform: scale(1.2); } 70%, 100% { background: rgba(255, 255, 255, 0.16); transform: scale(1); } }
+.ring { position: absolute; left: 39px; top: 22px; width: 72px; height: 72px; animation-name: ring; }
+.tool { position: absolute; width: 18px; height: 18px; border-radius: 50%; background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.25); box-sizing: border-box; }
+.tool.on { animation-name: lit; }
+.tool i { position: absolute; left: 5px; top: 5px; width: 6px; height: 6px; border-radius: 2px; background: #dcbcff; }
+.hub { position: absolute; left: 28px; top: 28px; width: 16px; height: 16px; border-radius: 50%; border: 1px dashed rgba(220, 188, 255, 0.5); box-sizing: border-box; }
+.pen { position: absolute; width: 6px; height: 46px; transform-origin: 3px 46px; transform: translate(-3px, -46px) rotate(35deg); animation-name: pen; }
+.body { position: absolute; left: 0; top: 0; width: 6px; height: 38px; border-radius: 3px 3px 1px 1px; background: #efe4ff; }
+.tip { position: absolute; left: 0; top: 38px; width: 0; height: 0; border-left: 3px solid transparent; border-right: 3px solid transparent; border-top: 8px solid #9148f0; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="ring">
+    <i class="hub"></i>
+    <i class="tool" style="left: 27px; top: 0"><i></i></i>
+    <i class="tool on" style="left: 51px; top: 14px"><i></i></i>
+    <i class="tool" style="left: 51px; top: 40px"><i></i></i>
+    <i class="tool" style="left: 27px; top: 54px"><i></i></i>
+    <i class="tool" style="left: 3px; top: 40px"><i></i></i>
+    <i class="tool" style="left: 3px; top: 14px"><i></i></i>
+  </div>
+  <div class="pen"><i class="body"></i><i class="tip"></i></div>
+</div>
+</body>
+</html>

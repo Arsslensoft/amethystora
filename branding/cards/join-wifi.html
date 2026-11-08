@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Join a network: the menu at the top right, the arrow beside Wi-Fi, a network picked, and the Wi-Fi mark fills in */
+.art { --loop: 3.4s; --poster: 0.6; }
+@keyframes hand {
+  0%, 6% { left: 70px; top: 80px; opacity: 1; }
+  18%, 22% { left: 132px; top: 4px; opacity: 1; }
+  34%, 38% { left: 124px; top: 26px; }
+  52%, 58% { left: 96px; top: 62px; opacity: 1; }
+  70%, 88% { left: 96px; top: 62px; opacity: 0; }
+  96%, 100% { left: 70px; top: 80px; opacity: 1; }
+}
+@keyframes menu { 0%, 22% { opacity: 0; transform: translateY(-4px); } 26%, 64% { opacity: 1; transform: translateY(0); } 72%, 100% { opacity: 0; transform: translateY(0); } }
+@keyframes list { 0%, 38% { height: 0; } 46%, 100% { height: 46px; } }
+@keyframes pick { 0%, 54% { background: transparent; } 58%, 100% { background: rgba(179, 125, 249, 0.5); } }
+@keyframes on { 0%, 58% { opacity: 0; } 64%, 90% { opacity: 1; } 98%, 100% { opacity: 0; } }
+@keyframes tile { 0%, 58% { background: rgba(255, 255, 255, 0.14); } 64%, 100% { background: #b37df9; } }
+.bar { position: absolute; left: 0; top: 0; width: 150px; height: 14px; background: rgba(255, 255, 255, 0.06); }
+.mark { position: absolute; left: 126px; top: 2px; width: 12px; height: 12px; overflow: hidden; }
+.arc { position: absolute; border-radius: 50%; box-sizing: border-box; border: 2px solid transparent; }
+.dim .arc { border-top-color: rgba(239, 228, 255, 0.35); }
+.full { animation-name: on; }
+.full .arc { border-top-color: #efe4ff; }
+.a1 { left: 0; top: 2px; width: 12px; height: 12px; }
+.a2 { left: 3px; top: 5px; width: 6px; height: 6px; }
+.dotw { position: absolute; left: 5px; top: 9px; width: 2px; height: 2px; border-radius: 1px; background: #efe4ff; }
+.menu { left: 62px; top: 18px; width: 84px; height: 88px; animation-name: menu; }
+.wtile { position: absolute; left: 6px; top: 6px; width: 72px; height: 14px; border-radius: 7px; animation-name: tile; }
+.wtile::after { content: ""; position: absolute; right: 6px; top: 4px; width: 4px; height: 4px; border-right: 2px solid #efe4ff; border-bottom: 2px solid #efe4ff; transform: rotate(-45deg); }
+.list { position: absolute; left: 6px; top: 26px; width: 72px; overflow: hidden; animation-name: list; }
+.net { position: relative; height: 14px; margin-bottom: 2px; border-radius: 4px; }
+.net .line { left: 6px; top: 5px; width: 34px; }
+.net.p { animation-name: pick; }
+.pointer { position: absolute; width: 14px; height: 18px; animation-name: hand; }
+</style>
+</head>
+<body>
+<div class="art">
+  <i class="bar"></i>
+  <span class="mark dim"><i class="arc a1"></i><i class="arc a2"></i></span>
+  <span class="mark full"><i class="arc a1"></i><i class="arc a2"></i><i class="dotw"></i></span>
+  <div class="pane menu">
+    <i class="wtile"></i>
+    <div class="list"><div class="net"><i class="line"></i></div><div class="net p"><i class="line" style="width: 44px"></i></div><div class="net"><i class="line" style="width: 26px"></i></div></div>
+  </div>
+  <svg class="pointer" viewBox="0 0 24 30"><path d="M4 3L20 16 12.6 17.3 8.7 24Z" fill="#ffffff" stroke="#9148f0" stroke-width="2" stroke-linejoin="round"/></svg>
+</div>
+</body>
+</html>

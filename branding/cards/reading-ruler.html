@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* The reading ruler: Super+Ctrl+R, and a band follows the pointer down the page line by line; the keys again hide it */
+.art { --loop: 3.4s; --poster: 0.42; }
+@keyframes press { 0%, 4% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } 8%, 16% { transform: translateY(2px); background: #b37df9; } 20%, 76% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } 80%, 88% { transform: translateY(2px); background: #b37df9; } 92%, 100% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } }
+@keyframes band { 0%, 14% { opacity: 0; transform: translateY(0); } 20%, 30% { opacity: 1; transform: translateY(0); } 38%, 48% { opacity: 1; transform: translateY(10px); } 56%, 78% { opacity: 1; transform: translateY(20px); } 86%, 100% { opacity: 0; transform: translateY(20px); } }
+@keyframes hand { 0%, 30% { transform: translateY(0); } 38%, 48% { transform: translateY(10px); } 56%, 86% { transform: translateY(20px); } 100% { transform: translateY(0); } }
+.page { left: 14px; top: 6px; width: 122px; height: 68px; }
+.page .line { left: 10px; height: 3px; }
+.band { position: absolute; left: 1px; right: 1px; top: 20px; height: 9px; background: rgba(232, 192, 106, 0.35); border-top: 1px solid rgba(232, 192, 106, 0.6); border-bottom: 1px solid rgba(232, 192, 106, 0.6); animation-name: band; }
+.pointer { position: absolute; left: 92px; top: 20px; width: 12px; height: 15px; animation-name: hand; }
+.k1 { left: 18px; top: 82px; animation-name: press; }
+.k2 { left: 70px; top: 82px; animation-name: press; }
+.k3 { left: 112px; top: 82px; animation-name: press; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="win page">
+    <i class="band"></i>
+    <i class="line" style="top: 13px; width: 96px"></i><i class="line" style="top: 23px; width: 88px"></i><i class="line" style="top: 33px; width: 100px"></i>
+    <i class="line" style="top: 43px; width: 80px"></i><i class="line" style="top: 53px; width: 92px"></i>
+    <svg class="pointer" viewBox="0 0 24 30"><path d="M4 3L20 16 12.6 17.3 8.7 24Z" fill="#ffffff" stroke="#9148f0" stroke-width="2" stroke-linejoin="round"/></svg>
+  </div>
+  <span class="cap k1">Super</span><span class="cap k2">Ctrl</span><span class="cap k3">R</span>
+</div>
+</body>
+</html>

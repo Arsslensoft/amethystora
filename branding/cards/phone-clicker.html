@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* The phone as a slide clicker: a tap on the phone's next button, and the slide on the screen moves on */
+.art { --loop: 3.4s; --poster: 0.38; }
+@keyframes tap { 0%, 20% { transform: scale(1); background: rgba(255, 255, 255, 0.16); } 24%, 28% { transform: scale(0.9); background: #b37df9; } 32%, 58% { transform: scale(1); background: rgba(255, 255, 255, 0.16); } 62%, 66% { transform: scale(0.9); background: #b37df9; } 70%, 100% { transform: scale(1); background: rgba(255, 255, 255, 0.16); } }
+@keyframes s1 { 0%, 24% { opacity: 1; transform: translateX(0); } 32%, 92% { opacity: 0; transform: translateX(-16px); } 100% { opacity: 1; transform: translateX(0); } }
+@keyframes s2 { 0%, 24% { opacity: 0; transform: translateX(16px); } 32%, 62% { opacity: 1; transform: translateX(0); } 70%, 100% { opacity: 0; transform: translateX(-16px); } }
+@keyframes s3 { 0%, 62% { opacity: 0; transform: translateX(16px); } 70%, 88% { opacity: 1; transform: translateX(0); } 96%, 100% { opacity: 0; transform: translateX(0); } }
+@keyframes ripple { 0%, 22% { transform: scale(0.5); opacity: 0; } 25% { opacity: 0.8; } 34%, 60% { transform: scale(1.6); opacity: 0; } 63% { transform: scale(0.5); opacity: 0.8; } 72%, 100% { transform: scale(1.6); opacity: 0; } }
+.screen { position: absolute; left: 6px; top: 12px; width: 96px; height: 66px; border-radius: 6px; background: #120c1c; border: 2px solid rgba(255, 255, 255, 0.22); box-sizing: border-box; overflow: hidden; }
+.stand { position: absolute; left: 46px; top: 78px; width: 16px; height: 10px; background: rgba(255, 255, 255, 0.16); }
+.foot { position: absolute; left: 34px; top: 88px; width: 40px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.22); }
+.slide { position: absolute; inset: 6px; border-radius: 4px; background: #2b2140; }
+.s1 { animation-name: s1; } .s2 { animation-name: s2; } .s3 { animation-name: s3; }
+.t { position: absolute; left: 8px; top: 8px; height: 6px; border-radius: 3px; background: #dcbcff; }
+.slide .line { left: 8px; height: 3px; }
+.chart { position: absolute; bottom: 8px; width: 8px; border-radius: 2px 2px 0 0; background: #b37df9; }
+.phone { position: absolute; left: 112px; top: 20px; width: 32px; height: 62px; border-radius: 7px; background: #2b2140; border: 2px solid rgba(255, 255, 255, 0.22); box-sizing: border-box; }
+.btn { position: absolute; left: 5px; width: 18px; height: 16px; border-radius: 5px; background: rgba(255, 255, 255, 0.16); }
+.next { top: 10px; animation-name: tap; }
+.prev { top: 32px; }
+.chev { position: absolute; left: 5px; top: 4px; width: 6px; height: 6px; border: solid #efe4ff; border-width: 2px 2px 0 0; transform: rotate(45deg); }
+.prev .chev { transform: rotate(-135deg); left: 7px; }
+.ring { position: absolute; left: 1px; top: 6px; width: 26px; height: 24px; border-radius: 8px; border: 2px solid #dcbcff; box-sizing: border-box; animation-name: ripple; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="screen">
+    <div class="slide s1"><i class="t" style="width: 50px"></i><i class="line" style="top: 22px; width: 64px"></i><i class="line" style="top: 30px; width: 50px"></i><i class="line" style="top: 38px; width: 58px"></i></div>
+    <div class="slide s2"><i class="t" style="width: 40px"></i><i class="chart" style="left: 14px; height: 14px"></i><i class="chart" style="left: 28px; height: 22px"></i><i class="chart" style="left: 42px; height: 18px"></i><i class="chart" style="left: 56px; height: 28px"></i></div>
+    <div class="slide s3"><i class="t" style="width: 56px"></i><i class="dot" style="left: 30px; top: 22px; width: 22px; height: 22px; background: #b37df9"></i></div>
+  </div>
+  <i class="stand"></i><i class="foot"></i>
+  <div class="phone"><i class="btn next"><i class="chev"></i></i><i class="btn prev"><i class="chev"></i></i><i class="ring"></i></div>
+</div>
+</body>
+</html>

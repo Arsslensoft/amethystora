@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* The next theme: Super+Ctrl+T, and the new theme opens out in a circle from the pointer over the old one */
+.art { --loop: 3.2s; --poster: 0.42; }
+@keyframes press { 0%, 8% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } 14%, 30% { transform: translateY(2px); background: #b37df9; } 36%, 100% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } }
+@keyframes open { 0%, 32% { clip-path: circle(0px at 96px 40px); opacity: 1; } 62%, 86% { clip-path: circle(130px at 96px 40px); opacity: 1; } 96%, 100% { clip-path: circle(130px at 96px 40px); opacity: 0; } }
+@keyframes ring { 0%, 32% { transform: scale(0); opacity: 0; } 36% { opacity: 1; } 62% { transform: scale(1); opacity: 0.8; } 66%, 100% { transform: scale(1); opacity: 0; } }
+.screen { position: absolute; left: 8px; top: 6px; width: 134px; height: 68px; border-radius: 8px; overflow: hidden; }
+.dark { background: linear-gradient(135deg, #3a2560, #1f1530); }
+.light { background: linear-gradient(135deg, #f6eeff, #dcc6fb); animation-name: open; }
+.bar { position: absolute; left: 4px; right: 4px; top: 3px; height: 7px; border-radius: 4px; }
+.dark .bar { background: rgba(255, 255, 255, 0.14); }
+.light .bar { background: rgba(255, 255, 255, 0.8); }
+.screen .win { left: 16px; top: 18px; width: 70px; height: 42px; }
+.light .win { background: #ffffff; border-color: rgba(80, 40, 140, 0.18); }
+.light .win::before { background: rgba(80, 40, 140, 0.1); }
+.btn { position: absolute; left: 8px; top: 26px; width: 26px; height: 8px; border-radius: 4px; background: #b37df9; }
+.light .btn { background: #9148f0; }
+.txt { position: absolute; left: 8px; height: 3px; border-radius: 2px; background: rgba(239, 228, 255, 0.4); }
+.light .txt { background: rgba(60, 30, 100, 0.35); }
+.ring { position: absolute; left: -34px; top: -90px; width: 260px; height: 260px; border-radius: 50%; border: 2px solid #b37df9; box-shadow: 0 0 8px #b37df9; box-sizing: border-box; animation-name: ring; }
+.k1 { left: 18px; top: 82px; animation-name: press; }
+.k2 { left: 70px; top: 82px; animation-name: press; }
+.k3 { left: 112px; top: 82px; animation-name: press; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="screen dark"><i class="bar"></i><div class="win"><i class="txt" style="top: 12px; width: 40px"></i><i class="txt" style="top: 18px; width: 30px"></i><i class="btn"></i></div></div>
+  <div class="screen light"><i class="bar"></i><div class="win"><i class="txt" style="top: 12px; width: 40px"></i><i class="txt" style="top: 18px; width: 30px"></i><i class="btn"></i></div></div>
+  <div class="screen" style="overflow: hidden"><i class="ring"></i></div>
+  <span class="cap k1">Super</span><span class="cap k2">Ctrl</span><span class="cap k3">T</span>
+</div>
+</body>
+</html>

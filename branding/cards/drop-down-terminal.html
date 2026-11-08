@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* The drop-down terminal: Super, Alt and Return slide it down over everything, and again slide it away */
+.art { --loop: 3.4s; --poster: 0.42; }
+@keyframes ksuper { 0%, 6% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } 10%, 30% { transform: translateY(2px); background: #b37df9; } 34%, 52% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } 56%, 80% { transform: translateY(2px); background: #b37df9; } 84%, 100% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } }
+@keyframes kalt { 0%, 7% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } 11%, 30% { transform: translateY(2px); background: #b37df9; } 34%, 53% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } 57%, 80% { transform: translateY(2px); background: #b37df9; } 84%, 100% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } }
+@keyframes kret { 0%, 12% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } 16%, 22% { transform: translateY(2px); background: #b37df9; } 26%, 60% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } 64%, 72% { transform: translateY(2px); background: #b37df9; } 76%, 100% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } }
+@keyframes drop { 0%, 18% { transform: translateY(-62px); } 32%, 66% { transform: translateY(0); } 80%, 100% { transform: translateY(-62px); } }
+@keyframes blink { 0%, 40% { opacity: 1; } 41%, 50% { opacity: 0; } 51%, 60% { opacity: 1; } 61%, 70% { opacity: 0; } 71%, 100% { opacity: 1; } }
+.cap { padding: 0 7px; }
+.term { position: absolute; left: 16px; top: 0; width: 118px; height: 54px; box-sizing: border-box; border-radius: 0 0 9px 9px; background: #120c1c; border: 1px solid rgba(179, 125, 249, 0.7); border-top: 0; box-shadow: 0 6px 14px rgba(0, 0, 0, 0.5); animation-name: drop; }
+.chev { position: absolute; left: 10px; width: 5px; height: 5px; border-right: 2px solid #b37df9; border-bottom: 2px solid #b37df9; transform: rotate(-45deg); }
+.term .line { left: 22px; background: rgba(239, 228, 255, 0.45); }
+.cur { position: absolute; left: 22px; top: 38px; width: 6px; height: 9px; background: #efe4ff; animation-name: blink; animation-timing-function: steps(1); }
+.ks { left: 6px; top: 84px; animation-name: ksuper; }
+.ka { left: 57px; top: 84px; animation-name: kalt; }
+.kr { left: 92px; top: 84px; animation-name: kret; }
+</style>
+</head>
+<body>
+<div class="art">
+  <i class="win" style="left: 8px; top: 14px; width: 64px; height: 60px"></i><i class="win" style="left: 76px; top: 14px; width: 66px; height: 60px"></i>
+  <div class="term"><i class="chev" style="top: 9px"></i><i class="line" style="top: 11px; width: 52px"></i><i class="chev" style="top: 23px"></i><i class="line" style="top: 25px; width: 34px"></i><i class="chev" style="top: 37px"></i><i class="cur"></i></div>
+  <span class="cap ks">Super</span><span class="cap ka">Alt</span><span class="cap kr">Return</span>
+</div>
+</body>
+</html>

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Colours from the wallpaper: the picture changes, and the accent of the bar, a button and a switch follows its hue */
+.art { --loop: 3.4s; --poster: 0.6; }
+@keyframes pic { 0%, 30% { opacity: 0; } 44%, 84% { opacity: 1; } 96%, 100% { opacity: 0; } }
+@keyframes accent { 0%, 36% { background: #b37df9; } 50%, 84% { background: #e8a85a; } 96%, 100% { background: #b37df9; } }
+@keyframes ground { 0%, 36% { background: #2b2140; } 50%, 84% { background: #33281f; } 96%, 100% { background: #2b2140; } }
+.screen { position: absolute; left: 8px; top: 6px; width: 134px; height: 100px; border-radius: 8px; overflow: hidden; }
+.a { position: absolute; inset: 0; background: radial-gradient(circle at 25% 30%, #9a5cf0 0, transparent 45%), radial-gradient(circle at 80% 75%, #5a3a9a 0, transparent 50%), #22163a; }
+.b { position: absolute; inset: 0; background: radial-gradient(circle at 70% 30%, #f0a050 0, transparent 45%), radial-gradient(circle at 20% 80%, #8a4a2a 0, transparent 50%), #2a1a14; animation-name: pic; }
+.bar { position: absolute; left: 4px; right: 4px; top: 4px; height: 9px; border-radius: 5px; background: rgba(0, 0, 0, 0.35); }
+.ws { position: absolute; left: 6px; top: 2.5px; width: 12px; height: 4px; border-radius: 2px; animation-name: accent; }
+.panel { position: absolute; left: 30px; top: 30px; width: 74px; height: 56px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.16); animation-name: ground; }
+.btn { position: absolute; left: 10px; top: 12px; width: 34px; height: 11px; border-radius: 6px; animation-name: accent; }
+.sw { position: absolute; left: 10px; top: 32px; width: 22px; height: 12px; border-radius: 6px; animation-name: accent; }
+.sw::after { content: ""; position: absolute; right: 2px; top: 2px; width: 8px; height: 8px; border-radius: 50%; background: #efe4ff; }
+.l { position: absolute; left: 38px; top: 36px; width: 26px; height: 4px; border-radius: 2px; background: rgba(239, 228, 255, 0.35); }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="screen">
+    <i class="a"></i><i class="b"></i>
+    <div class="bar"><i class="ws"></i></div>
+    <div class="panel"><i class="btn"></i><i class="sw"></i><i class="l"></i></div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Hide what's private: the screenshot is read and solid black boxes land on what it found */
+.art { --loop: 3.2s; --poster: 0.6; }
+@keyframes stamp1 { 0%, 18% { opacity: 0; transform: scale(1.4); } 24%, 84% { opacity: 1; transform: scale(1); } 92%, 100% { opacity: 0; transform: scale(1); } }
+@keyframes stamp2 { 0%, 30% { opacity: 0; transform: scale(1.4); } 36%, 84% { opacity: 1; transform: scale(1); } 92%, 100% { opacity: 0; transform: scale(1); } }
+@keyframes stamp3 { 0%, 42% { opacity: 0; transform: scale(1.4); } 48%, 84% { opacity: 1; transform: scale(1); } 92%, 100% { opacity: 0; transform: scale(1); } }
+@keyframes scan { 0%, 4% { top: 12px; opacity: 0; } 8% { opacity: 0.9; } 46% { top: 96px; opacity: 0.9; } 50%, 100% { top: 96px; opacity: 0; } }
+.page { position: absolute; left: 22px; top: 10px; width: 106px; height: 92px; border-radius: 6px; background: #e6d9f5; overflow: hidden; }
+.page .line { background: rgba(26, 18, 38, 0.4); }
+.box { position: absolute; height: 9px; border-radius: 1px; background: #000000; }
+.scan { position: absolute; left: 0; width: 106px; height: 2px; background: #b37df9; box-shadow: 0 0 6px #b37df9; animation-name: scan; animation-timing-function: linear; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="page">
+    <i class="line" style="left: 10px; top: 12px; width: 40px"></i><i class="line" style="left: 54px; top: 12px; width: 40px"></i>
+    <i class="line" style="left: 10px; top: 28px; width: 28px"></i><i class="line" style="left: 42px; top: 28px; width: 18px"></i>
+    <i class="line" style="left: 10px; top: 44px; width: 70px"></i>
+    <i class="line" style="left: 10px; top: 60px; width: 22px"></i><i class="line" style="left: 36px; top: 60px; width: 56px"></i>
+    <i class="line" style="left: 10px; top: 76px; width: 48px"></i>
+    <i class="box" style="left: 52px; top: 9px; width: 44px; animation-name: stamp1"></i>
+    <i class="box" style="left: 40px; top: 25px; width: 54px; animation-name: stamp2"></i>
+    <i class="box" style="left: 34px; top: 57px; width: 60px; animation-name: stamp3"></i>
+    <i class="scan"></i>
+  </div>
+</div>
+</body>
+</html>

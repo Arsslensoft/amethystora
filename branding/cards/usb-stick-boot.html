@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Installing: the ISO's bits pour into a USB stick, the stick goes into the computer, and the desktop lights up */
+.art { --loop: 3.4s; --poster: 0.8; }
+@keyframes bit { 0%, 6% { transform: translate(0, 0); opacity: 0; } 10% { opacity: 1; } 28% { transform: translate(2px, 44px); opacity: 1; } 32%, 100% { transform: translate(2px, 44px); opacity: 0; } }
+@keyframes stick { 0%, 34% { left: 12px; top: 80px; opacity: 1; } 52%, 90% { left: 44px; top: 66px; opacity: 1; } 95% { left: 44px; top: 66px; opacity: 0; } 96% { left: 12px; top: 80px; opacity: 0; } 100% { left: 12px; top: 80px; opacity: 1; } }
+@keyframes led { 0%, 8% { background: rgba(255, 255, 255, 0.25); } 12%, 30% { background: #b37df9; } 34%, 100% { background: rgba(255, 255, 255, 0.25); } }
+@keyframes screen { 0%, 54% { background: #120c1b; } 64%, 90% { background: linear-gradient(135deg, #3a2160, #7a4cc0); } 98%, 100% { background: #120c1b; } }
+@keyframes ui { 0%, 62% { opacity: 0; } 70%, 90% { opacity: 1; } 96%, 100% { opacity: 0; } }
+@keyframes disc { 0%, 4% { transform: rotate(0deg); } 32%, 100% { transform: rotate(270deg); } }
+.disc { position: absolute; left: 10px; top: 14px; width: 34px; height: 34px; border-radius: 50%; background: conic-gradient(#dcbcff, #9148f0, #dcbcff, #9148f0, #dcbcff); animation-name: disc; }
+.disc::after { content: ""; position: absolute; left: 12px; top: 12px; width: 10px; height: 10px; border-radius: 50%; background: #1a1226; }
+.bit { position: absolute; left: 24px; top: 34px; width: 5px; height: 5px; border-radius: 1.5px; background: #dcbcff; animation-name: bit; }
+.stick { position: absolute; width: 30px; height: 13px; animation-name: stick; }
+.stick .body { position: absolute; left: 0; top: 0; width: 22px; height: 13px; border-radius: 3px; background: #9148f0; }
+.stick .plug { position: absolute; left: 22px; top: 3px; width: 8px; height: 7px; border-radius: 1px; background: #c9c2d6; }
+.stick .led { position: absolute; left: 4px; top: 5px; width: 3px; height: 3px; border-radius: 50%; animation-name: led; }
+.screen { left: 76px; top: 20px; width: 68px; height: 48px; border-radius: 5px; border: 3px solid #3d3150; animation-name: screen; }
+.base { position: absolute; left: 70px; top: 70px; width: 80px; height: 6px; border-radius: 0 0 5px 5px; background: #3d3150; }
+.bar { position: absolute; left: 0; right: 0; top: 0; height: 5px; background: rgba(0, 0, 0, 0.35); animation-name: ui; }
+.uiwin { left: 9px; top: 11px; width: 26px; height: 20px; animation-name: ui; }
+.uiwin2 { left: 38px; top: 11px; width: 17px; height: 20px; animation-name: ui; }
+.dock { position: absolute; left: 18px; top: 34px; width: 26px; height: 5px; border-radius: 2px; background: rgba(255, 255, 255, 0.35); animation-name: ui; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="disc"></div>
+  <i class="bit"></i><i class="bit" style="animation-delay: calc(var(--loop) * -0.94)"></i><i class="bit" style="animation-delay: calc(var(--loop) * -0.88)"></i>
+  <div class="pane screen" style="position: absolute; box-sizing: border-box; overflow: hidden;">
+    <i class="bar"></i><i class="win uiwin"></i><i class="win uiwin2"></i><i class="dock"></i>
+  </div>
+  <i class="base"></i>
+  <div class="stick"><i class="body"></i><i class="plug"></i><i class="led"></i></div>
+</div>
+</body>
+</html>

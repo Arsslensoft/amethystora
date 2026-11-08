@@ -27,7 +27,7 @@ ame security status
 Ein Bildschirm voll mit dem, was die Sicherheitseinstellungen des Rechners tatsächlich tun, und was bei
 allem zu tun ist, das nicht stimmt. Der Befehl ändert nichts und fragt nach keinem Passwort. Derselbe
 Bericht steht in der Anwendungsübersicht als **Sicherheit**, das auch nach Viren sucht
-([Sicherheit](security.md#scanning-for-viruses)).
+([Sicherheit](viruses.md#scanning-for-viruses)).
 
 ## 3. Ihre Apps installieren
 
@@ -41,7 +41,7 @@ Browser ist Firefox; wenn Sie lieber Chrome oder Brave hätten, finden Sie diese
 [Software installieren](software.md) behandelt Befehlszeilenwerkzeuge und alles andere.
 
 Sie kommen von einem anderen Amethystora-Rechner, der gesichert wurde? `ame restore-setup` stellt dessen
-Apps, Container, Erweiterungen und Thema aus der Sicherung wieder her ([Sicherungen](security.md#backups)).
+Apps, Container, Erweiterungen und Thema aus der Sicherung wieder her ([Sicherungen](backups.md)).
 
 ## 4. Machen Sie es sich zu eigen
 
@@ -49,9 +49,9 @@ Apps, Container, Erweiterungen und Thema aus der Sicherung wieder her ([Sicherun
   einmal neu. [Themen](themes.md).
 - Fenster ordnen sich von selbst als Kacheln an, nebeneinander auf einem Streifen, der scrollt. Öffnen
   Sie zwei oder drei Apps und wechseln Sie mit `Super+Left` und `Super+Right` zwischen ihnen.
-  [Fenster kacheln](desktop.md#tiling-windows). Wenn Sie lieber Fenster hätten, die frei schweben und
+  [Fenster kacheln](tiling.md). Wenn Sie lieber Fenster hätten, die frei schweben und
   sich überlappen, wechselt `ame desktop layout classic` zu ihnen
-  ([Klassische Fenster](desktop.md#classic-windows)).
+  ([Klassische Fenster](tiling.md#classic-windows)).
 - `Super+Alt+Space` öffnet das Amethystora-Menü, das alles in diesem Handbuch mit der Tastatur erreicht.
 
 ## 5. Eine Sicherung einrichten
@@ -61,7 +61,7 @@ ame backup
 ```
 
 Eine tägliche Sicherung an einen Ort, an dem Ransomware auf diesem Rechner nichts löschen kann. Der
-Befehl führt Sie durch die Wahl des Ortes. [Sicherheit](security.md#backups).
+Befehl führt Sie durch die Wahl des Ortes. [Sicherheit](backups.md).
 
 ## 6. Die Tasten lernen
 

@@ -7,7 +7,7 @@ abren. Cuando la abra, estará lista para usted.
 
 `Super+Return` abre una terminal, igual que `Ctrl+Alt+T` y `Ctrl+Alt+Return`. La terminal es Ptyxis.
 Conoce los contenedores: el menú junto al botón de pestaña nueva abre una pestaña en el anfitrión o
-dentro de cualquiera de sus [contenedores de Distrobox y Toolbox](software.md#containers).
+dentro de cualquiera de sus [contenedores de Distrobox y Toolbox](containers.md).
 
 Sus colores siguen el [tema](themes.md), y el prompt también.
 
@@ -45,7 +45,7 @@ ame --list --list-submodules  # every command, in every group
 ame -n security status        # print what a command would run, without running it
 ```
 
-`ame pkg` es [amethystora-pkg](software.md#packages-from-other-distributions). `ujust`, el nombre
+`ame pkg` es [amethystora-pkg](containers.md#packages-from-other-distributions). `ujust`, el nombre
 anterior de `ame`, ejecuta los mismos comandos, y sus nombres de antes de agruparse, como
 `ujust setup-backup`, siguen funcionando.
 

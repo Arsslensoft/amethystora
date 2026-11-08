@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Walk-away lock: the paired phone walks off, the link fades, a moment later the screen locks; the phone comes back, it is unlocked */
+.art { --loop: 3.6s; --poster: 0.62; }
+@keyframes phone { 0%, 12% { transform: translateX(0); opacity: 1; } 34%, 80% { transform: translateX(-12px); opacity: 0.25; } 92%, 100% { transform: translateX(0); opacity: 1; } }
+@keyframes link { 0%, 12% { opacity: 1; } 24%, 86% { opacity: 0; } 94%, 100% { opacity: 1; } }
+@keyframes dim { 0%, 44% { opacity: 0; } 54%, 84% { opacity: 1; } 92%, 100% { opacity: 0; } }
+@keyframes lock { 0%, 48% { opacity: 0; transform: translateY(5px); } 58%, 82% { opacity: 1; transform: translateY(0); } 90%, 100% { opacity: 0; transform: translateY(0); } }
+.screen { left: 50px; top: 18px; width: 92px; height: 62px; border-radius: 6px; overflow: hidden; }
+.base { position: absolute; left: 42px; top: 80px; width: 108px; height: 7px; border-radius: 0 0 6px 6px; background: rgba(255, 255, 255, 0.22); }
+.screen .line { left: 10px; }
+.shade { position: absolute; inset: 0; background: #120c1c; animation-name: dim; }
+.padlock { position: absolute; left: 84px; top: 32px; width: 22px; height: 28px; animation-name: lock; }
+.body { position: absolute; left: 0; bottom: 0; width: 22px; height: 16px; border-radius: 4px; background: #b37df9; }
+.loop { position: absolute; left: 4px; top: 0; width: 14px; height: 16px; border-radius: 7px 7px 0 0; border: 3px solid #b37df9; border-bottom: 0; box-sizing: border-box; }
+.phone { position: absolute; left: 14px; top: 44px; width: 18px; height: 32px; border-radius: 4px; background: #2b2140; border: 2px solid #dcbcff; box-sizing: border-box; animation-name: phone; }
+.phone::after { content: ""; position: absolute; left: 4px; bottom: 2px; width: 6px; height: 2px; border-radius: 1px; background: #dcbcff; }
+.wave { position: absolute; left: 30px; top: 46px; width: 18px; height: 22px; border-radius: 0 50% 50% 0; border: 2px solid #8ddba4; border-left: 0; box-sizing: border-box; animation-name: link; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="pane screen"><i class="line" style="top: 14px; width: 50px"></i><i class="line" style="top: 26px; width: 66px"></i><i class="line" style="top: 38px; width: 40px"></i><i class="shade"></i></div>
+  <i class="base"></i>
+  <div class="padlock"><i class="loop"></i><i class="body"></i></div>
+  <i class="wave"></i><i class="wave" style="left: 34px; top: 42px; width: 22px; height: 30px; opacity: 0.6"></i>
+  <i class="phone"></i>
+</div>
+</body>
+</html>

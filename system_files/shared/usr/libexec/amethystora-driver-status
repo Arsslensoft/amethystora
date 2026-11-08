@@ -127,7 +127,7 @@ for device in "${USB}"/*; do
     if [[ -e "${ROOT}/sys/module/evdi" ]]; then
         systemctl is-active -q displaylink.service && break
         DOCK_ID=displaylink:service
-        manual=hardware#docks-and-displays
+        manual=displays
         text="$(N_ "Its driver has loaded, but its screens also need displaylink.service, which is not running. It starts when the dock is plugged in, unless something stopped it.")"
     elif [[ "${SECURE_BOOT}" == true ]]; then
         case "$(sed -n 's|^\([a-z-]*\) .*/amethystora-modules\.der.*|\1|p' <<<"${MOK}")" in
@@ -142,7 +142,7 @@ for device in "${USB}"/*; do
                 ;;
             *)
                 DOCK_ID=displaylink:refused
-                manual=troubleshooting#a-displaylink-dock-shows-nothing
+                manual=common-problems#a-displaylink-dock-shows-nothing
                 text="$(N_ "Its screens stay dark: their driver, evdi, did not load, and its key is not what stands in the way.")"
                 ;;
         esac
@@ -155,7 +155,7 @@ for device in "${USB}"/*; do
         text="$(N_ "Its screens stay dark: with Secure Boot off, kernel lockdown refuses their driver, evdi, and enrolling a key cannot help. Turn Secure Boot on in the firmware and enroll the key, which keeps lockdown, or turn lockdown off, which costs some protection. Nothing changes unless you choose.")"
     else
         DOCK_ID=displaylink:refused
-        manual=troubleshooting#a-displaylink-dock-shows-nothing
+        manual=common-problems#a-displaylink-dock-shows-nothing
         text="$(N_ "Its screens stay dark: their driver, evdi, did not load.")"
     fi
     found "${DOCK_ID}" displaylink "$(cat "${device}/product" 2>/dev/null || echo "DisplayLink dock")" "${text}" "${fix}" "${manual}"
@@ -240,7 +240,7 @@ for device in "${PCI}"/*; do
     if [[ "${class}" == 0x0280* && "${vendor}" == 0x14e4 ]]; then
         found "broadcom-wifi:${address}" broadcom-wifi "$(pci_name "${address}")" \
             "This Broadcom Wi-Fi card has no driver on Amethystora: the only one there is for it has security holes nobody may fix. A USB Wi-Fi adapter works instead." \
-            "" hardware#wi-fi
+            "" wireless#wi-fi
     else
         found "no-driver:${address}:$(cat "${device}/device" 2>/dev/null)" no-driver "$(pci_name "${address}")" \
             "No driver took this device." "" hardware#when-a-device-does-not-work
@@ -265,7 +265,7 @@ for device in "${USB}"/*; do
         continue
     found "xbox-adapter:${product}" xbox-adapter "Xbox wireless adapter" \
         "It needs Microsoft's firmware, which the image may not pass on: setting it up downloads it from Microsoft." \
-        "ame apps xbox-adapter on" hardware#game-controllers
+        "ame apps xbox-adapter on" devices#game-controllers
 done
 
 STATUS="$(printf '%s\n' "${FINDINGS[@]}" | jq -sc --argjson checked "$(date +%s)" '{$checked, findings: map(select(. != null))}')"

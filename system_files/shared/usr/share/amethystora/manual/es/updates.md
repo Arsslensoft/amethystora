@@ -20,10 +20,10 @@ actualización continúa.
 
 Un sistema nuevo sigue sustituyendo al actual en el próximo reinicio. Cuando hay uno listo,
 Actualizaciones del sistema lo indica y le ofrece reiniciar. También muestra la versión que está
-usando, la que espera al reinicio y la que se guarda para [volver a la versión anterior](#rolling-back),
+usando, la que espera al reinicio y la que se guarda para [volver a la versión anterior](rolling-back.md),
 y desactiva o vuelve a activar las actualizaciones automáticas.
 
-Si tiene [contenedores](software.md#keeping-them-up-to-date) de `amepkg`, **Actualizar ahora** los
+Si tiene [contenedores](containers.md#keeping-them-up-to-date) de `amepkg`, **Actualizar ahora** los
 actualiza justo después de lo demás, en **Contenedores**. Uno que no se actualice lo indica ahí, y la
 actualización del sistema sigue contando como terminada.
 
@@ -65,69 +65,3 @@ Las actualizaciones del propio firmware UEFI las escribe el firmware en el próx
 equipo enchufado hasta que haya vuelto a arrancar. El informe de seguridad muestra la calificación
 que da fwupd a las protecciones del firmware, de HSI:0 a HSI:5; lo alto que puede llegar un equipo
 depende sobre todo de su fabricante.
-
-## Volver a la versión anterior
-
-El sistema anterior siempre se conserva. Si una actualización trae un problema:
-
-- **En el menú de arranque,** elija la segunda entrada, que es el sistema anterior a la actualización.
-  No se cambia nada, y el siguiente reinicio vuelve al más reciente. Al iniciar sesión, una
-  notificación indica que está usando la versión anterior; al pulsarla se abre Actualizaciones del
-  sistema, que le ofrece **Conservar esta versión**, que la convierte en la que arranca el equipo y
-  pide su contraseña, o **Reiniciar en la más reciente**.
-- **Para quedarse en el sistema anterior** desde una terminal, conviértalo en el predeterminado y
-  reinicie:
-
-```bash
-sudo bootc rollback
-systemctl reboot
-```
-
-Sus archivos y su configuración son los mismos en ambos. La próxima actualización, automática o no,
-trae de vuelta la versión más reciente, así que, para quedarse donde está hasta que salga una
-solución, desactive las actualizaciones automáticas en Actualizaciones del sistema, o
-[quédese en la compilación](#holding-on-to-one-build) que está usando. Después
-[informe del problema](troubleshooting.md#reporting-a-problem), y vuelva a seguir el canal cuando
-salga una imagen corregida.
-
-## Canales
-
-| Etiqueta | Qué obtiene |
-| --- | --- |
-| `stable` | Se compila cada semana, con el núcleo retenido en el de Fedora CoreOS, que va un poco por detrás del de Fedora para que las regresiones del núcleo se detecten antes. Para todo el mundo. |
-| `stable-daily` | Lo mismo, recompilado cada vez que Amethystora cambia en lugar de cada semana |
-| `latest` | Lo más reciente de Fedora y del núcleo, recompilado cada vez que Amethystora cambia |
-| `beta` | Lo que viene. Espere algunas asperezas. |
-
-## Cambiar de canal y de imagen
-
-Para pasar a otro canal o a otra imagen, haga el cambio y reinicie:
-
-```bash
-sudo bootc switch --enforce-container-sigpolicy ghcr.io/arsslensoft/amethystora:latest
-```
-
-Sustituya `amethystora` por `amethystora-dx` para el [modo desarrollador](developer.md), y `latest`
-por el canal que quiera.
-
-Si tiene [paquetes superpuestos](software.md#layering-the-last-resort), cambie con `rpm-ostree` en su
-lugar, porque `bootc switch` construye el sistema nuevo solo a partir de la imagen y los descartaría:
-
-```bash
-sudo rpm-ostree rebase ostree-image-signed:docker://ghcr.io/arsslensoft/amethystora:latest
-```
-
-## Quedarse en una compilación
-
-Cada compilación tiene además una etiqueta propia, como `stable-44.20260922`, a partir de la versión
-que figura en las notas de la versión. Cambiar a ella fija el equipo en esa compilación, lo que
-resulta útil mientras espera una solución. Un equipo fijado en una sola compilación no recibe
-actualizaciones; `ame security status` se lo recuerda, e imprime el comando para volver a seguir el
-canal.
-
-## Actualizaciones firmadas
-
-Una actualización solo se acepta si lleva la firma de Amethystora, comprobada con la clave de
-`/etc/pki/containers/amethystora.pub`. Una imagen manipulada, o una de cualquier otro, se rechaza en
-lugar de instalarse. Un servicio comprueba en cada arranque que la comprobación de firmas sigue
-activada, y la vuelve a activar si un cambio de imagen la desactivó.

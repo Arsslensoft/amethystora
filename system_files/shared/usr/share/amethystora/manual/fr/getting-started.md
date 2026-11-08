@@ -27,7 +27,7 @@ ame security status
 Un seul écran qui montre ce que font réellement les paramètres de sécurité de la machine, et que faire
 pour tout ce qui est désactivé. Il ne modifie rien et ne demande aucun mot de passe. Le même rapport se
 trouve dans la grille d’applications sous le nom **Sécurité**, qui recherche aussi les virus
-([Sécurité](security.md#scanning-for-viruses)).
+([Sécurité](viruses.md#scanning-for-viruses)).
 
 ## 3. Installer vos applications
 
@@ -42,7 +42,7 @@ logiciels](software.md) traite des outils en ligne de commande et de tout le res
 
 Vous venez d’une autre machine Amethystora qui était sauvegardée ? `ame restore-setup` remet en place
 ses applications, ses conteneurs, ses extensions et son thème à partir de la sauvegarde
-([Sauvegardes](security.md#backups)).
+([Sauvegardes](backups.md)).
 
 ## 4. L’adapter à vos goûts
 
@@ -50,9 +50,9 @@ ses applications, ses conteneurs, ses extensions et son thème à partir de la s
   l’invite de commande. [Thèmes](themes.md).
 - Les fenêtres se placent toutes seules en mosaïque, côte à côte sur une bande qui défile. Ouvrez deux
   ou trois applications et passez de l’une à l’autre avec `Super+Left` et `Super+Right`.
-  [Fenêtres en mosaïque](desktop.md#tiling-windows). Si vous préférez des fenêtres qui flottent et se
+  [Fenêtres en mosaïque](tiling.md). Si vous préférez des fenêtres qui flottent et se
   chevauchent, `ame desktop layout classic` passe à ce mode
-  ([Fenêtres classiques](desktop.md#classic-windows)).
+  ([Fenêtres classiques](tiling.md#classic-windows)).
 - `Super+Alt+Space` ouvre le menu Amethystora, qui donne accès au clavier à tout ce que décrit ce
   manuel.
 
@@ -63,7 +63,7 @@ ame backup
 ```
 
 Une sauvegarde quotidienne vers un endroit dont un rançongiciel présent sur cette machine ne peut rien
-supprimer. La commande vous guide pour choisir où. [Sécurité](security.md#backups).
+supprimer. La commande vous guide pour choisir où. [Sécurité](backups.md).
 
 ## 6. Apprendre les raccourcis
 

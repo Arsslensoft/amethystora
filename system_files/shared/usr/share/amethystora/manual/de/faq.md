@@ -53,7 +53,7 @@ aktuell.
 
 Öffnen Sie es in Dateien. Es kommt in einen Container, der für seine Art von Paket erstellt wird, nach
 einer Virenprüfung und einem Blick darauf, woher es stammt; dieselbe App von Flathub wird, falls es sie
-gibt, zuerst angeboten. [Eine Paketdatei](software.md#a-package-file).
+gibt, zuerst angeboten. [Eine Paketdatei](containers.md#a-package-file).
 
 ## Wo liegen meine Einstellungen?
 

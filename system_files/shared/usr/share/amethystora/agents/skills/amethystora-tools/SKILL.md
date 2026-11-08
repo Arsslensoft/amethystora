@@ -12,7 +12,7 @@ or running commands.
 
 - Orient with `state` `overview`, or `state` `health` for what is wrong and which playbook fixes it.
 - `search` (in English) before reading the manual or a file; `read` an id it gives. A doctor finding's
-  playbook is `read` `playbook/<id>`. Ids are manual links: `manual/updates#rolling-back`.
+  playbook is `read` `playbook/<id>`. Ids are manual links: `manual/rolling-back`.
 - `state` topics: `settings` (Control's entries, ids and values), `security`, `security-settings`,
   `app-permissions`, `software`, `updates`, `backups`, `disks`, `setup-diff`, `units` (filter: a unit),
   `crashes`. `logs` reads the journal by unit, program, priority, boot or time.

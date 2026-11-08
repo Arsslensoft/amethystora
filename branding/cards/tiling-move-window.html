@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Moving a window along the strip: Super, Ctrl and Right carry the framed window past its neighbour */
+.art { --loop: 3s; --poster: 0.5; }
+@keyframes ksuper { 0%, 6% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } 12%, 80% { transform: translateY(2px); background: #b37df9; } 86%, 100% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } }
+@keyframes kctrl { 0%, 8% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } 14%, 80% { transform: translateY(2px); background: #b37df9; } 86%, 100% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } }
+@keyframes kr { 0%, 20% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } 24%, 30% { transform: translateY(2px); background: #b37df9; } 34%, 100% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } }
+@keyframes a { 0%, 26% { left: 5px; opacity: 1; } 46%, 80% { left: 59px; opacity: 1; } 86% { left: 59px; opacity: 0; } 88% { left: 5px; opacity: 0; } 96%, 100% { left: 5px; opacity: 1; } }
+@keyframes b { 0%, 26% { left: 45px; opacity: 1; } 46%, 80% { left: 5px; opacity: 1; } 86% { left: 5px; opacity: 0; } 88% { left: 45px; opacity: 0; } 96%, 100% { left: 45px; opacity: 1; } }
+@keyframes c { 0%, 80% { opacity: 1; } 86%, 88% { opacity: 0; } 96%, 100% { opacity: 1; } }
+.screen { left: 8px; top: 6px; width: 134px; height: 66px; background: transparent; border: 1px solid rgba(220, 188, 255, 0.55); overflow: hidden; }
+.screen .win { top: 5px; height: 54px; }
+.wa { width: 36px; box-shadow: 0 0 0 2px #b37df9; animation-name: a; z-index: 1; }
+.wb { width: 50px; animation-name: b; }
+.wc { left: 99px; width: 40px; animation-name: c; }
+.ks { left: 22px; top: 82px; animation-name: ksuper; }
+.kc { left: 74px; top: 82px; animation-name: kctrl; }
+.kr { left: 116px; top: 82px; animation-name: kr; }
+.tri { width: 0; height: 0; border-top: 4px solid transparent; border-bottom: 4px solid transparent; border-left: 6px solid #efe4ff; }
+.tri.l { border-left: 0; border-right: 6px solid #efe4ff; }
+.ar { width: 24px; padding: 0; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="pane screen"><i class="win wb"></i><i class="win wc"></i><i class="win wa"></i></div>
+  <span class="cap ks">Super</span><span class="cap kc">Ctrl</span><span class="cap ar kr"><i class="tri"></i></span>
+</div>
+</body>
+</html>

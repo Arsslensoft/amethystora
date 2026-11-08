@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Asking about a selection: select a line, press Super+Shift+A, and a card opens with what you selected and a field */
+.art { --loop: 3.4s; --poster: 0.62; }
+@keyframes sel { 0%, 6% { width: 0; } 26%, 88% { width: 70px; } 96%, 100% { width: 0; } }
+@keyframes press { 0%, 30% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } 36%, 50% { transform: translateY(2px); background: #b37df9; } 56%, 100% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } }
+@keyframes card { 0%, 46% { opacity: 0; transform: translateY(-6px); } 56%, 88% { opacity: 1; transform: translateY(0); } 96%, 100% { opacity: 0; transform: translateY(0); } }
+@keyframes caret { 0%, 58% { opacity: 0; } 59%, 68% { opacity: 1; } 69%, 76% { opacity: 0; } 77%, 86% { opacity: 1; } 87%, 100% { opacity: 0; } }
+.page { left: 8px; top: 30px; width: 134px; height: 46px; }
+.page .line { left: 10px; height: 3px; }
+.sel { position: absolute; left: 8px; top: 20px; height: 8px; border-radius: 2px; background: rgba(179, 125, 249, 0.55); animation-name: sel; animation-timing-function: linear; }
+.card { left: 24px; top: 4px; width: 102px; height: 34px; background: #2b2140; animation-name: card; }
+.quote { position: absolute; left: 8px; top: 7px; width: 3px; height: 8px; border-radius: 2px; background: #b37df9; }
+.card .line { left: 15px; top: 9px; width: 60px; height: 3px; }
+.field { position: absolute; left: 7px; top: 19px; width: 86px; height: 9px; border-radius: 4px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(179, 125, 249, 0.6); box-sizing: border-box; }
+.caret { position: absolute; left: 4px; top: 1px; width: 1.5px; height: 5px; background: #efe4ff; animation-name: caret; animation-timing-function: linear; }
+.k1 { left: 14px; top: 84px; animation-name: press; }
+.k2 { left: 66px; top: 84px; animation-name: press; }
+.k3 { left: 114px; top: 84px; animation-name: press; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="win page">
+    <i class="line" style="top: 13px; width: 100px"></i><i class="sel"></i><i class="line" style="top: 22.5px; width: 70px; background: rgba(239, 228, 255, 0.6)"></i><i class="line" style="top: 32px; width: 90px"></i>
+  </div>
+  <div class="pane card"><i class="quote"></i><i class="line"></i><span class="field"><i class="caret"></i></span></div>
+  <span class="cap k1">Super</span><span class="cap k2">Shift</span><span class="cap k3">A</span>
+</div>
+</body>
+</html>

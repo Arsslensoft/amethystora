@@ -6,7 +6,7 @@
 
 يفتح `Super+Return` طرفية، وكذلك `Ctrl+Alt+T` و`Ctrl+Alt+Return`. الطرفية هي Ptyxis، وهي تعرف
 الحاويات: فالقائمة المجاورة لزر اللسان الجديد تفتح لسانًا على المضيف أو داخل أيٍّ من
-[حاويات Distrobox وToolbox](software.md#containers) لديك.
+[حاويات Distrobox وToolbox](containers.md) لديك.
 
 ألوانها تتبع [السمة](themes.md)، وكذلك المحث.
 
@@ -41,7 +41,7 @@ ame --list --list-submodules  # every command, in every group
 ame -n security status        # print what a command would run, without running it
 ```
 
-الأمر `ame pkg` هو [amethystora-pkg](software.md#packages-from-other-distributions). ويشغّل `ujust`، الاسم
+الأمر `ame pkg` هو [amethystora-pkg](containers.md#packages-from-other-distributions). ويشغّل `ujust`، الاسم
 الأقدم لـ`ame`، الأوامر نفسها، ولا تزال أسماؤها السابقة لتقسيمها في مجموعات، مثل `ujust setup-backup`،
 تعمل.
 

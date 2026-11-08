@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* A plugin in the live pill: the pill opens to show a build's progress filling, and a tick when it is done */
+.art { --loop: 3.4s; --poster: 0.5; }
+@keyframes grow { 0%, 8% { width: 22px; } 20%, 84% { width: 84px; } 94%, 100% { width: 22px; } }
+@keyframes show { 0%, 16% { opacity: 0; } 24%, 80% { opacity: 1; } 88%, 100% { opacity: 0; } }
+@keyframes fill { 0%, 22% { width: 0; } 64%, 100% { width: 38px; } }
+@keyframes spin { 0%, 22% { opacity: 1; transform: rotate(0deg); } 62% { opacity: 1; transform: rotate(540deg); } 66%, 100% { opacity: 0; transform: rotate(540deg); } }
+@keyframes ok { 0%, 64% { opacity: 0; transform: scale(0.4); } 70%, 80% { opacity: 1; transform: scale(1); } 88%, 100% { opacity: 0; transform: scale(1); } }
+.screen { position: absolute; left: 8px; top: 6px; width: 134px; height: 100px; border-radius: 8px; overflow: hidden; background: linear-gradient(135deg, #3a2560, #1f1530); }
+.top { position: absolute; left: 4px; right: 4px; top: 4px; height: 22px; border-radius: 8px; background: rgba(255, 255, 255, 0.1); }
+.s { position: absolute; top: 9px; width: 14px; height: 4px; border-radius: 2px; background: rgba(239, 228, 255, 0.4); }
+.pill { position: absolute; left: 50%; top: 3px; height: 16px; transform: translateX(-50%); border-radius: 8px; background: #120c1c; border: 1px solid rgba(255, 255, 255, 0.18); box-sizing: border-box; overflow: hidden; animation-name: grow; }
+.inner { position: absolute; left: 6px; top: 3px; width: 72px; height: 8px; animation-name: show; }
+.spin { position: absolute; left: 0; top: 0; width: 8px; height: 8px; border-radius: 50%; border: 2px solid rgba(179, 125, 249, 0.3); border-top-color: #b37df9; box-sizing: border-box; animation-name: spin; animation-timing-function: linear; }
+.ok { position: absolute; left: 0; top: 0; width: 8px; height: 8px; border-radius: 50%; background: #8ddba4; animation-name: ok; }
+.track { position: absolute; left: 14px; top: 2px; width: 38px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.14); overflow: hidden; }
+.bar { position: absolute; left: 0; top: 0; height: 4px; background: #b37df9; animation-name: fill; }
+.lab { position: absolute; left: 56px; top: 2px; width: 14px; height: 4px; border-radius: 2px; background: rgba(239, 228, 255, 0.5); }
+.screen .win { left: 20px; top: 40px; width: 94px; height: 50px; }
+.screen .line { left: 10px; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="screen">
+    <div class="top"><i class="s" style="left: 8px"></i><i class="s" style="left: 26px"></i><i class="s" style="right: 8px"></i>
+      <div class="pill"><div class="inner"><i class="spin"></i><i class="ok"></i><div class="track"><i class="bar"></i></div><i class="lab"></i></div></div>
+    </div>
+    <div class="win"><i class="line" style="top: 16px; width: 60px"></i><i class="line" style="top: 25px; width: 44px"></i></div>
+  </div>
+</div>
+</body>
+</html>

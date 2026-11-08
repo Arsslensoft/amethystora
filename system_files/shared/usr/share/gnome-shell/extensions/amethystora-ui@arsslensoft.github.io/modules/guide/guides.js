@@ -8,14 +8,14 @@
 
 export const guides = _ => [
     {
-        id: 'turn-off-bluetooth', title: _('Turn off Bluetooth'), page: 'hardware', section: 'turn-off-bluetooth',
+        id: 'turn-off-bluetooth', title: _('Turn off Bluetooth'), page: 'wireless', section: 'turn-off-bluetooth',
         steps: [
             {say: _('Open this menu, here at the top right.'), shell: 'quick-settings'},
             {say: _('Press Bluetooth. It goes dark when it is off.'), shell: 'quick-bluetooth'},
         ],
     },
     {
-        id: 'join-wifi', title: _('Join a Wi-Fi network'), page: 'hardware', section: 'wi-fi',
+        id: 'join-wifi', title: _('Join a Wi-Fi network'), page: 'wireless', section: 'wi-fi',
         steps: [
             {say: _('Open this menu, here at the top right.'), shell: 'quick-settings'},
             {say: _('Press the arrow beside Wi-Fi, then pick your network.'), shell: 'quick-wifi'},
@@ -29,7 +29,7 @@ export const guides = _ => [
         ],
     },
     {
-        id: 'set-up-a-backup', title: _('Set up a backup'), page: 'security', section: 'backups',
+        id: 'set-up-a-backup', title: _('Set up a backup'), page: 'backups', section: '',
         steps: [
             {say: _('Backups keeps your files. Open it, then press Status in its sidebar.'), app: 'amethystora-backups', launcher: 'amethystora-backups.desktop', find: 'Status'},
             {say: _('Press this. A terminal explains each step and asks before it changes anything.'), app: 'amethystora-backups', launcher: 'amethystora-backups.desktop', find: 'Set up a backup…'},

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* If an update does not start: the new system fails three tries, and the computer goes back to the one before */
+.art { --loop: 3.4s; --poster: 0.7; }
+@keyframes t1 { 0%, 12% { background: #e8c06a; opacity: 1; } 18%, 90% { background: #e86a7a; opacity: 0.35; } 96%, 100% { background: #e8c06a; opacity: 1; } }
+@keyframes t2 { 0%, 28% { background: #e8c06a; opacity: 1; } 34%, 90% { background: #e86a7a; opacity: 0.35; } 96%, 100% { background: #e8c06a; opacity: 1; } }
+@keyframes t3 { 0%, 44% { background: #e8c06a; opacity: 1; } 50%, 90% { background: #e86a7a; opacity: 0.35; } 96%, 100% { background: #e8c06a; opacity: 1; } }
+@keyframes try { 0% { width: 0; } 10% { width: 30px; } 12%, 16% { width: 0; } 26% { width: 30px; } 28%, 32% { width: 0; } 42% { width: 30px; } 44%, 100% { width: 0; } }
+@keyframes sel { 0%, 52% { top: 8px; } 60%, 90% { top: 30px; } 96%, 100% { top: 8px; } }
+@keyframes ok { 0%, 60% { opacity: 0; transform: scale(0.4); } 68%, 88% { opacity: 1; transform: scale(1); } 94%, 100% { opacity: 0; transform: scale(1); } }
+@keyframes desk { 0%, 64% { opacity: 0; transform: translateY(4px); } 72%, 88% { opacity: 1; transform: translateY(0); } 94%, 100% { opacity: 0; transform: translateY(0); } }
+.menu { left: 10px; top: 8px; width: 130px; height: 52px; background: #0f0a16; }
+.hl { position: absolute; left: 5px; width: 120px; height: 16px; border-radius: 4px; background: rgba(179, 125, 249, 0.4); animation-name: sel; }
+.menu .line { left: 12px; }
+.e1 { top: 14px; width: 40px; }
+.e2 { top: 36px; width: 40px; }
+.try { position: absolute; left: 58px; top: 14px; height: 4px; border-radius: 2px; background: #dcbcff; animation-name: try; animation-timing-function: linear; }
+.t { position: absolute; top: 11px; width: 9px; height: 9px; border-radius: 50%; }
+.ok { position: absolute; left: 104px; top: 33px; width: 12px; height: 12px; border-radius: 50%; background: #8ddba4; animation-name: ok; }
+.desk { left: 30px; top: 66px; width: 90px; height: 40px; background: linear-gradient(135deg, #3a2560, #1f1630); animation-name: desk; }
+.desk .win { left: 16px; top: 8px; width: 50px; height: 26px; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="pane menu">
+    <i class="hl"></i><i class="line e1"></i><i class="line e2"></i><i class="try"></i>
+    <i class="t" style="left: 96px; animation-name: t1"></i><i class="t" style="left: 108px; animation-name: t2"></i><i class="t" style="left: 120px; animation-name: t3"></i>
+    <i class="ok"></i>
+  </div>
+  <div class="pane desk"><i class="win"></i></div>
+</div>
+</body>
+</html>

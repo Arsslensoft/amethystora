@@ -3,54 +3,54 @@
 # source tree's pages (golden.rs) and by 20-tests.sh of the image's own index, which also has the reference
 # generated from the image (ame/, helper/, unit/, setting/, control/). The target is recall@3 of at least 0.9.
 steam controller not detected	knowledge/by-design#dev-uinput-is-roots|manual/games#games~2|playbook/device-does-nothing#*
-update failed disk full	playbook/update-fails#*|playbook/disk-full#*|manual/troubleshooting#the-disk-is-filling-up
-phone won't pair	manual/hardware#phones|knowledge/by-design#phone-pairing-is-open-only-at-home
-app has no window	knowledge/by-design#flatpak-apps-get-no-x11-input-devices-or-flatpak-service|playbook/app-wont-start#*|manual/troubleshooting#an-app-cannot-see-a-folder-a-device-or-will-not-open-at-all
+update failed disk full	playbook/update-fails#*|playbook/disk-full#*|manual/common-problems#the-disk-is-filling-up
+phone won't pair	manual/wireless#phones|knowledge/by-design#phone-pairing-is-open-only-at-home
+app has no window	knowledge/by-design#flatpak-apps-get-no-x11-input-devices-or-flatpak-service|playbook/app-wont-start#*|manual/common-problems#an-app-cannot-see-a-folder-a-device-or-will-not-open-at-all
 time is wrong	playbook/clock#*|knowledge/by-design#time
-how do I roll back an update	manual/updates#rolling-back|knowledge/architecture#deployments-and-rolling-back|manual/troubleshooting#an-update-broke-something
+how do I roll back an update	manual/rolling-back|knowledge/architecture#deployments-and-rolling-back|manual/troubleshooting#an-update-broke-something
 no sound from the speakers	playbook/no-sound#*|knowledge/desktop#sound
 wifi keeps disconnecting	playbook/wifi-dns#*|knowledge/desktop#radios-and-the-network
 bluetooth headphones won't connect	playbook/bluetooth#*
 black screen on my nvidia laptop	playbook/nvidia#*|manual/hardware#graphics
-the computer is stuck while booting	playbook/boot-stalls#*|manual/troubleshooting#the-machine-waits-at-the-start-with-a-disk-dead
-account locked after wrong passwords	manual/troubleshooting#the-account-is-locked-after-wrong-passwords|knowledge/by-design#ten-wrong-passwords-lock-an-account-for-ten-minutes|playbook/login-refused#*
+the computer is stuck while booting	playbook/boot-stalls#*|manual/common-problems#the-machine-waits-at-the-start-with-a-disk-dead
+account locked after wrong passwords	manual/common-problems#the-account-is-locked-after-wrong-passwords|knowledge/by-design#ten-wrong-passwords-lock-an-account-for-ten-minutes|playbook/login-refused#*
 the machine is very slow	playbook/slow-machine#*
 usb stick does nothing	playbook/device-does-nothing#*|knowledge/by-design#usb-devices-plugged-in-later-are-refused-only-with-usbguard-on|knowledge/by-design#block-webcam-block-bluetooth-block-automount-block-user-extensions
-my distrobox container is broken	playbook/containers#*|manual/software#containers|manual/software#containers-by-hand
-the backup failed	playbook/backups#*|manual/security#backups
-gnome extension broke after an update	playbook/extensions-after-update#*|manual/troubleshooting#an-extension-misbehaves-or-the-desktop-looks-wrong
+my distrobox container is broken	playbook/containers#*|manual/containers|manual/containers#containers-by-hand
+the backup failed	playbook/backups#*|manual/backups
+gnome extension broke after an update	playbook/extensions-after-update#*|manual/common-problems#an-extension-misbehaves-or-the-desktop-looks-wrong
 why can't I use dnf install	manual/faq#why-can-i-not-use-dnf-install|manual/software#layering-the-last-resort
-run a windows exe file	manual/software#windows-programs|manual/software#windows-programs~2|manual/faq#can-i-run-windows-software
-install a deb package	manual/faq#how-do-i-install-a-deb-or-an-rpm|manual/software#a-package-file
+run a windows exe file	manual/windows-programs|manual/windows-programs~2|manual/faq#can-i-run-windows-software
+install a deb package	manual/faq#how-do-i-install-a-deb-or-an-rpm|manual/containers#a-package-file
 how do I run an appimage	manual/faq#how-do-i-run-an-appimage
-change the theme	manual/themes#switching|manual/themes#change-a-theme-or-make-your-own|manual/themes
-change the icon pack	manual/themes#icons*|skill/amethystora/themes*
+change the theme	manual/themes#switching|manual/make-a-theme|manual/themes
+change the icon pack	manual/styles#icons*|skill/amethystora/themes*
 make the text bigger	knowledge/desktop#appearance-and-text
-turn on night light	knowledge/desktop#night-light-and-the-screen|manual/desktop#night-light-and-the-screens-colour
-save battery with a power profile	knowledge/desktop#power|manual/hardware#laptops
-change the keyboard layout	knowledge/desktop#keyboard-and-input|manual/troubleshooting#switching-keyboard-layouts
-floating windows like on windows	manual/desktop#classic-windows|manual/desktop#floating-windows
+turn on night light	knowledge/desktop#night-light-and-the-screen|manual/focus#night-light-and-the-screens-colour
+save battery with a power profile	knowledge/desktop#power|manual/laptops
+change the keyboard layout	knowledge/desktop#keyboard-and-input|manual/common-problems#switching-keyboard-layouts
+floating windows like on windows	manual/tiling#classic-windows|manual/tiling#floating-windows
 open a port in the firewall for a dev server	knowledge/by-design#the-firewall-answers-only-what-a-desktop-needs
 dmesg says operation not permitted	knowledge/by-design#dmesg-ptrace-and-core-dumps-are-restricted
 the debugger cannot attach to a process	knowledge/by-design#dmesg-ptrace-and-core-dumps-are-restricted
 virtualbox kernel module will not load	knowledge/by-design#kernel-lockdown-keeps-unsigned-modules-out
 sudo cannot find a tool I installed with homebrew	knowledge/by-design#the-sudo-path-is-fixed
 a script in /tmp fails with permission denied	knowledge/by-design#noexec-temp
-the hotel wifi login page does not load	knowledge/by-design#encrypted-dns-behind-a-networks-login-page-only-with-dns-on|playbook/wifi-dns#*|manual/security#encrypted-dns
-a website is suddenly blocked	knowledge/by-design#network-protection-blocks-a-connection-only-with-network-block|manual/security#network-protection
+the hotel wifi login page does not load	knowledge/by-design#encrypted-dns-behind-a-networks-login-page-only-with-dns-on|playbook/wifi-dns#*|manual/network-security#encrypted-dns
+a website is suddenly blocked	knowledge/by-design#network-protection-blocks-a-connection-only-with-network-block|manual/network-security#network-protection
 where do my settings live	manual/faq#where-do-my-settings-live|knowledge/architecture#user-and-system-scope
 I cannot edit files in /usr	manual/faq#why-can-i-not-change-files-in-usr|knowledge/architecture#the-image-and-its-three-folders
 a kernel argument is not applied after the update	knowledge/architecture#kernel-arguments|knowledge/by-design#the-images-kernel-arguments
 layered packages make updates slow	knowledge/by-design#layered-packages-slow-every-update|manual/software#layering-the-last-resort
-switch to the beta stream	manual/updates#switching-streams-and-images|manual/updates#streams
-install firmware updates	manual/updates#firmware
-scan for viruses	manual/security#scanning-for-viruses
-what can a flatpak app access	manual/security#app-permissions|manual/software#what-flatpak-apps-may-not-do|knowledge/by-design#flatpak-apps-get-no-x11-input-devices-or-flatpak-service
-restore a file I deleted	manual/security#backups*|playbook/backups#*|skill/amethystora/updates#earlier-versions-of-the-users-files
-unlock the encrypted disk with the tpm	manual/security#unlock-the-disk-with-the-tpm
-set up fingerprint login	manual/security#fingerprint-login
-parental controls allowed hours	manual/security#parental-controls|knowledge/by-design#parental-controls-hours-at-the-text-consoles-and-over-ssh
-a disk of my raid pool died	manual/hardware#when-a-disk-fails|manual/troubleshooting#a-disk-of-a-pool-failed
+switch to the beta stream	manual/streams#switching-streams-and-images|manual/streams
+install firmware updates	manual/updates#firmware|manual/updates#installing-firmware
+scan for viruses	manual/viruses#scanning-for-viruses
+what can a flatpak app access	manual/app-permissions|manual/software#what-flatpak-apps-may-not-do|knowledge/by-design#flatpak-apps-get-no-x11-input-devices-or-flatpak-service
+restore a file I deleted	manual/backups*|playbook/backups#*|skill/amethystora/updates#earlier-versions-of-the-users-files
+unlock the encrypted disk with the tpm	manual/disk-encryption#unlock-the-disk-with-the-tpm
+set up fingerprint login	manual/logins#fingerprint-login
+parental controls allowed hours	manual/logins#parental-controls|knowledge/by-design#parental-controls-hours-at-the-text-consoles-and-over-ssh
+a disk of my raid pool died	manual/disks#when-a-disk-fails|manual/common-problems#a-disk-of-a-pool-failed
 play windows games	manual/games#games|manual/faq#can-i-play-games|manual/faq#can-i-run-windows-software
 run android apps	manual/games#android-apps|manual/faq#can-i-run-android-apps
 make a widget for the top bar	manual/widgets*|skill/amethystora-plugins*
@@ -58,53 +58,53 @@ show my build status live in the pill	manual/plugins*|skill/amethystora-plugins*
 make a script show its progress in the pill	manual/plugins*|skill/amethystora-plugins*
 why did my plugin pause itself	manual/plugins*|skill/amethystora-plugins*
 save my setup to a file	manual/setup#saving-it|manual/setup
-let the agent run commands as root	manual/ai-agent#root-commands|knowledge/agent#root-commands
-turn the ai agent off for my kid's account	manual/ai-agent#the-lock|knowledge/agent#the-lock|control/agent-lock|ame/agent/lock
-what did the agent change	manual/ai-agent#history-and-undo|knowledge/agent#records|manual/ai-agent#its-changes-in-the-live-pill
+let the agent run commands as root	manual/agent-control#root-commands|knowledge/agent#root-commands
+turn the ai agent off for my kid's account	manual/agent-control#the-lock|knowledge/agent#the-lock|control/agent-lock|ame/agent/lock
+what did the agent change	manual/agent-control#history-and-undo|knowledge/agent#records|manual/agent-desktop#its-changes-in-the-live-pill
 enroll the secure boot key with mok	manual/getting-started#1-let-secure-boot-trust-the-image|manual/hardware#secure-boot
-the displaylink dock shows nothing	manual/troubleshooting#a-displaylink-dock-shows-nothing|manual/hardware#docks-and-displays
+the displaylink dock shows nothing	manual/common-problems#a-displaylink-dock-shows-nothing|manual/displays
 install command line tools	manual/software#command-line-tools-homebrew
 make a web app for a website	manual/web-apps#install-one|manual/web-apps
 keyboard shortcut to open a terminal	manual/keybindings#launching|manual/terminal#opening-one
-start over with a fresh installation	manual/troubleshooting#starting-over
-reset my settings but keep my files	manual/troubleshooting#resetting-settings|control/reset-settings|ame/system/reset-settings
-notes encryption passphrase	manual/notes#encryption
-kde connect does not find my phone	knowledge/by-design#phone-pairing-is-open-only-at-home|manual/hardware#phones
-the drawing tablet pen does nothing	manual/hardware#drawing-tablets|knowledge/by-design#dev-uinput-is-roots
+start over with a fresh installation	manual/starting-over#starting-over
+reset my settings but keep my files	manual/starting-over#resetting-settings|manual/starting-over#what-a-reset-keeps|control/reset-settings|ame/system/reset-settings
+notes encryption passphrase	manual/notes-encryption#encryption
+kde connect does not find my phone	knowledge/by-design#phone-pairing-is-open-only-at-home|manual/wireless#phones
+the drawing tablet pen does nothing	manual/devices#drawing-tablets|knowledge/by-design#dev-uinput-is-roots
 my server is not reachable from another computer	knowledge/by-design#the-firewall-answers-only-what-a-desktop-needs|manual/security#on-from-the-start
-rebase refused because the image is not signed	knowledge/by-design#only-signed-images-are-installed|manual/updates#signed-updates|manual/developer#an-image-of-your-own
+rebase refused because the image is not signed	knowledge/by-design#only-signed-images-are-installed|manual/streams#signed-updates|manual/own-image
 where are the deployments and how do updates run	knowledge/architecture#how-updates-run|knowledge/architecture#deployments-and-rolling-back|manual/updates
-turn on do not disturb	knowledge/desktop#notifications-and-do-not-disturb|manual/desktop#notifications
-what does ame security dns do	ame/security/dns|manual/security#encrypted-dns
-which service runs network protection	unit/amethystora-ips.service|manual/security#network-protection*|playbook/wifi-dns#network-protection
-change the network protection setting	setting/NETWORK|manual/security#network-protection*|knowledge/by-design#network-protection-blocks-a-connection-only-with-network-block|skill/amethystora/security#the-network
-change the window layout setting	control/layout|manual/desktop#classic-windows|knowledge/desktop#the-dock-and-windows
-what is amethystora-restore	helper/amethystora-restore|playbook/backups#*|manual/security#backups*|skill/amethystora/updates#earlier-versions-of-the-users-files
-xbox wireless adapter does not work	manual/hardware#game-controllers|playbook/device-does-nothing#*
-broadcom wifi card has no driver	manual/hardware#wi-fi
-firewire audio interface not detected	manual/hardware#sound-cards|knowledge/by-design#firewire-does-not-load|playbook/no-sound#*
+turn on do not disturb	knowledge/desktop#notifications-and-do-not-disturb|manual/notifications
+what does ame security dns do	ame/security/dns|manual/network-security#encrypted-dns
+which service runs network protection	unit/amethystora-ips.service|manual/network-security#network-protection*|playbook/wifi-dns#network-protection
+change the network protection setting	setting/NETWORK|manual/network-security#network-protection*|knowledge/by-design#network-protection-blocks-a-connection-only-with-network-block|skill/amethystora/security#the-network
+change the window layout setting	control/layout|manual/tiling#classic-windows|knowledge/desktop#the-dock-and-windows
+what is amethystora-restore	helper/amethystora-restore|playbook/backups#*|manual/backups*|skill/amethystora/updates#earlier-versions-of-the-users-files
+xbox wireless adapter does not work	manual/devices#game-controllers|manual/devices#microsofts-wireless-adapter|playbook/device-does-nothing#*
+broadcom wifi card has no driver	manual/wireless#wi-fi
+firewire audio interface not detected	manual/devices#sound-cards|knowledge/by-design#firewire-does-not-load|playbook/no-sound#*
 which nvidia image for a gtx 1060	manual/hardware#graphics|playbook/nvidia#*
-an encrypted folder that locks with the screen	manual/security#a-private-folder-that-locks-with-the-screen|helper/amethystora-private-folder#*
-copy text from an image on the screen	manual/desktop#copying-text-from-the-screen|knowledge/desktop#copying-text-out-of-a-picture-on-the-screen
+an encrypted folder that locks with the screen	manual/disk-encryption#a-private-folder-that-locks-with-the-screen|helper/amethystora-private-folder#*
+copy text from an image on the screen	manual/screenshots#copying-text-from-the-screen|knowledge/desktop#copying-text-out-of-a-picture-on-the-screen
 my work vpn will not connect	playbook/vpn-will-not-connect#*|manual/software#vpn
 l2tp ipsec vpn says ikev1 is not allowed	playbook/vpn-will-not-connect#*|manual/software#vpn
-deleted file gone from the trash	knowledge/by-design#the-trash-empties-itself-after-30-days|manual/desktop#the-trash|control/trash|ame/desktop/privacy
-change the gap between tiled windows	manual/desktop#tiling-settings|manual/desktop#tiling-settings~2|control/tiling-settings|ame/desktop/tiling-settings
-what does this computer send to fedora by itself	manual/security#what-this-machine-sends|manual/security#what-this-machine-sends~2|manual/security#what-this-machine-sends~3
-hotel wifi login page does not open	knowledge/by-design#no-login-page-on-a-hotel-or-train-network-or-no-firmware-offered-only-with-a-sending-switch-off|manual/security#what-this-machine-sends~2
+deleted file gone from the trash	knowledge/by-design#the-trash-empties-itself-after-30-days|manual/files#the-trash|control/trash|ame/desktop/privacy
+change the gap between tiled windows	manual/tiling#tiling-settings|manual/tiling#tiling-settings~2|control/tiling-settings|ame/desktop/tiling-settings
+what does this computer send to fedora by itself	manual/what-leaves|manual/what-leaves~2|manual/what-leaves~3|manual/what-leaves#fedoras-count
+hotel wifi login page does not open	knowledge/by-design#no-login-page-on-a-hotel-or-train-network-or-no-firmware-offered-only-with-a-sending-switch-off|manual/what-leaves~2
 where do i keep my passwords safely	manual/vault#*|knowledge/vault#*|manual/faq#where-do-i-keep-my-passwords
 recovery key for my vault	manual/vault#the-recovery-key|knowledge/vault#questions-you-will-get*|manual/vault#how-it-opens
 can the ai agent read my passwords	knowledge/vault#the-agent-stays-out*|manual/ai-agent#privacy
-add an authenticator code from a qr code	manual/vault#adding-one|manual/vault#authenticator-codes*
-sign a pdf with my own certificate	manual/vault#signing-a-pdf|manual/vault#certificates-and-signing*
-keep my ssh key in the vault and sign in with it	manual/vault#the-ssh-agent|manual/vault#using-a-secret-without-handing-it-over*
-sync my passwords with vaultwarden or bitwarden	manual/vault#sync*
-other computers say the signer of my pdf is unknown	manual/vault#trusting-a-certificate*|manual/vault#who-vouches*|knowledge/vault#questions-you-will-get*|manual/desktop#sign-a-pdf
-a program calling itself asks to use an item from the vault	knowledge/vault#questions-you-will-get*|manual/vault#what-it-is-and-what-it-protects-you-from*
-keep my aws credentials file away from other programs	manual/vault#protected-files*|manual/vault#using-a-secret-without-handing-it-over*
+add an authenticator code from a qr code	manual/vault-items#adding-one|manual/vault-items#authenticator-codes*
+sign a pdf with my own certificate	manual/vault-certificates#signing-a-pdf|manual/vault-certificates*
+keep my ssh key in the vault and sign in with it	manual/vault-secrets#the-ssh-agent|manual/vault-secrets*
+sync my passwords with vaultwarden or bitwarden	manual/vault-sync*
+other computers say the signer of my pdf is unknown	manual/vault-certificates#trusting-a-certificate*|manual/vault-certificates#who-vouches*|knowledge/vault#questions-you-will-get*|manual/files#sign-a-pdf
+a program calling itself asks to use an item from the vault	knowledge/vault#questions-you-will-get*|manual/vault#what-it-is-and-what-it-protects-you-from*|manual/vault#every-use-is-approved
+keep my aws credentials file away from other programs	manual/vault-secrets#protected-files*|manual/vault-secrets*
 a vault that is not listed anywhere	manual/vault#several-vaults-and-hidden-ones*
-back up the vault and restore it with the recovery key	manual/vault#backing-up-and-moving*|manual/vault#the-recovery-key
-make the computer mute and open an app when i join the office wifi	skill/amethystora/routines*|knowledge/agent#in-the-pill*|manual/ai-agent#little-routines*
-ask my agent a question without opening a terminal	manual/ai-agent#asking-in-the-pill*|knowledge/agent#in-the-pill*
-why does the pill ask me allow or not now for a command	manual/ai-agent#questions-in-the-pill*|knowledge/agent#in-the-pill*
+back up the vault and restore it with the recovery key	manual/vault-sync#backing-up-and-moving*|manual/vault#the-recovery-key
+make the computer mute and open an app when i join the office wifi	skill/amethystora/routines*|knowledge/agent#in-the-pill*|manual/routines*
+ask my agent a question without opening a terminal	manual/agent-desktop#asking-in-the-pill*|knowledge/agent#in-the-pill*
+why does the pill ask me allow or not now for a command	manual/agent-desktop#questions-in-the-pill*|knowledge/agent#in-the-pill*
 is intel management engine amt spying on me, can i block it	manual/security#the-chip-under-the-system|manual/security#the-chip-under-the-system~2|manual/security#the-chip-under-the-system~3

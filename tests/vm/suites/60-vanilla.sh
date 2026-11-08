@@ -51,7 +51,7 @@ if [[ "${SUITE_PHASE}" == 1 ]]; then
         [[ -e "${HOME_DIR}/${kept}" ]] && touch "${STATE}/had-${kept##*/}"
     done
 
-    # The lists parse and carry the fields software.md#in-scripts names, through each of the command's names
+    # The lists parse and carry the fields containers.md#in-scripts names, through each of the command's names
     check "amepkg templates list --json: the documented fields; alpine built in, pinned, verified" jq -e '
         all(.[]; (["name","description","base","manager","packages","own_home","unshare","built_in","verified","pinned"] - keys) == [])
         and any(.[]; .name == "alpine" and .built_in and .pinned and .verified)' <<<"$(in_session 'amepkg templates list --json' 2>/dev/null)"

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* The live pill: the clock in the top bar grows into what is happening (music here), then shrinks back to the clock */
+.art { --loop: 3s; --poster: 0.5; }
+.bar { position: absolute; left: 0; top: 0; width: 150px; height: 28px; background: rgba(255, 255, 255, 0.07); }
+@keyframes grow { 0%, 16% { left: 55px; width: 40px; top: 5px; height: 18px; background: rgba(255, 255, 255, 0.16); } 30%, 74% { left: 22px; width: 106px; top: 4px; height: 20px; background: #3b2a5c; } 88%, 100% { left: 55px; width: 40px; top: 5px; height: 18px; background: rgba(255, 255, 255, 0.16); } }
+@keyframes clock { 0%, 14% { opacity: 1; } 20%, 80% { opacity: 0; } 90%, 100% { opacity: 1; } }
+@keyframes show { 0%, 26% { opacity: 0; transform: translateY(2px); } 34%, 70% { opacity: 1; transform: translateY(0); } 78%, 100% { opacity: 0; transform: translateY(0); } }
+.pill { position: absolute; border-radius: 10px; animation-name: grow; }
+.clock { left: 63px; top: 12px; width: 24px; background: #efe4ff; animation-name: clock; }
+.cover { position: absolute; left: 26px; top: 7px; width: 14px; height: 14px; border-radius: 4px; background: linear-gradient(135deg, #b37df9, #6fd3e0); animation-name: show; }
+.t1 { left: 46px; top: 9px; width: 50px; background: #efe4ff; animation-name: show; }
+.t2 { left: 46px; top: 16px; width: 32px; animation-name: show; }
+.pause { position: absolute; left: 110px; top: 9px; width: 10px; height: 10px; animation-name: show; }
+.pause::before, .pause::after { content: ""; position: absolute; top: 0; width: 3px; height: 10px; border-radius: 1px; background: #efe4ff; }
+.pause::before { left: 1px; }
+.pause::after { left: 6px; }
+.w1 { left: 12px; top: 40px; width: 78px; height: 64px; }
+.w2 { left: 96px; top: 40px; width: 44px; height: 64px; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="bar"></div>
+  <i class="win w1"></i><i class="win w2"></i>
+  <i class="pill"></i>
+  <i class="line clock"></i>
+  <i class="cover"></i><i class="line t1"></i><i class="line t2"></i><i class="pause"></i>
+</div>
+</body>
+</html>

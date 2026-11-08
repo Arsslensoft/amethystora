@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Rolling back at the boot menu: the highlight moves down to the second entry, Return, and the desktop starts from it */
+.art { --loop: 3.2s; --poster: 0.38; }
+@keyframes sel { 0%, 16% { top: 8px; } 28%, 100% { top: 24px; } }
+@keyframes down { 0%, 14% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } 18%, 24% { transform: translateY(2px); background: #b37df9; } 30%, 100% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } }
+@keyframes ret { 0%, 38% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } 42%, 48% { transform: translateY(2px); background: #b37df9; } 54%, 100% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } }
+@keyframes menu { 0%, 52% { opacity: 1; } 58%, 90% { opacity: 0; } 96%, 100% { opacity: 1; } }
+@keyframes desk { 0%, 54% { opacity: 0; } 62%, 88% { opacity: 1; } 94%, 100% { opacity: 0; } }
+.menu { left: 14px; top: 8px; width: 122px; height: 58px; background: #0f0a16; animation-name: menu; }
+.hl { position: absolute; left: 6px; width: 108px; height: 14px; border-radius: 4px; background: rgba(179, 125, 249, 0.45); animation-name: sel; }
+.menu .line { left: 14px; }
+.e1 { top: 13px; width: 72px; }
+.e2 { top: 29px; width: 60px; }
+.e3 { top: 45px; width: 40px; opacity: 0.5; }
+.desk { left: 14px; top: 8px; width: 122px; height: 58px; background: linear-gradient(135deg, #3a2560, #1f1630); animation-name: desk; }
+.desk .win { left: 22px; top: 12px; width: 70px; height: 38px; }
+.k1 { left: 34px; top: 78px; width: 30px; animation-name: down; }
+.k2 { left: 72px; top: 78px; animation-name: ret; }
+.k1::before { content: ""; border: 5px solid transparent; border-top: 6px solid #efe4ff; border-bottom: 0; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="pane desk"><i class="win"></i></div>
+  <div class="pane menu"><i class="hl"></i><i class="line e1"></i><i class="line e2"></i><i class="line e3"></i></div>
+  <span class="cap k1"></span><span class="cap k2">Return</span>
+</div>
+</body>
+</html>

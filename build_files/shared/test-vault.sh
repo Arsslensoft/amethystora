@@ -112,7 +112,7 @@ done
 # A secret is never an argument, and the recipes that keep the person's place do not change folder
 grep -q '^\[no-cd\]$' "${JUST}"
 # every ame command of the manual page and the knowledge page is one
-grep -ohE '\bame vault [a-z][a-z0-9-]*' /usr/share/amethystora/manual/vault.md /usr/share/amethystora/agents/knowledge/vault.md |
+grep -ohE '\bame vault [a-z][a-z0-9-]*' /usr/share/amethystora/manual/vault*.md /usr/share/amethystora/agents/knowledge/vault.md |
     sort -u | while read -r _ _ recipe; do
         ame --show "vault::${recipe}" >/dev/null || fail "the manual or the knowledge names ame vault ${recipe}, which is no command"
     done

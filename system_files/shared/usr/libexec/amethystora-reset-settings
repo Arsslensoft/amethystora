@@ -83,7 +83,7 @@ die() {
     exit 1
 }
 need_root() { [[ "${EUID}" -eq 0 || -n "${ROOT}" ]] || die "Resetting the machine's settings needs root."; }
-# A sealed machine (updates.md#sealed-images) has not been tried yet
+# A sealed machine (streams.md#sealed-images) has not been tried yet
 machine_possible() { [[ -n "${ROOT}" || (-d /usr/etc && ! -e /usr/share/amethystora/sealed) ]]; }
 stamp() { date +%Y-%m-%dT%H-%M-%S; }
 # The newest reset in a folder of them that has not been undone

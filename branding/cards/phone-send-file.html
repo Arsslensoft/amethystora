@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Sending a file to the phone: the file leaves the computer, its progress fills, and it lands on the phone */
+.art { --loop: 3.2s; --poster: 0.5; }
+@keyframes fly { 0%, 12% { transform: translate(0, 0) scale(1); opacity: 1; } 56% { transform: translate(78px, -6px) scale(0.7); opacity: 1; } 64%, 90% { transform: translate(78px, -6px) scale(0.7); opacity: 0; } 92% { transform: translate(0, 0) scale(1); opacity: 0; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
+@keyframes fill { 0%, 12% { width: 0; } 56%, 88% { width: 50px; } 96%, 100% { width: 0; } }
+@keyframes land { 0%, 56% { opacity: 0; transform: translateY(4px); } 64%, 88% { opacity: 1; transform: translateY(0); } 96%, 100% { opacity: 0; transform: translateY(0); } }
+.screen { position: absolute; left: 8px; top: 18px; width: 82px; height: 54px; border-radius: 6px; background: #2b2140; border: 2px solid rgba(255, 255, 255, 0.22); box-sizing: border-box; }
+.base { position: absolute; left: 0; top: 74px; width: 98px; height: 5px; border-radius: 0 0 6px 6px; background: rgba(255, 255, 255, 0.22); }
+.phone { position: absolute; left: 110px; top: 16px; width: 32px; height: 62px; border-radius: 7px; background: #2b2140; border: 2px solid rgba(255, 255, 255, 0.22); box-sizing: border-box; }
+.file { position: absolute; width: 18px; height: 22px; border-radius: 3px; background: #dcbcff; clip-path: polygon(0 0, 65% 0, 100% 28%, 100% 100%, 0 100%); }
+.file::after { content: ""; position: absolute; right: 0; top: 0; width: 6px; height: 6px; background: #b37df9; }
+.moving { left: 22px; top: 26px; animation-name: fly; }
+.track { position: absolute; left: 15px; top: 38px; width: 50px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.14); overflow: hidden; }
+.bar { position: absolute; left: 0; top: 0; height: 4px; background: #b37df9; animation-name: fill; animation-timing-function: linear; }
+.landed { left: 5px; top: 18px; transform: scale(0.8); animation-name: land; }
+.wrap { position: absolute; left: 5px; top: 18px; animation-name: land; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="screen"><div class="track"><i class="bar"></i></div></div>
+  <i class="base"></i>
+  <div class="phone"><div class="wrap"><i class="file" style="position: relative; display: block"></i></div></div>
+  <i class="file moving"></i>
+</div>
+</body>
+</html>

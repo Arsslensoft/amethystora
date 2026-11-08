@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Containers: the system stays as it is, a container grows beside it, a package goes in, and its app joins the dock */
+.art { --loop: 3.2s; --poster: 0.72; }
+@keyframes grow { 0%, 8% { transform: scale(0.2); opacity: 0; } 22%, 88% { transform: scale(1); opacity: 1; } 96%, 100% { transform: scale(0.2); opacity: 0; } }
+@keyframes pkg { 0%, 24% { transform: translateY(-30px); opacity: 0; } 30% { opacity: 1; } 40%, 46% { transform: translateY(0); opacity: 1; } 54%, 100% { transform: translateY(0) scale(0.4); opacity: 0; } }
+@keyframes app { 0%, 48% { transform: translate(0, 0) scale(0.4); opacity: 0; } 54% { transform: translate(0, 0) scale(1); opacity: 1; } 68%, 88% { transform: translate(-6px, 56px) scale(1); opacity: 1; } 96%, 100% { transform: translate(-6px, 56px) scale(1); opacity: 0; } }
+@keyframes badge { 0%, 66% { opacity: 0; } 70%, 88% { opacity: 1; } 96%, 100% { opacity: 0; } }
+.sys { left: 8px; top: 10px; width: 58px; height: 66px; background: rgba(255, 255, 255, 0.1); }
+.lock { position: absolute; left: 21px; top: 24px; width: 16px; height: 12px; border-radius: 3px; background: #dcbcff; }
+.lock::before { content: ""; position: absolute; left: 3px; top: -8px; width: 6px; height: 7px; border: 2px solid #dcbcff; border-bottom: none; border-radius: 5px 5px 0 0; }
+.box { position: absolute; left: 78px; top: 10px; width: 62px; height: 66px; border-radius: 9px; border: 1.5px dashed #b37df9; box-sizing: border-box; animation-name: grow; }
+.pkg { position: absolute; left: 99px; top: 34px; width: 20px; height: 18px; border-radius: 3px; background: #e8c06a; animation-name: pkg; }
+.pkg::after { content: ""; position: absolute; left: 8px; top: 0; width: 4px; height: 18px; background: rgba(0, 0, 0, 0.18); }
+.app { position: absolute; left: 100px; top: 34px; width: 14px; height: 14px; border-radius: 5px; background: linear-gradient(135deg, #8ddba4, #6fd3e0); animation-name: app; }
+.dock { left: 30px; top: 86px; width: 90px; height: 22px; display: flex; gap: 5px; align-items: center; padding-left: 8px; }
+.dock .sq { width: 14px; height: 14px; }
+.badge { position: absolute; left: 108px; top: 87px; width: 6px; height: 6px; border-radius: 50%; background: #e8c06a; animation-name: badge; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="pane sys"><i class="lock"></i><i class="line" style="left: 12px; top: 46px; width: 34px"></i><i class="line" style="left: 12px; top: 54px; width: 24px"></i></div>
+  <div class="box"></div>
+  <i class="pkg"></i>
+  <div class="pane dock"><i class="sq" style="background: #9148f0"></i><i class="sq" style="background: #dcbcff"></i><i class="sq" style="background: #e8c06a"></i></div>
+  <i class="app"></i>
+  <i class="badge"></i>
+</div>
+</body>
+</html>

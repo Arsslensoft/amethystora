@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Desktop styles: the same desktop drawn floating, as islands, then hairline: the top bar and the window corners change shape */
+.art { --loop: 3.6s; --poster: 0.45; }
+@keyframes s1 { 0%, 24% { opacity: 1; } 32%, 92% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes s2 { 0%, 26% { opacity: 0; } 34%, 56% { opacity: 1; } 64%, 100% { opacity: 0; } }
+@keyframes s3 { 0%, 58% { opacity: 0; } 66%, 90% { opacity: 1; } 98%, 100% { opacity: 0; } }
+@keyframes corners { 0%, 24% { border-radius: 9px; } 34%, 56% { border-radius: 14px; } 66%, 90% { border-radius: 1px; } 100% { border-radius: 9px; } }
+.screen { position: absolute; left: 8px; top: 6px; width: 134px; height: 100px; border-radius: 8px; overflow: hidden; background: linear-gradient(135deg, #3a2560, #1f1530); }
+.v { position: absolute; left: 0; right: 0; top: 0; height: 20px; }
+.v1 { animation-name: s1; }
+.v2 { animation-name: s2; }
+.v3 { animation-name: s3; }
+.float { position: absolute; left: 6px; right: 6px; top: 5px; height: 11px; border-radius: 6px; background: rgba(255, 255, 255, 0.16); }
+.isl { position: absolute; top: 5px; height: 11px; border-radius: 6px; background: rgba(255, 255, 255, 0.2); }
+.hair { position: absolute; left: 0; right: 0; top: 0; height: 9px; background: #120c1c; border-bottom: 1px solid #b37df9; }
+.dots { position: absolute; display: flex; gap: 3px; }
+.dots i { width: 4px; height: 4px; border-radius: 50%; background: rgba(239, 228, 255, 0.6); }
+.dots i:first-child { background: #b37df9; }
+.w { position: absolute; left: 22px; top: 28px; width: 90px; height: 60px; box-sizing: border-box; background: #2b2140; border: 1px solid rgba(255, 255, 255, 0.18); animation-name: corners; overflow: hidden; }
+.w::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 10px; background: rgba(255, 255, 255, 0.1); }
+.btn { position: absolute; left: 10px; top: 36px; width: 30px; height: 10px; background: #b37df9; animation-name: corners; }
+.l { position: absolute; left: 10px; height: 4px; border-radius: 2px; background: rgba(239, 228, 255, 0.35); }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="screen">
+    <div class="v v1"><i class="float"></i><span class="dots" style="left: 12px; top: 8.5px"><i></i><i></i><i></i></span></div>
+    <div class="v v2"><i class="isl" style="left: 6px; width: 30px"></i><i class="isl" style="left: 52px; width: 30px"></i><i class="isl" style="left: 100px; width: 28px"></i><span class="dots" style="left: 12px; top: 8.5px"><i></i><i></i><i></i></span></div>
+    <div class="v v3"><i class="hair"></i><span class="dots" style="left: 6px; top: 2.5px"><i></i><i></i><i></i></span></div>
+    <div class="w"><i class="l" style="top: 18px; width: 56px"></i><i class="l" style="top: 26px; width: 40px"></i><i class="btn"></i></div>
+  </div>
+</div>
+</body>
+</html>

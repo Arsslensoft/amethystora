@@ -54,7 +54,7 @@ tient à jour.
 
 Ouvrez-le dans Fichiers. Il va dans un conteneur fait pour son type de paquet, après une analyse
 antivirus et un examen de sa provenance ; la même application depuis Flathub, s’il y en a une, est
-proposée d’abord. [Un fichier de paquet](software.md#a-package-file).
+proposée d’abord. [Un fichier de paquet](containers.md#a-package-file).
 
 ## Où se trouvent mes paramètres ?
 

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* A restart in seconds: the windows close, a short spin, and the login screen is back without the firmware or boot menu */
+.art { --loop: 3s; --poster: 0.45; }
+@keyframes wins { 0%, 12% { opacity: 1; transform: scale(1); } 22%, 88% { opacity: 0; transform: scale(0.9); } 96%, 100% { opacity: 1; transform: scale(1); } }
+@keyframes dark { 0%, 18% { opacity: 0; } 26%, 50% { opacity: 1; } 58%, 100% { opacity: 0; } }
+@keyframes spin { 0%, 24% { transform: rotate(0deg); opacity: 0; } 28% { opacity: 1; } 50% { transform: rotate(540deg); opacity: 1; } 54%, 100% { transform: rotate(540deg); opacity: 0; } }
+@keyframes login { 0%, 54% { opacity: 0; transform: translateY(4px); } 62%, 84% { opacity: 1; transform: translateY(0); } 92%, 100% { opacity: 0; transform: translateY(0); } }
+@keyframes ret { 0%, 70% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); opacity: 0; } 72% { opacity: 1; } 76%, 82% { transform: translateY(2px); background: #b37df9; opacity: 1; } 88% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); opacity: 1; } 94%, 100% { opacity: 0; } }
+.screen { left: 8px; top: 6px; width: 134px; height: 80px; overflow: hidden; background: linear-gradient(135deg, #3a2560, #1f1630); }
+.w1 { left: 10px; top: 10px; width: 64px; height: 50px; animation-name: wins; }
+.w2 { left: 62px; top: 24px; width: 60px; height: 46px; animation-name: wins; }
+.black { position: absolute; inset: 0; background: #0b0710; animation-name: dark; }
+.spin { position: absolute; left: 57px; top: 30px; width: 20px; height: 20px; box-sizing: border-box; border-radius: 50%; border: 3px solid rgba(220, 188, 255, 0.2); border-top-color: #dcbcff; animation-name: spin; animation-timing-function: linear; }
+.login { position: absolute; left: 0; right: 0; top: 18px; animation-name: login; }
+.avatar { position: absolute; left: 56px; top: 0; width: 22px; height: 22px; border-radius: 50%; background: #b37df9; }
+.field { position: absolute; left: 40px; top: 30px; width: 54px; height: 10px; border-radius: 5px; background: rgba(255, 255, 255, 0.16); }
+.ret { left: 50px; top: 88px; animation-name: ret; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="pane screen">
+    <i class="win w1"></i><i class="win w2"></i>
+    <i class="black"></i><i class="spin"></i>
+    <div class="login"><i class="avatar"></i><i class="field"></i></div>
+  </div>
+  <span class="cap ret">Return</span>
+</div>
+</body>
+</html>

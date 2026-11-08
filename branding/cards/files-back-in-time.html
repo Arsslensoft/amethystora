@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Back in time: the folder steps back to an earlier hour, where the lost file is, and it comes back to now */
+.art { --loop: 3.6s; --poster: 0.42; }
+@keyframes p0 { 0%, 14% { transform: translate(0, 0) scale(1); opacity: 1; } 28%, 54% { transform: translate(12px, 12px) scale(1.06); opacity: 0; } 70%, 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
+@keyframes p1 { 0%, 14% { transform: translate(-10px, -10px) scale(0.9); opacity: 0.55; } 28%, 54% { transform: translate(0, 0) scale(1); opacity: 1; } 70%, 100% { transform: translate(-10px, -10px) scale(0.9); opacity: 0.55; } }
+@keyframes p2 { 0%, 14% { transform: translate(-20px, -20px) scale(0.8); opacity: 0.25; } 28%, 54% { transform: translate(-10px, -10px) scale(0.9); opacity: 0.55; } 70%, 100% { transform: translate(-20px, -20px) scale(0.8); opacity: 0.25; } }
+@keyframes f { 0%, 26% { opacity: 0; box-shadow: 0 0 0 0 #b37df9; } 30%, 36% { opacity: 1; box-shadow: 0 0 0 0 #b37df9; } 42%, 62% { opacity: 1; box-shadow: 0 0 0 3px #b37df9; } 70%, 86% { opacity: 1; box-shadow: 0 0 0 0 #b37df9; } 94%, 100% { opacity: 0; box-shadow: 0 0 0 0 #b37df9; } }
+.p { position: absolute; left: 34px; top: 30px; width: 96px; height: 62px; border-radius: 7px; background: #2b2140; border: 1px solid rgba(255, 255, 255, 0.2); box-sizing: border-box; transform-origin: 0 0; }
+.p .sq { position: absolute; top: 22px; width: 18px; height: 18px; }
+.p .line { top: 46px; }
+.empty { border: 1.5px dashed rgba(239, 228, 255, 0.35); box-sizing: border-box; }
+.file { position: absolute; left: 95px; top: 53px; width: 18px; height: 18px; border-radius: 4px; background: #e8c06a; animation-name: f; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="p" style="animation-name: p2"><i class="sq" style="left: 12px; background: #b37df9"></i><i class="sq" style="left: 38px; background: #6fd3e0"></i><i class="sq" style="left: 64px; background: #e8c06a"></i></div>
+  <div class="p" style="animation-name: p1"><i class="sq" style="left: 12px; background: #b37df9"></i><i class="sq" style="left: 38px; background: #6fd3e0"></i><i class="sq" style="left: 64px; background: #e8c06a"></i></div>
+  <div class="p" style="animation-name: p0"><i class="sq" style="left: 12px; background: #b37df9"></i><i class="sq" style="left: 38px; background: #6fd3e0"></i><i class="sq empty" style="left: 64px"></i></div>
+  <i class="file"></i>
+</div>
+</body>
+</html>

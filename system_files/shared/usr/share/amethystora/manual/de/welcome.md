@@ -18,8 +18,8 @@ System funktioniert.
 Zwei Entscheidungen lohnen sich am ersten Tag. Wenn Sie lieber Fenster hätten, die frei schweben und
 sich überlappen, wie unter Windows und macOS, bietet eine Benachrichtigung sie kurz nach Ihrer ersten
 Anmeldung an, und `ame desktop layout classic` wechselt jederzeit dorthin
-([Klassische Fenster](desktop.md#classic-windows)). Wenn der Rechner für ein Kind ist, beschränkt der
-[Jugendschutz](security.md#parental-controls) dessen Konto auf die Apps und Zeiten, die Sie wählen.
+([Klassische Fenster](tiling.md#classic-windows)). Wenn der Rechner für ein Kind ist, beschränkt der
+[Jugendschutz](logins.md#parental-controls) dessen Konto auf die Apps und Zeiten, die Sie wählen.
 
 ## So funktioniert dieses Handbuch
 

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* A switch turned on: the pointer clicks it, its knob slides across, and the category's count of switches on goes up */
+.art { --loop: 3s; --poster: 0.6; }
+@keyframes track { 0%, 38% { background: rgba(255, 255, 255, 0.2); } 46%, 86% { background: #b37df9; } 94%, 100% { background: rgba(255, 255, 255, 0.2); } }
+@keyframes knob { 0%, 38% { transform: translateX(0); } 46%, 86% { transform: translateX(12px); } 94%, 100% { transform: translateX(0); } }
+@keyframes lit { 0%, 44% { background: rgba(255, 255, 255, 0.2); } 52%, 86% { background: #b37df9; } 94%, 100% { background: rgba(255, 255, 255, 0.2); } }
+@keyframes hand { 0%, 10% { left: 124px; top: 96px; opacity: 1; } 32%, 42% { left: 108px; top: 64px; opacity: 1; } 60%, 86% { left: 124px; top: 96px; opacity: 0; } 100% { left: 124px; top: 96px; opacity: 1; } }
+.tile { left: 14px; top: 8px; width: 122px; height: 96px; }
+.head { position: absolute; left: 8px; top: 8px; display: flex; gap: 3px; }
+.head i { width: 8px; height: 8px; border-radius: 50%; background: #b37df9; }
+.head i.off { background: rgba(255, 255, 255, 0.2); }
+.head i.turn { animation-name: lit; }
+.row { position: absolute; left: 8px; width: 104px; height: 18px; }
+.row .line { left: 0; top: 7px; width: 54px; }
+.sw { position: absolute; right: 0; top: 2px; width: 26px; height: 14px; border-radius: 7px; background: rgba(255, 255, 255, 0.2); }
+.sw.on { background: #b37df9; }
+.sw.go { animation-name: track; }
+.sw i { position: absolute; left: 2px; top: 2px; width: 10px; height: 10px; border-radius: 50%; background: #efe4ff; }
+.sw.on i { left: 14px; }
+.sw.go i { animation-name: knob; }
+.pointer { position: absolute; width: 14px; height: 18px; animation-name: hand; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="pane tile">
+    <div class="head"><i></i><i class="turn"></i><i class="off"></i></div>
+    <div class="row" style="top: 26px"><i class="line"></i><span class="sw on"><i></i></span></div>
+    <div class="row" style="top: 48px"><i class="line" style="width: 44px"></i><span class="sw go"><i></i></span></div>
+    <div class="row" style="top: 70px"><i class="line" style="width: 62px"></i><span class="sw"><i></i></span></div>
+  </div>
+  <svg class="pointer" viewBox="0 0 24 30"><path d="M4 3L20 16 12.6 17.3 8.7 24Z" fill="#ffffff" stroke="#9148f0" stroke-width="2" stroke-linejoin="round"/></svg>
+</div>
+</body>
+</html>

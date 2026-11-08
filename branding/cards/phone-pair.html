@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Pairing a phone: the same key shows on the computer and on the phone; they match, and both are paired */
+.art { --loop: 3.4s; --poster: 0.72; }
+@keyframes key { 0%, 16% { opacity: 0; transform: scale(0.6); } 26%, 88% { opacity: 1; transform: scale(1); } 96%, 100% { opacity: 0; transform: scale(1); } }
+@keyframes link { 0%, 30% { opacity: 0; } 36% { opacity: 1; } 46% { opacity: 0.3; } 52% { opacity: 1; } 58%, 100% { opacity: 0; } }
+@keyframes ok { 0%, 58% { opacity: 0; transform: scale(0.4); } 66%, 88% { opacity: 1; transform: scale(1); } 96%, 100% { opacity: 0; transform: scale(1); } }
+.screen { position: absolute; left: 8px; top: 18px; width: 82px; height: 54px; border-radius: 6px; background: #2b2140; border: 2px solid rgba(255, 255, 255, 0.22); box-sizing: border-box; }
+.base { position: absolute; left: 0; top: 74px; width: 98px; height: 5px; border-radius: 0 0 6px 6px; background: rgba(255, 255, 255, 0.22); }
+.phone { position: absolute; left: 110px; top: 16px; width: 32px; height: 62px; border-radius: 7px; background: #2b2140; border: 2px solid rgba(255, 255, 255, 0.22); box-sizing: border-box; }
+.code { position: absolute; display: flex; gap: 2px; animation-name: key; }
+.code i { width: 5px; height: 9px; border-radius: 2px; }
+.c1 { background: #b37df9; } .c2 { background: #dcbcff; } .c3 { background: #e8c06a; } .c4 { background: #6fd3e0; }
+.wave { position: absolute; top: 40px; height: 2px; width: 6px; border-radius: 1px; background: #dcbcff; animation-name: link; }
+.ok { position: absolute; width: 14px; height: 14px; border-radius: 50%; background: #8ddba4; animation-name: ok; }
+.ok::after { content: ""; position: absolute; left: 4px; top: 2.5px; width: 3.5px; height: 6.5px; border: solid #1a1226; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="screen"><span class="code" style="left: 23px; top: 12px"><i class="c1"></i><i class="c2"></i><i class="c3"></i><i class="c4"></i></span><i class="ok" style="left: 32px; top: 28px"></i></div>
+  <i class="base"></i>
+  <div class="phone"><span class="code" style="left: 1px; top: 16px; transform-origin: center; gap: 1px"><i class="c1" style="width: 5px"></i><i class="c2" style="width: 5px"></i><i class="c3" style="width: 5px"></i><i class="c4" style="width: 5px"></i></span><i class="ok" style="left: 7px; top: 34px"></i></div>
+  <i class="wave" style="left: 96px"></i><i class="wave" style="left: 103px; animation-delay: 0s"></i>
+</div>
+</body>
+</html>

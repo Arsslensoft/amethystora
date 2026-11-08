@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* The lock screen comes down over the desktop: a large clock, what is playing, and one row per app with a count, never what the notifications say */
+.art { --loop: 3.4s; --poster: 0.55; }
+@keyframes lock { 0%, 12% { transform: translateY(-112px); } 28%, 80% { transform: translateY(0); } 94%, 100% { transform: translateY(-112px); } }
+.bar { position: absolute; left: 0; top: 0; width: 150px; height: 14px; background: rgba(255, 255, 255, 0.07); }
+.w1 { left: 10px; top: 22px; width: 76px; height: 80px; }
+.w2 { left: 92px; top: 22px; width: 48px; height: 80px; }
+.lock { position: absolute; left: 0; top: 0; width: 150px; height: 112px; background: linear-gradient(180deg, #2a1a45, #120c1c); animation-name: lock; }
+.time { left: 45px; top: 12px; width: 60px; height: 12px; border-radius: 6px; background: #efe4ff; }
+.date { left: 57px; top: 30px; width: 36px; }
+.media { left: 30px; top: 42px; width: 90px; height: 22px; }
+.cover { position: absolute; left: 5px; top: 4px; width: 12px; height: 12px; border-radius: 3px; background: linear-gradient(135deg, #b37df9, #6fd3e0); }
+.media .line { left: 22px; top: 8px; width: 34px; }
+.ctl { position: absolute; top: 8px; width: 5px; height: 5px; border-radius: 50%; background: #efe4ff; }
+.note { left: 30px; width: 90px; height: 16px; }
+.note .sq { position: absolute; left: 5px; top: 3px; width: 9px; height: 9px; }
+.note .line { left: 20px; top: 5px; width: 34px; }
+.count { position: absolute; right: 6px; top: 3px; width: 9px; height: 9px; border-radius: 50%; background: #b37df9; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="bar"></div><i class="win w1"></i><i class="win w2"></i>
+  <div class="lock">
+    <i class="line time"></i><i class="line date"></i>
+    <div class="pane media"><i class="cover"></i><i class="line"></i><i class="ctl" style="left: 64px"></i><i class="ctl" style="left: 72px"></i><i class="ctl" style="left: 80px"></i></div>
+    <div class="pane note" style="top: 70px"><i class="sq" style="background: #e8c06a"></i><i class="line"></i><i class="count"></i></div>
+    <div class="pane note" style="top: 90px"><i class="sq" style="background: #6fd3e0"></i><i class="line" style="width: 26px"></i><i class="count"></i></div>
+  </div>
+</div>
+</body>
+</html>

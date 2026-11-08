@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Minimise: the window gathers into a drop that arcs into its dock icon, a ring ripples, and it rises back */
+.art { --loop: 3.4s; --poster: 0.17; }
+@keyframes shape {
+  0%, 10% { left: 40px; top: 12px; width: 70px; height: 48px; border-radius: 6px; background: #2b2140; opacity: 1; }
+  24% { left: 67px; top: 30px; width: 16px; height: 16px; border-radius: 50%; background: rgba(220, 188, 255, 0.6); opacity: 1; }
+  32% { left: 94px; top: 52px; width: 13px; height: 13px; border-radius: 50%; background: rgba(220, 188, 255, 0.6); opacity: 1; }
+  40% { left: 80px; top: 89px; width: 10px; height: 10px; border-radius: 50%; background: rgba(220, 188, 255, 0.6); opacity: 1; }
+  44%, 62% { left: 82px; top: 91px; width: 6px; height: 6px; border-radius: 50%; background: rgba(220, 188, 255, 0.6); opacity: 0; }
+  66% { left: 80px; top: 89px; width: 10px; height: 10px; border-radius: 50%; background: rgba(220, 188, 255, 0.6); opacity: 1; }
+  74% { left: 94px; top: 52px; width: 13px; height: 13px; border-radius: 50%; background: rgba(220, 188, 255, 0.6); opacity: 1; }
+  82% { left: 67px; top: 30px; width: 16px; height: 16px; border-radius: 50%; background: rgba(220, 188, 255, 0.6); opacity: 1; }
+  94%, 100% { left: 40px; top: 12px; width: 70px; height: 48px; border-radius: 6px; background: #2b2140; opacity: 1; }
+}
+@keyframes bar { 0%, 10% { opacity: 1; } 18%, 88% { opacity: 0; } 96%, 100% { opacity: 1; } }
+@keyframes ring { 0%, 40% { opacity: 0; transform: scale(0.6); } 44% { opacity: 1; transform: scale(1); } 58%, 100% { opacity: 0; transform: scale(2.2); } }
+.w { position: absolute; box-sizing: border-box; border: 1px solid rgba(255, 255, 255, 0.16); overflow: hidden; animation-name: shape; }
+.w i { position: absolute; left: 0; right: 0; top: 0; height: 7px; background: rgba(255, 255, 255, 0.1); animation-name: bar; }
+.dock { left: 33px; top: 82px; width: 84px; height: 24px; border-radius: 9px; display: flex; gap: 5px; align-items: center; justify-content: center; }
+.ring { position: absolute; left: 76px; top: 86px; width: 17px; height: 17px; border: 2px solid #dcbcff; border-radius: 50%; box-sizing: border-box; animation-name: ring; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="pane dock"><i class="sq" style="background: #9148f0"></i><i class="sq" style="background: #6fd3e0"></i><i class="sq" style="background: #e8c06a"></i><i class="sq" style="background: #8ddba4"></i></div>
+  <i class="ring"></i>
+  <div class="w"><i></i></div>
+</div>
+</body>
+</html>

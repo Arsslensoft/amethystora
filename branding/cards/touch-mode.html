@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Touch mode: the bar and the dock grow for a fingertip, a handle shows at the right edge, and a swipe in from it opens Today */
+.art { --loop: 3.6s; --poster: 0.66; }
+@keyframes bar { 0%, 14% { height: 12px; } 28%, 86% { height: 20px; } 96%, 100% { height: 12px; } }
+@keyframes dock { 0%, 14% { transform: scale(1); } 28%, 86% { transform: scale(1.35); } 96%, 100% { transform: scale(1); } }
+@keyframes handle { 0%, 20% { opacity: 0; } 30%, 84% { opacity: 1; } 92%, 100% { opacity: 0; } }
+@keyframes finger { 0%, 38% { left: 150px; opacity: 0; } 42% { left: 138px; opacity: 1; } 60% { left: 96px; opacity: 1; } 66%, 100% { left: 96px; opacity: 0; } }
+@keyframes today { 0%, 42% { transform: translateX(70px); } 60%, 82% { transform: translateX(0); } 92%, 100% { transform: translateX(70px); } }
+.bar { position: absolute; left: 0; top: 0; width: 150px; background: rgba(255, 255, 255, 0.09); animation-name: bar; }
+.w1 { left: 12px; top: 28px; width: 88px; height: 52px; }
+.dock { left: 47px; top: 88px; width: 56px; height: 18px; border-radius: 7px; display: flex; gap: 4px; align-items: center; justify-content: center; transform-origin: 50% 100%; animation-name: dock; }
+.dock .sq { width: 9px; height: 9px; border-radius: 3px; }
+.handle { position: absolute; left: 145px; top: 44px; width: 3px; height: 24px; border-radius: 2px; background: #dcbcff; animation-name: handle; }
+.finger { position: absolute; top: 48px; width: 16px; height: 16px; border-radius: 50%; background: rgba(239, 228, 255, 0.85); box-shadow: 0 0 0 4px rgba(239, 228, 255, 0.25); animation-name: finger; }
+.today { left: 94px; top: 24px; width: 54px; height: 82px; background: #33264d; animation-name: today; }
+.today .line { left: 8px; }
+.tile { position: absolute; left: 8px; width: 38px; height: 18px; border-radius: 6px; background: rgba(255, 255, 255, 0.12); }
+</style>
+</head>
+<body>
+<div class="art">
+  <i class="bar"></i>
+  <i class="win w1"></i>
+  <div class="pane dock"><i class="sq" style="background: #9148f0"></i><i class="sq" style="background: #6fd3e0"></i><i class="sq" style="background: #e8c06a"></i><i class="sq" style="background: #8ddba4"></i></div>
+  <i class="handle"></i>
+  <div class="pane today"><i class="line" style="top: 10px; width: 30px; background: #efe4ff"></i><i class="tile" style="top: 22px"></i><i class="tile" style="top: 46px"></i></div>
+  <i class="finger"></i>
+</div>
+</body>
+</html>

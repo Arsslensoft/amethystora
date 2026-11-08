@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Tasks in Notes: each one ticked off in turn, its line fading as it is done */
+.art { --loop: 3.4s; --poster: 0.62; }
+@keyframes hand { 0% { left: 104px; top: 90px; } 12%, 18% { left: 31px; top: 23px; } 32%, 38% { left: 31px; top: 43px; } 52%, 58% { left: 31px; top: 63px; } 76%, 100% { left: 104px; top: 90px; } }
+@keyframes t1 { 0%, 16% { background: transparent; border-color: #dcbcff; } 19%, 84% { background: #b37df9; border-color: #b37df9; } 92%, 100% { background: transparent; border-color: #dcbcff; } }
+@keyframes t2 { 0%, 36% { background: transparent; border-color: #dcbcff; } 39%, 84% { background: #b37df9; border-color: #b37df9; } 92%, 100% { background: transparent; border-color: #dcbcff; } }
+@keyframes t3 { 0%, 56% { background: transparent; border-color: #dcbcff; } 59%, 84% { background: #b37df9; border-color: #b37df9; } 92%, 100% { background: transparent; border-color: #dcbcff; } }
+@keyframes c1 { 0%, 17% { opacity: 0; } 20%, 84% { opacity: 1; } 92%, 100% { opacity: 0; } }
+@keyframes c2 { 0%, 37% { opacity: 0; } 40%, 84% { opacity: 1; } 92%, 100% { opacity: 0; } }
+@keyframes c3 { 0%, 57% { opacity: 0; } 60%, 84% { opacity: 1; } 92%, 100% { opacity: 0; } }
+@keyframes l1 { 0%, 18% { opacity: 1; } 24%, 84% { opacity: 0.3; } 92%, 100% { opacity: 1; } }
+@keyframes l2 { 0%, 38% { opacity: 1; } 44%, 84% { opacity: 0.3; } 92%, 100% { opacity: 1; } }
+@keyframes l3 { 0%, 58% { opacity: 1; } 64%, 84% { opacity: 0.3; } 92%, 100% { opacity: 1; } }
+.list { left: 18px; top: 6px; width: 114px; height: 96px; }
+.box { position: absolute; left: 10px; width: 12px; height: 12px; border: 2px solid #dcbcff; border-radius: 50%; box-sizing: border-box; }
+.tick { position: absolute; left: 3px; top: 1px; width: 3px; height: 6px; border-right: 2px solid #1a1226; border-bottom: 2px solid #1a1226; transform: rotate(45deg); }
+.list .line { left: 30px; }
+.pointer { position: absolute; width: 16px; height: 20px; animation-name: hand; z-index: 2; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="pane list">
+    <i class="box" style="top: 11px; animation-name: t1"><i class="tick" style="animation-name: c1"></i></i><i class="line" style="top: 15px; width: 64px; animation-name: l1"></i>
+    <i class="box" style="top: 31px; animation-name: t2"><i class="tick" style="animation-name: c2"></i></i><i class="line" style="top: 35px; width: 48px; animation-name: l2"></i>
+    <i class="box" style="top: 51px; animation-name: t3"><i class="tick" style="animation-name: c3"></i></i><i class="line" style="top: 55px; width: 58px; animation-name: l3"></i>
+    <i class="box" style="top: 71px"></i><i class="line" style="top: 75px; width: 40px"></i>
+  </div>
+  <svg class="pointer" viewBox="0 0 24 30"><path d="M4 3L20 16 12.6 17.3 8.7 24Z" fill="#ffffff" stroke="#9148f0" stroke-width="2" stroke-linejoin="round"/></svg>
+</div>
+</body>
+</html>

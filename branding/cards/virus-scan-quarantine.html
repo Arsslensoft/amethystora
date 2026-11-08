@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* A scan that quarantines: a beam passes over the files, one turns red and is moved into the locked box, which shuts */
+.art { --loop: 3.2s; --poster: 0.44; }
+@keyframes beam { 0% { top: 8px; opacity: 0; } 6% { opacity: 1; } 36% { top: 96px; opacity: 1; } 42%, 100% { top: 96px; opacity: 0; } }
+@keyframes bad { 0%, 24% { background: #2b2140; transform: translate(0, 0) scale(1); opacity: 1; } 30%, 46% { background: #e06c75; transform: translate(0, 0) scale(1); opacity: 1; } 66% { background: #e06c75; transform: translate(70px, 14px) scale(0.6); opacity: 1; } 70%, 92% { background: #e06c75; transform: translate(70px, 14px) scale(0.6); opacity: 0; } 93% { background: #2b2140; transform: translate(0, 0) scale(1); opacity: 0; } 100% { background: #2b2140; transform: translate(0, 0) scale(1); opacity: 1; } }
+@keyframes lid { 0%, 44% { transform: rotate(0); } 52%, 66% { transform: rotate(-35deg); } 74%, 100% { transform: rotate(0); } }
+@keyframes lock { 0%, 72% { background: rgba(255, 255, 255, 0.25); } 78%, 92% { background: #b37df9; } 100% { background: rgba(255, 255, 255, 0.25); } }
+.file { position: absolute; width: 22px; height: 28px; border-radius: 4px 9px 4px 4px; background: #2b2140; border: 1px solid rgba(255, 255, 255, 0.18); box-sizing: border-box; }
+.file::after { content: ""; position: absolute; left: 4px; right: 4px; top: 12px; height: 3px; border-radius: 2px; background: rgba(239, 228, 255, 0.35); box-shadow: 0 6px 0 rgba(239, 228, 255, 0.35); }
+.file.bad { animation-name: bad; }
+.beam { position: absolute; left: 6px; width: 84px; height: 3px; border-radius: 2px; background: #b37df9; box-shadow: 0 0 8px #b37df9; animation-name: beam; animation-timing-function: linear; }
+.box { position: absolute; left: 104px; top: 54px; width: 38px; height: 30px; border-radius: 4px 4px 7px 7px; background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.25); box-sizing: border-box; }
+.lid { position: absolute; left: 102px; top: 47px; width: 42px; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.28); transform-origin: 2px 4px; animation-name: lid; }
+.lock { position: absolute; left: 116px; top: 64px; width: 14px; height: 11px; border-radius: 3px; animation-name: lock; }
+.lock::before { content: ""; position: absolute; left: 3px; top: -6px; width: 8px; height: 8px; border: 2px solid rgba(255, 255, 255, 0.35); border-bottom: none; border-radius: 5px 5px 0 0; box-sizing: border-box; }
+</style>
+</head>
+<body>
+<div class="art">
+  <i class="file" style="left: 10px; top: 14px"></i><i class="file" style="left: 38px; top: 14px"></i><i class="file" style="left: 66px; top: 14px"></i>
+  <i class="file" style="left: 10px; top: 58px"></i><i class="file bad" style="left: 38px; top: 58px"></i><i class="file" style="left: 66px; top: 58px"></i>
+  <i class="beam"></i>
+  <i class="box"></i><i class="lid"></i><i class="lock"></i>
+</div>
+</body>
+</html>

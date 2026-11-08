@@ -1,22 +1,58 @@
 [
   {
     "section": "Start here",
-    "pages": ["welcome.md", "getting-started.md", "installing.md", "moving.md"]
+    "pages": ["welcome.md", "getting-started.md", "installing.md", "choosing.md", "moving.md"]
   },
   {
     "section": "The desktop",
-    "pages": ["desktop.md", "control.md", "../keybindings.md", "themes.md", "terminal.md", "web-apps.md", "notes.md", "vault.md", "phone.md", "ai-agent.md", "widgets.md", "plugins.md"]
+    "pages": ["desktop.md", "top-bar.md", "quick-settings.md", "power.md", "pill.md", "notifications.md", "today.md", "search.md", "login.md", "control.md"]
+  },
+  {
+    "section": "Windows",
+    "pages": ["tiling.md", "windows.md", "classic-layout.md", "dock.md", "workspaces.md", "desks.md", "focus.md"]
+  },
+  {
+    "section": "Keys and touch",
+    "pages": ["../keybindings.md", "keyboard.md", "touch.md"]
+  },
+  {
+    "section": "Everyday tools",
+    "pages": ["files.md", "clipboard.md", "screenshots.md", "sound.md", "calls.md", "people.md", "notes.md", "notes-encryption.md", "web-apps.md"]
+  },
+  {
+    "section": "Look and feel",
+    "pages": ["themes.md", "wallpapers.md", "styles.md", "comfort.md", "make-a-theme.md", "widgets.md", "plugins.md", "plugin-safety.md"]
+  },
+  {
+    "section": "Your phone",
+    "pages": ["phone.md", "phone-sharing.md", "phone-calls.md"]
+  },
+  {
+    "section": "The AI agent",
+    "pages": ["ai-agent.md", "agent-desktop.md", "agent-control.md", "routines.md"]
   },
   {
     "section": "Software",
-    "pages": ["software.md", "setup.md", "games.md", "developer.md"]
+    "pages": ["software.md", "containers.md", "windows-programs.md", "terminal.md", "setup.md", "games.md", "developer.md", "own-image.md"]
   },
   {
-    "section": "The system",
-    "pages": ["updates.md", "whats-new.md", "security.md", "hardware.md"]
+    "section": "Updates",
+    "pages": ["updates.md", "whats-new.md", "restarting.md", "rolling-back.md", "streams.md"]
+  },
+  {
+    "section": "Security",
+    "pages": ["security.md", "security-switches.md", "security-settings.md", "what-leaves.md", "security-watcher.md", "new-threats.md", "app-integrity.md", "app-permissions.md", "viruses.md", "logins.md", "backups.md", "backup-other.md", "disk-encryption.md", "devices-security.md", "network-security.md", "screen-privacy.md"]
+  },
+  {
+    "section": "Vault",
+    "pages": ["vault.md", "vault-items.md", "vault-certificates.md", "vault-secrets.md", "vault-sync.md"]
+  },
+  {
+    "section": "Hardware",
+    "pages": ["hardware.md", "displays.md", "disks.md", "devices.md", "wireless.md", "laptops.md"]
   },
   {
     "section": "Help",
-    "pages": ["troubleshooting.md", "faq.md", "about.md"]
+    "pages": ["troubleshooting.md", "logs.md", "common-problems.md", "starting-over.md", "faq.md", "about.md"]
   }
 ]

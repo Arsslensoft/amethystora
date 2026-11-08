@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* A pinned screenshot: a framed area lifts off, pins itself on top, and stays while the window below changes */
+.art { --loop: 3.6s; --poster: 0.7; }
+@keyframes sel { 0%, 6% { opacity: 0; } 10%, 22% { opacity: 1; } 26%, 100% { opacity: 0; } }
+@keyframes pin { 0%, 20% { opacity: 0; left: 18px; top: 24px; transform: scale(1); box-shadow: none; } 26% { opacity: 1; left: 18px; top: 24px; transform: scale(1.08); box-shadow: 0 6px 12px rgba(0, 0, 0, 0.6); } 44%, 86% { opacity: 1; left: 98px; top: 4px; transform: scale(1); box-shadow: 0 6px 12px rgba(0, 0, 0, 0.6); } 94%, 100% { opacity: 0; left: 98px; top: 4px; transform: scale(1); box-shadow: none; } }
+@keyframes w1 { 0%, 48% { transform: translateX(0); opacity: 1; } 64%, 88% { transform: translateX(-30px); opacity: 0; } 92% { transform: translateX(0); opacity: 0; } 100% { transform: translateX(0); opacity: 1; } }
+@keyframes w2 { 0%, 48% { transform: translateX(30px); opacity: 0; } 64%, 86% { transform: translateX(0); opacity: 1; } 94%, 100% { transform: translateX(0); opacity: 0; } }
+.w { left: 10px; top: 14px; width: 100px; height: 76px; }
+.bars { position: absolute; display: flex; gap: 4px; align-items: flex-end; }
+.bars i { width: 7px; border-radius: 2px 2px 0 0; }
+.sel { position: absolute; left: 18px; top: 24px; width: 46px; height: 36px; border: 1.5px dashed #efe4ff; border-radius: 3px; box-sizing: border-box; animation-name: sel; }
+.pin { position: absolute; width: 46px; height: 36px; border-radius: 4px; background: #2b2140; outline: 2px solid #b37df9; animation-name: pin; transform-origin: 0 0; z-index: 2; }
+.pin .dot { width: 7px; height: 7px; right: -3px; top: -3px; background: #b37df9; }
+.w .line { left: 12px; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="win w" style="animation-name: w1"><div class="bars" style="left: 11px; top: 13px"><i style="height: 22px; background: #b37df9"></i><i style="height: 14px; background: #dcbcff"></i><i style="height: 26px; background: #b37df9"></i><i style="height: 10px; background: #dcbcff"></i></div><i class="line" style="top: 64px; width: 70px"></i></div>
+  <div class="win w" style="animation-name: w2"><i class="line" style="top: 18px; width: 56px"></i><i class="line" style="top: 30px; width: 70px"></i><i class="line" style="top: 42px; width: 44px"></i><i class="line" style="top: 54px; width: 62px"></i></div>
+  <i class="sel"></i>
+  <div class="pin"><div class="bars" style="left: 4px; top: 4px"><i style="height: 22px; background: #b37df9"></i><i style="height: 14px; background: #dcbcff"></i><i style="height: 26px; background: #b37df9"></i><i style="height: 10px; background: #dcbcff"></i></div><i class="dot"></i></div>
+</div>
+</body>
+</html>

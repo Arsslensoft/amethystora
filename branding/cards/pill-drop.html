@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Drop things on the pill: a file dragged up to the pill, which opens into targets; it is let go on one */
+.art { --loop: 3.4s; --poster: 0.57; }
+.bar { position: absolute; left: 0; top: 0; width: 150px; height: 24px; background: rgba(255, 255, 255, 0.07); }
+@keyframes open { 0%, 26% { left: 57px; width: 36px; top: 4px; height: 16px; } 36%, 72% { left: 22px; width: 106px; top: 4px; height: 40px; } 82%, 100% { left: 57px; width: 36px; top: 4px; height: 16px; } }
+@keyframes targets { 0%, 32% { opacity: 0; transform: scale(0.5); } 40%, 70% { opacity: 1; transform: scale(1); } 78%, 100% { opacity: 0; transform: scale(0.5); } }
+@keyframes lit { 0%, 50% { background: rgba(255, 255, 255, 0.18); } 54%, 66% { background: #b37df9; } 72%, 100% { background: rgba(255, 255, 255, 0.18); } }
+@keyframes file { 0%, 6% { left: 34px; top: 80px; opacity: 1; transform: scale(1); } 38% { left: 67px; top: 34px; opacity: 1; transform: scale(1); } 50% { left: 79px; top: 21px; opacity: 1; transform: scale(1); } 62% { left: 79px; top: 21px; opacity: 0; transform: scale(0.4); } 90% { left: 34px; top: 80px; opacity: 0; transform: scale(1); } 100% { left: 34px; top: 80px; opacity: 1; transform: scale(1); } }
+@keyframes hand { 0%, 6% { left: 44px; top: 92px; opacity: 1; } 38% { left: 77px; top: 46px; opacity: 1; } 50% { left: 89px; top: 33px; opacity: 1; } 62% { left: 89px; top: 33px; opacity: 1; } 76% { left: 112px; top: 70px; opacity: 0; } 90% { left: 44px; top: 92px; opacity: 0; } 100% { left: 44px; top: 92px; opacity: 1; } }
+.pill { position: absolute; border-radius: 10px; background: #3b2a5c; animation-name: open; }
+.t { position: absolute; top: 22px; width: 16px; height: 16px; border-radius: 50%; background: rgba(255, 255, 255, 0.18); animation-name: targets; }
+.t.on { animation-name: targets, lit; }
+.file { position: absolute; width: 14px; height: 18px; border-radius: 2px 6px 2px 2px; background: #efe4ff; animation-name: file; }
+.file::after { content: ""; position: absolute; left: 3px; top: 6px; width: 8px; height: 2px; background: #9148f0; box-shadow: 0 4px 0 #9148f0; }
+.pointer { position: absolute; width: 16px; height: 20px; animation-name: hand; }
+.w1 { left: 12px; top: 54px; width: 126px; height: 52px; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="bar"></div>
+  <i class="win w1"></i>
+  <i class="pill"></i>
+  <i class="t" style="left: 34px"></i><i class="t" style="left: 56px"></i><i class="t on" style="left: 78px; top: 22px"></i><i class="t" style="left: 100px"></i>
+  <i class="file"></i>
+  <svg class="pointer" viewBox="0 0 24 30"><path d="M4 3L20 16 12.6 17.3 8.7 24Z" fill="#ffffff" stroke="#9148f0" stroke-width="2" stroke-linejoin="round"/></svg>
+</div>
+</body>
+</html>

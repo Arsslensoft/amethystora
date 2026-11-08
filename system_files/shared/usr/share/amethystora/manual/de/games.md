@@ -20,7 +20,7 @@ andere X11-Apps eingeben ([was Flatpak-Apps nicht dürfen](software.md#what-flat
 Steam und die Windows-Spiele, die es über Proton ausführt, zeichnen nur über X11, deshalb wird X11 für
 Steam und die Starter, die Sie hinzufügen, zurückgewährt, allein für Ihr Konto. Die Seite **Apps** der
 Sicherheits-App führt das zusammen mit jeder anderen Berechtigung auf
-([App-Berechtigungen](security.md#app-permissions)).
+([App-Berechtigungen](app-permissions.md)).
 
 In den **Eigenschaften** eines Spiels in Steam, unter **Startoptionen**:
 

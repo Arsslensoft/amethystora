@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Daylight: the same place at dawn, by day, at dusk and at night, as the sun and then the moon cross the sky */
+.art { --loop: 3.6s; --poster: 0.3; }
+@keyframes dawn { 0%, 6% { opacity: 1; } 20%, 88% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes day { 0%, 8% { opacity: 0; } 22%, 40% { opacity: 1; } 52%, 100% { opacity: 0; } }
+@keyframes dusk { 0%, 40% { opacity: 0; } 52%, 58% { opacity: 1; } 70%, 100% { opacity: 0; } }
+@keyframes night { 0%, 58% { opacity: 0; } 70%, 86% { opacity: 1; } 98%, 100% { opacity: 0; } }
+@keyframes sun { 0% { transform: rotate(-75deg); opacity: 1; } 58% { transform: rotate(75deg); opacity: 1; } 62%, 100% { transform: rotate(75deg); opacity: 0; } }
+@keyframes moon { 0%, 58% { transform: rotate(-60deg); opacity: 0; } 64% { opacity: 1; } 92% { transform: rotate(40deg); opacity: 1; } 98%, 100% { transform: rotate(40deg); opacity: 0; } }
+.sky { position: absolute; left: 8px; top: 6px; width: 134px; height: 100px; border-radius: 8px; overflow: hidden; }
+.sky > i.t { position: absolute; inset: 0; }
+.dawn { background: linear-gradient(#5a3a7a, #e8a0a8); animation-name: dawn; }
+.day { background: linear-gradient(#9a7ad8, #dcbcff); animation-name: day; }
+.dusk { background: linear-gradient(#3a2560, #d0708a); animation-name: dusk; }
+.night { background: linear-gradient(#0d0818, #2b1a48); animation-name: night; }
+.arc { position: absolute; left: 61px; top: 22px; width: 12px; height: 140px; transform-origin: 6px 100px; }
+.sunarc { animation-name: sun; animation-timing-function: linear; }
+.moonarc { animation-name: moon; animation-timing-function: linear; }
+.sun { position: absolute; left: 0; top: 0; width: 12px; height: 12px; border-radius: 50%; background: #ffe2a8; box-shadow: 0 0 10px #ffd27a; }
+.moon { position: absolute; left: 0; top: 0; width: 11px; height: 11px; border-radius: 50%; box-shadow: -3px 2px 0 0 #efe4ff; }
+.hill1 { position: absolute; left: -20px; top: 66px; width: 110px; height: 70px; border-radius: 50%; background: #1f1530; }
+.hill2 { position: absolute; left: 60px; top: 72px; width: 110px; height: 70px; border-radius: 50%; background: #2b2140; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="sky">
+    <i class="t dawn"></i><i class="t day"></i><i class="t dusk"></i><i class="t night"></i>
+    <div class="arc sunarc"><i class="sun"></i></div>
+    <div class="arc moonarc"><i class="moon"></i></div>
+    <i class="hill1"></i><i class="hill2"></i>
+  </div>
+</div>
+</body>
+</html>

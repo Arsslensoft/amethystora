@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* A layout for each window: focus moves to the chat written right to left, and the bar's keyboard layout follows the window */
+.art { --loop: 3.4s; --poster: 0.7; }
+@keyframes fa { 0%, 44% { border-color: #b37df9; } 52%, 92% { border-color: rgba(255, 255, 255, 0.16); } 100% { border-color: #b37df9; } }
+@keyframes fb { 0%, 44% { border-color: rgba(255, 255, 255, 0.16); } 52%, 92% { border-color: #b37df9; } 100% { border-color: rgba(255, 255, 255, 0.16); } }
+@keyframes ind { 0%, 46% { background: #b37df9; } 54%, 92% { background: #8ddba4; } 100% { background: #b37df9; } }
+@keyframes lineL { 0%, 46% { left: 3px; } 54%, 92% { left: 7px; } 100% { left: 3px; } }
+@keyframes hand { 0%, 20% { left: 40px; top: 80px; } 44%, 60% { left: 112px; top: 70px; } 86% { left: 112px; top: 70px; } 94% { left: 40px; top: 80px; } 100% { left: 40px; top: 80px; } }
+.bar { position: absolute; left: 0; top: 0; width: 150px; height: 18px; background: rgba(255, 255, 255, 0.07); }
+.ind { position: absolute; left: 116px; top: 3px; width: 18px; height: 12px; border-radius: 4px; animation-name: ind; }
+.ind i { position: absolute; top: 5px; width: 8px; height: 2px; border-radius: 1px; background: #1a1226; animation-name: lineL; }
+.wa { left: 6px; top: 26px; width: 66px; height: 80px; border-width: 2px; animation-name: fa; }
+.wb { left: 78px; top: 26px; width: 66px; height: 80px; border-width: 2px; animation-name: fb; }
+.wa .line { left: 8px; }
+.wb .line { right: 8px; }
+.pointer { position: absolute; width: 14px; height: 18px; animation-name: hand; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="bar"><i class="ind"><i></i></i></div>
+  <div class="win wa"><i class="line" style="top: 16px; width: 44px"></i><i class="line" style="top: 26px; width: 30px"></i><i class="line" style="top: 36px; width: 40px"></i></div>
+  <div class="win wb"><i class="line" style="top: 16px; width: 40px"></i><i class="line" style="top: 26px; width: 28px"></i><i class="line" style="top: 36px; width: 44px"></i></div>
+  <svg class="pointer" viewBox="0 0 24 30"><path d="M4 3L20 16 12.6 17.3 8.7 24Z" fill="#ffffff" stroke="#9148f0" stroke-width="2" stroke-linejoin="round"/></svg>
+</div>
+</body>
+</html>

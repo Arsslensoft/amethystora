@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Hold a key for accents: E held, a strip of its accented forms over the cursor, 2 picks the second, which is typed */
+.art { --loop: 3.4s; --poster: 0.5; }
+@keyframes e { 0%, 8% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } 12%, 60% { transform: translateY(2px); background: #b37df9; } 66%, 100% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } }
+@keyframes two { 0%, 48% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } 52%, 60% { transform: translateY(2px); background: #b37df9; } 66%, 100% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } }
+@keyframes strip { 0%, 24% { opacity: 0; transform: translateY(4px); } 32%, 60% { opacity: 1; transform: translateY(0); } 66%, 100% { opacity: 0; transform: translateY(0); } }
+@keyframes pick { 0%, 50% { background: transparent; } 54%, 100% { background: #b37df9; } }
+@keyframes typed { 0%, 62% { opacity: 0; } 68%, 90% { opacity: 1; } 98%, 100% { opacity: 0; } }
+@keyframes caret { 0%, 62% { left: 72px; } 68%, 90% { left: 80px; } 98%, 100% { left: 72px; } }
+.text { left: 8px; top: 8px; width: 134px; height: 54px; }
+.text .line { left: 10px; }
+.caret { position: absolute; top: 34px; width: 1.5px; height: 12px; background: #efe4ff; animation-name: caret; }
+.typed { position: absolute; left: 72px; top: 31px; font-size: 13px; font-weight: 700; color: #efe4ff; animation-name: typed; }
+.strip { left: 40px; top: 4px; width: 80px; height: 22px; display: flex; gap: 2px; padding: 3px; box-sizing: border-box; background: #33264d; animation-name: strip; }
+.strip span { flex: 1; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #efe4ff; }
+.strip span.on { animation-name: pick; }
+.ke { left: 36px; top: 76px; animation-name: e; }
+.k2 { left: 92px; top: 76px; animation-name: two; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="pane text"><i class="line" style="top: 12px; width: 96px"></i><i class="line" style="top: 30px; width: 54px; background: #efe4ff"></i></div>
+  <i class="caret"></i><span class="typed">è</span>
+  <div class="pane strip"><span>é</span><span class="on">è</span><span>ê</span><span>ë</span><span>ē</span></div>
+  <span class="cap ke">E</span><span class="cap k2">2</span>
+</div>
+</body>
+</html>

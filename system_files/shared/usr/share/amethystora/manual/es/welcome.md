@@ -16,8 +16,8 @@ un cambio de tema que lo repinta todo a la vez y un agente de IA que sabe cómo 
 
 Hay dos decisiones que conviene tomar el primer día. Si prefiere ventanas que floten y se superpongan,
 como en Windows y macOS, una notificación se las ofrece poco después de su primer inicio de sesión, y
-`ame desktop layout classic` cambia a ellas en cualquier momento ([Ventanas clásicas](desktop.md#classic-windows)).
-Si el equipo es para un niño, el [control parental](security.md#parental-controls) limita su cuenta a
+`ame desktop layout classic` cambia a ellas en cualquier momento ([Ventanas clásicas](tiling.md#classic-windows)).
+Si el equipo es para un niño, el [control parental](logins.md#parental-controls) limita su cuenta a
 las aplicaciones y los horarios que usted elija.
 
 ## Cómo funciona este manual

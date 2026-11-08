@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Adding a widget: a clock from the gallery is chosen and takes its place in the top bar */
+.art { --loop: 3.4s; --poster: 0.7; }
+@keyframes hand { 0%, 6% { transform: translate(30px, 30px); opacity: 0; } 14% { opacity: 1; } 30%, 36% { transform: translate(0, 0); opacity: 1; } 48%, 100% { transform: translate(0, 0); opacity: 0; } }
+@keyframes pick { 0%, 30% { transform: scale(1); background: rgba(255, 255, 255, 0.12); } 34% { transform: scale(0.94); background: rgba(179, 125, 249, 0.4); } 38%, 100% { transform: scale(1); background: rgba(255, 255, 255, 0.12); } }
+@keyframes fly { 0%, 36% { transform: translate(0, 0) scale(1); opacity: 0; } 38% { opacity: 1; transform: translate(0, 0) scale(1); } 60% { transform: translate(56px, -50px) scale(0.45); opacity: 1; } 64%, 100% { transform: translate(56px, -50px) scale(0.45); opacity: 0; } }
+@keyframes land { 0%, 60% { opacity: 0; transform: scale(0.6); } 66%, 88% { opacity: 1; transform: scale(1); } 96%, 100% { opacity: 0; transform: scale(1); } }
+@keyframes gap { 0%, 56% { width: 0; } 64%, 88% { width: 20px; } 96%, 100% { width: 0; } }
+@keyframes hands { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.bar { left: 6px; top: 6px; width: 138px; height: 16px; border-radius: 8px; display: flex; align-items: center; gap: 4px; padding: 0 6px; }
+.bar .s { width: 16px; height: 5px; border-radius: 3px; background: rgba(239, 228, 255, 0.4); flex: none; }
+.slot { flex: none; height: 12px; position: relative; animation-name: gap; }
+.mini { position: absolute; left: 4px; top: 0; width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid #dcbcff; box-sizing: border-box; animation-name: land; }
+.gallery { left: 18px; top: 34px; width: 114px; height: 66px; border-radius: 10px; display: flex; gap: 6px; padding: 8px; box-sizing: border-box; }
+.tile { flex: 1; border-radius: 7px; background: rgba(255, 255, 255, 0.12); position: relative; }
+.t1 { animation-name: pick; }
+.face { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; border: 2px solid #dcbcff; box-sizing: border-box; }
+.face::before { content: ""; position: absolute; left: 8px; top: 3px; width: 2px; height: 7px; background: #dcbcff; border-radius: 1px; }
+.face::after { content: ""; position: absolute; left: 8px; top: 8px; width: 6px; height: 2px; background: #dcbcff; border-radius: 1px; }
+.cal { position: absolute; left: 50%; top: 50%; width: 20px; height: 18px; margin: -9px 0 0 -10px; border-radius: 3px; border: 2px solid rgba(239, 228, 255, 0.5); border-top-width: 5px; box-sizing: border-box; }
+.meter { position: absolute; left: 7px; right: 7px; height: 4px; border-radius: 2px; background: rgba(239, 228, 255, 0.4); }
+.flying { position: absolute; left: 30px; top: 56px; width: 22px; height: 22px; border-radius: 50%; border: 2px solid #dcbcff; box-sizing: border-box; animation-name: fly; }
+.pointer { position: absolute; left: 36px; top: 64px; width: 14px; height: 18px; animation-name: hand; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="pane bar"><i class="s"></i><i class="s"></i><span style="flex: 1"></span><span class="slot"><i class="mini"></i></span><i class="s"></i><i class="s" style="width: 10px"></i></div>
+  <div class="pane gallery">
+    <div class="tile t1"><i class="face"></i></div>
+    <div class="tile"><i class="cal"></i></div>
+    <div class="tile"><i class="meter" style="top: 18px"></i><i class="meter" style="top: 26px; right: 14px"></i><i class="meter" style="top: 34px; right: 10px"></i></div>
+  </div>
+  <i class="flying"></i>
+  <svg class="pointer" viewBox="0 0 24 30"><path d="M4 3L20 16 12.6 17.3 8.7 24Z" fill="#ffffff" stroke="#9148f0" stroke-width="2" stroke-linejoin="round"/></svg>
+</div>
+</body>
+</html>

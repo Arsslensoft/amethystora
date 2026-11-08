@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* The reveal at login: the gem in the boot splash's sky swells, flies into the top bar as its logo, and the desktop shows through */
+.art { --loop: 3.4s; --poster: 0.4; }
+@keyframes gem { 0%, 10% { transform: translate(0, 0) scale(1); opacity: 1; } 20% { transform: translate(-2px, -2px) scale(1.15); opacity: 1; } 50%, 84% { transform: translate(-59px, -40px) scale(0.41); opacity: 1; } 90% { transform: translate(-59px, -40px) scale(0.41); opacity: 0; } 91% { transform: translate(0, 0) scale(1); opacity: 0; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
+@keyframes sky { 0%, 26% { opacity: 1; } 52%, 84% { opacity: 0; } 96%, 100% { opacity: 1; } }
+@keyframes bar { 0%, 36% { transform: translateY(-16px); } 56%, 88% { transform: translateY(0); } 96%, 100% { transform: translateY(-16px); } }
+.desk { position: absolute; left: 0; top: 0; width: 150px; height: 112px; background: linear-gradient(135deg, #3d2766, #1a1226 60%); }
+.bar { position: absolute; left: 0; top: 0; width: 150px; height: 16px; background: rgba(26, 18, 38, 0.8); animation-name: bar; }
+.bar .line { left: 62px; top: 6px; width: 26px; background: #efe4ff; }
+.w1 { left: 14px; top: 26px; width: 70px; height: 76px; }
+.w2 { left: 90px; top: 26px; width: 48px; height: 76px; }
+.sky { position: absolute; left: 0; top: 0; width: 150px; height: 112px; background: radial-gradient(circle at 50% 50%, #2a1748, #07040c 70%); animation-name: sky; }
+.gem { position: absolute; left: 64px; top: 43px; width: 22px; height: 26px; background: linear-gradient(160deg, #dcbcff, #9148f0); clip-path: polygon(50% 0, 100% 35%, 50% 100%, 0 35%); transform-origin: 0 0; animation-name: gem; }
+.halo { position: absolute; left: 50px; top: 31px; width: 50px; height: 50px; border-radius: 50%; background: radial-gradient(circle, rgba(179, 125, 249, 0.45), transparent 70%); animation-name: sky; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="desk"><i class="win w1"></i><i class="win w2"></i><div class="bar"><i class="line"></i></div></div>
+  <div class="sky"></div><i class="halo"></i>
+  <i class="gem"></i>
+</div>
+</body>
+</html>

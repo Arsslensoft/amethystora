@@ -177,7 +177,7 @@ headings() { sed '/^```/,/^```/d' "$1" | grep -cE '^#{2,6} '; }
 install -m 0644 "$(dirname "$0")/atspi.py" "${T}/"
 manual() { user_bus python3 "${T}/atspi.py" amethystora-manual "$@"; }
 user_bus systemd-run --user --unit=vmlab-manual-fr --collect --quiet --setenv=LC_ALL=fr_FR.UTF-8 --setenv=LANGUAGE=fr \
-    -- /usr/bin/amethystora-manual 'updates#rolling-back'
+    -- /usr/bin/amethystora-manual 'updates#what-is-waiting'
 manual wait 30 "La liaison avec le téléphone" >/dev/null 2>&1 && ok "the sidebar names a page not translated in French" ||
     not_ok "the sidebar names a page not translated in French" "$(manual text 2>&1 | head -40)"
 if [[ "$(headings "${MANUAL}/updates.md")" == "$(headings "${MANUAL}/fr/updates.md")" ]]; then

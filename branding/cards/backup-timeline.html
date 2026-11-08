@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* One timeline: hourly snapshots (small dots) and daily backups (squares) down one line; picking an earlier point brings a lost file back */
+.art { --loop: 3.4s; --poster: 0.55; }
+@keyframes pick { 0%, 12% { transform: translateY(0); } 40%, 84% { transform: translateY(54px); } 96%, 100% { transform: translateY(0); } }
+@keyframes back { 0%, 46% { opacity: 0; transform: translateX(-8px); } 58%, 84% { opacity: 1; transform: translateX(0); } 92%, 100% { opacity: 0; transform: translateX(0); } }
+@keyframes glow { 0%, 40% { background: rgba(255, 255, 255, 0.12); } 48%, 84% { background: rgba(179, 125, 249, 0.3); } 92%, 100% { background: rgba(255, 255, 255, 0.12); } }
+.rail { position: absolute; left: 23px; top: 12px; width: 2px; height: 88px; background: rgba(255, 255, 255, 0.2); }
+.h { position: absolute; left: 20px; width: 8px; height: 8px; border-radius: 50%; background: #dcbcff; }
+.d { position: absolute; left: 18px; width: 12px; height: 12px; border-radius: 3px; background: #9148f0; }
+.sel { position: absolute; left: 11px; top: 14px; width: 26px; height: 16px; border-radius: 8px; border: 2px solid #efe4ff; box-sizing: border-box; animation-name: pick; }
+.folder { left: 52px; top: 14px; width: 90px; height: 84px; animation-name: glow; }
+.row { position: absolute; left: 10px; display: flex; gap: 6px; align-items: center; }
+.ico { width: 12px; height: 14px; border-radius: 2px; background: #efe4ff; }
+.row .line { position: static; width: 46px; }
+.lost { animation-name: back; }
+.lost .ico { background: #8ddba4; }
+</style>
+</head>
+<body>
+<div class="art">
+  <i class="rail"></i>
+  <i class="h" style="top: 18px"></i><i class="h" style="top: 32px"></i><i class="h" style="top: 46px"></i>
+  <i class="d" style="top: 58px"></i><i class="h" style="top: 76px"></i><i class="d" style="top: 88px"></i>
+  <i class="sel"></i>
+  <div class="pane folder">
+    <div class="row" style="top: 10px"><i class="ico"></i><i class="line"></i></div>
+    <div class="row" style="top: 30px"><i class="ico"></i><i class="line" style="width: 38px"></i></div>
+    <div class="row lost" style="top: 50px"><i class="ico"></i><i class="line" style="width: 52px"></i></div>
+  </div>
+</div>
+</body>
+</html>

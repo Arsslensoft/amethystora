@@ -767,7 +767,7 @@ grep -q "emoji-test.txt" /usr/share/licenses/amethystora/NOTICE
 grep -q "CLDR" /usr/share/licenses/amethystora/NOTICE
 # The manual search answers without the agentic features (as nobody's account), from the manual alone
 MANUAL_HITS="$(/usr/libexec/amethystora-agent-tools manual-search -- rolling back)"
-jq -e 'length > 0 and all(.[]; .id | startswith("manual/")) and any(.[]; .id == "manual/updates#rolling-back")' \
+jq -e 'length > 0 and all(.[]; .id | startswith("manual/")) and any(.[]; .id == "manual/rolling-back")' \
     <<<"${MANUAL_HITS}" >/dev/null
 [[ "$(/usr/libexec/amethystora-agent-tools manual-search -- )" == "[]" ]]
 # The clipboard extension gives the search its read-only view, and says so in its first comment
@@ -1320,7 +1320,7 @@ grep -qx "Exec=amethystora-notes capture" /usr/share/applications/amethystora-no
 grep -q "amethystora-notes capture" /usr/bin/amethystora-notes
 test -s "${UI_EXTENSION}/modules/fuzzy/matcher.js"
 # Copying text out of a screenshot is Gradia's, reached through the screenshot module's Extract Text button
-# and Ctrl+E in GNOME's screenshot UI (manual: desktop.md#copying-text-from-the-screen): a change that drops
+# and Ctrl+E in GNOME's screenshot UI (manual: screenshots.md#copying-text-from-the-screen): a change that drops
 # the button, its key or the hand-off to Gradia must fail here instead of leaving the manual wrong
 grep -q "_('Extract Text')" "${UI_EXTENSION}/modules/screenshot/session.js"
 grep -q "Clutter.KEY_e" "${UI_EXTENSION}/modules/screenshot.js"
@@ -1975,10 +1975,10 @@ grep -rliE --exclude-dir=model "${PKG_NAMES}" /usr/bin/amethystora-pkg /usr/shar
     /usr/libexec/amethystora-gpu-check /usr/libexec/amethystora-update-alert /usr/libexec/amethystora-setup-manifest \
     /usr/libexec/amethystora-restore-setup /usr/share/amethystora/agents /usr/share/amethystora/just \
     /usr/share/amethystora/user-setup.hooks.d && false
-# A translation of that page (manual/<language>/software.md) may say the same, once, in its language.
-SOFTWARE_PAGES='^/usr/share/amethystora/manual/([a-z]{2,3}(-[A-Za-z0-9]{2,8})*/)?software\.md$'
+# A translation of that page (manual/<language>/containers.md) may say the same, once, in its language.
+SOFTWARE_PAGES='^/usr/share/amethystora/manual/([a-z]{2,3}(-[A-Za-z0-9]{2,8})*/)?containers\.md$'
 [[ -z "$(grep -rliE "${PKG_NAMES}" /usr/share/amethystora/manual | grep -vE "${SOFTWARE_PAGES}")" ]]
-for page in /usr/share/amethystora/manual/software.md /usr/share/amethystora/manual/*/software.md; do
+for page in /usr/share/amethystora/manual/containers.md /usr/share/amethystora/manual/*/containers.md; do
     [[ -e "${page}" ]] || continue
     [[ "$(grep -ciE "${PKG_NAMES}" "${page}")" -le 1 ]]
 done
@@ -2094,7 +2094,7 @@ for unit in amethystora-raid-check amethystora-raid-scrub; do
     grep -q "^ExecCondition=/usr/libexec/amethystora-raid present$" "/usr/lib/systemd/system/${unit}.service"
 done
 grep -q "^ExecCondition=/usr/libexec/amethystora-raid present-system$" /usr/lib/systemd/system/amethystora-raid-boot.service
-# An update that does not start goes back by itself (R7-52; manual: updates.md#if-an-update-does-not-start): off as the
+# An update that does not start goes back by itself (R7-52; manual: rolling-back.md#if-an-update-does-not-start): off as the
 # image ships, both units conditional on the owner's mark and never on a sealed image; the helper against stand-ins, GRUB's
 # script checked; the automatic update asks and Update now does not; it names no home folder, and its way back is by
 # id: by position the second entry can be the firmware settings
@@ -3019,7 +3019,7 @@ for recipe in pointer pointer-shake pointer-dense; do
 done
 grep -q "amethystora-pointer-halo" /usr/share/licenses/amethystora/NOTICE
 
-# The Soft sounds (manual: desktop.md#sounds): Amethystora's sound theme, chosen by the image, falling through to the
+# The Soft sounds (manual: sound.md#sounds): Amethystora's sound theme, chosen by the image, falling through to the
 # freedesktop theme for every other name; nine files of 48 kHz 16-bit mono PCM, none longer than two seconds or louder
 # than -1 dBFS, the error bell the same bytes as the error; the login and power-plug sounds played by the sounds module,
 # which has no setting and no timer that repeats; ame desktop sounds soft|off
@@ -3062,7 +3062,7 @@ grep -qx "Hidden=true" /etc/xdg/autostart/libcanberra-login-sound.desktop
 test ! -e /usr/share/gnome/autostart/libcanberra-login-sound.desktop
 [[ -z "$(grep -rlsx 'Exec=.*canberra-gtk-play.*desktop-login.*' /usr/share/gnome/autostart /etc/xdg/autostart)" ]]
 grep -q "branding/sounds.mjs" /usr/share/licenses/amethystora/NOTICE
-# Rounded screen corners (manual: themes.md#rounded-screen-corners): the bezel module's one key, off, its corners
+# Rounded screen corners (manual: styles.md#rounded-screen-corners): the bezel module's one key, off, its corners
 # taking no clicks; ame desktop screen-corners on|off
 BEZEL=org.gnome.shell.extensions.amethystora-ui.bezel
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${BEZEL}" | paste -sd ' ')" == "round-corners" ]]
@@ -3084,8 +3084,8 @@ grep -q 'theme-name amethystora-silent' /usr/share/amethystora/just/desktop.just
 GSETTINGS_BACKEND=memory ame desktop screen-corners on >/dev/null
 GSETTINGS_BACKEND=memory ame desktop sounds glass >/dev/null
 grep -q 'theme="amethystora-${choice}"' /usr/share/amethystora/just/desktop.just
-# Sound, screens and devices (round 6's sound group, plans/ui-ideas/spec-sound.md; manual: desktop.md#clear-voice,
-# #sound-presets, #pause-when-the-headphones-come-off, hardware.md#external-screens-brightness). The audio module's keys:
+# Sound, screens and devices (round 6's sound group, plans/ui-ideas/spec-sound.md; manual: sound.md#clear-voice,
+# #sound-presets, #pause-when-the-headphones-come-off, displays.md#external-screens-brightness). The audio module's keys:
 # pausing on (R6-03), Clear voice and the presets off (R6-01, R6-02), the presets by output empty; the brightness
 # module's one key off (R6-05). Both after quick settings, whose menus and grid they add to.
 AUDIO=org.gnome.shell.extensions.amethystora-ui.audio
@@ -3166,8 +3166,8 @@ grep -q "report apps screen-brightness info" /usr/libexec/amethystora-security-s
 # Every device's battery (R6-26): the power module's third switch, UPower's signals, a notice once at 15%
 grep -q "connectSignal('DeviceAdded'" "${UI_EXTENSION}/modules/power/devices.js"
 [[ -z "$(grep -E 'timeout_add|setInterval|setTimeout' "${UI_EXTENSION}/modules/power/devices.js")" ]]
-# Seeing and reading, touch and pen (plans/beyond/spec-r4-access.md; manual: themes.md#seeing-and-reading,
-# desktop.md#touch-and-pen): the access and touch modules' keys, everything off for a new account, their three shortcuts
+# Seeing and reading, touch and pen (plans/beyond/spec-r4-access.md; manual: comfort.md#seeing-and-reading,
+# touch.md): the access and touch modules' keys, everything off for a new account, their three shortcuts
 # Super+Ctrl+R, S and P (the board's Super+Alt+R is the tiling's and Super+Alt+S GNOME's screen reader), both modules
 # after bezel and before focus. The filter is an effect with a Cogl snippet, the screenshots it sets aside are GNOME's
 # own calls; reading aloud runs only spd-say with "--" before the text, which the image has as Orca's; the pen's tools
@@ -3246,8 +3246,8 @@ GSETTINGS_BACKEND=memory ame desktop touch mode tablet >/dev/null 2>&1 && false
 GSETTINGS_BACKEND=memory ame desktop touch pen-tools area area >/dev/null 2>&1 && false
 GSETTINGS_BACKEND=memory ame desktop access filter deutan >/dev/null
 GSETTINGS_BACKEND=memory ame desktop touch pen-tools area back >/dev/null
-# The "later" group of rounds 5 and 6 (plans/ui-ideas/spec-later.md; manual: desktop.md#dictation,
-# desktop.md#live-captions, desktop.md#finding-things, themes.md#click-with-the-keyboard, security.md#guest-login),
+# The "later" group of rounds 5 and 6 (plans/ui-ideas/spec-later.md; manual: sound.md#dictation,
+# sound.md#live-captions, search.md, comfort.md#click-with-the-keyboard, logins.md#guest-login),
 # each offered and off. Captions in ten languages, each model pinned; dictation on the captions' recognizer, its
 # shortcut bound only while it is on; Firefox's bookmarks from a copy that never reads a visit; Notes only on the
 # session bus while unlocked; files by meaning from localsearch's text, a user timer that nothing enables, on mains
@@ -3316,7 +3316,7 @@ for profile in local sssd winbind; do
 done
 [[ -z "$(grep -n amethystora-guest /etc/authselect/system-auth /etc/authselect/password-auth)" ]]
 grep -q '^guest-login ACTION="":' /usr/share/amethystora/just/security.just
-# The shelf (plans/beyond/spec-r4-shelf.md, R4-08; manual: desktop.md#the-shelf): one key, off for a new account, the
+# The shelf (plans/beyond/spec-r4-shelf.md, R4-08; manual: clipboard.md#the-shelf): one key, off for a new account, the
 # module beside the Shelf app (the apps' loop above); the shell starts nothing but the app, with the drop on its standard
 # input and never on its command line, and shows nothing as markup; the app offers what is dragged out as a copy only
 SHELF=org.gnome.shell.extensions.amethystora-ui.shelf
@@ -3346,7 +3346,7 @@ grep -q "^NoDisplay=true" /usr/share/applications/amethystora-shelf.desktop
 grep -q '^shelf STATE="":' /usr/share/amethystora/just/desktop.just
 GSETTINGS_BACKEND=memory ame desktop shelf dock >/dev/null 2>&1 && false
 GSETTINGS_BACKEND=memory ame desktop shelf edge >/dev/null
-# Desks (R4-09; manual: desktop.md#desks): off for a new account and learning once on; the module, its files and recipe;
+# Desks (R4-09; manual: desks.md): off for a new account and learning once on; the module, its files and recipe;
 # it starts nothing, shows nothing as markup, and keeps its desks in the account's own folder
 DESKS=org.gnome.shell.extensions.amethystora-ui.desks
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${DESKS}" | sort | paste -sd ' ')" == "desk-windows desks desks-learn" ]]
@@ -3357,7 +3357,7 @@ for file in modules/desks.js modules/desks/apply.js modules/desks/card.js module
     modules/desks/state.js modules/desks/layouts.js modules/desks/layoutsdata.js stylesheets/desks.css; do
     test -s "${UI_EXTENSION}/${file}"
 done
-# Screens come back as you left them (R7-46; manual: desktop.md#screens-come-back-as-you-left-them): on; what it keeps has
+# Screens come back as you left them (R7-46; manual: desks.md#screens-come-back-as-you-left-them): on; what it keeps has
 # no GNOME in it, so node checks it (test-desk-layouts.mjs, with the saved sets); it blocks nothing, and it never reads a
 # window's title, starts an app or closes one
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${DESKS}" desk-windows)" == true ]]
@@ -3386,7 +3386,7 @@ grep -q '^desks \*ARGS:' /usr/share/amethystora/just/desktop.just
     ame desktop desks rename 000000000000 Office >/dev/null 2>&1 && false
     rm -rf "${HOME}"
 )
-# First start (manual: desktop.md#the-reveal-at-login, #tips, #the-app-grid, #gestures-and-keys). The reveal at login, a
+# First start (manual: login.md#the-reveal-at-login, #tips, #the-app-grid, #gestures-and-keys). The reveal at login, a
 # key of the transitions extension, its own file, imported; ame desktop transition reveal on|off
 TRANSITIONS_EXTENSION=/usr/share/gnome-shell/extensions/amethystora-transitions@arsslensoft.github.io
 # A field named as a method hides it: the reveal after every theme or wallpaper change threw once one did
@@ -3511,8 +3511,8 @@ while read -r card; do
     [[ "$(head -c 4 "${MEDIA}/${card}.webm" | od -An -tx1 | tr -d ' \n')" == 1a45dfa3 ]]
     (($(stat -c %s "${MEDIA}/${card}.webm") <= 300 * 1024 && $(stat -c %s "${MEDIA}/${card}.png") <= 40 * 1024))
 done < <(grep -rhoE '\]\(media/[a-z0-9-]+\.webm\)' /usr/share/amethystora/manual | sed 's/^](media\///; s/\.webm)$//' | sort -u)
-[[ "$(grep -rhoE '\]\(media/[a-z0-9-]+\.webm\)' /usr/share/amethystora/manual/desktop.md | sort -u | wc -l)" -eq 8 ]]
-# The lock screen's clock and cards (manual: desktop.md#the-lock-screen), in GNOME Shell's own stylesheets: read with
+[[ "$(grep -rhoE '\]\(media/[a-z0-9-]+\.webm\)' /usr/share/amethystora/manual/desktop.md | sort -u | wc -l)" -ge 8 ]]
+# The lock screen's clock and cards (manual: login.md#the-lock-screen), in GNOME Shell's own stylesheets: read with
 # GIO, since gresource went with glib2-devel. Once each, the clock in Quicksand at its size, which is installed.
 python3 -I - <<'EOF'
 import gi
@@ -3531,7 +3531,7 @@ for variant in ("dark", "light"):
 EOF
 test -s /usr/share/fonts/amethystora/quicksand/QuicksandVariable.ttf
 
-# The motion (manual: desktop.md#motion): the droplet and the workspace switch, two keys with their defaults, started
+# The motion (manual: windows.md#motion): the droplet and the workspace switch, two keys with their defaults, started
 # after the tiling; GNOME's own handlers blocked and its methods called, never replaced; no timer; the droplet drawn
 # through a Cogl pipeline of the window's own texture; and workspaces named after their apps, a key of the workspaces
 MOTION=org.gnome.shell.extensions.amethystora-ui.motion
@@ -3549,7 +3549,7 @@ grep -qE "gi://|resource://" "${UI_EXTENSION}/modules/motion/path.js" && false
 for recipe in minimize workspace-switch space-names sets; do
     grep -q "^${recipe} [A-Z]*=\"\":" /usr/share/amethystora/just/desktop.just
 done
-# Saved sets (manual: desktop.md#saved-sets): a switch of the workspaces', on by default. The file's shape and the
+# Saved sets (manual: workspaces.md#saved-sets): a switch of the workspaces', on by default. The file's shape and the
 # strip's arithmetic have no GNOME in them, so node checks them against tampered files (test-sets.mjs); a set starts
 # apps only through GNOME's list of apps, never a command, and shows names as text; the tiling, places and the motion
 # ask the workspaces about a set's windows rather than placing them themselves.
@@ -3618,7 +3618,7 @@ if (!ok) process.exit(1);
 "
 rm -f "${MOTION_PATH}"
 
-# The desktop styles (manual: themes.md#styles). The seven are the same in the theme library, the schema, the style
+# The desktop styles (manual: styles.md#styles). The seven are the same in the theme library, the schema, the style
 # module, the shell's stylesheet and the applications' files; floating is the default before a theme is applied
 STYLE_JS="${UI_EXTENSION}/modules/style.js"
 STYLE_SCHEMA="${UI_EXTENSION}/schemas/org.gnome.shell.extensions.amethystora-ui.style.gschema.xml"
@@ -3949,7 +3949,7 @@ done
 # change of Fedora's fails the build rather than leaving the manual wrong
 test -e /usr/lib/systemd/system/rpm-ostree-countme.timer
 grep -qx 'uri=http://fedoraproject.org/static/hotspot.txt' /usr/lib/NetworkManager/conf.d/20-connectivity-fedora.conf
-grep -q 'fedoraproject.org/static/hotspot.txt' /usr/share/amethystora/manual/security.md
+grep -q 'fedoraproject.org/static/hotspot.txt' /usr/share/amethystora/manual/what-leaves.md
 grep -qx 'enabled=false' /usr/share/amethystora/hardening/60-amethystora-connectivity.conf
 grep -qx 'HOMEBREW_NO_ANALYTICS=1' /etc/homebrew/brew.env
 grep -q "^sends:" /usr/share/amethystora/just/security.just
@@ -5220,8 +5220,8 @@ grep -q 'LockLayering' /usr/share/amethystora/just/update.just && false
 # A DisplayLink dock's arrival starts the driver check, after the service that tries to load the dock's driver
 grep -qE 'ATTR\{idVendor\}=="17e9".*ENV\{SYSTEMD_WANTS\}\+="amethystora-driver-check\.service"' /usr/lib/udev/rules.d/99-amethystora-displaylink.rules
 grep -qx 'After=displaylink.service' /usr/lib/systemd/system/amethystora-driver-check.service
-"${NODE[@]}" /ctx/build_files/shared/check-manual.js /usr/share/amethystora/manual --links hardware#docks-and-displays \
-    hardware#secure-boot troubleshooting#a-displaylink-dock-shows-nothing
+"${NODE[@]}" /ctx/build_files/shared/check-manual.js /usr/share/amethystora/manual --links displays \
+    hardware#secure-boot common-problems#a-displaylink-dock-shows-nothing
 
 # Make sure this garbage never makes it to an image
 test -f /usr/lib/systemd/system/flatpak-add-fedora-repos.service && false
@@ -5375,7 +5375,7 @@ grep -q "potion-base-8M" /usr/share/licenses/amethystora/NOTICE
 # Every passage's file is there, and nothing in the index names the duress feature
 jq -r 'select(.path != null) | .path' "${KNOWLEDGE}/index.jsonl" | sort -u | while read -r path; do test -e "${path}"; done
 grep -qi duress "${KNOWLEDGE}/index.jsonl" && false
-HOME="${AGENT_HOME}" XDG_CONFIG_HOME="" "${AGENT_TOOLS}" search "roll back an update" | grep -q "manual/updates#rolling-back"
+HOME="${AGENT_HOME}" XDG_CONFIG_HOME="" "${AGENT_TOOLS}" search "roll back an update" | grep -q "manual/rolling-back"
 HOME="${AGENT_HOME}" XDG_CONFIG_HOME="" "${AGENT_TOOLS}" read "ame/security/dns" | grep -q "ame security dns"
 # The golden questions find their passage in the first three, on this image's own index, words and meaning fused
 HOME="${AGENT_HOME}" XDG_CONFIG_HOME="" "${AGENT_TOOLS}" eval /ctx/apps/agent-tools/tests/golden.tsv --dir "${KNOWLEDGE}" --min 0.9

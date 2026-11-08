@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* A dock: the laptop's cable goes into the dock and both screens light up; unplugged, they go dark */
+.art { --loop: 3.2s; --poster: 0.62; }
+@keyframes plug { 0%, 10% { width: 6px; } 26%, 84% { width: 24px; } 92%, 100% { width: 6px; } }
+@keyframes lit1 { 0%, 30% { opacity: 0; } 40%, 82% { opacity: 1; } 90%, 100% { opacity: 0; } }
+@keyframes lit2 { 0%, 40% { opacity: 0; } 50%, 82% { opacity: 1; } 90%, 100% { opacity: 0; } }
+@keyframes light { 0%, 24% { background: #4a4058; } 28%, 84% { background: #8ddba4; } 90%, 100% { background: #4a4058; } }
+.mon { position: absolute; top: 6px; width: 60px; height: 40px; border-radius: 4px; background: #0f0a16; border: 2px solid rgba(255, 255, 255, 0.2); box-sizing: border-box; }
+.mon::after { content: ""; position: absolute; left: 24px; top: 40px; width: 8px; height: 8px; background: rgba(255, 255, 255, 0.2); }
+.glow { position: absolute; inset: 0; border-radius: 2px; background: linear-gradient(135deg, #5b3a8f, #2b1f45); }
+.glow .win { left: 8px; top: 7px; width: 30px; height: 20px; }
+.m1 { left: 10px; } .m1 .glow { animation-name: lit1; }
+.m2 { left: 80px; } .m2 .glow { animation-name: lit2; }
+.lap { position: absolute; left: 10px; top: 70px; width: 42px; height: 28px; border-radius: 3px; background: linear-gradient(135deg, #5b3a8f, #2b1f45); border: 2px solid rgba(255, 255, 255, 0.25); box-sizing: border-box; }
+.lap::after { content: ""; position: absolute; left: -6px; top: 26px; width: 50px; height: 5px; border-radius: 0 0 3px 3px; background: rgba(255, 255, 255, 0.25); }
+.cable { position: absolute; left: 54px; top: 84px; height: 3px; border-radius: 2px; background: #dcbcff; animation-name: plug; }
+.dock { position: absolute; left: 80px; top: 76px; width: 50px; height: 18px; border-radius: 5px; background: #2b2140; border: 1px solid rgba(255, 255, 255, 0.2); box-sizing: border-box; }
+.dock i { position: absolute; left: 36px; top: 6px; width: 6px; height: 4px; border-radius: 2px; animation-name: light; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="mon m1"><i class="glow"><i class="win"></i></i></div>
+  <div class="mon m2"><i class="glow"><i class="win"></i></i></div>
+  <div class="lap"></div>
+  <i class="cable"></i>
+  <div class="dock"><i></i></div>
+</div>
+</body>
+</html>

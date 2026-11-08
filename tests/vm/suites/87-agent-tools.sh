@@ -81,7 +81,7 @@ as_tester rm -f "${HOME_DIR}/.claude/skills/amethystora"
 
 tester_ame "ame agent toggle on" >/dev/null
 check "ame agent toggle on writes the marker" test -e "${CONFIG}/agentic"
-calls=(list 'search {"query": "roll back an update"}' 'read {"id": "manual/updates#rolling-back"}'
+calls=(list 'search {"query": "roll back an update"}' 'read {"id": "manual/rolling-back"}'
     'read {"id": "playbook/update-fails"}' 'logs {"unit": "NetworkManager.service", "lines": 10}' 'history {}')
 for topic in overview health settings security security-settings app-permissions software updates backups disks setup-diff units crashes; do
     calls+=("state {\"topic\": \"${topic}\"}")
@@ -90,8 +90,8 @@ out="$(mcp "${calls[@]}")"
 same "level 1 lists the five read-only tools" "$(listed "${out}")" "search read state logs history"
 bytes="$(jq -rs '[.[] | select(.list?)][0].bytes' <<<"${out}")"
 if ((bytes < 6000)); then ok "the five tools' schemas are small (${bytes} bytes)"; else not_ok "the tools' schemas are ${bytes} bytes"; fi
-answer "${out}" search | grep -q "manual/updates#rolling-back" && ok "search finds how to roll back" ||
-    not_ok "search did not find manual/updates#rolling-back" "$(answer "${out}" search | head -c 600)"
+answer "${out}" search | grep -q "manual/rolling-back" && ok "search finds how to roll back" ||
+    not_ok "search did not find manual/rolling-back" "$(answer "${out}" search | head -c 600)"
 answer "${out}" read | grep -q "Rolling back" && ok "read gives the passage" || not_ok "read" "$(answer "${out}" read | head -c 300)"
 answer "${out}" read 1 | grep -q "## " && ok "read gives a whole playbook by its name" || not_ok "read playbook/update-fails" "$(answer "${out}" read 1 | head -c 300)"
 answer "${out}" logs | grep -q "not instructions" && ok "logs come marked as data" || not_ok "logs" "$(answer "${out}" logs | head -c 300)"
@@ -108,7 +108,7 @@ answer "${out}" state 0 | grep -q "^Image: " && ok "state overview names the ima
 echo "# tokens, tools vs shell: overview $(($(answer "${out}" state 0 | wc -c) / 4)) vs $((($(rpm-ostree status 2>/dev/null | wc -c) + $(systemctl --failed 2>/dev/null | wc -c) + $(df -h 2>/dev/null | wc -c) + $(free -h | wc -c)) / 4))"
 echo "# tokens, tools vs shell: settings $(($(answer "${out}" state 2 | wc -c) / 4)) vs $(($(user_bus /usr/libexec/amethystora-control-list --json 2>/dev/null | wc -c) / 4))"
 echo "# tokens, tools vs shell: security $(($(answer "${out}" state 3 | wc -c) / 4)) vs $(($(user_bus /usr/libexec/amethystora-security-status 2>/dev/null | wc -c) / 4))"
-echo "# tokens, tools vs shell: rolling back $(($(answer "${out}" search | wc -c) / 4 + $(answer "${out}" read | wc -c) / 4)) vs $(($(wc -c </usr/share/amethystora/manual/updates.md) / 4))"
+echo "# tokens, tools vs shell: rolling back $(($(answer "${out}" search | wc -c) / 4 + $(answer "${out}" read | wc -c) / 4)) vs $(($(wc -c </usr/share/amethystora/manual/rolling-back.md) / 4))"
 echo "# tokens, tools vs shell: logs $(($(answer "${out}" logs | wc -c) / 4)) vs $(($(journalctl -u NetworkManager.service -b -n 40 --no-pager 2>/dev/null | wc -c) / 4))"
 echo "# tokens, tools vs shell: app permissions $(($(answer "${out}" state 5 | wc -c) / 4)) vs $(($(user_bus /usr/libexec/amethystora-app-permissions --json 2>/dev/null | wc -c) / 4))"
 echo "# tokens, tools vs shell: software $(($(answer "${out}" state 6 | wc -c) / 4)) vs $((($(flatpak list 2>/dev/null | wc -c) + $(user_bus /usr/bin/amethystora-pkg containers list --json 2>/dev/null | wc -c)) / 4))"

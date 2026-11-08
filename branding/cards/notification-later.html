@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Later: a banner comes in, Later is chosen, the banner goes into the pill, which keeps a clock; at its time it comes back */
+.art { --loop: 3.6s; --poster: 0.3; }
+.bar { position: absolute; left: 0; top: 0; width: 150px; height: 22px; background: rgba(255, 255, 255, 0.07); }
+@keyframes banner { 0% { opacity: 0; transform: translateY(-8px); } 8%, 36% { opacity: 1; transform: translateY(0) scale(1); } 48%, 72% { opacity: 0; transform: translateY(-30px) scale(0.25); } 82%, 90% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-8px); } }
+@keyframes press { 0%, 22% { background: rgba(255, 255, 255, 0.18); } 26%, 38% { background: #b37df9; } 46%, 100% { background: rgba(255, 255, 255, 0.18); } }
+@keyframes pill { 0%, 44% { left: 57px; width: 36px; background: rgba(255, 255, 255, 0.16); } 50%, 74% { left: 50px; width: 50px; background: #3b2a5c; } 80%, 100% { left: 57px; width: 36px; background: rgba(255, 255, 255, 0.16); } }
+@keyframes inpill { 0%, 46% { opacity: 0; } 52%, 72% { opacity: 1; } 78%, 100% { opacity: 0; } }
+@keyframes hand { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+.pill { position: absolute; top: 4px; height: 14px; border-radius: 7px; animation-name: pill; }
+.clock { position: absolute; left: 56px; top: 6px; width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid #dcbcff; box-sizing: border-box; animation-name: inpill; }
+.clock::after { content: ""; position: absolute; left: 3px; top: 1px; width: 1.5px; height: 3.5px; background: #dcbcff; transform-origin: 50% 100%; }
+.pl { left: 70px; top: 9px; width: 24px; background: #efe4ff; animation-name: inpill; }
+.banner { left: 22px; top: 30px; width: 106px; height: 42px; transform-origin: 50% 0; animation-name: banner; }
+.banner .sq { position: absolute; left: 8px; top: 8px; background: #e8c06a; }
+.banner .line { left: 28px; }
+.btn { position: absolute; top: 28px; width: 34px; height: 9px; border-radius: 4px; background: rgba(255, 255, 255, 0.18); }
+.btn.later { animation-name: press; }
+.w1 { left: 12px; top: 80px; width: 126px; height: 40px; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="bar"></div>
+  <i class="win w1"></i>
+  <i class="pill"></i><i class="clock"></i><i class="line pl"></i>
+  <div class="pane banner">
+    <i class="sq"></i><i class="line" style="top: 9px; width: 56px; background: #efe4ff"></i><i class="line" style="top: 17px; width: 40px"></i>
+    <i class="btn" style="left: 28px"></i><i class="btn later" style="left: 66px"></i>
+  </div>
+</div>
+</body>
+</html>

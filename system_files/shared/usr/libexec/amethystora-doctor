@@ -63,7 +63,7 @@ if wanted update-staged && jq -e '[.deployments[]? | select(.staged == true)] | 
 fi
 if wanted older-deployment && jq -e '(.deployments // []) as $d | ($d | map(select(.staged != true)) | first) as $default
         | ($d | any(.booted == true)) and ($default.booted != true)' <<<"${DEPLOYMENTS}" >/dev/null 2>&1; then
-    found older-deployment warning manual/updates#rolling-back \
+    found older-deployment warning manual/rolling-back \
         "Started from an older deployment than the default; sudo bootc rollback keeps it, the next restart goes back"
 fi
 if wanted layered-packages; then
@@ -138,7 +138,7 @@ if wanted backups; then
 fi
 if wanted pools; then
     pools="$(t /usr/libexec/amethystora-raid status --json | jq -r '[.pools[]? | select(.state != "ok") | "\(.name) (\(.problems | join(", ")))"] | join("; ")' 2>/dev/null)"
-    [[ -z "${pools}" ]] || found pools problem manual/hardware#when-a-disk-fails "Pools of disks that need attention: ${pools}"
+    [[ -z "${pools}" ]] || found pools problem manual/disks#when-a-disk-fails "Pools of disks that need attention: ${pools}"
 fi
 
 # --- the clock, Secure Boot, the driver, firmware -------------------------------------------------------------

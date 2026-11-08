@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* The shelf: a file dragged to the right edge lights it, and let go there it rests on the shelf */
+.art { --loop: 3.4s; --poster: 0.36; }
+@keyframes drag { 0%, 8% { left: 30px; top: 34px; } 42% { left: 128px; top: 42px; } 50% { left: 124px; top: 20px; } 82% { left: 124px; top: 20px; opacity: 1; } 90%, 92% { left: 124px; top: 20px; opacity: 0; } 93% { left: 30px; top: 34px; opacity: 0; } 100% { left: 30px; top: 34px; opacity: 1; } }
+@keyframes hand { 0%, 8% { left: 36px; top: 42px; opacity: 1; } 42% { left: 134px; top: 50px; opacity: 1; } 50%, 90% { left: 134px; top: 50px; opacity: 0; } 98%, 100% { left: 36px; top: 42px; opacity: 1; } }
+@keyframes glow { 0%, 16% { opacity: 0; } 34%, 44% { opacity: 1; } 50%, 100% { opacity: 0; } }
+@keyframes shelf { 0%, 42% { opacity: 0; transform: translateX(10px); } 50%, 82% { opacity: 1; transform: translateX(0); } 90%, 100% { opacity: 0; transform: translateX(0); } }
+.w { left: 8px; top: 10px; width: 92px; height: 70px; }
+.w .line { left: 30px; }
+.glow { position: absolute; right: 0; top: 0; width: 12px; height: 112px; background: linear-gradient(to left, rgba(179, 125, 249, 0.9), rgba(179, 125, 249, 0)); animation-name: glow; }
+.shelf { left: 116px; top: 8px; width: 28px; height: 96px; animation-name: shelf; }
+.file { position: absolute; width: 12px; height: 15px; border-radius: 2px; background: #efe4ff; animation-name: drag; z-index: 1; }
+.file::after { content: ""; position: absolute; right: 0; top: 0; width: 4px; height: 4px; background: #b37df9; border-radius: 0 2px 0 2px; }
+.pointer { position: absolute; width: 16px; height: 20px; animation-name: hand; z-index: 2; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="win w"><i class="line" style="top: 26px; width: 50px"></i><i class="line" style="top: 52px; width: 40px"></i></div>
+  <div class="pane shelf"></div>
+  <i class="glow"></i>
+  <i class="file"></i>
+  <svg class="pointer" viewBox="0 0 24 30"><path d="M4 3L20 16 12.6 17.3 8.7 24Z" fill="#ffffff" stroke="#9148f0" stroke-width="2" stroke-linejoin="round"/></svg>
+</div>
+</body>
+</html>

@@ -2254,7 +2254,7 @@ impl Control {
                     vec![
                         Self::command_block(&format!("sudo bootc switch --enforce-container-sigpolicy {trusted}:stable")).upcast(),
                         Self::command_block("sudo cp /usr/etc/containers/policy.json /etc/containers/policy.json").upcast(),
-                        Self::actions(vec![self.link_button(&t!("Why, in the manual"), "book", |_| process::manual("developer#an-image-of-your-own")).upcast()]).upcast(),
+                        Self::actions(vec![self.link_button(&t!("Why, in the manual"), "book", |_| process::manual("own-image")).upcast()]).upcast(),
                     ],
                 )
                 .upcast(),

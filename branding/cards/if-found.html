@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* If it's lost: the lock screen, and at its bottom one line of the owner's appears, with a phone beside it */
+.art { --loop: 3s; --poster: 0.7; }
+@keyframes write { 0%, 20% { width: 0; } 60%, 90% { width: 78px; opacity: 1; } 97%, 100% { width: 78px; opacity: 0; } }
+@keyframes phone { 0%, 14% { opacity: 0; transform: scale(0.6); } 22%, 90% { opacity: 1; transform: scale(1); } 97%, 100% { opacity: 0; transform: scale(1); } }
+@keyframes caret { 0%, 20% { left: 38px; opacity: 1; } 60% { left: 116px; opacity: 1; } 64%, 100% { left: 116px; opacity: 0; } }
+.screen { left: 8px; top: 6px; width: 134px; height: 100px; overflow: hidden; background: linear-gradient(160deg, #3a2560, #140e1e); }
+.clock { position: absolute; left: 37px; top: 14px; width: 60px; height: 14px; border-radius: 7px; background: rgba(239, 228, 255, 0.55); }
+.date { position: absolute; left: 47px; top: 34px; width: 40px; height: 5px; border-radius: 3px; background: rgba(239, 228, 255, 0.3); }
+.lock { position: absolute; left: 60px; top: 50px; width: 14px; height: 11px; border-radius: 3px; background: #dcbcff; }
+.lock::before { content: ""; position: absolute; left: 3px; top: -7px; width: 8px; height: 9px; box-sizing: border-box; border: 2px solid #dcbcff; border-bottom: 0; border-radius: 5px 5px 0 0; }
+.phone { position: absolute; left: 22px; top: 80px; width: 8px; height: 13px; border-radius: 2px; border: 2px solid #b37df9; box-sizing: border-box; animation-name: phone; }
+.msg { position: absolute; left: 36px; top: 84px; height: 5px; border-radius: 3px; background: #efe4ff; animation-name: write; animation-timing-function: linear; }
+.caret { position: absolute; top: 81px; width: 1.5px; height: 11px; background: #b37df9; animation-name: caret; animation-timing-function: linear; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="pane screen"><i class="clock"></i><i class="date"></i><i class="lock"></i><i class="phone"></i><i class="msg"></i><i class="caret"></i></div>
+</div>
+</body>
+</html>

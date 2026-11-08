@@ -212,7 +212,7 @@ impl Parts {
         sidebar.body.append(&elsewhere);
 
         sidebar.foot.set_spacing(12);
-        let manual = ui::button(&t!("Backups in the manual"), Some(icon("book", 18).mirror_in_rtl()), &["link", "quiet"], || process::manual("security#backups"));
+        let manual = ui::button(&t!("Backups in the manual"), Some(icon("book", 18).mirror_in_rtl()), &["link", "quiet"], || process::manual("backups"));
         manual.set_halign(gtk::Align::Start);
         sidebar.foot.append(&manual);
         let terminal = frame::terminal(&t!("Also in a terminal:"), "ame backup");

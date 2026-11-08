@@ -96,7 +96,7 @@ Read the `amethystora` skill too: it says what may be changed on this system and
    fetches the app again and keeps its data; propose it. A file of the system's own (`/sysroot/ostree`,
    `/boot`) means something with administrator rights changed the system, and the machine cannot vouch
    for its own repair: the fix is backing up and reinstalling from the installer
-   (`troubleshooting.md#starting-over`), the user's to decide. Never try to restore such a file.
+   (`starting-over.md#starting-over`), the user's to decide. Never try to restore such a file.
 10. **A deeper backtrace**, only when the recorded one is not enough. The dx image has gdb
    (`command -v gdb`); on the base image it is not there, so this installs something: ask first.
    `brew install gdb`, or a toolbox container

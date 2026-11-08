@@ -73,7 +73,7 @@ went_back() {
         --action=update="$(gettext "Open System Updates")" "$(gettext "Back on the system before the update")" \
         "$(gettext "The update did not start properly, so your computer went back by itself. Your files and apps were not touched. Automatic updates, apps included, wait for a newer system. System Updates can still try this one if you ask.")")"
     case "${action}" in
-        default | open) exec /usr/bin/amethystora-manual updates#if-an-update-does-not-start ;;
+        default | open) exec /usr/bin/amethystora-manual rolling-back#if-an-update-does-not-start ;;
         update) exec /usr/bin/amethystora-update ;;
     esac
 }

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Installing from Bazaar: the Install button is pressed, it fills, and the app's icon drops into the app grid */
+.art { --loop: 3.2s; --poster: 0.5; }
+@keyframes hand { 0%, 6% { left: 120px; top: 70px; opacity: 0; } 12% { left: 120px; top: 70px; opacity: 1; } 24%, 30% { left: 98px; top: 34px; opacity: 1; } 38%, 100% { left: 98px; top: 34px; opacity: 0; } }
+@keyframes press { 0%, 26% { transform: scale(1); } 28% { transform: scale(0.92); } 31%, 100% { transform: scale(1); } }
+@keyframes fill { 0%, 30% { width: 0; } 58% { width: 40px; } 62%, 100% { width: 40px; } }
+@keyframes btn { 0%, 30% { background: #b37df9; } 32%, 58% { background: rgba(255, 255, 255, 0.14); } 62%, 90% { background: #8ddba4; } 98%, 100% { background: #b37df9; } }
+@keyframes drop { 0%, 60% { transform: translate(0, 0) scale(1); opacity: 0; } 62% { transform: translate(0, 0) scale(1); opacity: 1; } 76%, 90% { transform: translate(76px, 39px) scale(0.6); opacity: 1; } 98%, 100% { transform: translate(76px, 39px) scale(0.6); opacity: 0; } }
+@keyframes slot { 0%, 74% { border-color: rgba(255, 255, 255, 0.3); } 78%, 90% { border-color: #b37df9; } 98%, 100% { border-color: rgba(255, 255, 255, 0.3); } }
+.page { left: 10px; top: 8px; width: 130px; height: 52px; }
+.icon { position: absolute; left: 10px; top: 13px; width: 30px; height: 30px; border-radius: 8px; background: linear-gradient(135deg, #6fd3e0, #9148f0); }
+.page .line { left: 48px; top: 16px; width: 30px; }
+.btn { position: absolute; left: 82px; top: 28px; width: 40px; height: 14px; border-radius: 7px; overflow: hidden; animation-name: btn, press; }
+.bar { position: absolute; left: 0; top: 0; height: 14px; background: #b37df9; animation-name: fill; }
+.fly { position: absolute; left: 20px; top: 21px; width: 30px; height: 30px; border-radius: 8px; background: linear-gradient(135deg, #6fd3e0, #9148f0); animation-name: drop; }
+.grid { position: absolute; left: 30px; top: 66px; display: grid; grid-template-columns: repeat(4, 18px); gap: 6px; }
+.grid i { height: 18px; border-radius: 5px; }
+.slot { border: 1.5px dashed rgba(255, 255, 255, 0.3); box-sizing: border-box; animation-name: slot; }
+.pointer { position: absolute; width: 14px; height: 18px; animation-name: hand; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="pane page"><i class="icon"></i><i class="line"></i><i class="line" style="top: 26px; width: 22px"></i><span class="btn"><i class="bar"></i></span></div>
+  <div class="grid">
+    <i style="background: #e8c06a"></i><i style="background: #8ddba4"></i><i style="background: #9148f0"></i><i class="slot"></i>
+    <i style="background: #dcbcff"></i><i style="background: #6fd3e0"></i>
+  </div>
+  <i class="fly"></i>
+  <svg class="pointer" viewBox="0 0 24 30"><path d="M4 3L20 16 12.6 17.3 8.7 24Z" fill="#ffffff" stroke="#9148f0" stroke-width="2" stroke-linejoin="round"/></svg>
+</div>
+</body>
+</html>

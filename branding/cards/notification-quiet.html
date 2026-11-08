@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Quiet: while a video is fullscreen, notifications arrive without popping up; when it ends, the pill says how many wait */
+.art { --loop: 3.4s; --poster: 0.72; }
+@keyframes full { 0%, 48% { left: 0; top: 0; width: 150px; height: 112px; border-radius: 0; } 60%, 86% { left: 14px; top: 30px; width: 122px; height: 76px; border-radius: 6px; } 96%, 100% { left: 0; top: 0; width: 150px; height: 112px; border-radius: 0; } }
+@keyframes bar { 0%, 50% { transform: translateY(-24px); } 60%, 86% { transform: translateY(0); } 94%, 100% { transform: translateY(-24px); } }
+@keyframes d1 { 0%, 14% { opacity: 0; transform: translateY(-6px); } 20%, 46% { opacity: 0.7; transform: translateY(0); } 54%, 100% { opacity: 0; transform: translateY(0); } }
+@keyframes d2 { 0%, 30% { opacity: 0; transform: translateY(-6px); } 36%, 46% { opacity: 0.7; transform: translateY(0); } 54%, 100% { opacity: 0; transform: translateY(0); } }
+@keyframes count { 0%, 58% { opacity: 0; } 64%, 84% { opacity: 1; } 90%, 100% { opacity: 0; } }
+.video { position: absolute; background: #2b2140; border: 1px solid rgba(255, 255, 255, 0.16); box-sizing: border-box; overflow: hidden; animation-name: full; }
+.play { position: absolute; left: 50%; top: 50%; margin: -9px 0 0 -6px; width: 0; height: 0; border-left: 16px solid rgba(220, 188, 255, 0.55); border-top: 9px solid transparent; border-bottom: 9px solid transparent; }
+.bar { position: absolute; left: 0; top: 0; width: 150px; height: 22px; background: #241a35; animation-name: bar; }
+.pill { position: absolute; left: 50px; top: 4px; width: 50px; height: 14px; border-radius: 7px; background: #3b2a5c; }
+.stack { position: absolute; left: 7px; top: 3px; width: 12px; height: 8px; border-radius: 2px; background: #dcbcff; box-shadow: -2px -2px 0 rgba(220, 188, 255, 0.45); }
+.n { position: absolute; top: 5px; width: 4px; height: 4px; border-radius: 50%; background: #efe4ff; animation-name: count; }
+.held { position: absolute; top: 8px; width: 7px; height: 7px; border-radius: 50%; background: #dcbcff; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="video"><i class="play"></i></div>
+  <i class="held" style="left: 136px; animation-name: d1"></i><i class="held" style="left: 126px; animation-name: d2"></i>
+  <div class="bar"><div class="pill"><i class="stack"></i><i class="n" style="left: 27px"></i><i class="n" style="left: 35px"></i></div></div>
+</div>
+</body>
+</html>

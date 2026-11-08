@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* The logs: a few letters typed in the search, and the list narrows to the entries that say them */
+.art { --loop: 3.2s; --poster: 0.62; }
+@keyframes typed { 0%, 14% { width: 0; } 34%, 86% { width: 34px; } 94%, 100% { width: 0; } }
+@keyframes go { 0%, 30% { max-height: 9px; margin-bottom: 4px; opacity: 1; } 44%, 86% { max-height: 0; margin-bottom: 0; opacity: 0; } 96%, 100% { max-height: 9px; margin-bottom: 4px; opacity: 1; } }
+@keyframes hit { 0%, 40% { background: transparent; } 48%, 86% { background: rgba(179, 125, 249, 0.28); } 96%, 100% { background: transparent; } }
+.logwin { left: 10px; top: 8px; width: 130px; height: 96px; padding: 12px 8px 0; }
+.search { position: relative; height: 14px; border-radius: 7px; background: rgba(255, 255, 255, 0.12); margin-bottom: 8px; }
+.typed { position: absolute; left: 8px; top: 5px; height: 4px; border-radius: 2px; background: #efe4ff; animation-name: typed; }
+.e { display: flex; align-items: center; gap: 6px; max-height: 9px; margin-bottom: 4px; padding: 0 3px; border-radius: 3px; overflow: hidden; }
+.e .line { position: static; height: 4px; }
+.lv { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+.go { animation-name: go; }
+.hit { animation-name: hit; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="win logwin">
+    <div class="search"><i class="typed"></i></div>
+    <div class="e go"><i class="lv" style="background: #8b8496"></i><i class="line" style="width: 70px"></i></div>
+    <div class="e hit"><i class="lv" style="background: #ef8a8a"></i><i class="line" style="width: 88px"></i></div>
+    <div class="e go"><i class="lv" style="background: #e8c06a"></i><i class="line" style="width: 60px"></i></div>
+    <div class="e go"><i class="lv" style="background: #8b8496"></i><i class="line" style="width: 80px"></i></div>
+    <div class="e hit"><i class="lv" style="background: #ef8a8a"></i><i class="line" style="width: 66px"></i></div>
+    <div class="e go"><i class="lv" style="background: #8b8496"></i><i class="line" style="width: 74px"></i></div>
+  </div>
+</div>
+</body>
+</html>

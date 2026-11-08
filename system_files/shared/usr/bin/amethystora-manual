@@ -4,7 +4,7 @@
 #
 #   amethystora-manual                 open it where you left off
 #   amethystora-manual <page>          open a page by its file name: updates, keybindings, ...
-#   amethystora-manual <page>#<part>   and go to a section of it: updates#rolling-back
+#   amethystora-manual <page>#<part>   and go to a section of it: rolling-back
 #   amethystora-manual --list          the pages there are
 #
 # The pages are the Markdown files in /usr/share/amethystora/manual, listed in pages.json. The

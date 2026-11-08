@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Private folder: the screen locks, the folder's files slip inside, it closes and a padlock shuts on it; unlocked, it opens again */
+.art { --loop: 3.4s; --poster: 0.55; }
+@keyframes dim { 0%, 16% { opacity: 0; } 26%, 76% { opacity: 1; } 86%, 100% { opacity: 0; } }
+@keyframes paper { 0%, 26% { transform: translateY(0); } 40%, 84% { transform: translateY(28px); } 94%, 100% { transform: translateY(0); } }
+@keyframes flap { 0%, 36% { transform: skewX(-18deg) scaleY(0.82); } 46%, 84% { transform: skewX(0) scaleY(1); } 94%, 100% { transform: skewX(-18deg) scaleY(0.82); } }
+@keyframes lock { 0%, 44% { opacity: 0; transform: translateY(-8px); } 54%, 80% { opacity: 1; transform: translateY(0); } 88%, 100% { opacity: 0; transform: translateY(0); } }
+@keyframes shackle { 0%, 54% { transform: translateY(-5px); } 60%, 80% { transform: translateY(0); } 86%, 100% { transform: translateY(-5px); } }
+.lockscreen { position: absolute; inset: 0; background: rgba(10, 6, 18, 0.4); animation-name: dim; }
+.bar { position: absolute; left: 0; right: 0; top: 0; height: 6px; background: rgba(255, 255, 255, 0.08); }
+.back { position: absolute; left: 44px; top: 34px; width: 62px; height: 50px; border-radius: 4px 8px 6px 6px; background: #9148f0; }
+.tab { position: absolute; left: 44px; top: 28px; width: 26px; height: 10px; border-radius: 4px 4px 0 0; background: #9148f0; }
+.paper { position: absolute; top: 24px; width: 22px; height: 30px; border-radius: 3px; background: #efe4ff; animation-name: paper; }
+.paper::after { content: ""; position: absolute; left: 4px; top: 6px; width: 14px; height: 2px; background: rgba(43, 33, 64, 0.5); box-shadow: 0 5px 0 rgba(43, 33, 64, 0.5), 0 10px 0 rgba(43, 33, 64, 0.5); }
+.front { position: absolute; left: 44px; top: 46px; width: 62px; height: 38px; border-radius: 6px; background: #b37df9; transform-origin: 50% 100%; animation-name: flap; }
+.padlock { position: absolute; left: 63px; top: 52px; width: 24px; height: 28px; animation-name: lock; }
+.body { position: absolute; left: 0; bottom: 0; width: 24px; height: 17px; border-radius: 4px; background: #e8c06a; }
+.body::after { content: ""; position: absolute; left: 10px; top: 5px; width: 4px; height: 7px; border-radius: 2px; background: #1a1226; }
+.loop { position: absolute; left: 5px; top: 0; width: 14px; height: 16px; border-radius: 7px 7px 0 0; border: 3px solid #e8c06a; border-bottom: 0; box-sizing: border-box; animation-name: shackle; }
+</style>
+</head>
+<body>
+<div class="art">
+  <i class="tab"></i><i class="back"></i>
+  <i class="paper" style="left: 52px"></i><i class="paper" style="left: 76px; top: 20px"></i>
+  <i class="front"></i>
+  <i class="lockscreen"></i>
+  <div class="padlock"><i class="loop"></i><i class="body"></i></div>
+</div>
+</body>
+</html>

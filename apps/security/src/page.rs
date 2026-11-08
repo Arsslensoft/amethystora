@@ -620,15 +620,15 @@ fn manual_page(id: &str) -> &'static str {
     }
     match id {
         "secure-boot" | "signing-keys" => "hardware#secure-boot",
-        "disk-unlock-pin" => "security#unlock-the-disk-with-the-tpm",
+        "disk-unlock-pin" => "disk-encryption#unlock-the-disk-with-the-tpm",
         "firmware" | "firmware-dbx" | "firmware-pk" => "updates#firmware",
-        "signed-updates" => "updates#signed-updates",
+        "signed-updates" => "streams#signed-updates",
         "single-build" => "updates",
-        "network" | "network-protection" => "security#network-protection",
-        "home-snapshots" | "ransomware-protection" => "security#ransomware-protection",
-        "backup-runs" => "security#backups",
-        "containers" => "software#packages-from-other-distributions",
-        "app-permissions" => "security#app-permissions",
+        "network" | "network-protection" => "network-security#network-protection",
+        "home-snapshots" | "ransomware-protection" => "viruses#ransomware-protection",
+        "backup-runs" => "backups",
+        "containers" => "containers#packages-from-other-distributions",
+        "app-permissions" => "app-permissions",
         "home-networks" => "security#on-from-the-start",
         _ => "security",
     }
@@ -2310,7 +2310,7 @@ impl Security {
             );
         }
         if !attention {
-            buttons.push(self.manual_link(&t!("Network protection in the manual"), "security#network-protection").upcast());
+            buttons.push(self.manual_link(&t!("Network protection in the manual"), "network-security#network-protection").upcast());
         }
         children.push(actions(buttons).upcast());
         Self::page(children)
@@ -2582,7 +2582,7 @@ impl Security {
                     process::launch("flatpak", &["run", backend::FLATSEAL])
                 })
                 .upcast(),
-                self.manual_link(&t!("App permissions in the manual"), "security#app-permissions").upcast(),
+                self.manual_link(&t!("App permissions in the manual"), "app-permissions").upcast(),
             ])
             .upcast(),
         );
@@ -2695,7 +2695,7 @@ impl Security {
                 .upcast(),
             );
         }
-        buttons.push(self.manual_link(&t!("Containers in the manual"), "software#packages-from-other-distributions").upcast());
+        buttons.push(self.manual_link(&t!("Containers in the manual"), "containers#packages-from-other-distributions").upcast());
         children.push(actions(buttons).upcast());
         Self::page(children)
     }
@@ -2819,7 +2819,7 @@ impl Security {
                     process::in_terminal(&[backend::AME, "security", "events"])
                 })
                 .upcast(),
-                self.manual_link(&t!("The security watcher in the manual"), "security#the-security-watcher").upcast(),
+                self.manual_link(&t!("The security watcher in the manual"), "security-watcher").upcast(),
             ])
             .upcast(),
         );
@@ -3014,7 +3014,7 @@ impl Security {
             )
             .upcast(),
         );
-        children.push(actions(vec![self.manual_link(&t!("Switches in the manual"), "security#switches").upcast()]).upcast());
+        children.push(actions(vec![self.manual_link(&t!("Switches in the manual"), "security-switches#switches").upcast()]).upcast());
         Self::page(children)
     }
 
@@ -3032,7 +3032,7 @@ impl Security {
             Some(switches) if switches.error.is_some() && switches.settings.is_empty() => children.push(empty(switches.error.as_deref().unwrap_or("")).upcast()),
             Some(switches) => children.extend(self.category_sections(switches, group)),
         }
-        children.push(actions(vec![self.manual_link(&t!("Switches in the manual"), "security#switches").upcast()]).upcast());
+        children.push(actions(vec![self.manual_link(&t!("Switches in the manual"), "security-switches#switches").upcast()]).upcast());
         Self::page(children)
     }
 
@@ -3098,7 +3098,7 @@ impl Security {
             section(&t!("Duress finger"), &finger, None).upcast(),
             section(&t!("Duress password"), &password, None).upcast(),
             section(&t!("Every account"), &everyone, None).upcast(),
-            actions(vec![self.manual_link(&t!("Duress in the manual"), "security#a-duress-finger-or-password").upcast()]).upcast(),
+            actions(vec![self.manual_link(&t!("Duress in the manual"), "logins#a-duress-finger-or-password").upcast()]).upcast(),
         ];
         Self::page(children)
     }

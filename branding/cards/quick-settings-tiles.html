@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Quick settings: a click on the system menu opens the tiles, one is switched on, and a slider moves */
+.art { --loop: 3.4s; --poster: 0.5; }
+.bar { position: absolute; left: 0; top: 0; width: 150px; height: 18px; background: rgba(255, 255, 255, 0.07); }
+@keyframes menu { 0%, 14% { opacity: 0; transform: translateY(-6px); } 22%, 82% { opacity: 1; transform: translateY(0); } 92%, 100% { opacity: 0; transform: translateY(-6px); } }
+@keyframes on { 0%, 38% { background: rgba(255, 255, 255, 0.14); } 42%, 100% { background: #b37df9; } }
+@keyframes knob { 0%, 52% { left: 30px; } 70%, 100% { left: 62px; } }
+@keyframes fill { 0%, 52% { width: 24px; } 70%, 100% { width: 56px; } }
+@keyframes hand { 0%, 4% { left: 96px; top: 96px; opacity: 1; } 14%, 18% { left: 132px; top: 8px; opacity: 1; } 36%, 42% { left: 78px; top: 34px; opacity: 1; } 52% { left: 90px; top: 77px; opacity: 1; } 70%, 80% { left: 122px; top: 77px; opacity: 1; } 90% { left: 96px; top: 96px; opacity: 0; } 100% { left: 96px; top: 96px; opacity: 1; } }
+.sys { position: absolute; left: 124px; top: 4px; width: 20px; height: 10px; border-radius: 5px; background: rgba(239, 228, 255, 0.35); }
+.menu { left: 52px; top: 22px; width: 92px; height: 84px; background: #33264d; animation-name: menu; }
+.tile { position: absolute; width: 38px; height: 18px; border-radius: 9px; background: rgba(255, 255, 255, 0.14); }
+.tile.one { animation-name: on; }
+.tile i { position: absolute; left: 5px; top: 5px; width: 8px; height: 8px; border-radius: 50%; background: #efe4ff; }
+.track { position: absolute; left: 8px; top: 62px; width: 76px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.2); }
+.fill { position: absolute; left: 0; top: 0; height: 4px; border-radius: 2px; background: #b37df9; animation-name: fill; }
+.knob { position: absolute; top: -4px; width: 12px; height: 12px; border-radius: 50%; background: #efe4ff; animation-name: knob; }
+.pointer { position: absolute; width: 14px; height: 18px; animation-name: hand; }
+.w1 { left: 8px; top: 28px; width: 70px; height: 76px; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="bar"></div><i class="sys"></i>
+  <i class="win w1"></i>
+  <div class="pane menu">
+    <i class="tile one" style="left: 6px; top: 8px"><i></i></i><i class="tile" style="left: 48px; top: 8px"><i></i></i>
+    <i class="tile" style="left: 6px; top: 32px"><i></i></i><i class="tile" style="left: 48px; top: 32px"><i></i></i>
+    <div class="track"><i class="fill"></i><i class="knob"></i></div>
+  </div>
+  <svg class="pointer" viewBox="0 0 24 30"><path d="M4 3L20 16 12.6 17.3 8.7 24Z" fill="#ffffff" stroke="#9148f0" stroke-width="2" stroke-linejoin="round"/></svg>
+</div>
+</body>
+</html>

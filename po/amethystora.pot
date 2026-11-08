@@ -11398,7 +11398,7 @@ msgid "Classic: windows float. Drag one by its title bar, Super+Up maximises it,
 msgstr ""
 
 #: usr/share/amethystora/just/desktop.just
-msgid "Tiling: new windows open beside the one you are on, and Super+Left and Super+Right move between them. The keys are in the manual: amethystora-manual desktop#tiling-windows"
+msgid "Tiling: new windows open beside the one you are on, and Super+Left and Super+Right move between them. The keys are in the manual: amethystora-manual tiling"
 msgstr ""
 
 #: usr/share/amethystora/just/desktop.just

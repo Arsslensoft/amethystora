@@ -18,8 +18,8 @@ système.
 Deux choix méritent d’être faits dès le premier jour. Si vous préférez des fenêtres qui flottent et se
 chevauchent, comme sous Windows et macOS, une notification vous les propose peu après votre première
 connexion, et `ame desktop layout classic` permet de basculer à tout moment
-([Fenêtres classiques](desktop.md#classic-windows)). Si l’ordinateur est destiné à un enfant, le
-[contrôle parental](security.md#parental-controls) limite son compte aux applications et aux horaires
+([Fenêtres classiques](tiling.md#classic-windows)). Si l’ordinateur est destiné à un enfant, le
+[contrôle parental](logins.md#parental-controls) limite son compte aux applications et aux horaires
 que vous choisissez.
 
 ## Comment fonctionne ce manuel

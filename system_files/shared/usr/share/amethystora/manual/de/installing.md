@@ -69,7 +69,7 @@ Festplatte und macht sich dann an die Arbeit.
 
 - **Wählen Sie die Festplattenverschlüsselung.** Sie lässt sich nachträglich nicht einschalten, und sie
   schützt Ihre Dateien, wenn der Rechner verloren geht oder gestohlen wird. Die Passphrase wird bei
-  jedem Start abgefragt, bis [das TPM die Festplatte entsperrt](security.md#unlock-the-disk-with-the-tpm),
+  jedem Start abgefragt, bis [das TPM die Festplatte entsperrt](disk-encryption.md#unlock-the-disk-with-the-tpm),
   sofern Sie das möchten.
 - **Um Windows zu behalten,** lesen Sie zuerst [Neben Windows](#next-to-windows).
 
@@ -119,31 +119,6 @@ sudo bootc switch ghcr.io/arsslensoft/amethystora:stable
 Starten Sie dann neu. Beim ersten Start bereitet ein Dienst von selbst den Wechsel zu signaturgeprüften
 Aktualisierungen vor, und ab dem Neustart danach wird eine Aktualisierung nur angenommen, wenn sie die
 Signatur von Amethystora trägt.
-
-## Ein Abbild wählen
-
-| Abbild | Für |
-| --- | --- |
-| `ghcr.io/arsslensoft/amethystora` | Den Standard-Desktop |
-| `ghcr.io/arsslensoft/amethystora-dx` | Entwickler: bringt zusätzlich Docker, Incus, libvirt, VSCodium und mehr ([Entwicklermodus](developer.md)) |
-| `ghcr.io/arsslensoft/amethystora-nvidia-open` | Den Standard-Desktop mit NVIDIAs offenem Kernel-Treiber |
-| `ghcr.io/arsslensoft/amethystora-dx-nvidia-open` | Den Entwicklermodus mit NVIDIAs offenem Kernel-Treiber |
-
-Die ISOs installieren die Abbilder ohne NVIDIAs Treiber. Auf einem Rechner mit einer NVIDIA-Karte bietet
-der erste Start an, zum passenden NVIDIA-Abbild zu wechseln ([Hardware](hardware.md#graphics)).
-
-## Einen Kanal wählen
-
-Jedes Abbild gibt es in drei Kanälen, festgelegt durch das Tag nach dem Doppelpunkt:
-
-| Tag | Für |
-| --- | --- |
-| `stable` | Alle. Wöchentlich gebaut, mit dem Kernel auf dem Stand von Fedora CoreOS, der dem von Fedora etwas hinterherhinkt, damit Kernel-Regressionen vorher auffallen. |
-| `latest` | Das Neueste, was Fedora hat, neu gebaut, sobald sich Amethystora ändert. |
-| `beta` | Zum Testen dessen, was als Nächstes kommt. Rechnen Sie mit Ecken und Kanten. |
-
-Die ISOs installieren `stable`. Sie können jederzeit zwischen Abbildern und Kanälen wechseln;
-[Aktualisierungen](updates.md#switching-streams-and-images) zeigt, wie.
 
 ## Nach dem ersten Start
 

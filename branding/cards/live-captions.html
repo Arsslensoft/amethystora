@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Live captions: words appear in a dark box near the bottom as a video speaks */
+.art { --loop: 3.6s; --poster: 0.5; }
+@keyframes box { 0%, 8% { opacity: 0; } 12%, 90% { opacity: 1; } 96%, 100% { opacity: 0; } }
+@keyframes a1 { 0%, 12% { opacity: 0; } 14%, 54% { opacity: 1; } 56%, 100% { opacity: 0; } }
+@keyframes a2 { 0%, 20% { opacity: 0; } 22%, 54% { opacity: 1; } 56%, 100% { opacity: 0; } }
+@keyframes a3 { 0%, 28% { opacity: 0; } 30%, 54% { opacity: 1; } 56%, 100% { opacity: 0; } }
+@keyframes a4 { 0%, 36% { opacity: 0; } 38%, 54% { opacity: 1; } 56%, 100% { opacity: 0; } }
+@keyframes b1 { 0%, 58% { opacity: 0; } 60%, 92% { opacity: 1; } 94%, 100% { opacity: 0; } }
+@keyframes b2 { 0%, 66% { opacity: 0; } 68%, 92% { opacity: 1; } 94%, 100% { opacity: 0; } }
+@keyframes b3 { 0%, 74% { opacity: 0; } 76%, 92% { opacity: 1; } 94%, 100% { opacity: 0; } }
+.w { left: 8px; top: 6px; width: 134px; height: 100px; }
+.video { position: absolute; left: 6px; top: 12px; width: 120px; height: 72px; border-radius: 4px; background: linear-gradient(160deg, #3c2a5c, #20172f); overflow: hidden; }
+.hill { position: absolute; width: 90px; height: 50px; border-radius: 50%; }
+.prog { position: absolute; left: 6px; top: 90px; height: 3px; border-radius: 2px; width: 52px; background: #b37df9; }
+.cc { position: absolute; left: 24px; top: 50px; width: 86px; height: 20px; border-radius: 4px; background: rgba(0, 0, 0, 0.8); display: flex; gap: 3px; align-items: center; justify-content: center; animation-name: box; }
+.cc i { height: 4px; border-radius: 2px; background: #efe4ff; }
+.set { position: absolute; left: 0; right: 0; top: 0; bottom: 0; display: flex; gap: 3px; align-items: center; justify-content: center; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="win w">
+    <div class="video"><i class="hill" style="left: -20px; top: 44px; background: #4a3670"></i><i class="hill" style="left: 50px; top: 52px; background: #3a2a58"></i><i class="dot" style="left: 88px; top: 10px; background: #e8c06a"></i></div>
+    <i class="prog"></i>
+  </div>
+  <div class="cc">
+    <div class="set"><i style="width: 14px; animation-name: a1"></i><i style="width: 20px; animation-name: a2"></i><i style="width: 10px; animation-name: a3"></i><i style="width: 18px; animation-name: a4"></i></div>
+    <div class="set"><i style="width: 22px; animation-name: b1"></i><i style="width: 12px; animation-name: b2"></i><i style="width: 24px; animation-name: b3"></i></div>
+  </div>
+</div>
+</body>
+</html>

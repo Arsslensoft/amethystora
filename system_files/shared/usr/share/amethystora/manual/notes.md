@@ -1,28 +1,30 @@
 # Notes and tasks
 
-**Notes** in the app grid keeps your notes and your to-do lists in one window. Everything stays on
-this computer. Nothing is synced, and the app never connects to the internet. It takes the place of
-Joplin and Planify, and brings in what you already have in them (see
-[Coming from Joplin or Planify](#coming-from-joplin-or-planify)).
+**Notes** in the app grid keeps your notes and your to-do lists in one window. Everything stays on this computer:
+nothing is synced, and the app never connects to the internet. It takes the place of Joplin and Planify, and brings in
+what you have in them (see [Coming from Joplin or Planify](#coming-from-joplin-or-planify)).
 
-Passwords, authenticator codes and keys do not belong in a note: keep them in the [Vault](vault.md), which asks before each use.
-
-The first time you open it, it offers to encrypt your notes with a passphrase. That is the choice it
-recommends, and the rest of this page assumes you took it.
+The first time you open it, it offers to [encrypt your notes](notes-encryption.md) with a passphrase. That is the choice
+it recommends, and this page assumes you took it. Passwords, authenticator codes and keys do not belong in a note: keep
+them in the [Vault](vault.md), which asks before each use.
 
 ## Notes
 
-Notes are written in Markdown and sit in notebooks, which can hold other notebooks: the **+** beside
-**Notebooks** makes one, and a notebook's **More** menu adds a note or a notebook inside it, renames it,
-moves it to the top level, or deletes it, which sends its notes to the trash. The editor shows the text
-and the formatted note side by side, or one above the other in a narrow window. **Ctrl+E**, or the three
-buttons at the top of the note, switch between the text, both, and the formatted note alone. The sort
-button over the list orders the notes by when they last changed, when they were made, or by title.
+Notes are written in Markdown and sit in notebooks, which can hold other notebooks. The **+** beside **Notebooks**
+makes one, and a notebook's **More** menu adds a note or a notebook inside it, renames it, moves it to the top level, or
+deletes it, which sends its notes to the trash. The sort button over the list orders the notes by when they last
+changed, when they were made, or by title.
 
-The toolbar above the text makes a selection bold or italic, a heading, a list, a checklist, a quote,
-code or a link, and takes a heading or list off again. `Tab` and `Shift+Tab` indent and outdent, and
-`Enter` carries a list on, or ends it on an empty item. Links to web pages and mail addresses open in
-their apps.
+### Writing
+
+The editor shows the text and the formatted note side by side, or one above the other in a narrow window. **Ctrl+E**,
+or the three buttons at the top of the note, switch between the text, both, and the formatted note alone.
+
+The toolbar above the text makes a selection bold or italic, a heading, a list, a checklist, a quote, code or a link,
+and takes a heading or list off again. `Tab` and `Shift+Tab` indent and outdent, and `Enter` carries a list on, or ends
+it on an empty item. Links to web pages and mail addresses open in their apps.
+
+### Checklists, attachments and the rest
 
 - **Checklists:** `- [ ] like this`. Tick the boxes in the formatted note.
 - **Attachments:** paste an image, drop a file on the note, or use the paperclip, up to 200 MB each.
@@ -43,9 +45,10 @@ their apps.
 
 ## Tasks
 
-**Tasks** at the top of the sidebar switches to your to-do lists, with the number due today or
-overdue; `amethystora-notes tasks`, or **Tasks** in the right-click menu of Notes, opens them
-straight away:
+**Tasks** at the top of the sidebar switches to your to-do lists, with the number due today or overdue;
+`amethystora-notes tasks`, or **Tasks** in the right-click menu of Notes, opens them straight away.
+
+![Tick off tasks](media/notes-tick-tasks.webm)
 
 | View | Shows |
 | --- | --- |
@@ -55,13 +58,18 @@ straight away:
 | Pinned | The tasks you pinned |
 | Completed | What you finished, most recent first |
 
-Projects group tasks and can be divided into sections. Labels cut across projects. The **+** beside
-**Projects** or **Labels** makes one, and its **More** menu renames it, gives it a colour, adds a section
-to a project, or deletes it. **Deleting a project deletes its tasks**; deleting a section leaves its
-tasks in the project, and deleting a label only takes it off its tasks. Click a task to move it to
-another project or section, set its date and time, repeat, reminder, priority, labels and notes, add
-subtasks, pin it, or delete it, which can be undone at once. Completing a task completes its subtasks
-too, and a project folds its completed tasks away.
+### Projects, sections and labels
+
+Projects group tasks and can be divided into sections; labels cut across projects. The **+** beside **Projects** or
+**Labels** makes one, and its **More** menu renames it, gives it a colour, adds a section to a project, or deletes it.
+**Deleting a project deletes its tasks**; deleting a section leaves its tasks in the project, and deleting a label only
+takes it off its tasks.
+
+Click a task to move it to another project or section, set its date and time, repeat, reminder, priority, labels and
+notes, add subtasks, pin it, or delete it, which can be undone at once. Completing a task completes its subtasks too,
+and a project folds its completed tasks away.
+
+### Adding a task in plain words
 
 The **Add a task** field understands a little plain language. It takes these out of the title:
 
@@ -77,95 +85,23 @@ The **Add a task** field understands a little plain language. It takes these out
 Completing a repeating task moves it to its next date. The words are English whatever the language of
 the window.
 
-**A quick note**: `Super+Alt+N` opens a small window over anything; `Enter` saves what you typed as a
-task in the inbox, with the dates and the rest the task box understands (its first line is the task, the
-lines after it its notes), `Shift+Enter` starts a new line and `Esc` closes without saving. When the notes
-are locked, it asks for the passphrase (or a passkey) first, and locks them again after unless Notes'
-window is open. The text is never written anywhere until you save it. `amethystora-notes capture` does the
-same.
+### A quick note
+
+`Super+Alt+N` (or `amethystora-notes capture`) opens a small window over anything. `Enter` saves what you typed as a
+task in the inbox, with the dates and the rest the task box understands (its first line is the task, the lines after
+it its notes); `Shift+Enter` starts a new line and `Esc` closes without saving. When the notes are locked, it asks for
+the passphrase (or a passkey) first, and locks them again after unless Notes' window is open. The text is never written
+anywhere until you save it.
 
 From the search (`Super+Space`), `remind me at 17:00 to call the garage` makes the same task, with its
-reminder, when you press `Enter` ([Finding things](desktop.md#finding-things)).
+reminder, when you press `Enter` ([Finding things](search.md)).
 
 ### Reminders
 
-A task with a time can remind you, from **At the time** to **1 day before**. Reminders appear as
-notifications while Notes is running, and clicking one opens the task. When you close the window, Notes keeps running in the background
-until the reminders still to come have gone off. **Keep running for reminders**, in **Settings**, turns
-that off. Your notes are
-locked while it runs like that; only the titles and times of the reminders are kept, in memory.
-
-## Encryption
-
-With encryption on, your notes, tasks and attachments are written to disk encrypted with AES-256-GCM,
-under a random key that only your passphrase, or a [passkey](#passkeys) you add, can open. The
-passphrase is stretched with scrypt, which costs 128 MiB of memory for every guess, so trying
-passphrases one after another is slow.
-
-It stays secure against quantum computers. What a quantum computer breaks is public-key cryptography
-(RSA, elliptic curves), and none is used here. Against a cipher like AES, the best a quantum computer
-can do is halve the key length. That leaves AES-256 at 128-bit strength, which is why AES-256 is what
-NIST and the NSA's CNSA 2.0 keep for the years after quantum computers.
-
-> **Nobody can recover a forgotten passphrase.** Not Amethystora, not an administrator, not anyone.
-> Keep it somewhere safe, and keep a [backup](#backing-up).
-
-Your notes lock:
-
-- after 10 minutes without using Notes, or 5, 15 or 30 minutes, an hour, or only on the other two
-  (**Settings**, **Lock when away**),
-- when the screen locks, the computer sleeps, or the window closes,
-- when you press **Ctrl+L** or **Lock** in the sidebar.
-
-A passphrase needs at least 8 characters, typed twice. **Settings** also changes it, and turns
-encryption off or on again. Changing the
-passphrase changes the key too, unless you turn **Change the key as well** off: everything is
-encrypted anew, so that an older copy of the notes folder, from a snapshot or a backup, cannot open
-what you write from now on with the old passphrase. That older copy itself still opens with it.
-Passkeys have to be added again after a new key.
-
-While your notes are encrypted, Notes reads only encrypted files: notes or an attachment put in the
-folder unencrypted are not read.
-
-### Passkeys
-
-A FIDO2 security key (YubiKey, Thetis, or a fingerprint model such as the YubiKey Bio) can open your
-notes, so that you need not type the passphrase each time. The passphrase keeps working, and it is
-what opens your notes if the key is lost: a passkey is a second way in, never the only one.
-
-To add one, plug the key in, open **Settings** and choose **Add a passkey**. Enter your passphrase and
-the PIN of the key, or leave the PIN empty for a key that reads your fingerprint. The key blinks twice;
-touch it each time. From then on the lock screen offers **Open with a passkey**, which asks for the
-key's PIN, or your fingerprint, and a touch. Have only that key plugged in.
-
-- **The key needs a PIN**, and a fingerprint model an enrolled finger. Set them in Firefox at
-  `about:webauthn`. A touch alone never opens your notes: someone who finds the key cannot use it
-  without the PIN or your finger, and the key blocks its PIN after eight wrong tries.
-- **The key has to support FIDO2's `credProtect`**, with which Notes tells it to refuse the passkey
-  without the PIN or a fingerprint. Notes says so when a key does not. A passkey added before Notes
-  asked for it is marked in **Settings**: remove it and add it again.
-- **Add a second key as a spare**, one at a time. Each is listed in **Settings**, where **Remove**
-  stops it opening your notes.
-- **If a key is lost**, remove it, then change the passphrase with **Change the key as well** on.
-  Someone who holds the key, knows its PIN and has an older copy of your notes folder could otherwise
-  open your notes with it. Add the keys you still have again afterwards.
-- A [backup](#backing-up) always asks for the passphrase: passkeys are not part of it.
-
-The key keeps nothing of your notes. It holds a secret that never leaves it, and with the PIN or
-fingerprint checked it computes a value (HMAC-SHA256, FIDO2's `hmac-secret`) under which a second
-copy of your notes' key is encrypted. What is on disk is still encrypted with AES-256 only.
-
-## Backing up
-
-Since nothing is synced, keep a copy somewhere else. In **Settings**:
-
-- **Back up to a file** writes one `.amnotes` file with everything in it, attachments included,
-  encrypted if your notes are. It opens with the passphrase you had when you made it, on any computer:
-  choose it under **Import**, which adds what is in it to the notes already there.
-- **Export as Markdown** writes every note as a Markdown file in a folder per notebook, its attachments
-  beside them, and the inbox and every project as a checklist. These files are **not** encrypted.
-
-Your notes themselves are in `~/.local/share/amethystora-notes`.
+A task with a time can remind you, from **At the time** to **1 day before**. Reminders appear as notifications while
+Notes is running, and clicking one opens the task. When you close the window, Notes keeps running in the background
+until the reminders still to come have gone off; **Keep running for reminders**, in **Settings**, turns that off. Your
+notes are locked while it runs like that; only the titles and times of the reminders are kept, in memory.
 
 ## Coming from Joplin or Planify
 

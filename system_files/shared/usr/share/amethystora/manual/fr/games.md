@@ -21,7 +21,7 @@ tapez dans d’autres applications X11
 Steam et les jeux Windows qu’il exécute via Proton n’affichent rien autrement : X11 est donc rendu à
 Steam et aux lanceurs que vous ajoutez, pour votre compte seulement. La page **Applications** de
 l’application Sécurité le liste avec toutes les autres permissions
-([Permissions des applications](security.md#app-permissions)).
+([Permissions des applications](app-permissions.md)).
 
 Dans les **Propriétés** d’un jeu dans Steam, sous **Options de lancement** :
 

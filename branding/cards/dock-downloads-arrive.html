@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Downloads arriving: each file drops into the Downloads stack on the dock, which hops and counts it */
+.art { --loop: 3.4s; --poster: 0.57; }
+@keyframes f1 { 0%, 8% { left: 74px; top: -18px; opacity: 0; } 12% { opacity: 1; } 28% { left: 106px; top: 76px; opacity: 1; } 31%, 100% { left: 106px; top: 80px; opacity: 0; } }
+@keyframes f2 { 0%, 33% { left: 60px; top: -18px; opacity: 0; } 37% { opacity: 1; } 53% { left: 106px; top: 76px; opacity: 1; } 56%, 100% { left: 106px; top: 80px; opacity: 0; } }
+@keyframes f3 { 0%, 58% { left: 88px; top: -18px; opacity: 0; } 62% { opacity: 1; } 78% { left: 106px; top: 76px; opacity: 1; } 81%, 100% { left: 106px; top: 80px; opacity: 0; } }
+@keyframes hop { 0%, 28%, 36%, 53%, 61%, 78%, 86%, 100% { transform: translateY(0); } 31%, 56%, 81% { transform: translateY(-6px); } }
+@keyframes badge { 0%, 28% { opacity: 0; transform: scale(0.6); } 31%, 88% { opacity: 1; transform: scale(1); } 94%, 100% { opacity: 0; transform: scale(1); } }
+@keyframes d2 { 0%, 54% { opacity: 0; } 56%, 100% { opacity: 1; } }
+@keyframes d3 { 0%, 79% { opacity: 0; } 81%, 100% { opacity: 1; } }
+.dock { left: 18px; top: 74px; width: 114px; height: 30px; border-radius: 10px; display: flex; gap: 6px; align-items: center; padding-left: 10px; }
+.stack { position: absolute; left: 104px; top: 81px; width: 18px; height: 16px; animation-name: hop; }
+.stack i { position: absolute; width: 14px; height: 12px; border-radius: 3px; }
+.file { position: absolute; width: 10px; height: 13px; border-radius: 2px; background: #efe4ff; }
+.file::after { content: ""; position: absolute; right: 0; top: 0; width: 4px; height: 4px; background: #b37df9; border-radius: 0 2px 0 2px; }
+.badge { position: absolute; left: 110px; top: 64px; height: 10px; padding: 0 3px; border-radius: 5px; background: #b37df9; display: flex; gap: 2px; align-items: center; animation-name: badge; }
+.badge i { width: 4px; height: 4px; border-radius: 50%; background: #1a1226; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="pane dock"><i class="sq" style="background: #9148f0"></i><i class="sq" style="background: #6fd3e0"></i><i class="sq" style="background: #8ddba4"></i></div>
+  <div class="stack"><i style="left: 4px; top: 0; background: rgba(220, 188, 255, 0.45)"></i><i style="left: 0; top: 4px; background: #dcbcff"></i></div>
+  <div class="badge"><i></i><i style="animation-name: d2"></i><i style="animation-name: d3"></i></div>
+  <i class="file" style="animation-name: f1"></i><i class="file" style="animation-name: f2"></i><i class="file" style="animation-name: f3"></i>
+</div>
+</body>
+</html>

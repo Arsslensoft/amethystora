@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Arranging the bar: the bar's three places and Hidden; the meter is dragged to Hidden, then the clock to the left */
+.art { --loop: 3.6s; --poster: 0.7; }
+@keyframes meter { 0%, 10% { left: 112px; top: 31px; } 36%, 86% { left: 66px; top: 79px; } 96%, 100% { left: 112px; top: 31px; } }
+@keyframes clock { 0%, 44% { left: 63px; top: 34px; } 70%, 86% { left: 22px; top: 34px; } 96%, 100% { left: 63px; top: 34px; } }
+@keyframes hand { 0%, 4% { left: 70px; top: 100px; opacity: 1; } 10% { left: 118px; top: 38px; opacity: 1; } 36% { left: 72px; top: 86px; opacity: 1; } 44% { left: 74px; top: 40px; opacity: 1; } 70% { left: 33px; top: 40px; opacity: 1; } 78%, 90% { left: 46px; top: 70px; opacity: 0; } 100% { left: 70px; top: 100px; opacity: 1; } }
+.place { position: absolute; top: 24px; width: 44px; height: 26px; border-radius: 7px; background: rgba(255, 255, 255, 0.07); border: 1px dashed rgba(220, 188, 255, 0.35); box-sizing: border-box; }
+.hidden { position: absolute; left: 6px; top: 70px; width: 138px; height: 26px; border-radius: 7px; background: rgba(0, 0, 0, 0.25); border: 1px dashed rgba(220, 188, 255, 0.25); box-sizing: border-box; }
+.logo { position: absolute; left: 12px; top: 31px; width: 9px; height: 12px; background: #b37df9; clip-path: polygon(50% 0, 100% 35%, 50% 100%, 0 35%); }
+.clock { position: absolute; width: 24px; height: 6px; border-radius: 3px; background: #efe4ff; animation-name: clock; }
+.meter { position: absolute; width: 14px; height: 12px; display: flex; gap: 2px; align-items: flex-end; animation-name: meter; }
+.meter i { width: 3px; border-radius: 1px; background: #dcbcff; }
+.tray { position: absolute; left: 130px; top: 32px; width: 9px; height: 9px; border-radius: 3px; background: #6fd3e0; }
+.pointer { position: absolute; width: 16px; height: 20px; animation-name: hand; }
+</style>
+</head>
+<body>
+<div class="art">
+  <i class="place" style="left: 6px"></i><i class="place" style="left: 53px"></i><i class="place" style="left: 100px"></i>
+  <i class="hidden"></i>
+  <i class="logo"></i><i class="clock"></i>
+  <div class="meter"><i style="height: 6px"></i><i style="height: 11px"></i><i style="height: 8px"></i></div>
+  <i class="tray"></i>
+  <svg class="pointer" viewBox="0 0 24 30"><path d="M4 3L20 16 12.6 17.3 8.7 24Z" fill="#ffffff" stroke="#9148f0" stroke-width="2" stroke-linejoin="round"/></svg>
+</div>
+</body>
+</html>

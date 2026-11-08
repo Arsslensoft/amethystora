@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* The app grid's folders: loose apps gather by what they are into folders, the rest stay loose */
+.art { --loop: 3.4s; --poster: 0.66; }
+@keyframes go { 0%, 16% { transform: translate(0, 0) scale(1); } 44%, 84% { transform: translate(var(--dx), var(--dy)) scale(0.41); } 96%, 100% { transform: translate(0, 0) scale(1); } }
+@keyframes folder { 0%, 30% { opacity: 0; transform: scale(0.8); } 44%, 84% { opacity: 1; transform: scale(1); } 94%, 100% { opacity: 0; transform: scale(0.8); } }
+.ic { position: absolute; width: 22px; height: 22px; border-radius: 6px; transform-origin: 0 0; }
+.ic.m { animation-name: go; }
+.folder { position: absolute; width: 22px; height: 22px; border-radius: 6px; background: rgba(255, 255, 255, 0.18); animation-name: folder; }
+.row { position: absolute; left: 14px; top: 8px; width: 122px; height: 4px; border-radius: 2px; background: rgba(239, 228, 255, 0.2); }
+</style>
+</head>
+<body>
+<div class="art">
+  <i class="row"></i>
+  <i class="folder" style="left: 21px; top: 26px"></i><i class="folder" style="left: 49px; top: 26px"></i>
+  <i class="ic m" style="left: 21px; top: 26px; background: #9148f0; --dx: 2px; --dy: 2px"></i>
+  <i class="ic m" style="left: 49px; top: 26px; background: #e8c06a; --dx: 2px; --dy: 2px"></i>
+  <i class="ic m" style="left: 77px; top: 26px; background: #b37df9; --dx: -45px; --dy: 2px"></i>
+  <i class="ic" style="left: 105px; top: 26px; background: #8ddba4"></i>
+  <i class="ic" style="left: 21px; top: 56px; background: #6fd3e0"></i>
+  <i class="ic m" style="left: 49px; top: 56px; background: #7a3fd0; --dx: -26px; --dy: -19px"></i>
+  <i class="ic m" style="left: 77px; top: 56px; background: #f0b860; --dx: -17px; --dy: -28px"></i>
+  <i class="ic" style="left: 105px; top: 56px; background: #f0905a"></i>
+  <i class="ic" style="left: 21px; top: 86px; background: #dcbcff"></i>
+  <i class="ic m" style="left: 49px; top: 86px; background: #c9a0ff; --dx: -17px; --dy: -49px"></i>
+</div>
+</body>
+</html>

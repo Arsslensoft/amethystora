@@ -198,7 +198,7 @@ tell_one() { # USER UID SUMMARY BODY
         --action "more=$(N_ 'Tell me more')" --action "backup=$(N_ 'Back up now')" "${summary}" "${body}" critical)" || return 0
     read -r _ answer <<<"${answers}"
     case "${answer}" in
-        more) in_session "${user}" "${uid}" /usr/bin/amethystora-manual hardware#when-a-disk-may-be-failing ;;
+        more) in_session "${user}" "${uid}" /usr/bin/amethystora-manual disks#when-a-disk-may-be-failing ;;
         # Backups shows the run, or offers to set one up
         backup)
             in_session "${user}" "${uid}" /usr/bin/systemctl --user start --no-block amethystora-backup.service

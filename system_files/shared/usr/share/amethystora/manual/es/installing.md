@@ -67,7 +67,7 @@ el idioma y el disco, y después se pone manos a la obra.
 
 - **Elija el cifrado del disco.** No se puede activar después, y es lo que mantiene sus archivos a
   salvo si pierde el equipo o se lo roban. La frase de contraseña se pide en cada arranque, hasta que
-  [el TPM lo desbloquee](security.md#unlock-the-disk-with-the-tpm), si así lo quiere.
+  [el TPM lo desbloquee](disk-encryption.md#unlock-the-disk-with-the-tpm), si así lo quiere.
 - **Para conservar Windows,** lea antes [Junto a Windows](#next-to-windows).
 
 Cuando termine, reinicie y retire la memoria. El primer arranque le pregunta el idioma, el teclado, la
@@ -115,31 +115,6 @@ sudo bootc switch ghcr.io/arsslensoft/amethystora:stable
 Después reinicie. En el primer arranque, un servicio prepara por sí solo el paso a las actualizaciones
 con firma comprobada, y a partir del reinicio siguiente solo se acepta una actualización si lleva la
 firma de Amethystora.
-
-## Elegir una imagen
-
-| Imagen | Para |
-| --- | --- |
-| `ghcr.io/arsslensoft/amethystora` | El escritorio estándar |
-| `ghcr.io/arsslensoft/amethystora-dx` | Desarrolladores: añade Docker, Incus, libvirt, VSCodium y más ([Modo desarrollador](developer.md)) |
-| `ghcr.io/arsslensoft/amethystora-nvidia-open` | El escritorio estándar con el controlador de núcleo abierto de NVIDIA |
-| `ghcr.io/arsslensoft/amethystora-dx-nvidia-open` | El modo desarrollador con el controlador de núcleo abierto de NVIDIA |
-
-Las ISO instalan las imágenes sin el controlador de NVIDIA. En un equipo con tarjeta NVIDIA, el primer
-arranque ofrece cambiar a la imagen NVIDIA correspondiente ([Hardware](hardware.md#graphics)).
-
-## Elegir un canal
-
-Cada imagen se ofrece en tres canales, que se indican con la etiqueta que va tras los dos puntos:
-
-| Etiqueta | Para |
-| --- | --- |
-| `stable` | Todo el mundo. Se compila cada semana, con el núcleo retenido en el de Fedora CoreOS, que va un poco por detrás del de Fedora para que las regresiones del núcleo se detecten antes. |
-| `latest` | Lo más reciente que tiene Fedora, recompilado cada vez que Amethystora cambia. |
-| `beta` | Para probar lo que viene. Espere algunas asperezas. |
-
-Las ISO instalan `stable`. Puede cambiar de imagen y de canal en cualquier momento;
-[Actualizaciones](updates.md#switching-streams-and-images) explica cómo.
 
 ## Después del primer arranque
 

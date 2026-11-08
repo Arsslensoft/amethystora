@@ -75,7 +75,7 @@ ACCOUNT_TIMEOUT = 1800
 # More changed files of one deploy than this are said as one finding
 MOST = 20
 REINSTALL = ("Something with administrator rights changed this system's own files. Back up your files and "
-             "reinstall from the installer (manual: troubleshooting.md#starting-over).")
+             "reinstall from the installer (manual: starting-over.md#starting-over).")
 
 TYPES = {"file": OSTree.ObjectType.FILE, "dirtree": OSTree.ObjectType.DIR_TREE,
          "dirmeta": OSTree.ObjectType.DIR_META, "commit": OSTree.ObjectType.COMMIT}

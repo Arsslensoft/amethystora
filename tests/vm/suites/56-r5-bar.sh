@@ -20,7 +20,7 @@
 #  11 ten disables and enables leaving nothing; Control's entries and the setup file.
 # The VM draws in software, where GNOME turns its animations off: what moves is checked with global.force_animations on,
 # and put back after.
-# vmlab-paths: @ui/extension.js @ui/*bars* @ui/*meters* @ui/*tweaks* @ui/*comfort* @ui/*motion* @ui/*pill* @ui/*dock* @sf/usr/libexec/amethystora-bar-layout @sf/usr/libexec/amethystora-control-list @sf/usr/libexec/amethystora-setup* @sf/*just/desktop.just @sf/*manual/desktop.md @sf/*manual/themes.md
+# vmlab-paths: @ui/extension.js @ui/*bars* @ui/*meters* @ui/*tweaks* @ui/*comfort* @ui/*motion* @ui/*pill* @ui/*dock* @sf/usr/libexec/amethystora-bar-layout @sf/usr/libexec/amethystora-control-list @sf/usr/libexec/amethystora-setup* @sf/*just/desktop.just @sf/*manual/top-bar.md @sf/*manual/comfort.md
 source "$(dirname "$0")/lib.sh"
 
 UUID=amethystora-ui@arsslensoft.github.io

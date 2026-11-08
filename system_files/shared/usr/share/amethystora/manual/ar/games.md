@@ -17,7 +17,7 @@ Steam استخدامهما: طبقة **MangoHud** ومركِّب **gamescope** �
 تطبيقات X11 الأخرى ([ما لا يُسمح لتطبيقات Flatpak بفعله](software.md#what-flatpak-apps-may-not-do)). ولا
 يرسم Steam وألعاب Windows التي يشغّلها عبر Proton إلا عليه، لذا يُعاد X11 إلى Steam والمشغّلات التي
 تضيفها، لحسابك وحده. وتسرده صفحة **التطبيقات** في تطبيق الأمان مع كل إذن آخر
-([أذونات التطبيقات](security.md#app-permissions)).
+([أذونات التطبيقات](app-permissions.md)).
 
 في **Properties** (الخصائص) الخاصة بلعبة في Steam، تحت **Launch Options** (خيارات التشغيل):
 

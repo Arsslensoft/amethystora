@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Reopen: a window closed by mistake comes back with Super, Alt and T */
+.art { --loop: 3.2s; --poster: 0.66; }
+@keyframes ksuper { 0%, 42% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } 46%, 66% { transform: translateY(2px); background: #b37df9; } 70%, 100% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } }
+@keyframes kalt { 0%, 43% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } 47%, 66% { transform: translateY(2px); background: #b37df9; } 70%, 100% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } }
+@keyframes kt { 0%, 48% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } 52%, 64% { transform: translateY(2px); background: #b37df9; } 68%, 100% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } }
+@keyframes win { 0%, 20% { opacity: 1; transform: scale(1); } 30%, 54% { opacity: 0; transform: scale(0.85); } 64%, 100% { opacity: 1; transform: scale(1); } }
+@keyframes hand { 0% { left: 70px; top: 58px; opacity: 1; } 16%, 22% { left: 109px; top: 12px; opacity: 1; } 30%, 84% { left: 109px; top: 12px; opacity: 0; } 92%, 100% { left: 70px; top: 58px; opacity: 1; } }
+@keyframes press { 0%, 17% { transform: scale(1); } 19% { transform: scale(0.7); } 21%, 100% { transform: scale(1); } }
+.w { left: 28px; top: 8px; width: 92px; height: 60px; animation-name: win; }
+.w .line { left: 10px; }
+.light { position: absolute; top: 1px; width: 5px; height: 5px; border-radius: 50%; }
+.close { animation-name: press; }
+.pointer { position: absolute; width: 16px; height: 20px; animation-name: hand; }
+.cap { padding: 0 8px; }
+.ks { left: 18px; top: 82px; animation-name: ksuper; }
+.ka { left: 66px; top: 82px; animation-name: kalt; }
+.kt { left: 100px; top: 82px; width: 24px; padding: 0; animation-name: kt; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="win w">
+    <i class="light" style="left: 68px; background: #e8c06a"></i><i class="light" style="left: 76px; background: #8ddba4"></i><i class="light close" style="left: 84px; background: #f07a8a"></i>
+    <i class="line" style="top: 18px; width: 64px"></i><i class="line" style="top: 28px; width: 46px"></i><i class="line" style="top: 38px; width: 56px"></i>
+  </div>
+  <span class="cap ks">Super</span><span class="cap ka">Alt</span><span class="cap kt">T</span>
+  <svg class="pointer" viewBox="0 0 24 30"><path d="M4 3L20 16 12.6 17.3 8.7 24Z" fill="#ffffff" stroke="#9148f0" stroke-width="2" stroke-linejoin="round"/></svg>
+</div>
+</body>
+</html>

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Putting a workspace away: its windows gather into the pill, which keeps a quiet mark, and come back out */
+.art { --loop: 3.4s; --poster: 0.24; }
+@keyframes wa { 0%, 14% { left: 10px; top: 24px; width: 62px; height: 54px; opacity: 1; } 32% { left: 70px; top: 6px; width: 8px; height: 6px; opacity: 0; } 70% { left: 70px; top: 6px; width: 8px; height: 6px; opacity: 0; } 88%, 100% { left: 10px; top: 24px; width: 62px; height: 54px; opacity: 1; } }
+@keyframes wb { 0%, 20% { left: 78px; top: 24px; width: 62px; height: 54px; opacity: 1; } 38% { left: 72px; top: 6px; width: 8px; height: 6px; opacity: 0; } 64% { left: 72px; top: 6px; width: 8px; height: 6px; opacity: 0; } 82%, 100% { left: 78px; top: 24px; width: 62px; height: 54px; opacity: 1; } }
+@keyframes pill { 0%, 34% { width: 34px; left: 58px; } 42%, 62% { width: 50px; left: 50px; } 70%, 100% { width: 34px; left: 58px; } }
+@keyframes mark { 0%, 38% { opacity: 0; } 44%, 60% { opacity: 1; } 66%, 100% { opacity: 0; } }
+.bar { position: absolute; left: 0; right: 0; top: 0; height: 16px; background: rgba(0, 0, 0, 0.3); }
+.pill { position: absolute; top: 3px; height: 10px; border-radius: 5px; background: #0d0814; border: 1px solid rgba(220, 188, 255, 0.4); animation-name: pill; }
+.mark { position: absolute; left: 4px; top: 1px; width: 10px; height: 6px; display: flex; gap: 2px; animation-name: mark; }
+.mark i { width: 4px; height: 6px; border-radius: 1px; background: #dcbcff; }
+.mark .line { position: absolute; left: 14px; top: 1px; width: 26px; height: 4px; }
+.w { position: absolute; box-sizing: border-box; border-radius: 6px; background: #2b2140; border: 1px solid rgba(255, 255, 255, 0.16); }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="bar"></div>
+  <div class="pill"><div class="mark"><i></i><i></i><span class="line"></span></div></div>
+  <i class="w" style="animation-name: wa"></i><i class="w" style="animation-name: wb"></i>
+</div>
+</body>
+</html>

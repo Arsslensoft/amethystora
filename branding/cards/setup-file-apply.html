@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Your setup in a file: one file goes to a new machine, and its apps, theme and settings fill in one by one */
+.art { --loop: 3.4s; --poster: 0.8; }
+@keyframes send { 0%, 6% { transform: translate(0, 0); opacity: 0; } 10% { transform: translate(0, 0); opacity: 1; } 28% { transform: translate(56px, 0); opacity: 1; } 34%, 100% { transform: translate(56px, 0); opacity: 0; } }
+@keyframes theme { 0%, 30% { background: #2b2140; } 40%, 90% { background: linear-gradient(135deg, #3a2160, #7a4cc0); } 98%, 100% { background: #2b2140; } }
+@keyframes a1 { 0%, 38% { opacity: 0; transform: scale(0.4); } 44%, 90% { opacity: 1; transform: scale(1); } 98%, 100% { opacity: 0; transform: scale(1); } }
+@keyframes a2 { 0%, 46% { opacity: 0; transform: scale(0.4); } 52%, 90% { opacity: 1; transform: scale(1); } 98%, 100% { opacity: 0; transform: scale(1); } }
+@keyframes a3 { 0%, 54% { opacity: 0; transform: scale(0.4); } 60%, 90% { opacity: 1; transform: scale(1); } 98%, 100% { opacity: 0; transform: scale(1); } }
+@keyframes a4 { 0%, 62% { opacity: 0; transform: scale(0.4); } 68%, 90% { opacity: 1; transform: scale(1); } 98%, 100% { opacity: 0; transform: scale(1); } }
+@keyframes ok { 0%, 70% { opacity: 0; transform: scale(0.4); } 76%, 90% { opacity: 1; transform: scale(1); } 98%, 100% { opacity: 0; transform: scale(1); } }
+.doc { position: absolute; left: 10px; top: 30px; width: 30px; height: 38px; border-radius: 3px 9px 3px 3px; background: #efe4ff; }
+.doc .line { left: 5px; height: 3px; background: rgba(43, 33, 64, 0.55); }
+.home { position: absolute; left: 10px; top: 30px; width: 30px; height: 38px; border-radius: 3px 9px 3px 3px; background: #efe4ff; }
+.home .line { left: 5px; height: 3px; background: rgba(43, 33, 64, 0.55); }
+.flying { animation-name: send; }
+.mon { position: absolute; left: 66px; top: 18px; width: 76px; height: 58px; border-radius: 6px; border: 3px solid #3d3150; box-sizing: border-box; animation-name: theme; overflow: hidden; }
+.stand { position: absolute; left: 96px; top: 76px; width: 16px; height: 10px; border-radius: 0 0 3px 3px; background: #3d3150; }
+.grid { position: absolute; left: 10px; top: 9px; display: grid; grid-template-columns: repeat(2, 20px); gap: 8px 10px; }
+.grid i { height: 16px; border-radius: 5px; }
+.ok { position: absolute; left: 40px; top: 90px; width: 16px; height: 16px; border-radius: 50%; background: #8ddba4; animation-name: ok; }
+.ok::after { content: ""; position: absolute; left: 5px; top: 3px; width: 4px; height: 7px; border: solid #1a1226; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="home"><i class="line" style="top: 10px; width: 18px"></i><i class="line" style="top: 17px; width: 14px"></i><i class="line" style="top: 24px; width: 18px"></i></div>
+  <div class="mon">
+    <div class="grid"><i style="background: #e8c06a; animation-name: a1"></i><i style="background: #8ddba4; animation-name: a2"></i><i style="background: #6fd3e0; animation-name: a3"></i><i style="background: #dcbcff; animation-name: a4"></i></div>
+  </div>
+  <i class="stand"></i>
+  <div class="doc flying"><i class="line" style="top: 10px; width: 18px"></i><i class="line" style="top: 17px; width: 14px"></i><i class="line" style="top: 24px; width: 18px"></i></div>
+  <i class="ok" style="left: 96px"></i>
+</div>
+</body>
+</html>

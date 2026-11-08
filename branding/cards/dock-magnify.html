@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* The dock's icons swell in a wave under the pointer as it passes */
+.art { --loop: 3.2s; --poster: 0.25; }
+@keyframes m0 { 0% { transform: scale(1.60); } 5% { transform: scale(1.60); } 10% { transform: scale(1.38); } 15% { transform: scale(1.20); } 20% { transform: scale(1.06); } 25% { transform: scale(1.00); } 30% { transform: scale(1.00); } 35% { transform: scale(1.00); } 40% { transform: scale(1.00); } 45% { transform: scale(1.00); } 50% { transform: scale(1.00); } 55% { transform: scale(1.00); } 60% { transform: scale(1.00); } 65% { transform: scale(1.00); } 70% { transform: scale(1.06); } 75% { transform: scale(1.20); } 80% { transform: scale(1.38); } 85% { transform: scale(1.60); } 90% { transform: scale(1.60); } 95% { transform: scale(1.60); } 100% { transform: scale(1.60); } }
+@keyframes m1 { 0% { transform: scale(1.20); } 5% { transform: scale(1.20); } 10% { transform: scale(1.38); } 15% { transform: scale(1.60); } 20% { transform: scale(1.38); } 25% { transform: scale(1.20); } 30% { transform: scale(1.06); } 35% { transform: scale(1.00); } 40% { transform: scale(1.00); } 45% { transform: scale(1.00); } 50% { transform: scale(1.00); } 55% { transform: scale(1.00); } 60% { transform: scale(1.06); } 65% { transform: scale(1.20); } 70% { transform: scale(1.38); } 75% { transform: scale(1.60); } 80% { transform: scale(1.38); } 85% { transform: scale(1.20); } 90% { transform: scale(1.20); } 95% { transform: scale(1.20); } 100% { transform: scale(1.20); } }
+@keyframes m2 { 0% { transform: scale(1.00); } 5% { transform: scale(1.00); } 10% { transform: scale(1.06); } 15% { transform: scale(1.20); } 20% { transform: scale(1.38); } 25% { transform: scale(1.60); } 30% { transform: scale(1.38); } 35% { transform: scale(1.20); } 40% { transform: scale(1.06); } 45% { transform: scale(1.00); } 50% { transform: scale(1.06); } 55% { transform: scale(1.20); } 60% { transform: scale(1.38); } 65% { transform: scale(1.60); } 70% { transform: scale(1.38); } 75% { transform: scale(1.20); } 80% { transform: scale(1.06); } 85% { transform: scale(1.00); } 90% { transform: scale(1.00); } 95% { transform: scale(1.00); } 100% { transform: scale(1.00); } }
+@keyframes m3 { 0% { transform: scale(1.00); } 5% { transform: scale(1.00); } 10% { transform: scale(1.00); } 15% { transform: scale(1.00); } 20% { transform: scale(1.06); } 25% { transform: scale(1.20); } 30% { transform: scale(1.38); } 35% { transform: scale(1.60); } 40% { transform: scale(1.38); } 45% { transform: scale(1.20); } 50% { transform: scale(1.38); } 55% { transform: scale(1.60); } 60% { transform: scale(1.38); } 65% { transform: scale(1.20); } 70% { transform: scale(1.06); } 75% { transform: scale(1.00); } 80% { transform: scale(1.00); } 85% { transform: scale(1.00); } 90% { transform: scale(1.00); } 95% { transform: scale(1.00); } 100% { transform: scale(1.00); } }
+@keyframes m4 { 0% { transform: scale(1.00); } 5% { transform: scale(1.00); } 10% { transform: scale(1.00); } 15% { transform: scale(1.00); } 20% { transform: scale(1.00); } 25% { transform: scale(1.00); } 30% { transform: scale(1.06); } 35% { transform: scale(1.20); } 40% { transform: scale(1.38); } 45% { transform: scale(1.60); } 50% { transform: scale(1.38); } 55% { transform: scale(1.20); } 60% { transform: scale(1.06); } 65% { transform: scale(1.00); } 70% { transform: scale(1.00); } 75% { transform: scale(1.00); } 80% { transform: scale(1.00); } 85% { transform: scale(1.00); } 90% { transform: scale(1.00); } 95% { transform: scale(1.00); } 100% { transform: scale(1.00); } }
+@keyframes hand { 0%, 5% { left: 31px; } 45% { left: 115px; } 85%, 100% { left: 31px; } }
+.dock { left: 18px; top: 72px; width: 114px; height: 30px; border-radius: 10px; }
+.ic { position: absolute; top: 79px; width: 16px; height: 16px; border-radius: 5px; transform-origin: 50% 100%; animation-timing-function: linear; }
+.pointer { position: absolute; top: 88px; width: 16px; height: 20px; animation-name: hand; animation-timing-function: linear; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="pane dock"></div>
+  <i class="ic" style="left: 25px; background: #9148f0; animation-name: m0"></i><i class="ic" style="left: 46px; background: #6fd3e0; animation-name: m1"></i><i class="ic" style="left: 67px; background: #e8c06a; animation-name: m2"></i><i class="ic" style="left: 88px; background: #8ddba4; animation-name: m3"></i><i class="ic" style="left: 109px; background: #dcbcff; animation-name: m4"></i>
+  <svg class="pointer" viewBox="0 0 24 30"><path d="M4 3L20 16 12.6 17.3 8.7 24Z" fill="#ffffff" stroke="#9148f0" stroke-width="2" stroke-linejoin="round"/></svg>
+</div>
+</body>
+</html>

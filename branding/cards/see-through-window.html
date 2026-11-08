@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* See-through windows: Super and Alt held, the wheel scrolls the front window clear, and back to solid */
+.art { --loop: 3.2s; --poster: 0.5; }
+@keyframes ksuper { 0%, 8% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } 14%, 86% { transform: translateY(2px); background: #b37df9; } 92%, 100% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } }
+@keyframes kalt { 0%, 9% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } 15%, 86% { transform: translateY(2px); background: #b37df9; } 92%, 100% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } }
+@keyframes fade { 0%, 18% { opacity: 1; } 46%, 60% { opacity: 0.4; } 84%, 100% { opacity: 1; } }
+@keyframes wheel { 0%, 18% { transform: translateY(0); } 22% { transform: translateY(3px); } 26% { transform: translateY(0); } 30% { transform: translateY(3px); } 34% { transform: translateY(0); } 38% { transform: translateY(3px); } 42%, 62% { transform: translateY(0); } 66% { transform: translateY(-3px); } 70% { transform: translateY(0); } 74% { transform: translateY(-3px); } 78% { transform: translateY(0); } 82% { transform: translateY(-3px); } 86%, 100% { transform: translateY(0); } }
+.back .line { left: 8px; }
+.front { left: 46px; top: 22px; width: 92px; height: 50px; animation-name: fade; z-index: 1; }
+.front .line { left: 10px; background: rgba(239, 228, 255, 0.5); }
+.mouse { position: absolute; left: 120px; top: 78px; width: 18px; height: 28px; border: 2px solid #dcbcff; border-radius: 9px; box-sizing: border-box; }
+.wh { position: absolute; left: 5px; top: 4px; width: 4px; height: 7px; border-radius: 2px; background: #b37df9; animation-name: wheel; }
+.ks { left: 14px; top: 82px; animation-name: ksuper; }
+.ka { left: 68px; top: 82px; animation-name: kalt; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="win back" style="left: 10px; top: 8px; width: 82px; height: 56px">
+    <i class="sq" style="position: absolute; left: 8px; top: 13px; background: #e8c06a"></i><i class="line" style="top: 16px; left: 28px; width: 44px"></i>
+    <i class="line" style="top: 34px; width: 60px"></i><i class="line" style="top: 43px; width: 48px"></i>
+  </div>
+  <div class="win front"><i class="line" style="top: 16px; width: 60px"></i><i class="line" style="top: 26px; width: 44px"></i><i class="line" style="top: 36px; width: 54px"></i></div>
+  <span class="cap ks">Super</span><span class="cap ka">Alt</span>
+  <div class="mouse"><i class="wh"></i></div>
+</div>
+</body>
+</html>

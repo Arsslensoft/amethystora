@@ -245,7 +245,7 @@ impl Parts {
         sidebar.body.append(&browse);
 
         sidebar.foot.set_spacing(12);
-        let manual = ui::button(&t!("Logs in the manual"), Some(icon("book", 18)), &["link", "quiet"], || process::manual("troubleshooting#the-logs"));
+        let manual = ui::button(&t!("Logs in the manual"), Some(icon("book", 18)), &["link", "quiet"], || process::manual("logs"));
         manual.set_halign(gtk::Align::Start);
         sidebar.foot.append(&manual);
         let usage = wrapped("", &["terminal"]);

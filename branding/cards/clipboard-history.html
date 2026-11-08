@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* The clipboard history: Super, Shift and V open it, and the item picked comes back to the top */
+.art { --loop: 3.4s; --poster: 0.47; }
+@keyframes ksuper { 0%, 6% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } 10%, 24% { transform: translateY(2px); background: #b37df9; } 28%, 100% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } }
+@keyframes kshift { 0%, 7% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } 11%, 24% { transform: translateY(2px); background: #b37df9; } 28%, 100% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } }
+@keyframes kv { 0%, 12% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } 16%, 22% { transform: translateY(2px); background: #b37df9; } 26%, 100% { transform: translateY(0); background: rgba(255, 255, 255, 0.14); } }
+@keyframes list { 0%, 14% { opacity: 0; transform: translateY(6px); } 22%, 82% { opacity: 1; transform: translateY(0); } 90%, 100% { opacity: 0; transform: translateY(0); } }
+@keyframes r1 { 0%, 52% { top: 8px; } 64%, 100% { top: 22px; } }
+@keyframes r2 { 0%, 52% { top: 22px; } 64%, 100% { top: 36px; } }
+@keyframes r3 { 0%, 52% { top: 36px; } 64%, 90% { top: 8px; } 92%, 100% { top: 36px; } }
+@keyframes hl { 0%, 32% { top: 6px; } 44%, 52% { top: 34px; } 64%, 100% { top: 6px; } }
+.list { left: 30px; top: 8px; width: 90px; height: 66px; animation-name: list; }
+.row { position: absolute; left: 8px; display: flex; gap: 6px; align-items: center; height: 10px; }
+.row .line { position: static; }
+.row .sq { width: 8px; height: 8px; border-radius: 2px; }
+.hl { position: absolute; left: 4px; width: 80px; height: 14px; border-radius: 4px; background: rgba(179, 125, 249, 0.4); animation-name: hl; }
+.cap { padding: 0 8px; }
+.ks { left: 12px; top: 84px; animation-name: ksuper; }
+.ksh { left: 62px; top: 84px; animation-name: kshift; }
+.kv { left: 108px; top: 84px; width: 24px; padding: 0; animation-name: kv; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="pane list">
+    <i class="hl"></i>
+    <div class="row" style="animation-name: r1"><i class="sq" style="background: #dcbcff"></i><i class="line" style="width: 50px"></i></div>
+    <div class="row" style="animation-name: r2"><i class="sq" style="background: #6fd3e0"></i><i class="line" style="width: 38px"></i></div>
+    <div class="row" style="animation-name: r3"><i class="sq" style="background: #e8c06a"></i><i class="line" style="width: 56px"></i></div>
+    <div class="row" style="top: 50px"><i class="sq" style="background: #dcbcff"></i><i class="line" style="width: 30px"></i></div>
+  </div>
+  <span class="cap ks">Super</span><span class="cap ksh">Shift</span><span class="cap kv">V</span>
+</div>
+</body>
+</html>

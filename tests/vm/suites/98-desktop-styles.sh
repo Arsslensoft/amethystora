@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-# The desktop styles, fonts and icon packs each theme brings (manual: themes.md#styles), as a person's session has them:
+# The desktop styles, fonts and icon packs each theme brings (manual: styles.md#styles), as a person's session has them:
 #   - every theme, applied, writes its own style, font and icon pack, renders the shell's half of the style and puts
 #     the applications' half in both GTK stylesheets, and the shell's style module started and threw nothing;
 #   - the shell draws what the style says: the top bar is held off the screen's edge in the floating, islands, capsule,

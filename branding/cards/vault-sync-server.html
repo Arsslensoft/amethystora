@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Sync: the vault and your own server, an item going out sealed and a change coming back */
+.art { --loop: 3.2s; --poster: 0.3; }
+@keyframes out { 0%, 6% { left: 44px; opacity: 0; } 12% { opacity: 1; } 40% { left: 94px; opacity: 1; } 46%, 100% { left: 94px; opacity: 0; } }
+@keyframes back { 0%, 50% { left: 94px; opacity: 0; } 56% { opacity: 1; } 84% { left: 44px; opacity: 1; } 90%, 100% { left: 44px; opacity: 0; } }
+@keyframes lit { 0%, 40% { background: rgba(255, 255, 255, 0.18); } 46%, 56% { background: #8ddba4; } 62%, 100% { background: rgba(255, 255, 255, 0.18); } }
+@keyframes lit2 { 0%, 84% { box-shadow: 0 0 0 0 rgba(179, 125, 249, 0); } 90% { box-shadow: 0 0 0 4px rgba(179, 125, 249, 0.45); } 100% { box-shadow: 0 0 0 0 rgba(179, 125, 249, 0); } }
+.vault { left: 12px; top: 34px; width: 38px; height: 44px; border-radius: 8px; background: #2b2140; border: 2px solid #b37df9; box-sizing: border-box; animation-name: lit2; }
+.dial { position: absolute; left: 9px; top: 11px; width: 16px; height: 16px; border-radius: 50%; border: 3px solid #dcbcff; box-sizing: border-box; }
+.dial::before, .dial::after { content: ""; position: absolute; left: -6px; top: 2px; width: 22px; height: 3px; border-radius: 2px; background: #dcbcff; }
+.dial::after { transform: rotate(90deg); }
+.hinge { position: absolute; left: -4px; width: 4px; height: 7px; border-radius: 2px; background: #b37df9; }
+.server { position: absolute; left: 100px; width: 38px; height: 12px; border-radius: 3px; background: #2b2140; border: 1px solid rgba(255, 255, 255, 0.2); box-sizing: border-box; }
+.led { position: absolute; left: 5px; top: 3px; width: 4px; height: 4px; border-radius: 50%; animation-name: lit; }
+.server .line { left: 13px; top: 4px; width: 18px; height: 2px; }
+.wire { position: absolute; left: 50px; top: 55px; width: 50px; height: 2px; background: rgba(255, 255, 255, 0.12); }
+.item { position: absolute; top: 49px; width: 14px; height: 14px; border-radius: 4px; }
+.up { background: #b37df9; animation-name: out; }
+.up::after { content: ""; position: absolute; left: 4px; top: 4px; width: 6px; height: 6px; border-radius: 2px; background: #1a1226; }
+.down { background: #dcbcff; animation-name: back; }
+</style>
+</head>
+<body>
+<div class="art">
+  <i class="wire"></i>
+  <div class="pane vault"><i class="dial"></i><i class="hinge" style="top: 6px"></i><i class="hinge" style="top: 28px"></i></div>
+  <div class="server" style="top: 37px"><i class="led"></i><i class="line"></i></div>
+  <div class="server" style="top: 51px"><i class="led"></i><i class="line"></i></div>
+  <div class="server" style="top: 65px"><i class="led"></i><i class="line"></i></div>
+  <i class="item up"></i><i class="item down"></i>
+</div>
+</body>
+</html>

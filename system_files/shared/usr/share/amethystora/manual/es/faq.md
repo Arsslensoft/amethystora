@@ -53,7 +53,7 @@ actualizadas.
 
 Ábralo en Archivos. Va a un contenedor creado para su tipo de paquete, tras un análisis de virus y un
 examen de su procedencia; si existe la misma aplicación en Flathub, se ofrece primero.
-[Un archivo de paquete](software.md#a-package-file).
+[Un archivo de paquete](containers.md#a-package-file).
 
 ## ¿Dónde se guarda mi configuración?
 

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Bring everything: an old disk is plugged in, read without being written, and its folders are copied home */
+.art { --loop: 3.2s; --poster: 0.7; }
+@keyframes plug { 0%, 6% { transform: translateX(-24px); opacity: 0; } 18%, 90% { transform: translateX(0); opacity: 1; } 98%, 100% { transform: translateX(-24px); opacity: 0; } }
+@keyframes led { 0%, 20% { background: rgba(255, 255, 255, 0.25); } 23%, 32% { background: #8ddba4; } 35%, 36% { background: rgba(255, 255, 255, 0.25); } 37%, 46% { background: #8ddba4; } 49%, 50% { background: rgba(255, 255, 255, 0.25); } 51%, 60% { background: #8ddba4; } 63%, 100% { background: rgba(255, 255, 255, 0.25); } }
+@keyframes m1 { 0%, 20% { transform: translate(0, 0); opacity: 0; } 23% { opacity: 1; } 36% { transform: translate(70px, -16px); opacity: 1; } 38%, 100% { transform: translate(70px, -16px); opacity: 0; } }
+@keyframes m2 { 0%, 34% { transform: translate(0, 0); opacity: 0; } 37% { opacity: 1; } 50% { transform: translate(70px, 4px); opacity: 1; } 52%, 100% { transform: translate(70px, 4px); opacity: 0; } }
+@keyframes m3 { 0%, 48% { transform: translate(0, 0); opacity: 0; } 51% { opacity: 1; } 64% { transform: translate(70px, 24px); opacity: 1; } 66%, 100% { transform: translate(70px, 24px); opacity: 0; } }
+@keyframes r1 { 0%, 36% { opacity: 0; } 38%, 90% { opacity: 1; } 98%, 100% { opacity: 0; } }
+@keyframes r2 { 0%, 50% { opacity: 0; } 52%, 90% { opacity: 1; } 98%, 100% { opacity: 0; } }
+@keyframes r3 { 0%, 64% { opacity: 0; } 66%, 90% { opacity: 1; } 98%, 100% { opacity: 0; } }
+.disk { position: absolute; left: 8px; top: 34px; width: 36px; height: 46px; border-radius: 6px; background: #3d3150; border: 1px solid rgba(255, 255, 255, 0.2); box-sizing: border-box; animation-name: plug; }
+.disk::before { content: ""; position: absolute; left: 9px; top: 9px; width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.25); }
+.led { position: absolute; left: 14px; top: 36px; width: 6px; height: 3px; border-radius: 2px; animation-name: led; }
+.home { left: 76px; top: 18px; width: 66px; height: 78px; }
+.r { position: absolute; left: 8px; display: flex; gap: 5px; align-items: center; }
+.r .line { position: static; width: 28px; }
+.f { width: 13px; height: 10px; border-radius: 2px; }
+.mv { position: absolute; left: 14px; width: 13px; height: 10px; border-radius: 2px; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="disk"><i class="led"></i></div>
+  <div class="win home">
+    <div class="r" style="top: 16px; animation-name: r1"><i class="f" style="background: #e8c06a"></i><i class="line"></i></div>
+    <div class="r" style="top: 36px; animation-name: r2"><i class="f" style="background: #b37df9"></i><i class="line" style="width: 22px"></i></div>
+    <div class="r" style="top: 56px; animation-name: r3"><i class="f" style="background: #8ddba4"></i><i class="line" style="width: 32px"></i></div>
+  </div>
+  <i class="mv" style="top: 50px; background: #e8c06a; animation-name: m1"></i>
+  <i class="mv" style="top: 50px; background: #b37df9; animation-name: m2"></i>
+  <i class="mv" style="top: 50px; background: #8ddba4; animation-name: m3"></i>
+</div>
+</body>
+</html>

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Files by what you remember: two words typed in the search box, and the files that fit come up, a PDF from last week first */
+.art { --loop: 3.4s; --poster: 0.7; }
+@keyframes box { 0%, 4% { opacity: 0; transform: translateY(4px); } 10%, 88% { opacity: 1; transform: translateY(0); } 96%, 100% { opacity: 0; transform: translateY(0); } }
+@keyframes w1 { 0%, 12% { width: 0; } 22%, 100% { width: 26px; } }
+@keyframes w2 { 0%, 26% { width: 0; } 36%, 100% { width: 34px; } }
+@keyframes caret { 0%, 12% { left: 26px; } 22% { left: 54px; } 26% { left: 58px; } 36%, 100% { left: 94px; } }
+@keyframes r { 0%, 40% { opacity: 0; transform: translateY(4px); } 48%, 88% { opacity: 1; transform: translateY(0); } 96%, 100% { opacity: 0; transform: translateY(0); } }
+@keyframes pick { 0%, 56% { background: transparent; } 62%, 88% { background: rgba(179, 125, 249, 0.35); } 96%, 100% { background: transparent; } }
+.search { left: 12px; top: 10px; width: 126px; height: 24px; animation-name: box; }
+.glass { position: absolute; left: 8px; top: 6px; width: 9px; height: 9px; border: 2px solid #dcbcff; border-radius: 50%; box-sizing: border-box; }
+.glass::after { content: ""; position: absolute; left: 7px; top: 7px; width: 4px; height: 2px; background: #dcbcff; border-radius: 1px; transform: rotate(45deg); transform-origin: 0 0; }
+.t { position: absolute; top: 9px; height: 5px; border-radius: 2px; background: #efe4ff; }
+.caret { position: absolute; top: 6px; width: 1.5px; height: 11px; background: #efe4ff; animation-name: caret; }
+.results { left: 12px; top: 40px; width: 126px; height: 66px; animation-name: box; }
+.row { position: absolute; left: 4px; width: 118px; height: 18px; border-radius: 5px; display: flex; gap: 7px; align-items: center; padding-left: 6px; box-sizing: border-box; }
+.row .line { position: static; }
+.doc { width: 11px; height: 14px; border-radius: 1px 4px 1px 1px; background: #efe4ff; position: relative; }
+.doc::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 4px; border-radius: 1px 4px 0 0; }
+.pdf::after { background: #f06060; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="pane search"><span class="glass"></span><i class="t" style="left: 26px; animation-name: w1"></i><i class="t" style="left: 58px; animation-name: w2"></i><i class="caret"></i></div>
+  <div class="pane results">
+    <div class="row" style="top: 4px; animation-name: r, pick"><i class="doc pdf"></i><i class="line" style="width: 60px; background: #efe4ff"></i></div>
+    <div class="row" style="top: 24px; animation-name: r; animation-delay: 0.15s"><i class="doc pdf"></i><i class="line" style="width: 48px"></i></div>
+    <div class="row" style="top: 44px; animation-name: r; animation-delay: 0.3s"><i class="doc pdf"></i><i class="line" style="width: 70px"></i></div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Light by day, dark by night: the sun goes down, the moon comes up, and the desktop turns to the theme's dark side */
+.art { --loop: 3.4s; --poster: 0.62; }
+@keyframes sun { 0%, 20% { transform: translateY(0); opacity: 1; } 44% { transform: translateY(26px); opacity: 0; } 84% { transform: translateY(26px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+@keyframes moon { 0%, 36% { transform: translateY(26px); opacity: 0; } 56%, 76% { transform: translateY(0); opacity: 1; } 92%, 100% { transform: translateY(26px); opacity: 0; } }
+@keyframes darken { 0%, 40% { opacity: 0; } 54%, 80% { opacity: 1; } 94%, 100% { opacity: 0; } }
+.screen { position: absolute; left: 8px; top: 34px; width: 134px; height: 72px; border-radius: 8px; overflow: hidden; }
+.light { background: linear-gradient(135deg, #f6eeff, #dcc6fb); }
+.dark { background: linear-gradient(135deg, #3a2560, #1f1530); animation-name: darken; }
+.screen .win { left: 20px; top: 12px; width: 94px; height: 50px; }
+.light .win { background: #ffffff; border-color: rgba(80, 40, 140, 0.18); }
+.light .win::before { background: rgba(80, 40, 140, 0.1); }
+.txt { position: absolute; left: 10px; height: 4px; border-radius: 2px; background: rgba(239, 228, 255, 0.4); }
+.light .txt { background: rgba(60, 30, 100, 0.3); }
+.horizon { position: absolute; left: 30px; top: 4px; width: 90px; height: 28px; overflow: hidden; }
+.sun { position: absolute; left: 14px; top: 6px; width: 16px; height: 16px; border-radius: 50%; background: #ffd27a; box-shadow: 0 0 8px #ffd27a; animation-name: sun; }
+.moon { position: absolute; left: 60px; top: 6px; width: 15px; height: 15px; border-radius: 50%; box-shadow: -4px 3px 0 0 #dcbcff; animation-name: moon; }
+.ground { position: absolute; left: 30px; top: 30px; width: 90px; height: 2px; border-radius: 1px; background: rgba(239, 228, 255, 0.3); }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="horizon"><i class="sun"></i><i class="moon"></i></div><i class="ground"></i>
+  <div class="screen light"><div class="win"><i class="txt" style="top: 16px; width: 60px"></i><i class="txt" style="top: 25px; width: 44px"></i><i class="txt" style="top: 34px; width: 52px"></i></div></div>
+  <div class="screen dark"><div class="win"><i class="txt" style="top: 16px; width: 60px"></i><i class="txt" style="top: 25px; width: 44px"></i><i class="txt" style="top: 34px; width: 52px"></i></div></div>
+</div>
+</body>
+</html>

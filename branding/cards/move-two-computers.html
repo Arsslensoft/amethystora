@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Move to this computer: two computers show the same six digits, then the folders cross from the old one to the new */
+.art { --loop: 3.4s; --poster: 0.56; }
+@keyframes code { 0%, 10% { opacity: 0; transform: scale(0.6); } 20%, 62% { opacity: 1; transform: scale(1); } 70%, 100% { opacity: 0; transform: scale(1); } }
+@keyframes match { 0%, 26% { box-shadow: 0 0 0 0 rgba(141, 219, 164, 0); } 32%, 62% { box-shadow: 0 0 0 2px #8ddba4; } 70%, 100% { box-shadow: 0 0 0 0 rgba(141, 219, 164, 0); } }
+@keyframes fly { 0%, 46% { transform: translate(0, 0); opacity: 0; } 50% { transform: translate(0, 0); opacity: 1; } 62% { transform: translate(43px, -16px); opacity: 1; } 74% { transform: translate(86px, 0); opacity: 1; } 78%, 100% { transform: translate(86px, 0); opacity: 0; } }
+@keyframes land { 0%, 74% { opacity: 0; } 78%, 92% { opacity: 1; } 100% { opacity: 0; } }
+.mon { left: 6px; top: 22px; width: 52px; height: 40px; animation-name: match; }
+.mon.new { left: 92px; }
+.stand { position: absolute; top: 62px; width: 16px; height: 10px; border-radius: 0 0 3px 3px; background: rgba(255, 255, 255, 0.18); }
+.code { position: absolute; left: 7px; top: 14px; display: flex; gap: 3px; animation-name: code; }
+.code i { width: 4px; height: 10px; border-radius: 2px; background: #efe4ff; }
+.folder { position: absolute; left: 22px; top: 80px; width: 20px; height: 14px; border-radius: 2px 4px 4px 4px; background: #e8c06a; animation-name: fly; }
+.folder::before { content: ""; position: absolute; left: 0; top: -3px; width: 9px; height: 4px; border-radius: 2px 2px 0 0; background: #e8c06a; }
+.landed { position: absolute; top: 80px; width: 20px; height: 14px; border-radius: 2px 4px 4px 4px; background: #e8c06a; animation-name: land; }
+.landed::before { content: ""; position: absolute; left: 0; top: -3px; width: 9px; height: 4px; border-radius: 2px 2px 0 0; background: #e8c06a; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="pane mon"><div class="code"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+  <div class="pane mon new"><div class="code"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+  <i class="stand" style="left: 24px"></i><i class="stand" style="left: 110px"></i>
+  <i class="folder"></i>
+  <i class="folder" style="background: #b37df9; animation-delay: calc(var(--loop) * 0.06)"></i>
+  <i class="folder" style="background: #8ddba4; animation-delay: calc(var(--loop) * 0.12)"></i>
+  <i class="landed" style="left: 98px; top: 78px"></i>
+  <i class="landed" style="left: 112px; top: 92px; background: #b37df9"></i>
+</div>
+</body>
+</html>

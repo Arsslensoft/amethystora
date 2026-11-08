@@ -537,7 +537,16 @@ are the Markdown files in `system_files/shared/usr/share/amethystora/manual`, li
 shows. **Keep the manual accurate** when you change a command, recipe, hotkey, path or default that
 it describes, and add to it when you add something a user would look for there.
 
-- Link between pages as files (`updates.md#rolling-back`). `build_files/shared/check-manual.js`
+- **Small pages, small sections** (the maintainer's choice of 2026-11-07): a page covers one feature or a few close ones,
+  in about 150 lines at most, and a section is a sentence or three, then a moving card where motion explains it, then the
+  commands. Add a new page rather than growing one past that, list it in `pages.json` and run
+  `check-translations.js --write`, which takes its title. The agent's index cuts by heading, so a small section is also a
+  small passage. Never rename a heading other things link to: its id is the link.
+- **Moving cards** are short looping clips beside the words, `![Caption](media/<id>.webm)`: each is
+  `branding/cards/<id>.html` (plain shapes and CSS keyframes over `card.css`, no words but key caps, its `.art` setting
+  `--loop` and `--poster`), which `node branding/cards.mjs [id...]` renders into `manual/media/<id>.webm` and `.png`; the
+  outputs are committed. One per feature where motion helps, never one per section.
+- Link between pages as files (`rolling-back.md`). `build_files/shared/check-manual.js`
   runs in `20-tests.sh` and fails the build on a page that is missing or a link that lands nowhere.
 - `07-debrand.sh` rewrites every Universal Blue name in the image except on a line that
   also carries a copyright or licence phrase, or a comment that opens with a credit (`# Written by`,
@@ -548,7 +557,7 @@ it describes, and add to it when you add something a user would look for there.
 - A page translated into another language is `manual/<language>/<page>.md` (the hotkeys page too, as
   `manual/<language>/keybindings.md`). Weblate writes them from the English, paragraph by paragraph, so
   edit the English only. A translated page's headings take the ids of the English page's headings in
-  the same order, so `updates.md#rolling-back` lands in every language; `check-manual.js` checks the
+  the same order, so `updates.md#firmware` lands in every language; `check-manual.js` checks the
   translations' links against the English headings and warns when a translation has a different number
   of headings. Until Weblate brings such a page back in line, a link to a section it cannot find opens the
   English page at that section, with a note over it and the way back. A page a language has not translated is
@@ -992,7 +1001,7 @@ the program picked, so administrators (`wheel`) see the whole machine and anyone
 one it found with `journalctl --field`, a unit or program only ever reaches it as the value of `--unit`,
 `--user-unit` or `--identifier`, and the search only as the value of `--grep`. Keep it that way, and
 never pass a string typed in the window as an argument of its own. Its manual section is
-`troubleshooting.md#the-logs`. The sidebar draws the same wordmark as Security, and blinks the gem's stem
+`logs.md`. The sidebar draws the same wordmark as Security, and blinks the gem's stem
 while it reads the journal.
 
 ### The Notes app
@@ -1198,7 +1207,7 @@ daily run also goes, as its own unit (`amethystora-backup-other.timer`, `amethys
 the computers paired (`ame backup store`); its two ports are opened in the home zone by the security switch `ame security backup-store`, off. The password and client key are sealed in the
 Vault under `background` (`amethystora-backup-secret`, `/usr/lib/amethystora/backup-secrets.sh`) and never in a file. `never.rs` refuses all of it.
 
-Its manual section is `security.md#backups`. The sidebar draws the same wordmark as Security; the app grid's icon is the icon packs' (`amethystora-backups`), with the tile `generate.mjs` draws (`amethystora-backups.svg`) for other themes.
+Its manual section is `backups.md`. The sidebar draws the same wordmark as Security; the app grid's icon is the icon packs' (`amethystora-backups`), with the tile `generate.mjs` draws (`amethystora-backups.svg`) for other themes.
 
 ### The Help window
 
@@ -1964,7 +1973,7 @@ makes, because the build's rsync skips links in `system_files`) makes distrobox 
 templates and drives each with its own package manager. It reimplements Vanilla OS's Apx feature set
 from a written description, clean-room: never read or copy Vanilla OS projects' source, help text or
 artwork, and never ship their definitions or community templates. No command, menu, app or string
-names Vanilla OS, Apx, VSO or Sideload; the manual says once, in `software.md` (and once in each of its translations), that `import` reads
+names Vanilla OS, Apx, VSO or Sideload; the manual says once, in `containers.md` (and once in each of its translations), that `import` reads
 Apx's YAML files, and `20-tests.sh` fails on any other mention. `ame pkg` runs it too, under `ame`,
 the command over Amethystora's own; `amy` is a Homebrew formula, so nothing may take that name.
 
@@ -1989,7 +1998,7 @@ the command over Amethystora's own; `amy` is a Homebrew formula, so nothing may 
 - Containers carry `amethystora.pkg.*` labels and real names `pkg-<name>`; distrobox's own
   `manager=distrobox` label stays, since distrobox, DistroShelf and Ptyxis find containers by it. Only
   labelled containers are listed or touched.
-- `--json` field names are documented in `software.md#in-scripts`: keep them stable.
+- `--json` field names are documented in `containers.md#in-scripts`: keep them stable.
 - AUR packages are built only after their PKGBUILD has been shown on a terminal, `--yes` or not, and are
   never upgraded unattended; the AUR's own metadata is shown first.
 - `amethystora-pkg-upgrade.timer` (user, enabled with `--global`) upgrades the containers daily and,
@@ -2085,7 +2094,7 @@ fails a build that loosened the signature policy, carries Fedora's logo or relea
 `ame` commands, and `20-tests.sh` runs it on every Amethystora image. The image's policy takes a
 repository it does not name unsigned (Fedora's `insecureAcceptAnything` for `docker`), which is why the
 trust comes first. `ame system rebase` must keep taking signed images only. The manual's section is
-`developer.md#an-image-of-your-own`.
+`own-image.md`.
 
 The template's `build_files/files.sh` makes its `setup.json`, `branding/` and `policy/` part of the image with
 three more scripts shipped here, so keep their arguments too (`plans/done/PLAN-image-editor.md`):
@@ -2170,7 +2179,7 @@ ostree images stay the default.
   `rpm-ostree status --json`'s shape on both kinds of image (on a sealed one from `bootc status`,
   through pkexec and `50-amethystora-deployments.rules`), and branch on the marker for anything that
   changes kernel arguments: they cannot change there. `amethystora-signed-updates.service` does not run
-  on it. The manual's `updates.md#sealed-images` describes it for users.
+  on it. The manual's `streams.md#sealed-images` describes it for users.
 - **`amethystora-sealed` is what makes the seal hold; keep it.** bootc's initramfs does not by itself
   insist on fs-verity for the image the signed command line names; the details stay out of the
   repository until bootc has a fix.

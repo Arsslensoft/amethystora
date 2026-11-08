@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* A busy app: the processor meter climbs and stays high, and a chip beside the meters names the app that keeps it busy */
+.art { --loop: 3.4s; --poster: 0.62; }
+.bar { position: absolute; left: 0; top: 0; width: 150px; height: 24px; background: rgba(255, 255, 255, 0.07); }
+@keyframes b { 0%, 6% { height: 3px; background: #dcbcff; } 30%, 84% { height: 14px; background: #e8c06a; } 96%, 100% { height: 3px; background: #dcbcff; } }
+@keyframes chip { 0%, 40% { opacity: 0; transform: translateX(10px); } 50%, 84% { opacity: 1; transform: translateX(0); } 94%, 100% { opacity: 0; transform: translateX(10px); } }
+@keyframes spin { from { transform: rotate(0); } to { transform: rotate(720deg); } }
+.meter { position: absolute; left: 118px; top: 5px; width: 24px; height: 14px; display: flex; gap: 2px; align-items: flex-end; }
+.meter i { width: 4px; border-radius: 1px; animation-name: b; }
+.chip { position: absolute; left: 58px; top: 4px; width: 54px; height: 16px; border-radius: 8px; background: #3b2a5c; box-shadow: inset 0 0 0 1px rgba(232, 192, 106, 0.6); animation-name: chip; }
+.chip .sq { position: absolute; left: 4px; top: 3px; width: 10px; height: 10px; background: #f0905a; }
+.chip .line { left: 18px; top: 6px; width: 28px; background: #efe4ff; }
+.w1 { left: 20px; top: 36px; width: 110px; height: 68px; }
+.app { position: absolute; left: 63px; top: 54px; width: 24px; height: 24px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, 0.12); border-top-color: #f0905a; box-sizing: border-box; animation-name: spin; animation-timing-function: linear; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="bar"></div>
+  <i class="win w1"></i><i class="app"></i>
+  <div class="meter"><i></i><i></i><i></i><i></i></div>
+  <div class="chip"><i class="sq"></i><i class="line"></i></div>
+</div>
+</body>
+</html>

@@ -113,7 +113,7 @@ export function wordsTable(_) {
         },
 
         {
-            id: 'rollback', manual: 'updates#rolling-back', icon: 'amethystora-docs', title: _('Rolling back'),
+            id: 'rollback', manual: 'rolling-back', icon: 'amethystora-docs', title: _('Rolling back'),
             note: _('In the manual'),
             // Translators: words separated by | are alternatives: in lower case, the everyday words people say in your language, never a product's name.
             words: _('undo an update'),

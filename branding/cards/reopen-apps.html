@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="card.css">
+<style>
+/* Apps come back: after the restart the desktop is empty, the pill offers the apps, and each opens where it was */
+.art { --loop: 3.4s; --poster: 0.7; }
+@keyframes gone1 { 0%, 10% { opacity: 1; transform: scale(1); } 18%, 60% { opacity: 0; transform: scale(0.85); } 68%, 100% { opacity: 1; transform: scale(1); } }
+@keyframes gone2 { 0%, 10% { opacity: 1; transform: scale(1); } 18%, 64% { opacity: 0; transform: scale(0.85); } 72%, 100% { opacity: 1; transform: scale(1); } }
+@keyframes gone3 { 0%, 10% { opacity: 1; transform: scale(1); } 18%, 68% { opacity: 0; transform: scale(0.85); } 76%, 100% { opacity: 1; transform: scale(1); } }
+@keyframes pill { 0%, 26% { width: 22px; left: 64px; background: rgba(255, 255, 255, 0.16); } 34%, 58% { width: 50px; left: 50px; background: #b37df9; } 66%, 100% { width: 22px; left: 64px; background: rgba(255, 255, 255, 0.16); } }
+@keyframes hand { 0%, 34% { left: 120px; top: 70px; opacity: 0; } 40% { opacity: 1; } 50%, 56% { left: 76px; top: 10px; opacity: 1; } 64%, 100% { left: 76px; top: 10px; opacity: 0; } }
+@keyframes press { 0%, 50% { transform: scale(1); } 54% { transform: scale(0.9); } 58%, 100% { transform: scale(1); } }
+.top { position: absolute; left: 0; top: 0; width: 150px; height: 12px; background: rgba(255, 255, 255, 0.06); }
+.pill { position: absolute; top: 3px; height: 7px; border-radius: 4px; animation-name: pill; }
+.pill i { position: absolute; inset: 0; animation-name: press; }
+.a { left: 8px; top: 20px; width: 62px; height: 52px; animation-name: gone1; }
+.b { left: 76px; top: 20px; width: 66px; height: 40px; animation-name: gone2; }
+.c { left: 76px; top: 66px; width: 66px; height: 40px; animation-name: gone3; }
+.a::after, .b::after, .c::after { content: ""; position: absolute; left: 6px; top: 12px; width: 10px; height: 10px; border-radius: 3px; }
+.a::after { background: #9148f0; } .b::after { background: #6fd3e0; } .c::after { background: #e8c06a; }
+.pointer { position: absolute; width: 16px; height: 20px; animation-name: hand; }
+</style>
+</head>
+<body>
+<div class="art">
+  <i class="top"></i><i class="pill"><i></i></i>
+  <i class="win a"></i><i class="win b"></i><i class="win c"></i>
+  <svg class="pointer" viewBox="0 0 24 30"><path d="M4 3L20 16 12.6 17.3 8.7 24Z" fill="#ffffff" stroke="#9148f0" stroke-width="2" stroke-linejoin="round"/></svg>
+</div>
+</body>
+</html>
