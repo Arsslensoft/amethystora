@@ -25,14 +25,16 @@ pub(super) const PERMITTED_IP: [(IpAddr, &[u8]); 6] = [
 ];
 
 /// What cannot be seen or has no business in a name: the control, format, private-use and unassigned code points (General_Category
-/// Cc, Cf, Co, Cn), line and paragraph separators, and the few characters that draw as nothing without being Cf. The joiners
-/// stay, since Persian and Indic names need them.
+/// Cc, Cf, Co, Cn), line and paragraph separators, the few characters that draw as nothing without being Cf, and the variation
+/// selectors but the emoji one. The joiners and that selector are `readable`'s to judge.
 fn invisible(c: char) -> bool {
     use icu_properties::props::GeneralCategory as Category;
-    if matches!(c, '\u{200c}' | '\u{200d}') {
+    if joins(c) {
         return false;
     }
-    if matches!(c, '\u{034f}' | '\u{115f}' | '\u{1160}' | '\u{17b4}' | '\u{17b5}' | '\u{3164}' | '\u{ffa0}') {
+    if matches!(c, '\u{034f}' | '\u{115f}' | '\u{1160}' | '\u{17b4}' | '\u{17b5}' | '\u{2800}' | '\u{3164}' | '\u{ffa0}' | '\u{16fe4}' | '\u{1d159}')
+        || matches!(c, '\u{180b}'..='\u{180d}' | '\u{180f}' | '\u{fe00}'..='\u{fe0e}' | '\u{e0100}'..='\u{e01ef}')
+    {
         return true;
     }
     matches!(
@@ -47,18 +49,57 @@ fn invisible(c: char) -> bool {
     )
 }
 
-/// Text a person typed that is shown and stored but is not a Distinguished Name's part: not empty, not too long, not padded,
-/// nothing in it that cannot be seen.
-pub(super) fn check_text(text: &str, limit: usize) -> bool {
-    let count = text.chars().count();
-    count != 0 && count <= limit && text.trim() == text && !text.chars().any(invisible)
+/// The joiners and the emoji variation selector, which draw nothing themselves and change only how what is before them is drawn
+fn joins(c: char) -> bool {
+    matches!(c, '\u{200c}' | '\u{200d}' | '\u{fe0f}')
 }
 
+/// Whether the text can be read: a letter or a number in it, and a joiner only where it joins something, after a character of a
+/// script that needs one (Persian, Indic) or an emoji. After a Latin letter, a digit or nothing it would only hide, in a name that
+/// then reads as another.
+fn readable(text: &str) -> bool {
+    use icu_properties::props::{GeneralCategory as Category, GeneralCategoryGroup as Group, Script};
+    let categories = icu_properties::CodePointMapData::<Category>::new();
+    let scripts = icu_properties::CodePointMapData::<Script>::new();
+    // The last character that is not a mark: a mark belongs to it
+    let mut base = None;
+    let mut letters = false;
+    for c in text.chars() {
+        let category = categories.get(c);
+        if joins(c) {
+            let joined = base.is_some_and(|base| {
+                categories.get(base) == Category::OtherSymbol || !matches!(scripts.get(base), Script::Latin | Script::Common | Script::Inherited)
+            });
+            if !joined {
+                return false;
+            }
+        } else if !Group::Mark.contains(category) {
+            base = Some(c);
+            letters |= Group::Letter.contains(category) || Group::Number.contains(category);
+        }
+    }
+    letters
+}
+
+/// Text a person typed that is shown and stored but is not a Distinguished Name's part: not empty, not too long, not padded,
+/// nothing in it that cannot be seen, and something in it that can be read.
+pub(super) fn check_text(text: &str, limit: usize) -> bool {
+    let count = text.chars().count();
+    count != 0 && count <= limit && text.trim() == text && !text.chars().any(invisible) && readable(text)
+}
+
+/// What reads as a separator of a Distinguished Name's parts without being one: the fullwidth and small forms, and the commas and
+/// the semicolon of other scripts
+const LOOK_ALIKES: [char; 20] = [
+    '\u{ff0c}', '\u{ff1d}', '\u{ff0b}', '\u{ff1b}', '\u{ff02}', '\u{ff3c}', '\u{ff1c}', '\u{ff1e}', '\u{fe50}', '\u{fe51}', '\u{fe54}',
+    '\u{fe62}', '\u{fe64}', '\u{fe65}', '\u{fe66}', '\u{fe68}', '\u{3001}', '\u{060c}', '\u{037e}', '\u{2e41}',
+];
+
 /// Refuses what a person should not be able to put in a name that goes into a certificate: what `check_text` refuses, and the
-/// characters that separate a Distinguished Name's parts (RFC 4514), so that a typed name never reads as more fields than it
-/// is. `describe` escapes them as well, for a certificate from elsewhere.
+/// characters that separate a Distinguished Name's parts (RFC 4514) or read as them, so that a typed name never reads as more
+/// fields than it is. `describe` escapes the separators as well, for a certificate from elsewhere.
 pub fn check_name(name: &str, limit: usize) -> bool {
-    check_text(name, limit) && !name.starts_with('#') && !name.contains([',', '=', '+', ';', '"', '\\', '<', '>'])
+    check_text(name, limit) && !name.starts_with('#') && !name.contains([',', '=', '+', ';', '"', '\\', '<', '>']) && !name.contains(LOOK_ALIKES)
 }
 
 /// A subject's Common Name that reads as a host name. With no DNS name beside it, OpenSSL holds such a CN to the root's

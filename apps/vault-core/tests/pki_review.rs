@@ -178,6 +178,36 @@ fn l1_invisible_characters_are_refused() {
     assert!(issue(&Request { public_key: &spki, ..pdf("क्\u{200D}ष") }, &account(machine)).is_ok());
 }
 
+/// K6: what reads as a separator without being one is refused as the separator is, in a name and an organization
+#[test]
+fn k6_separators_look_alikes_are_refused() {
+    let machine = machine();
+    let spki = fresh_spki();
+    for typed in ["Google LLC\u{FF0C} C\u{FF1D}US", "a\u{FE50}b", "a\u{FE66}b", "a\u{3001}b", "a\u{060C}b", "a\u{037E}b", "a\u{FF1B}b", "a\u{FF0B}b", "a\u{FF02}b", "a\u{FF3C}b"] {
+        let as_organization = issue(&Request { public_key: &spki, organization: Some(typed), ..pdf("Ada") }, &account(machine));
+        assert_eq!(as_organization.unwrap_err(), PkiError::BadField("organization"), "{typed}");
+        let as_name = issue(&Request { public_key: &spki, ..pdf(typed) }, &account(machine));
+        assert_eq!(as_name.unwrap_err(), PkiError::BadField("name"), "{typed}");
+    }
+    // The full stop and the middle dots of other scripts are no separators
+    assert!(issue(&Request { public_key: &spki, organization: Some("株式会社。日本"), ..pdf("Ada\u{00B7}Lovelace") }, &account(machine)).is_ok());
+}
+
+/// K7: a name has to have something to read, and a joiner or variation selector is taken only where a script or an emoji needs it
+#[test]
+fn k7_blank_names_and_hidden_joiners_are_refused() {
+    let machine = machine();
+    let spki = fresh_spki();
+    for typed in ["\u{200D}", "\u{200C}", "\u{2800}", "\u{FE0F}", "-", "Ba\u{200D}nk", "Bank\u{200C}", "12\u{200D}3", "Ada\u{FE00}", "Ada\u{FE0E}", "Ada\u{E0100}", "Ada\u{180B}", "Ada\u{1D159}", "Ada\u{16FE4}", "Ada \u{2800}"] {
+        let refused = issue(&Request { public_key: &spki, ..pdf(typed) }, &account(machine));
+        assert_eq!(refused.unwrap_err(), PkiError::BadField("name"), "{typed:?}");
+    }
+    // A joiner where Persian, an Indic script or an emoji needs it, a mark on a letter, and a name of digits
+    for typed in ["می\u{200C}خواهم", "क्\u{200D}ष", "Ada \u{2615}\u{FE0F}", "Ada \u{1F468}\u{200D}\u{1F469}", "Ada \u{2764}\u{FE0F}\u{200D}\u{1F525}", "Jose\u{0301}", "42"] {
+        assert!(issue(&Request { public_key: &spki, ..pdf(typed) }, &account(machine)).is_ok(), "{typed:?}");
+    }
+}
+
 /// L2: a public key given with bytes after it is refused, in a request and in its public forms
 #[test]
 fn l2_a_public_key_with_trailing_bytes_is_refused() {
