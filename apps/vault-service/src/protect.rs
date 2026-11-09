@@ -814,7 +814,7 @@ pub struct Place {
     stays: Vec<String>,
     /// What was beside a file and is copied in instead, to be put back as the command left it
     copies: Vec<Beside>,
-    /// For a file alone, the names beside it that hold its name, to know the ones a command leaves on the disk
+    /// For a file alone, the names beside it that start with its name, to know the ones a command leaves on the disk
     named_before: Vec<String>,
     /// The empty file that holds a single file's place
     placeholder: Option<OwnedFd>,
@@ -876,7 +876,7 @@ impl Place {
                 }
                 let fd = open_at(parent.as_raw_fd(), &last, libc::O_RDWR | libc::O_CREAT | libc::O_NONBLOCK, 0o600).map_err(|why| if why == Why::NotPlain { Why::FileThere } else { why })?;
                 let mut passed = 0;
-                let named_before = names_up_to(&parent, Some(&mut passed), usize::MAX)?.into_iter().filter(|name| *name != last && name.contains(last.as_str())).collect();
+                let named_before = names_up_to(&parent, Some(&mut passed), usize::MAX)?.into_iter().filter(|name| *name != last && name.starts_with(last.as_str())).collect();
                 let mut place = make(Style::Single, full.clone(), Vec::new(), Some(fd), Some(parent), 0);
                 place.named_before = named_before;
                 Ok(place)
@@ -1070,12 +1070,13 @@ impl Place {
     }
 
     /// A file alone has nothing over its folder, so what a command writes beside it is on the disk already (a tool's `.npmrc.tmp`, whose
-    /// rename over the file failed). What has the file's name in it and was not there before is taken away, and named: it may be the file's
-    /// content, which is never left on the disk.
+    /// rename over the file failed). What starts with the file's name and was not there before is taken away, and named: it may be the file's
+    /// content, which is never left on the disk. Only names that start so, as tools name their own copies: a program outside writing a file
+    /// of another name meanwhile keeps it.
     fn take_off_named(&self, real: &OwnedFd, keeping: &mut Keeping) {
         let mut passed = 0;
         let Ok(names) = names_up_to(real, Some(&mut passed), usize::MAX) else { return };
-        for name in names.iter().filter(|name| **name != self.last && name.contains(self.last.as_str()) && !self.named_before.contains(name)) {
+        for name in names.iter().filter(|name| **name != self.last && name.starts_with(self.last.as_str()) && !self.named_before.contains(name)) {
             let plain = open_at(real.as_raw_fd(), name, libc::O_PATH, 0).and_then(|fd| stat_of(fd.as_raw_fd())).is_ok_and(|stat| is_kind(&stat, libc::S_IFREG));
             if plain && unlink(real, name, 0).is_ok() {
                 keeping.left.on_purpose.push(name.clone());

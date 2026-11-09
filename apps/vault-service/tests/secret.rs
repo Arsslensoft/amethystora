@@ -2348,6 +2348,10 @@ fn a_tool_renames_over_its_login_in_a_folder_of_many_files_and_a_copy_it_leaves_
     assert!(token_on_disk(&person, "NEW-TOKEN").is_empty(), "{:?}", token_on_disk(&person, "NEW-TOKEN"));
     assert!(err.contains(".npmrc.tmp"), "{err}");
     assert_eq!(std::fs::read_to_string(person.at(".npmrc.before")).unwrap(), "was here\n");
+    // A file of another name made during the run, by the command or anything else, is left where it is
+    let other = tool(&person, "other", &format!("printf mine >'{}'", person.at("notes-about.npmrc").display()));
+    assert_eq!(person.says(&["run", ".npmrc", "--", &other]).0, 0);
+    assert_eq!(std::fs::read_to_string(person.at("notes-about.npmrc")).unwrap(), "mine");
 }
 
 #[test]

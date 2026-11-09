@@ -52,6 +52,8 @@ AI agent launcher do this for you.
 - **Files next to the protected one** can be changed, renamed and deleted as usual (`sed -i`, `git config`, `ssh-keygen -R`), and
   the change reaches your disk when the command ends. One changed on your disk meanwhile stays as it is there, with the command's
   version beside it. A folder, or a file over 1 MiB, next to it can be changed but not deleted or renamed: do that outside the command.
+  A file directly in your home has no such room: a copy a tool leaves beside it, under a name that starts with the file's, is
+  taken off the disk when the command ends, and named.
 - **A background program the command started ends with it** (`ssh -f`, a `gpg-agent` it started): nothing it started outlives
   the command, so start such a program outside it.
 - **A command that is killed** never replaces the good copy: what it left is sealed beside it under its own name
