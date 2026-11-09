@@ -195,7 +195,7 @@ fn backend() -> Box<dyn Backend> {
             let cert = std::fs::read(self.0.join("cert.der")).map_err(|_| Refused)?;
             let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_err(|_| Refused)?.as_secs() as i64;
             let signer = Signer::leaf(&key, &cert, Purpose::Pdf, now).map_err(|_| Refused)?;
-            let signature = pki::sign_digest(&signer, digest, value).map_err(|_| Refused)?;
+            let signature = pki::sign_digest(&signer, digest, value, now).map_err(|_| Refused)?;
             let count = std::fs::read_to_string(self.0.join("signed")).unwrap_or_default().len();
             std::fs::write(self.0.join("signed"), "x".repeat(count + 1)).map_err(|_| Refused)?;
             Ok(signature)

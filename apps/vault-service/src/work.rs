@@ -188,7 +188,7 @@ fn sign(request: &Value) -> Answer {
     };
     let now = request["now"].as_i64().ok_or(Why::Bad)?;
     let signer = Signer::leaf(&key, &bytes(request, "cert")?, purpose, now)?;
-    Ok(json!({"signature": encode(&pki::sign_digest(&signer, digest, &bytes(request, "value")?)?)}))
+    Ok(json!({"signature": encode(&pki::sign_digest(&signer, digest, &bytes(request, "value")?, now)?)}))
 }
 
 /// For the SSH agent: a whole message, as its algorithm takes one

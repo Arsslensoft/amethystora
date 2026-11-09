@@ -54,20 +54,26 @@ pub(super) fn facts(cert: &X509Ref) -> Result<Facts, PkiError> {
     let mut found = Facts::default();
     let Some(extensions) = extensions else { return Ok(found) };
     let (_, mut list, _) = der::read(extensions).ok_or(PkiError::Malformed)?;
+    // An extension given twice is refused (RFC 5280, 4.2): which of the two counts would be a reader's guess
+    let mut seen: Vec<&[u8]> = Vec::new();
     while !list.is_empty() {
         let (_, extension, rest) = der::read(list).ok_or(PkiError::Malformed)?;
         list = rest;
         let (_, oid, mut after) = der::read(extension).ok_or(PkiError::Malformed)?;
+        if seen.contains(&oid) {
+            return Err(PkiError::Malformed);
+        }
+        seen.push(oid);
         // `critical` is left out when false
         if let Some((BOOLEAN, _, rest)) = der::read(after) {
             after = rest;
         }
         let (_, value, _) = der::read(after).ok_or(PkiError::Malformed)?;
         let is = |dotted: &str| der::oid(dotted)[2..] == *oid;
-        if is(OID_BASIC_CONSTRAINTS) && found.ca.is_none() {
+        if is(OID_BASIC_CONSTRAINTS) {
             let (_, body, _) = der::read(value).ok_or(PkiError::Malformed)?;
             found.ca = Some(matches!(der::read(body), Some((BOOLEAN, [flag], _)) if *flag != 0));
-        } else if is(OID_KEY_USAGE) && found.usage.is_none() {
+        } else if is(OID_KEY_USAGE) {
             let (tag, bits, _) = der::read(value).ok_or(PkiError::Malformed)?;
             // The count of unused bits, then the bits
             found.usage = Some(match (tag, bits) {
@@ -75,7 +81,7 @@ pub(super) fn facts(cert: &X509Ref) -> Result<Facts, PkiError> {
                 (BIT_STRING, _) => 0,
                 _ => return Err(PkiError::Malformed),
             });
-        } else if is(OID_EXTENDED_KEY_USAGE) && found.purposes.is_none() {
+        } else if is(OID_EXTENDED_KEY_USAGE) {
             let (_, mut body, _) = der::read(value).ok_or(PkiError::Malformed)?;
             let mut purposes = Vec::new();
             while !body.is_empty() {

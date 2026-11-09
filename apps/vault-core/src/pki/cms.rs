@@ -105,8 +105,21 @@ impl<'a> Signer<'a> {
 }
 
 /// A digest signed with an RSA or ECDSA key: PKCS#1 v1.5 for RSA, the DER `ECDSA-Sig-Value` for ECDSA. Any other key
-/// is refused, and with it anything that is not a digest's length.
-pub fn sign_digest(signer: &Signer<'_>, digest: Digest, value: &[u8]) -> Result<Vec<u8>, PkiError> {
+/// is refused, and with it anything that is not a digest's length. A leaf's certificate is held to its dates again at `now`: a
+/// signer may have been kept since it was made.
+pub fn sign_digest(signer: &Signer<'_>, digest: Digest, value: &[u8], now: i64) -> Result<Vec<u8>, PkiError> {
+    if let Use::Leaf(cert, _) = &signer.usage {
+        check_now(now)?;
+        let parsed = X509::from_der(cert).map_err(|_| PkiError::Malformed)?;
+        if !valid_at(&parsed, now)? {
+            return Err(PkiError::CertificateNotValid);
+        }
+    }
+    sign_checked(signer, digest, value)
+}
+
+/// `sign_digest` once the dates have been seen to
+fn sign_checked(signer: &Signer<'_>, digest: Digest, value: &[u8]) -> Result<Vec<u8>, PkiError> {
     let key = signer.key;
     check_length(digest, value)?;
     let rsa = is_rsa(key)?;
@@ -165,7 +178,7 @@ pub fn sign_pdf_digest(signer: &Signer<'_>, chain: &[Vec<u8>], digest: Digest, v
         Digest::Sha256 => sha256(&attributes).to_vec(),
         Digest::Sha384 => sha384(&attributes).to_vec(),
     };
-    let signature = sign_digest(signer, digest, &attributes_digest)?;
+    let signature = sign_checked(signer, digest, &attributes_digest)?;
     let mut signed_attributes = attributes;
     signed_attributes[0] = der::CONTEXT_0;
 

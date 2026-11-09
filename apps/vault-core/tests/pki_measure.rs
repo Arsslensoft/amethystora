@@ -103,11 +103,11 @@ fn prepare(name: &str) -> Box<dyn FnMut()> {
         }
         "sign digest rsa" => {
             let by = Signer::leaf(&rsa_key, &rsa_leaf.cert, Purpose::Pdf, NOW).unwrap();
-            std::hint::black_box(sign_digest(&by, Digest::Sha256, &digest).unwrap());
+            std::hint::black_box(sign_digest(&by, Digest::Sha256, &digest, NOW).unwrap());
         }
         "sign digest ecdsa" => {
             let by = Signer::leaf(&ec_key, &ec_leaf.cert, Purpose::Pdf, NOW).unwrap();
-            std::hint::black_box(sign_digest(&by, Digest::Sha256, &digest).unwrap());
+            std::hint::black_box(sign_digest(&by, Digest::Sha256, &digest, NOW).unwrap());
         }
         other => panic!("{other}"),
     })

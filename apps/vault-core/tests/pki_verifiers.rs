@@ -995,7 +995,7 @@ fn the_digest_signatures_verify() {
         let other_root = write_pem(&scratch, "otherroot.pem", &other_machine().root);
         assert!(!attempt(Command::new("openssl").args(["cms", "-verify", "-binary", "-inform", "DER", "-purpose", "smimesign", "-in"]).arg(&path).arg("-content").arg(&document).arg("-CAfile").arg(&other_root).arg("-out").arg("/dev/null")).0);
         // A bare signature over the digest, which `openssl pkeyutl` checks
-        let bare = scratch.write("bare.sig", &sign_digest(&by, digest, value).unwrap());
+        let bare = scratch.write("bare.sig", &sign_digest(&by, digest, value, now()).unwrap());
         let cert = write_pem(&scratch, "signer.pem", &signer.issued.cert);
         let digest_file = scratch.write("digest.bin", value);
         let algorithm = if digest == Digest::Sha256 { "digest:sha256" } else { "digest:sha384" };
@@ -1007,9 +1007,9 @@ fn the_digest_signatures_verify() {
     let issued = &signer.issued;
     let by = Signer::leaf(&signer.key, &issued.cert, Purpose::Pdf, now()).unwrap();
     assert_eq!(sign_pdf_digest(&by, &issued.chain, Digest::Sha256, &sha384, now()).unwrap_err(), PkiError::BadDigest);
-    assert_eq!(sign_digest(&by, Digest::Sha384, &sha256).unwrap_err(), PkiError::BadDigest);
+    assert_eq!(sign_digest(&by, Digest::Sha384, &sha256, now()).unwrap_err(), PkiError::BadDigest);
     let ed25519 = key(KeyType::Ed25519);
-    assert_eq!(sign_digest(&Signer::ssh(&ed25519, KeyKind::Ssh).unwrap(), Digest::Sha256, &sha256).unwrap_err(), PkiError::KeyNotAllowed);
+    assert_eq!(sign_digest(&Signer::ssh(&ed25519, KeyKind::Ssh).unwrap(), Digest::Sha256, &sha256, now()).unwrap_err(), PkiError::KeyNotAllowed);
     assert_eq!(Signer::leaf(&key(KeyType::EcdsaP256), &issued.cert, Purpose::Pdf, now()).err(), Some(PkiError::IssuerKeyMismatch));
 }
 

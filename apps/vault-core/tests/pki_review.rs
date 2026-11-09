@@ -392,6 +392,55 @@ fn h1_a_cas_key_signs_nothing() {
     assert_eq!(issue(&Request { profile: "pdf", public_key: &own, now: now(), name: Some("Ada"), ..Request::default() }, &account(machine)).unwrap_err(), PkiError::KeyIsACas);
 }
 
+/// A PDF certificate made by hand as `issue` makes one, signed by the account's CA, with the extension at `twice` written twice
+fn hand_made_pdf(machine: &Machine, key: &PrivateKey, twice: Option<&str>) -> Vec<u8> {
+    use openssl::asn1::{Asn1Object, Asn1OctetString};
+    use openssl::x509::X509Extension;
+    let account = X509::from_der(&machine.account.cert).unwrap();
+    let mut name = X509NameBuilder::new().unwrap();
+    name.append_entry_by_text("CN", "Ada").unwrap();
+    let mut builder = X509::builder().unwrap();
+    builder.set_version(2).unwrap();
+    builder.set_serial_number(&openssl::bn::BigNum::from_u32(9).unwrap().to_asn1_integer().unwrap()).unwrap();
+    builder.set_subject_name(&name.build()).unwrap();
+    builder.set_issuer_name(account.subject_name()).unwrap();
+    builder.set_not_before(&Asn1Time::from_unix(now() - DAY).unwrap()).unwrap();
+    builder.set_not_after(&Asn1Time::from_unix(now() + DAY).unwrap()).unwrap();
+    builder.set_pubkey(&PKey::public_key_from_der(&key.public().unwrap().spki_der).unwrap()).unwrap();
+    let purposes: Vec<Vec<u8>> = profile_purposes(Profile::parse("pdf").unwrap()).iter().map(|oid| der::oid(oid)).collect();
+    let parts: Vec<&[u8]> = purposes.iter().map(Vec::as_slice).collect();
+    let usages = der::seq(&parts);
+    for (oid, critical, value) in [("2.5.29.19", true, der::seq(&[])), ("2.5.29.15", true, vec![0x03, 0x02, 0x07, 0x80]), ("2.5.29.37", false, usages)] {
+        for _ in 0..if twice == Some(oid) { 2 } else { 1 } {
+            let extension = X509Extension::new_from_der(&Asn1Object::from_str(oid).unwrap(), critical, &Asn1OctetString::new_from_bytes(&value).unwrap()).unwrap();
+            builder.append_extension(extension).unwrap();
+        }
+    }
+    builder.sign(&PKey::private_key_from_pkcs8(plain(&machine.account_key).as_bytes()).unwrap(), MessageDigest::sha256()).unwrap();
+    builder.build().to_der().unwrap()
+}
+
+/// K5: a signer kept past its certificate's end signs nothing more, and a certificate with an extension given twice is no signer
+#[test]
+fn k5_a_signer_is_held_to_its_dates_when_it_signs_and_its_extensions_are_each_once() {
+    let machine = machine();
+    let account = account(machine);
+    let at = now() + 60;
+    let (key, pdf) = leaf_of("pdf", &account, KeyType::EcdsaP256);
+    let signer = Signer::leaf(&key, &pdf.cert, Purpose::Pdf, at).unwrap();
+    let digest = [5u8; 32];
+    assert!(sign_digest(&signer, Digest::Sha256, &digest, at).is_ok());
+    assert_eq!(sign_digest(&signer, Digest::Sha256, &digest, at + 461 * DAY).unwrap_err(), PkiError::CertificateNotValid);
+    assert_eq!(sign_digest(&signer, Digest::Sha256, &digest, at - 3600).unwrap_err(), PkiError::CertificateNotValid);
+    assert_eq!(sign_digest(&signer, Digest::Sha256, &digest, i64::MAX / 2).unwrap_err(), PkiError::BadTime);
+
+    let key = generate(KeyType::EcdsaP256).unwrap();
+    assert!(Signer::leaf(&key, &hand_made_pdf(machine, &key, None), Purpose::Pdf, now()).is_ok());
+    for twice in ["2.5.29.19", "2.5.29.15", "2.5.29.37"] {
+        assert_eq!(Signer::leaf(&key, &hand_made_pdf(machine, &key, Some(twice)), Purpose::Pdf, now()).err(), Some(PkiError::Malformed), "{twice}");
+    }
+}
+
 /// M5: a signer is a leaf of the profile the purpose names, within its dates
 #[test]
 fn m5_a_signer_has_the_purpose_and_the_dates() {
@@ -425,7 +474,7 @@ fn m5_a_signer_has_the_purpose_and_the_dates() {
         assert_eq!(sign_pdf_digest(&signer, &pdf.chain, Digest::Sha256, &digest, i64::MIN / 2).unwrap_err(), PkiError::BadTime);
         let coder = Signer::leaf(&code_key, &code.cert, Purpose::Code, at).unwrap();
         assert_eq!(sign_pdf_digest(&coder, &code.chain, Digest::Sha256, &digest, at).unwrap_err(), PkiError::WrongCertificate);
-        assert!(sign_digest(&coder, Digest::Sha256, &digest).is_ok());
+        assert!(sign_digest(&coder, Digest::Sha256, &digest, at).is_ok());
     }
     // Local TLS and the machine's own certificates sign nothing for a person
     let local = Issuer { authority: Authority::LocalServicesCa, cert: &machine.local.cert, key: &machine.local_key, chain: &machine.local.chain };
@@ -435,7 +484,7 @@ fn m5_a_signer_has_the_purpose_and_the_dates() {
     }
     // An SSH key signs when it is marked for SSH, and for nothing else
     let ssh = generate(KeyType::EcdsaP256).unwrap();
-    assert!(sign_digest(&Signer::ssh(&ssh, KeyKind::Ssh).unwrap(), Digest::Sha256, &[1u8; 32]).is_ok());
+    assert!(sign_digest(&Signer::ssh(&ssh, KeyKind::Ssh).unwrap(), Digest::Sha256, &[1u8; 32], now()).is_ok());
     for kind in [KeyKind::Signing, KeyKind::Exchange, KeyKind::Symmetric] {
         assert_eq!(Signer::ssh(&ssh, kind).err(), Some(PkiError::KeyNotAllowed));
     }
