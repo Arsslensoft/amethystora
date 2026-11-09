@@ -359,7 +359,8 @@ fn read_opened(fd: OwnedFd, path: &str, skip: &[String], lenient: bool) -> Resul
         let stamp = stamp_of(&stat);
         let mode = stat.st_mode & 0o777;
         let data = read_file(fd, &stat, &mut room)?;
-        if stat.st_nlink > 1 {
+        // A file a command left with another name is read all the same: that name was in its own private space, and is gone with it
+        if stat.st_nlink > 1 && !lenient {
             return Err(Why::Linked);
         }
         return Ok(Tree::one_file(data, mode, Some(stamp)));

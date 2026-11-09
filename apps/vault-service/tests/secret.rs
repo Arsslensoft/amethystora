@@ -2229,6 +2229,22 @@ fn the_usual_tools_rewrite_files_they_made_beside_the_login_and_fail_loudly_on_t
 }
 
 #[test]
+fn a_tool_that_keeps_a_hard_link_to_its_rewritten_login_is_sealed() {
+    if !namespaces() {
+        return;
+    }
+    let person = Person::new("run-hard-link");
+    person.put(".aws/credentials", "old\n");
+    let path = person.at(".aws/credentials");
+    assert_eq!(person.says(&["protect", path.to_str().unwrap()]).0, 0);
+    let links = tool(&person, "tool", "printf new >\"$1\"\nln \"$1\" \"$1.bak\"");
+    let (code, _, err) = person.says(&["run", ".aws/credentials", "--", &links, path.to_str().unwrap()]);
+    assert_eq!(code, 0, "{err}");
+    assert_eq!(person.sealed_text(".aws/credentials"), "new");
+    assert!(!person.at(".aws/credentials.bak").exists());
+}
+
+#[test]
 fn a_folder_comes_back_with_the_mode_it_had() {
     use std::os::unix::fs::PermissionsExt;
     let person = Person::new("protect-folder-mode");
