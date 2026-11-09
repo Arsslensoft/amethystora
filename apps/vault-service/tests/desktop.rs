@@ -72,6 +72,21 @@ fn has_dbus() -> bool {
     Command::new("dbus-daemon").arg("--version").stdout(Stdio::null()).status().is_ok_and(|status| status.success())
 }
 
+/// Whether the service, which seals an approval slot through systemd-creds whenever sysfs shows a chip, can: in a toolbox on a
+/// machine with a TPM, sysfs shows the host's chip and systemd-creds cannot reach the host's credential service. A build stage
+/// shows no chip, and the slot is made without one.
+fn chip_usable() -> bool {
+    let chip = std::fs::read_dir("/sys/class/tpmrm").is_ok_and(|mut chips| chips.next().is_some());
+    if !chip {
+        return true;
+    }
+    let child = Command::new("systemd-creds").args(["--user", "encrypt", "--name=vault-test", "-", "-"]).stdin(Stdio::piped()).stdout(Stdio::null()).stderr(Stdio::null()).spawn();
+    child.is_ok_and(|mut child| {
+        drop(child.stdin.take());
+        child.wait().is_ok_and(|status| status.success())
+    })
+}
+
 fn my_uid() -> u32 {
     // SAFETY: getuid cannot fail
     unsafe { libc::getuid() }
@@ -546,6 +561,10 @@ fn nothing_is_put_to_a_person_over_the_lock_screen() {
     assert!(!lab.is_open());
 
     // The same with nothing open, asking to open it: the bus is there only for the prompt, and the prompt still goes
+    if !chip_usable() {
+        eprintln!("the rest skipped: sysfs shows a chip that systemd-creds cannot reach here");
+        return;
+    }
     lab.seen.lock().unwrap().silent = false;
     assert_eq!(lab.ask(json!({"op": "unlock", "method": "password", "secret": b64(PASSWORD)}))["ok"], json!(true));
     assert_eq!(lab.ask(json!({"op": "add-slot", "kind": "approval"}))["ok"], json!(true));
