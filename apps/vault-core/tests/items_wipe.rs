@@ -2,8 +2,7 @@
 //! every block a growing buffer leaves behind, for the secret's text.
 //!
 //! The known limit, which these tests do not reach, is the libraries' own memory: flate2's window and dictionary (so
-//! write_bmc1 and reading a BMC1 are not here, only BMCP), libcrypto's own buffers, and serde_json's scratch for a string
-//! with an escape in it. See plans/vault/work/items.md.
+//! write_bmc1 and reading a BMC1 are not here, only BMCP) and libcrypto's own buffers. See plans/vault/work/items.md.
 
 mod items_support;
 
@@ -265,6 +264,36 @@ fn exports_and_transfers() {
     let plain = json!({"app": "BackMyCodes", "scheme": "plaintext", "accounts": [{"secret": KEY, "later": "the hidden value"}]}).to_string();
     clean("unknown keys", b"the hidden value", || read_export(plain.as_bytes(), "").unwrap());
     assert!(!URL_SAFE_NO_PAD.encode("x").is_empty());
+}
+
+/// A string with an escape in it (a line break, a quote, a character written as `\uXXXX`, a surrogate pair) is decoded into
+/// memory that wipes, in an item with unknown keys beside it and in the files an import reads
+#[test]
+fn escaped_strings() {
+    let _guard = ONE_AT_A_TIME.lock().unwrap_or_else(|e| e.into_inner());
+    let note = "the first line\nthe second, \"quoted\", caf\u{e9} \u{1F600}";
+    let written = r#"the first line\nthe second, \"quoted\", caf\u00e9 \ud83d\ude00"#;
+    let account = format!(r#"{{"secret":"ORSXG5DT\u004dVRXEZLU","note":"{written}","later":"x","issuer":"Co"}}"#);
+    clean("Item::from_json, the secret", KEY.as_bytes(), || Item::from_json("authenticator", account.as_bytes()).unwrap());
+    clean("Item::from_json, the note", note.as_bytes(), || Item::from_json("authenticator", account.as_bytes()).unwrap());
+    let decoded = Item::from_json("authenticator", account.as_bytes()).unwrap();
+    let Item::Account(decoded) = decoded else { panic!() };
+    assert_eq!((decoded.secret.as_str(), decoded.note.as_ref().map(Secret::as_str)), (KEY, Some(note)));
+    let password = format!(r#"{{"password":"{written}","history":[{{"password":"{written}","changedAt":1}}],"later":"x"}}"#);
+    clean("Item::from_json, a password", note.as_bytes(), || Item::from_json("password", password.as_bytes()).unwrap());
+    let codes = format!(r#"{{"serviceName":"s","codes":[{{"code":"{written}","later":"x"}}],"note":"{written}"}}"#);
+    clean("Item::from_json, a backup code", note.as_bytes(), || Item::from_json("backup-codes", codes.as_bytes()).unwrap());
+    // What is not JSON's is still refused
+    for odd in [r#"\ud83d"#, r#"\ude00"#, r#"\ud83dx"#, r#"\x"#, "\u{1}", r#"\u12"#] {
+        let refused = format!(r#"{{"secret":"{odd}"}}"#);
+        assert!(Item::from_json("authenticator", refused.as_bytes()).is_none(), "{odd}");
+    }
+
+    let plain = format!(r#"{{"app": "BackMyCodes", "scheme": "plaintext", "accounts": [{{"secret": "{KEY}", "note": "{written}"}}]}}"#);
+    clean("read_export, a note", note.as_bytes(), || read_export(plain.as_bytes(), "").unwrap());
+    let aegis = format!(r#"{{"header": {{}}, "db": {{"entries": [{{"type": "totp", "name": "n", "note": "{written}", "info": {{"secret": "ORSXG5DT\u004dVRXEZLU"}}}}]}}}}"#);
+    clean("an Aegis file, a note", note.as_bytes(), || read_foreign(aegis.as_bytes(), "").unwrap());
+    clean("an Aegis file, the secret", KEY.as_bytes(), || read_foreign(aegis.as_bytes(), "").unwrap());
 }
 
 #[test]
