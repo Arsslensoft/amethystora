@@ -527,6 +527,16 @@ GSETTINGS_BACKEND=memory gsettings list-keys org.gnome.shell.extensions.amethyst
 GSETTINGS_BACKEND=memory gsettings get org.gnome.shell.extensions.amethystora-clipboard excluded-apps | grep -qF "'org.keepassxc.KeePassXC'"
 test -x /usr/libexec/amethystora-clipboard-seal
 bash /ctx/build_files/shared/test-clipboard.sh
+# No extension of the image ships a stylesheet.css, which GNOME loads and unloads at every lock and unlock, each time
+# making St forget every style it worked out (and the next menu slow): Amethystora UI loads their styles.css with its
+# own, once (extension.js SIBLINGS, modules/theme/stylesheets.js)
+for extension in /usr/share/gnome-shell/extensions/amethystora-*@arsslensoft.github.io; do
+    test ! -e "${extension}/stylesheet.css"
+done
+for uuid in amethystora-clipboard amethystora-logo-menu; do
+    test -s "/usr/share/gnome-shell/extensions/${uuid}@arsslensoft.github.io/styles.css"
+    grep -qF "'${uuid}@arsslensoft.github.io'" "${UI_EXTENSION}/extension.js"
+done
 # Amethystora Logo Menu, the gem at the left of the top bar: enabled, claiming this GNOME (the Logo Menu it
 # replaced claimed none past 50 and would have gone with no failed build), with its licence. It draws the image's
 # own gem; every app it names ships in the image or comes with every machine, and each command is installed.

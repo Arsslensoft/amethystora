@@ -7,6 +7,7 @@
 import GLib from 'gi://GLib';
 
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 // Before anything else makes a settings object
 import './modules/keepsettings.js';
@@ -126,6 +127,12 @@ const MODULES = [
     ['focus', Focus],
 ];
 
+// The image's other extensions whose stylesheets are loaded with the modules' (modules/theme/stylesheets.js), each
+// named so that GNOME does not load it itself: GNOME loads an extension's stylesheet.css as it starts it and unloads it as
+// it stops it, at every lock and unlock, and each of those makes St forget every style it has worked out. Their rules are
+// tied to their own classes, so they stay inert while the extension is off.
+const SIBLINGS = ['amethystora-clipboard@arsslensoft.github.io', 'amethystora-logo-menu@arsslensoft.github.io'];
+
 // A pump tick enables modules until it has spent this long, then hands the main loop back for a frame
 const PUMP_BUDGET_US = 8000;
 
@@ -151,6 +158,14 @@ export default class AmethystoraUI extends Extension {
             this.stylesheets = replaceStylesheets([], stylesheets).map(([, file]) => file);
             // The theme module inside the batch, so its themed sheets join the one restyle at the batch's end
             this._enableNext();
+            const siblings = [];
+            for (const uuid of SIBLINGS) {
+                const dir = Main.extensionManager.lookup(uuid)?.dir ?? this.dir.get_parent().get_child(uuid);
+                const file = dir.get_child('styles.css');
+                if (file.query_exists(null))
+                    siblings.push([uuid, file]);
+            }
+            this.stylesheets.push(...replaceStylesheets([], siblings).map(([, file]) => file));
         });
         // The rest start a few at a time, below the redraw's priority, so the main loop paints between ticks:
         // starting all of them in one go froze it for most of a second at every login and unlock, which stuttered
@@ -208,7 +223,9 @@ export default class AmethystoraUI extends Extension {
             this._pumpId = 0;
         }
         this._queue = null;
-        batchStylesheets(() => this._disable());
+        // A lock keeps the shell's theme as it is, so that the unlock finds every style St worked out still there
+        // (modules/theme/stylesheets.js)
+        batchStylesheets(() => this._disable(), {keep: Main.sessionMode.isLocked});
     }
 
     _disable() {
