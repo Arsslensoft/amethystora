@@ -252,7 +252,9 @@ if [[ "${UBLUE_IMAGE_TAG}" == "beta" ]]; then
     FEDORA_REPOS+=(--repo=updates-testing)
 fi
 echo "Installing ${#FEDORA_PACKAGES[@]} packages from Fedora repos..."
-dnf -y install "${FEDORA_REPOS[@]}" "${FEDORA_PACKAGES[@]}"
+# TeX Live is left out: nothing here needs it, and python3-onnxruntime's sympy and matplotlib only recommend it,
+# which brought in some 270 of its packages, about 415 MB compressed, to every download and installation
+dnf -y install "${FEDORA_REPOS[@]}" --exclude='texlive*,tex-preview' "${FEDORA_PACKAGES[@]}"
 
 # Fedora's Firefox opens on start.fedoraproject.org and pins it on the new tab page. Those two lines of
 # its preferences are deleted, which leaves Firefox's own home page; nothing is put in their place

@@ -1,7 +1,10 @@
 # What the installer in the live session installs: the image the live system carries a copy of
 # (iso/live/build.sh puts it in the read-only image store), so that installing needs no network.
-# build.sh replaces @IMAGE@ with the image the ISO was built from.
-ostreecontainer --url=@IMAGE@ --transport=containers-storage --no-signature-verification
+# build.sh replaces @IMAGE@ with the image the ISO was built from. Through bootc install, not ostreecontainer
+# (ostree container image deploy): it unpacks without syncing the disk after each layer. Anaconda has the
+# command from Fedora 43. The installer ISO (iso/iso.toml) cannot take it: its builder
+# writes an ostreecontainer line of its own, and the two commands refuse each other.
+bootc --source-imgref=containers-storage:@IMAGE@ --target-imgref=@IMAGE@
 
 # Left alone, Anaconda runs `firewall-offline-cmd --enabled --service=ssh`, which adds ssh to the image's
 # default zone on every machine. The firewall is the image's: build.sh fails without this line. iso/iso.toml's

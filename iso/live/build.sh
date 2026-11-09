@@ -19,7 +19,7 @@ mkdir -p "$(realpath /root)"
 # --- The system to install ----------------------------------------------------------------------------
 
 # Into the read-only image store that containers-common lists for root (additionalimagestores), where
-# the installer's ostreecontainer finds it by name. The storage settings are only for this pull. It is
+# the installer's bootc install finds it by name. The storage settings are only for this pull. It is
 # pulled by digest, the one the live system is built from, and only then given the name it installs by.
 cat >/etc/containers/storage.conf <<'EOF'
 [storage]
