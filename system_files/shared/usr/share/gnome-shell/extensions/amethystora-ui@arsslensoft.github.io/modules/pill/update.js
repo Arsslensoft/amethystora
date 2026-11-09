@@ -1,6 +1,7 @@
 // Update ready: a new version of the system is staged and waits for a restart. ostree says so with a file in
 // /run/ostree, which is watched (never polled); whether the restart can be a quick one is asked of the image's own
-// helper, once for each staged version. Restart now opens System Updates, which asks before it restarts anything;
+// helper, once for each staged version. Restart now asks before it restarts anything: GNOME's restart dialog for a
+// full restart, System Updates for a quick one;
 // Tonight puts it out of sight until eight in the evening.
 
 import Clutter from 'gi://Clutter';
@@ -24,6 +25,11 @@ const SOFT_REBOOT = '/usr/libexec/amethystora-soft-reboot';
 const EVENING = 20;
 
 Gio._promisify(Gio.Subprocess.prototype, 'communicate_utf8_async');
+Gio._promisify(Gio.DBusConnection.prototype, 'call');
+
+function callAsync(name, path, iface, method, timeout) {
+    return Gio.DBus.session.call(name, path, iface, method, null, null, Gio.DBusCallFlags.NONE, timeout, null);
+}
 
 // Tonight's end (ms since the epoch), kept outside the module so that a lock (which turns the extension off) does not
 // bring the update back before eight
@@ -207,8 +213,23 @@ export class Update {
         return this._content;
     }
 
-    restart() {
-        Shell.AppSystem.get_default().lookup_app('amethystora-update.desktop')?.activate();
+    // A quick restart is asked about in System Updates. A full one is GNOME's own restart dialog, as System Updates
+    // shows it, after the open apps are kept: opening a window that was already open changed nothing on the screen
+    async restart() {
+        if (this._quick) {
+            Shell.AppSystem.get_default().lookup_app('amethystora-update.desktop')?.activate();
+            return;
+        }
+        try {
+            await callAsync('org.gnome.Shell', '/org/amethystora/UI/Resume', 'org.amethystora.UI.Resume', 'Save', 5000);
+        } catch (e) {
+            console.warn(`Amethystora UI: the open apps were not kept before the restart: ${e.message}`);
+        }
+        try {
+            await callAsync('org.gnome.SessionManager', '/org/gnome/SessionManager', 'org.gnome.SessionManager', 'Reboot', -1);
+        } catch (e) {
+            console.warn(`Amethystora UI: GNOME's restart dialog did not open: ${e.message}`);
+        }
     }
 
     // Out of sight until 20:00 today; from 20:00 on there is no such button
