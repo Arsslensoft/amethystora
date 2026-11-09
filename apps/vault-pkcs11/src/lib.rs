@@ -191,10 +191,11 @@ fn backend() -> Box<dyn Backend> {
             let name = std::fs::read_to_string(self.0.join("key.type")).map_err(|_| Refused)?;
             let key = PrivateKey::from_bytes(KeyType::parse(name.trim()).ok_or(Refused)?, &bytes).map_err(|_| Refused)?;
             let digest = if digest == Digest::Sha256 { pki::Digest::Sha256 } else { pki::Digest::Sha384 };
-            // As the service does: the key signs only with its own leaf certificate, for a PDF, within its dates
+            // As the service does: the key signs only with its own leaf certificate and its chain, for a PDF, within its dates
             let cert = std::fs::read(self.0.join("cert.der")).map_err(|_| Refused)?;
             let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_err(|_| Refused)?.as_secs() as i64;
-            let signer = Signer::leaf(&key, &cert, Purpose::Pdf, now).map_err(|_| Refused)?;
+            let chain = [std::fs::read(self.0.join("chain.der")).map_err(|_| Refused)?, std::fs::read(self.0.join("root.der")).map_err(|_| Refused)?];
+            let signer = Signer::leaf(&key, &cert, &chain, Purpose::Pdf, now).map_err(|_| Refused)?;
             let signature = pki::sign_digest(&signer, digest, value, now).map_err(|_| Refused)?;
             let count = std::fs::read_to_string(self.0.join("signed")).unwrap_or_default().len();
             std::fs::write(self.0.join("signed"), "x".repeat(count + 1)).map_err(|_| Refused)?;

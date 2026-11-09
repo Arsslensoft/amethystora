@@ -984,7 +984,7 @@ fn the_digest_signatures_verify() {
         (KeyType::EcdsaP384, Digest::Sha384, &sha384),
     ] {
         let signer = leaf(key_type, Request { profile: "pdf", name: Some("Ada Lovelace"), ..Request::default() });
-        let by = Signer::leaf(&signer.key, &signer.issued.cert, Purpose::Pdf, now()).unwrap();
+        let by = Signer::leaf(&signer.key, &signer.issued.cert, &signer.issued.chain, Purpose::Pdf, now()).unwrap();
         let cms = sign_pdf_digest(&by, &signer.issued.chain, digest, value, now()).unwrap();
         let path = scratch.write("sig.der", &cms);
         let (ok, said) = attempt(Command::new("openssl").args(["cms", "-verify", "-binary", "-inform", "DER", "-purpose", "smimesign", "-in"]).arg(&path).arg("-content").arg(&document).arg("-CAfile").arg(&root).arg("-out").arg("/dev/null"));
@@ -1005,12 +1005,12 @@ fn the_digest_signatures_verify() {
     // A digest of the wrong length, a key that cannot, a certificate that is not this key's
     let signer = leaf(KeyType::EcdsaP256, Request { profile: "pdf", name: Some("Ada"), ..Request::default() });
     let issued = &signer.issued;
-    let by = Signer::leaf(&signer.key, &issued.cert, Purpose::Pdf, now()).unwrap();
+    let by = Signer::leaf(&signer.key, &issued.cert, &issued.chain, Purpose::Pdf, now()).unwrap();
     assert_eq!(sign_pdf_digest(&by, &issued.chain, Digest::Sha256, &sha384, now()).unwrap_err(), PkiError::BadDigest);
     assert_eq!(sign_digest(&by, Digest::Sha384, &sha256, now()).unwrap_err(), PkiError::BadDigest);
     let ed25519 = key(KeyType::Ed25519);
     assert_eq!(sign_digest(&Signer::ssh(&ed25519, KeyKind::Ssh).unwrap(), Digest::Sha256, &sha256, now()).unwrap_err(), PkiError::KeyNotAllowed);
-    assert_eq!(Signer::leaf(&key(KeyType::EcdsaP256), &issued.cert, Purpose::Pdf, now()).err(), Some(PkiError::IssuerKeyMismatch));
+    assert_eq!(Signer::leaf(&key(KeyType::EcdsaP256), &issued.cert, &issued.chain, Purpose::Pdf, now()).err(), Some(PkiError::IssuerKeyMismatch));
 }
 
 /// A one-page PDF with a signature whose /Contents is `sign` over the document's /ByteRange. What the Vault would write
@@ -1076,7 +1076,7 @@ fn a_pdf_signed_from_its_digest_reads_trusted_in_pdfsig() {
                     Digest::Sha256 => openssl::sha::sha256(covered).to_vec(),
                     Digest::Sha384 => openssl::sha::sha384(covered).to_vec(),
                 };
-                let by = Signer::leaf(&signer.key, &signer.issued.cert, Purpose::Pdf, now()).unwrap();
+                let by = Signer::leaf(&signer.key, &signer.issued.cert, &signer.issued.chain, Purpose::Pdf, now()).unwrap();
                 sign_pdf_digest(&by, &signer.issued.chain, digest, &value, now()).unwrap()
             });
             let path = scratch.write("signed.pdf", &pdf);

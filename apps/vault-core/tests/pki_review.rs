@@ -384,7 +384,7 @@ fn h1_a_cas_key_signs_nothing() {
         (plain(&machine.root_key), &machine.root),
     ] {
         for purpose in [Purpose::Pdf, Purpose::Code] {
-            assert_eq!(Signer::leaf(&key, cert, purpose, now()).err(), Some(PkiError::WrongCertificate));
+            assert_eq!(Signer::leaf(&key, cert, &machine.account.chain, purpose, now()).err(), Some(PkiError::WrongCertificate));
         }
     }
     // A leaf made for the CA's key is refused at issue (M4), so no CA:FALSE certificate for it exists to be offered
@@ -392,8 +392,9 @@ fn h1_a_cas_key_signs_nothing() {
     assert_eq!(issue(&Request { profile: "pdf", public_key: &own, now: now(), name: Some("Ada"), ..Request::default() }, &account(machine)).unwrap_err(), PkiError::KeyIsACas);
 }
 
-/// A PDF certificate made by hand as `issue` makes one, signed by the account's CA, with the extension at `twice` written twice
-fn hand_made_pdf(machine: &Machine, key: &PrivateKey, twice: Option<&str>) -> Vec<u8> {
+/// A PDF certificate made by hand as `issue` makes one, under the account's CA's name and signed `by`, with the extension at
+/// `twice` written twice
+fn hand_made_pdf(machine: &Machine, key: &PrivateKey, twice: Option<&str>, by: &CaKey) -> Vec<u8> {
     use openssl::asn1::{Asn1Object, Asn1OctetString};
     use openssl::x509::X509Extension;
     let account = X509::from_der(&machine.account.cert).unwrap();
@@ -416,7 +417,7 @@ fn hand_made_pdf(machine: &Machine, key: &PrivateKey, twice: Option<&str>) -> Ve
             builder.append_extension(extension).unwrap();
         }
     }
-    builder.sign(&PKey::private_key_from_pkcs8(plain(&machine.account_key).as_bytes()).unwrap(), MessageDigest::sha256()).unwrap();
+    builder.sign(&PKey::private_key_from_pkcs8(plain(by).as_bytes()).unwrap(), MessageDigest::sha256()).unwrap();
     builder.build().to_der().unwrap()
 }
 
@@ -427,7 +428,7 @@ fn k5_a_signer_is_held_to_its_dates_when_it_signs_and_its_extensions_are_each_on
     let account = account(machine);
     let at = now() + 60;
     let (key, pdf) = leaf_of("pdf", &account, KeyType::EcdsaP256);
-    let signer = Signer::leaf(&key, &pdf.cert, Purpose::Pdf, at).unwrap();
+    let signer = Signer::leaf(&key, &pdf.cert, &pdf.chain, Purpose::Pdf, at).unwrap();
     let digest = [5u8; 32];
     assert!(sign_digest(&signer, Digest::Sha256, &digest, at).is_ok());
     assert_eq!(sign_digest(&signer, Digest::Sha256, &digest, at + 461 * DAY).unwrap_err(), PkiError::CertificateNotValid);
@@ -435,10 +436,38 @@ fn k5_a_signer_is_held_to_its_dates_when_it_signs_and_its_extensions_are_each_on
     assert_eq!(sign_digest(&signer, Digest::Sha256, &digest, i64::MAX / 2).unwrap_err(), PkiError::BadTime);
 
     let key = generate(KeyType::EcdsaP256).unwrap();
-    assert!(Signer::leaf(&key, &hand_made_pdf(machine, &key, None), Purpose::Pdf, now()).is_ok());
+    let chain = [machine.account.cert.clone(), machine.root.clone()];
+    assert!(Signer::leaf(&key, &hand_made_pdf(machine, &key, None, &machine.account_key), &chain, Purpose::Pdf, now()).is_ok());
     for twice in ["2.5.29.19", "2.5.29.15", "2.5.29.37"] {
-        assert_eq!(Signer::leaf(&key, &hand_made_pdf(machine, &key, Some(twice)), Purpose::Pdf, now()).err(), Some(PkiError::Malformed), "{twice}");
+        assert_eq!(Signer::leaf(&key, &hand_made_pdf(machine, &key, Some(twice), &machine.account_key), &chain, Purpose::Pdf, now()).err(), Some(PkiError::Malformed), "{twice}");
     }
+}
+
+/// K1: a CA's or the root's key, its stored mark taken off and given as a leaf's with a certificate made up for it, signs nothing:
+/// a leaf is checked against the chain it was issued with, which has to have signed it and whose keys it cannot have
+#[test]
+fn k1_a_made_up_certificate_makes_no_signer() {
+    let machine = machine();
+    let chain = [machine.account.cert.clone(), machine.root.clone()];
+    // The CA's own key and the root's, each under a PDF certificate the CA signed for it, or one it signed itself
+    for stolen in [&machine.account_key, &machine.root_key] {
+        let key = plain(stolen);
+        for by in [&machine.account_key, stolen] {
+            let made_up = hand_made_pdf(machine, &key, None, by);
+            assert_eq!(Signer::leaf(&key, &made_up, &chain, Purpose::Pdf, now()).err(), Some(PkiError::KeyIsACas));
+        }
+    }
+    // A key of its own under a certificate nobody in the chain signed, or with no chain or another
+    let key = generate(KeyType::EcdsaP256).unwrap();
+    let unsigned = hand_made_pdf(machine, &key, None, &CaKey::generate(Authority::AccountCa).unwrap());
+    assert_eq!(Signer::leaf(&key, &unsigned, &chain, Purpose::Pdf, now()).err(), Some(PkiError::WrongIssuer));
+    let signed = hand_made_pdf(machine, &key, None, &machine.account_key);
+    let device = [machine.device.cert.clone(), machine.root.clone()];
+    let backwards = [machine.root.clone(), machine.account.cert.clone()];
+    for wrong in [&[][..], &chain[..1], &device[..], &backwards[..]] {
+        assert_eq!(Signer::leaf(&key, &signed, wrong, Purpose::Pdf, now()).err(), Some(PkiError::WrongIssuer));
+    }
+    assert!(Signer::leaf(&key, &signed, &chain, Purpose::Pdf, now()).is_ok());
 }
 
 /// M5: a signer is a leaf of the profile the purpose names, within its dates
@@ -452,27 +481,27 @@ fn m5_a_signer_has_the_purpose_and_the_dates() {
         let (pdf_key, pdf) = leaf_of("pdf", &account, key_type);
         let (code_key, code) = leaf_of("code", &account, key_type);
         let (smime_key, smime) = leaf_of("smime", &account, key_type);
-        assert!(Signer::leaf(&pdf_key, &pdf.cert, Purpose::Pdf, at).is_ok());
-        assert!(Signer::leaf(&code_key, &code.cert, Purpose::Code, at).is_ok());
+        assert!(Signer::leaf(&pdf_key, &pdf.cert, &pdf.chain, Purpose::Pdf, at).is_ok());
+        assert!(Signer::leaf(&code_key, &code.cert, &code.chain, Purpose::Code, at).is_ok());
         // Another profile's certificate is no signer for this purpose
-        assert_eq!(Signer::leaf(&pdf_key, &pdf.cert, Purpose::Code, at).err(), Some(PkiError::WrongCertificate));
-        assert_eq!(Signer::leaf(&code_key, &code.cert, Purpose::Pdf, at).err(), Some(PkiError::WrongCertificate));
-        assert_eq!(Signer::leaf(&smime_key, &smime.cert, Purpose::Pdf, at).err(), Some(PkiError::WrongCertificate));
-        assert_eq!(Signer::leaf(&smime_key, &smime.cert, Purpose::Code, at).err(), Some(PkiError::WrongCertificate));
+        assert_eq!(Signer::leaf(&pdf_key, &pdf.cert, &pdf.chain, Purpose::Code, at).err(), Some(PkiError::WrongCertificate));
+        assert_eq!(Signer::leaf(&code_key, &code.cert, &code.chain, Purpose::Pdf, at).err(), Some(PkiError::WrongCertificate));
+        assert_eq!(Signer::leaf(&smime_key, &smime.cert, &smime.chain, Purpose::Pdf, at).err(), Some(PkiError::WrongCertificate));
+        assert_eq!(Signer::leaf(&smime_key, &smime.cert, &smime.chain, Purpose::Code, at).err(), Some(PkiError::WrongCertificate));
         // The certificate has to be the key's own
-        assert_eq!(Signer::leaf(&code_key, &pdf.cert, Purpose::Pdf, at).err(), Some(PkiError::IssuerKeyMismatch));
+        assert_eq!(Signer::leaf(&code_key, &pdf.cert, &pdf.chain, Purpose::Pdf, at).err(), Some(PkiError::IssuerKeyMismatch));
         // Its dates, at the time of signing: before it starts, after it ends, and a time that is none
-        assert_eq!(Signer::leaf(&pdf_key, &pdf.cert, Purpose::Pdf, at - 3600).err(), Some(PkiError::CertificateNotValid));
-        assert_eq!(Signer::leaf(&pdf_key, &pdf.cert, Purpose::Pdf, at + 461 * DAY).err(), Some(PkiError::CertificateNotValid));
-        assert_eq!(Signer::leaf(&pdf_key, &pdf.cert, Purpose::Pdf, i64::MAX / 2).err(), Some(PkiError::BadTime));
+        assert_eq!(Signer::leaf(&pdf_key, &pdf.cert, &pdf.chain, Purpose::Pdf, at - 3600).err(), Some(PkiError::CertificateNotValid));
+        assert_eq!(Signer::leaf(&pdf_key, &pdf.cert, &pdf.chain, Purpose::Pdf, at + 461 * DAY).err(), Some(PkiError::CertificateNotValid));
+        assert_eq!(Signer::leaf(&pdf_key, &pdf.cert, &pdf.chain, Purpose::Pdf, i64::MAX / 2).err(), Some(PkiError::BadTime));
         // A signer made in time is checked again when it signs, and a code signer does not sign a PDF
-        let signer = Signer::leaf(&pdf_key, &pdf.cert, Purpose::Pdf, at).unwrap();
+        let signer = Signer::leaf(&pdf_key, &pdf.cert, &pdf.chain, Purpose::Pdf, at).unwrap();
         let digest = [3u8; 32];
         assert!(sign_pdf_digest(&signer, &pdf.chain, Digest::Sha256, &digest, at).is_ok());
         assert_eq!(sign_pdf_digest(&signer, &pdf.chain, Digest::Sha256, &digest, at + 461 * DAY).unwrap_err(), PkiError::CertificateNotValid);
         assert_eq!(sign_pdf_digest(&signer, &pdf.chain, Digest::Sha256, &digest, i64::MAX / 2).unwrap_err(), PkiError::BadTime);
         assert_eq!(sign_pdf_digest(&signer, &pdf.chain, Digest::Sha256, &digest, i64::MIN / 2).unwrap_err(), PkiError::BadTime);
-        let coder = Signer::leaf(&code_key, &code.cert, Purpose::Code, at).unwrap();
+        let coder = Signer::leaf(&code_key, &code.cert, &code.chain, Purpose::Code, at).unwrap();
         assert_eq!(sign_pdf_digest(&coder, &code.chain, Digest::Sha256, &digest, at).unwrap_err(), PkiError::WrongCertificate);
         assert!(sign_digest(&coder, Digest::Sha256, &digest, at).is_ok());
     }
@@ -480,7 +509,7 @@ fn m5_a_signer_has_the_purpose_and_the_dates() {
     let local = Issuer { authority: Authority::LocalServicesCa, cert: &machine.local.cert, key: &machine.local_key, chain: &machine.local.chain };
     let (tls_key, tls) = leaf_of("local-tls", &local, KeyType::EcdsaP256);
     for purpose in [Purpose::Pdf, Purpose::Code] {
-        assert_eq!(Signer::leaf(&tls_key, &tls.cert, purpose, at).err(), Some(PkiError::WrongCertificate));
+        assert_eq!(Signer::leaf(&tls_key, &tls.cert, &tls.chain, purpose, at).err(), Some(PkiError::WrongCertificate));
     }
     // An SSH key signs when it is marked for SSH, and for nothing else
     let ssh = generate(KeyType::EcdsaP256).unwrap();

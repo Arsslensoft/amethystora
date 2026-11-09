@@ -580,7 +580,7 @@ pub fn sign_digest(service: &mut Service, peer: &Rc<Peer>, body: &Value) -> Resu
             Ok(held) => held,
             Err(next) => return next,
         };
-        let request = json!({"job": "sign", "type": held["type"], "key": held["key"], "cert": held["cert"], "now": store::now(), "purpose": purpose, "digest": digest, "value": encode(&value)});
+        let request = json!({"job": "sign", "type": held["type"], "key": held["key"], "cert": held["cert"], "chain": held["chain"], "now": store::now(), "purpose": purpose, "digest": digest, "value": encode(&value)});
         Next::work(move || work::run(&program, &request), |_, _, answer: Value| Next::Answer(answer))
     }))
 }

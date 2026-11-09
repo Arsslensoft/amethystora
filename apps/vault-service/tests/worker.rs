@@ -52,8 +52,13 @@ fn leaf(machine: &Machine, profile: &str) -> (PrivateKey, Vec<u8>) {
     (key, issued.cert)
 }
 
-fn sign(key: &[u8], cert: &[u8], purpose: &str, at: i64) -> Value {
-    run(&json!({"job": "sign", "type": "ecdsa-p256", "key": encode(key), "cert": encode(cert), "purpose": purpose, "now": at, "digest": "sha256", "value": encode(&[7u8; 32])}))
+/// The CA and the root a leaf was issued with, as the service keeps them beside it
+fn chain(machine: &Machine) -> Vec<String> {
+    vec![encode(&machine.ca_cert), encode(&machine.root_cert)]
+}
+
+fn sign(machine: &Machine, key: &[u8], cert: &[u8], purpose: &str, at: i64) -> Value {
+    run(&json!({"job": "sign", "type": "ecdsa-p256", "key": encode(key), "cert": encode(cert), "chain": chain(machine), "purpose": purpose, "now": at, "digest": "sha256", "value": encode(&[7u8; 32])}))
 }
 
 fn problem(answer: &Value) -> &str {
@@ -68,32 +73,32 @@ fn only_a_leafs_own_key_signs_and_only_for_its_own_purpose_within_its_dates() {
     let (code_key, code_cert) = leaf(&machine, "code");
     let at = now();
 
-    let signed = sign(pdf_key.as_bytes(), &pdf_cert, "pdf", at);
+    let signed = sign(&machine, pdf_key.as_bytes(), &pdf_cert, "pdf", at);
     assert_eq!(signed["ok"], json!(true), "{signed}");
     assert!(!signed["signature"].as_str().unwrap().is_empty());
-    assert_eq!(sign(code_key.as_bytes(), &code_cert, "code", at)["ok"], json!(true));
+    assert_eq!(sign(&machine, code_key.as_bytes(), &code_cert, "code", at)["ok"], json!(true));
 
     // Another purpose than the certificate's own, and one that is none
-    assert_eq!(problem(&sign(pdf_key.as_bytes(), &pdf_cert, "code", at)), "wrong-purpose");
-    assert_eq!(problem(&sign(code_key.as_bytes(), &code_cert, "pdf", at)), "wrong-purpose");
-    assert_eq!(problem(&sign(pdf_key.as_bytes(), &pdf_cert, "smime", at)), "wrong-purpose");
+    assert_eq!(problem(&sign(&machine, pdf_key.as_bytes(), &pdf_cert, "code", at)), "wrong-purpose");
+    assert_eq!(problem(&sign(&machine, code_key.as_bytes(), &code_cert, "pdf", at)), "wrong-purpose");
+    assert_eq!(problem(&sign(&machine, pdf_key.as_bytes(), &pdf_cert, "smime", at)), "wrong-purpose");
 
     // The CA's key, and the root's, as the service stores them: not a leaf's key by type, so not read as one at all
     for (stored, cert) in [(machine.ca.to_stored(), &machine.ca_cert), (machine.root.to_stored(), &machine.root_cert)] {
-        let answer = sign(&stored, cert, "pdf", at);
+        let answer = sign(&machine, &stored, cert, "pdf", at);
         assert_eq!(answer["ok"], json!(false), "{answer}");
         assert!(answer.get("signature").is_none());
     }
     // A CA's certificate with a leaf's key, a leaf's certificate with another's key: the key has to be the certificate's own
-    assert_eq!(sign(pdf_key.as_bytes(), &machine.ca_cert, "pdf", at)["ok"], json!(false));
-    assert_eq!(sign(code_key.as_bytes(), &pdf_cert, "pdf", at)["ok"], json!(false));
+    assert_eq!(sign(&machine, pdf_key.as_bytes(), &machine.ca_cert, "pdf", at)["ok"], json!(false));
+    assert_eq!(sign(&machine, code_key.as_bytes(), &pdf_cert, "pdf", at)["ok"], json!(false));
 
     // Before it starts and after it ends
-    assert_eq!(problem(&sign(pdf_key.as_bytes(), &pdf_cert, "pdf", at - 3 * 86400)), "expired");
-    assert_eq!(problem(&sign(pdf_key.as_bytes(), &pdf_cert, "pdf", at + 20 * 365 * 86400)), "expired");
+    assert_eq!(problem(&sign(&machine, pdf_key.as_bytes(), &pdf_cert, "pdf", at - 3 * 86400)), "expired");
+    assert_eq!(problem(&sign(&machine, pdf_key.as_bytes(), &pdf_cert, "pdf", at + 20 * 365 * 86400)), "expired");
 
     // A digest of the wrong length, and a hash that is not allowed
-    let short = run(&json!({"job": "sign", "type": "ecdsa-p256", "key": encode(pdf_key.as_bytes()), "cert": encode(&pdf_cert), "purpose": "pdf", "now": at, "digest": "sha256", "value": encode(&[7u8; 31])}));
+    let short = run(&json!({"job": "sign", "type": "ecdsa-p256", "key": encode(pdf_key.as_bytes()), "cert": encode(&pdf_cert), "chain": chain(&machine), "purpose": "pdf", "now": at, "digest": "sha256", "value": encode(&[7u8; 31])}));
     assert_eq!(problem(&short), "bad-digest");
     let md5 = run(&json!({"job": "sign", "type": "ecdsa-p256", "key": encode(pdf_key.as_bytes()), "cert": encode(&pdf_cert), "purpose": "pdf", "now": at, "digest": "md5", "value": encode(&[7u8; 16])}));
     assert_eq!(problem(&md5), "digest-not-allowed");

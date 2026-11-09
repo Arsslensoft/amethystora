@@ -94,19 +94,19 @@ fn prepare(name: &str) -> Box<dyn FnMut()> {
             std::hint::black_box(pfx(&rsa_key, &rsa_leaf.cert, &rsa_leaf.chain, "Ada", "a password").unwrap());
         }
         "sign pdf digest rsa" => {
-            let by = Signer::leaf(&rsa_key, &rsa_leaf.cert, Purpose::Pdf, NOW).unwrap();
+            let by = Signer::leaf(&rsa_key, &rsa_leaf.cert, &rsa_leaf.chain, Purpose::Pdf, NOW).unwrap();
             std::hint::black_box(sign_pdf_digest(&by, &rsa_leaf.chain, Digest::Sha256, &digest, NOW).unwrap());
         }
         "sign pdf digest ecdsa" => {
-            let by = Signer::leaf(&ec_key, &ec_leaf.cert, Purpose::Pdf, NOW).unwrap();
+            let by = Signer::leaf(&ec_key, &ec_leaf.cert, &ec_leaf.chain, Purpose::Pdf, NOW).unwrap();
             std::hint::black_box(sign_pdf_digest(&by, &ec_leaf.chain, Digest::Sha256, &digest, NOW).unwrap());
         }
         "sign digest rsa" => {
-            let by = Signer::leaf(&rsa_key, &rsa_leaf.cert, Purpose::Pdf, NOW).unwrap();
+            let by = Signer::leaf(&rsa_key, &rsa_leaf.cert, &rsa_leaf.chain, Purpose::Pdf, NOW).unwrap();
             std::hint::black_box(sign_digest(&by, Digest::Sha256, &digest, NOW).unwrap());
         }
         "sign digest ecdsa" => {
-            let by = Signer::leaf(&ec_key, &ec_leaf.cert, Purpose::Pdf, NOW).unwrap();
+            let by = Signer::leaf(&ec_key, &ec_leaf.cert, &ec_leaf.chain, Purpose::Pdf, NOW).unwrap();
             std::hint::black_box(sign_digest(&by, Digest::Sha256, &digest, NOW).unwrap());
         }
         other => panic!("{other}"),

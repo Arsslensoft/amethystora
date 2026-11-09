@@ -62,9 +62,9 @@ enum Use {
 }
 
 /// A key that may sign a digest for a person, and what for. The only way to sign: the root's and the CAs' keys are a type
-/// that cannot be given here, and any other key is checked against its certificate, which has to be a leaf of the profile
-/// the purpose names and within its dates, so a blind digest cannot be turned into a certificate or into another purpose's
-/// signature. An SSH key is signed with when it is marked for SSH, and has no certificate to check.
+/// that cannot be given here, and any other key is checked against its certificate and the chain it was issued with, the
+/// certificate a leaf of the profile the purpose names and within its dates, so a blind digest cannot be turned into a
+/// certificate or into another purpose's signature. An SSH key is signed with when it is marked for SSH, and has no certificate to check.
 pub struct Signer<'a> {
     key: &'a PrivateKey,
     usage: Use,
@@ -72,8 +72,10 @@ pub struct Signer<'a> {
 
 impl<'a> Signer<'a> {
     /// The key of `cert`, for `purpose`, at `now`. Refused unless `cert` is the key's own, CA:FALSE, a signing certificate
-    /// and no CA's, with exactly the purposes that profile's certificates carry, and valid now.
-    pub fn leaf(key: &'a PrivateKey, cert: &[u8], purpose: Purpose, now: i64) -> Result<Signer<'a>, PkiError> {
+    /// and no CA's, with exactly the purposes that profile's certificates carry, and valid now; and unless `chain`, what it was
+    /// issued with (its CA, then the root), signed it, and the key is neither of theirs. A CA's key handed over as a leaf's,
+    /// with a certificate made up for it, signs nothing.
+    pub fn leaf(key: &'a PrivateKey, cert: &[u8], chain: &[Vec<u8>], purpose: Purpose, now: i64) -> Result<Signer<'a>, PkiError> {
         check_now(now)?;
         let parsed = X509::from_der(cert).map_err(|_| PkiError::Malformed)?;
         if !key.pkey()?.public_eq(&*parsed.public_key()?) {
@@ -91,6 +93,25 @@ impl<'a> Signer<'a> {
         }
         if !valid_at(&parsed, now)? {
             return Err(PkiError::CertificateNotValid);
+        }
+        let [ca, root] = chain else {
+            return Err(PkiError::WrongIssuer);
+        };
+        let ca = X509::from_der(ca).map_err(|_| PkiError::Malformed)?;
+        let root = X509::from_der(root).map_err(|_| PkiError::Malformed)?;
+        if parsed.public_key()?.public_eq(&*ca.public_key()?) || parsed.public_key()?.public_eq(&*root.public_key()?) {
+            return Err(PkiError::KeyIsACas);
+        }
+        // Each link signed by the one above it, which is a CA that may sign certificates, the root by itself
+        for (below, above) in [(&parsed, &ca), (&ca, &root), (&root, &root)] {
+            let above_facts = facts(above)?;
+            if above_facts.ca != Some(true)
+                || above_facts.usage.unwrap_or(0) & CERT_SIGN == 0
+                || below.issuer_name().to_der()? != above.subject_name().to_der()?
+                || !below.verify(&*above.public_key()?).unwrap_or(false)
+            {
+                return Err(PkiError::WrongIssuer);
+            }
         }
         Ok(Signer { key, usage: Use::Leaf(cert.to_vec(), purpose) })
     }

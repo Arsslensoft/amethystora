@@ -176,8 +176,8 @@ fn digest_of(request: &Value) -> Result<Option<Digest>, Why> {
 }
 
 /// A leaf certificate's own signature over a digest. The service has already held the item to its profile and dates; `Signer::leaf`
-/// holds the key to the certificate it came with: CA:FALSE, the purpose's profile, within its dates, and the key's own. A CA's or the
-/// root's key is a type (`CaKey`) that cannot be given here at all.
+/// holds the key to the certificate and chain it came with: CA:FALSE, the purpose's profile, within its dates, the key's own and
+/// signed by that chain, whose keys it is not. A CA's or the root's key is a type (`CaKey`) that cannot be given here at all.
 fn sign(request: &Value) -> Answer {
     let key = held_key(request)?;
     let digest = digest_of(request)?.ok_or(Why::Bad)?;
@@ -187,7 +187,7 @@ fn sign(request: &Value) -> Answer {
         _ => return Err(Why::Problem("wrong-purpose", None)),
     };
     let now = request["now"].as_i64().ok_or(Why::Bad)?;
-    let signer = Signer::leaf(&key, &bytes(request, "cert")?, purpose, now)?;
+    let signer = Signer::leaf(&key, &bytes(request, "cert")?, &certificates(request, "chain")?, purpose, now)?;
     Ok(json!({"signature": encode(&pki::sign_digest(&signer, digest, &bytes(request, "value")?, now)?)}))
 }
 

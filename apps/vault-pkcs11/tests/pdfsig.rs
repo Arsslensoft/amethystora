@@ -109,6 +109,7 @@ fn pdfsig_signs_through_the_module() {
         std::fs::write(dir.join("key.type"), key_type.name()).unwrap();
 
         std::fs::write(dir.join("chain.der"), &fixture.account.cert).unwrap();
+        std::fs::write(dir.join("root.der"), &fixture.root).unwrap();
 
         // A database with nothing in it but the module: the chain comes from the module too
         let db = database(&dir, "signer");
