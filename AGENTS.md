@@ -1426,7 +1426,9 @@ gives it what changed (the `VALUES` row, whose layout is the crate's `V_` consta
 two lens templates) and calls `paint()` once a paint; a banner's fade and a bare bar stay in JS, and so does everything when
 the typelib is missing or `AMETHYSTORA_GLASS_JS` is set in GNOME Shell's environment. It runs inside the shell under
 `panic = "abort"`: nothing in it may unwrap, index unchecked or block. A GNOME release rebuilds it (`20-tests.sh` loads it with
-GJS), and suite 13 compares its paint with JS's.
+GJS), and suite 13 compares its paint with JS's. `priority.js` asks rtkit for a nice of -10 on the shell's main thread (Mutter's KMS thread already has
+-15): under load it halved the overview's stalls; `AMETHYSTORA_SHELL_PRIORITY=0` leaves it. sched-ext added little on top of
+that, so no scheduler is on by default.
 
 The modules, and what each replaced:
 

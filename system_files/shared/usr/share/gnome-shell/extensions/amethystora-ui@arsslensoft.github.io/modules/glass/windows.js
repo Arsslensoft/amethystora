@@ -122,8 +122,8 @@ export class Windows {
 
     // The look of a copy of a window that has glass, as the workspace switch slides it in
     cloneLook() {
-        return {material: 'pane', radius: this._glass.windowRadius, areas: frame, content, contentShare, inClones: false,
-            stageOnly: true};
+        return {material: 'pane', radius: this._glass.windowRadius, areas: frame, content, contentShare,
+            inClones: false, stageOnly: true};
     }
 
     // The window switchers' pictures of windows under actor: one of a window that is on glass while it is not in use
