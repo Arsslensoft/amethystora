@@ -712,15 +712,24 @@ fn ssh_cipher(name: &[u8]) -> Option<(Cipher, usize, usize, bool)> {
 fn import_openssh_v1(text: &str, passphrase: &[u8]) -> Result<Imported, KeyError> {
     // Of its final size, so that it never grows into a new block and leaves the old one behind
     let mut body = Zeroizing::new(String::with_capacity(text.len()));
+    // One key, its BEGIN line first and its END line last, as `ssh-keygen` writes it: anything around it or a second key is not
+    // read past
+    let mut lines = text.lines().map(str::trim).filter(|line| !line.is_empty());
+    if lines.next() != Some("-----BEGIN OPENSSH PRIVATE KEY-----") {
+        return Err(KeyError::Malformed);
+    }
     let mut ended = false;
-    for line in text.lines().map(str::trim).skip_while(|line| !line.starts_with("-----BEGIN OPENSSH PRIVATE KEY")).skip(1) {
-        if line.starts_with("-----END OPENSSH PRIVATE KEY") {
+    for line in lines.by_ref() {
+        if line == "-----END OPENSSH PRIVATE KEY-----" {
             ended = true;
             break;
         }
+        if line.starts_with("-----") {
+            return Err(KeyError::Malformed);
+        }
         body.push_str(line);
     }
-    if !ended {
+    if !ended || lines.next().is_some() {
         return Err(KeyError::Malformed);
     }
     let binary = Zeroizing::new(STANDARD.decode(body.as_bytes()).map_err(|_| KeyError::Malformed)?);

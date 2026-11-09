@@ -272,6 +272,29 @@ fn l3_a_file_must_end_where_it_says() {
     assert!(import_openssh(cut.as_bytes(), b"").is_err());
 }
 
+/// K8: an OpenSSH file is one key, its BEGIN line first and its END line last: text around it, a second key or an END of another
+/// name is refused rather than passed over
+#[test]
+fn k8_an_openssh_file_is_its_key_and_nothing_else() {
+    let rsa = Rsa::generate(2048).unwrap();
+    let numbers = [rsa.n().to_vec(), rsa.e().to_vec(), rsa.d().to_vec(), rsa.iqmp().unwrap().to_vec(), rsa.p().unwrap().to_vec(), rsa.q().unwrap().to_vec()];
+    let private = rsa_private([&numbers[0], &numbers[1], &numbers[2], &numbers[3], &numbers[4], &numbers[5]]);
+    let good = String::from_utf8(v1_file("none", "none", b"", &rsa_public(&rsa), &private, b"")).unwrap();
+    // Blank lines around it and Windows's line ends are still the file ssh-keygen wrote
+    for same in [good.clone(), format!("\n\n{good}\n\n"), good.replace('\n', "\r\n"), good.trim_end().to_string()] {
+        assert!(import_openssh(same.as_bytes(), b"").is_ok(), "{same:?}");
+    }
+    for odd in [
+        format!("Here is my key:\n{good}"),
+        format!("{good}and some more text\n"),
+        format!("{good}{good}"),
+        good.replace("-----END OPENSSH PRIVATE KEY-----", "-----END OPENSSH PRIVATE KEYS-----"),
+        good.replace("-----BEGIN OPENSSH PRIVATE KEY-----", "-----BEGIN OPENSSH PRIVATE KEY----- x"),
+    ] {
+        assert_eq!(import_openssh(odd.as_bytes(), b"").map(|_| ()).unwrap_err(), KeyError::Malformed, "{odd:?}");
+    }
+}
+
 /// L5: a file asking for more bcrypt rounds than 256 is refused at once, and says why
 #[test]
 fn l5_bcrypt_rounds_are_bounded_at_256() {
