@@ -715,6 +715,32 @@ enum Style {
 /// Folders with more than this beside a protected file are not covered whole
 const MOST_SIBLINGS: usize = 64;
 
+/// What stays of a protected folder on the disk and shows through it, as paths under it. A sealed file's path that is there, or something
+/// other than a folder where a sealed folder goes, is a plain copy that came back: one of the two would hide the other, and be lost. A folder
+/// both hold is looked into, so that only what stayed in it shows through and the rest of it is the vault's (a `.pub` beside a sealed key).
+fn stays_in(folder: &OwnedFd, under: &str, tree: &Tree, stays: &mut Vec<String>, depth: usize) -> Result<(), Why> {
+    if depth >= MOST_DEPTH {
+        return Err(Why::TooLarge);
+    }
+    for name in names_in(folder)? {
+        let at = if under.is_empty() { name.clone() } else { format!("{under}/{name}") };
+        let inside = format!("{at}/");
+        if tree.files.iter().any(|file| file.at == at) {
+            return Err(Why::FileThere);
+        }
+        if tree.folders.iter().any(|(sealed, _)| *sealed == at) || tree.files.iter().any(|file| file.at.starts_with(&inside)) {
+            let held = open_at(folder.as_raw_fd(), &name, libc::O_RDONLY | libc::O_DIRECTORY, 0).map_err(|_| Why::FileThere)?;
+            stays_in(&held, &at, tree, stays, depth + 1)?;
+        } else {
+            stays.push(at);
+        }
+        if stays.len() > MOST_ENTRIES {
+            return Err(Why::TooLarge);
+        }
+    }
+    Ok(())
+}
+
 /// A protected file's place while its command runs, from before the namespace until after it. A mount needs something to go over, so for
 /// that long a file's place holds an empty file and a folder's an empty folder, which is all anything outside can see there.
 pub struct Place {
@@ -740,11 +766,6 @@ pub struct Place {
 
 fn device_of(path: &Path) -> Option<u64> {
     std::fs::metadata(path).ok().map(|stat| std::os::unix::fs::MetadataExt::dev(&stat))
-}
-
-/// The first name of each path a tree holds
-fn tops(tree: &Tree) -> Vec<&str> {
-    tree.files.iter().map(|file| file.at.as_str()).chain(tree.folders.iter().map(|(at, _)| at.as_str())).map(|at| at.split('/').next().unwrap_or_default()).collect()
 }
 
 impl Place {
@@ -782,12 +803,8 @@ impl Place {
                 // SAFETY: a live string; there already is the usual answer
                 unsafe { libc::mkdirat(parent.as_raw_fd(), name.as_ptr(), 0o700) };
                 let held = open_at(parent.as_raw_fd(), &last, libc::O_RDONLY | libc::O_DIRECTORY, 0).map_err(|why| if why == Why::NotPlain { Why::FileThere } else { why })?;
-                let stays = names_in(&held)?;
-                // A plain copy of a name that is sealed came back: the sealed one would be hidden by it, or it by the sealed, and one of the two lost
-                let sealed = tops(tree);
-                if stays.iter().any(|name| sealed.contains(&name.as_str())) {
-                    return Err(Why::FileThere);
-                }
+                let mut stays = Vec::new();
+                stays_in(&held, "", tree, &mut stays, 0)?;
                 Ok(make(Style::Folder, full.clone(), stays, None, None, 0))
             }
         }
@@ -832,11 +849,13 @@ impl Place {
         // SAFETY: as above
         let folder = unsafe { OwnedFd::from_raw_fd(fd) };
         let mut stays = Vec::new();
-        for name in &self.stays {
-            let Ok(fd) = open_at(folder.as_raw_fd(), name, libc::O_PATH, 0) else { continue };
+        for at in &self.stays {
+            // What stayed in a folder the vault holds too is a path under it, walked a name at a time
+            let Ok((inner, name)) = folder_of(&folder, at, false) else { continue };
+            let Ok(fd) = open_at(inner.as_raw_fd(), &name, libc::O_PATH, 0) else { continue };
             let stat = stat_of(fd.as_raw_fd())?;
             if [libc::S_IFREG, libc::S_IFDIR, libc::S_IFLNK].into_iter().any(|kind| is_kind(&stat, kind)) {
-                stays.push((name.clone(), fd, stat.st_mode & libc::S_IFMT));
+                stays.push((at.clone(), fd, stat.st_mode & libc::S_IFMT));
             }
         }
         Ok(stays)

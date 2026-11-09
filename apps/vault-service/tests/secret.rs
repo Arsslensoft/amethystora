@@ -2229,6 +2229,43 @@ fn the_usual_tools_rewrite_files_they_made_beside_the_login_and_fail_loudly_on_t
 }
 
 #[test]
+fn a_protected_folder_with_a_public_key_in_a_subfolder_runs() {
+    if !namespaces() {
+        return;
+    }
+    let person = Person::new("run-folder-pub");
+    person.put(".ssh/id_y", "private y\n");
+    person.put(".ssh/keys/work", "private work\n");
+    person.put(".ssh/keys/work.pub", "public work\n");
+    assert_eq!(person.says(&["protect", person.at(".ssh").to_str().unwrap()]).0, 0);
+    assert!(person.at(".ssh/keys/work.pub").exists() && !person.at(".ssh/keys/work").exists());
+    let folder = person.at(".ssh");
+    let report = person.at("report");
+    let uses = tool(&person, "tool", &format!(
+        "cd '{folder}/keys'\ncat work work.pub >'{report}'\nprintf new >work\nprintf made >more\necho more >>work.pub",
+        folder = folder.display(),
+        report = report.display(),
+    ));
+    let (code, _, err) = person.says(&["run", ".ssh", "--", &uses]);
+    assert_eq!(code, 0, "{err}");
+    assert_eq!(std::fs::read_to_string(&report).unwrap(), "private work\npublic work\n");
+    let value = person.sealed(".ssh");
+    let names: Vec<&str> = value["files"].as_array().unwrap().iter().map(|file| file["at"].as_str().unwrap()).collect();
+    assert_eq!(names, ["id_y", "keys/more", "keys/work"], "{value}");
+    assert_eq!(std::fs::read_to_string(person.at(".ssh/keys/work.pub")).unwrap(), "public work\nmore\n");
+    assert_eq!(dir_names(&person.at(".ssh/keys")), ["work.pub"]);
+    // A sealed folder that is there again, empty, is no plain copy of anything; a file where a sealed folder goes is
+    person.put(".tool/sub/key", "secret\n");
+    assert_eq!(person.says(&["protect", person.at(".tool").to_str().unwrap()]).0, 0);
+    std::fs::create_dir_all(person.at(".tool/sub")).unwrap();
+    assert_eq!(person.says(&["run", ".tool", "--", "true"]).0, 0);
+    std::fs::remove_dir(person.at(".tool/sub")).unwrap();
+    person.put(".tool/sub", "a file\n");
+    assert_eq!(person.says(&["run", ".tool", "--", "true"]).0, 13);
+    assert_eq!(std::fs::read_to_string(person.at(".tool/sub")).unwrap(), "a file\n");
+}
+
+#[test]
 fn a_command_that_fails_after_refreshing_its_login_leaves_the_new_one_in_place_and_the_old_beside() {
     if !namespaces() {
         return;
