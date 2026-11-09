@@ -1883,7 +1883,10 @@ fn docker_never_replaces_or_erases_a_login_it_did_not_store_and_a_name_with_a_lo
     let running = start("helper-docker-theirs");
     running.set_up(PASSWORD);
     add_login(&running, "registry", "me", "https://registry.example/", "mine");
-    assert!(!docker_helper(&running, "store", r#"{"ServerURL":"registry.example","Username":"docker","Secret":"theirs"}"#).0);
+    // Refused with words that read right under `docker login`, which shows them
+    let (stored, said) = docker_helper(&running, "store", r#"{"ServerURL":"registry.example","Username":"docker","Secret":"theirs"}"#);
+    assert!(!stored);
+    assert!(!said.contains("not found") && said.contains("not kept"), "{said}");
     let listed = running.ask(json!({"op": "list", "kind": "password"}));
     assert_eq!(listed["items"].as_array().unwrap().len(), 1);
     assert_eq!(listed["items"][0]["name"], json!("registry"));

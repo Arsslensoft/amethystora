@@ -13,6 +13,9 @@ use amethystora_vault_service::credentials::{ask, docker_server, find_login, log
 
 /// These exact words are how Docker knows there is nothing, rather than that something went wrong
 const NOT_FOUND: &str = "credentials not found in native keychain";
+/// What `docker login` and `docker logout` show when the vault did not do it: those words would say the wrong thing there
+const NOT_KEPT: &str = "login not kept in the vault: it was refused or the vault is closed, or a login of your own for this registry is there already";
+const NOT_ERASED: &str = "login not removed from the vault: it was refused or the vault is closed";
 
 fn found(server: &str) -> Result<Option<String>, Refusal> {
     let Some((scheme, host)) = docker_server(server) else { return Ok(None) };
@@ -91,7 +94,12 @@ fn main() -> ExitCode {
             if why == Refusal::Closed {
                 say_closed();
             }
-            let _ = writeln!(std::io::stdout(), "{NOT_FOUND}");
+            let said = match action.as_str() {
+                "store" => NOT_KEPT,
+                "erase" => NOT_ERASED,
+                _ => NOT_FOUND,
+            };
+            let _ = writeln!(std::io::stdout(), "{said}");
             ExitCode::FAILURE
         }
     }

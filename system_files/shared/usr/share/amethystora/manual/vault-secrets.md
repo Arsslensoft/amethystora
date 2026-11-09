@@ -50,7 +50,9 @@ AI agent launcher do this for you.
 - **No `sudo` or `pkexec` inside a run**: the namespace has no setuid programs. So an AI agent cannot use the agent's root mode
   this way; the launcher starts it without its protected login and says so.
 - **Files next to the protected one** can be read and new ones made, but not deleted, renamed or rewritten through a temporary
-  file (`sed -i`, `git config`, `ssh-keygen -R`): do those outside the command. A background program the command started ends with it.
+  file (`sed -i`, `git config`, `ssh-keygen -R`): do those outside the command.
+- **A background program the command started ends with it** (`ssh -f`, a `gpg-agent` it started): nothing it started outlives
+  the command, so start such a program outside it.
 - **A command that ends badly** never replaces the good copy: what it left is sealed beside it under its own name
   (`ame vault protected`), and an empty file never replaces anything.
 - Where the system gives a command no namespace of its own, the file stays sealed and the command says so; nothing is lost.
