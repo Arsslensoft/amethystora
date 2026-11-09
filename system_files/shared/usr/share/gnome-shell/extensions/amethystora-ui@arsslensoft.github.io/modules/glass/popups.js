@@ -12,6 +12,7 @@ import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as ModalDialog from 'resource:///org/gnome/shell/ui/modalDialog.js';
 import * as OsdWindow from 'resource:///org/gnome/shell/ui/osdWindow.js';
+import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as SwitcherPopup from 'resource:///org/gnome/shell/ui/switcherPopup.js';
 
 import {Stacks} from './stacks.js';
@@ -44,6 +45,14 @@ export class Popups {
         this._stacks = new Stacks();
         const glass = this._glass;
 
+        // A menu is shown before its box pointer opens, and St styles all of it as it is shown: its content is given
+        // its classes before that, while nothing of it is mapped, or the first open styles every actor in it twice
+        // (most of a second for the quick settings)
+        glass.wrap(PopupMenu.PopupMenu.prototype, 'open', (open, menu, args) => {
+            if (!menu.isOpen && menu._boxPointer)
+                this._boxPointer(menu._boxPointer);
+            return open.apply(menu, args);
+        });
         // Every menu opens through its box pointer, which holds its content
         glass.wrap(BoxPointer.BoxPointer.prototype, 'open', (open, boxPointer, args) => {
             this._boxPointer(boxPointer);
