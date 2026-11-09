@@ -447,6 +447,7 @@ run *ARGS:
         --say-exposed="$(gettext 'While this command runs, other programs of this account can read this file and the command'\''s memory.')" \
         --say-unsealable="$(gettext 'What the command left cannot be sealed again, so the file stays as it was before it ran.')" \
         --say-killed="$(gettext 'The command did not end well after changing the file. What it left is sealed beside the old copy, under its own name. See: ame vault protected')" \
+        --say-kept-before="$(gettext 'The command did not end well, but it changed the file first, as a tool does when it renews its login. What it left is in place, and the copy from before is sealed beside it, under its own name. See: ame vault protected')" \
         --say-emptied="$(gettext 'The command left the file empty, so the sealed copy was kept as it was.')" \
         --say-detached="$(gettext 'Something took the file'\''s place away while the command ran, so what it wrote went to your disk, not into the vault, and nothing was sealed. The old copy is still sealed.')" \
         --say-copy-left="$(gettext 'Not kept, since it may be a copy of the protected file, or half of one: its name has the file'\''s in it, it holds its content, or the command did not end well ({count} in all): {names}')" \

@@ -53,8 +53,9 @@ AI agent launcher do this for you.
   file (`sed -i`, `git config`, `ssh-keygen -R`): do those outside the command.
 - **A background program the command started ends with it** (`ssh -f`, a `gpg-agent` it started): nothing it started outlives
   the command, so start such a program outside it.
-- **A command that ends badly** never replaces the good copy: what it left is sealed beside it under its own name
-  (`ame vault protected`), and an empty file never replaces anything.
+- **A command that is killed** never replaces the good copy: what it left is sealed beside it under its own name
+  (`ame vault protected`). **One that fails after changing the file**, as a tool does when it renews its login, leaves the new
+  one in place and the one from before beside it. An empty file never replaces anything.
 - Where the system gives a command no namespace of its own, the file stays sealed and the command says so; nothing is lost.
 
 ## In your browser

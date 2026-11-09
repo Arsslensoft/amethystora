@@ -16550,6 +16550,10 @@ msgid "The command did not end well after changing the file. What it left is sea
 msgstr ""
 
 #: usr/share/amethystora/just/vault.just
+msgid "The command did not end well, but it changed the file first, as a tool does when it renews its login. What it left is in place, and the copy from before is sealed beside it, under its own name. See: ame vault protected"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
 msgid "The command left the file empty, so the sealed copy was kept as it was."
 msgstr ""
 

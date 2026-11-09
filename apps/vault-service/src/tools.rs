@@ -440,8 +440,9 @@ fn run_protected(args: &Args, item: &Value, command: &[OsString], started: &mut 
     let tree = Tree::from_value(&answer["value"]).map_err(why)?;
     drop(answer);
     let (before, before_size) = (tree.digest(), tree.size());
-    // What the file held, to know a copy of it when the command makes one beside it
+    // What the file held, to know a copy of it when the command makes one beside it, and to keep it if the command fails after changing it
     let old_data = Zeroizing::new(tree.files.first().filter(|_| tree.what == protect::What::File).map(|file| file.data.to_vec()).unwrap_or_default());
+    let old_mode = tree.files.first().map_or(0o600, |file| file.mode);
     let place = Place::prepare(&home_path, &home_fd, &path, &tree).map_err(why)?;
     let entered = protect::enter_namespace().and_then(|()| place.mount(&tree));
     drop(tree);
@@ -470,7 +471,8 @@ fn run_protected(args: &Args, item: &Value, command: &[OsString], started: &mut 
                     // A tool that fails halfway writes nothing, and a good copy is never replaced by that
                     eprintln!("{}", args.say("say-emptied", "The command left the file empty, so the sealed copy was kept as it was."));
                 } else {
-                    sealed = seal_back(args, &id, &name, &vault, item, &after, code != 0);
+                    let old = (after.what == protect::What::File).then(|| Tree::file(&old_data, old_mode));
+                    sealed = seal_back(args, &id, &name, &vault, item, &after, code, old.as_ref());
                 }
             }
             Ok(_) => {}
@@ -507,14 +509,34 @@ fn say_left(args: &Args, left: &protect::Left) {
 }
 
 /// Seals what the command left, in the person's time: the vault may have closed while it ran, and what it wrote exists nowhere else. A command
-/// that did not end well may have been halfway through writing, so what it left goes beside the good copy and never over it.
-fn seal_back(args: &Args, id: &str, name: &str, vault: &str, item: &Value, after: &Tree, failed: bool) -> Result<(), u8> {
-    let value = after.to_value().map_err(|trouble| {
+/// that was killed may have been halfway through writing, so what it left goes beside the good copy and never over it. One that exited with
+/// an error after changing its file most likely refreshed its login first (a token the provider has taken back already), so what it left goes
+/// in place, and the copy from before beside it. A folder is always kept the first way.
+#[allow(clippy::too_many_arguments)]
+fn seal_back(args: &Args, id: &str, name: &str, vault: &str, item: &Value, after: &Tree, code: i32, old: Option<&Tree>) -> Result<(), u8> {
+    let unsealable = |trouble| {
         eprintln!("{}", args.say("say-unsealable", "What the command left cannot be sealed again, so the file stays as it was before it ran."));
         why(trouble)
-    })?;
+    };
+    let value = after.to_value().map_err(unsealable)?;
     let mut meta = json!({"path": item["meta"]["path"], "what": after.what.name(), "size": after.size(), "files": after.files.len()});
     let mut request = json!({"op": "put", "kind": KIND, "meta": meta, "value": value, "vault": vault});
+    let mut failed = code != 0;
+    let mut kept_before = false;
+    if let (true, Some(old)) = (failed && code < 128, old) {
+        let kept = format!("{name} (from before a command that did not end well)");
+        let before_meta = json!({"path": item["meta"]["path"], "what": old.what.name(), "size": old.size(), "files": 1, "killed": true});
+        let mut before = json!({"op": "put", "kind": KIND, "name": kept, "meta": before_meta, "value": old.to_value().map_err(unsealable)?, "vault": vault, "approval": "ask"});
+        if let Some(other) = find_protected(&kept).unwrap_or(None) {
+            before["id"] = other["id"].clone();
+        }
+        if let Err(code) = put_asking(args, &before) {
+            eprintln!("{}", args.say("say-lost", "What the command left is gone. The file is as it was before it ran."));
+            return Err(code);
+        }
+        // The copy from before is safe beside it: what the command left goes in place, as for one that ended well
+        (failed, kept_before) = (false, true);
+    }
     if failed {
         let kept = format!("{name} (from a command that did not end well)");
         meta["killed"] = json!(true);
@@ -532,14 +554,23 @@ fn seal_back(args: &Args, id: &str, name: &str, vault: &str, item: &Value, after
         request["id"] = json!(id);
         request["name"] = json!(name);
     }
+    match put_asking(args, &request) {
+        Ok(()) if failed => eprintln!("{}", args.say("say-killed", "The command did not end well after changing the file. What it left is sealed beside the old copy, under its own name. See: ame vault protected")),
+        Ok(()) if kept_before => eprintln!("{}", args.say("say-kept-before", "The command did not end well, but it changed the file first, as a tool does when it renews its login. What it left is in place, and the copy from before is sealed beside it, under its own name. See: ame vault protected")),
+        Ok(()) => {}
+        Err(code) => {
+            eprintln!("{}", args.say("say-lost", "What the command left is gone. The file is as it was before it ran."));
+            return Err(code);
+        }
+    }
+    Ok(())
+}
+
+/// One put of what the command left, asked again for as long as the person wants: what it holds exists nowhere else
+fn put_asking(args: &Args, request: &Value) -> Result<(), u8> {
     loop {
         match call(request.clone()) {
-            Ok(_) => {
-                if failed {
-                    eprintln!("{}", args.say("say-killed", "The command did not end well after changing the file. What it left is sealed beside the old copy, under its own name. See: ame vault protected"));
-                }
-                return Ok(());
-            }
+            Ok(_) => return Ok(()),
             Err(code @ (CLOSED | REFUSED)) => {
                 let question = if code == CLOSED { "say-reopen" } else { "say-again" };
                 let default = if code == CLOSED {
@@ -548,14 +579,10 @@ fn seal_back(args: &Args, id: &str, name: &str, vault: &str, item: &Value, after
                     "That was refused, and what the command left is only here. Press Enter to be asked again, or type no to lose it: "
                 };
                 if !ask_again(&args.say(question, default)) {
-                    eprintln!("{}", args.say("say-lost", "What the command left is gone. The file is as it was before it ran."));
                     return Err(code);
                 }
             }
-            Err(code) => {
-                eprintln!("{}", args.say("say-lost", "What the command left is gone. The file is as it was before it ran."));
-                return Err(code);
-            }
+            Err(code) => return Err(code),
         }
     }
 }

@@ -960,8 +960,8 @@ fn a_copy_from_a_command_that_did_not_end_well_keeps_its_mark_after_a_run_that_d
     person.put(".netrc", "good\n");
     let path = person.at(".netrc");
     assert_eq!(person.says(&["protect", path.to_str().unwrap()]).0, 0);
-    let failing = tool(&person, "tool", &format!("printf half >'{}'\nexit 1", path.display()));
-    assert_eq!(person.says(&["run", ".netrc", "--", &failing]).0, 1);
+    let failing = tool(&person, "tool", &format!("printf half >'{}'\nkill -KILL $$", path.display()));
+    assert_eq!(person.says(&["run", ".netrc", "--", &failing]).0, 137);
     let kept = ".netrc (from a command that did not end well)";
     // A run on that copy which ends well, and changes it, leaves it marked: by its path, `run` and `unprotect` still find the good one
     let fixing = tool(&person, "fixer", &format!("printf fixed >'{}'", path.display()));
@@ -1628,10 +1628,10 @@ fn a_failed_command_never_replaces_the_good_copy_and_an_empty_file_never_replace
     person.put(".npmrc", "good\n");
     let path = person.at(".npmrc");
     assert_eq!(person.says(&["protect", path.to_str().unwrap()]).0, 0);
-    // It wrote and then failed: what it wrote is beside the good copy
-    let fails = tool(&person, "fails", &format!("printf half >'{}'\nexit 3", path.display()));
+    // It wrote and then was killed: what it wrote is beside the good copy
+    let fails = tool(&person, "fails", &format!("printf half >'{}'\nkill -TERM $$", path.display()));
     let (code, _, err) = person.says(&["run", ".npmrc", "--", &fails]);
-    assert_eq!(code, 3, "{err}");
+    assert_eq!(code, 128 + 15, "{err}");
     assert_eq!(person.sealed_text(".npmrc"), "good\n");
     assert_eq!(person.sealed_text(".npmrc (from a command that did not end well)"), "half");
     // A wrapper that reports a kill as an exit status is the same
@@ -2226,6 +2226,32 @@ fn the_usual_tools_rewrite_files_they_made_beside_the_login_and_fail_loudly_on_t
     assert!(said.lines().all(|line| !line.ends_with(" 0")), "{said}");
     assert_eq!(std::fs::read_to_string(person.at(".aws/config")).unwrap(), "[default]\nregion = eu\n");
     assert!(token_on_disk(&person, "TOKEN-IN-THE-FILE").is_empty());
+}
+
+#[test]
+fn a_command_that_fails_after_refreshing_its_login_leaves_the_new_one_in_place_and_the_old_beside() {
+    if !namespaces() {
+        return;
+    }
+    let person = Person::new("run-rotated");
+    person.put(".config/gh/hosts.yml", "token: old\n");
+    let path = person.at(".config/gh/hosts.yml");
+    assert_eq!(person.says(&["protect", path.to_str().unwrap()]).0, 0);
+    let refreshes = |token: &str| tool(&person, "tool", &format!("printf 'token: {token}\\n' >'{}'\nexit 1", path.display()));
+    let (code, _, err) = person.says(&["run", ".config/gh/hosts.yml", "--", &refreshes("new")]);
+    assert_eq!(code, 1, "{err}");
+    let before = ".config/gh/hosts.yml (from before a command that did not end well)";
+    assert_eq!(person.sealed_text(".config/gh/hosts.yml"), "token: new\n");
+    assert_eq!(person.sealed_text(before), "token: old\n");
+    assert!(err.contains("in place"), "{err}");
+    // The next run is given the new one, and a second failure keeps one copy from before, the last
+    let reader = tool(&person, "reader", &format!("cat '{}'", path.display()));
+    assert_eq!(person.says(&["run", ".config/gh/hosts.yml", "--", &reader]).1, "token: new\n");
+    assert_eq!(person.says(&["run", ".config/gh/hosts.yml", "--", &refreshes("newer")]).0, 1);
+    assert_eq!(person.sealed_text(".config/gh/hosts.yml"), "token: newer\n");
+    assert_eq!(person.sealed_text(before), "token: new\n");
+    let items = person.running.ask(json!({"op": "list", "kind": "protected"}));
+    assert_eq!(items["items"].as_array().unwrap().len(), 2, "{items}");
 }
 
 #[test]
