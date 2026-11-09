@@ -20,7 +20,7 @@ CMD ["/sbin/init"]
 FROM ${TOOLS_IMAGE} AS tools
 
 # What signs, the same image as in Containerfile.sealed
-FROM registry.fedoraproject.org/fedora:44@sha256:b414c09be79dd1f32529b55b096b6bb30435d82ee16fbdbbabf8985eb5f86db0 AS signer
+FROM registry.fedoraproject.org/fedora:45@sha256:fd31d2f9dfd835cf7398af9cb6cbbbffbd33ffac2d5204042ea14157455b63a2 AS signer
 RUN dnf -y install sbsigntools && dnf clean all
 
 # The UKI: the composefs digest of the rechunked tree and the kernel arguments of its kargs.d...
