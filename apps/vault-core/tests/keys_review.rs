@@ -60,12 +60,16 @@ fn rsa_private(numbers: [&[u8]; 6]) -> Vec<u8> {
 }
 
 fn rsa_public(rsa: &Rsa<openssl::pkey::Private>) -> Vec<u8> {
+    public_numbers(&rsa.e().to_vec(), &rsa.n().to_vec())
+}
+
+fn public_numbers(e: &[u8], n: &[u8]) -> Vec<u8> {
     let mut out = Vec::new();
     ssh_string(&mut out, b"ssh-rsa");
-    for number in [rsa.e().to_vec(), rsa.n().to_vec()] {
+    for number in [e, n] {
         // An mpint: a zero in front only where the top bit would read as a sign
         let mut signed = if number[0] & 0x80 != 0 { vec![0u8] } else { Vec::new() };
-        signed.extend_from_slice(&number);
+        signed.extend_from_slice(number);
         ssh_string(&mut out, &signed);
     }
     out
@@ -147,15 +151,32 @@ fn m6_a_pkcs8_files_own_count_is_bounded() {
     assert!(refused_within(&two, b"x", Duration::from_millis(500)) != KeyError::WrongPassphrase);
 }
 
-/// A number with no small factor, so that a primality test has to work for it
+/// A number with no factor below 20000, so that a primality test gets past its trial division and has to work for it
 fn rough(bits: i32) -> BigNum {
+    static PRIMES: std::sync::OnceLock<Vec<u32>> = std::sync::OnceLock::new();
+    let primes = PRIMES.get_or_init(|| (3u32..20000).step_by(2).filter(|n| (3..).step_by(2).take_while(|d| d * d <= *n).all(|d| n % d != 0)).collect());
     let mut number = BigNum::new().unwrap();
     number.pseudo_rand(bits, MsbOption::MAYBE_ZERO, true).unwrap();
     let two = BigNum::from_u32(2).unwrap();
-    while [3u32, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47].iter().any(|prime| number.mod_word(*prime).unwrap() == 0) {
+    while primes.iter().any(|prime| number.mod_word(*prime).unwrap() == 0) {
         number = &number + &two;
     }
     number
+}
+
+/// A key's own number made longer than any key's by adding `2^extra` times λ(n): the key still works with it, so only the bound
+/// on its length refuses it
+fn lengthened(number: &openssl::bn::BigNumRef, rsa: &Rsa<openssl::pkey::Private>, extra: i32) -> Vec<u8> {
+    let mut context = openssl::bn::BigNumContext::new().unwrap();
+    let one = BigNum::from_u32(1).unwrap();
+    let (p1, q1) = (rsa.p().unwrap() - &one, rsa.q().unwrap() - &one);
+    let mut gcd = BigNum::new().unwrap();
+    gcd.gcd(&p1, &q1, &mut context).unwrap();
+    let mut lambda = BigNum::new().unwrap();
+    lambda.checked_div(&(&p1 * &q1), &gcd, &mut context).unwrap();
+    let mut step = BigNum::new().unwrap();
+    step.lshift(&lambda, extra).unwrap();
+    (number + &step).to_vec()
 }
 
 /// M7: every number of an RSA key is bounded by its modulus before any arithmetic, in both forms
@@ -164,19 +185,21 @@ fn m7_an_rsa_files_numbers_are_bounded() {
     let rsa = Rsa::generate(2048).unwrap();
     let (n, e, d, iqmp, p, q) =
         (rsa.n().to_vec(), rsa.e().to_vec(), rsa.d().to_vec(), rsa.iqmp().unwrap().to_vec(), rsa.p().unwrap().to_vec(), rsa.q().unwrap().to_vec());
+    // A p or q no trial division ends with holds a primality test for minutes; a d or e lengthened by λ(n) still makes a key that
+    // works, so without its bound it would import
     let huge = rough(32768).to_vec();
-    let long_e = rough(80).to_vec();
-    let long_d = rough(2100).to_vec();
-    for (what, numbers) in [
-        ("p", [&n[..], &e, &d, &iqmp, &huge, &q]),
-        ("q", [&n[..], &e, &d, &iqmp, &p, &huge]),
-        ("d", [&n[..], &e, &long_d, &iqmp, &p, &q]),
-        ("iqmp", [&n[..], &e, &d, &long_d, &p, &q]),
-        ("e", [&n[..], &long_e, &d, &iqmp, &p, &q]),
+    let long_e = lengthened(rsa.e(), &rsa, 80);
+    let long_d = lengthened(rsa.d(), &rsa, 64);
+    let long_iqmp = rough(2100).to_vec();
+    for (what, numbers, public) in [
+        ("p", [&n[..], &e, &d, &iqmp, &huge, &q], rsa_public(&rsa)),
+        ("q", [&n[..], &e, &d, &iqmp, &p, &huge], rsa_public(&rsa)),
+        ("d", [&n[..], &e, &long_d, &iqmp, &p, &q], rsa_public(&rsa)),
+        ("iqmp", [&n[..], &e, &d, &long_iqmp, &p, &q], rsa_public(&rsa)),
+        ("e", [&n[..], &long_e, &d, &iqmp, &p, &q], public_numbers(&long_e, &n)),
     ] {
-        let file = v1_file("none", "none", b"", &rsa_public(&rsa), &rsa_private(numbers), b"");
-        refused_within(&file, b"", Duration::from_secs(1));
-        eprintln!("{what} refused");
+        let file = v1_file("none", "none", b"", &public, &rsa_private(numbers), b"");
+        assert_eq!(refused_within(&file, b"", Duration::from_secs(1)), KeyError::Malformed, "{what}");
     }
     // The PEM form, through OpenSSL's own reader: the same huge p
     let pem = Rsa::from_private_components(
@@ -192,7 +215,7 @@ fn m7_an_rsa_files_numbers_are_bounded() {
     .unwrap()
     .private_key_to_pem()
     .unwrap();
-    refused_within(&pem, b"", Duration::from_secs(1));
+    assert_eq!(refused_within(&pem, b"", Duration::from_secs(1)), KeyError::Malformed);
     // The whole key is fine
     let good = v1_file("none", "none", b"", &rsa_public(&rsa), &rsa_private([&n, &e, &d, &iqmp, &p, &q]), b"");
     assert!(import_openssh(&good, b"").is_ok());

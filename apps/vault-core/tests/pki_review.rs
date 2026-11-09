@@ -96,6 +96,88 @@ fn m1_an_issuer_is_what_it_says() {
     assert!(issue(&Request { public_key: &spki, ..pdf("Ada") }, &account(machine)).is_ok());
 }
 
+/// What a hand-made account CA differs in from a good one: one thing each
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Odd {
+    Nothing,
+    NotACa,
+    NoCertSign,
+    Name,
+    Purposes,
+    Ended,
+    AnotherKey,
+    IssuerName,
+    SignedByAnother,
+}
+
+/// An account CA made by hand as `issue` makes one, signed by the machine's root, with the one thing `odd` names changed
+fn hand_made_ca(machine: &Machine, odd: Odd) -> Vec<u8> {
+    use openssl::asn1::{Asn1Object, Asn1OctetString};
+    use openssl::x509::X509Extension;
+    let der = |dotted: &str| der::oid(dotted);
+    let extension = |oid: &str, critical: bool, value: &[u8]| {
+        X509Extension::new_from_der(&Asn1Object::from_str(oid).unwrap(), critical, &Asn1OctetString::new_from_bytes(value).unwrap()).unwrap()
+    };
+    let root = X509::from_der(&machine.root).unwrap();
+    let signing = |key: &CaKey| PKey::private_key_from_pkcs8(plain(key).as_bytes()).unwrap();
+    let mut name = X509NameBuilder::new().unwrap();
+    name.append_entry_by_text("OU", "Amethystora OS").unwrap();
+    name.append_entry_by_text("CN", if odd == Odd::Name { "Ada Lovelace" } else { "Ada Lovelace Code Signing CA" }).unwrap();
+    let mut issuer = X509NameBuilder::new().unwrap();
+    issuer.append_entry_by_text("CN", "Somebody Else").unwrap();
+    let key = if odd == Odd::AnotherKey { CaKey::generate(Authority::AccountCa).unwrap() } else { CaKey::from_stored(&machine.account_key.to_stored()).unwrap() };
+    let public = PKey::public_key_from_der(&key.public().unwrap().spki_der).unwrap();
+    let mut builder = X509::builder().unwrap();
+    builder.set_version(2).unwrap();
+    builder.set_serial_number(&openssl::bn::BigNum::from_u32(7).unwrap().to_asn1_integer().unwrap()).unwrap();
+    builder.set_subject_name(&name.build()).unwrap();
+    builder.set_issuer_name(if odd == Odd::IssuerName { issuer.build() } else { root.subject_name().to_owned().unwrap() }.as_ref()).unwrap();
+    let (start, end) = if odd == Odd::Ended { (now() - 3 * DAY, now() - DAY) } else { (now() - DAY, now() + 900 * DAY) };
+    builder.set_not_before(&Asn1Time::from_unix(start).unwrap()).unwrap();
+    builder.set_not_after(&Asn1Time::from_unix(end).unwrap()).unwrap();
+    builder.set_pubkey(&public).unwrap();
+    let basic = if odd == Odd::NotACa { der::seq(&[]) } else { der::seq(&[&[0x01, 0x01, 0xff], &der::uint(&[0])]) };
+    builder.append_extension(extension("2.5.29.19", true, &basic)).unwrap();
+    builder.append_extension(extension("2.5.29.15", true, if odd == Odd::NoCertSign { &[0x03, 0x02, 0x07, 0x80] } else { &[0x03, 0x02, 0x01, 0x06] })).unwrap();
+    let profile = if odd == Odd::Purposes { Profile::parse("pdf") } else { Profile::parse("account-ca") };
+    let purposes: Vec<Vec<u8>> = profile_purposes(profile.unwrap()).iter().map(|oid| der(oid)).collect();
+    let parts: Vec<&[u8]> = purposes.iter().map(Vec::as_slice).collect();
+    builder.append_extension(extension("2.5.29.37", false, &der::seq(&parts))).unwrap();
+    let signer = if odd == Odd::SignedByAnother { signing(&CaKey::generate(Authority::Root).unwrap()) } else { signing(&machine.root_key) };
+    builder.sign(&signer, MessageDigest::sha256()).unwrap();
+    builder.build().to_der().unwrap()
+}
+
+/// M1: each check of the issuer on its own, every other part of the CA as it should be: none of them stands in for another
+#[test]
+fn m1_each_check_of_the_issuer_refuses_on_its_own() {
+    let machine = machine();
+    let spki = fresh_spki();
+    let chain = [machine.root.clone()];
+    for (odd, refusal) in [
+        (Odd::Nothing, None),
+        (Odd::NotACa, Some(PkiError::WrongIssuer)),
+        (Odd::NoCertSign, Some(PkiError::WrongIssuer)),
+        (Odd::Name, Some(PkiError::WrongIssuer)),
+        (Odd::Purposes, Some(PkiError::WrongIssuer)),
+        (Odd::Ended, Some(PkiError::IssuerNotValid)),
+        (Odd::AnotherKey, Some(PkiError::IssuerKeyMismatch)),
+        (Odd::IssuerName, Some(PkiError::IssuerNotValid)),
+        (Odd::SignedByAnother, Some(PkiError::IssuerNotValid)),
+    ] {
+        let cert = hand_made_ca(machine, odd);
+        let issuer = Issuer { authority: Authority::AccountCa, cert: &cert, key: &machine.account_key, chain: &chain };
+        assert_eq!(issue(&Request { public_key: &spki, ..pdf("Ada") }, &issuer).err(), refusal, "{odd:?}");
+    }
+    // The chain's length: the root twice, or nothing above the CA
+    let good = hand_made_ca(machine, Odd::Nothing);
+    let twice = [machine.root.clone(), machine.root.clone()];
+    for chain in [&twice[..], &[]] {
+        let issuer = Issuer { authority: Authority::AccountCa, cert: &good, key: &machine.account_key, chain };
+        assert_eq!(issue(&Request { public_key: &spki, ..pdf("Ada") }, &issuer).unwrap_err(), PkiError::WrongIssuer);
+    }
+}
+
 /// M1: `issue` with a CA that rotation left behind
 #[test]
 fn m1_a_ca_left_behind_by_rotation_is_refused() {
