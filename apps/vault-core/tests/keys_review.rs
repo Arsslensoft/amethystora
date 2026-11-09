@@ -198,6 +198,65 @@ fn m7_an_rsa_files_numbers_are_bounded() {
     assert!(import_openssh(&good, b"").is_ok());
 }
 
+/// M6a: an encrypted PKCS#8 key under the plain label is decrypted by OpenSSL all the same, so its count is bounded too
+#[test]
+fn m6a_an_encrypted_key_under_the_plain_label_is_bounded() {
+    let encrypted = |iterations: u32| {
+        let cipher = der::seq(&[&der::oid("2.16.840.1.101.3.4.1.42"), &der::octets(&[2u8; 16])]);
+        let algorithm = der::seq(&[&der::oid("1.2.840.113549.1.5.13"), &der::seq(&[&pbkdf2(iterations), &cipher])]);
+        armour("PRIVATE KEY", &der::seq(&[&algorithm, &der::octets(&[3u8; 64])]), 64)
+    };
+    assert_eq!(refused_within(&encrypted(2_147_483_647), b"", Duration::from_millis(500)), KeyError::TooCostly);
+    assert!(refused_within(&encrypted(1000), b"", Duration::from_millis(500)) != KeyError::TooCostly);
+}
+
+/// M7a: a key of three primes, the third of 65536 bits, which nothing else bounds, is refused before OpenSSL tests it
+#[test]
+fn m7a_an_rsa_key_of_more_than_two_primes_is_refused() {
+    let rsa = Rsa::generate(2048).unwrap();
+    let int = |number: &openssl::bn::BigNumRef| der::uint(&number.to_vec());
+    let r = rough(65536);
+    let other = der::seq(&[&int(&r), &int(&r), &int(rsa.q().unwrap())]);
+    let key = der::seq(&[
+        &der::uint(&[1]),
+        &int(rsa.n()),
+        &int(rsa.e()),
+        &int(rsa.d()),
+        &int(rsa.p().unwrap()),
+        &int(rsa.q().unwrap()),
+        &int(rsa.dmp1().unwrap()),
+        &int(rsa.dmq1().unwrap()),
+        &int(rsa.iqmp().unwrap()),
+        &der::seq(&[&other]),
+    ]);
+    assert_eq!(refused_within(&armour("RSA PRIVATE KEY", &key, 64), b"", Duration::from_secs(2)), KeyError::Unsupported);
+}
+
+/// M7b: OpenSSL works out a DSA key's public number while it reads the file, from sizes the file sets: such a key is refused by
+/// its type before it is read, and so is one in the old form
+#[test]
+fn m7b_a_dsa_key_is_refused_before_it_is_read() {
+    let (p, x) = (rough(65536).to_vec(), rough(65536).to_vec());
+    let parameters = der::seq(&[&der::uint(&p), &der::uint(&[0x7f; 20]), &der::uint(&[2])]);
+    let algorithm = der::seq(&[&der::oid("1.2.840.10040.4.1"), &parameters]);
+    let pkcs8 = der::seq(&[&der::uint(&[0]), &algorithm, &der::octets(&der::uint(&x))]);
+    assert_eq!(refused_within(&armour("PRIVATE KEY", &pkcs8, 64), b"", Duration::from_millis(500)), KeyError::Unsupported);
+    let old = der::seq(&[&der::uint(&[0]), &der::uint(&p), &der::uint(&[0x7f; 20]), &der::uint(&[2]), &der::uint(&x), &der::uint(&x)]);
+    assert_eq!(refused_within(&armour("DSA PRIVATE KEY", &old, 64), b"", Duration::from_millis(500)), KeyError::Unsupported);
+}
+
+/// K12: a certificate beside one encrypted key, as `openssl pkcs12` writes them, imports; two keys still do not
+#[test]
+fn k12_a_certificate_beside_an_encrypted_key_is_passed_over() {
+    let key = openssl::pkey::PKey::from_ec_key(EcKey::generate(&EcGroup::from_curve_name(Nid::X9_62_PRIME256V1).unwrap()).unwrap()).unwrap();
+    let encrypted = key.private_key_to_pem_pkcs8_passphrase(openssl::symm::Cipher::aes_256_cbc(), b"pass phrase").unwrap();
+    let mut file = armour("CERTIFICATE", &der::seq(&[&der::null()]), 64);
+    file.extend(&encrypted);
+    assert!(import_openssh(&file, b"pass phrase").is_ok());
+    file.extend(key.private_key_to_pem_pkcs8().unwrap());
+    assert_eq!(import_openssh(&file, b"pass phrase").map(|_| ()).unwrap_err(), KeyError::Malformed);
+}
+
 /// L3: bytes after the sealed part, or no END line, are refused rather than read past
 #[test]
 fn l3_a_file_must_end_where_it_says() {

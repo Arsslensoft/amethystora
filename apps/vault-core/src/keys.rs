@@ -491,9 +491,7 @@ pub fn import_openssh(file: &[u8], passphrase: &[u8]) -> Result<Imported, KeyErr
         return Err(KeyError::Malformed);
     }
     let encrypted = text.contains("ENCRYPTED");
-    if text.contains("BEGIN ENCRYPTED PRIVATE KEY") {
-        check_pkcs8_cost(text)?;
-    }
+    check_pem(text)?;
     let pkey = PKey::private_key_from_pem_passphrase(file, passphrase)
         .map_err(|_| if encrypted { KeyError::WrongPassphrase } else { KeyError::Malformed })?;
     check_consistent(&pkey)?;
@@ -510,26 +508,65 @@ pub fn from_pem(text: &str) -> Result<PrivateKey, KeyError> {
     if text.len() > MAX_IMPORT || !text.contains("PRIVATE KEY-----") || text.contains("ENCRYPTED") {
         return Err(KeyError::Malformed);
     }
+    check_pem(text)?;
     let pkey = PKey::private_key_from_pem(text.as_bytes()).map_err(|_| KeyError::Malformed)?;
     check_consistent(&pkey)?;
     from_pkey(&pkey)
 }
 
-/// The scheme, key derivation and count of an encrypted PKCS#8 file, which it sets itself: read, and bounded, before OpenSSL
-/// is asked to do the work. Only PBES2 with PBKDF2 is taken; scrypt's cost is another set of numbers and PBES1's is a count
-/// in another place, so neither is read. A file with more than one key in it is refused: which one OpenSSL reads is its choice.
-fn check_pkcs8_cost(text: &str) -> Result<(), KeyError> {
-    if text.matches("-----BEGIN").count() != 1 {
+/// The key types `classify` knows, by the object identifier a PKCS#8 file names them with
+const PKCS8_TAKEN: [&str; 6] = ["1.2.840.113549.1.1.1", "1.2.840.10045.2.1", "1.3.101.112", "1.3.101.110", "2.16.840.1.101.3.4.3.18", "2.16.840.1.101.3.4.4.2"];
+
+/// The one private key of a PEM file, looked at before OpenSSL reads it, since some of what OpenSSL does while it reads costs
+/// minutes: an encrypted PKCS#8 key sets its own count, under either label, and a key of a type `classify` does not take (DSA,
+/// Diffie-Hellman) has its public number worked out from sizes the file sets. A certificate beside the key is OpenSSL's to pass
+/// over; two keys are refused, since which one it reads is its choice.
+fn check_pem(text: &str) -> Result<(), KeyError> {
+    let mut keys = text.lines().map(str::trim).filter_map(|line| line.strip_prefix("-----BEGIN ")?.strip_suffix("-----")).filter(|label| label.ends_with("PRIVATE KEY"));
+    let (Some(label), None) = (keys.next(), keys.next()) else {
         return Err(KeyError::Malformed);
+    };
+    match label {
+        "ENCRYPTED PRIVATE KEY" => check_pkcs8_cost(&pem_body(text, label)?),
+        "PRIVATE KEY" => {
+            let binary = pem_body(text, label)?;
+            let malformed = || KeyError::Malformed;
+            let (_, info, _) = der::read(&binary).ok_or_else(malformed)?;
+            let (tag, _, rest) = der::read(info).ok_or_else(malformed)?;
+            // An EncryptedPrivateKeyInfo starts with its scheme, under the plain label too: OpenSSL decrypts it all the same
+            if tag != der::INTEGER {
+                return check_pkcs8_cost(&binary);
+            }
+            let (_, algorithm, _) = der::read(rest).ok_or_else(malformed)?;
+            let (_, oid, _) = der::read(algorithm).ok_or_else(malformed)?;
+            if !PKCS8_TAKEN.iter().any(|taken| der::oid(taken)[2..] == *oid) {
+                return Err(KeyError::Unsupported);
+            }
+            Ok(())
+        }
+        // Their numbers are bounded once read (`check_consistent`); one encrypted is opened with a single round of MD5
+        "RSA PRIVATE KEY" | "EC PRIVATE KEY" => Ok(()),
+        _ => Err(KeyError::Unsupported),
     }
+}
+
+/// What a PEM block holds, from its BEGIN line to its END
+fn pem_body(text: &str, label: &str) -> Result<Vec<u8>, KeyError> {
+    let begin = format!("-----BEGIN {label}-----");
     let mut body = String::with_capacity(text.len());
-    for line in text.lines().map(str::trim).skip_while(|line| !line.starts_with("-----BEGIN ENCRYPTED PRIVATE KEY")).skip(1) {
+    for line in text.lines().map(str::trim).skip_while(|line| *line != begin).skip(1) {
         if line.starts_with("-----END") {
             break;
         }
         body.push_str(line);
     }
-    let binary = STANDARD.decode(body.as_bytes()).map_err(|_| KeyError::Malformed)?;
+    STANDARD.decode(body.as_bytes()).map_err(|_| KeyError::Malformed)
+}
+
+/// The scheme, key derivation and count of an encrypted PKCS#8 key, which it sets itself: read, and bounded, before OpenSSL
+/// is asked to do the work. Only PBES2 with PBKDF2 is taken; scrypt's cost is another set of numbers and PBES1's is a count
+/// in another place, so neither is read.
+fn check_pkcs8_cost(binary: &[u8]) -> Result<(), KeyError> {
     let malformed = || KeyError::Malformed;
     let identifier = |bytes: &[u8]| -> Result<(Vec<u8>, Vec<u8>), KeyError> {
         // An AlgorithmIdentifier: the object identifier, then whatever follows it
@@ -537,7 +574,7 @@ fn check_pkcs8_cost(text: &str) -> Result<(), KeyError> {
         let (_, oid, parameters) = der::read(contents).ok_or_else(malformed)?;
         Ok((oid.to_vec(), parameters.to_vec()))
     };
-    let (_, info, _) = der::read(&binary).ok_or_else(malformed)?;
+    let (_, info, _) = der::read(binary).ok_or_else(malformed)?;
     let (scheme, parameters) = identifier(info)?;
     if scheme != der::oid("1.2.840.113549.1.5.13")[2..] {
         return Err(KeyError::Unsupported);
@@ -593,6 +630,11 @@ fn check_consistent(pkey: &PKeyRef<Private>) -> Result<(), KeyError> {
                 return Err(KeyError::Malformed);
             };
             check_rsa_numbers(rsa.n().num_bits() as u32, rsa.e().num_bits() as u32, rsa.d().num_bits() as u32, iqmp, p, q)?;
+            // A key of more than two primes is version 1 of RSAPrivateKey, and its other primes are bounded by nothing above: refused
+            // before `check_key` tests them, which takes minutes for one of 65536 bits
+            if !two_primes(&rsa.private_key_to_der()?) {
+                return Err(KeyError::Unsupported);
+            }
             if dmp1.max(dmq1) > p.max(q) || !rsa.check_key().unwrap_or(false) {
                 return Err(KeyError::Malformed);
             }
@@ -601,6 +643,11 @@ fn check_consistent(pkey: &PKeyRef<Private>) -> Result<(), KeyError> {
         _ => {}
     }
     Ok(())
+}
+
+/// Whether an RSAPrivateKey is version 0, the one of two primes
+fn two_primes(der: &[u8]) -> bool {
+    der::read(der).and_then(|(_, key, _)| der::read(key)).is_some_and(|(tag, version, _)| tag == der::INTEGER && version == [0])
 }
 
 /// A walk through SSH's wire format, every length checked
