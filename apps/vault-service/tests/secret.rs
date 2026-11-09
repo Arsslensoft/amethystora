@@ -2229,6 +2229,24 @@ fn the_usual_tools_rewrite_files_they_made_beside_the_login_and_fail_loudly_on_t
 }
 
 #[test]
+fn protecting_a_renamed_item_again_from_another_folder_is_refused_as_protected_already() {
+    let person = Person::new("protect-renamed");
+    person.put(".npmrc", "sealed\n");
+    let path = person.at(".npmrc");
+    assert_eq!(person.says(&["protect", path.to_str().unwrap()]).0, 0);
+    let items = person.running.ask(json!({"op": "list", "kind": "protected"}));
+    let item = items["items"][0].clone();
+    let value = person.sealed(".npmrc");
+    let renamed = person.running.ask(json!({"op": "put", "kind": "protected", "id": item["id"], "name": "work npm", "meta": item["meta"], "value": value}));
+    assert_eq!(renamed["ok"], json!(true), "{renamed}");
+    person.put(".npmrc", "another\n");
+    // This test's own folder is not the home, so a path looked up there would find nothing
+    assert_eq!(person.says(&["protect", path.to_str().unwrap()]).0, 18);
+    assert_eq!(person.running.ask(json!({"op": "list", "kind": "protected"}))["items"].as_array().unwrap().len(), 1);
+    assert_eq!(std::fs::read_to_string(&path).unwrap(), "another\n");
+}
+
+#[test]
 fn the_aws_block_goes_and_every_other_line_stays_as_it_was() {
     let person = Person::new("helpers-aws-off");
     // No file: nothing is made

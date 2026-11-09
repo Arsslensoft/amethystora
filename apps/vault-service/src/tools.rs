@@ -587,7 +587,8 @@ pub fn protect(args: &Args) -> Result<(), u8> {
     if tree.what == protect::What::File && tree.size() == 0 {
         return Err(why(Why::NoSecret));
     }
-    let existing = find_protected(&path)?;
+    // By the path it came from, whatever it is called now: `find_protected` would read the path as typed from the folder this runs in
+    let existing = items_of(KIND)?.into_iter().find(|item| item["meta"]["path"] == json!(path) && item["meta"]["killed"] != json!(true));
     // Not while a command is running on it
     let _lock = match &existing {
         Some(item) => Some(lock_item(&id_of(item)?)?),
