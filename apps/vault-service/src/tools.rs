@@ -524,6 +524,10 @@ fn seal_back(args: &Args, id: &str, name: &str, vault: &str, item: &Value, after
         }
         request["name"] = json!(kept);
     } else {
+        // A copy kept from a command that did not end well stays marked as one, whatever runs on it next
+        if item["meta"]["killed"] == json!(true) {
+            request["meta"]["killed"] = json!(true);
+        }
         request["id"] = json!(id);
         request["name"] = json!(name);
     }
@@ -596,12 +600,24 @@ pub fn protect(args: &Args) -> Result<(), u8> {
             None
         }
         Some(item) => {
+            let folder = tree.what == protect::What::Folder && item["meta"]["what"] == json!("folder");
+            // A protect that did not finish (a no at the check, a kill, a folder above that could not change) left the plain copy
+            // beside a sealed one that holds the same: only the removal is left to do
+            let maybe_same = item["meta"]["what"] == json!(tree.what.name()) && item["meta"]["size"] == json!(tree.size());
             // A file or a folder that is there again is never put over what is sealed: that would lose it, and the person was not told
-            if tree.what == protect::What::File || item["meta"]["what"] != json!("folder") {
+            if !folder && !maybe_same {
                 return Err(why(Why::AlreadyProtected));
             }
             let answer = call(json!({"op": "get", "kind": KIND, "id": id_of(item)?}))?;
             let old = Tree::from_value(&answer["value"]).map_err(why)?;
+            if old.same_as(&tree) {
+                protect::remove_original(&home_fd, &path, &tree).map_err(why)?;
+                println!("{}\t{path}", id_of(item)?);
+                return Ok(());
+            }
+            if !folder {
+                return Err(why(Why::AlreadyProtected));
+            }
             request["id"] = item["id"].clone();
             request["vault"] = item["vault"].clone();
             Some(old.merged_with(&tree).map_err(why)?)

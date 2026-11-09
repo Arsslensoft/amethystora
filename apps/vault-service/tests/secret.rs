@@ -952,6 +952,50 @@ fn a_tool_killed_halfway_loses_nothing_and_what_it_left_goes_beside() {
 }
 
 #[test]
+fn a_copy_from_a_command_that_did_not_end_well_keeps_its_mark_after_a_run_that_did() {
+    if !namespaces() {
+        return;
+    }
+    let person = Person::new("run-killed-mark");
+    person.put(".netrc", "good\n");
+    let path = person.at(".netrc");
+    assert_eq!(person.says(&["protect", path.to_str().unwrap()]).0, 0);
+    let failing = tool(&person, "tool", &format!("printf half >'{}'\nexit 1", path.display()));
+    assert_eq!(person.says(&["run", ".netrc", "--", &failing]).0, 1);
+    let kept = ".netrc (from a command that did not end well)";
+    // A run on that copy which ends well, and changes it, leaves it marked: by its path, `run` and `unprotect` still find the good one
+    let fixing = tool(&person, "fixer", &format!("printf fixed >'{}'", path.display()));
+    let (code, _, err) = person.says(&["run", kept, "--", &fixing]);
+    assert_eq!(code, 0, "{err}");
+    assert_eq!(person.sealed_text(kept), "fixed");
+    let items = person.running.ask(json!({"op": "list", "kind": "protected"}));
+    let marked = items["items"].as_array().unwrap().iter().find(|item| item["name"] == json!(kept)).unwrap()["meta"]["killed"].clone();
+    assert_eq!(marked, json!(true), "{items}");
+    let reader = tool(&person, "reader", &format!("cat '{}'", path.display()));
+    assert_eq!(person.says(&["run", ".netrc", "--", &reader]).1, "good\n");
+}
+
+#[test]
+fn a_protect_that_did_not_finish_finishes_when_asked_again() {
+    let person = Person::new("protect-again");
+    person.put(".config/gh/hosts.yml", "token: one\n");
+    let path = person.at(".config/gh/hosts.yml");
+    assert_eq!(person.says(&["protect", path.to_str().unwrap()]).0, 0);
+    // What a protect stopped between the sealing and the removal leaves: the plain file beside a sealed copy of the same
+    person.put(".config/gh/hosts.yml", "token: one\n");
+    let (code, out, err) = person.says(&["protect", path.to_str().unwrap()]);
+    assert_eq!(code, 0, "{err}");
+    assert!(out.ends_with("\t.config/gh/hosts.yml\n"), "{out}");
+    assert!(!path.exists());
+    assert_eq!(person.sealed_text(".config/gh/hosts.yml"), "token: one\n");
+    // Something else at the path is still never put over what is sealed, also when it is as long
+    person.put(".config/gh/hosts.yml", "token: two\n");
+    assert_eq!(person.says(&["protect", path.to_str().unwrap()]).0, 18);
+    assert_eq!(std::fs::read_to_string(&path).unwrap(), "token: two\n");
+    assert_eq!(person.sealed_text(".config/gh/hosts.yml"), "token: one\n");
+}
+
+#[test]
 fn the_command_line_killed_outright_leaves_the_old_copy_and_the_next_run_goes_on() {
     if !namespaces() {
         return;
