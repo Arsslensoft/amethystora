@@ -35,6 +35,23 @@ RECORDS=()
 COMMAND=""
 declare -A PRINTED=()
 
+# The two slowest readers start now and run beside the checks below, which they took seconds of the report's time
+# behind: what each Flatpak can reach (as the account only, see below) and what the machine sends by itself
+EARLY="$(mktemp -d)"
+trap 'rm -rf "${EARLY}"' EXIT
+EARLY_PERMISSIONS=""
+if [[ ${EUID} -ne 0 ]] && command -v flatpak >/dev/null; then
+    timeout 120 /usr/libexec/amethystora-app-permissions --json >"${EARLY}/permissions" 2>/dev/null &
+    EARLY_PERMISSIONS=$!
+fi
+timeout 30 /usr/libexec/amethystora-sends --json >"${EARLY}/sends" 2>/dev/null &
+EARLY_SENDS=$!
+EARLY_CONTAINERS=""
+if [[ -d "${XDG_STATE_HOME:-${HOME:-/nonexistent}/.local/state}/amethystora/pkg/containers" ]]; then
+    timeout 60 amethystora-pkg containers list --json >"${EARLY}/containers" 2>/dev/null &
+    EARLY_CONTAINERS=$!
+fi
+
 declare -A HEADINGS=(
     [updates]="$(gettext "Updates and boot")"
     [watching]="$(gettext "Watching")"
@@ -308,6 +325,7 @@ if [[ -d "${XDG_STATE_HOME:-${HOME:-/nonexistent}/.local/state}/amethystora/pkg/
     command -v amethystora-pkg >/dev/null; then
     STALE=()
     COUNT=0
+    [[ -z "${EARLY_CONTAINERS}" ]] || wait "${EARLY_CONTAINERS}" 2>/dev/null
     while IFS=$'\t' read -r name since; do
         COUNT=$((COUNT + 1))
         if [[ "${since}" == 0 ]]; then
@@ -316,8 +334,7 @@ if [[ -d "${XDG_STATE_HOME:-${HOME:-/nonexistent}/.local/state}/amethystora/pkg/
             WHEN="$(days_ago "$(days_since "${since}")")"
             STALE+=("$(eval_gettext "\${name}, last upgraded \${WHEN}")")
         fi
-    done < <(timeout 60 amethystora-pkg containers list --json 2>/dev/null |
-        jq -r '.[] | [.name, (.last_upgrade // .created // 0 | tostring)] | @tsv' 2>/dev/null)
+    done < <(jq -r '.[] | [.name, (.last_upgrade // .created // 0 | tostring)] | @tsv' "${EARLY}/containers" 2>/dev/null)
     if [[ ${#STALE[@]} -gt 0 ]]; then
         COMMAND="amethystora-pkg upgrade-all"
         N="${#STALE[@]}"
@@ -1167,7 +1184,8 @@ fi
 # which the image takes from every app, only when granted back. Overrides are each account's own, so run
 # as root by the security watcher this says nothing, as it does for the containers.
 if [[ ${EUID} -ne 0 ]] && command -v flatpak >/dev/null; then
-    PERMISSIONS="$(timeout 120 /usr/libexec/amethystora-app-permissions --json 2>/dev/null)"
+    wait "${EARLY_PERMISSIONS}" 2>/dev/null
+    PERMISSIONS="$(<"${EARLY}/permissions")"
     COUNT="$(jq -r 'length' <<<"${PERMISSIONS:-[]}" 2>/dev/null || echo 0)"
     # What the image or the machine's owner allowed (`ame security allow app-permissions`, globs of "APP REACH"),
     # as regular expressions: no way out nobody chose. The Flatpak service the image gives back to the apps it
@@ -1575,12 +1593,17 @@ COMMAND="ame security settings network"
 report optional network-protection "${NETWORK_STATE}" "$(gettext "Network protection")" "${NETWORK_TILE}"
 
 # What the machine sends by itself, a record each: amethystora-sends says what, to whom and what stops working
-while IFS= read -r record; do
-    COMMAND="$(jq -r '.command // ""' <<<"${record}")"
-    mapfile -t SENDS_DETAILS < <(jq -r '.details[]' <<<"${record}")
-    report sends "$(jq -r .id <<<"${record}")" "$(jq -r .state <<<"${record}")" "$(jq -r .title <<<"${record}")" \
-        "$(jq -r .text <<<"${record}")" "${SENDS_DETAILS[@]}"
-done < <(timeout 30 /usr/libexec/amethystora-sends --json 2>/dev/null | jq -c '.[]')
+# One jq for all of them: each record's fields and details NUL-separated, a record ending with an empty field
+wait "${EARLY_SENDS}" 2>/dev/null
+while IFS= read -r -d '' SENDS_ID && IFS= read -r -d '' SENDS_STATE && IFS= read -r -d '' SENDS_TITLE &&
+    IFS= read -r -d '' SENDS_TEXT && IFS= read -r -d '' COMMAND; do
+    SENDS_DETAILS=()
+    while IFS= read -r -d '' detail && [[ -n "${detail}" ]]; do
+        SENDS_DETAILS+=("${detail}")
+    done
+    report sends "${SENDS_ID}" "${SENDS_STATE}" "${SENDS_TITLE}" "${SENDS_TEXT}" "${SENDS_DETAILS[@]}"
+done < <(jq -j '.[] | [.id, .state, .title, .text, (.command // ""), (.details[] | select(. != "")), ""] |
+    map(tostring | gsub("\u0000"; "")) | join("\u0000") + "\u0000"' "${EARLY}/sends" 2>/dev/null)
 
 if [[ "${JSON}" == true ]]; then
     printf '%s\n' "${RECORDS[@]}" | jq -s --arg image "${IMAGE}" --arg detection "${ON_DETECTION}" \
