@@ -113,6 +113,8 @@ struct PageState {
     /// When the list was last read, and whether it is being read now
     read: f64,
     reading: bool,
+    /// Something changed while the list was being read: it is read once more after
+    again: bool,
     /// Whether the window has been opened on its first page yet
     started: bool,
     /// What was picked on the welcome page, by entry, until the list says so too
@@ -148,6 +150,7 @@ impl Default for PageState {
             recording: None,
             read: 0.0,
             reading: false,
+            again: false,
             started: false,
             picked: HashMap::new(),
             maker: Maker::default(),
@@ -198,6 +201,8 @@ pub struct Control {
     drawn: RefCell<page::Drawn>,
     /// The welcome page's preview, kept from one drawing of the page to the next
     welcome_preview: RefCell<Option<Rc<welcome::Preview>>>,
+    /// What tells the window that a setting changed elsewhere
+    live: RefCell<Option<Rc<amethystora_ui::live::Live>>>,
     /// The window was closed while a command ran: it goes once the last one has finished
     closing: Cell<bool>,
 }
@@ -275,12 +280,14 @@ impl Control {
             draw_now: Cell::new(0),
             drawn: RefCell::default(),
             welcome_preview: RefCell::new(None),
+            live: RefCell::new(None),
             closing: Cell::new(false),
         });
         shell.window.set_title(Some(&t!("Amethystora Control")));
         shell.window.set_content(Some(&this.parts.root));
         shell.narrow(900.0, "narrow");
         this.keys();
+        this.follow();
         // Closed while a command still runs here (a theme being applied after Pick a look's Done): the window goes,
         // the program stays until the command has finished, so that it is never cut off half done
         let me = this.me.clone();
@@ -519,6 +526,7 @@ impl Control {
         {
             let mut state = self.state.borrow_mut();
             if state.reading {
+                state.again = true;
                 return;
             }
             state.reading = true;
@@ -561,12 +569,37 @@ impl Control {
                 }
             }
         }
+        if std::mem::take(&mut self.state.borrow_mut().again) {
+            self.load(true);
+        }
         if unchanged {
             return;
         }
         self.render();
         self.reveal();
         self.read_diff();
+    }
+
+    /// Whatever changes a setting (a terminal, the agent, another app, the setup file), the list is read again
+    /// at once: the account's and the machine's Amethystora settings, GNOME's, and units enabled or masked
+    fn follow(&self) {
+        use amethystora_ui::live;
+        let me = self.me.clone();
+        let paths = vec![
+            live::home(".config/amethystora"),
+            live::home(".config/dconf"),
+            live::home(".local/share/flatpak/overrides"),
+            "/etc/amethystora".into(),
+            "/var/lib/amethystora".into(),
+        ];
+        let watch = live::watch(paths, live::Units { system: true, user: true }, move || {
+            if let Some(this) = me.upgrade() {
+                if this.state.borrow().list.is_some() {
+                    this.load(true);
+                }
+            }
+        });
+        self.live.replace(Some(watch));
     }
 
     /// The card of the entry the window was opened on, scrolled to the top of the page once the page has been laid out

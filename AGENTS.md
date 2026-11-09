@@ -514,6 +514,11 @@ the look when you change one.
   standard input (`App::command_line`), which the shelf's first drop uses: a drop never travels on a command line.
 - A window's app id is `org.amethystora.<App>`, which its launcher's `StartupWMClass` names, so that GNOME
   finds the launcher's name and icon for it.
+- **A window shows the machine as it is now** (the maintainer's rule of 2026-11-09): Security, Control, Backups and Updates
+  follow the files and units their helpers read through `common/src/live.rs` (folder and file monitors, systemd's
+  `UnitFilesChanged` and `Reloading` on both buses, a burst let settle 300 ms) and read again at once, quietly, whatever
+  made the change; a read asked for during one runs once more after it, never dropped. A new helper's state file goes in
+  that app's list. `20-tests.sh` holds the four to it.
 - An app keeps how it was left in `~/.local/state/amethystora/<app>.json`.
   `user-setup.hooks.d/20-retire-electron-profiles.sh` takes away the Chromium profiles the Electron
   windows kept in `~/.config/amethystora-<app>`.

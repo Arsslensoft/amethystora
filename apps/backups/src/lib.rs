@@ -175,6 +175,8 @@ pub struct Backups {
     /// The point the past view shows is chosen, and the folder there has not been read yet: the list on the screen is still
     /// the one of the point before, so nothing is put back or looked at from it meanwhile
     past_pending: Cell<bool>,
+    /// What tells the window that a snapshot was taken, or the backup set up or switched, elsewhere
+    follow: RefCell<Option<Rc<amethystora_ui::live::Live>>>,
 }
 
 impl App for Backups {
@@ -277,6 +279,7 @@ impl Backups {
             past_target: RefCell::new(None),
             past_timer: RefCell::new(None),
             past_pending: Cell::new(false),
+            follow: RefCell::new(None),
         });
         shell.window.set_title(Some(&t!("Amethystora Backups")));
         shell.window.set_content(Some(&this.parts.root));
@@ -301,6 +304,7 @@ impl Backups {
             }
         });
         shell.app.add_action(&reload);
+        this.follow();
         // The backup is systemd's and carries on without the window
         let weak = Rc::downgrade(&this);
         shell.window.connect_close_request(move |_| {
@@ -310,6 +314,26 @@ impl Backups {
             glib::Propagation::Proceed
         });
         this
+    }
+
+    /// A snapshot taken, the backup set up, run or switched, the snapshots turned on or off in Security: read again at
+    /// once, quietly, keeping the folder and point shown
+    fn follow(&self) {
+        use amethystora_ui::live;
+        let me = self.me.clone();
+        let paths = vec![
+            "/var/home/.snapshots".into(),
+            live::home(".config/amethystora"),
+            live::home(".local/state/amethystora/backup-last-success"),
+        ];
+        let watch = live::watch(paths, live::Units { system: true, user: true }, move || {
+            let Some(this) = me.upgrade() else { return };
+            let running = matches!(this.state.borrow().backup, Some(BackupRun::Running(_)));
+            if this.state.borrow().status.is_some() && !running {
+                this.load(true, false);
+            }
+        });
+        self.follow.replace(Some(watch));
     }
 
     /// This window, from a method that only has &self

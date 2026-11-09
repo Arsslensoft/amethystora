@@ -2182,6 +2182,10 @@ grep -q "Open Control" /usr/libexec/amethystora-raid
 test -x /usr/libexec/amethystora-update-alert
 test -L /etc/systemd/user/graphical-session.target.wants/amethystora-update-alert.service
 grep -qF '"pkexec", &["/usr/bin/bootc", "rollback"]' /ctx/apps/update/src/backend.rs
+# The windows that show the machine's state follow it live (common/src/live.rs): a switch turned anywhere shows at once
+for app in security control backups update; do
+    grep -q 'live::watch(' "/ctx/apps/${app}/src/lib.rs" || { echo "apps/${app} does not follow the machine live"; exit 1; }
+done
 # The manual's welcome page, once, at an account's first login
 test -x /usr/share/amethystora/user-setup.hooks.d/17-welcome.sh
 grep -q "^version-script welcome user " /usr/share/amethystora/user-setup.hooks.d/17-welcome.sh

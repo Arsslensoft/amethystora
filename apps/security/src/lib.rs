@@ -137,6 +137,10 @@ pub struct Security {
     state: RefCell<PageState>,
     live: RefCell<page::Live>,
     reloading: Cell<bool>,
+    /// Something changed while everything was being read: it is read once more after
+    again: Cell<bool>,
+    /// What tells the window that a setting changed elsewhere
+    follow: RefCell<Option<Rc<amethystora_ui::live::Live>>>,
     machine_timer: RefCell<Option<glib::SourceId>>,
     /// The system bus, kept for as long as the window hears from systemd over it
     machine_bus: RefCell<Option<gio::DBusConnection>>,
@@ -166,7 +170,7 @@ impl App for Security {
 
     /// Back from a terminal where something may have been fixed: the page checks again if the report is old
     fn focus(&self) {
-        let old = self.state.borrow().report.as_ref().is_some_and(|report| backend::now() - report.checked > 15.0);
+        let old = self.state.borrow().report.as_ref().is_some_and(|report| backend::now() - report.checked > 2.0);
         if old {
             let this = self.rc();
             glib::spawn_future_local(async move { this.reload().await });
@@ -192,6 +196,8 @@ impl Security {
             state: RefCell::new(PageState { page: "overview".into(), events_shown: EVENTS_AT_ONCE, ..Default::default() }),
             live: RefCell::new(page::Live::default()),
             reloading: Cell::new(false),
+            again: Cell::new(false),
+            follow: RefCell::new(None),
             machine_timer: RefCell::new(None),
             machine_bus: RefCell::new(None),
             opened: Cell::new(false),
@@ -210,6 +216,7 @@ impl Security {
         });
 
         this.hear_machine();
+        this.follow();
         // The time a scan has run, every second
         let weak = Rc::downgrade(&this);
         glib::timeout_add_local(Duration::from_secs(1), move || {
@@ -754,6 +761,7 @@ impl Security {
     /// Everything read again, once at a time
     pub(crate) async fn reload(&self) {
         if self.reloading.replace(true) {
+            self.again.set(true);
             return;
         }
         let report = glib::spawn_future_local(backend::report());
@@ -763,12 +771,19 @@ impl Security {
         let permissions = glib::spawn_future_local(backend::permissions());
         let switches = glib::spawn_future_local(backend::switches());
         let events = glib::spawn_future_local(backend::events());
+        // The switches answer in a moment and the report takes seconds: once a page has been drawn, a switch turned
+        // on shows as on without waiting for the rest
+        let switches = switches.await.unwrap_or_default();
+        let drawn = self.state.borrow().report.is_some();
+        self.state.borrow_mut().switches = Some(switches);
+        if drawn {
+            self.render();
+        }
         let report = report.await.unwrap_or_default();
         let scanner = scanner.await.unwrap_or_default();
         let network = network.await.unwrap_or_default();
         let inventory = inventory.await.unwrap_or_default();
         let permissions = permissions.await.unwrap_or_default();
-        let switches = switches.await.unwrap_or_default();
         let events = events.await.unwrap_or_default();
         self.permissions.replace(permissions.apps.clone());
         let machine_running = scanner.machine.running;
@@ -779,7 +794,6 @@ impl Security {
             state.network = Some(network);
             state.inventory = Some(inventory);
             state.permissions = Some(permissions);
-            state.switches = Some(switches);
             state.events = Some(events);
             if let Some(progress) = self.progress() {
                 state.running = Some(progress);
@@ -790,6 +804,34 @@ impl Security {
         }
         self.reloading.set(false);
         self.render();
+        if self.again.take() {
+            let this = self.rc();
+            glib::spawn_future_local(async move { this.reload().await });
+        }
+    }
+
+    /// Whatever switches something (a terminal, the agent, Control, the watcher's own report), the page reads
+    /// again at once: the settings' files, the watcher's findings, apps' permissions, and units enabled or masked
+    fn follow(&self) {
+        use amethystora_ui::live;
+        let me = self.me.clone();
+        let paths = vec![
+            "/etc/amethystora".into(),
+            "/var/lib/amethystora/security".into(),
+            "/var/lib/flatpak/overrides".into(),
+            "/etc/systemd/resolved.conf.d".into(),
+            "/etc/NetworkManager/conf.d".into(),
+            "/etc/firewalld".into(),
+            live::home(".config/amethystora"),
+            live::home(".local/share/flatpak/overrides"),
+        ];
+        let watch = live::watch(paths, live::Units { system: true, user: true }, move || {
+            let Some(this) = me.upgrade() else { return };
+            if this.state.borrow().report.is_some() {
+                glib::spawn_future_local(async move { this.reload().await });
+            }
+        });
+        self.follow.replace(Some(watch));
     }
 
     /// The permissions list read again after a change, for both the page and what acts on it

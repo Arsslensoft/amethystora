@@ -84,13 +84,15 @@ pub struct Updates {
     // --- What update.js kept ------------------------------------------------------------------------------
     state: RefCell<PageState>,
     live: RefCell<page::Live>,
+    /// What tells the window that automatic updates were switched, an update staged or found waiting, elsewhere
+    follow: RefCell<Option<Rc<amethystora_ui::live::Live>>>,
 }
 
 impl App for Updates {
     fn focus(&self) {
         // Back from elsewhere, where the machine may have been updated or restarted into a new version
         let this = self.rc();
-        if this.hero_kind() != "running" && !self.state.borrow().switching && backend::now() - self.state.borrow().loaded > 15.0 {
+        if this.hero_kind() != "running" && !self.state.borrow().switching && backend::now() - self.state.borrow().loaded > 2.0 {
             glib::spawn_future_local(async move { this.reload().await });
         }
     }
@@ -136,6 +138,7 @@ impl Updates {
             send_timer: RefCell::new(None),
             state: RefCell::new(PageState::default()),
             live: RefCell::new(page::Live::default()),
+            follow: RefCell::new(None),
         });
         shell.window.set_title(Some(&amethystora_ui::t!("Amethystora Updates")));
         shell.window.set_content(Some(&this.frame()));
@@ -154,6 +157,16 @@ impl Updates {
             glib::spawn_future_local(async move { this.watch().await });
             glib::ControlFlow::Continue
         });
+        // Automatic updates switched, an update staged or found waiting, wherever that was done: read again at once
+        let weak = Rc::downgrade(&this);
+        let paths = vec!["/var/lib/amethystora/updates".into(), "/run/ostree".into(), "/etc/uupd".into()];
+        let watch = amethystora_ui::live::watch(paths, amethystora_ui::live::Units { system: true, user: false }, move || {
+            let Some(this) = weak.upgrade() else { return };
+            if this.hero_kind() != "running" && !this.state.borrow().switching && this.state.borrow().status.is_some() {
+                glib::spawn_future_local(async move { this.reload().await });
+            }
+        });
+        this.follow.replace(Some(watch));
         // The update is systemd's and carries on without the window
         let weak = Rc::downgrade(&this);
         shell.window.connect_close_request(move |_| {

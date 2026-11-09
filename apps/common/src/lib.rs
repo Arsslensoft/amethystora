@@ -9,6 +9,7 @@ pub mod frame;
 pub mod gem;
 pub mod glow;
 pub mod i18n;
+pub mod live;
 pub mod icon;
 pub mod markdown;
 pub mod palette;
