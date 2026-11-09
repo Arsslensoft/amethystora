@@ -1404,6 +1404,21 @@ is safe. `Clutter.Event.add_filter` never sees a press on a Wayland window: Mutt
 `themed/shell-<module>.css.tpl` reaches an existing account only when its theme is applied again: raise `11-theme.sh`'s
 version (17 for round 4, 23 for rounds 5 and 6, 25 with round 7, 26 with its second wave, 27 for plugins in Today, 28 for the terminal's lights). GNOME 51 dropped `St.BoxLayout`'s `vertical`: write `orientation`.
 
+**What keeps the shell quick** (`plans/PLAN-shell-performance.md`; measured with headless shells on the iGPU, whose DRM fdinfo
+gives the shell's GPU time). St matches every widget it styles against every rule and pays for each file too, and keeps
+every style it worked out until its theme changes: `theme/stylesheets.js` hands St the modules', the theme's and the
+clipboard's and logo menu's sheets as one file in the runtime folder, in the order that keeps St's precedence (of two
+equally specific rules it keeps the one from the file loaded first), and a lock leaves the theme as it is, so that an
+unlock finds every style still known. So every rule of ours is tied to a class a module takes off when it stops (none may
+reach the lock screen), and no extension of the image ships a `stylesheet.css`, which GNOME unloads and loads at every lock
+(theirs are `styles.css`, which `extension.js` loads; `20-tests.sh` holds both). A class changed on a mapped widget restyles
+it and everything under it at once: give a widget its classes before it is shown (`glass/popups.js` wraps
+`PopupMenu.open`). Starting a program forks the shell (some 14 ms frozen): `quickspawn.js` makes every
+`Gio.Subprocess.new` use `posix_spawn` (`INHERIT_FDS`), and a module that makes a `Gio.SubprocessLauncher` passes that flag
+itself. The glass's paint runs in JS on every frame: keep it free of settings reads, St lookups and uniforms sent unchanged
+(`shader.update`), and keep a pane's inside on `glass_interior()`, whose terms must stay what `glass_color()` draws there
+(`insets()` in `glass/effect.js` says where; suite 13 compares the two within one level).
+
 The modules, and what each replaced:
 
 - `theme`: the theme's `shell-*.css`, loaded again on every theme switch (what `amethystora-theme` wrote into the

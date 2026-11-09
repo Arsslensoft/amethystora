@@ -124,6 +124,31 @@ for v in frost prism clear; do
     user_bus gdbus call --session --dest org.gnome.Shell.Screenshot --object-path /org/gnome/Shell/Screenshot \
         --method org.gnome.Shell.Screenshot.Screenshot false false "/tmp/vmlab-glass-${v}.png" >/dev/null 2>&1 &&
         mv "/tmp/vmlab-glass-${v}.png" "${SHOTS}/glass-${v}.png" 2>/dev/null
+    # The inside of a large pane is drawn by glass_interior(), the ring around it by the whole lens: the same picture,
+    # within one level, as with the whole lens everywhere (plans/PLAN-shell-performance.md, phase 1 item 2)
+    RESET="for (const [a, s] of ${G}._surfaces) if (s.effect) { s.effect._pipelines = new Map(); s.effect._textures = new Map(); s.effect._memos = new Map(); a.queue_redraw(); }"
+    shot() {
+        user_bus gdbus call --session --dest org.gnome.Shell.Screenshot --object-path /org/gnome/Shell/Screenshot \
+            --method org.gnome.Shell.Screenshot.Screenshot false false "/tmp/vmlab-glass-$1.png" >/dev/null 2>&1 &&
+            mv "/tmp/vmlab-glass-$1.png" "${SHOTS}/$1.png" 2>/dev/null
+    }
+    split="$(ev "(() => { const e = ${UNFOCUSED}.get_effect('amethystora-glass'); return String(e._pipelines.has('0:0:inside')); })()")"
+    same "2 ${v}: the window's pane is drawn as a ring and an inside" "${split}" "true"
+    ev "(() => { globalThis.__lean = ${G}.interior; ${G}.interior = ${G}.shader; ${RESET} return 'whole'; })()" >/dev/null
+    sleep 1
+    shot "whole-${v}"
+    ev "(() => { ${G}.interior = globalThis.__lean; ${RESET} return 'lean'; })()" >/dev/null
+    sleep 1
+    shot "lean-${v}"
+    check "2 ${v}: the inside drawn on its own matches the whole lens within one level" python3 -c "
+import sys
+from PIL import Image, ImageChops
+a = Image.open('${SHOTS}/whole-${v}.png').convert('RGB')
+b = Image.open('${SHOTS}/lean-${v}.png').convert('RGB')
+# The top bar's clock and meters change by themselves: everything below it is compared
+box = (0, 60, a.width, a.height)
+d = ImageChops.difference(a.crop(box), b.crop(box))
+sys.exit(0 if max(hi for lo, hi in d.getextrema()) <= 1 else 1)"
     if [[ ${v} == prism ]]; then
         corner="$(ev "(() => { ${FIND} const q = find(global.stage, 'quick-settings'); const r = q.get_theme_node().get_border_radius(0); const [s, n] = q.get_effect('amethystora-glass').params.corner; return (n > 2.76 && n < 2.78 && Math.abs(s - 1.4 * r) <= 0.5) + ' ' + ${UNFOCUSED}.get_effect('amethystora-glass').params.corner[1]; })()")"
         same "4 the quick settings' corners are continuous (n 2.77, s 1.4 r), the window's circular" "${corner}" "true 2"
