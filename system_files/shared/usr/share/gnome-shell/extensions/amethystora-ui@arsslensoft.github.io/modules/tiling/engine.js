@@ -132,6 +132,12 @@ export class Engine {
         // Each workspace's own picture, on the screen that shows it (backgrounds.js)
         this.backgrounds = new WorkspaceBackgrounds(this);
         this.backgrounds.enable();
+        // GNOME's workspaces on the main screen only (the classic layout) keep the other screens' windows on every
+        // workspace. Once settings.js has turned that off, mutter puts each of them on GNOME's workspace, later, on
+        // idle: each goes to the workspace its own screen shows instead (_stickyChanged), or it would be drawn there
+        // only while the screen with the keyboard showed its workspace
+        this._unpinned = new WeakSet(global.display.list_all_windows().filter(window =>
+            window.is_on_all_workspaces() && window.get_monitor() !== Main.layoutManager.primaryIndex));
         this._restore();
         this.screens.assign(this.tiling.workspaceHistory?.() ?? []);
     }
@@ -168,6 +174,7 @@ export class Engine {
         this._info = null;
         this._strips = null;
         this.floating = null;
+        this._unpinned = null;
     }
 
     // ---- The model ----
@@ -1291,6 +1298,15 @@ export class Engine {
         if (info.strip && window.is_on_all_workspaces()) {
             info.stuck = true;
             this.remove(window);
+        } else if (!window.is_on_all_workspaces() && this._unpinned?.delete(window)) {
+            // Out of the classic layout (enable): to the workspace of its own screen, not GNOME's
+            info.stuck = false;
+            const monitor = window.get_monitor();
+            const workspace = this.screens?.shownOn(monitor) ?? global.workspace_manager.get_active_workspace();
+            if (this.tileable(window) && !window.minimized)
+                this.insert(window, this.strip(workspace, monitor));
+            else if (window.get_workspace() !== workspace)
+                window.change_workspace(workspace);
         } else if (info.stuck && !window.is_on_all_workspaces()) {
             info.stuck = false;
             if (this.tileable(window) && !window.minimized)

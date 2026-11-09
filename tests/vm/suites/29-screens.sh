@@ -9,6 +9,7 @@
 #   - a Files window goes from screen to screen with Super+Shift+Ctrl+Right and Left, and dragged by its title bar
 #     across a screen to the next, onto the workspace each shows;
 #   - the search box stays open while the pointer crosses a screen with a window;
+#   - a window on screen 2 is still on screen 2's workspace after the tiling is turned off and on again;
 #   - a window on a screen without the keyboard is drawn on glass, and the top bar is solid while a window of the
 #     workspace its screen shows reaches it;
 #   - nothing of Amethystora UI throws meanwhile.
@@ -208,6 +209,29 @@ ev "(() => { const e = ${UI}.get('tiling').engine; const n = global.workspace_ma
 sleep 1
 same "with animations off a switch leaves no slide behind" "$(ev "Main.wm._workspaceAnimation._switchData === null")" true
 user_bus gsettings reset org.gnome.desktop.interface enable-animations
+keys "move:${bar_at}"
+sleep 1
+
+# The tiling turned off and on again: GNOME's classic layout puts screen 2's windows on every workspace, and mutter puts
+# them on GNOME's workspace (the keyboard's screen's) once the tiling takes that back. Screen 2's window goes back to
+# screen 2's workspace: on GNOME's, it vanished as soon as the pointer reached screen 2 and came back once it left.
+keys move:0.36,0.45 move:0.375,0.5
+wait_for 10 on_screen_2
+user_bus systemd-run --user --collect --unit="vmlab-files3-$$" nautilus --new-window >/dev/null
+wait_for 60 files_open
+ev "Main.activateWindow(global.get_window_actors().map(a => a.meta_window).find(w => w.get_wm_class() === 'org.gnome.Nautilus'))" >/dev/null
+wait_for 10 files_on 1
+keys "move:${bar_at}"
+sleep 1
+in_session "ame desktop layout classic" >/dev/null 2>&1
+sleep 3
+in_session "ame desktop layout tiling" >/dev/null 2>&1
+sleep 3
+check "after the tiling is turned off and on, screen 2's window is on screen 2's workspace" wait_for 10 files_on 1
+keys move:0.36,0.45 move:0.375,0.5
+wait_for 10 on_screen_2
+check "...and still there with the pointer on screen 2" files_on 1
+user_systemctl stop "vmlab-files3-$$"
 keys "move:${bar_at}"
 sleep 1
 
