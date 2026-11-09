@@ -29,7 +29,7 @@ pub use names::{check_name, MAX_NAME};
 pub use profiles::{Authority, Profile, ROOT_NAME};
 
 use facts::{facts, CERT_SIGN};
-use names::{check_email, check_local_name, check_web, host_shaped, LocalName, PERMITTED_DNS, PERMITTED_IP};
+use names::{check_email, check_local_name, check_text, check_web, host_shaped, LocalName, PERMITTED_DNS, PERMITTED_IP};
 use profiles::{Alternative, Limits, Purposes, Spec, SubjectShape};
 
 const DAY: i64 = 86400;
@@ -593,7 +593,9 @@ fn subject_of(spec: &Spec, request: &Request<'_>, machine: &str) -> Result<X509N
         SubjectShape::Login => {
             let name = checked_name(request.name, "name", MAX_NAME, true)?;
             let login = request.login.ok_or(PkiError::MissingField("login"))?;
-            if !check_name(login, MAX_NAME) {
+            // An account's name may hold what separates a name's parts (`CORP\ada`, `ada+work@example.org`): it is a value of its
+            // own, and `describe` escapes it
+            if !check_text(login, MAX_NAME) {
                 return Err(PkiError::BadField("login"));
             }
             name_of(&[(unit, &machine_unit, utf8), (unit, login, utf8), (common, name, utf8)])

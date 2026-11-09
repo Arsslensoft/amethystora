@@ -125,6 +125,24 @@ fn m2_dn_separators_are_refused() {
     assert!(issue(&Request { public_key: &spki, organization: Some("O'Brien & Sons No. #2"), ..pdf("Ada-Mae O'Brien") }, &account(machine)).is_ok());
 }
 
+/// K12: a service login's account is the account's name as the service has it, separators and all: a value of its own, which
+/// `describe` escapes. What cannot be seen is still refused.
+#[test]
+fn k12_a_logins_account_takes_what_names_refuse() {
+    let machine = machine();
+    let device = Issuer { authority: Authority::DeviceCa, cert: &machine.device.cert, key: &machine.device_key, chain: &machine.device.chain };
+    let spki = fresh_spki();
+    let login = |account| Request { profile: "service-login", public_key: &spki, name: Some("Home VPN"), login: Some(account), now: now(), ..Request::default() };
+    for (account, shown) in [("CORP\\ada", r"OU=CORP\\ada"), ("ada+work@example.org", r"OU=ada\+work@example.org"), ("O'Brien, Ada", r"OU=O'Brien\, Ada")] {
+        let issued = issue(&login(account), &device).unwrap_or_else(|why| panic!("{account}: {why:?}"));
+        let subject = describe(&issued.cert).unwrap().subject;
+        assert!(subject.contains(shown), "{subject}");
+    }
+    for account in ["", " ada", "ada\u{200B}", "a\nb"] {
+        assert_eq!(issue(&login(account), &device).unwrap_err(), PkiError::BadField("login"), "{account:?}");
+    }
+}
+
 /// M2: `describe` escapes as RFC 4514 says, whatever a certificate from elsewhere holds
 #[test]
 fn m2_describe_escapes() {
