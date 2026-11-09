@@ -143,6 +143,9 @@ grep -q "^Amethystora release ${FEDORA_MAJOR_VERSION} " /etc/system-release
 grep -qi "fedora" /etc/system-release /etc/system-release-cpe && false
 test ! -e /usr/lib/swidtag/fedoraproject.org
 
+# No TeX Live, which only weak dependencies brought in (04-packages.sh), at some 415 MB compressed
+[[ -z "$(rpm -qa 'texlive*' tex-preview)" ]]
+
 # NordVPN is proprietary, with no right to redistribute it, so the image does not carry it
 rpm -q nordvpn >/dev/null && false
 rpm -q nordvpn-gui >/dev/null && false
