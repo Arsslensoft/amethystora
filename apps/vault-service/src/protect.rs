@@ -713,7 +713,7 @@ enum Style {
 }
 
 /// Folders with more than this beside a protected file are not covered whole
-const MOST_SIBLINGS: usize = 64;
+const MOST_SIBLINGS: usize = 1024;
 
 /// What stays of a protected folder on the disk and shows through it, as paths under it. A sealed file's path that is there, or something
 /// other than a folder where a sealed folder goes, is a plain copy that came back: one of the two would hide the other, and be lost. A folder
@@ -754,6 +754,8 @@ pub struct Place {
     covered: PathBuf,
     /// What stayed in the covered folder (`~/.ssh/config`, a file's neighbours), and shows through it
     stays: Vec<String>,
+    /// For a file alone, the names beside it that hold its name, to know the ones a command leaves on the disk
+    named_before: Vec<String>,
     /// The empty file that holds a single file's place
     placeholder: Option<OwnedFd>,
     /// The folder as it was on the disk, kept open to put back what the command made beside the file
@@ -774,7 +776,7 @@ impl Place {
     pub fn prepare(home_path: &Path, home: &OwnedFd, path: &str, tree: &Tree) -> Result<Place, Why> {
         let (parent, last) = walk(home, path, true)?;
         let full = home_path.join(path);
-        let make = |style, covered: PathBuf, stays, placeholder, real, folder_mode| Place { full: full.clone(), path: path.to_string(), what: tree.what, style, last: last.clone(), covered, stays, placeholder, real, folder_mode, device: std::cell::Cell::new(None) };
+        let make = |style, covered: PathBuf, stays, placeholder, real, folder_mode| Place { full: full.clone(), path: path.to_string(), what: tree.what, style, last: last.clone(), covered, stays, named_before: Vec::new(), placeholder, real, folder_mode, device: std::cell::Cell::new(None) };
         match tree.what {
             What::File => {
                 match open_at(parent.as_raw_fd(), &last, libc::O_RDONLY | libc::O_NONBLOCK, 0) {
@@ -788,7 +790,7 @@ impl Place {
                     Err(Why::NotPlain) => return Err(Why::FileThere),
                     Err(why) => return Err(why),
                 }
-                let beside = if path.contains('/') { names_in(&parent).ok().filter(|names| names.len() <= MOST_SIBLINGS) } else { None };
+                let beside = if path.contains('/') { names_up_to(&parent, None, MOST_SIBLINGS).ok() } else { None };
                 if let Some(mut names) = beside {
                     names.retain(|name| *name != last);
                     let mode = stat_of(parent.as_raw_fd())?.st_mode & 0o7777;
@@ -796,7 +798,11 @@ impl Place {
                     return Ok(make(Style::Parent, covered, names, None, Some(parent), mode));
                 }
                 let fd = open_at(parent.as_raw_fd(), &last, libc::O_RDWR | libc::O_CREAT | libc::O_NONBLOCK, 0o600).map_err(|why| if why == Why::NotPlain { Why::FileThere } else { why })?;
-                Ok(make(Style::Single, full.clone(), Vec::new(), Some(fd), None, 0))
+                let mut passed = 0;
+                let named_before = names_up_to(&parent, Some(&mut passed), usize::MAX)?.into_iter().filter(|name| *name != last && name.contains(last.as_str())).collect();
+                let mut place = make(Style::Single, full.clone(), Vec::new(), Some(fd), Some(parent), 0);
+                place.named_before = named_before;
+                Ok(place)
             }
             What::Folder => {
                 let name = c_name(&last)?;
@@ -951,7 +957,11 @@ impl Place {
     /// that is not kept is named, with the reason. Nothing is kept of a command that did not end well: a half-written copy of the file may be among it.
     pub fn keep_beside(&self, old: &[u8], new: &[u8], failed: bool) -> Left {
         let mut keeping = Keeping { old, new, last: &self.last, left: Left::default() };
-        let (Style::Parent, Some(real)) = (self.style, &self.real) else { return keeping.left };
+        let Some(real) = &self.real else { return keeping.left };
+        if self.style == Style::Single {
+            self.take_off_named(real, &mut keeping);
+            return keeping.left;
+        }
         let Ok(path) = c_path(&self.covered) else { return keeping.left.unreadable() };
         // SAFETY: a live string; the descriptor is then owned
         let fd = unsafe { libc::open(path.as_ptr(), libc::O_RDONLY | libc::O_DIRECTORY | libc::O_NOFOLLOW | libc::O_CLOEXEC) };
@@ -972,6 +982,20 @@ impl Place {
         }
         keeping.left.unshowable += passed;
         keeping.left
+    }
+
+    /// A file alone has nothing over its folder, so what a command writes beside it is on the disk already (a tool's `.npmrc.tmp`, whose
+    /// rename over the file failed). What has the file's name in it and was not there before is taken away, and named: it may be the file's
+    /// content, which is never left on the disk.
+    fn take_off_named(&self, real: &OwnedFd, keeping: &mut Keeping) {
+        let mut passed = 0;
+        let Ok(names) = names_up_to(real, Some(&mut passed), usize::MAX) else { return };
+        for name in names.iter().filter(|name| **name != self.last && name.contains(self.last.as_str()) && !self.named_before.contains(name)) {
+            let plain = open_at(real.as_raw_fd(), name, libc::O_PATH, 0).and_then(|fd| stat_of(fd.as_raw_fd())).is_ok_and(|stat| is_kind(&stat, libc::S_IFREG));
+            if plain && unlink(real, name, 0).is_ok() {
+                keeping.left.on_purpose.push(name.clone());
+            }
+        }
     }
 
     /// The tmpfs goes, and with it the only other copy, and so does the empty file or folder that held its place. If something else

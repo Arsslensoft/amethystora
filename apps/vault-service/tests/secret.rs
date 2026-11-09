@@ -2229,6 +2229,35 @@ fn the_usual_tools_rewrite_files_they_made_beside_the_login_and_fail_loudly_on_t
 }
 
 #[test]
+fn a_tool_renames_over_its_login_in_a_folder_of_many_files_and_a_copy_it_leaves_in_the_home_is_taken_away() {
+    if !namespaces() {
+        return;
+    }
+    let person = Person::new("run-many-beside");
+    person.put(".cache-tool/credentials", "old\n");
+    for index in 0..100 {
+        person.put(&format!(".cache-tool/f{index}"), "x");
+    }
+    let path = person.at(".cache-tool/credentials");
+    assert_eq!(person.says(&["protect", path.to_str().unwrap()]).0, 0);
+    let rename = tool(&person, "tool", "printf new >\"$1.tmp\"\nmv \"$1.tmp\" \"$1\"");
+    let (code, _, err) = person.says(&["run", ".cache-tool/credentials", "--", &rename, path.to_str().unwrap()]);
+    assert_eq!(code, 0, "{err}");
+    assert_eq!(person.sealed_text(".cache-tool/credentials"), "new");
+    assert!(!person.at(".cache-tool/credentials.tmp").exists() && !path.exists());
+    // Directly in the home, the rename cannot be; what the tool left with the file's name in it is taken off the disk, and named
+    person.put(".npmrc", "OLD-TOKEN\n");
+    person.put(".npmrc.before", "was here\n");
+    assert_eq!(person.says(&["protect", person.at(".npmrc").to_str().unwrap()]).0, 0);
+    let leaves = tool(&person, "leaves", "printf NEW-TOKEN >\"$1.tmp\"\nchmod 644 \"$1.tmp\"\nmv \"$1.tmp\" \"$1\" 2>/dev/null\nexit 0");
+    let (code, _, err) = person.says(&["run", ".npmrc", "--", &leaves, person.at(".npmrc").to_str().unwrap()]);
+    assert_eq!(code, 0, "{err}");
+    assert!(token_on_disk(&person, "NEW-TOKEN").is_empty(), "{:?}", token_on_disk(&person, "NEW-TOKEN"));
+    assert!(err.contains(".npmrc.tmp"), "{err}");
+    assert_eq!(std::fs::read_to_string(person.at(".npmrc.before")).unwrap(), "was here\n");
+}
+
+#[test]
 fn a_protected_folder_with_a_public_key_in_a_subfolder_runs() {
     if !namespaces() {
         return;
