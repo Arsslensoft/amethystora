@@ -252,7 +252,9 @@ export class Theme {
         let process;
         try {
             const launcher = new Gio.SubprocessLauncher({
-                flags: Gio.SubprocessFlags.STDOUT_SILENCE | Gio.SubprocessFlags.STDERR_SILENCE,
+                // Started without forking the shell (quickspawn.js)
+                flags: Gio.SubprocessFlags.STDOUT_SILENCE | Gio.SubprocessFlags.STDERR_SILENCE |
+                    Gio.SubprocessFlags.INHERIT_FDS,
             });
             // While a focus profile has an accent, every rendering of the accents' rules carries it too
             if (this._focusAccent)

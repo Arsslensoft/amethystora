@@ -11,6 +11,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 // Before anything else makes a settings object
 import './modules/keepsettings.js';
+import './modules/quickspawn.js';
 import {batchStylesheets, replaceStylesheets} from './modules/theme/stylesheets.js';
 import {Theme} from './modules/theme.js';
 import {Style} from './modules/style.js';

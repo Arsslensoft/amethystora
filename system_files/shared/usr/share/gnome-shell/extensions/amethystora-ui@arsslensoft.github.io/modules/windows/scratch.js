@@ -173,7 +173,7 @@ export class Scratch {
         const argv = ['kitty', '--class', DROP_DOWN_CLASS, '-o', 'hide_window_decorations=yes'];
         let process;
         try {
-            const launcher = new Gio.SubprocessLauncher({flags: Gio.SubprocessFlags.NONE});
+            const launcher = new Gio.SubprocessLauncher({flags: Gio.SubprocessFlags.INHERIT_FDS});
             // Started from the account's own folder, as a terminal opened from the dock is
             launcher.set_cwd(GLib.get_home_dir());
             process = launcher.spawnv(argv);

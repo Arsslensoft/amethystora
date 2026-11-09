@@ -106,7 +106,7 @@ export class RecordingTrim {
     // The trimming window on a recording, the path one argument of its own
     open(path) {
         try {
-            const launcher = new Gio.SubprocessLauncher({flags: Gio.SubprocessFlags.NONE});
+            const launcher = new Gio.SubprocessLauncher({flags: Gio.SubprocessFlags.INHERIT_FDS});
             launcher.spawnv([TRIM, '--', path]);
         } catch (e) {
             Main.notifyError(_('The recording could not be opened for trimming'), e.message);
