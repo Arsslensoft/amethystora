@@ -238,8 +238,22 @@ impl ListPage {
         page.search.connect_changed(move |search| {
             if let Some(page) = weak.upgrade() {
                 let started = Instant::now();
-                page.query.replace(search.text().to_lowercase().split_whitespace().map(str::to_string).collect());
-                page.filter.changed(gtk::FilterChange::Different);
+                let words: Vec<String> = search.text().to_lowercase().split_whitespace().map(str::to_string).collect();
+                // A row matches when each word is in it: a query whose every word is inside one of the other's words matches
+                // no more rows than the other, so only the rows still shown, or only the rows hidden, are looked at again
+                let inside = |wide: &[String], narrow: &[String]| narrow.iter().all(|word| wide.iter().any(|wider| wider.contains(word.as_str())));
+                let change = {
+                    let old = page.query.borrow();
+                    if inside(&words, &old) {
+                        gtk::FilterChange::MoreStrict
+                    } else if inside(&old, &words) {
+                        gtk::FilterChange::LessStrict
+                    } else {
+                        gtk::FilterChange::Different
+                    }
+                };
+                page.query.replace(words);
+                page.filter.changed(change);
                 crate::measure::took("filter changed", started);
                 page.after_filter();
                 crate::measure::search(&page.view, page.selection.n_items(), started);
