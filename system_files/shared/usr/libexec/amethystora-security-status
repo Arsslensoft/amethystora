@@ -1416,7 +1416,7 @@ COMMAND=""
 
 if systemctl --user is-enabled --quiet amethystora-backup.timer 2>/dev/null; then BACKUP=on; else BACKUP=off; fi
 COMMAND="ame backup"
-report optional backups "${BACKUP}" "$(gettext "Backups")" \
+report optional backups "${BACKUP}" "$(gettext "Daily backup")" \
     "$(gettext "A daily restic backup to a repository that ransomware on this machine cannot delete from")"
 
 # Snapshots need the home folders on a btrfs subvolume of their own, whose root is always inode 256

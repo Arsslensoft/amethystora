@@ -853,6 +853,9 @@ msgstr "Cette machine n’a pas de lecteur d’empreintes digitales"
 msgid "Backups"
 msgstr "Sauvegardes"
 
+msgid "Daily backup"
+msgstr "Sauvegarde quotidienne"
+
 #: usr/libexec/amethystora-security-status
 msgid "A daily restic backup to a repository that ransomware on this machine cannot delete from"
 msgstr "Une sauvegarde restic quotidienne vers un dépôt dont un rançongiciel présent sur cette machine ne peut rien supprimer"

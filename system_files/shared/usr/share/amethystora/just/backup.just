@@ -30,7 +30,13 @@ backup ACTION="" *MORE:
             echo "$(gettext "The daily run is off.")"
         fi
     else
-        echo "$(gettext "No backup is set up for this account.")"
+        echo "$(gettext "No daily backup is set up for this account.")"
+    fi
+    # The hourly snapshots are the other half of what Backups shows, switched in Security
+    if systemctl is-enabled --quiet amethystora-home-snapshot.timer 2>/dev/null; then
+        echo "$(gettext "The hourly snapshots of the home folders are on (ame security ransomware).")"
+    else
+        echo "$(gettext "The hourly snapshots of the home folders are off: ame security ransomware")"
     fi
     if [[ -z "${action}" ]]; then
         daily="${turn_off}"

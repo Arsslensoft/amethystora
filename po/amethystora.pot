@@ -1615,6 +1615,10 @@ msgid "Ports are open on the networks you named home, for the computers you pair
 msgstr ""
 
 #: usr/libexec/amethystora-security-status
+msgid "Daily backup"
+msgstr ""
+
+#: usr/libexec/amethystora-security-status
 msgid "A daily restic backup to a repository that ransomware on this machine cannot delete from"
 msgstr ""
 
@@ -10946,7 +10950,15 @@ msgid "The daily run is off."
 msgstr ""
 
 #: usr/share/amethystora/just/backup.just
-msgid "No backup is set up for this account."
+msgid "No daily backup is set up for this account."
+msgstr ""
+
+#: usr/share/amethystora/just/backup.just
+msgid "The hourly snapshots of the home folders are on (ame security ransomware)."
+msgstr ""
+
+#: usr/share/amethystora/just/backup.just
+msgid "The hourly snapshots of the home folders are off: ame security ransomware"
 msgstr ""
 
 #: usr/share/amethystora/just/backup.just

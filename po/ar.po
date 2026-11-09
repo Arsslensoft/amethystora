@@ -931,6 +931,9 @@ msgstr "لا قارئ بصمات في هذا الجهاز"
 msgid "Backups"
 msgstr "النسخ الاحتياطية"
 
+msgid "Daily backup"
+msgstr "النسخ الاحتياطي اليومي"
+
 #: usr/libexec/amethystora-security-status
 msgid "A daily restic backup to a repository that ransomware on this machine cannot delete from"
 msgstr "نسخة احتياطية يومية عبر restic إلى مستودع لا تستطيع برمجيات الفدية على هذا الجهاز الحذف منه"

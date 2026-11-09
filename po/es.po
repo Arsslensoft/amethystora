@@ -851,6 +851,9 @@ msgstr "Este equipo no tiene lector de huellas"
 msgid "Backups"
 msgstr "Copias de seguridad"
 
+msgid "Daily backup"
+msgstr "Copia de seguridad diaria"
+
 #: usr/libexec/amethystora-security-status
 msgid "A daily restic backup to a repository that ransomware on this machine cannot delete from"
 msgstr "Una copia de seguridad diaria con restic en un repositorio del que el ransomware de este equipo no puede borrar nada"
