@@ -242,6 +242,18 @@ fn l4_times_are_bounded() {
     assert!(issue(&request, &root_issuer).is_ok());
 }
 
+/// K9: a root whose twenty years would end past 9999 is not made, since what it would be could not be read back
+#[test]
+fn k9_a_root_ends_by_9999() {
+    let key = CaKey::generate(Authority::Root).unwrap();
+    let last_start = 253_402_300_799 - 7305 * DAY;
+    for at in [last_start + 1, 253_000_000_000, 253_402_300_799] {
+        assert_eq!(make_root(&key, at).unwrap_err(), PkiError::BadTime, "{at}");
+    }
+    let root = make_root(&key, last_start).unwrap();
+    assert_eq!(describe(&root).unwrap().not_after, 253_402_300_799);
+}
+
 /// M4: a certificate is never issued for a key of the CA that issues it, or of the root above it
 #[test]
 fn m4_a_cas_own_key_is_not_certified() {

@@ -332,6 +332,8 @@ fn no_names() -> Vec<u8> {
 /// `generate(KeyType::Rsa4096)` makes, off the service's main loop.
 pub fn make_root(key: &CaKey, now: i64) -> Result<Vec<u8>, PkiError> {
     check_now(now)?;
+    // Its end too: a year past 9999 is written in a form `describe` cannot read
+    check_now(now + ROOT_DAYS * DAY)?;
     if key.key_type() != KeyType::Rsa4096 {
         return Err(PkiError::KeyNotAllowed);
     }
