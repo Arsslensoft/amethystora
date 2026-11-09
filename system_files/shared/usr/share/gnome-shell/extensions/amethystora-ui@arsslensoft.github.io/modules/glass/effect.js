@@ -17,6 +17,11 @@ import St from 'gi://St';
 
 import {mix, veil} from './contrast.js';
 import {CONTINUOUS, VARIANTS} from './materials.js';
+import Native from './native.js';
+
+// What a pane is made of, as the native paint takes it (apps/glass/src/lib.rs, its V_ constants): one row of floats,
+// worked out again only when the look, the style, the scheme, the material or a picture changes
+const VALUES = 52;
 
 // The corners the shell's own surfaces have: continuous, but where effect.js says circular
 export const CORNERS = 'continuous';
@@ -94,7 +99,12 @@ class AmethystoraGlassEffect extends Clutter.Effect {
         super._init();
         this._glass = glass;
         this.look = look;
-        this.params = null;
+        this._params = null;
+        // The native paint, and what it was last given (a version of the effect's own, the glass's and the frost's)
+        this._native = Native ? new Native.Pane() : null;
+        this._nativeStamp = 0;
+        this._nativeSynced = null;
+        this._nativeOn = false;
         this._pipelines = new Map();
         this._textures = new Map();
         this._memos = new Map();
@@ -109,6 +119,7 @@ class AmethystoraGlassEffect extends Clutter.Effect {
     update(changes) {
         Object.assign(this.look, changes);
         this._veils.clear();
+        this._nativeStamp++;
         this.get_actor()?.queue_redraw();
     }
 
@@ -119,11 +130,13 @@ class AmethystoraGlassEffect extends Clutter.Effect {
             return;
         this._colors = null;
         this._veils.clear();
+        this._nativeStamp++;
     }
 
     // A new picture (another variant, another wallpaper): the veils are worked out again
     repicture() {
         this._veils.clear();
+        this._nativeStamp++;
         this.get_actor()?.queue_redraw();
     }
 
@@ -137,6 +150,21 @@ class AmethystoraGlassEffect extends Clutter.Effect {
         this._memos = new Map();
         this._veils.clear();
         this._colors = null;
+        this._native?.forget();
+        this._nativeSynced = null;
+        this._nativeStamp++;
+    }
+
+    // What the first pane drawn was made of, for the tests to read
+    get params() {
+        if (!this._nativeOn)
+            return this._params;
+        const [s, n] = this._native.get_corner();
+        return this._params ? {...this._params, corner: [s, n]} : null;
+    }
+
+    set params(value) {
+        this._params = value;
     }
 
     _scale() {
@@ -183,11 +211,92 @@ class AmethystoraGlassEffect extends Clutter.Effect {
 
     vfunc_paint_node(node, paintContext, _flags) {
         const actor = this.get_actor();
+        if (this._native && this._nativeReady(paintContext, actor)) {
+            const areas = this.look.areas?.(actor);
+            this._native.paint(node, paintContext, actor, areas ? areas.flat() : null);
+            return;
+        }
+        this._nativeOn = false;
         let content = -1;
         if (!this._alone(paintContext) && (this.look.inClones || !actor.is_in_clone_paint()) &&
             this._paintGlass(node, paintContext, actor))
             content = this.look.content?.(actor) ?? -1;
         node.add_child(new Clutter.ActorNode(actor, content));
+    }
+
+    // Whether the native paint can draw this pane, after giving it what changed since it last drew: everything but a
+    // banner's fade (worked out from where it is, on every paint) and a bare bar (whose veil follows what lies behind
+    // it), each of which effect.js draws itself
+    _nativeReady(paintContext, actor) {
+        const look = this.look;
+        const glass = this._glass;
+        const frost = glass.frost;
+        if (!frost || look.fade || (look.content && look.contentShare === undefined))
+            return false;
+        const synced = this._nativeSynced;
+        if (synced && synced[0] === this._nativeStamp && synced[1] === glass.version && synced[2] === frost.generation)
+            return this._nativeOn;
+        this._nativeSynced = [this._nativeStamp, glass.version, frost.generation];
+        this._nativeOn = this._syncNative(paintContext, actor);
+        return this._nativeOn;
+    }
+
+    _syncNative(paintContext, actor) {
+        const look = this.look;
+        const glass = this._glass;
+        const material = this._material;
+        if (!material || material.bare)
+            return false;
+        const widget = actor instanceof St.Widget;
+        const scale = this._scale();
+        const colors = this._readColors(actor);
+        const shadow = this._shadow(material);
+        const m = material;
+        let edge;
+        if (colors.ownBorder || !colors.text)
+            edge = [0, 0, 0, 0];
+        else if (colors.edge)
+            edge = colors.edge;
+        else
+            edge = [...colors.text, m.edge];
+        const values = [
+            m.sat, m.dim, m.tint, m.glint, ...m.rim, m.shade, m.lift?.[0] ?? 0, m.lift?.[1] ?? 0,
+            m.top?.[0] ?? 0, m.top?.[1] ?? 1, m.sides?.[0] ?? 0, m.sides?.[1] ?? 0, m.ring,
+            m.glow?.alpha ?? 0, m.glow?.y ?? 0, m.glow?.blur ?? 2, m.glow?.grow ?? 0,
+            m.sideGlow?.alpha ?? 0, m.sideGlow?.x ?? 0, m.sideGlow?.blur ?? 2, m.sideGlow?.grow ?? 0,
+            ...m.sheen ?? [0, 0.5, 0.5, 0], ...colors.ground, ...edge, ...colors.glow,
+            shadow?.alpha ?? 0, shadow?.blur ?? 0, shadow?.offset ?? 0, look.ring ?? 0,
+            CONTINUOUS.reach, CONTINUOUS.diagonal,
+            look.radius ?? (widget ? actor.get_theme_node().get_border_radius(St.Corner.TOPLEFT) : 0) / scale,
+            look.material === 'pane' || colors.own ? 1 : 0, this._margin(),
+            look.content ? look.contentShare : -1, scale, look.inClones ? 1 : 0, look.stageOnly ? 1 : 0,
+            widget ? 1 : 0,
+        ];
+        if (values.length !== VALUES || values.some(v => !Number.isFinite(v)))
+            return false;
+        const context = paintContext.get_framebuffer().get_context();
+        this._native.set_templates(glass.shader.template(context), glass.interior.template(context));
+        this._native.set_values(values);
+        this._native.clear_slots();
+        let first = null;
+        for (const picture of glass.frost.pictures(material.picture)) {
+            picture.consumers.add(this);
+            this._pictures.add(picture);
+            const ready = !!(picture.ready && picture.texture);
+            const clear = glass.frost.picture(picture.monitor.index, 'clear');
+            const sharp = ready && clear?.ready && clear.texture ? clear.texture : null;
+            const veilAlpha = ready ? this._veilFor(picture, material, colors, null) : 0;
+            const monitor = picture.monitor;
+            this._native.add_slot(monitor.index, monitor.x, monitor.y, monitor.width, monitor.height,
+                ready ? picture.texture : null, sharp, veilAlpha, ready);
+            first ??= {veil: veilAlpha, solid: !ready};
+        }
+        const circular = look.material === 'pane' || colors.own;
+        this._params = first ? {
+            variant: glass.variant, material: look.material, veil: first.veil, ground: colors.ground,
+            solid: first.solid, circular,
+        } : null;
+        return true;
     }
 
     // The colours the glass takes from the surface's stylesheet, read once per style: the text, the ground the veil

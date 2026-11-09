@@ -18,7 +18,8 @@ set -eoux pipefail
 # clang, bpftool, libbpf-devel and kernel-devel (for vmlinux.h) build amethystora-sensor's BPF object; the
 # sensor links Fedora's libbpf, which the image itself carries, so nothing of libbpf is vendored.
 dnf5 -y install --repo=fedora --repo=updates --setopt=install_weak_deps=False \
-    rust cargo gcc gtk4-devel libadwaita-devel jq nodejs clang llvm bpftool libbpf-devel kernel-devel libseccomp-devel
+    rust cargo gcc gtk4-devel libadwaita-devel jq nodejs clang llvm bpftool libbpf-devel kernel-devel libseccomp-devel \
+    mutter-devel
 # The Vault: the openssl crate (keys and certificates, in the one short-lived child that loads libcrypto) builds against
 # openssl-devel, and its tests hold the work to what other programs make of it: openssl, osslsigncode, pdfsig and pdftotext
 # (poppler-utils), certutil (nss-tools), ssh-keygen, oathtool, qrencode, a JDK for jarsigner and a private dbus-daemon
@@ -96,6 +97,17 @@ gcc -Wall -O2 -o /tmp/seccomp-gen /tmp/apps/plugin-host/seccomp/gen.c -lseccomp
 # The Vault (plans/done/PLAN-vault.md): the service, its command line and the child that does its libcrypto work,
 # the PKCS#11 module pdfsig loads, and the network service that sync reaches a server through (no key, no state)
 cargo build --release --locked -p amethystora-vault-service -p amethystora-vault-pkcs11 -p amethystora-vault-net
+# The glass's paint in native code (plans/PLAN-shell-performance.md, phase 3): a library GNOME Shell loads through
+# introspection, linked against the image's own Mutter (whose libraries carry GNOME's major version), and its typelib,
+# compiled from the hand-written GIR against Mutter's
+cargo build --release --locked -p amethystora-glass
+MUTTER_API="$(pkg-config --list-package-names | sed -n 's/^mutter-clutter-\([0-9]*\)$/\1/p' | sort -n | tail -n 1)"
+[[ -n "${MUTTER_API}" ]]
+sed -e "s|@LIBRARY@|/usr/lib64/amethystora/libamethystora_glass.so|" -e "s|@MUTTER@|${MUTTER_API}|g" \
+    /tmp/apps/glass/AmethystoraGlass-1.gir.in >/tmp/AmethystoraGlass-1.gir
+gi-compile-repository --includedir "/usr/lib64/mutter-${MUTTER_API}" -o /tmp/AmethystoraGlass-1.typelib /tmp/AmethystoraGlass-1.gir
+ldd "${CARGO_TARGET_DIR}/release/libamethystora_glass.so" | grep -q "libmutter-clutter-${MUTTER_API}\.so" ||
+    { echo "::error::libamethystora_glass.so is not linked against Mutter ${MUTTER_API}'s Clutter"; exit 1; }
 
 mkdir -p /out/licenses
 install -Dpm0755 "${CARGO_TARGET_DIR}/release/amethystora-apps" /out/amethystora-apps
@@ -106,6 +118,8 @@ for program in amethystora-agent-tools amethystora-agent-root amethystora-clipbo
     install -Dpm0755 "${CARGO_TARGET_DIR}/release/${program}" "/out/${program}"
 done
 install -Dpm0755 "${CARGO_TARGET_DIR}/release/libamethystora_vault_pkcs11.so" /out/libamethystora_vault_pkcs11.so
+install -Dpm0755 "${CARGO_TARGET_DIR}/release/libamethystora_glass.so" /out/libamethystora_glass.so
+install -Dpm0644 /tmp/AmethystoraGlass-1.typelib /out/AmethystoraGlass-1.typelib
 # The service holds every open vault's keys and must never map libcrypto (its memory is 8 MB, and libcrypto parses what it is
 # given): the openssl crate is the work child's and the command line's alone
 for program in amethystora-vault-service; do
@@ -121,13 +135,13 @@ ldd "${CARGO_TARGET_DIR}/release/amethystora-sensor" | grep -q 'libbpf\.so\.1' |
 # it), with its licence, and the licence and notice files it ships: most are MIT or Apache-2.0, whose
 # terms ask for their notices to travel with the program
 cargo tree --locked -p amethystora-apps -p amethystora-sensor -p amethystora-agent-tools -p amethystora-clipboard-seal -p amethystora-connect -p amethystora-move -p amethystora-plugin-host \
-    -p amethystora-vault-service -p amethystora-vault-pkcs11 -p amethystora-vault-net -e normal --prefix none --format '{p}' |
+    -p amethystora-vault-service -p amethystora-vault-pkcs11 -p amethystora-vault-net -p amethystora-glass -e normal --prefix none --format '{p}' |
     sed -n 's/^\([^ ]*\) v\([^ ]*\)\( (\*)\)\{0,1\}$/\1\t\2/p' | sort -u >/tmp/built.tsv
 cargo metadata --locked --format-version 1 >/tmp/metadata.json
 jq -r '.packages[] | select(.source != null)
     | [.name, .version, (.license // "see its licence file"), (.repository // ""), (.manifest_path | sub("/Cargo.toml$"; ""))]
     | @tsv' /tmp/metadata.json | sort -u >/tmp/packages.tsv
-printf '# The Rust crates built into the Amethystora apps, amethystora-sensor, the agent tools, the clipboard seal, the phone link, the move, the plugin host and the Vault: name, version, licence, source\n' \
+printf '# The Rust crates built into the Amethystora apps, amethystora-sensor, the agent tools, the clipboard seal, the phone link, the move, the plugin host, the Vault and the glass: name, version, licence, source\n' \
     >/out/licenses/CRATES
 missing=()
 while IFS=$'\t' read -r name version licence repository folder; do
@@ -177,6 +191,6 @@ if [[ -n "${CARGO_SAVE:-}" ]]; then
 fi
 
 cd /
-rm -rf /tmp/apps /tmp/target /tmp/cargo /tmp/built.tsv /tmp/packages.tsv /tmp/metadata.json /tmp/amethystora-notes-test-*
+rm -rf /tmp/apps /tmp/target /tmp/cargo /tmp/AmethystoraGlass-1.gir /tmp/AmethystoraGlass-1.typelib /tmp/built.tsv /tmp/packages.tsv /tmp/metadata.json /tmp/amethystora-notes-test-*
 
 echo "::endgroup::"

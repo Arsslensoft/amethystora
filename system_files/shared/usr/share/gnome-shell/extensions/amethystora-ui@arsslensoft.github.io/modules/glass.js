@@ -64,6 +64,8 @@ export class Glass {
         this.variant = this._readVariant();
         this._strengths = new Map();
         this._materials = new Map();
+        // Counts every change the glass's panes draw differently after, which effect.js gives the native paint again
+        this.version = 0;
         this._settings.connectObject(
             'changed::material', () => this._syncVariant(),
             'changed::solid', () => this._syncSolid(),
@@ -87,7 +89,10 @@ export class Glass {
         // Read by every pane on every frame: kept here rather than asked of St each time
         const context = St.ThemeContext.get_for_stage(global.stage);
         this.scale = context.scale_factor;
-        context.connectObject('notify::scale-factor', () => (this.scale = context.scale_factor), this);
+        context.connectObject('notify::scale-factor', () => {
+            this.scale = context.scale_factor;
+            this.version++;
+        }, this);
 
         // The windows first: the top bar and the workspace slide ask them
         this.windows = new Windows(this);
@@ -106,6 +111,7 @@ export class Glass {
         this.style?.onChange(() => {
             if (!this._running)
                 return;
+            this.version++;
             this.windows?.restyle();
             this._topBar?.restyle();
         });
@@ -346,11 +352,13 @@ export class Glass {
     }
 
     _syncBlur(variant) {
+        this.version++;
         if (variant === this.variant)
             this.frost?.setRecipe('glass', this.recipeFor(variant));
     }
 
     _syncTint(variant) {
+        this.version++;
         this._strengths.clear();
         this._materials?.clear();
         if (variant !== this.variant)
@@ -369,6 +377,7 @@ export class Glass {
         const variant = this._readVariant();
         if (variant === this.variant)
             return;
+        this.version++;
         this.variant = variant;
         this._materials?.clear();
         this.frost?.setRecipe('glass', this.recipeFor(variant));
@@ -497,6 +506,7 @@ export class Glass {
         if (light === this.light)
             return;
         this.light = light;
+        this.version++;
         for (const [actor, surface] of this._surfaces) {
             if (surface.scheme)
                 this._schemeOf(actor, surface);

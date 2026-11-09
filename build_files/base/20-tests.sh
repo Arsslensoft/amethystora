@@ -537,6 +537,14 @@ for uuid in amethystora-clipboard amethystora-logo-menu; do
     test -s "/usr/share/gnome-shell/extensions/${uuid}@arsslensoft.github.io/styles.css"
     grep -qF "'${uuid}@arsslensoft.github.io'" "${UI_EXTENSION}/extension.js"
 done
+# The glass's paint in native code (apps/glass, modules/glass/native.js): the library resolves against the image's own
+# Mutter, and GJS loads its typelib, which names it by its installed path, and makes a pane with it, as GNOME Shell does
+! ldd /usr/lib64/amethystora/libamethystora_glass.so | grep -q 'not found'
+grep -qF '/usr/lib64/amethystora/libamethystora_glass.so' /usr/lib64/girepository-1.0/AmethystoraGlass-1.typelib
+MUTTER_API="$(find /usr/lib64 -maxdepth 1 -name 'mutter-[0-9]*' -printf '%f\n' | sed 's/^mutter-//' | sort -n | tail -n 1)"
+GI_TYPELIB_PATH="/usr/lib64/mutter-${MUTTER_API}" gjs -c "imports.gi.versions.AmethystoraGlass = '1';
+const pane = new imports.gi.AmethystoraGlass.Pane(); pane.set_values(new Array(52).fill(0)); pane.forget();"
+grep -qF "gi://AmethystoraGlass?version=1" "${UI_EXTENSION}/modules/glass/native.js"
 # Amethystora Logo Menu, the gem at the left of the top bar: enabled, claiming this GNOME (the Logo Menu it
 # replaced claimed none past 50 and would have gone with no failed build), with its licence. It draws the image's
 # own gem; every app it names ships in the image or comes with every machine, and each command is installed.

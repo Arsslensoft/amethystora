@@ -156,6 +156,7 @@ class Picture {
             framebuffer.orthographic(0, 0, this.width, this.height, -1, 1);
             this.blank = Cogl.Pipeline.new(context);
             this.texture = texture;
+            this._frost.generation++;
             this._framebuffer = framebuffer;
         } catch (e) {
             console.error(`Amethystora UI: the glass has no picture for a screen: ${e.message}`);
@@ -174,6 +175,7 @@ class Picture {
     rendered() {
         this.ready = true;
         this.dirty = false;
+        this._frost.generation++;
         this._frost.redrawSoon(this);
         if (this.recipe !== 'glass')
             return;
@@ -291,6 +293,7 @@ class Picture {
     // Drawn again from scratch, as after the GPU lost its memory
     refresh() {
         this.ready = false;
+        this._frost.generation++;
         this._source.queue_redraw();
     }
 
@@ -346,6 +349,8 @@ export class Frost {
     // backdrop still to come
     _build() {
         this._byRecipe = null;
+        // Counts every change to what a picture shows from, which effect.js gives the native paint again
+        this.generation = (this.generation ?? 0) + 1;
         for (const monitor of Main.layoutManager.monitors) {
             for (const name of Object.keys(RECIPES)) {
                 const recipe = name === 'glass' ? this._glassRecipe : RECIPES[name];

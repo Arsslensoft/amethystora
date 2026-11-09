@@ -1,0 +1,87 @@
+<?xml version="1.0"?>
+<!-- AmethystoraGlass: the glass's paint in native code (src/lib.rs says what each call does). build-apps.sh fills in
+     @LIBRARY@ (where the library is installed) and @MUTTER@ (Mutter's API version, GNOME's major) and compiles it into
+     AmethystoraGlass-1.typelib with gi-compile-repository. -->
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GObject" version="2.0"/>
+  <include name="Clutter" version="@MUTTER@"/>
+  <include name="Cogl" version="@MUTTER@"/>
+  <namespace name="AmethystoraGlass" version="1" shared-library="@LIBRARY@"
+             c:identifier-prefixes="AmethystoraGlass" c:symbol-prefixes="amethystora_glass">
+    <class name="Pane" c:type="AmethystoraGlassPane" parent="GObject.Object"
+           glib:type-name="AmethystoraGlassPane" glib:get-type="amethystora_glass_pane_get_type">
+      <constructor name="new" c:identifier="amethystora_glass_pane_new">
+        <return-value transfer-ownership="full"><type name="Pane" c:type="AmethystoraGlassPane*"/></return-value>
+      </constructor>
+      <method name="set_templates" c:identifier="amethystora_glass_pane_set_templates">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Pane" c:type="AmethystoraGlassPane*"/></instance-parameter>
+          <parameter name="full" transfer-ownership="none"><type name="Cogl.Pipeline" c:type="CoglPipeline*"/></parameter>
+          <parameter name="inner" transfer-ownership="none"><type name="Cogl.Pipeline" c:type="CoglPipeline*"/></parameter>
+        </parameters>
+      </method>
+      <method name="set_values" c:identifier="amethystora_glass_pane_set_values">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Pane" c:type="AmethystoraGlassPane*"/></instance-parameter>
+          <parameter name="values" transfer-ownership="none">
+            <array length="1" zero-terminated="0" c:type="const float*"><type name="gfloat" c:type="float"/></array>
+          </parameter>
+          <parameter name="n_values" transfer-ownership="none"><type name="gsize" c:type="gsize"/></parameter>
+        </parameters>
+      </method>
+      <method name="clear_slots" c:identifier="amethystora_glass_pane_clear_slots">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Pane" c:type="AmethystoraGlassPane*"/></instance-parameter>
+        </parameters>
+      </method>
+      <method name="add_slot" c:identifier="amethystora_glass_pane_add_slot">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Pane" c:type="AmethystoraGlassPane*"/></instance-parameter>
+          <parameter name="monitor" transfer-ownership="none"><type name="guint" c:type="guint"/></parameter>
+          <parameter name="x" transfer-ownership="none"><type name="gfloat" c:type="float"/></parameter>
+          <parameter name="y" transfer-ownership="none"><type name="gfloat" c:type="float"/></parameter>
+          <parameter name="width" transfer-ownership="none"><type name="gfloat" c:type="float"/></parameter>
+          <parameter name="height" transfer-ownership="none"><type name="gfloat" c:type="float"/></parameter>
+          <parameter name="texture" transfer-ownership="none" nullable="1" allow-none="1"><type name="Cogl.Texture" c:type="CoglTexture*"/></parameter>
+          <parameter name="clear" transfer-ownership="none" nullable="1" allow-none="1"><type name="Cogl.Texture" c:type="CoglTexture*"/></parameter>
+          <parameter name="veil" transfer-ownership="none"><type name="gfloat" c:type="float"/></parameter>
+          <parameter name="ready" transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></parameter>
+        </parameters>
+      </method>
+      <method name="forget" c:identifier="amethystora_glass_pane_forget">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Pane" c:type="AmethystoraGlassPane*"/></instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_corner" c:identifier="amethystora_glass_pane_get_corner">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Pane" c:type="AmethystoraGlassPane*"/></instance-parameter>
+          <parameter name="s" direction="out" caller-allocates="0" transfer-ownership="full"><type name="gfloat" c:type="float*"/></parameter>
+          <parameter name="n" direction="out" caller-allocates="0" transfer-ownership="full"><type name="gfloat" c:type="float*"/></parameter>
+        </parameters>
+      </method>
+      <method name="paint" c:identifier="amethystora_glass_pane_paint">
+        <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Pane" c:type="AmethystoraGlassPane*"/></instance-parameter>
+          <parameter name="node" transfer-ownership="none"><type name="Clutter.PaintNode" c:type="ClutterPaintNode*"/></parameter>
+          <parameter name="context" transfer-ownership="none"><type name="Clutter.PaintContext" c:type="ClutterPaintContext*"/></parameter>
+          <parameter name="actor" transfer-ownership="none"><type name="Clutter.Actor" c:type="ClutterActor*"/></parameter>
+          <parameter name="areas" transfer-ownership="none" nullable="1" allow-none="1">
+            <array length="4" zero-terminated="0" c:type="const float*"><type name="gfloat" c:type="float"/></array>
+          </parameter>
+          <parameter name="n_areas" transfer-ownership="none"><type name="gsize" c:type="gsize"/></parameter>
+        </parameters>
+      </method>
+    </class>
+  </namespace>
+</repository>

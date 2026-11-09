@@ -17,6 +17,11 @@ export class Shader {
     }
 
     pipeline(context) {
+        return this.template(context).copy();
+    }
+
+    // The pipeline every copy is made from, for the context
+    template(context) {
         let template = this._templates.get(context);
         if (!template) {
             template = Cogl.Pipeline.new(context);
@@ -28,7 +33,7 @@ export class Shader {
             template.add_snippet(Cogl.Snippet.new(Cogl.SnippetHook.FRAGMENT, this._declarations, this._code));
             this._templates.set(context, template);
         }
-        return template.copy();
+        return template;
     }
 
     _location(pipeline, name) {

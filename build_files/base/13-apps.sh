@@ -67,6 +67,10 @@ for program in service cli work net; do
     install -Dpm0755 "/apps-stage/out/amethystora-vault-${program}" "/usr/libexec/amethystora-vault-${program}"
 done
 install -Dpm0755 /apps-stage/out/libamethystora_vault_pkcs11.so /usr/lib64/amethystora-vault/libamethystora_vault_pkcs11.so
+# The glass's paint in native code, which Amethystora UI loads through its typelib (modules/glass/native.js); the typelib
+# names the library by this path
+install -Dpm0755 /apps-stage/out/libamethystora_glass.so /usr/lib64/amethystora/libamethystora_glass.so
+install -Dpm0644 /apps-stage/out/AmethystoraGlass-1.typelib /usr/lib64/girepository-1.0/AmethystoraGlass-1.typelib
 # What git and docker look for on their PATH, under the names they look for, to have a login from the vault (ame vault helpers)
 install -Dpm0755 /apps-stage/out/git-credential-amethystora /usr/bin/git-credential-amethystora
 install -Dpm0755 /apps-stage/out/docker-credential-amethystora /usr/bin/docker-credential-amethystora

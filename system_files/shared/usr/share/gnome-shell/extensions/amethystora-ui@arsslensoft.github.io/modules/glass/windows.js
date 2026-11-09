@@ -41,6 +41,8 @@ const frame = actor => {
     return [[(f.x - b.x) * k, (f.y - b.y) * k, f.width * k, f.height * k]];
 };
 const content = actor => Math.round(actor.get_paint_opacity() * OPACITY / 255);
+// The same as a share of the paint's opacity, for the native paint (glass/native.js)
+const contentShare = OPACITY / 255;
 
 // A pane's corners are round: what lies this far inside its box (and a pixel more, for the edge's softness) is under
 // the glass for sure
@@ -120,7 +122,7 @@ export class Windows {
 
     // The look of a copy of a window that has glass, as the workspace switch slides it in
     cloneLook() {
-        return {material: 'pane', radius: this._glass.windowRadius, areas: frame, content, inClones: false,
+        return {material: 'pane', radius: this._glass.windowRadius, areas: frame, content, contentShare, inClones: false,
             stageOnly: true};
     }
 
@@ -369,6 +371,7 @@ export class Windows {
             radius: square ? 0 : this._glass.windowRadius,
             areas: frame,
             content,
+            contentShare,
             inClones: false,
             stageOnly: true,
         });

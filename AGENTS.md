@@ -34,7 +34,8 @@ This document provides essential information for coding agents working with the 
   - `sealed/` - the sealed images only, copied in by `build_files/sealed/00-sealed.sh`
 - `apps/` - The Amethystora apps (Manual, Security, Updates, Notes, Logs, Backups, Control, Help): one Rust
   program, a Cargo workspace built in the apps layer (see The Amethystora apps, Build layers); the same
-  workspace builds `amethystora-sensor` and the AI agent's tools (`agent-tools`, see Agentic features); the Vault is
+  workspace builds `amethystora-sensor`, the glass's native paint (`apps/glass`, see What keeps the shell quick) and the AI
+  agent's tools (`agent-tools`, see Agentic features); the Vault is
   `apps/vault*`, seven crates (see The Vault)
 - `build_files/` - Build scripts organized as base/, dx/, shared/
   - `base/` - Base image build scripts (00-image-info.sh through 20-tests.sh)
@@ -1417,7 +1418,15 @@ it and everything under it at once: give a widget its classes before it is shown
 `Gio.Subprocess.new` use `posix_spawn` (`INHERIT_FDS`), and a module that makes a `Gio.SubprocessLauncher` passes that flag
 itself. The glass's paint runs in JS on every frame: keep it free of settings reads, St lookups and uniforms sent unchanged
 (`shader.update`), and keep a pane's inside on `glass_interior()`, whose terms must stay what `glass_color()` draws there
-(`insets()` in `glass/effect.js` says where; suite 13 compares the two within one level).
+(`insets()` in `glass/effect.js` says where; suite 13 compares the two within one level). **The glass's paint is native**
+(phase 3): `apps/glass` (Rust, `libamethystora_glass.so` in `/usr/lib64/amethystora`) is an `AmethystoraGlass.Pane` GObject
+that GNOME Shell loads through its typelib (`AmethystoraGlass-1.gir.in`, written by hand and compiled by `build-apps.sh` against
+`mutter-devel`'s GIRs), using only Clutter's and Cogl's public C functions, never a class structure of Mutter's. `effect.js`
+gives it what changed (the `VALUES` row, whose layout is the crate's `V_` constants: change both together, the pictures, the
+two lens templates) and calls `paint()` once a paint; a banner's fade and a bare bar stay in JS, and so does everything when
+the typelib is missing or `AMETHYSTORA_GLASS_JS` is set in GNOME Shell's environment. It runs inside the shell under
+`panic = "abort"`: nothing in it may unwrap, index unchecked or block. A GNOME release rebuilds it (`20-tests.sh` loads it with
+GJS), and suite 13 compares its paint with JS's.
 
 The modules, and what each replaced:
 

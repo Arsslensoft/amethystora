@@ -147,6 +147,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "amethystora-glass"
+version = "1.0.0"
+dependencies = [
+ "glib",
+]
+
+[[package]]
 name = "amethystora-help"
 version = "1.0.0"
 dependencies = [

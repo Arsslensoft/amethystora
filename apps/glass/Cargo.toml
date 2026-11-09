@@ -1,0 +1,18 @@
+# amethystora-glass: the glass's paint in native code (plans/PLAN-shell-performance.md, phase 3). A shared library that
+# GNOME Shell loads through GObject introspection (AmethystoraGlass-1.gir, compiled into a typelib by build-apps.sh):
+# Amethystora UI's glass effect hands it, once each, what a pane is made of and the pictures of each screen, and calls
+# it once per paint, where it works out the pane's place, sends the lens its uniforms and adds the paint nodes. It
+# uses only Clutter's and Cogl's public C functions and no class of theirs, so no structure of Mutter's is laid out here.
+[package]
+name = "amethystora-glass"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+name = "amethystora_glass"
+crate-type = ["cdylib"]
+
+[dependencies]
+glib = "0.22"

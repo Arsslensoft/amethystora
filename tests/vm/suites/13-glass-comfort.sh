@@ -149,6 +149,24 @@ b = Image.open('${SHOTS}/lean-${v}.png').convert('RGB')
 box = (0, 60, a.width, a.height)
 d = ImageChops.difference(a.crop(box), b.crop(box))
 sys.exit(0 if max(hi for lo, hi in d.getextrema()) <= 1 else 1)"
+    # The native paint (apps/glass) draws the same as effect.js's own, within one level
+    native="$(ev "(() => { const e = ${UNFOCUSED}.get_effect('amethystora-glass'); return String(!!e._native && e._nativeOn); })()")"
+    same "2 ${v}: the window's pane is drawn by the native paint" "${native}" "true"
+    NATIVE="for (const [a, s] of ${G}._surfaces) if (s.effect) { s.effect.__native ??= s.effect._native; s.effect._nativeSynced = null; a.queue_redraw(); }"
+    ev "(() => { ${NATIVE} for (const [, s] of ${G}._surfaces) if (s.effect) s.effect._native = null; return 'js'; })()" >/dev/null
+    sleep 1
+    shot "js-${v}"
+    ev "(() => { ${NATIVE} for (const [, s] of ${G}._surfaces) if (s.effect?.__native) s.effect._native = s.effect.__native; return 'native'; })()" >/dev/null
+    sleep 1
+    shot "native-${v}"
+    check "2 ${v}: the native paint matches effect.js's within one level" python3 -c "
+import sys
+from PIL import Image, ImageChops
+a = Image.open('${SHOTS}/js-${v}.png').convert('RGB')
+b = Image.open('${SHOTS}/native-${v}.png').convert('RGB')
+box = (0, 60, a.width, a.height)
+d = ImageChops.difference(a.crop(box), b.crop(box))
+sys.exit(0 if max(hi for lo, hi in d.getextrema()) <= 1 else 1)"
     if [[ ${v} == prism ]]; then
         corner="$(ev "(() => { ${FIND} const q = find(global.stage, 'quick-settings'); const r = q.get_theme_node().get_border_radius(0); const [s, n] = q.get_effect('amethystora-glass').params.corner; return (n > 2.76 && n < 2.78 && Math.abs(s - 1.4 * r) <= 0.5) + ' ' + ${UNFOCUSED}.get_effect('amethystora-glass').params.corner[1]; })()")"
         same "4 the quick settings' corners are continuous (n 2.77, s 1.4 r), the window's circular" "${corner}" "true 2"
