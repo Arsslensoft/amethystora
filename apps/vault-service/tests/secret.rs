@@ -2229,6 +2229,19 @@ fn the_usual_tools_rewrite_files_they_made_beside_the_login_and_fail_loudly_on_t
 }
 
 #[test]
+fn a_folder_comes_back_with_the_mode_it_had() {
+    use std::os::unix::fs::PermissionsExt;
+    let person = Person::new("protect-folder-mode");
+    person.put(".kube/config", "secret\n");
+    std::fs::set_permissions(person.at(".kube"), std::fs::Permissions::from_mode(0o755)).unwrap();
+    assert_eq!(person.says(&["protect", person.at(".kube").to_str().unwrap()]).0, 0);
+    assert!(!person.at(".kube").exists());
+    assert_eq!(person.says(&["unprotect", ".kube"]).0, 0);
+    assert_eq!(std::fs::metadata(person.at(".kube")).unwrap().permissions().mode() & 0o777, 0o755);
+    assert_eq!(std::fs::read_to_string(person.at(".kube/config")).unwrap(), "secret\n");
+}
+
+#[test]
 fn protecting_a_renamed_item_again_from_another_folder_is_refused_as_protected_already() {
     let person = Person::new("protect-renamed");
     person.put(".npmrc", "sealed\n");

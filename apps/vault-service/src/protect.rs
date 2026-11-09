@@ -124,6 +124,8 @@ pub struct Tree {
     pub folders: Vec<(String, u32)>,
     /// Things a command left that are not plain files or folders, which are not sealed
     pub skipped: usize,
+    /// A folder's own mode, which an item sealed before it was kept does not say
+    pub root_mode: Option<u32>,
 }
 
 /// One name of a path as it may be stored: nothing that leaves the place it is in, and nothing that cannot be shown
@@ -360,22 +362,34 @@ fn read_opened(fd: OwnedFd, path: &str, skip: &[String], lenient: bool) -> Resul
         if stat.st_nlink > 1 {
             return Err(Why::Linked);
         }
-        return Ok(Tree { what: What::File, files: vec![Held { at: String::new(), mode, data, stamp: Some(stamp) }], folders: Vec::new(), skipped: 0 });
+        return Ok(Tree::one_file(data, mode, Some(stamp)));
     }
     if !is_kind(&stat, libc::S_IFDIR) {
         return Err(Why::NotPlain);
     }
-    let mut tree = Tree { what: What::Folder, files: Vec::new(), folders: Vec::new(), skipped: 0 };
+    let mut tree = Tree { what: What::Folder, files: Vec::new(), folders: Vec::new(), skipped: 0, root_mode: Some(stat.st_mode & 0o777) };
     read_tree(&fd, "", path, &mut tree, &mut room, skip, 0, lenient)?;
     Ok(tree)
 }
 
 impl Tree {
+    fn one_file(data: Zeroizing<Vec<u8>>, mode: u32, stamp: Option<Stamp>) -> Tree {
+        Tree { what: What::File, files: vec![Held { at: String::new(), mode, data, stamp }], folders: Vec::new(), skipped: 0, root_mode: None }
+    }
+
+    /// A file as it was sealed, from what it held
+    pub fn file(data: &[u8], mode: u32) -> Tree {
+        Tree::one_file(Zeroizing::new(data.to_vec()), mode, None)
+    }
+
     /// As the item's value: all of it fits a line of the socket, or it is too large to be an item
     pub fn to_value(&self) -> Result<Value, Why> {
         let files: Vec<Value> = self.files.iter().map(|file| json!({"at": file.at, "mode": file.mode, "data": STANDARD.encode(&*file.data)})).collect();
         let folders: Vec<Value> = self.folders.iter().map(|(at, mode)| json!({"at": at, "mode": mode})).collect();
-        let value = json!({"what": self.what.name(), "files": files, "folders": folders});
+        let mut value = json!({"what": self.what.name(), "files": files, "folders": folders});
+        if let (What::Folder, Some(mode)) = (self.what, self.root_mode) {
+            value["mode"] = json!(mode);
+        }
         if value.to_string().len() > MAX_DATA {
             return Err(Why::TooLarge);
         }
@@ -409,7 +423,12 @@ impl Tree {
         if files.len() + folders.len() > MOST_ENTRIES || (what == What::File && (files.len() != 1 || !folders.is_empty())) {
             return Err(Why::NotPlain);
         }
-        Ok(Tree { what, files, folders, skipped: 0 })
+        let root_mode = match &value["mode"] {
+            Value::Null => None,
+            _ if what == What::Folder => Some(mode_of(value)?),
+            _ => return Err(Why::NotPlain),
+        };
+        Ok(Tree { what, files, folders, skipped: 0, root_mode })
     }
 
     /// This folder's files with another's added. A name both hold with something else in it is a conflict, never a choice made here.
@@ -417,7 +436,7 @@ impl Tree {
         if self.what != What::Folder || other.what != What::Folder {
             return Err(Why::AlreadyProtected);
         }
-        let Tree { what, mut files, mut folders, skipped } = self;
+        let Tree { what, mut files, mut folders, skipped, root_mode } = self;
         for file in &other.files {
             match files.iter().find(|held| held.at == file.at) {
                 Some(held) if held.mode == file.mode && seal::same(&held.data, &file.data) => {}
@@ -435,7 +454,7 @@ impl Tree {
         if files.len() + folders.len() > MOST_ENTRIES {
             return Err(Why::TooLarge);
         }
-        Ok(Tree { what, files, folders, skipped })
+        Ok(Tree { what, files, folders, skipped, root_mode: root_mode.or(other.root_mode) })
     }
 
     pub fn size(&self) -> usize {
@@ -586,7 +605,7 @@ pub fn restore(home: &OwnedFd, path: &str, tree: &Tree) -> Result<(), Why> {
     } else {
         let name = c_name(&last)?;
         // SAFETY: a live string; there already is the usual answer, for a folder something stayed in
-        unsafe { libc::mkdirat(parent.as_raw_fd(), name.as_ptr(), 0o700) };
+        let made = unsafe { libc::mkdirat(parent.as_raw_fd(), name.as_ptr(), 0o700) } == 0;
         let root = open_at(parent.as_raw_fd(), &last, libc::O_RDONLY | libc::O_DIRECTORY, 0)?;
         for (at, mode) in &tree.folders {
             let (folder, name) = folder_of(&root, at, true)?;
@@ -597,6 +616,13 @@ pub fn restore(home: &OwnedFd, path: &str, tree: &Tree) -> Result<(), Why> {
         for file in &tree.files {
             let (folder, name) = folder_of(&root, &file.at, true)?;
             write_in(&folder, &name, &file.data, file.mode)?;
+        }
+        // The mode it had, once everything is in it. A folder something stayed in has its own already.
+        if let (true, Some(mode)) = (made, tree.root_mode) {
+            // SAFETY: a live descriptor
+            if unsafe { libc::fchmod(root.as_raw_fd(), mode) } != 0 {
+                return Err(Why::Disk);
+            }
         }
     }
     // What was written reads back as it should, before anyone takes it from the vault
@@ -857,6 +883,9 @@ impl Place {
     fn mount_folder(&self, tree: &Tree) -> Result<(), Why> {
         let stays = self.open_stays(&self.full)?;
         mount_tmpfs(&self.full)?;
+        if let Some(mode) = tree.root_mode {
+            std::fs::set_permissions(&self.full, std::fs::Permissions::from_mode(mode | 0o700)).map_err(|_| Why::Disk)?;
+        }
         for (at, mode) in &tree.folders {
             let folder = self.full.join(at);
             std::fs::DirBuilder::new().mode(*mode | 0o700).create(&folder).map_err(|_| Why::Disk)?;
