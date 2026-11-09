@@ -757,22 +757,40 @@ fn aws_on(item: &str, profile: &str) -> Result<(), u8> {
     write_private(&path, &new)
 }
 
+/// A mark `aws_on` writes, exactly as it writes it: the profile, and whether the block begins there. A comment of the person's that only
+/// starts the same way is not one.
+fn aws_mark(line: &str) -> Option<(&str, bool)> {
+    let (profile, end) = line.trim_end_matches(['\n', '\r']).strip_prefix(AWS_MARK)?.strip_prefix(' ')?.split_once(' ')?;
+    match end {
+        _ if !plain_word(profile) => None,
+        "begin" => Some((profile, true)),
+        "end" => Some((profile, false)),
+        _ => None,
+    }
+}
+
 fn aws_off() -> Result<(), u8> {
     let path = aws_config()?;
     let text = read_text(&path)?;
-    let mut inside = false;
+    let mut inside = None;
+    let mut found = false;
     let mut kept = String::new();
-    for line in text.lines() {
-        if line.starts_with(AWS_MARK) {
-            inside = line.ends_with(" begin");
-        } else if !inside {
-            kept.push_str(line);
-            kept.push('\n');
+    // Each line keeps its own ending
+    for line in text.split_inclusive('\n') {
+        match (inside, aws_mark(line)) {
+            (None, Some((profile, true))) => (inside, found) = (Some(profile), true),
+            (Some(open), Some((profile, false))) if open == profile => inside = None,
+            (Some(_), _) => {}
+            (None, _) => kept.push_str(line),
         }
     }
     // A block whose end is gone is not a block this made: everything after it would go with it
-    if inside {
+    if inside.is_some() {
         return Err(OURS);
+    }
+    // Nothing of this one's there: nothing is written, and no file is made
+    if !found {
+        return Ok(());
     }
     write_private(&path, &kept)
 }
@@ -798,7 +816,7 @@ fn helper_on(tool: &str) -> bool {
     match tool {
         "git" => git_helpers().iter().any(|helper| helper == "amethystora"),
         "docker" => home().ok().and_then(|home| read_json(&home.join(".docker/config.json")).ok()).is_some_and(|config| config["credsStore"] == json!("amethystora")),
-        "aws" => aws_config().and_then(|path| read_text(&path)).is_ok_and(|text| text.lines().any(|line| line.starts_with(AWS_MARK))),
+        "aws" => aws_config().and_then(|path| read_text(&path)).is_ok_and(|text| text.lines().any(|line| aws_mark(line).is_some_and(|(_, begins)| begins))),
         "kube" => kube_is_on(),
         "claude" => claude_settings().ok().and_then(|path| read_json(&path).ok()).is_some_and(|settings| settings["apiKeyHelper"].as_str().is_some_and(|helper| helper.starts_with(CLAUDE_START))),
         _ => false,

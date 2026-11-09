@@ -2224,3 +2224,22 @@ fn the_usual_tools_rewrite_files_they_made_beside_the_login_and_fail_loudly_on_t
     assert_eq!(std::fs::read_to_string(person.at(".aws/config")).unwrap(), "[default]\nregion = eu\n");
     assert!(token_on_disk(&person, "TOKEN-IN-THE-FILE").is_empty());
 }
+
+#[test]
+fn the_aws_block_goes_and_every_other_line_stays_as_it_was() {
+    let person = Person::new("helpers-aws-off");
+    // No file: nothing is made
+    assert_eq!(person.says(&["helpers", "aws", "off"]).0, 0);
+    assert!(!person.at(".aws/config").exists());
+    let theirs = "[default]\r\nregion = eu\r\n# amethystora-vault is how I keep my logins\r\n";
+    person.put(".aws/config", &format!("{theirs}# amethystora-vault work begin\n[profile work]\ncredential_process = /usr/bin/ame vault get work aws\n# amethystora-vault work end\n"));
+    assert_eq!(person.says(&["helpers", "aws", "off"]).0, 0);
+    assert_eq!(std::fs::read_to_string(person.at(".aws/config")).unwrap(), theirs);
+    // A comment of theirs is not a block of ours: nothing is said to be on, and nothing is rewritten
+    let listed: Value = serde_json::from_str(&person.says(&["helpers", "--json"]).1).unwrap();
+    assert_eq!(listed["helpers"].as_array().unwrap().iter().find(|row| row["tool"] == json!("aws")).unwrap()["on"], json!(false));
+    use std::os::unix::fs::MetadataExt;
+    let inode = std::fs::metadata(person.at(".aws/config")).unwrap().ino();
+    assert_eq!(person.says(&["helpers", "aws", "off"]).0, 0);
+    assert_eq!(std::fs::metadata(person.at(".aws/config")).unwrap().ino(), inode);
+}
