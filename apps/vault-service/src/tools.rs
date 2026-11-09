@@ -456,10 +456,14 @@ fn run_protected(args: &Args, item: &Value, command: &[OsString], started: &mut 
     // The command has ended, one way or another. The old copy stays sealed until the new one is.
     let code = status.unwrap_or_else(i32::from);
     let mut sealed = Ok(());
-    if !place.intact() {
-        // Something outside took the file's place away, and then the command was writing to the disk, in the open
-        eprintln!("{}", args.say("say-detached", "Something took the file's place away while the command ran, so what it wrote went to your disk, not into the vault, and nothing was sealed. The old copy is still sealed."));
-        sealed = Err(why(Why::Detached));
+    let detached = !place.intact();
+    if detached {
+        // Something outside took the file's place away, and then the command was writing to the disk, in the open, or could not write at all
+        if place.on_disk() {
+            eprintln!("{}", args.say("say-detached", "Something took the file's place away while the command ran, so what it wrote went to your disk, not into the vault, and nothing was sealed. The old copy is still sealed."));
+        } else {
+            eprintln!("{}", args.say("say-detached-gone", "Something took the file's place away while the command ran, so nothing it wrote after that was kept, and nothing was sealed. The old copy is still sealed."));
+        }
     } else {
         let mut new_data = Zeroizing::new(Vec::new());
         match place.read_back() {
@@ -484,6 +488,10 @@ fn run_protected(args: &Args, item: &Value, command: &[OsString], started: &mut 
         say_left(args, &place.keep_beside(&old_data, &new_data, code != 0));
     }
     place.leave();
+    // What the command ran over being taken from under it is said by the exit, also when the command failed
+    if detached {
+        return Err(why(Why::Detached));
+    }
     match (sealed, code) {
         (Err(trouble), 0) => Err(trouble),
         (_, 0) => Ok(()),

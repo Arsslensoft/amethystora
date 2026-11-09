@@ -2350,6 +2350,33 @@ fn a_folder_comes_back_with_the_mode_it_had() {
 }
 
 #[test]
+fn a_folder_taken_away_during_a_run_says_nothing_reached_the_disk_and_the_exit_says_it_was_taken() {
+    if !namespaces() {
+        return;
+    }
+    let person = Person::new("run-folder-gone");
+    person.put(".aws/credentials", "old\n");
+    let path = person.at(".aws/credentials");
+    assert_eq!(person.says(&["protect", path.to_str().unwrap()]).0, 0);
+    let (started, go) = (person.at("started"), person.at("go"));
+    let waits = tool(&person, "tool", &format!("touch '{}'\nwhile [ ! -e '{}' ]; do sleep 0.05; done\nprintf stolen >'{}' 2>/dev/null\nexit 3", started.display(), go.display(), path.display()));
+    let child = person.cli().args(["run", ".aws/credentials", "--", &waits]).stdout(Stdio::null()).stderr(Stdio::piped()).spawn().unwrap();
+    let begun = Instant::now();
+    while !started.exists() {
+        assert!(begun.elapsed() < Duration::from_secs(20), "the tool never started");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    std::fs::remove_dir_all(person.at(".aws")).unwrap();
+    std::fs::write(&go, "").unwrap();
+    let done = child.wait_with_output().unwrap();
+    let err = String::from_utf8_lossy(&done.stderr);
+    assert_eq!(done.status.code(), Some(21), "{err}");
+    assert!(err.contains("took the file's place") && !err.contains("went to your disk"), "{err}");
+    assert!(!path.exists());
+    assert_eq!(person.sealed_text(".aws/credentials"), "old\n");
+}
+
+#[test]
 fn protecting_a_renamed_item_again_from_another_folder_is_refused_as_protected_already() {
     let person = Person::new("protect-renamed");
     person.put(".npmrc", "sealed\n");

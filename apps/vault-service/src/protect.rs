@@ -998,6 +998,11 @@ impl Place {
         }
     }
 
+    /// Whether something is at the file's path now: with the mount gone, that is on the disk
+    pub fn on_disk(&self) -> bool {
+        self.full.symlink_metadata().is_ok()
+    }
+
     /// The tmpfs goes, and with it the only other copy, and so does the empty file or folder that held its place. If something else
     /// wrote into that meanwhile, it stays: it is not this command's.
     pub fn leave(self) {

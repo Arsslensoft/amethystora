@@ -450,6 +450,7 @@ run *ARGS:
         --say-kept-before="$(gettext 'The command did not end well, but it changed the file first, as a tool does when it renews its login. What it left is in place, and the copy from before is sealed beside it, under its own name. See: ame vault protected')" \
         --say-emptied="$(gettext 'The command left the file empty, so the sealed copy was kept as it was.')" \
         --say-detached="$(gettext 'Something took the file'\''s place away while the command ran, so what it wrote went to your disk, not into the vault, and nothing was sealed. The old copy is still sealed.')" \
+        --say-detached-gone="$(gettext 'Something took the file'\''s place away while the command ran, so nothing it wrote after that was kept, and nothing was sealed. The old copy is still sealed.')" \
         --say-copy-left="$(gettext 'Not kept, since it may be a copy of the protected file, or half of one: its name has the file'\''s in it, it holds its content, or the command did not end well ({count} in all): {names}')" \
         --say-not-kept="$(gettext 'These could not be kept, and are gone with the command'\''s private space ({count} in all, and any with names that cannot be shown): {names}')" \
         --say-variable="$(gettext 'That variable changes how programs start, so a secret is never put in it. Name another: VARIABLE=NAME')" \
