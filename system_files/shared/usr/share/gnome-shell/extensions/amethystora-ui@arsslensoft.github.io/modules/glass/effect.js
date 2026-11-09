@@ -42,6 +42,36 @@ export function corner(r, m, circular) {
     return [s, Math.max(2, LN2 / -Math.log(1 - CONTINUOUS.diagonal * r / s))];
 }
 
+// How deep inside the outline, in device pixels, the rim's terms of lens.glsl have all faded out: the bend once its
+// pull is no more than the 0.01 px the shader itself leaves out, the rim's light once its tail is under a quarter of a
+// level, the hairline and the ring once the outline's softness is past them
+function deep(m, unit) {
+    const pull = m.rim[0] * unit;
+    const bend = pull > 0.01 ? Math.max(m.rim[1] * unit, 1e-3) * Math.log(pull / 0.01) ** (1 / m.rim[2]) : 0;
+    const glint = m.glint > 0 ? Math.max(6, 6 * Math.log(255 * m.glint)) : 0;
+    return Math.max(bend, glint, unit + 0.5);
+}
+
+// How far in from each side of a pane ([top, right, bottom, left], device pixels) glass_interior() draws what
+// glass_color() would: past the corners (s), the rim's terms, the lines along the top and the sides and the glows
+// gathering along the bottom and up the left, each as far as lens.glsl itself works it out, and a pixel more
+export function insets(m, unit, s) {
+    const d = Math.max(deep(m, unit), s);
+    const sigma = blur => Math.max(blur / 2 * unit, 1e-3);
+    const top = m.top?.[0] > 0 ? s + (m.top[1] ?? 1) * unit + unit : 0;
+    const left = m.sides?.[0] > 0 ? s + 2 * unit : 0;
+    const right = m.sides?.[1] > 0 ? s + 2 * unit : 0;
+    const glow = m.glow?.alpha > 0
+        ? 3 * sigma(m.glow.blur ?? 2) - (m.glow.y ?? 0) * unit - (m.glow.grow ?? 0) * unit : 0;
+    const side = m.sideGlow?.alpha > 0
+        ? 3 * sigma(m.sideGlow.blur ?? 2) + (m.sideGlow.x ?? 0) * unit - (m.sideGlow.grow ?? 0) * unit : 0;
+    return [Math.max(d, top), Math.max(d, right), Math.max(d, glow), Math.max(d, left, side)]
+        .map(v => Math.ceil(v) + 1);
+}
+
+// A pane whose inside is no larger than this across, in device pixels, is drawn whole with glass_color()
+const INTERIOR = 32;
+
 // A look is what a surface asks of its glass:
 //   material  one of a variant's materials (materials.js)
 //   radius    the corners, in the stylesheet's pixels, or null for the surface's own border-radius, as the desktop
@@ -289,15 +319,17 @@ class AmethystoraGlassEffect extends Clutter.Effect {
                 const clear = frost.picture(monitor.index, 'clear');
                 const sharp = ready && clear?.ready && clear.texture ? clear.texture : null;
                 const key = `${i}:${monitor.index}`;
-                const pipeline = this._pipeline(paintContext, key, ready ? picture.texture : null, sharp);
+                const texture = ready ? picture.texture : null;
+                const pipeline = this._pipeline(paintContext, key, texture, sharp, this._glass.shader);
                 const veilAlpha = ready ? this._veilFor(picture, material, colors, quad) : 0;
                 // A bare bar draws nothing at all while its text reads without help
                 if (material.bare && (!ready || veilAlpha < 0.005))
                     continue;
-                this._set(pipeline, this._memos.get(key), {
+                const uniforms = {
                     monitor, left, top, size, s, n, unit, opacity: opacity * fade, sharp, material, colors, shadow,
                     veilAlpha, solid: !ready,
-                });
+                };
+                this._set(pipeline, this._memos.get(key), uniforms);
                 // What the first pane drawn was made of, for the tests to read
                 if (!this.params) {
                     this.params = {
@@ -306,17 +338,41 @@ class AmethystoraGlassEffect extends Clutter.Effect {
                     };
                 }
 
-                // The part in the actor's own pixels, and where it falls on its screen
+                // The part in the actor's own pixels, and where it falls on its screen. Well inside a pane drawn from
+                // its picture, the glass is only the picture, its tone and its wash: that part is drawn with the shader
+                // that works out only those (glass_interior()), and the ring around it with the whole lens
+                const place = (target, X1, Y1, X2, Y2) => {
+                    if (X2 <= X1 || Y2 <= Y1)
+                        return;
+                    const box = this._box;
+                    box.x1 = x - margin + (X1 - quad[0]) / sx;
+                    box.y1 = y - margin + (Y1 - quad[1]) / sy;
+                    box.x2 = x - margin + (X2 - quad[0]) / sx;
+                    box.y2 = y - margin + (Y2 - quad[1]) / sy;
+                    target.add_texture_rectangle(box,
+                        (X1 - monitor.x) * ux, (Y1 - monitor.y) * uy, (X2 - monitor.x) * ux, (Y2 - monitor.y) * uy);
+                };
                 const [ux, uy] = [1 / monitor.width, 1 / monitor.height];
-                const box = this._box;
-                box.x1 = x - margin + (x1 - quad[0]) / sx;
-                box.y1 = y - margin + (y1 - quad[1]) / sy;
-                box.x2 = x - margin + (x2 - quad[0]) / sx;
-                box.y2 = y - margin + (y2 - quad[1]) / sy;
                 const pipelineNode = new Clutter.PipelineNode(pipeline);
                 node.add_child(pipelineNode);
-                pipelineNode.add_texture_rectangle(box,
-                    (x1 - monitor.x) * ux, (y1 - monitor.y) * uy, (x2 - monitor.x) * ux, (y2 - monitor.y) * uy);
+                const [it, ir, ib, il] = ready && !material.bare ? insets(material, unit, s) : [0, 0, 0, 0];
+                const i1 = Math.max(x1, left + il);
+                const j1 = Math.max(y1, top + it);
+                const i2 = Math.min(x2, left + size[0] - ir);
+                const j2 = Math.min(y2, top + size[1] - ib);
+                if (ready && !material.bare && i2 - i1 > INTERIOR && j2 - j1 > INTERIOR) {
+                    const inner = this._pipeline(paintContext, `${key}:inside`, texture, sharp, this._glass.interior);
+                    this._set(inner, this._memos.get(`${key}:inside`), uniforms);
+                    const innerNode = new Clutter.PipelineNode(inner);
+                    node.add_child(innerNode);
+                    place(innerNode, i1, j1, i2, j2);
+                    place(pipelineNode, x1, y1, x2, j1);
+                    place(pipelineNode, x1, j2, x2, y2);
+                    place(pipelineNode, x1, j1, i1, j2);
+                    place(pipelineNode, i2, j1, x2, j2);
+                } else {
+                    place(pipelineNode, x1, y1, x2, y2);
+                }
                 drawn = true;
             }
         });
@@ -373,8 +429,7 @@ class AmethystoraGlassEffect extends Clutter.Effect {
     // One pipeline for each area and screen, with that screen's pictures: the frosted one, and the sharp one when
     // there is one (else the frosted one again, which the shader then never mixes in). With no picture yet, the
     // layers keep what they had, which the shader does not sample.
-    _pipeline(paintContext, key, texture, sharp) {
-        const shader = this._glass.shader;
+    _pipeline(paintContext, key, texture, sharp, shader) {
         let pipeline = this._pipelines.get(key);
         if (!pipeline) {
             pipeline = shader.pipeline(paintContext.get_framebuffer().get_context());

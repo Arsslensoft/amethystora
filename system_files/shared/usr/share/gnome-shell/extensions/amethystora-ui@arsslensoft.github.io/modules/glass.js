@@ -55,7 +55,10 @@ export class Glass {
 
         const file = this._ext.dir.get_child('modules').get_child('glass').get_child('lens.glsl');
         const [, bytes] = file.load_contents(null);
-        this.shader = new Shader(new TextDecoder().decode(bytes), 'cogl_color_out = glass_color();', 2);
+        const lens = new TextDecoder().decode(bytes);
+        this.shader = new Shader(lens, 'cogl_color_out = glass_color();', 2);
+        // The inside of a large pane, where only the picture, its tone and its wash show (effect.js)
+        this.interior = new Shader(lens, 'cogl_color_out = glass_interior();', 2);
 
         this._settings = this._ext.getSettings(SCHEMA);
         this.variant = this._readVariant();
@@ -171,6 +174,8 @@ export class Glass {
         this._lastStats = null;
         this.shader?.destroy();
         this.shader = null;
+        this.interior?.destroy();
+        this.interior = null;
         // Kept through a screen lock (style.js says why); the unlock's enable puts them right
         const group = Main.layoutManager.uiGroup;
         if (!Main.sessionMode.isLocked) {

@@ -110,6 +110,53 @@ vec3 glass_sample(vec2 at)
     return mix(texture2D(u_clear, spot).rgb, frosted, u_frost);
 }
 
+// The material's colour; a surface that is fading clears towards the plain picture
+vec3 glass_tone(vec3 col)
+{
+    float luma = dot(col, vec3(0.2126, 0.7152, 0.0722));
+    col = clamp(vec3(luma) + (col - vec3(luma)) * mix(1.0, u_tone.x, u_frost), 0.0, 1.0);
+    col *= mix(1.0, u_tone.y, u_frost);
+    return mix(col, vec3(1.0), u_tone.z);
+}
+
+// The darkening towards the bottom, the theme's veil and the white lift over the pane
+vec3 glass_wash(vec3 col, vec2 p, vec2 size)
+{
+    if (u_shade > 0.0)
+        col *= 1.0 - u_shade * smoothstep(0.25, 1.0, p.y / size.y);
+    col = mix(col, u_veil.rgb, u_veil.a);
+    if (u_lift.x > 0.0 || u_lift.y > 0.0)
+        col = mix(col, vec3(1.0), mix(u_lift.x, u_lift.y, clamp(p.y / size.y, 0.0, 1.0)));
+    return col;
+}
+
+vec3 glass_sheen(vec3 col, vec2 c, vec2 size)
+{
+    if (u_sheen.x > 0.0 || u_sheen.w > 0.0) {
+        // Across the pane from its top left to its bottom right, as a gradient at 125 degrees runs
+        vec2 along = vec2(0.8192, 0.5736);
+        float t = dot(c, along) / (size.x * along.x + size.y * along.y) + 0.5;
+        if (t < u_sheen.y)
+            col = mix(col, vec3(1.0), u_sheen.x * (1.0 - t / u_sheen.y));
+        else if (t > u_sheen.z)
+            col = mix(col, u_glow.rgb, u_sheen.w * (t - u_sheen.z) / (1.0 - u_sheen.z));
+    }
+    return col;
+}
+
+// The pane well inside its outline, where the rim, its lines, its glows and its shadow have faded below what a pixel
+// shows (effect.js works out how far in that is): the picture, its tone, the wash and the sheen, as glass_color()
+// draws them there
+vec4 glass_interior()
+{
+    vec2 p = (cogl_tex_coord_in[0].st - u_origin) / u_pixel;
+    vec2 size = u_size;
+    if (u_solid > 0.0)
+        return vec4(u_veil.rgb, 1.0) * (u_solid * u_opacity);
+    vec3 col = glass_wash(glass_tone(glass_sample(p)), p, size);
+    return vec4(glass_sheen(col, p - size * 0.5, size), 1.0) * u_opacity;
+}
+
 vec4 glass_color()
 {
     vec2 p = (cogl_tex_coord_in[0].st - u_origin) / u_pixel;
@@ -139,11 +186,7 @@ vec4 glass_color()
             col = glass_sample(p);
         }
 
-        // The material's colour; a surface that is fading clears towards the plain picture
-        float luma = dot(col, vec3(0.2126, 0.7152, 0.0722));
-        col = clamp(vec3(luma) + (col - vec3(luma)) * mix(1.0, u_tone.x, u_frost), 0.0, 1.0);
-        col *= mix(1.0, u_tone.y, u_frost);
-        col = mix(col, vec3(1.0), u_tone.z);
+        col = glass_tone(col);
 
         if (u_tone.w > 0.0) {
             // Light caught by the rim: strongest on the outermost pixels, with a faint long tail, and weaker over
@@ -153,13 +196,7 @@ vec4 glass_color()
             light *= mix(mix(0.8, 0.5, clamp(depth / 8.0, 0.0, 1.0)), 1.0, bright);
             col += (vec3(1.0) - col) * light;
         }
-        if (u_shade > 0.0)
-            col *= 1.0 - u_shade * smoothstep(0.25, 1.0, p.y / size.y);
-
-        col = mix(col, u_veil.rgb, u_veil.a);
-
-        if (u_lift.x > 0.0 || u_lift.y > 0.0)
-            col = mix(col, vec3(1.0), mix(u_lift.x, u_lift.y, clamp(p.y / size.y, 0.0, 1.0)));
+        col = glass_wash(col, p, size);
 
         // The glows: soft inset shadows whose hole is the outline grown and moved, worked out only near their side
         if (u_glow.a > 0.0) {
@@ -197,15 +234,7 @@ vec4 glass_color()
             col = mix(col, u_edge.rgb, u_edge.a * rim);
         }
 
-        if (u_sheen.x > 0.0 || u_sheen.w > 0.0) {
-            // Across the pane from its top left to its bottom right, as a gradient at 125 degrees runs
-            vec2 along = vec2(0.8192, 0.5736);
-            float t = dot(c, along) / (size.x * along.x + size.y * along.y) + 0.5;
-            if (t < u_sheen.y)
-                col = mix(col, vec3(1.0), u_sheen.x * (1.0 - t / u_sheen.y));
-            else if (t > u_sheen.z)
-                col = mix(col, u_glow.rgb, u_sheen.w * (t - u_sheen.z) / (1.0 - u_sheen.z));
-        }
+        col = glass_sheen(col, c, size);
 
         color = vec4(col, 1.0) * cover;
     }
