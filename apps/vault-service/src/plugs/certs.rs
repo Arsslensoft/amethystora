@@ -146,6 +146,12 @@ fn failed() -> Value {
     json!({"ok": false, "why": "failed"})
 }
 
+/// The machine's root, or a CA it made, is there and its key will not open: sealed to another chip, or by this service under another
+/// user number. Nothing issues again until `root rotate` makes a new one, so the client is told that rather than to try again.
+fn unopened() -> Value {
+    json!({"ok": false, "why": "refused", "problem": "root-unopened"})
+}
+
 /// The answer to a job, or stops with it: a refusal goes back to the client as it is
 fn job(program: &Path, request: &Value) -> Result<Value, Value> {
     let answer = work::run(program, request);
@@ -163,7 +169,7 @@ fn the_root(issue: &Issue) -> Result<Value, Value> {
 
 /// A CA made under the root, which has to be opened for it
 fn make_ca(issue: &Issue, root: &Value, profile: &str, name: Option<&str>) -> Result<Value, Value> {
-    let key = files::open_key(&issue.chip, files::ROOT, root).map_err(|()| failed())?;
+    let key = files::open_key(&issue.chip, files::ROOT, root).map_err(|()| unopened())?;
     let mut request = json!({"job": "make-ca", "profile": profile, "now": issue.now, "root": {"cert": root["cert"], "key": key.as_str(), "type": root["type"]}});
     if let Some(name) = name {
         request["name"] = json!(name);
@@ -205,7 +211,7 @@ fn run_issue(issue: &Issue) -> Result<Value, Value> {
                     files::save(&issue.state, &issue.chip, which, &made).map_err(|()| failed())?
                 }
             };
-            let key = files::open_key(&issue.chip, which, &ca).map_err(|()| failed())?;
+            let key = files::open_key(&issue.chip, which, &ca).map_err(|()| unopened())?;
             (ca["cert"].clone(), key.as_str().to_string(), ca["type"].clone())
         }
     };

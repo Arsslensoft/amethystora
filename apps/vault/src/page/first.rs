@@ -293,6 +293,9 @@ impl Vault {
                         // The page with the key on it goes once the screen changes (see apply_status)
                         this.opened();
                     }
+                    Err(Trouble::Refused { problem: Some(problem), .. }) if problem == "no-draft" => {
+                        say(&failing, &t!("The set-up was let go while the screen was locked or the computer slept, so nothing was kept. Close the Vault and start again."))
+                    }
                     Err(Trouble::Refused { .. }) => say(&failing, &t!("That is not your recovery key. Check it against what is written above.")),
                     Err(trouble) => say(&failing, &trouble.words()),
                 }

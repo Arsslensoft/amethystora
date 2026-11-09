@@ -49,6 +49,11 @@ pub fn put(service: &mut Service, peer: &Rc<Peer>, body: &Value) -> Result<Next,
     let data = base64_field(body, "data", CHUNK)?;
     if offset == 0 {
         service.staged.remove(&peer.uid);
+        // One backup is brought in at a time, whoever asks: up to 48 MiB for each account with a session, asked of nobody, would be
+        // memory any account could take from the service
+        if !service.staged.is_empty() {
+            return Err(Refusal::Failed);
+        }
     }
     let held = service.staged.get(&peer.uid).map_or(0, |(bytes, _)| bytes.len());
     if offset != held || held + data.len() > MAX_BACKUP + 32 {

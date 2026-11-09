@@ -72,6 +72,7 @@ fn problem_words(problem: &str) -> String {
         "guest" => t!("A guest account has no certificates."),
         "bad-password" => t!("That password cannot be used."),
         "expired" => t!("This certificate is past its dates."),
+        "root-unopened" => t!("This computer's root certificate can no longer be opened, so nothing can be issued under it. Make a new one with: ame vault root rotate"),
         "bad-field" | "missing-field" | "not-in-profile" => t!("Something in the form cannot go in this certificate."),
         _ => t!("That was refused."),
     }

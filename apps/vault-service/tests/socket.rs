@@ -1039,15 +1039,40 @@ fn a_logo_is_kept_without_the_question_and_nothing_else_is() {
     let running = start("logo");
     running.set_up(PASSWORD);
     let before = running.outside.asked();
-    let put = running.ask(json!({"op": "put", "kind": "logo", "id": "example-test", "name": "example.test", "value": "AAAA", "approval": "while-open"}));
+    // As the window keeps them: a site with no picture, then its picture
+    let put = running.ask(json!({"op": "put", "kind": "logo", "id": "example-test", "name": "example.test", "meta": {"picture": false}, "value": {}, "approval": "while-open"}));
     assert_eq!(put["ok"], json!(true), "{put}");
-    let again = running.ask(json!({"op": "put", "kind": "logo", "id": "example-test", "name": "example.test", "value": "BBBB", "approval": "ask"}));
+    let png = {
+        use base64::Engine;
+        let mut bytes = vec![0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a];
+        bytes.extend_from_slice(b"a picture");
+        base64::engine::general_purpose::STANDARD.encode(bytes)
+    };
+    let again = running.ask(json!({"op": "put", "kind": "logo", "id": "example-test", "name": "example.test", "meta": {"picture": true}, "value": {"picture": png}, "approval": "ask"}));
     assert_eq!(again["ok"], json!(true), "{again}");
     let got = running.ask(json!({"op": "get", "kind": "logo", "id": "example-test"}));
-    assert_eq!(got["value"], json!("BBBB"), "{got}");
+    assert_eq!(got["value"]["picture"], json!(png), "{got}");
     let listed = running.ask(json!({"op": "list", "kind": "logo"}));
     assert_eq!(listed["items"][0]["approval"], json!("never"), "{listed}");
     assert_eq!(running.outside.asked(), before, "nobody was asked about a logo");
+    // Nothing else is kept as a logo: any program could otherwise keep what it liked in the vault without a question
+    let big = {
+        use base64::Engine;
+        let mut bytes = vec![0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a];
+        bytes.resize(64 * 1024 + 1, 0);
+        base64::engine::general_purpose::STANDARD.encode(bytes)
+    };
+    for (name, meta, value) in [
+        ("example.test", json!({"picture": true}), json!({"picture": b64("not a picture")})),
+        ("example.test", json!({"picture": true}), json!({"picture": big})),
+        ("example.test", json!({"picture": false}), json!({"secret": "hunter2"})),
+        ("example.test", json!({"picture": false, "note": "x"}), json!({})),
+        ("example.test", json!({}), json!("AAAA")),
+        ("not a host", json!({"picture": false}), json!({})),
+    ] {
+        let refused = running.ask(json!({"op": "put", "kind": "logo", "name": name, "meta": meta, "value": value}));
+        assert_eq!(refused["why"], json!("bad-request"), "{name} {meta} {value}: {refused}");
+    }
     // Another kind that asks to never ask is still asked about
     let other = running.ask(json!({"op": "put", "kind": "thing", "id": "t", "name": "t", "value": "x", "approval": "never"}));
     assert_eq!(other["ok"], json!(true), "{other}");

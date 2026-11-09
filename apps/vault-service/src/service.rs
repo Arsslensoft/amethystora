@@ -28,6 +28,8 @@ use crate::peer::Peer;
 
 /// A setup's recovery key can wait this long to be typed back
 const DRAFT_PATIENCE: Duration = Duration::from_secs(15 * 60);
+/// A backup brought in or read out goes chunk after chunk, with nothing asked in between: what waits longer than this was left
+pub(crate) const STAGED_PATIENCE: Duration = Duration::from_secs(60);
 /// Room left in the account's quota for the index and the meta, which a write takes again
 const SPARE: u64 = 64 * 1024;
 /// The purpose whose key is also on the chip, released while the vault is closed
@@ -199,7 +201,7 @@ impl Service {
     pub fn deadline(&self) -> Option<Instant> {
         let idle = self.sessions.values().map(|session| session.last_use + session.idle);
         let drafts = self.drafts.values().map(|(_, since)| *since + DRAFT_PATIENCE);
-        let staged = self.staged.values().chain(self.made.values()).map(|(_, since)| *since + DRAFT_PATIENCE);
+        let staged = self.staged.values().chain(self.made.values()).map(|(_, since)| *since + STAGED_PATIENCE);
         idle.chain(drafts).chain(staged).chain(self.sync.deadline()).min()
     }
 
@@ -210,8 +212,8 @@ impl Service {
             self.close(uid);
         }
         self.drafts.retain(|_, (_, since)| *since + DRAFT_PATIENCE > now);
-        self.staged.retain(|_, (_, since)| *since + DRAFT_PATIENCE > now);
-        self.made.retain(|_, (_, since)| *since + DRAFT_PATIENCE > now);
+        self.staged.retain(|_, (_, since)| *since + STAGED_PATIENCE > now);
+        self.made.retain(|_, (_, since)| *since + STAGED_PATIENCE > now);
     }
 
     /// Closes what this account has open: the keys are wiped as they drop
@@ -516,7 +518,8 @@ impl Service {
 
     /// The recovery key, typed back: only now is the vault kept, and open
     fn confirm(&mut self, uid: u32, typed: &[u8]) -> Next {
-        let Some((draft, _)) = self.drafts.get(&uid) else { return Next::refuse(Refusal::Refused) };
+        // A lock, a sleep or the time it waited dropped the draft: whatever is typed now, nothing is there to keep, which is not a wrong key
+        let Some((draft, _)) = self.drafts.get(&uid) else { return Next::Answer(json!({"ok": false, "why": "refused", "problem": "no-draft"})) };
         let typed = std::str::from_utf8(typed).ok().and_then(RecoveryKey::parse);
         let matches = typed.is_some_and(|typed| seal::same(typed.key().bytes(), draft.recovery.key().bytes()));
         if !matches {
@@ -1139,6 +1142,11 @@ impl Service {
         if service_only(&kind) {
             return Next::refuse(Refusal::Refused);
         }
+        // A logo is set and read without a question, so it holds what the window keeps of one and nothing else: any program could
+        // otherwise keep whatever it liked in the vault unasked
+        if kind == protocol::KIND_LOGO && !logo_shaped(&name, &meta, &value) {
+            return Next::refuse(Refusal::BadRequest);
+        }
         let target = match self.open_store(uid, vault) {
             Ok(store) => store.id().to_string(),
             Err(why) => return Next::refuse(why),
@@ -1283,4 +1291,26 @@ fn rank(approval: Approval) -> u8 {
 enum Refused {
     Current,
     New,
+}
+
+/// The biggest picture the window keeps of a site, a PNG of 64 pixels a side, with room to spare
+const MOST_LOGO: usize = 64 * 1024;
+
+/// What the window keeps of a site's logo (`apps/vault/src/logos.rs`): the host as its name, whether there is a picture, and the
+/// picture as a PNG, or nothing for a site that had none
+fn logo_shaped(name: &str, meta: &Value, value: &Value) -> bool {
+    let host = !name.is_empty()
+        && name.len() <= 253
+        && name.split('.').all(|part| !part.is_empty() && part.len() <= 63 && part.bytes().all(|byte| byte.is_ascii_alphanumeric() || byte == b'-'));
+    let Some(meta) = meta.as_object() else { return false };
+    let Some(value) = value.as_object() else { return false };
+    let said = meta.get("picture").and_then(Value::as_bool).filter(|_| meta.len() == 1);
+    let picture = match (said, value.len(), value.get("picture")) {
+        (Some(false), 0, None) => true,
+        (Some(true), 1, Some(Value::String(text))) => base64::engine::general_purpose::STANDARD
+            .decode(text)
+            .is_ok_and(|png| png.len() <= MOST_LOGO && png.starts_with(&[0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a])),
+        _ => false,
+    };
+    host && picture
 }

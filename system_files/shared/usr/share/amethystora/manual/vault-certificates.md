@@ -115,3 +115,6 @@ Compare the fingerprint with the person you give it to, by another route.
 `ame vault root rotate` (asking an administrator) makes a new root, and every account gets a new CA at its next certificate.
 Nothing revokes the old one, since nobody runs a server for it: **everyone who trusted the old root has to stop by hand.** An
 administrator of this computer can, as the service's user, issue in any name; the root vouches for this computer and no more.
+
+The same command is the way on when the Vault says the root **can no longer be opened**: its key is sealed to this computer's chip
+for the Vault's service, and a new chip, or a service that is no longer the one that sealed it, cannot open it again.

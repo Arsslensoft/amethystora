@@ -16193,6 +16193,14 @@ msgid "That variable changes how programs start, so a secret is never put in it.
 msgstr ""
 
 #: usr/share/amethystora/just/vault.just
+msgid "This computer's root certificate can no longer be opened, so nothing can be issued under it. Make a new one with: ame vault root rotate"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "The set-up was let go while the screen was locked or the computer slept, so nothing was kept. Start it again."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
 msgid "The vault's service could not do that. Try again in a moment."
 msgstr ""
 

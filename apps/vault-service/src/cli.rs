@@ -42,6 +42,11 @@ fn socket() -> PathBuf {
     std::env::var_os("AMETHYSTORA_VAULT_SOCKET").map_or_else(|| PathBuf::from(SOCKET), PathBuf::from)
 }
 
+/// The machine's root will not open, and only `ame vault root rotate` makes one that does
+const ROOT_UNOPENED: u8 = 23;
+/// A set-up let go by a lock, a sleep or its time, before its recovery key was typed back
+const NO_DRAFT: u8 = 24;
+
 fn code_of(why: Refusal) -> u8 {
     match why {
         Refusal::Refused => 1,
@@ -60,6 +65,12 @@ pub(crate) fn call(request: Value) -> Result<Value, u8> {
     let answer = exchange(&socket(), &request, PATIENCE).map_err(code_of)?;
     if answer["ok"] == json!(true) {
         return Ok(answer);
+    }
+    if answer["problem"] == json!("root-unopened") {
+        return Err(ROOT_UNOPENED);
+    }
+    if answer["problem"] == json!("no-draft") {
+        return Err(NO_DRAFT);
     }
     Err(code_of(Refusal::from_name(answer["why"].as_str().unwrap_or("failed"))))
 }

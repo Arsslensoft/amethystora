@@ -102,7 +102,21 @@ fn a_setup_left_waiting_is_dropped_with_its_key() {
     let deadline = service.deadline().unwrap();
     service.tick(deadline);
     assert!(service.is_quiet());
-    assert_eq!(ask(&mut service, &peer, json!({"op": "confirm", "recovery": b64(&recovery)}))["why"], json!("refused"));
+    // The right key, typed after: refused, and said to be no wrong key but a set-up let go (W2)
+    let late = ask(&mut service, &peer, json!({"op": "confirm", "recovery": b64(&recovery)}));
+    assert_eq!((late["why"].clone(), late["problem"].clone()), (json!("refused"), json!("no-draft")), "{late}");
+}
+
+/// A wrong key while the set-up waits is only a wrong key
+#[test]
+fn a_wrong_recovery_key_is_not_a_set_up_let_go() {
+    let folder = Folder::new("draft-wrong");
+    let (outside, _) = fake();
+    let mut service = Service::new(Config { state: folder.0.clone(), log_n: 10, worker: env!("CARGO_BIN_EXE_amethystora-vault-work").into() }, Arc::new(FakeChip::new()), Box::new(outside));
+    let peer = Rc::new(Peer { uid: 1000, pid: 1, pidfd: None });
+    assert_eq!(ask(&mut service, &peer, json!({"op": "setup", "method": "password", "secret": b64("a good password")}))["ok"], json!(true));
+    let wrong = ask(&mut service, &peer, json!({"op": "confirm", "recovery": b64("00000-00000-00000-00000-00000-00000-00000-00000-00000-00000-00000")}));
+    assert_eq!((wrong["why"].clone(), wrong["problem"].clone()), (json!("refused"), Value::Null), "{wrong}");
 }
 
 #[test]
@@ -126,4 +140,23 @@ fn what_fails_keeps_nothing_open() {
     // What succeeded is use
     assert_eq!(ask(&mut service, &peer, json!({"op": "list"}))["ok"], json!(true));
     assert!(service.deadline().unwrap() > start);
+}
+
+/// F9: a backup being brought in is held for one account at a time, and only while it keeps coming: each account with a session
+/// could otherwise have the service hold 48 MiB for it, asked of nobody
+#[test]
+fn a_backup_brought_in_is_held_for_one_account_and_not_for_long() {
+    let Fixture { mut service, peer, _folder } = open_vault();
+    let other = Rc::new(Peer { uid: 1001, pid: 2, pidfd: None });
+    let chunk = |offset: usize| json!({"op": "vault-restore-put", "offset": offset, "data": b64("part of a backup")});
+    assert_eq!(ask(&mut service, &peer, chunk(0))["ok"], json!(true));
+    assert_eq!(ask(&mut service, &other, chunk(0))["why"], json!("failed"));
+    // The first goes on, and starting again is its own
+    assert_eq!(ask(&mut service, &peer, chunk(16))["ok"], json!(true));
+    assert_eq!(ask(&mut service, &peer, chunk(0))["ok"], json!(true));
+    // A minute after its last chunk it is let go, and the other account may bring one in
+    let left = service.deadline().unwrap() - Instant::now();
+    assert!(left <= Duration::from_secs(60), "{left:?}");
+    service.tick(Instant::now() + Duration::from_secs(61));
+    assert_eq!(ask(&mut service, &other, chunk(0))["ok"], json!(true));
 }

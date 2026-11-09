@@ -29,6 +29,8 @@ words := '''
             20) gettext "Something above it cannot be changed, so nothing was moved."; echo ;;
             21) gettext "Something took the file's place away while the command ran, and nothing was sealed."; echo ;;
             22) gettext "That variable changes how programs start, so a secret is never put in it. Name another: VARIABLE=NAME"; echo ;;
+            23) gettext "This computer's root certificate can no longer be opened, so nothing can be issued under it. Make a new one with: ame vault root rotate"; echo ;;
+            24) gettext "The set-up was let go while the screen was locked or the computer slept, so nothing was kept. Start it again."; echo ;;
             *) gettext "The vault's service could not do that. Try again in a moment."; echo ;;
         esac >&2
         exit "$1"
