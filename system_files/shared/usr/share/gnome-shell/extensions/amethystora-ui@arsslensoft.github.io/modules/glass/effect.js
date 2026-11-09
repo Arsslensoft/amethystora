@@ -67,9 +67,12 @@ class AmethystoraGlassEffect extends Clutter.Effect {
         this.params = null;
         this._pipelines = new Map();
         this._textures = new Map();
+        this._memos = new Map();
         this._pictures = new Set();
         this._colors = null;
         this._veils = new Map();
+        // Filled in again for every part drawn: Clutter copies it
+        this._box = new Clutter.ActorBox();
     }
 
     // A changed look (a window maximized, the colour scheme switched) shows on the next frame
@@ -101,12 +104,13 @@ class AmethystoraGlassEffect extends Clutter.Effect {
         this._pictures.clear();
         this._pipelines = new Map();
         this._textures = new Map();
+        this._memos = new Map();
         this._veils.clear();
         this._colors = null;
     }
 
     _scale() {
-        return St.ThemeContext.get_for_stage(global.stage).scale_factor;
+        return this._glass.scale ?? St.ThemeContext.get_for_stage(global.stage).scale_factor;
     }
 
     // The material with the person's tint (glass.js), or the variant's own
@@ -284,13 +288,13 @@ class AmethystoraGlassEffect extends Clutter.Effect {
                 // As far as the surface is see-through while it fades, its frost is clear too
                 const clear = frost.picture(monitor.index, 'clear');
                 const sharp = ready && clear?.ready && clear.texture ? clear.texture : null;
-                const pipeline = this._pipeline(paintContext, `${i}:${monitor.index}`,
-                    ready ? picture.texture : null, sharp);
+                const key = `${i}:${monitor.index}`;
+                const pipeline = this._pipeline(paintContext, key, ready ? picture.texture : null, sharp);
                 const veilAlpha = ready ? this._veilFor(picture, material, colors, quad) : 0;
                 // A bare bar draws nothing at all while its text reads without help
                 if (material.bare && (!ready || veilAlpha < 0.005))
                     continue;
-                this._set(pipeline, {
+                this._set(pipeline, this._memos.get(key), {
                     monitor, left, top, size, s, n, unit, opacity: opacity * fade, sharp, material, colors, shadow,
                     veilAlpha, solid: !ready,
                 });
@@ -304,12 +308,11 @@ class AmethystoraGlassEffect extends Clutter.Effect {
 
                 // The part in the actor's own pixels, and where it falls on its screen
                 const [ux, uy] = [1 / monitor.width, 1 / monitor.height];
-                const box = new Clutter.ActorBox({
-                    x1: x - margin + (x1 - quad[0]) / sx,
-                    y1: y - margin + (y1 - quad[1]) / sy,
-                    x2: x - margin + (x2 - quad[0]) / sx,
-                    y2: y - margin + (y2 - quad[1]) / sy,
-                });
+                const box = this._box;
+                box.x1 = x - margin + (x1 - quad[0]) / sx;
+                box.y1 = y - margin + (y1 - quad[1]) / sy;
+                box.x2 = x - margin + (x2 - quad[0]) / sx;
+                box.y2 = y - margin + (y2 - quad[1]) / sy;
                 const pipelineNode = new Clutter.PipelineNode(pipeline);
                 node.add_child(pipelineNode);
                 pipelineNode.add_texture_rectangle(box,
@@ -320,42 +323,47 @@ class AmethystoraGlassEffect extends Clutter.Effect {
         return drawn;
     }
 
-    // Every uniform of one pane on one screen. Lengths are device pixels: stylesheet pixels times the scale times
-    // the surface's own scale on screen.
-    _set(pipeline, {monitor, left, top, size, s, n, unit, opacity, sharp, material: m, colors, shadow, veilAlpha,
-        solid}) {
+    // Every uniform of one pane on one screen, each sent only when it changed (memo, the pipeline's own). Lengths are
+    // device pixels: stylesheet pixels times the scale times the surface's own scale on screen.
+    _set(pipeline, memo, {monitor, left, top, size, s, n, unit, opacity, sharp, material: m, colors, shadow,
+        veilAlpha, solid}) {
         const shader = this._glass.shader;
-        const [ux, uy] = [1 / monitor.width, 1 / monitor.height];
-        shader.set(pipeline, 'u_origin', (left - monitor.x) * ux, (top - monitor.y) * uy);
-        shader.set(pipeline, 'u_pixel', ux, uy);
-        shader.set(pipeline, 'u_size', size[0], size[1]);
-        shader.set(pipeline, 'u_corner', s, n);
-        shader.set(pipeline, 'u_opacity', opacity);
-        shader.set(pipeline, 'u_frost', sharp ? opacity : 1);
-        shader.set(pipeline, 'u_solid', solid ? 0.92 : m.bare ? veilAlpha : 0);
-        shader.set(pipeline, 'u_tone', m.sat, m.dim, m.tint, m.glint);
-        shader.set(pipeline, 'u_rim', m.rim[0] * unit, Math.max(m.rim[1] * unit, 1e-3), m.rim[2], m.rim[3]);
-        shader.set(pipeline, 'u_shade', m.shade);
-        shader.set(pipeline, 'u_veil', ...colors.ground, veilAlpha);
+        const ux = 1 / monitor.width, uy = 1 / monitor.height;
+        shader.update(pipeline, memo, 'u_origin', (left - monitor.x) * ux, (top - monitor.y) * uy);
+        shader.update(pipeline, memo, 'u_pixel', ux, uy);
+        shader.update(pipeline, memo, 'u_size', size[0], size[1]);
+        shader.update(pipeline, memo, 'u_corner', s, n);
+        shader.update(pipeline, memo, 'u_opacity', opacity);
+        shader.update(pipeline, memo, 'u_frost', sharp ? opacity : 1);
+        shader.update(pipeline, memo, 'u_solid', solid ? 0.92 : m.bare ? veilAlpha : 0);
+        shader.update(pipeline, memo, 'u_tone', m.sat, m.dim, m.tint, m.glint);
+        shader.update(pipeline, memo, 'u_rim',
+            m.rim[0] * unit, Math.max(m.rim[1] * unit, 1e-3), m.rim[2], m.rim[3]);
+        shader.update(pipeline, memo, 'u_shade', m.shade);
+        const ground = colors.ground;
+        shader.update(pipeline, memo, 'u_veil', ground[0], ground[1], ground[2], veilAlpha);
         if (colors.ownBorder || !colors.text)
-            shader.set(pipeline, 'u_edge', 0, 0, 0, 0);
+            shader.update(pipeline, memo, 'u_edge', 0, 0, 0, 0);
         else if (colors.edge)
-            shader.set(pipeline, 'u_edge', ...colors.edge);
+            shader.update(pipeline, memo, 'u_edge', ...colors.edge);
         else
-            shader.set(pipeline, 'u_edge', ...colors.text, m.edge);
-        shader.set(pipeline, 'u_lift', ...m.lift ?? [0, 0]);
-        shader.set(pipeline, 'u_light', m.top?.[0] ?? 0, (m.top?.[1] ?? 1) * unit, m.sides?.[0] ?? 0,
-            m.sides?.[1] ?? 0);
-        shader.set(pipeline, 'u_ring', m.ring);
+            shader.update(pipeline, memo, 'u_edge', colors.text[0], colors.text[1], colors.text[2], m.edge);
+        shader.update(pipeline, memo, 'u_lift', m.lift?.[0] ?? 0, m.lift?.[1] ?? 0);
+        shader.update(pipeline, memo, 'u_light',
+            m.top?.[0] ?? 0, (m.top?.[1] ?? 1) * unit, m.sides?.[0] ?? 0, m.sides?.[1] ?? 0);
+        shader.update(pipeline, memo, 'u_ring', m.ring);
         const glow = m.glow;
-        shader.set(pipeline, 'u_glow', ...colors.glow, glow?.alpha ?? 0);
+        shader.update(pipeline, memo, 'u_glow',
+            colors.glow[0], colors.glow[1], colors.glow[2], glow?.alpha ?? 0);
         const side = m.sideGlow;
-        shader.set(pipeline, 'u_glowshape', (glow?.y ?? 0) * unit, Math.max((glow?.blur ?? 2) / 2 * unit, 1e-3),
-            (glow?.grow ?? 0) * unit, side?.alpha ?? 0);
-        shader.set(pipeline, 'u_sideglow', (side?.x ?? 0) * unit, Math.max((side?.blur ?? 2) / 2 * unit, 1e-3),
-            (side?.grow ?? 0) * unit, unit);
-        shader.set(pipeline, 'u_sheen', ...m.sheen ?? [0, 0.5, 0.5, 0]);
-        shader.set(pipeline, 'u_shadow',
+        shader.update(pipeline, memo, 'u_glowshape',
+            (glow?.y ?? 0) * unit, Math.max((glow?.blur ?? 2) / 2 * unit, 1e-3), (glow?.grow ?? 0) * unit,
+            side?.alpha ?? 0);
+        shader.update(pipeline, memo, 'u_sideglow',
+            (side?.x ?? 0) * unit, Math.max((side?.blur ?? 2) / 2 * unit, 1e-3), (side?.grow ?? 0) * unit, unit);
+        const sheen = m.sheen ?? [0, 0.5, 0.5, 0];
+        shader.update(pipeline, memo, 'u_sheen', sheen[0], sheen[1], sheen[2], sheen[3]);
+        shader.update(pipeline, memo, 'u_shadow',
             shadow ? shadow.alpha : 0,
             shadow ? shadow.blur * unit : 0,
             shadow ? shadow.offset * unit : 0,
@@ -373,6 +381,7 @@ class AmethystoraGlassEffect extends Clutter.Effect {
             shader.setInt(pipeline, 'u_picture', 0);
             shader.setInt(pipeline, 'u_clear', 1);
             this._pipelines.set(key, pipeline);
+            this._memos.set(key, {});
         }
         if (!texture)
             return pipeline;

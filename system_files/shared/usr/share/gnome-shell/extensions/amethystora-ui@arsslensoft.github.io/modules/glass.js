@@ -60,6 +60,7 @@ export class Glass {
         this._settings = this._ext.getSettings(SCHEMA);
         this.variant = this._readVariant();
         this._strengths = new Map();
+        this._materials = new Map();
         this._settings.connectObject(
             'changed::material', () => this._syncVariant(),
             'changed::solid', () => this._syncSolid(),
@@ -80,6 +81,10 @@ export class Glass {
 
         this.light = Main.getStyleVariant() === 'light';
         St.Settings.get().connectObject('notify::color-scheme', () => this._syncScheme(), this);
+        // Read by every pane on every frame: kept here rather than asked of St each time
+        const context = St.ThemeContext.get_for_stage(global.stage);
+        this.scale = context.scale_factor;
+        context.connectObject('notify::scale-factor', () => (this.scale = context.scale_factor), this);
 
         // The windows first: the top bar and the workspace slide ask them
         this.windows = new Windows(this);
@@ -141,6 +146,7 @@ export class Glass {
             GLib.source_remove(this._freeId);
         this._freeId = 0;
         St.Settings.get().disconnectObject(this);
+        St.ThemeContext.get_for_stage(global.stage).disconnectObject(this);
         for (const part of [...this._parts ?? []].reverse())
             this._stop(part);
         this._parts = [];
@@ -306,6 +312,16 @@ export class Glass {
     // One of the variant's materials with its tint and veil scaled. The guard (contrast.js) still thickens the veil
     // wherever text would not read, so the floor of 4.5:1 holds at every strength.
     materialFor(name) {
+        // Asked by every pane on every frame: worked out once for each variant and strength
+        let material = this._materials?.get(name);
+        if (material === undefined) {
+            material = this._scaledMaterial(name);
+            (this._materials ??= new Map()).set(name, material);
+        }
+        return material;
+    }
+
+    _scaledMaterial(name) {
         const variant = this.variant ?? DEFAULT_VARIANT;
         const material = VARIANTS[variant]?.materials[name] ?? null;
         const tint = this._strength('tint', variant);
@@ -331,6 +347,7 @@ export class Glass {
 
     _syncTint(variant) {
         this._strengths.clear();
+        this._materials?.clear();
         if (variant !== this.variant)
             return;
         for (const picture of this.frost?.pictures('glass') ?? [])
@@ -348,6 +365,7 @@ export class Glass {
         if (variant === this.variant)
             return;
         this.variant = variant;
+        this._materials?.clear();
         this.frost?.setRecipe('glass', this.recipeFor(variant));
         for (const [actor, surface] of this._surfaces) {
             if (surface.scheme && surface.look.shadow)

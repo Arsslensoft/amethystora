@@ -51,6 +51,23 @@ export class Shader {
             pipeline.set_uniform_float(location, values.length, 1, values);
     }
 
+    // As set(), but only when the values differ from those the pipeline last had: memo is the pipeline's own object,
+    // kept by its owner. A pane's uniforms mostly stay the same from one frame to the next, and each call costs.
+    update(pipeline, memo, name, a, b, c, d) {
+        const last = memo[name];
+        if (last && last[0] === a && last[1] === b && last[2] === c && last[3] === d)
+            return;
+        memo[name] = [a, b, c, d];
+        if (d !== undefined)
+            this.set(pipeline, name, a, b, c, d);
+        else if (c !== undefined)
+            this.set(pipeline, name, a, b, c);
+        else if (b !== undefined)
+            this.set(pipeline, name, a, b);
+        else
+            this.set(pipeline, name, a);
+    }
+
     setInt(pipeline, name, value) {
         const location = this._location(pipeline, name);
         if (location >= 0)
