@@ -53,6 +53,9 @@ export class DockSite {
             clip_to_allocation: false,
         });
         this.dash = new DockDash(this._dock, this);
+        // Given before the dock is on screen, where it would restyle all of it (swell.js's setMode keeps it after)
+        if (this._dock.settings.get_string('magnify') !== 'off')
+            this.dash.add_style_class_name('amethystora-dock-swells');
         this.strip.add_child(this.dash);
         Main.layoutManager.addChrome(this.strip, {affectsStruts: !this.touch, trackFullscreen: true});
         this.strip.connectObject('notify::height', () => this.place(), 'notify::width', () => this.place(),

@@ -1414,7 +1414,7 @@ unlock finds every style still known. So every rule of ours is tied to a class a
 reach the lock screen), and no extension of the image ships a `stylesheet.css`, which GNOME unloads and loads at every lock
 (theirs are `styles.css`, which `extension.js` loads; `20-tests.sh` holds both). A class changed on a mapped widget restyles
 it and everything under it at once: give a widget its classes before it is shown (`glass/popups.js` wraps
-`PopupMenu.open`). Starting a program forks the shell (some 14 ms frozen): `quickspawn.js` makes every
+`PopupMenu.open`), and change several of them in one call (`theme/classes.js`). Starting a program forks the shell (some 14 ms frozen): `quickspawn.js` makes every
 `Gio.Subprocess.new` use `posix_spawn` (`INHERIT_FDS`), and a module that makes a `Gio.SubprocessLauncher` passes that flag
 itself. The glass's paint runs in JS on every frame: keep it free of settings reads, St lookups and uniforms sent unchanged
 (`shader.update`), and keep a pane's inside on `glass_interior()`, whose terms must stay what `glass_color()` draws there

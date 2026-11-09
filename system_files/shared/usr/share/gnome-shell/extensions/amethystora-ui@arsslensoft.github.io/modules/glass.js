@@ -29,6 +29,7 @@ import {Popups} from './glass/popups.js';
 import {Shader} from './glass/shader.js';
 import {TopBar} from './glass/topbar.js';
 import {Windows} from './glass/windows.js';
+import {setClasses} from './theme/classes.js';
 
 const SCHEMA = 'org.gnome.shell.extensions.amethystora-ui.glass';
 const EFFECT = 'amethystora-glass';
@@ -215,8 +216,8 @@ export class Glass {
     // Gives an actor its pane, or a new look for the pane it has, and returns its effect (null while the glass is
     // solid: the surface is then only given its classes, and its pane once the glass is clear again). classes are
     // style classes it carries while it has one; with scheme, it also carries the light scheme's class and its shadow
-    // follows the scheme.
-    attach(actor, look, {classes = [], scheme = false} = {}) {
+    // follows the scheme. also: classes of the caller's own put on in the same change (one restyle, theme/classes.js).
+    attach(actor, look, {classes = [], scheme = false, also = []} = {}) {
         let surface = this._surfaces.get(actor);
         if (surface) {
             // Drawn again only when the look changed: every focus change attaches every window's pane again
@@ -229,8 +230,10 @@ export class Glass {
         const widget = actor instanceof St.Widget;
         surface = {look, effect: null, classes: widget ? [...classes, PANE] : classes, scheme};
         this._surfaces.set(actor, surface);
-        for (const name of surface.classes)
-            actor.add_style_class_name(name);
+        if (widget) {
+            const light = scheme && this.light;
+            setClasses(actor, [...surface.classes, ...light ? [LIGHT] : [], ...also], scheme && !light ? [LIGHT] : []);
+        }
         if (!this._solid)
             this._addEffect(actor, surface);
         if (scheme)
@@ -245,7 +248,8 @@ export class Glass {
         return surface.effect;
     }
 
-    detach(actor) {
+    // also: classes of the caller's own taken off in the same change
+    detach(actor, {also = []} = {}) {
         const surface = this._surfaces?.get(actor);
         if (!surface)
             return;
@@ -253,8 +257,8 @@ export class Glass {
         actor.disconnectObject(this);
         this._removeEffect(actor, surface);
         // Only widgets were given classes: a window's actor is not one
-        for (const name of surface.scheme ? [...surface.classes, LIGHT] : surface.classes)
-            actor.remove_style_class_name(name);
+        if (actor instanceof St.Widget)
+            setClasses(actor, [], [...surface.classes, ...surface.scheme ? [LIGHT] : [], ...also]);
     }
 
     _addEffect(actor, surface) {

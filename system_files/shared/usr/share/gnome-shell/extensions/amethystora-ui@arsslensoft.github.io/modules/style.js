@@ -11,6 +11,8 @@ import Meta from 'gi://Meta';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
+import {setClasses} from './theme/classes.js';
+
 const SCHEMA = 'org.gnome.shell.extensions.amethystora-ui.style';
 const PREFIX = 'amethystora-style-';
 // The button classes the segments and the islands are drawn from: the first and last of each of the bar's three
@@ -144,8 +146,7 @@ export class Style {
     _unmark() {
         for (const [button, names] of this._classes) {
             button.disconnectObject(this);
-            for (const name of names)
-                button.remove_style_class_name(name);
+            setClasses(button, [], [...names]);
         }
         this._classes.clear();
         for (const container of this._shown)
@@ -154,8 +155,8 @@ export class Style {
     }
 
     // Each button by its place: the first and last of its box, and its colour along the bar. A button that hides or
-    // shows moves the others, so each one showing or hiding marks them all again. Only the classes that change are
-    // touched: each change restyles the button's whole tree.
+    // shows moves the others, so each one showing or hiding marks them all again. Only the buttons whose classes change
+    // are touched, each in one change (theme/classes.js): each change restyles the button's whole tree.
     _mark() {
         const wanted = new Map();
         let colour = 0;
@@ -181,22 +182,15 @@ export class Style {
             }
         }
         for (const [button, names] of this._classes) {
-            const keep = wanted.get(button);
-            for (const name of names) {
-                if (!keep?.has(name))
-                    button.remove_style_class_name(name);
-            }
-            if (!keep) {
-                button.disconnectObject(this);
-                this._classes.delete(button);
-            }
+            if (wanted.has(button))
+                continue;
+            setClasses(button, [], [...names]);
+            button.disconnectObject(this);
+            this._classes.delete(button);
         }
         for (const [button, names] of wanted) {
             const had = this._classes.get(button);
-            for (const name of names) {
-                if (!had?.has(name))
-                    button.add_style_class_name(name);
-            }
+            setClasses(button, [...names], [...had ?? []].filter(name => !names.has(name)));
             if (!had)
                 button.connectObject('destroy', () => this._classes?.delete(button), this);
             this._classes.set(button, names);

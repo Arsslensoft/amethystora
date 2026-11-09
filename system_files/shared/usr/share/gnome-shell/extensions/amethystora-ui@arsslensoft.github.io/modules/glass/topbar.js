@@ -81,10 +81,11 @@ export class TopBar {
         if (this._laterId)
             global.compositor.get_laters().remove(this._laterId);
         this._laterId = 0;
+        // A bar's classes go in one change: each change restyles the whole bar
+        for (const panel of this._ended ? [] : this._bars)
+            this._glass.detach(panel, {also: [CLEAR]});
         for (const {panel} of this._ended ? [] : this._panels())
             panel.remove_style_class_name(CLEAR);
-        for (const panel of this._ended ? [] : this._bars)
-            this._glass.detach(panel);
         this._bars = null;
         for (const button of this._ended ? [] : this._pills)
             this._glass.detach(button);
@@ -107,19 +108,23 @@ export class TopBar {
         const panels = bar === 'pane' || bare ? this._panels() : [];
         const material = bare ? 'bare' : 'menu-bar';
         const panes = new Set(panels.map(({panel}) => panel));
+        const screens = new Map(this._panels().map(({panel, monitor}) => [panel, monitor]));
         for (const panel of [...this._bars]) {
             if (!panes.has(panel)) {
-                this._glass.detach(panel);
-                panel.remove_style_class_name(CLEAR);
+                // Clear or not as _sync below leaves it, in the same change
+                const clear = screens.has(panel) && this._clear(panel, screens.get(panel));
+                this._glass.detach(panel, {also: clear ? [] : [CLEAR]});
                 this._bars.delete(panel);
             }
         }
-        for (const {panel, text: readable} of panels) {
+        for (const {panel, monitor, text: readable} of panels) {
             // A bare bar's veil, when it shows, is a capsule like the style's clock
             const look = {material, radius: bare ? 999 : null, inClones: true,
                 text: bare ? (panel === Main.panel ? bareText : readable) : readable};
-            // A bar already on glass takes the new look; attach() only gives its classes to a new one
-            this._glass.attach(panel, look, {classes: ['amethystora-glass-bar']});
+            // A bar already on glass takes the new look; attach() only gives its classes to a new one, clear or not
+            // with them (one restyle of the bar rather than two)
+            this._glass.attach(panel, look, {classes: ['amethystora-glass-bar'],
+                also: this._clear(panel, monitor) ? [CLEAR] : []});
             this._bars.add(panel);
         }
         const wanted = new Set(bar === 'pills' && style ? style.buttons : []);
@@ -159,15 +164,18 @@ export class TopBar {
             if (effect)
                 effect.enabled = !this._inOverview;
         }
-        // Each bar is clear until a window of its own screen comes near it
         for (const {panel, monitor} of this._panels()) {
-            if (this._glass.solid)
-                panel.remove_style_class_name(CLEAR);
-            else if (this._inOverview || !Main.sessionMode.hasWindows || !this._touched(panel, monitor))
+            if (this._clear(panel, monitor))
                 panel.add_style_class_name(CLEAR);
             else
                 panel.remove_style_class_name(CLEAR);
         }
+    }
+
+    // Each bar is clear until a window of its own screen comes near it
+    _clear(panel, monitor) {
+        return !this._glass.solid &&
+            (this._inOverview || !Main.sessionMode.hasWindows || !this._touched(panel, monitor));
     }
 
     _touched(panel, monitor) {
