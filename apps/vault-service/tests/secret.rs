@@ -2193,7 +2193,7 @@ fn what_a_tool_makes_beside_its_login_is_kept_whole_or_named() {
 }
 
 #[test]
-fn the_usual_tools_rewrite_files_they_made_beside_the_login_and_fail_loudly_on_the_ones_that_were_there() {
+fn the_usual_tools_rewrite_the_files_beside_the_login_whether_they_made_them_or_not() {
     if !namespaces() || !has("python3") || !has("git") {
         return;
     }
@@ -2213,19 +2213,112 @@ fn the_usual_tools_rewrite_files_they_made_beside_the_login_and_fail_loudly_on_t
     assert_eq!(dir_names(&person.at(".aws")), ["config", "mine-renamed", "p3"]);
     assert_eq!(std::fs::read_to_string(person.at(".aws/mine-renamed")).unwrap(), "a=c\n");
     assert_eq!(std::fs::read_to_string(person.at(".aws/p3")).unwrap(), "1");
-    // On a file that was there, a rename over it cannot be: the tool says so, the file is as it was, and nothing of the login is on the disk
-    let cannot = tool(
+    // On the files that were there, the same: in the namespace they are copies in memory, and what the tool did reaches the disk at the end
+    person.put(".aws/old", "old\n");
+    person.put(".aws/rename-me", "moved\n");
+    person.put(".aws/other", "other\n");
+    let rewrites = tool(
         &person,
-        "cannot",
-        "cd \"$(dirname \"$1\")\"\nsed -i 's/eu/us/' config\necho \"sed $?\" >>\"$2\"\ngit config --file config core.x y\necho \"git $?\" >>\"$2\"\npython3 -c \"import os; open('t','w').write('1'); os.replace('t','config')\" 2>/dev/null\necho \"python $?\" >>\"$2\"\nexit 0",
+        "rewrites",
+        "cd \"$(dirname \"$1\")\"\nsed -i 's/eu/us/' config\necho \"sed $?\" >>\"$2\"\ngit config --file config core.x y\necho \"git $?\" >>\"$2\"\npython3 -c \"import os; open('t','w').write('1'); os.replace('t','other')\"\necho \"python $?\" >>\"$2\"\nrm old\necho \"rm $?\" >>\"$2\"\nmv rename-me renamed\necho \"mv $?\" >>\"$2\"\nexit 0",
     );
     let report = person.at("report");
-    let (code, _, err) = person.says(&["run", ".aws/credentials", "--", &cannot, path.to_str().unwrap(), report.to_str().unwrap()]);
+    let (code, _, err) = person.says(&["run", ".aws/credentials", "--", &rewrites, path.to_str().unwrap(), report.to_str().unwrap()]);
     assert_eq!(code, 0, "{err}");
     let said = std::fs::read_to_string(&report).unwrap();
-    assert!(said.lines().all(|line| !line.ends_with(" 0")), "{said}");
-    assert_eq!(std::fs::read_to_string(person.at(".aws/config")).unwrap(), "[default]\nregion = eu\n");
+    assert!(said.lines().count() == 5 && said.lines().all(|line| line.ends_with(" 0")), "{said}");
+    let config = std::fs::read_to_string(person.at(".aws/config")).unwrap();
+    assert!(config.contains("region = us") && config.contains("x = y"), "{config}");
+    assert_eq!(std::fs::read_to_string(person.at(".aws/other")).unwrap(), "1");
+    assert_eq!(std::fs::read_to_string(person.at(".aws/renamed")).unwrap(), "moved\n");
+    assert_eq!(dir_names(&person.at(".aws")), ["config", "mine-renamed", "other", "p3", "renamed"]);
     assert!(token_on_disk(&person, "TOKEN-IN-THE-FILE").is_empty());
+    assert_eq!(person.sealed_text(".aws/credentials"), "TOKEN-IN-THE-FILE\n");
+}
+
+#[test]
+fn ssh_keygen_forgets_a_host_beside_a_protected_key_and_a_copy_of_the_key_never_lands_in_a_file_that_was_there() {
+    if !namespaces() || !has("ssh-keygen") {
+        return;
+    }
+    let person = Person::new("run-known-hosts");
+    person.put(".ssh/id_x", "PRIVATE-KEY-TEXT\n");
+    person.put(".ssh/known_hosts", "host.example ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl\nother.example ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl\n");
+    person.put(".ssh/notes", "notes\n");
+    std::fs::write(person.at(".ssh/large"), vec![b'x'; 2 * 1024 * 1024]).unwrap();
+    let path = person.at(".ssh/id_x");
+    assert_eq!(person.says(&["protect", path.to_str().unwrap()]).0, 0);
+    let forgets = tool(&person, "forgets", "cd \"$(dirname \"$1\")\"\nssh-keygen -R host.example -f known_hosts >/dev/null 2>&1\necho \"ssh-keygen $?\" >>\"$2\"\ncat \"$1\" >notes\nrm -f large 2>/dev/null\nexit 0");
+    let report = person.at("report");
+    let (code, _, err) = person.says(&["run", ".ssh/id_x", "--", &forgets, path.to_str().unwrap(), report.to_str().unwrap()]);
+    assert_eq!(code, 0, "{err}");
+    assert_eq!(std::fs::read_to_string(&report).unwrap(), "ssh-keygen 0\n");
+    let hosts = std::fs::read_to_string(person.at(".ssh/known_hosts")).unwrap();
+    assert!(!hosts.contains("host.example") && hosts.contains("other.example"), "{hosts}");
+    // The key's text is not written into the file that was there, and that is said
+    assert_eq!(std::fs::read_to_string(person.at(".ssh/notes")).unwrap(), "notes\n");
+    assert!(err.contains("notes"), "{err}");
+    assert!(token_on_disk(&person, "PRIVATE-KEY-TEXT").is_empty());
+    // A large file is put through as it is, and stays
+    assert_eq!(std::fs::metadata(person.at(".ssh/large")).unwrap().len(), 2 * 1024 * 1024);
+}
+
+#[test]
+fn a_file_beside_the_login_changed_outside_during_the_run_keeps_both_changes() {
+    if !namespaces() {
+        return;
+    }
+    let person = Person::new("run-outside-change");
+    person.put(".aws/credentials", "TOKEN\n");
+    person.put(".aws/config", "one\n");
+    person.put(".aws/untouched", "one\n");
+    let path = person.at(".aws/credentials");
+    assert_eq!(person.says(&["protect", path.to_str().unwrap()]).0, 0);
+    let (started, go) = (person.at("started"), person.at("go"));
+    let waits = tool(&person, "tool", &format!("touch '{}'\nwhile [ ! -e '{}' ]; do sleep 0.05; done\ncd \"$(dirname \"$1\")\"\nprintf command >config", started.display(), go.display()));
+    let child = person.cli().args(["run", ".aws/credentials", "--", &waits, path.to_str().unwrap()]).stdout(Stdio::null()).stderr(Stdio::piped()).spawn().unwrap();
+    let begun = Instant::now();
+    while !started.exists() {
+        assert!(begun.elapsed() < Duration::from_secs(20), "the tool never started");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    // Another program rewrites both, as tools do, while the command runs
+    for name in ["config", "untouched"] {
+        std::fs::write(person.at(&format!(".aws/{name}.new")), "outside\n").unwrap();
+        std::fs::rename(person.at(&format!(".aws/{name}.new")), person.at(&format!(".aws/{name}"))).unwrap();
+    }
+    std::fs::write(&go, "").unwrap();
+    let done = child.wait_with_output().unwrap();
+    let err = String::from_utf8_lossy(&done.stderr);
+    assert_eq!(done.status.code(), Some(0), "{err}");
+    // What is on the disk is not gone over, and what the command wrote is beside it
+    assert_eq!(std::fs::read_to_string(person.at(".aws/config")).unwrap(), "outside\n");
+    assert_eq!(std::fs::read_to_string(person.at(".aws/untouched")).unwrap(), "outside\n");
+    assert_eq!(std::fs::read_to_string(person.at(".aws/config (changed by the command)")).unwrap(), "command");
+    assert!(err.contains("config (changed by the command)"), "{err}");
+}
+
+#[test]
+fn a_link_beside_the_login_changed_or_removed_in_the_run_is_so_on_the_disk_and_a_pipe_beside_it_shows() {
+    use std::os::unix::fs::FileTypeExt;
+    if !namespaces() {
+        return;
+    }
+    let person = Person::new("run-links-beside");
+    person.put(".aws/credentials", "TOKEN\n");
+    std::os::unix::fs::symlink("one", person.at(".aws/a")).unwrap();
+    std::os::unix::fs::symlink("two", person.at(".aws/b")).unwrap();
+    make_fifo(&person.at(".aws/pipe"));
+    let path = person.at(".aws/credentials");
+    assert_eq!(person.says(&["protect", path.to_str().unwrap()]).0, 0);
+    let links = tool(&person, "tool", "cd \"$(dirname \"$1\")\"\nln -sfn three a\nrm b\ntest -p pipe && echo pipe >\"$2\"");
+    let report = person.at("report");
+    let (code, _, err) = person.says(&["run", ".aws/credentials", "--", &links, path.to_str().unwrap(), report.to_str().unwrap()]);
+    assert_eq!(code, 0, "{err}");
+    assert_eq!(std::fs::read_link(person.at(".aws/a")).unwrap(), Path::new("three"));
+    assert!(std::fs::symlink_metadata(person.at(".aws/b")).is_err());
+    assert_eq!(std::fs::read_to_string(&report).unwrap_or_default(), "pipe\n");
+    assert!(std::fs::symlink_metadata(person.at(".aws/pipe")).unwrap().file_type().is_fifo());
 }
 
 #[test]

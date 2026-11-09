@@ -16570,6 +16570,11 @@ msgid "These could not be kept, and are gone with the command"
 msgstr ""
 
 #: usr/share/amethystora/just/vault.just
+#, python-brace-format
+msgid "Something else changed these files on your disk while the command changed them too. Yours stay as they are, and what the command made of them is beside each: {names}"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
 msgid "The vault closed while the command ran, and what it left is only here. Open the vault, then press Enter to seal it, or type no to lose it: "
 msgstr ""
 

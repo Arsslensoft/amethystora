@@ -703,7 +703,7 @@ fn write_private(path: &Path, data: &[u8], mode: u32) -> Result<(), Why> {
 /// How a command is given its file
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Style {
-    /// A tmpfs over the file's whole folder, with every name that was beside it bound through: a tool that writes a temporary file
+    /// A tmpfs over the file's whole folder, with what was beside it copied in or bound through: a tool that writes a temporary file
     /// next to its login and renames it over the login keeps both in the namespace, and nothing of it reaches the disk
     Parent,
     /// The file alone, bound over an empty one. For a file that sits in the home itself or in a folder too full to cover, where a
@@ -714,6 +714,64 @@ enum Style {
 
 /// Folders with more than this beside a protected file are not covered whole
 const MOST_SIBLINGS: usize = 1024;
+/// A file beside a protected one is copied into the command's memory up to this size, and all of them up to the second: a bind mount of
+/// it could not be deleted, renamed or replaced by a rename (`sed -i`, `git config`, `ssh-keygen -R`). What is larger is bound.
+const MOST_COPIED: u64 = 1024 * 1024;
+const MOST_COPIED_ALL: u64 = 16 * 1024 * 1024;
+
+/// A file or link that was beside a protected file, copied into the command's private space, with what it was on the disk
+struct Beside {
+    name: String,
+    was: Was,
+    /// As it was on the disk, to see whether something else changed it there while the command ran
+    stamp: Stamp,
+}
+
+enum Was {
+    File { data: Zeroizing<Vec<u8>>, mode: u32 },
+    Link(Vec<u8>),
+}
+
+/// What a link says, read through its descriptor or its name in a folder (an empty name for the descriptor itself)
+fn link_text(folder: RawFd, name: &str) -> Option<Vec<u8>> {
+    let (name, mut target) = (c_name(name).ok()?, vec![0u8; 4096]);
+    // SAFETY: a live string and a buffer of the length given
+    let count = unsafe { libc::readlinkat(folder, name.as_ptr(), target.as_mut_ptr().cast(), target.len()) };
+    if count <= 0 || count as usize >= target.len() {
+        return None;
+    }
+    target.truncate(count as usize);
+    Some(target)
+}
+
+/// What beside a protected file is copied, and what is bound through. Only the account's own plain files with no other name are copied, so
+/// that putting a changed one back by a rename loses no owner and no other name.
+fn copy_beside(parent: &OwnedFd, names: Vec<String>) -> Result<(Vec<Beside>, Vec<String>), Why> {
+    let (mut copies, mut bound, mut room) = (Vec::new(), Vec::new(), MOST_COPIED_ALL);
+    // SAFETY: getuid cannot fail
+    let uid = unsafe { libc::getuid() };
+    for name in names {
+        let Ok(fd) = open_at(parent.as_raw_fd(), &name, libc::O_PATH, 0) else { continue };
+        let stat = stat_of(fd.as_raw_fd())?;
+        if is_kind(&stat, libc::S_IFLNK) {
+            if let Some(target) = link_text(fd.as_raw_fd(), "") {
+                copies.push(Beside { name, was: Was::Link(target), stamp: stamp_of(&stat) });
+            }
+            continue;
+        }
+        let size = u64::try_from(stat.st_size).unwrap_or(u64::MAX);
+        if !is_kind(&stat, libc::S_IFREG) || stat.st_nlink != 1 || stat.st_uid != uid || size > MOST_COPIED || size > room {
+            bound.push(name);
+            continue;
+        }
+        let file = open_at(parent.as_raw_fd(), &name, libc::O_RDONLY | libc::O_NONBLOCK, 0)?;
+        let mut left = usize::try_from(room).unwrap_or(usize::MAX);
+        let data = read_file(file, &stat, &mut left)?;
+        room -= data.len() as u64;
+        copies.push(Beside { name, was: Was::File { data, mode: stat.st_mode & 0o777 }, stamp: stamp_of(&stat) });
+    }
+    Ok((copies, bound))
+}
 
 /// What stays of a protected folder on the disk and shows through it, as paths under it. A sealed file's path that is there, or something
 /// other than a folder where a sealed folder goes, is a plain copy that came back: one of the two would hide the other, and be lost. A folder
@@ -752,8 +810,10 @@ pub struct Place {
     last: String,
     /// What the tmpfs is over
     covered: PathBuf,
-    /// What stayed in the covered folder (`~/.ssh/config`, a file's neighbours), and shows through it
+    /// What stayed in the covered folder (`~/.ssh/config`, a file's large neighbours), as paths under it, and shows through it
     stays: Vec<String>,
+    /// What was beside a file and is copied in instead, to be put back as the command left it
+    copies: Vec<Beside>,
     /// For a file alone, the names beside it that hold its name, to know the ones a command leaves on the disk
     named_before: Vec<String>,
     /// The empty file that holds a single file's place
@@ -776,7 +836,21 @@ impl Place {
     pub fn prepare(home_path: &Path, home: &OwnedFd, path: &str, tree: &Tree) -> Result<Place, Why> {
         let (parent, last) = walk(home, path, true)?;
         let full = home_path.join(path);
-        let make = |style, covered: PathBuf, stays, placeholder, real, folder_mode| Place { full: full.clone(), path: path.to_string(), what: tree.what, style, last: last.clone(), covered, stays, named_before: Vec::new(), placeholder, real, folder_mode, device: std::cell::Cell::new(None) };
+        let make = |style, covered: PathBuf, stays, placeholder, real, folder_mode| Place {
+            full: full.clone(),
+            path: path.to_string(),
+            what: tree.what,
+            style,
+            last: last.clone(),
+            covered,
+            stays,
+            copies: Vec::new(),
+            named_before: Vec::new(),
+            placeholder,
+            real,
+            folder_mode,
+            device: std::cell::Cell::new(None),
+        };
         match tree.what {
             What::File => {
                 match open_at(parent.as_raw_fd(), &last, libc::O_RDONLY | libc::O_NONBLOCK, 0) {
@@ -795,7 +869,10 @@ impl Place {
                     names.retain(|name| *name != last);
                     let mode = stat_of(parent.as_raw_fd())?.st_mode & 0o7777;
                     let covered = full.parent().ok_or(Why::NotPlain)?.to_path_buf();
-                    return Ok(make(Style::Parent, covered, names, None, Some(parent), mode));
+                    let (copies, bound) = copy_beside(&parent, names)?;
+                    let mut place = make(Style::Parent, covered, bound, None, Some(parent), mode);
+                    place.copies = copies;
+                    return Ok(place);
                 }
                 let fd = open_at(parent.as_raw_fd(), &last, libc::O_RDWR | libc::O_CREAT | libc::O_NONBLOCK, 0o600).map_err(|why| if why == Why::NotPlain { Why::FileThere } else { why })?;
                 let mut passed = 0;
@@ -844,7 +921,7 @@ impl Place {
     }
 
     /// What stayed is opened here, in this namespace, before the tmpfs hides it: a mount takes a source only from the namespace it is
-    /// made in. Only a plain file or folder is put through, and a link is made again, never followed.
+    /// made in. A link is made again, never followed; a pipe or a socket is put through like a file, and nothing else is.
     fn open_stays(&self, folder: &Path) -> Result<Vec<(String, OwnedFd, u32)>, Why> {
         let path = c_path(folder)?;
         // SAFETY: a live string; the descriptor is then owned
@@ -860,7 +937,7 @@ impl Place {
             let Ok((inner, name)) = folder_of(&folder, at, false) else { continue };
             let Ok(fd) = open_at(inner.as_raw_fd(), &name, libc::O_PATH, 0) else { continue };
             let stat = stat_of(fd.as_raw_fd())?;
-            if [libc::S_IFREG, libc::S_IFDIR, libc::S_IFLNK].into_iter().any(|kind| is_kind(&stat, kind)) {
+            if [libc::S_IFREG, libc::S_IFDIR, libc::S_IFLNK, libc::S_IFIFO, libc::S_IFSOCK].into_iter().any(|kind| is_kind(&stat, kind)) {
                 stays.push((at.clone(), fd, stat.st_mode & libc::S_IFMT));
             }
         }
@@ -879,18 +956,14 @@ impl Place {
                     std::fs::create_dir(&on).map_err(|_| Why::Disk)?;
                     bind(&format!("/proc/self/fd/{}", fd.as_raw_fd()), &on)?;
                 }
-                libc::S_IFREG => {
-                    File::create(&on).map_err(|_| Why::Disk)?;
-                    bind(&format!("/proc/self/fd/{}", fd.as_raw_fd()), &on)?;
-                }
-                _ => {
-                    let mut target = vec![0u8; 4096];
-                    // SAFETY: a live buffer of the length given, and an empty name, which reads the link the descriptor is
-                    let count = unsafe { libc::readlinkat(fd.as_raw_fd(), c"".as_ptr(), target.as_mut_ptr().cast(), target.len()) };
-                    if count > 0 && (count as usize) < target.len() {
-                        target.truncate(count as usize);
+                libc::S_IFLNK => {
+                    if let Some(target) = link_text(fd.as_raw_fd(), "") {
                         let _ = std::os::unix::fs::symlink(std::ffi::OsStr::from_bytes(&target), &on);
                     }
+                }
+                _ => {
+                    File::create(&on).map_err(|_| Why::Disk)?;
+                    bind(&format!("/proc/self/fd/{}", fd.as_raw_fd()), &on)?;
                 }
             }
         }
@@ -903,6 +976,13 @@ impl Place {
         std::fs::set_permissions(&self.covered, std::fs::Permissions::from_mode(self.folder_mode)).map_err(|_| Why::Disk)?;
         let file = tree.files.first().ok_or(Why::Disk)?;
         write_private(&self.full, &file.data, file.mode)?;
+        for copy in &self.copies {
+            let on = self.covered.join(&copy.name);
+            match &copy.was {
+                Was::File { data, mode } => write_private(&on, data, *mode)?,
+                Was::Link(target) => std::os::unix::fs::symlink(std::ffi::OsStr::from_bytes(target), &on).map_err(|_| Why::Disk)?,
+            }
+        }
         self.bind_stays(&stays)
     }
 
@@ -955,6 +1035,7 @@ impl Place {
     /// its size: only what the tmpfs held bounds it. Not what could be the protected file itself, which is never written out: a name that
     /// has the file's in it (an editor's swap and backup files) or content that is the file's old or new content (a temporary copy). Everything
     /// that is not kept is named, with the reason. Nothing is kept of a command that did not end well: a half-written copy of the file may be among it.
+    /// What was there and was copied in goes back as the command left it, whichever way it ended, as it would have on the disk.
     pub fn keep_beside(&self, old: &[u8], new: &[u8], failed: bool) -> Left {
         let mut keeping = Keeping { old, new, last: &self.last, left: Left::default() };
         let Some(real) = &self.real else { return keeping.left };
@@ -972,13 +1053,17 @@ impl Place {
         let inside = unsafe { OwnedFd::from_raw_fd(fd) };
         let mut passed = 0;
         let Ok(names) = names_up_to(&inside, Some(&mut passed), usize::MAX) else { return keeping.left.unreadable() };
-        for name in names.iter().filter(|name| !self.stays.contains(name) && **name != self.last) {
+        let copied = |name: &String| self.copies.iter().any(|copy| copy.name == *name);
+        for name in names.iter().filter(|name| !self.stays.contains(name) && **name != self.last && !copied(name)) {
             if failed {
                 // A command that did not end well may have been between writing a temporary copy of the file and moving it into place
                 keeping.left.on_purpose.push(name.clone());
             } else {
                 keep_entry(&inside, real, name, name.clone(), &mut keeping, 0);
             }
+        }
+        for copy in &self.copies {
+            carry_back(&inside, real, copy, &mut keeping);
         }
         keeping.left.unshowable += passed;
         keeping.left
@@ -1034,6 +1119,8 @@ pub struct Left {
     pub failed: Vec<String>,
     /// Names that cannot be shown, which were not kept either
     pub unshowable: usize,
+    /// Files beside the protected one that something else changed on the disk while the command changed them too: kept under these names
+    pub beside: Vec<String>,
 }
 
 impl Left {
@@ -1043,7 +1130,126 @@ impl Left {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.on_purpose.is_empty() && self.failed.is_empty() && self.unshowable == 0
+        self.on_purpose.is_empty() && self.failed.is_empty() && self.unshowable == 0 && self.beside.is_empty()
+    }
+}
+
+/// What a file or link copied in from beside the protected file is when the command is over
+enum Now {
+    Gone,
+    File { file: File, size: u64, mode: u32 },
+    Link(Vec<u8>),
+    Other,
+}
+
+impl Now {
+    fn read(folder: &OwnedFd, name: &str) -> Now {
+        match open_at(folder.as_raw_fd(), name, libc::O_RDONLY | libc::O_NONBLOCK, 0) {
+            Err(Why::Missing) => Now::Gone,
+            Err(Why::NotPlain) => link_text(folder.as_raw_fd(), name).map_or(Now::Other, Now::Link),
+            Err(_) => Now::Other,
+            Ok(fd) => match stat_of(fd.as_raw_fd()) {
+                Ok(stat) if is_kind(&stat, libc::S_IFREG) => Now::File { file: File::from(fd), size: stat.st_size as u64, mode: stat.st_mode & 0o777 },
+                _ => Now::Other,
+            },
+        }
+    }
+
+    fn is(&mut self, was: &Was) -> bool {
+        match (self, was) {
+            (Now::Link(target), Was::Link(before)) => target == before,
+            (Now::File { file, size, mode }, Was::File { data, mode: before }) if *mode == *before && *size == data.len() as u64 => {
+                let mut found = Vec::with_capacity(data.len());
+                let same = file.take(*size + 1).read_to_end(&mut found).is_ok() && found == **data;
+                let _ = std::io::Seek::rewind(file);
+                same
+            }
+            _ => false,
+        }
+    }
+
+    /// Written to a name in a folder on the disk, never over one that is there. A file with the protected file's content is not.
+    fn put(self, to: &OwnedFd, name: &str, shown: &str, keeping: &mut Keeping) -> bool {
+        match self {
+            Now::Link(target) => {
+                let made = c_name(name).ok().zip(CString::new(target).ok()).is_some_and(|(wanted, text)| {
+                    // SAFETY: live strings
+                    unsafe { libc::symlinkat(text.as_ptr(), to.as_raw_fd(), wanted.as_ptr()) == 0 }
+                });
+                if !made {
+                    keeping.left.failed.push(shown.to_string());
+                }
+                made
+            }
+            Now::File { mut file, size, mode } => {
+                if is_a_copy(&mut file, size, keeping) {
+                    keeping.left.on_purpose.push(shown.to_string());
+                    return false;
+                }
+                let written = open_at(to.as_raw_fd(), name, libc::O_WRONLY | libc::O_CREAT | libc::O_EXCL, 0o600).and_then(|target| {
+                    let mut target = File::from(target);
+                    std::io::copy(&mut file, &mut target).map_err(|_| Why::Disk)?;
+                    target.set_permissions(std::fs::Permissions::from_mode(mode)).map_err(|_| Why::Disk)?;
+                    target.sync_all().map_err(|_| Why::Disk)
+                });
+                if written.is_err() {
+                    let _ = unlink(to, name, 0);
+                    keeping.left.failed.push(shown.to_string());
+                }
+                written.is_ok()
+            }
+            Now::Gone | Now::Other => {
+                keeping.left.failed.push(shown.to_string());
+                false
+            }
+        }
+    }
+}
+
+/// What became of a file or link that was beside the protected file and was copied in, put on the disk: a change by a rename over it, and
+/// one that is gone, unlinked. Only over what is on the disk as it was copied: what something else wrote there meanwhile stays, and what the
+/// command made of it goes beside it under another name.
+fn carry_back(inside: &OwnedFd, real: &OwnedFd, copy: &Beside, keeping: &mut Keeping) {
+    let name = copy.name.as_str();
+    let mut now = Now::read(inside, name);
+    if now.is(&copy.was) {
+        return;
+    }
+    let there = open_at(real.as_raw_fd(), name, libc::O_PATH, 0).ok();
+    let as_copied = there.as_ref().and_then(|fd| stat_of(fd.as_raw_fd()).ok()).is_some_and(|stat| stamp_of(&stat) == copy.stamp)
+        && match &copy.was {
+            Was::Link(target) => there.as_ref().and_then(|fd| link_text(fd.as_raw_fd(), "")).as_ref() == Some(target),
+            Was::File { .. } => true,
+        };
+    if !as_copied {
+        if !matches!(now, Now::Gone) {
+            let other = format!("{name} (changed by the command)");
+            if now.put(real, &other, &other, keeping) {
+                keeping.left.beside.push(other);
+            }
+        }
+        return;
+    }
+    match now {
+        Now::Gone => {
+            if unlink(real, name, 0).is_err() {
+                keeping.left.failed.push(name.to_string());
+            }
+        }
+        now => {
+            let temporary = format!(".amethystora-vault-{}", seal::random_hex(8));
+            if !now.put(real, &temporary, name, keeping) {
+                return;
+            }
+            let renamed = c_name(&temporary).ok().zip(c_name(name).ok()).is_some_and(|(from, to)| {
+                // SAFETY: live strings and a live descriptor
+                unsafe { libc::renameat(real.as_raw_fd(), from.as_ptr(), real.as_raw_fd(), to.as_ptr()) == 0 }
+            });
+            if !renamed {
+                let _ = unlink(real, &temporary, 0);
+                keeping.left.failed.push(name.to_string());
+            }
+        }
     }
 }
 

@@ -514,6 +514,9 @@ fn say_left(args: &Args, left: &protect::Left) {
         let names = list(&left.failed);
         eprintln!("{}", args.say("say-not-kept", "These could not be kept, and are gone with the command's private space ({count} in all, and any with names that cannot be shown): {names}").replace("{count}", &count.to_string()).replace("{names}", &names));
     }
+    if !left.beside.is_empty() {
+        eprintln!("{}", args.say("say-changed-outside", "Something else changed these files on your disk while the command changed them too. Yours stay as they are, and what the command made of them is beside each: {names}").replace("{names}", &list(&left.beside)));
+    }
 }
 
 /// Seals what the command left, in the person's time: the vault may have closed while it ran, and what it wrote exists nowhere else. A command

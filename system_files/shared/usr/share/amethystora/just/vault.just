@@ -453,6 +453,7 @@ run *ARGS:
         --say-detached-gone="$(gettext 'Something took the file'\''s place away while the command ran, so nothing it wrote after that was kept, and nothing was sealed. The old copy is still sealed.')" \
         --say-copy-left="$(gettext 'Not kept, since it may be a copy of the protected file, or half of one: its name has the file'\''s in it, it holds its content, or the command did not end well ({count} in all): {names}')" \
         --say-not-kept="$(gettext 'These could not be kept, and are gone with the command'\''s private space ({count} in all, and any with names that cannot be shown): {names}')" \
+        --say-changed-outside="$(gettext 'Something else changed these files on your disk while the command changed them too. Yours stay as they are, and what the command made of them is beside each: {names}')" \
         --say-variable="$(gettext 'That variable changes how programs start, so a secret is never put in it. Name another: VARIABLE=NAME')" \
         --say-reopen="$(gettext 'The vault closed while the command ran, and what it left is only here. Open the vault, then press Enter to seal it, or type no to lose it: ')" \
         --say-again="$(gettext 'That was refused, and what the command left is only here. Press Enter to be asked again, or type no to lose it: ')" \
