@@ -805,4 +805,46 @@ jq -se 'length == 2
     and any(.[]; .level == "critical" and .account == "mallory" and (.text | startswith("350 files were deleted from mallory")))' \
     <<<"${FOUND}" >/dev/null || fail "ransomware behaviour: ${FOUND}"
 
+# --- Polkit's questions in the journal ----------------------------------------------------------------------
+
+# A Vault question given up after a wrong password counts against that account, three of them make a finding; a Cancel does not
+# count, and a line anyone can write with a command for a name runs nothing (the name is read only as a plain one)
+cat >"${AMETHYSTORA_SECURITY_CONF}" <<'EOF2'
+AUDIT_LOG=off
+HARDENING=off
+JOURNAL=on
+LISTENERS=off
+IMAGE_DRIFT=off
+SETUID_SWEEP=off
+REPORT_ALERTS=off
+USER_PATHS=off
+NETWORK=off
+EOF2
+mkdir -p "${T}/bin"
+cat >"${T}/bin/journalctl" <<EOF2
+#!/usr/bin/bash
+for arg in "\$@"; do [[ "\${arg}" == --cursor-file=* ]] && echo here >"\${arg#--cursor-file=}"; done
+[[ " \$* " == *" -n1 "* ]] && exit 0
+cat "${T}/journal"
+EOF2
+chmod 0755 "${T}/bin/journalctl"
+FAILED='polkitd[6633]: Operator of unix-process:7:8 FAILED to authenticate to gain authorization for action org.amethystora.vault.use for unix-process:7:8 [<unknown>]'
+{
+    for minute in 10 20 30; do
+        echo "2026-11-09T11:${minute}:01-05:00 host polkit-agent-helper-1[9]: pam_unix(polkit-1:auth): authentication failure; logname=alice uid=4500 euid=0 tty= ruser=alice rhost=  user=alice"
+        echo "2026-11-09T11:${minute}:40-05:00 host ${FAILED} (owned by unix-user:alice)"
+    done
+    echo "2026-11-09T11:40:00-05:00 host ${FAILED} (owned by unix-user:bob)"
+    echo "2026-11-09T11:50:00-05:00 host polkit-agent-helper-1[9]: pam_unix(polkit-1:auth): authentication failure; logname=x uid=1 euid=0 tty= ruser=x rhost=  user=\$(touch ${T}/ran)"
+    echo "2026-11-09T11:50:01-05:00 host ${FAILED} (owned by unix-user:\$(touch ${T}/ran))"
+} >"${T}/journal"
+rm -f "${R}/var/lib/amethystora/security/journal.cursor"
+PATH="${T}/bin:${PATH}" timeout 120 "${WATCH}" >/dev/null || fail "the run that only marks the journal failed"
+before="$(wc -l <"${HISTORY}")"
+PATH="${T}/bin:${PATH}" timeout 120 "${WATCH}" >/dev/null || fail "the run reading the journal failed"
+FOUND="$(tail -n +"$((before + 1))" "${HISTORY}" | jq -c 'select(.key == "journal")')"
+jq -se 'length == 1 and .[0].account == "alice" and .[0].level == "normal" and (.[0].text | startswith("3 Amethystora Vault question"))' \
+    <<<"${FOUND}" >/dev/null || fail "the Vault's questions given up after a wrong password: ${FOUND}"
+[[ -e "${T}/ran" ]] && fail "a name read from the journal ran a command"
+
 echo "test-security-watch: what an account plants is only ever read"

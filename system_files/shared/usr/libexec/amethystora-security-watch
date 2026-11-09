@@ -1242,8 +1242,8 @@ read_bpf() {
 
 read_journal() {
     local cursor="${STATE}/journal.cursor" line user
-    local -A locked=() wrong=()
-    local polkit=0 usb=0
+    local -A locked=() wrong=() mistyped=() vault=()
+    local polkit=0 usb=0 at typed
     if [[ ! -s "${cursor}" ]]; then
         journalctl -q -n1 --cursor-file="${cursor}" >/dev/null 2>&1
         chmod 0600 "${cursor}" 2>/dev/null
@@ -1257,10 +1257,23 @@ read_journal() {
         elif [[ "${line}" =~ sudo\[[0-9]+\]:\ +([^ ]+)\ :\ ([0-9]+)\ incorrect\ password\ attempt ]]; then
             user="${BASH_REMATCH[1]}"
             wrong["${user}"]=$((${wrong[${user}]:-0} + BASH_REMATCH[2]))
+        elif [[ "${line}" =~ pam_unix\(polkit-1:auth\):\ authentication\ failure\;.*\ user=([A-Za-z0-9_][A-Za-z0-9_.@-]*)$ ]]; then
+            # A wrong password at a polkit question, logged as it is typed: the question's own end, below, comes when the
+            # person gives up, which may be a while later. Anyone can write such a line, so a name is only ever a plain one
+            mistyped["${BASH_REMATCH[1]}"]="$(date -d "${line%% *}" +%s 2>/dev/null)"
         elif [[ "${line}" == *"FAILED to authenticate to gain authorization for action org.amethystora.vault."* ]]; then
-            # Amethystora Vault asks a person to approve each use, and polkit writes this line for a Cancel, an Esc and the
-            # service's own cancel when the screen locks as well as for a wrong password: it is about no administrator
-            :
+            # Amethystora Vault asks a person to approve each use with their own password, and polkit writes this line for a
+            # Cancel, an Esc and the service's own cancel when the screen locks as well: only a question given up after a wrong
+            # password in the two minutes before counts, and it is about that account, not an administrator
+            if [[ "${line}" =~ \(owned\ by\ unix-user:([A-Za-z0-9_][A-Za-z0-9_.@-]*)\)$ ]]; then
+                user="${BASH_REMATCH[1]}"
+                at="$(date -d "${line%% *}" +%s 2>/dev/null)"
+                typed="${mistyped[${user}]:-}"
+                if [[ "${at}" =~ ^[0-9]+$ && "${typed}" =~ ^[0-9]+$ ]] && ((at - typed <= 120)); then
+                    vault["${user}"]=$((${vault[${user}]:-0} + 1))
+                fi
+                mistyped["${user}"]=""
+            fi
         elif [[ "${line}" == *"FAILED to authenticate to gain authorization"* ]]; then
             polkit=$((polkit + 1))
         elif [[ "${line}" == *"Device is not authorized for usage"* ]]; then
@@ -1283,6 +1296,10 @@ read_journal() {
         add "${level}" journal "${user}" "Credential Access" "${wrong[${user}]} wrong password(s) for sudo, as ${user}"
     done
     [[ "${polkit}" -ge 3 ]] && add normal journal - "Credential Access" "${polkit} administrator password prompts were answered wrongly"
+    for user in "${!vault[@]}"; do
+        [[ "${vault[${user}]}" -ge 3 ]] && level=normal || level=quiet
+        add "${level}" journal "${user}" "Credential Access" "${vault[${user}]} Amethystora Vault question(s) given up after a wrong password, as ${user}"
+    done
     [[ "${usb}" -gt 0 ]] && add normal journal - "Initial Access" "USB protection blocked ${usb} USB device(s). Allow one with: ame security usb allow"
 }
 
