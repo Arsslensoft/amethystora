@@ -8,13 +8,13 @@
 //!   amethystora-agent-tools undo ID                  the tools' own undo of one change, for the live pill's Undo
 //!   amethystora-agent-tools plugin-change PLUGIN ENTRY VALUE
 //!                                                    a plugin's change of a Control entry it was granted (the plugin host's)
-//!   amethystora-agent-tools manual-search [-k N] -- WORDS...
+//!   amethystora-agent-tools manual-search [-k N] (-- WORDS... | --stdin --)
 //!                                                    the manual's pages that answer WORDS, as JSON, for the
 //!                                                    desktop's search: no policy asked, nothing recorded
 //!   amethystora-agent-tools files-index [--dir DIR] [--model DIR]
 //!                                                    files by meaning: JSON lines {path, modified, text} on stdin
 //!                                                    into the account's own index (paths and vectors only)
-//!   amethystora-agent-tools files-search [-k N] [--dir DIR] [--model DIR] -- WORDS...
+//!   amethystora-agent-tools files-search [-k N] [--dir DIR] [--model DIR] (-- WORDS... | --stdin --)
 //!                                                    the files nearest to WORDS, as JSON, for the desktop's search
 //!   amethystora-agent-tools routines check FILE | list | show ID | add FILE | pause|resume|remove ID | run ID | undo ID | triggers
 //!                                                    little routines, sealed in the Vault (ame agent routines)
@@ -42,10 +42,18 @@ use serde_json::{Value, json};
 
 fn usage() -> ExitCode {
     eprintln!("usage: amethystora-agent-tools mcp | search QUERY... | read ID | state TOPIC [FILTER] | history [ID] | undo ID | policy [--json]");
-    eprintln!("       amethystora-agent-tools manual-search [-k N] -- WORDS...");
-    eprintln!("       amethystora-agent-tools files-index [--dir DIR] [--model DIR] | files-search [-k N] [--dir DIR] [--model DIR] -- WORDS...");
+    eprintln!("       amethystora-agent-tools manual-search [-k N] (-- WORDS... | --stdin --)");
+    eprintln!("       amethystora-agent-tools files-index [--dir DIR] [--model DIR] | files-search [-k N] [--dir DIR] [--model DIR] (-- WORDS... | --stdin --)");
     eprintln!("       amethystora-agent-tools index --write DIR [--root ROOT] [--sources-only] [--model DIR] | eval GOLDEN [--dir DIR] [--min R]");
     ExitCode::from(64)
+}
+
+/// What was typed in the desktop's search, read from standard input (--stdin): a command line is readable by every account
+/// while the program runs and kept by an exec audit. At most 1 KiB, a longer text cut where it is
+fn typed_words() -> String {
+    let mut bytes = Vec::new();
+    let _ = std::io::Read::read_to_end(&mut std::io::Read::take(std::io::stdin().lock(), 1024), &mut bytes);
+    String::from_utf8_lossy(&bytes).into_owned()
 }
 
 /// The value after an option, as in --root /
@@ -101,15 +109,19 @@ fn main() -> ExitCode {
         "manual-search" => {
             let mut k = 3;
             let mut at = 0;
+            let mut stdin = false;
             while at < rest.len() && rest[at] != "--" {
-                if rest[at] == "-k" {
+                if rest[at] == "--stdin" {
+                    stdin = true;
+                    at += 1;
+                } else if rest[at] == "-k" {
                     k = rest.get(at + 1).and_then(|n| n.parse::<usize>().ok()).unwrap_or(3);
                     at += 2;
                 } else {
                     return usage();
                 }
             }
-            let words = rest.get(at + 1..).unwrap_or_default().join(" ");
+            let words = if stdin { typed_words() } else { rest.get(at + 1..).unwrap_or_default().join(" ") };
             let found = if words.trim().is_empty() {
                 Vec::new()
             } else {
@@ -150,7 +162,7 @@ fn main() -> ExitCode {
             let k = option(options, "-k").and_then(|n| n.parse::<usize>().ok()).unwrap_or(3).clamp(1, 10);
             let dir = option(options, "--dir").map(PathBuf::from).unwrap_or_else(files::dir);
             let model = option(options, "--model").unwrap_or_else(|| files::MODEL.to_string());
-            let words = rest[words_at..].join(" ");
+            let words = if options.iter().any(|arg| arg == "--stdin") { typed_words() } else { rest[words_at..].join(" ") };
             let found = match index::embed::Model::load(std::path::Path::new(&model)) {
                 Ok(model) if !words.trim().is_empty() => files::search(&dir, &model, &words, k),
                 _ => Vec::new(),

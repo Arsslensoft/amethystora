@@ -51,7 +51,7 @@ export class PhotosProvider {
         const pictures = this._pictures();
         if (!words.length || !pictures || !await pause(QUIET, cancellable) || this._gone)
             return [];
-        const printed = await output([...SCOPE, HELPER, 'search', ...words], cancellable);
+        const printed = await output([...SCOPE, HELPER, 'search', '--stdin'], cancellable, words.join(' '));
         if (cancellable?.is_cancelled() || printed === null || this._gone)
             return [];
         let hits;

@@ -1,7 +1,9 @@
 // What apps say about themselves on their dock icon, through the launcher protocol many of them speak
 // (com.canonical.Unity.LauncherEntry): a count of unread items, a progress bar, a call for attention, that an update
 // is under way, and a short menu of their own. An app only says it when somebody owns the protocol's bus name, so
-// the dock owns it while it runs. What an app said is forgotten when it leaves the bus. While notifications are
+// the dock owns it while it runs. A Flatpak's process is believed only about its own launcher: the sender's process
+// (GetConnectionUnixProcessID) is looked up, and one in a Flatpak's scope (/proc/PID/cgroup) may not speak for another app,
+// nor may one that cannot be looked up. What an app said is forgotten when it leaves the bus. While notifications are
 // silenced (Do Not Disturb) none of it shows, anywhere: no count, no bar, no dimming for an update, no call for
 // attention and no menu of its own, as if the app had said nothing.
 
@@ -18,6 +20,8 @@ const SCHEME = 'application://';
 const LAUNCHER_ID = /^[\w.+-]+\.desktop$/;
 // The most apps that are remembered at once, apart from needing to be ones the system knows
 const MAX_ENTRIES = 128;
+// The most senders whose identity is kept at once (each is one small promise); the oldest goes first
+const MAX_SENDERS = 64;
 
 // The protocol's keys, and what each is called here
 const KEYS = {
@@ -30,6 +34,17 @@ const KEYS = {
     'quicklist': 'quicklist',
 };
 
+// The app id a Flatpak's scope names in /proc/PID/cgroup (app-flatpak-ID-N.scope), or null for any other process
+function flatpakOf(cgroup) {
+    const line = cgroup.split('\n').find(l => l.startsWith('0::')) ?? '';
+    for (const part of line.slice(3).split('/').reverse()) {
+        const match = /^app-flatpak-(.+?)-\d+\.scope$/.exec(part);
+        if (match)
+            return match[1].replace(/\\x([0-9a-fA-F]{2})/g, (m, hex) => String.fromCharCode(parseInt(hex, 16)));
+    }
+    return null;
+}
+
 export class LauncherEntries extends EventEmitter {
     start() {
         // By the launcher's ID, without the protocol's scheme
@@ -37,6 +52,8 @@ export class LauncherEntries extends EventEmitter {
         // What plugins say about an app (modules/plugins/dock.js), by the plugin that said it
         this._plugins = new Map();
         this._watches = new Map();
+        // Who each sender is (its app's id and its process), by the sender's bus name
+        this._who = new Map();
         // Silencing notifications, or letting them through again, changes what every app shows (null: every app)
         this._banners = new Gio.Settings({schema_id: 'org.gnome.desktop.notifications'});
         this._banners.connectObject('changed::show-banners', () => this.emit('changed', null), this);
@@ -69,6 +86,7 @@ export class LauncherEntries extends EventEmitter {
         for (const id of this._watches?.values() ?? [])
             Gio.bus_unwatch_name(id);
         this._watches = null;
+        this._who = null;
         for (const entry of this._entries?.values() ?? [])
             this._dropMenu(entry);
         this._entries = null;
@@ -145,7 +163,52 @@ export class LauncherEntries extends EventEmitter {
             return;
         const id = uri.startsWith(SCHEME) ? uri.slice(SCHEME.length) : uri;
         // Any program on the bus can say this about any launcher: only the apps this machine has get an entry, and
-        // only so many
+        // only so many; and only the app's own process may speak for it
+        if (typeof sender !== 'string' || !LAUNCHER_ID.test(id) || !Shell.AppSystem.get_default().lookup_app(id))
+            return;
+        this._whoIs(sender).then(who => {
+            if (this._entries && this._speaksFor(who, id))
+                this._apply(sender, id, properties);
+        });
+    }
+
+    // What the bus and /proc say the sender is: its process and the Flatpak it runs in, if any (a Flatpak's
+    // scope cannot be made to name another app), kept for the sender's life. Null where either cannot be read, which then
+    // says nothing
+    _whoIs(sender) {
+        let who = this._who.get(sender);
+        if (!who) {
+            who = this._lookUp(sender);
+            if (this._who.size >= MAX_SENDERS)
+                this._who.delete(this._who.keys().next().value);
+            this._who.set(sender, who);
+        }
+        return who;
+    }
+
+    async _lookUp(sender) {
+        try {
+            const reply = await Gio.DBus.session.call('org.freedesktop.DBus', '/org/freedesktop/DBus', 'org.freedesktop.DBus',
+                'GetConnectionUnixProcessID', new GLib.Variant('(s)', [sender]), null, Gio.DBusCallFlags.NONE, 2000, null);
+            const pid = reply.deepUnpack()[0];
+            const [bytes] = await Gio.File.new_for_path(`/proc/${pid}/cgroup`).load_contents_async(null);
+            const cgroup = new TextDecoder().decode(bytes);
+            return {pid, flatpak: flatpakOf(cgroup)};
+        } catch {
+            return null;
+        }
+    }
+
+    // Whether that process may speak for the launcher id. One in a Flatpak's scope speaks only for that Flatpak (the scope is
+    // Flatpak's own, which the app cannot make name another app); any other program is let through, since it could name any
+    // scope it likes, and apps are started in scopes and services of many names (autostart, D-Bus activation, a terminal)
+    _speaksFor(who, id) {
+        if (!who)
+            return false;
+        return who.flatpak === null || who.flatpak === id.slice(0, -'.desktop'.length);
+    }
+
+    _apply(sender, id, properties) {
         let entry = this._entries.get(id);
         if (!entry) {
             if (this._entries.size >= MAX_ENTRIES || !LAUNCHER_ID.test(id) ||
@@ -200,6 +263,7 @@ export class LauncherEntries extends EventEmitter {
         if (!id)
             return;
         this._watches.delete(sender);
+        this._who?.delete(sender);
         Gio.bus_unwatch_name(id);
         for (const [appId, entry] of [...this._entries]) {
             if (entry.sender !== sender)

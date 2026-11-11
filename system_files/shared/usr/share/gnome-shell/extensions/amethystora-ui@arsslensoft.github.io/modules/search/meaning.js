@@ -49,7 +49,7 @@ export class MeaningProvider {
         const documents = this._documents();
         if (!documents || !await pause(QUIET, cancellable) || this._gone)
             return [];
-        const printed = await output([TOOLS, 'files-search', '-k', String(HITS), '--', ...words], cancellable);
+        const printed = await output([TOOLS, 'files-search', '-k', String(HITS), '--stdin', '--'], cancellable, words.join(' '));
         if (cancellable?.is_cancelled() || printed === null || this._gone)
             return [];
         let hits;

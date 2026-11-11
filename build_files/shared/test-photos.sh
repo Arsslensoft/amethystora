@@ -161,6 +161,8 @@ PY
 grep -q "^seal photo-index 0000$" "${T}/vault.log" || fail "the shards are not sealed under the photo-index purpose"
 grep -rl 'canary-beach' "${HOME}" "${T}/vault.log" 2>/dev/null && fail "a photo's name is in the clear"
 jq -e '.error == "closed"' <<<"$(echo closed >"${T}/mode"; python3 "${HELPER}" search the dog on the beach || true)" >/dev/null || fail "a search with the vault closed"
+# The desktop's search gives the words on standard input, never on a command line
+jq -e '.error == "closed"' <<<"$(echo closed >"${T}/mode"; echo the dog on the beach | python3 "${HELPER}" search --stdin || true)" >/dev/null || fail "a search on standard input with the vault closed"
 echo open >"${T}/mode"
 : >"${T}/vault.log"
 python3 "${HELPER}" remove
@@ -212,6 +214,7 @@ PY
     jq -e '.photos == 3' <<<"$(python3 "${HELPER}" status)" >/dev/null || fail "three photos were not indexed: $(python3 "${HELPER}" status)"
     [[ "$(python3 "${HELPER}" search a red circle | jq -r '.[0].path | split("/") | last')" == red-circle.png ]] || fail "a red circle"
     [[ "$(python3 "${HELPER}" search a green field with the sky above | jq -r '.[0].path | split("/") | last')" == green-grass.jpg ]] || fail "a green field"
+    [[ "$(echo a red circle | python3 "${HELPER}" search --stdin | jq -r '.[0].path | split("/") | last')" == red-circle.png ]] || fail "a red circle on standard input"
     [[ "$(python3 "${HELPER}" search blue sky with a yellow sun | jq -r '.[0].path | split("/") | last')" == blue-sky-sun.jpg ]] || fail "a blue sky"
     echo "test-photos: real models ok"
 fi

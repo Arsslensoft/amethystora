@@ -13,7 +13,9 @@
 //     Release once it is done, so a theme is one transition however long it takes to apply
 //   - a wallpaper or appearance key changes from anywhere else: Settings, gsettings, Super+Ctrl+Space
 //   - the Dark Style toggle in the quick settings, through screenTransition.run()
-// Whatever happens, the screen is never held for more than MAX_HOLD_MS.
+// Whatever happens, the screen is never held for more than MAX_HOLD_MS. And never while the screen is shared: a frozen picture
+// is drawn over every window, the covers of Amethystora UI's share guard (children of the windows' actors) included, so a
+// picture taken before the share would show what the guard hides, and a freeze meets a new share by ending at once.
 //
 // At login, reveal.js plays the boot splash's gem into the top bar as the desktop first appears.
 
@@ -202,6 +204,18 @@ export default class TransitionsExtension extends Extension {
         this._frozen = false;
         this._held = false;
 
+        // The shares and recordings Mutter told of, as the share guard counts them (privacy/guard.js): a recording is the
+        // person's own and not a share
+        this._handles = new Set();
+        this._controller = global.backend.get_remote_access_controller?.() ?? null;
+        this._controller?.connectObject('new-handle', (controller, handle) => this._track(handle), this);
+        // The controller lists nothing: what runs already is what GNOME's own indicators hold
+        for (const handle of [
+            ...Main.panel?.statusArea.quickSettings?._remoteAccess?._handles ?? [],
+            ...Main.panel?.statusArea.screenSharing?._handles ?? [],
+        ])
+            this._track(handle);
+
         // GSettings only reports a change to a key that has been read since its handler was connected
         this._watched = Object.entries(WATCHED).map(([schema, keys]) => {
             const settings = new Gio.Settings({schema_id: schema});
@@ -246,6 +260,11 @@ export default class TransitionsExtension extends Extension {
         this._loginReveal?.stop();
         this._loginReveal = null;
         Main.layoutManager.disconnectObject(this);
+        this._controller?.disconnectObject(this);
+        this._controller = null;
+        for (const handle of this._handles)
+            handle.disconnectObject(this);
+        this._handles = null;
         this._dbus.unexport();
         this._injections.clear();
         for (const settings of this._watched)
@@ -267,6 +286,19 @@ export default class TransitionsExtension extends Extension {
         this._settings = null;
     }
 
+    // A share began: what is frozen is given back at once, and nothing is frozen until it ends
+    _track(handle) {
+        if (!handle || this._handles.has(handle) || (handle.is_recording ?? handle.isRecording))
+            return;
+        this._handles.add(handle);
+        handle.connectObject('stopped', () => {
+            handle.disconnectObject(this);
+            this._handles?.delete(handle);
+        }, this);
+        if (this._frozen || this._timeline)
+            this._finish();
+    }
+
     _changed() {
         if (this._freeze())
             this._scheduleReveal();
@@ -286,6 +318,9 @@ export default class TransitionsExtension extends Extension {
     // Freeze the screen as it is now. Returns false when there is to be no animation, and the change
     // then shows the way it would without this extension.
     _freeze() {
+        // A share is on: the change shows the way it would without this extension, and no picture covers the guard's covers
+        if (this._handles.size > 0)
+            return false;
         if (this._frozen)
             return true;
         // A new account's greeting (Amethystora UI) is on the screen: a theme set under it shows as it would without this

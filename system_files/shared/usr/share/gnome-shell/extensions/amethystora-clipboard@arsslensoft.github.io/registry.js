@@ -8,6 +8,7 @@ import Gio from 'gi://Gio';
 import St from 'gi://St';
 import { PrefsFields } from './constants.js';
 import * as Keyring from './keyring.js';
+import { pictureFits } from './pictures.js';
 import { Store, survivors, readOldCache, forgetOldCache } from './store.js';
 
 // What the journal says when the history's state changes, once each time it does
@@ -154,6 +155,8 @@ export class Registry {
 
     async getEntryAsImage (entry) {
         if (entry.isImage() === false) return;
+        // One that is over the ceilings (an older history's too) is never handed to the decoder
+        if (!pictureFits(entry.asBytes().toArray())) return;
 
         return new St.Icon({ gicon: Gio.BytesIcon.new(entry.asBytes()) });
     }
@@ -162,7 +165,7 @@ export class Registry {
     // The picture at its own proportions, as large as fits in width × height and never larger than it is; null for one
     // that is not a picture or does not read
     getEntryAsPicture (entry, width, height) {
-        if (entry.isImage() === false) return null;
+        if (entry.isImage() === false || !pictureFits(entry.asBytes().toArray())) return null;
         let pixbuf;
         try {
             const stream = Gio.MemoryInputStream.new_from_bytes(entry.asBytes());

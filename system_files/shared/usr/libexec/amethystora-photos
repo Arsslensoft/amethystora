@@ -10,6 +10,7 @@
 #   amethystora-photos remove          deletes the models, forgets the vault's key and with it every sealed file
 #   amethystora-photos index           one reading: new and changed photos, until the computer is no longer idle or on mains
 #   amethystora-photos search WORD...  the photos nearest what was described, as JSON [{"path", "score"}]
+#   amethystora-photos search --stdin  the same, the words read from standard input (what the desktop's search does)
 #
 # Photos are read through GdkPixbuf, which reads every kind through glycin's sandboxed loaders: a picture somebody sent cannot
 # run code here. Nothing is opened in Private, in a folder that starts with a dot or through a link, and no file name is ever
@@ -511,7 +512,7 @@ def search(words):
 
 
 def usage():
-    print('usage: amethystora-photos status|fetch|remove|index|search WORD...', file=sys.stderr)
+    print('usage: amethystora-photos status|fetch|remove|index|search WORD... | search --stdin', file=sys.stderr)
     return 64
 
 
@@ -519,6 +520,11 @@ def main(argv):
     words = argv[1:]
     if words in (['status'], ['fetch'], ['remove'], ['index']):
         return {'status': status, 'fetch': fetch, 'remove': remove, 'index': index}[words[0]]()
+    # The desktop's search says what was typed on standard input: an argument is on a command line, which every account can read
+    # and an audit log keeps
+    if words == ['search', '--stdin']:
+        typed = sys.stdin.read(1000).split()
+        return search(typed) if typed else usage()
     if len(words) >= 2 and words[0] == 'search':
         return search(words[1:])
     return usage()

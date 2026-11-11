@@ -21,6 +21,7 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import { Extension, gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import { Registry, ClipboardEntry } from './registry.js';
+import { copyFits } from './pictures.js';
 import { DialogManager } from './confirmDialog.js';
 import { PrefsFields } from './constants.js';
 import { Keyboard } from './keyboard.js';
@@ -349,6 +350,7 @@ const ClipboardIndicator = GObject.registerClass({
                 this._buttonText.set_text('');
                 this._buttonImgPreview.destroy_all_children();
                 this.registry.getEntryAsImage(entry).then(img => {
+                    if (!img) return;
                     img.add_style_class_name('clipboard-indicator-img-preview');
                     img.y_align = Clutter.ActorAlign.CENTER;
 
@@ -746,6 +748,7 @@ const ClipboardIndicator = GObject.registerClass({
         }
         else if (entry.isImage()) {
             this.registry.getEntryAsImage(entry).then(img => {
+                if (!img) return;
                 img.add_style_class_name('clipboard-menu-img-preview');
                 if (menuItem.previewImage) {
                     menuItem.remove_child(menuItem.previewImage);
@@ -2191,6 +2194,11 @@ const ClipboardIndicator = GObject.registerClass({
             // A one-time code Amethystora UI's pill copied (its modules/pill/code.js) is never recorded
             const secret = globalThis[Symbol.for('amethystora.clipboard.secret')];
             if (secret && new TextDecoder().decode(data) === secret) return null;
+            // Too large to keep or to decode in the shell (the header is read, never the picture): the copy is skipped
+            if (data.length > 0 && !copyFits(type.startsWith('image/'), data)) {
+                console.warn(`Amethystora Clipboard: a copy of ${type} was too large to record`);
+                return null;
+            }
             if (data.length > 0) {
                 // HACK: workaround for GNOME 2nd+ copy mangling mimetypes https://gitlab.gnome.org/GNOME/gnome-shell/-/issues/8233
                 // In theory GNOME or XWayland should auto-convert this back to UTF8_STRING for legacy apps when it's needed https://gitlab.gnome.org/GNOME/gtk/-/merge_requests/5300

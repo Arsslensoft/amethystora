@@ -43,7 +43,7 @@ export class ManualProvider {
             return [];
         if (!await pause(QUIET, cancellable) || this._gone)
             return [];
-        const printed = await output([TOOLS, 'manual-search', '-k', String(HITS), '--', ...terms], cancellable);
+        const printed = await output([TOOLS, 'manual-search', '-k', String(HITS), '--stdin', '--'], cancellable, text);
         if (cancellable?.is_cancelled() || printed === null)
             return [];
         let hits;
