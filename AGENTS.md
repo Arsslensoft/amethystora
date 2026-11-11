@@ -212,7 +212,11 @@ The repository uses mandatory pre-commit validation:
 - Images are signed with cosign and pushed to GHCR, and every tag pushed is checked against `cosign.pub` afterwards
 - Only main publishes: one `PUBLISH` condition in `reusable-build.yml` (main's schedule and dispatches, the merge queue in front of main, and the `beta` branch's own stream) decides every push, signature, attestation and SBOM, and which builds get the real module and Secure Boot keys. Everything else builds with throwaway keys and publishes nothing. No build step gets `GITHUB_TOKEN`, and keys reach the build as files (`AKMODS_PRIVKEY_FILE`, `SECUREBOOT_KEY_FILE`), never on a command line. The keys and the R2 token are secrets of the `release` environment alone, which admits `main`, `beta` and `gh-readonly-queue/main/*`: the image job names it under the same condition as `PUBLISH`, and the ISO's `publish` job always, so a branch that edits either workflow still gets no key. A new job that needs one names the environment too; never add a key as a repository secret
 - cosign is installed from its pinned installer before the build, into `/usr/local/bin` for sudo, and `just verify-container` fails without it; just comes from a pinned release with its checksum (`.github/actions/install-just`)
-- Every workflow sets `permissions: {}` or read-only access at the top and grants write access on the job that needs it, which OpenSSF Scorecard checks (`build-images.yml` is the exception: each job it runs needs the same write access)
+- Every workflow sets `permissions: {}` or read-only access at the top and grants write access on the job that needs it, which OpenSSF Scorecard checks (`build-images.yml` is the exception: each job it runs needs the same write access). `reusable-build.yml` has no top-level
+  `permissions`, since a called workflow may only lower its caller's token: each `build-image-*.yml` has two jobs, one for a run
+  that publishes (`PUBLISH`'s condition, written out again there) with `packages`, `id-token` and `attestations` write, and a
+  `-unpublished` one for every other run (pull requests, dispatches from other branches) with `contents: read` alone, so
+  that a build that publishes nothing holds no token that could. Keep the two conditions each other's opposite
 
 ### Manual Validation Steps
 1. `pre-commit run --all-files` - Runs validation hooks (2-3 minutes, .devcontainer.json failure is expected)
@@ -410,7 +414,19 @@ agent cleaned and marked as data. Off costs nothing: no daemon, timer or service
   turning protection on pass), deleting from a backup or a snapshot, erasing disks, the AUR, sudoers, polkit,
   PAM, the agent's own lock and root mode, the update boot guard and the lost-computer line, the Notes data, the Vault, and shells or wrappers that would run commands out
   of sight. The tools that change things refuse while the agent runs with its own checks off (a flag from
-  `agent-cli-flags` on the agent above the server, or a setting the security reader reports).
+  `agent-cli-flags` on the agent above the server, or a setting the security reader reports: besides a mode that never
+  asks, an allow rule on one of the tools that change things in Claude Code's, Codex's, Opencode's, Copilot CLI's,
+  Cursor CLI's or Antigravity CLI's own settings, which the reader says as Defense Evasion). They, and the root helper,
+  also refuse a tool server that no agent started through the launcher stands above (`checks::launched_by_launcher`: an
+  agent found above it by its name, and `AMETHYSTORA_AGENT_LAUNCHED=1` in the tool server's own environment, which the
+  `env` of the MCP server entry `amethystora-agent` gives each agent carries: Claude's, Copilot's, Cursor's and
+  Antigravity's entry, Opencode's `environment`, Codex's `mcp_servers.amethystora.env`; the agent's own environment is
+  not read, which a non-dumpable agent keeps closed; the root helper reads the server's `/proc/PID/environ`): a program
+  that starts `amethystora-agent-tools mcp` itself is refused. That is not a lock, since a program of the account can set
+  a variable and take an agent's name; the person's own answer and polkit's password are. The refusal says apart "no
+  agent above", "environment unreadable" and "not started through amethystora-agent". An Opencode configuration of the
+  user's own (`OPENCODE_CONFIG_CONTENT` set) has no such entry, so gets level 1 only. The shell's `Agent.Ask` takes the
+  `server` in `ask.json` only for a process that is this account's tool server (`/proc/PID/exe`, `mcp` its only word).
 - **`/etc/amethystora/agent.conf`** is the administrator's: `ALLOW=act|know|off` (the most any account may
   turn on), `ALLOW_FOR=account:level` (one account's own), `ROOT=session|minutes|each|terminal`. Its one
   reader and writer is the tools program (`policy`, and `conf` as root, behind `ame agent lock` and `ame
@@ -570,7 +586,8 @@ it describes, and add to it when you add something a user would look for there.
   still named in that language in the sidebar, from the Manual's catalogs (`check-translations.js`'s `DATA`), and
   reads left to right in Arabic.
 - `whats-new.md` is the build's, not written by hand: `just build` runs `build_files/shared/release-commits.sh` on the host,
-  which reads the published image's `org.amethystora.whats-new` label and the `feat` subjects since its commit into
+  which reads the published image's `org.amethystora.whats-new` label (from a digest `cosign verify` accepted against
+  `cosign.pub`, never from a tag alone) and the `feat` subjects since its commit into
   `build_files/whats-new.json` (gitignored; nothing when offline, and the build goes on), and `build-whats-new.py` writes the
   page and the pill's `/usr/share/amethystora/whats-new.json`. It keeps a title only in plain words (no command, path,
   Markdown or upstream name; `test-whats-new.sh`), and the page is never translated (`20-tests.sh`).
@@ -638,7 +655,8 @@ scanning needs it. The socket's folder is Fedora's (0710 `clamscan:virusgroup`),
 `clamscan`, as before.
 Network protection, the app's **Network** page, is Suricata inline on the machine's own traffic
 (`amethystora-ips.service`, `/usr/libexec/amethystora-ips`), off until `NETWORK` in that file says
-`watch` or `block`; only `block` cuts anything off. It fails open at every layer: the queue's `bypass`
+`watch` or `block`; only `block` cuts anything off (in `watch`, `modify-watch.conf` also turns a `drop` or `reject` a rule
+source ships into `alert`; `test-ips-modify.sh`). It fails open at every layer: the queue's `bypass`
 in `amethystora-ips.nft`, and the fail-open, exception and stream settings
 `build_files/shared/ips-config.py` writes into the configuration it derives from the package's. Keep it
 that way: a failure must cost inspection, never the network.
@@ -681,7 +699,12 @@ records those keys instead, without audit's per-system-call cost (`apps/sensor`,
 writes a `/run/amethystora/sensor/{plan,watch.list}` line from the same shipped rules rather than an audit
 rule, so the kernel loads only `-a never,task`; the watcher then reads that key from the sensor's own log
 (`sensor-KEY` checkpoint) and auditd's for the rest. A kernel the sensor cannot load on, or `ame security
-audit-locked`, falls back to the audit rules unchanged. Nobody logs in before it is watching (`Type=notify`,
+audit-locked`, falls back to the audit rules unchanged. The generator writes the plan and the system's half of the watch list
+before it reads any home (a run cut short must not leave a boot with no plan), bounds each home's secrets (300 matches or 5 s,
+and the UID goes into `skipped`), and the plan and watch list are 0600 in a 0700 run directory. A folder is held open and its id
+never freed, so the table (60,000) is shared out: a watched tree takes 4096 at start and an account's own mkdirs 4096 while it
+runs; the sensor names what it could not register in `full` (`table`, `tree`, `uid N`), and the watcher says each once a boot
+(`sensor_full`, `rules_status`) and puts `full` in `status.json`'s `sensor`. Nobody logs in before it is watching (`Type=notify`,
 before `systemd-user-sessions.service`, 30 s at most), and its path walk and `put_program` are BPF global
 functions, which the verifier checks once: inline, they made its load take 14 s. An `fexit` program's
 arguments must be the running kernel's (its BTF), the result last. Since 6.19, `vfs_mkdir`, `vfs_rmdir`, `vfs_mknod` and
@@ -740,7 +763,11 @@ set, since one rule ClamAV cannot load can stop its whole database) and `NETWORK
 (`amethystora-ips due`). What only an account can see is read as that account by
 `/usr/libexec/amethystora-security-reader` (`APP_PERMISSIONS`, `DEV_HOOKS`, `AGENT_CONFIG`), run with
 `setpriv` and `timeout` for the accounts with a session in the last day, root keeping what it saw, and said to
-that account alone (`amethystora-notify-users --user`). `OSPREY`, `TRIAGE` and `REPUTATION` send something
+that account alone (`amethystora-notify-users --user`). The account's own programs can stop or kill that run, so it gets no
+standard input and one that is timed out or killed twice running is a finding of its own (the integrity check's account mode
+the same, `NAME:check-cut`); `notify-users` hands its caller only the key of an offered button, on one line, since the answer comes
+through a pipe the account can write to. A forged `allow` is made harmless where it is written: the watcher keeps `\ * ? [` in an
+`allow=` entry escaped (`glob_safe`), and the helper reads such a pair as a plain character. `OSPREY`, `TRIAGE` and `REPUTATION` send something
 away and are in no profile. What turns each agent's checks off is `/usr/share/amethystora/agent-cli-flags`,
 which must name every agent `amethystora-agent` offers. A finding carries `at=` (the snapshot Backups opens,
 `--at=POINT`) and `tell=` where they apply; one the allowlist quietened carries `allowed` and builds no chain.
@@ -781,7 +808,7 @@ zone by default, the networks named home keeping theirs), `network-daemons`, `bl
 `flathub-verified`, `flatpak-password`, `noexec-temp` (marked `/etc/fstab` lines), `no-coredumps`,
 `package-cooldown` (npm, pnpm and uv through `environment.d` and `profile.d`), `brew-attestations`,
 `boot-password` (`grub2-setpassword`, which bootupd's static `01_users.cfg` reads), `locked-poweroff`
-(`amethystora-locked-poweroff.timer`, enabled only while it is on, reads logind's `LockedHint`) and, on dx,
+(`amethystora-locked-poweroff.timer`, enabled only while it is on, reads logind's `LockedHint`, which the account's own programs can clear, so it is no defence against code already running as the account: GNOME Shell's `GetActive` would be no stronger, since the account owns its session bus, and is true on a blanked unlocked screen) and, on dx,
 `vscodium-extensions` (`/etc/vscodium/policy.json`, which VSCodium reads under that name). Each says what
 it costs before it is turned on; the report's `stricter` check names the ones that are on, and the watcher
 says when one is turned off any other way. `ame security lockdown strict` is lockdown's own third level.
@@ -845,6 +872,14 @@ Tailscale set on each network and a restart forgets it; networks connected alrea
 network that wants a login first, the user unit `amethystora-dns-portal.service` (in the session, not a
 NetworkManager dispatcher script) offers a ten-minute pause, which the person at the machine starts:
 never pause it automatically, or any network could turn the encryption off.
+A search domain a network hands out is a routing domain in resolved (the most labels wins, over the global `~.`), so a
+network handing out `com` would take names back in plain text: NetworkManager has no setting that drops a lease's domains and
+keeps its servers (`ignore-auto-dns` drops both, which the pause and the connectivity check need), so the root service
+`amethystora-dns-domains.service` (enabled, running only while it is on, woken by `nmcli monitor`, no dispatcher script)
+runs `amethystora-dns domains`, which on each connected NetworkManager wifi and ethernet device (never a VPN's or
+Tailscale's) keeps only the domains under a name only a network has (`DOMAINS_KEPT`), the `~` ones and those the connection
+lists itself in `ipv4/ipv6.dns-search`; the unit allows `AF_NETLINK` (resolvectl reads links over it) and every call
+passes `--`; `test-dns-domains.sh` holds it. Not tried against a real DHCP server.
 The sidebar draws the boot splash's wordmark live, from `apps/common/assets/gem.svg` (written by
 `branding/generate.mjs`) and Quicksand, with the generator's own sizes and glow.
 
@@ -1068,7 +1103,9 @@ approval**: those two halves are the whole design, and every rule below serves o
   cgroup): it proves nothing and is never used to skip an approval. Every `# N_` line of `vault.just` must equal a `say` sentence, which is how the
   prompts are translated (the service says them in English, polkit's gettext domain `amethystora` translates).
 - **The rules that must hold.** The service never links libcrypto (8 MB resident, no parser in the process that holds every vault's key: keys, X.509 and
-  PKCS#12 run in `amethystora-vault-work`, one job each), never has a network, never panics on a request (`panic = "abort"`), and holds secrets in
+  PKCS#12 run in `amethystora-vault-work`, one job each, which confines itself first, `confine.rs`: Landlock lets it read only `/usr`, `/etc`, `/dev`, `/proc`
+  and `/sys`, and a seccomp filter refuses sockets, running programs and ptrace, so a parser bug there reaches neither the state nor systemd-creds; keep a job
+  needing neither), never has a network, never panics on a request (`panic = "abort"`), and holds secrets in
   `Zeroizing` types that wipe. Everything an outside party names (an id, a purpose, a path) is checked for its shape before it touches a path; writes
   are atomic; the same refusal for "no such item" as for "wrong key". A client's connection is dropped after 5 s idle, so every client reconnects for each
   call. Round 7's unattended `background` key is served to a lingering account, and nothing else is. No `rsa` crate anywhere (RUSTSEC-2023-0071;
@@ -1238,8 +1275,8 @@ closed (two menu entries, a launcher, and on Browse a button); R7-61 is `show-me
   setting or able to hold a command), Flatpak's history (the machine's: "was removed", not "You removed", unless the account's own trash
   says so), `amethystora-uninstall removed`, the deployments, what a reset saved and, while the agent's features and its tools that
   change things are both on, its records, each time. `undo` reads the list again, for the one source of that id, and refuses an id not
-  on it. Undo only adds back: nothing replaced (`mv -n -T`), a file only to a place inside the home that is not one that starts
-  programs or holds keys (`NOT_PUT_BACK_HERE`; a trash entry's `Path=` is text anyone could write), an app only through
+  on it. Undo only adds back: nothing replaced (`mv -n -T`), a file only to an ordinary place inside the home: no hidden folder
+  or file in the path and not under `~/bin` (an allow list, `restorable()`; a trash entry's `Path=` is text anyone could write), an app only through
   `amethystora-uninstall undo` (a plain `flatpak install` brings it back empty), an installed app has no Undo, and neither has an app
   the agent installed, whose way back removes. A setting or theme whose value an older point also held is not offered again after
   its Undo. The agent's undoings are records with `of` (`act.rs`) and are not listed. A security line only opens Security, and nothing
@@ -1324,7 +1361,8 @@ longer has. `amethystora-theme` calls `Hold` and `Release` on `/org/amethystora/
 `org.gnome.Shell`) around a theme switch so that it is one transition; a change to a watched
 background or interface key starts one by itself, and the Dark Style toggle reaches it through
 `screenTransition.run()`. The screen is never held for more than five seconds, and nothing is held
-while GNOME's animations are off. Its schema is in `/usr/share/glib-2.0/schemas`, for `ame desktop
+while GNOME's animations are off or a screen is shared (a frozen picture is drawn over the share guard's covers; a share that
+begins ends a freeze at once). Its schema is in `/usr/share/glib-2.0/schemas`, for `ame desktop
 transition`. `stage.paint_to_content` took a colour-state argument in GNOME 50 (unchanged in 51): check
 that call before adding a GNOME to its `shell-version`, which `20-tests.sh` requires to claim 50 and 51.
 
@@ -1841,14 +1879,21 @@ crate (no GTK; only the host's `service.rs` links GLib) with two programs: `amet
   `host::Runner::run` under `systemd-run --user --scope` in `amethystora-plugins.slice` (so that the user manager's OOM line names the plugins, not `app.slice`, and the host logs whose limit it was) with `MemoryMax=256M` and `MemorySwapMax=0` (swap is not memory to systemd, and zram let a plugin fill 1 GB), `OOMPolicy=continue` (a scope that fails with `oom-kill` makes GNOME's housekeeping say "Device memory is nearly full"), `CPUQuota=25%`, `TasksMax=64`, 30 s a run, 5 s between
   runs and never two at once, 8 MiB of state (also while a run writes: `RLIMIT_FSIZE` and a check every half second). The filter is written at build time by `apps/plugin-host/seccomp/gen.c` (libseccomp, which the apps stage
   installs) into `/usr/share/amethystora/plugins/seccomp.bpf` and passed on descriptor 9; a missing filter means nothing runs. The host
-  loads a plugin only if its folder still has the approved digest (`Store::verify`), and reads grants.json again for every run and
+  loads a plugin only if its folder still has the approved digest (`Store::verify`). **A `files` place is opened once, link by link
+  with `O_NOFOLLOW` (`files::open`), and bubblewrap binds that descriptor (`--bind-fd`/`--ro-bind-fd`, descriptors 11 and up, passed like
+  the filter on 9)**, never the name a link could be put under while the sandbox starts. The filter also refuses `AF_VSOCK` and
+  Bluetooth sockets. **A plugin that asks for `window` never has `network` or `network-local`** (the manifest is refused): a window
+  is an ordinary Wayland client and is offered what was copied last while it has the focus, which consent says. A notice or a chooser
+  carries the name "Plugin NAME". An account's folder in the store is `root:GROUP 0750` and its files `0640` (`Store::seal_account`),
+  so that other accounts read nothing of its plugins or history; an update that raises a host's byte limit is "asks for more". The
+  host reads grants.json again for every run and
   every proxy connection, so a revoke or block applies at once.
 - **The network is a proxy** (`proxy.rs`): the sandbox has only loopback, so a plugin with a `network=` permission gets a socket
   bound at `/proxy/proxy.sock` and `amethystora-plugin-host shim` (started inside the sandbox) forwards `HTTPS_PROXY`'s connections to
   it. It takes `CONNECT host:443` for granted, unblocked hosts, resolves the name itself and refuses if any address is private,
   loopback, link-local or reserved (`forbidden_ip`, IPv4-in-IPv6 judged by the IPv4 it carries), counts bytes sent per allowed entry, so a wildcard's hosts share one allowance (default
   1 MiB an hour), blocks and cuts the connection past the limit, and a block set by the person cuts open connections within a
-  quarter of a second. Every refusal is the same 403. At most 16 connections a plugin. A limit block is also written to the store through `pkexec amethystora-plugin-root block`, untested until phase 0.
+  quarter of a second. Every refusal is the same 403. At most 16 connections a plugin. A limit block is also tried through `pkexec amethystora-plugin-root block`, which the host's `NoNewPrivileges=yes` makes fail: it holds in the host's memory only and goes with the host (a block that stays is the person's).
 - **The host** (`org.amethystora.Plugins`, `dbus/org.amethystora.Plugins.xml`, `amethystora-plugin-host.service`, enabled for nobody) runs
   while a plugin is on: `ame plugin on` writes `~/.local/state/amethystora/plugins/enabled`, enables the unit, and the service watches
   that folder and ends itself when the list is empty. Its unit has no namespace setting for the reason the phone link's has none
@@ -1887,7 +1932,7 @@ crate (no GTK; only the host's `service.rs` links GLib) with two programs: `amet
   `ame plugin add|open` hands `.amethystora-theme` and `.amethystora-look` to `ame desktop theme import|look`. Approval's last two: `ame plugin update --all` (sources
   of plugins added from an https address are the account's `plugins/sources.json`; each is fetched and frozen, and those asking for nothing more go to
   `commit-updates ID=DIGEST...`, its own action, one dialog, which refuses the whole batch if any asks for more and keeps each grant less what the new
-  version no longer asks) and `ame plugin dev FOLDER` (`commit-dev ID=DIGEST`, the same checks for one plugin, and the policy's only `auth_admin_keep`,
+  version no longer asks) and `ame plugin dev FOLDER` (`commit-dev ID=DIGEST`, the same checks for one plugin, and the policy's only `auth_admin_keep`, which the helper holds to the one plugin being made (`dev.json` in the account's folder: another id is refused for six minutes after the last `commit-dev`),
   which test-plugins.sh holds). Not built: wallpapers, icon packs and sound sets as plugins of data, and the consent card in Control (the board's).
 
 ### Plugins in the shell
@@ -2351,7 +2396,7 @@ name, the values `layers/lib.sh` gives beside it and the key of the layer under 
 | `amethystora-cargo` | the crates from crates.io, compiled | `Cargo.lock`, every `Cargo.toml`, ISO week | all six |
 | `amethystora-apps` | `build-apps.sh`: `/out`, and Node with its own libraries, on scratch | base digest | all six |
 | `amethystora-assets` | the `make` halves of `09-fonts.sh`, `09-emoji.sh`, `11-gtk-theme.sh` (`/out`) | base digest | all six |
-| `amethystora-kernel` | `prepare.sh`, then `03-install-kernel-akmods.sh` | base, akmods digests, kernel, stream, module key, epoch | a flavor |
+| `amethystora-kernel` | `prepare.sh`, then `03-install-kernel-akmods.sh`, then `03-sign-evdi.sh` | base, akmods digests, kernel, stream, module key, epoch | a flavor |
 | `amethystora-packages` | `layers/packages.sh`: 04, the missing-command index, 05, the build tools, source packages, debranding | kernel's, fprintd's | a flavor |
 | `amethystora-packages-dx` | `layers/packages-dx.sh`: the repositories off, 00-dx, source packages, debranding | packages' | a flavor's dx |
 
@@ -2360,7 +2405,10 @@ name, the values `layers/lib.sh` gives beside it and the key of the layer under 
   packages of their moment), or `AMETHYSTORA_PACKAGES_EPOCH` (the lab may keep its own). They are built with
   `--layers=false`, so buildah's cache never hands back yesterday's packages.
 - **Finding a layer** (`layers/lib.sh`): `localhost/<name>:<tag>`, else `ghcr.io/arsslensoft/<name>:<tag>` checked
-  with cosign against `cosign.pub` and pulled by digest, else built. A build without the release module key takes
+  with cosign against `cosign.pub` and pulled by digest, else built. The signature must carry the annotation
+  `org.amethystora.layer=<name>:<tag>` (`push-layers` signs with it, `layer_find` verifies with `-a`), so that a digest
+  Amethystora signed for another layer or tag, which anyone who can write the package could point a tag at, is built
+  here instead; layers signed before it was added are rebuilt once. A build without the release module key takes
   the release key's packages layer first. `AMETHYSTORA_LAYERS` is `fprintd`, `shared` (cargo, apps, assets),
   `flavor` (kernel, packages, packages-dx) or `fetch` (pull, build nothing), and stops after them; unset, it finds or
   builds what the image needs and goes on. Every layer built is listed in `/tmp/amethystora-layers-built`. After an
@@ -2398,8 +2446,15 @@ The `Containerfile` is the image's own build, once per commit, on the layers the
    `build.sh` copies `/assets/out` in. Neither Rust, Node nor ImageMagick reaches the image
 3. **Stage `base`** (FROM the packages layer, `PACKAGES_IMAGE`, packages-dx's for a dx image): one `RUN` of
    `build.sh`, which ends with the `/opt` link, then `bootc container lint`. The kernel module signing key
-   (`AKMODS_PRIVKEY`, and for a throwaway key `AKMODS_CERT`) is mounted only for the kernel layer's
-   `03-install-kernel-akmods.sh`, before any of the build's own third-party repositories is added
+   (`AKMODS_PRIVKEY`, and for a throwaway key `AKMODS_CERT`) is mounted only for the kernel layer's last step,
+   `03-sign-evdi.sh`, which runs in the `signer` stage of `layers/kernel.Containerfile`: Fedora's own image pinned by
+   digest (the Justfile's `fedora_image`, as the sealed images' signer), with `kernel-devel` for `sign-file`, which takes
+   only evdi's `.ko.xz` from the kernel stage as a file and gives the signed one back by `COPY`. Its three steps
+   (unpack, sign, pack) are each a `RUN --network=none`, and the key (the secret mount, never copied) is in the sign
+   step alone, so the parsers (xz, modinfo) never run with it and nothing of the third-party filesystem executes while
+   it is mounted. `03-install-kernel-akmods.sh` runs third-party packages and scripts with the network on and has no
+   key (akmods builds evdi with kmodtool's signing off). `build_files/shared/test-ci-chain.sh` holds this shape. Keep
+   it so
 4. **dx**: not a stage of its own. `just build amethystora-dx` passes `IMAGE_FLAVOR=dx`, and
    `build.sh` runs `build-dx.sh` inside the `base` stage once the rest has finished
 
@@ -2474,7 +2529,7 @@ Fedora's generic ones, as its trademark guidelines ask of a remix: `fedora-logos
 and the `fedora-release` packages for `generic-release` in the package database only, their files
 staying in place.
 In the kernel layer:
-1. `03-install-kernel-akmods.sh` - Installs the kernel and the kmods beside it: v4l2loopback, xpadneo and xone from Universal Blue's `akmods` image, evdi built here, ZFS on stable, and on the NVIDIA images the driver of `akmods-nvidia-open` or `akmods-nvidia-lts` (see Drivers)
+1. `03-install-kernel-akmods.sh` (then `03-sign-evdi.sh`, the only step with the module key) - Installs the kernel and the kmods beside it: v4l2loopback, xpadneo and xone from Universal Blue's `akmods` image, evdi built here, ZFS on stable, and on the NVIDIA images the driver of `akmods-nvidia-open` or `akmods-nvidia-lts` (see Drivers)
 In the packages layer:
 2. `04-packages.sh` - Installs Fedora and COPR packages
 3. `05-override-install.sh` - Overrides base image packages. Among them the multimedia stack: the base image installs negativo17's FFmpeg, built with `--enable-nonfree` and labelled by FFmpeg itself "nonfree and unredistributable", and its `pipewire-libs-extra`, whose LC3plus plugin links `liblc3plus`, which has no licence to redistribute. Both are replaced with Fedora's `ffmpeg-free` and `fdk-aac-free`, RPM Fusion's `libavcodec-freeworld`, and RPM Fusion's aptX plugin. negativo17's repository is `fedora-multimedia` in the base image and outranks Fedora's, so `17-cleanup.sh` turns it off; do not install FFmpeg, codec or PipeWire packages from it. `20-tests.sh` fails on any FFmpeg library that reports itself unredistributable. The script also deletes `/usr/share/doc`, after moving the licence, copyright and NOTICE files that some 120 packages keep only there into `/usr/share/licenses`, and installs Starship from a pinned release checked against its published checksum (the pin is bumped by Renovate)
@@ -2490,7 +2545,7 @@ In the image (`build.sh`):
 12. `13-apps.sh` - Installs the Amethystora apps (the Manual, `Super+F1`; Security; Updates; Notes; Logs; Backups; Control; Help): the one program the Containerfile's `apps` stage built from `apps/` (`build_files/shared/build-apps.sh`, see The Amethystora apps), hard-linked to each app's own path in `/usr/lib/amethystora-<app>`, Quicksand for the wordmark from `branding/fonts`, which the `ctx` stage copies in, and the licences of the crates built into it. It also writes the apps' launchers in the languages the apps are translated into (`translate-desktop.py`). Each app's translations stay in `system_files/shared/usr/lib/amethystora-<app>/resources/app/locale`
 13. `14-security.sh` - What Amethystora Security reports on, beside its window: derives network protection's Suricata configuration (`/usr/share/amethystora/ips/suricata.yaml`) from the one the suricata package ships, with `build_files/shared/ips-config.py`, so that it fits Suricata 7 and 8 alike, and compiles `po/*.po`, the report's and the app permissions' translations, into `/usr/share/locale/<language>/LC_MESSAGES/amethystora.mo` with `msgfmt --check`
 14. `07-debrand.sh` - Renames every remaining Universal Blue file, command, service and reference to Amethystora (logic in `build_files/shared/debrand.py`; `20-tests.sh` fails the build if any is left). Licence files, copyright lines and the comments that credit an author keep upstream's names
-15. `08-hardening.sh` - Signature-verified updates, firewall default zone, account lockout, Parental Controls' allowed hours at the text consoles and over SSH (see Logins), kernel lockdown, and the sudo PATH that `ublue-os/main` leaves open. The polkit and udev fixes are made in the files themselves (`org.amethystora.privileged.user.setup.policy`; `50-zsa.rules`, `60-arduino-mbed.rules`, `88-neutron_hifi_dac.rules` and `92-viia.rules`, which give their devices to the user at the seat with `uaccess` instead of to every account: a keyboard's hidraw device carries every key typed on it, and `20-tests.sh` fails on a rule the image adds that gives a hidraw device or a vendor's devices to everyone). Lockdown is skipped on the NVIDIA images, whose driver is an akmods build signed with the machine owner key: forcing lockdown on a machine with Secure Boot off would leave it without a graphics driver. With Secure Boot on, Fedora's kernel locks itself down whatever the arguments say (`20-tests.sh` checks its config), so the argument only matters without; `ame security lockdown` adds or takes it off per machine. It takes setuid root off what a desktop never runs (`chfn`, `chage`, `gpasswd`, `newgrp`, `ksu`, `mount.davfs`), masks systemd's SSH-over-vsock generator in `/etc` (`ame security ssh-settings off` unmasks it) and sets BlueZ's privacy and 30-second visibility in its own `main.conf`, which reads no drop-ins (`ame security bluetooth-privacy`). The settings that are plain files live in `system_files/shared` (`usr/lib/sysctl.d`, `usr/lib/modprobe.d`, `usr/lib/bootc/kargs.d`, `etc/ssh/sshd_config.d`, `etc/security/faillock.conf`, `etc/flatpak/overrides/global`, `etc/audit/rules.d`)
+15. `08-hardening.sh` - Signature-verified updates, firewall default zone, account lockout, Parental Controls' allowed hours at the text consoles and over SSH (see Logins), kernel lockdown, and the sudo PATH that `ublue-os/main` leaves open. The polkit and udev fixes are made in the files themselves (`org.amethystora.privileged.user.setup.policy`; `50-zsa.rules`, `60-arduino-mbed.rules`, `88-neutron_hifi_dac.rules` and `92-viia.rules`, which give their devices to the user at the seat with `uaccess` instead of to every account: a keyboard's hidraw device carries every key typed on it (`71-amethystora-keyboard-interfaces.rules` takes the grant back, for ZSA, Wooting and V-USB/Teensy keyboards, from every hidraw node whose report descriptor is not vendor-defined only, as `amethystora-hid-vendor-only` reads it, so that the keyboard interfaces, NKRO included, lose it and the configuration ones keep it; their USB device nodes, which usbfs would let an app read the keys from, are given only to the bootloaders in `50-zsa.rules`: Teensy's HalfKay, STM32's DFU and a ZSA device with a DFU interface), and `20-tests.sh` fails on a rule the image adds that gives a hidraw device or a vendor's devices to everyone). Lockdown is skipped on the NVIDIA images, whose driver is an akmods build signed with the machine owner key: forcing lockdown on a machine with Secure Boot off would leave it without a graphics driver. With Secure Boot on, Fedora's kernel locks itself down whatever the arguments say (`20-tests.sh` checks its config), so the argument only matters without; `ame security lockdown` adds or takes it off per machine. It takes setuid root off what a desktop never runs (`chfn`, `chage`, `gpasswd`, `newgrp`, `ksu`, `mount.davfs`), masks systemd's SSH-over-vsock generator in `/etc` (`ame security ssh-settings off` unmasks it) and sets BlueZ's privacy and 30-second visibility in its own `main.conf`, which reads no drop-ins (`ame security bluetooth-privacy`). The settings that are plain files live in `system_files/shared` (`usr/lib/sysctl.d`, `usr/lib/modprobe.d`, `usr/lib/bootc/kargs.d`, `etc/ssh/sshd_config.d`, `etc/security/faillock.conf`, `etc/flatpak/overrides/global`, `etc/audit/rules.d`)
 16. `17-cleanup.sh` - Cleanup operations, and the systemd units the image enables, the per-user ones with `systemctl --global` (`amethystora-pkg-upgrade.timer`, `amethystora-update-alert.service`, `amethystora-dns-portal.service`). It also makes the `amepkg` link, since the build's rsync skips links in `system_files`. Two things here are deliberately *disabled*: `input-remapper.service`, which runs as root and reads every input device, and `usbguard.service`, which would block the keyboard on a machine where nobody had allowed it yet. Both are turned on per machine by an `ame security` command (`usb`, `input-remapper`). So are `waydroid-container.service` and `scx_loader.service` (`ame apps android`, `ame system scheduler`). `usbguard-dbus.service` is *masked*, not disabled, since D-Bus activation would start it and GNOME's USB protection plugin would then allow every new device while the screen is unlocked: only `ame security usb locked` unmasks it. It enables `fwupd-refresh.timer`, which Fedora leaves to GNOME Software, the pools of disks' `amethystora-raid-check.timer`, `amethystora-raid-scrub.timer`, `amethystora-raid-boot.service` and `amethystora-raid-mirror.service`, and `clamd@scan.socket` with `amethystora-clamd-idle.timer` in place of clamd itself
 17. `18-workarounds.sh` - Temporary fixes/workarounds
 18. `19-initramfs.sh` - Regenerates initramfs, adding dracut's `tpm2-tss` module where dracut has it so that `ame security disk-unlock` can hand the disk key to the TPM, and without what changes with every build, so that two builds of the same packages make the same initramfs and an update between them can finish with a soft reboot (see The Updates app)

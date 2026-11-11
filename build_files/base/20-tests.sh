@@ -711,6 +711,11 @@ done
 # The tile only ever opens the app, and only a person's yes in a terminal fetches it
 grep -q 'flatpak' "${UI_EXTENSION}/modules/quick/tv.js" && false
 env LD_LIBRARY_PATH=/apps-stage/usr/lib64 NODE_ICU_DATA="$(echo /apps-stage/usr/share/node-*/icudata)" /apps-stage/usr/bin/node /ctx/build_files/shared/test-your-year.mjs
+# The clipboard history reads a picture's header before it records or decodes it (M20 of the 2026-11-10 audit)
+env LD_LIBRARY_PATH=/apps-stage/usr/lib64 NODE_ICU_DATA="$(echo /apps-stage/usr/share/node-*/icudata)" /apps-stage/usr/bin/node /ctx/build_files/shared/test-clipboard-pictures.mjs
+# The agent's Ask about this judges a copied or dropped picture with the same check, as a copy of that file (extensions cannot import each other's)
+cmp "${CLIPBOARD_EXTENSION}/pictures.js" "${UI_EXTENSION}/modules/agent/pictures.js"
+grep -q "pictureFits" "${UI_EXTENSION}/modules/agent/ask.js"
 # Text shortcuts (plans/beyond/spec-phase7.md, part B): off as the image ships, since they look at what is typed, the
 # module after the emoji picker, the helper the only writer of the file, its rules and the shell's one list of cases (the
 # installed helper, on the apps stage's Node), its two commands, and neither the switch nor a text in the setup file
@@ -800,6 +805,9 @@ MANUAL_HITS="$(/usr/libexec/amethystora-agent-tools manual-search -- rolling bac
 jq -e 'length > 0 and all(.[]; .id | startswith("manual/")) and any(.[]; .id == "manual/rolling-back")' \
     <<<"${MANUAL_HITS}" >/dev/null
 [[ "$(/usr/libexec/amethystora-agent-tools manual-search -- )" == "[]" ]]
+# What was typed reaches it on standard input, not on a command line (every account reads those): the same answer
+[[ "$(echo rolling back | /usr/libexec/amethystora-agent-tools manual-search --stdin --)" == "${MANUAL_HITS}" ]]
+grep -nE '\.\.\.(terms|words)\]' "${UI_EXTENSION}/modules/search/manual.js" "${UI_EXTENSION}/modules/search/meaning.js" "${UI_EXTENSION}/modules/search/photos.js" && false
 # The clipboard extension gives the search its read-only view, and says so in its first comment
 CLIPBOARD_JS=/usr/share/gnome-shell/extensions/amethystora-clipboard@arsslensoft.github.io/extension.js
 grep -q "^    history () {" "${CLIPBOARD_JS}"
@@ -1664,6 +1672,8 @@ bash /ctx/build_files/shared/test-wrong.sh
 bash /ctx/build_files/shared/test-changes.sh
 # What changed with the real helper it hands an app's Undo to (R7-41's amethystora-uninstall, of the files group)
 bash /ctx/build_files/shared/test-changes-uninstall.sh
+# Tidy downloads moves through folders held by descriptor and never follows a month folder or the Trash swapped for a link
+bash /ctx/build_files/shared/test-tidy-downloads.sh
 # Round 7's move (plans/ui-ideas/r7/spec-move.md): files another computer sends wait for Accept unless the key says otherwise (R7-27);
 # the two ends of Move to this computer are in the image and its command exists (R7-25, firewall lines above); Bring everything from
 # your old computer reads a disk read-only and never a password, against stand-ins (R7-48)
@@ -2432,6 +2442,8 @@ test -x /usr/libexec/amethystora-control-list
 # The list resolves its messages with bash 5.3's ${ cmd; } (no process per message), which bash 5.2 cannot parse
 [[ "$(bash -c 'echo $((BASH_VERSINFO[0] * 100 + BASH_VERSINFO[1]))')" -ge 503 ]]
 bash -n /usr/libexec/amethystora-control-list
+# No field of an entry or choice can hold the separators that join them (a title must not become a command)
+bash /ctx/build_files/shared/test-control-list-separators.sh
 ame --show control >/dev/null
 CONTROL_LIST="$(GSETTINGS_BACKEND=memory /usr/libexec/amethystora-control-list --json)"
 jq -e '.items | length > 20' <<<"${CONTROL_LIST}" >/dev/null
@@ -3319,6 +3331,7 @@ grep -qx "ConditionACPower=true" /usr/lib/systemd/user/amethystora-file-meaning.
 [[ "$(systemctl --global is-enabled amethystora-file-meaning.timer 2>/dev/null)" != enabled ]]
 test -s /usr/share/amethystora/agents/knowledge/model/model.safetensors
 [[ "$(/usr/libexec/amethystora-agent-tools files-search --dir /nonexistent -- tax refund)" == "[]" ]]
+[[ "$(echo tax refund | /usr/libexec/amethystora-agent-tools files-search --dir /nonexistent --stdin --)" == "[]" ]]
 # Click with the keyboard: off, its shortcut, the program that reads the tree the only one it starts
 for pair in letters:false letters-key:"['<Super><Alt>k']"; do
     [[ "$(GSETTINGS_BACKEND=memory gsettings get "${ACCESS}" "${pair%%:*}")" == "${pair#*:}" ]]
@@ -3342,6 +3355,10 @@ done
 [[ "$(/usr/libexec/amethystora-hardening status --json | jq -r '.[] | select(.name == "guest-login") | "\(.group) \(.default) \(.loosens)"')" == \
     "logins off true" ]]
 getent passwd amethystora-guest >/dev/null && false
+# ...and the guest may not turn linger on, which would keep its home in memory for the next visitor
+grep -q 'set-self-linger' /usr/share/polkit-1/rules.d/50-amethystora-guest.rules
+grep -q 'set-user-linger' /usr/share/polkit-1/rules.d/50-amethystora-guest.rules
+grep -q 'polkit.Result.NO' /usr/share/polkit-1/rules.d/50-amethystora-guest.rules
 for profile in local sssd winbind; do
     [[ "$(grep -c 'pam_succeed_if.so quiet user != amethystora-guest {include if "with-guest-login"}' \
         "/usr/share/authselect/vendor/${profile}/system-auth")" == 1 ]]
@@ -4035,6 +4052,36 @@ if [[ -f /usr/lib/udev/rules.d/50-zsa.rules ]]; then
     grep -q 'MODE:="0666"' /usr/lib/udev/rules.d/50-zsa.rules && false
     grep -q 'TAG+="uaccess"' /usr/lib/udev/rules.d/50-zsa.rules
 fi
+# ...and what a keyboard types goes through its keyboard interface (boot protocol, NKRO) and, through usbfs, its USB
+# device node: the grant on the hidraw nodes of those vendors is taken back after 50-zsa.rules and 70-wooting.rules
+# from every interface whose report descriptor is not vendor-defined only (an app with --device=all would read
+# passwords from it), and the USB device nodes are given only to bootloaders
+rules=/usr/lib/udev/rules.d/71-amethystora-keyboard-interfaces.rules
+grep -q 'IMPORT{program}="/usr/bin/python3 /usr/libexec/amethystora-hid-vendor-only %S%p"' "${rules}"
+for vendor in 16c0 3297 03eb 31e3; do
+    grep -q "idVendor==\"[0-9a-f|]*${vendor}[0-9a-f|]*\", ENV{AMETHYSTORA_HID_VENDOR_ONLY}!=\"1\", TAG-=\"uaccess\"" "${rules}"
+done
+udevadm verify "${rules}" 2>/dev/null ||
+    ! udevadm verify --help >/dev/null 2>&1
+grep -nE 'SUBSYSTEMS=="usb".*uaccess|SUBSYSTEM=="usb"' /usr/lib/udev/rules.d/70-wooting.rules && false
+[[ "$(grep -c 'SUBSYSTEM=="usb".*uaccess' /usr/lib/udev/rules.d/50-zsa.rules)" == 3 ]]
+[[ "$(grep -c 'SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device".*uaccess' /usr/lib/udev/rules.d/50-zsa.rules)" == 3 ]]
+grep -q 'ATTR{idProduct}=="0478".*uaccess' /usr/lib/udev/rules.d/50-zsa.rules
+grep -q 'ATTR{idProduct}=="df11".*uaccess' /usr/lib/udev/rules.d/50-zsa.rules
+grep -q 'ATTR{idVendor}=="3297".*fe0101.*uaccess' /usr/lib/udev/rules.d/50-zsa.rules
+# The helper tells a vendor-defined descriptor (QMK's raw HID) from a keyboard's, a consumer control's and a mix
+python3 -I - <<'EOF'
+import importlib.machinery, importlib.util
+loader = importlib.machinery.SourceFileLoader("hv", "/usr/libexec/amethystora-hid-vendor-only")
+module = importlib.util.module_from_spec(importlib.util.spec_from_loader("hv", loader))
+loader.exec_module(module)
+raw = bytes.fromhex("0660ff0961a10115002600ff7508952009628132c0")
+kbd = bytes.fromhex("05010906a101050719e029e715002501750195088102c0")
+cons = bytes.fromhex("050c0901a1011500260103751095018100c0")
+assert module.pages(raw) == [0xFF60], module.pages(raw)
+assert module.pages(kbd) == [1, 7] and module.pages(cons) == [0xC], (module.pages(kbd), module.pages(cons))
+assert module.pages(raw + kbd) == [0xFF60, 1, 7] and module.pages(b"\x06") is None
+EOF
 # A keyboard's hidraw device carries every key typed on it, and the devices under a vendor ID include the
 # keyboards built on its chips: no rule the image adds gives either to every account, as 92-viia.rules,
 # 60-arduino-mbed.rules and 50-zsa.rules did before they gave them to the user at the seat (uaccess)
@@ -4321,6 +4368,14 @@ grep -qE "^[^#]*nmcli device modify" "${DNS}"
 test -L /etc/systemd/user/graphical-session.target.wants/amethystora-dns-portal.service
 # The offer stays on the screen with its button until answered: GNOME Shell shows a normal one collapsed
 grep -qE -- "--urgency=critical --wait" "${DNS}"
+# A network's search domains are routing domains too, so they are taken off by a root service that wakes on nmcli monitor
+# (not a dispatcher script), which runs only while encrypted DNS is on
+grep -qx "ConditionPathExists=${RESOLVED_DROP_IN}" /usr/lib/systemd/system/amethystora-dns-domains.service
+grep -qx "ExecStart=/usr/libexec/amethystora-dns domains-watch" /usr/lib/systemd/system/amethystora-dns-domains.service
+test -L /etc/systemd/system/multi-user.target.wants/amethystora-dns-domains.service
+grep -qE "^[^#]*systemctl (restart|start) amethystora-dns-domains.service" "${DNS}"
+grep -qE "^[^#]*systemctl stop amethystora-dns-domains.service" "${DNS}"
+bash /ctx/build_files/shared/test-dns-domains.sh
 compgen -G "/usr/lib/NetworkManager/dispatcher.d/*amethystora*" >/dev/null && false
 compgen -G "/etc/NetworkManager/dispatcher.d/*amethystora*" >/dev/null && false
 test ! -e "${RESOLVED_DROP_IN}"
@@ -4918,6 +4973,9 @@ test -x /usr/libexec/amethystora-security-text
 grep -q "^TimeoutStartSec=" /usr/lib/systemd/system/amethystora-security-watch.service
 grep -q "amethystora-security-text" /usr/libexec/amethystora-notify-users
 bash /ctx/build_files/shared/test-security-watch.sh
+# An answer to a notice with buttons is the key of one of them and one line: the account's own program can write
+# into the pipe it comes through, and a caller acts on each line as that account's
+bash /ctx/build_files/shared/test-notify-users.sh
 rmdir /var/tmp
 grep -q "^events " /usr/share/amethystora/just/security.just
 # What only an account can see is read as that account and never as root, by the one reader, each of its
@@ -5008,6 +5066,8 @@ echo 'drop tcp any any -> any 9 (msg:"amethystora-ips build test"; sid:1; rev:1;
 suricata -T -c "${IPS_CONFIG}" -S "${IPS_TEST}/test.rules" -l "${IPS_TEST}" \
     --set detect.sgh-mpm-caching-path="${IPS_TEST}"
 rm -rf "${IPS_TEST}"
+# Only block cuts anything off: while watching, a rule a source ships as drop or reject alerts (modify-watch.conf)
+bash /ctx/build_files/shared/test-ips-modify.sh
 for dir in "lib/suricata 2770" "log/suricata 0750"; do
     grep -q "^d /var/${dir} suricata suricata " /usr/lib/tmpfiles.d/amethystora-security.conf
 done
@@ -5094,6 +5154,8 @@ grep -q -- "--wipe-slot=tpm2 --tpm2-device=auto --tpm2-pcrs=7+14" /usr/share/ame
 # DisplayLink: evdi built for the image kernel, and no module signing key left behind by the build
 KERNEL_VERSION="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')"
 modinfo "/usr/lib/modules/${KERNEL_VERSION}/extra/evdi/evdi.ko.xz" >/dev/null
+# ...signed by the kernel layer's last step (03-sign-evdi.sh), the one the module key is mounted for
+test -n "$(modinfo -F sig_key "/usr/lib/modules/${KERNEL_VERSION}/extra/evdi/evdi.ko.xz")"
 test -f /usr/lib/udev/rules.d/99-displaylink.rules
 # Started by the device, not from boot: the rule has to match DisplayLink's vendor id and pull the unit in
 grep -qE 'ATTR\{idVendor\}=="17e9".*ENV\{SYSTEMD_WANTS\}\+="displaylink\.service"' /usr/lib/udev/rules.d/99-displaylink.rules
@@ -5448,7 +5510,11 @@ done
         amethystora-agent argv "${agent}" hi | grep -q "amethystora-agent-tools\|amethystora_" && false
     done
     ame agent toggle on
-    jq -e '.mcpServers.amethystora == {"command": "/usr/libexec/amethystora-agent-tools", "args": ["mcp"]}' "${HOME}/.cursor/mcp.json" >/dev/null
+    # The entry carries the launcher's mark, which the tool server reads from its own environment (checks.rs)
+    jq -e '.mcpServers.amethystora == {"command": "/usr/libexec/amethystora-agent-tools", "args": ["mcp"], "env": {"AMETHYSTORA_AGENT_LAUNCHED": "1"}}' \
+        "${HOME}/.cursor/mcp.json" >/dev/null
+    grep -q 'mcp_servers.amethystora.env.AMETHYSTORA_AGENT_LAUNCHED' <<<"$(amethystora-agent argv codex hi)"
+    jq -e '.mcp.amethystora.environment.AMETHYSTORA_AGENT_LAUNCHED == "1"' <<<"$(amethystora-agent argv opencode hi | sed -n 's/^env:OPENCODE_CONFIG_CONTENT=//p')" >/dev/null
     for agent in "${AGENT_IDS[@]}"; do
         argv="$(amethystora-agent argv "${agent}" hi)"
         [[ "${agent}" =~ ^(agy|cursor-agent)$ ]] || grep -q "amethystora" <<<"${argv}"
