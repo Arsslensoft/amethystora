@@ -424,7 +424,7 @@ done
 [[ "$(prop "${ONE}" 802-3-ethernet.cloned-mac-address)" == permanent ]] || fail "the wired home network has not the hardware address"
 [[ "$(prop "${TWO}" 802-11-wireless.cloned-mac-address)" == permanent ]] || fail "the Wi-Fi home network has not the hardware address"
 [[ "$(prop "${ONE}" connection.llmnr)" == resolve ]] || fail "a home network does not keep LLMNR lookups"
-[[ -z "$(grep "^${THREE} " "${NMCLI_PROPS}" | grep -v connection.type)" ]] || fail "a network that is not home was given values"
+[[ -z "$(grep "^${THREE} " "${NMCLI_PROPS}" | grep -v -e connection.type -e key-mgmt)" ]] || fail "a network that is not home was given values"
 grep -qx "${TWO} 802-11-wireless.cloned-mac-address" "${MAC_KEPT}" && fail "a Permanent set by hand is counted as given"
 grep -qx "${ONE} 802-3-ethernet.cloned-mac-address" "${MAC_KEPT}" || fail "what was given to a home network is not kept: $(cat "${MAC_KEPT}")"
 # Again: nothing is given twice

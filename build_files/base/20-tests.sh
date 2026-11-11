@@ -2191,7 +2191,7 @@ grep -q "Open Control" /usr/libexec/amethystora-raid
 # offers to keep it or to restart into the newest
 test -x /usr/libexec/amethystora-update-alert
 test -L /etc/systemd/user/graphical-session.target.wants/amethystora-update-alert.service
-grep -qF '"pkexec", &["/usr/bin/bootc", "rollback"]' /ctx/apps/update/src/backend.rs
+grep -qF 'PKEXEC, &["/usr/bin/bootc", "rollback"]' /ctx/apps/update/src/backend.rs
 # The windows that show the machine's state follow it live (common/src/live.rs): a switch turned anywhere shows at once
 for app in security control backups update; do
     grep -q 'live::watch(' "/ctx/apps/${app}/src/lib.rs" || { echo "apps/${app} does not follow the machine live"; exit 1; }
@@ -4059,7 +4059,7 @@ fi
 rules=/usr/lib/udev/rules.d/71-amethystora-keyboard-interfaces.rules
 grep -q 'IMPORT{program}="/usr/bin/python3 /usr/libexec/amethystora-hid-vendor-only %S%p"' "${rules}"
 for vendor in 16c0 3297 03eb 31e3; do
-    grep -q "idVendor==\"[0-9a-f|]*${vendor}[0-9a-f|]*\", ENV{AMETHYSTORA_HID_VENDOR_ONLY}!=\"1\", TAG-=\"uaccess\"" "${rules}"
+    grep -q "idVendor}==\"[0-9a-f|]*${vendor}[0-9a-f|]*\", ENV{AMETHYSTORA_HID_VENDOR_ONLY}!=\"1\", TAG-=\"uaccess\"" "${rules}"
 done
 udevadm verify "${rules}" 2>/dev/null ||
     ! udevadm verify --help >/dev/null 2>&1
