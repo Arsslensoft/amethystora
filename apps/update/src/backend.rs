@@ -52,6 +52,7 @@ pub const RELEASES: &str = "https://github.com/arsslensoft/amethystora/releases"
 /// Lines of what the updater said, kept for the page's details
 pub const LOG_LENGTH: usize = 400;
 /// The containers' upgrade, a unit of the account's own, and what it logs each container under
+pub const PKEXEC: &str = "/usr/bin/pkexec";
 pub const PKG: &str = "/usr/bin/amethystora-pkg";
 pub const CONTAINERS_UNIT: &str = "amethystora-pkg-upgrade.service";
 pub const CONTAINERS_LOG: &str = "amethystora-pkg-upgrade";
@@ -511,7 +512,7 @@ pub struct Kept {
 /// Makes the running version the one the machine starts by default. bootc reverses the queued rollback a
 /// start from the boot menu amounts to, and needs root, so polkit asks for an administrator's password.
 pub async fn keep_version() -> Kept {
-    let output = process::run("pkexec", &["/usr/bin/bootc", "rollback"]).await;
+    let output = process::run(PKEXEC, &["/usr/bin/bootc", "rollback"]).await;
     let machine = machine().await;
     // pkexec: 126 when the password was not given, 127 when it was refused
     match output.code {
@@ -831,6 +832,13 @@ pub fn read_containers(update: &mut Update, line: &str, followed: bool) -> (bool
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn root_is_asked_by_its_full_path() {
+        let needle = format!("({q}pkexec{q}", q = '"');
+        assert!(!include_str!("backend.rs").lines().filter(|l| !l.trim_start().starts_with("//")).any(|l| l.contains(&needle) && !l.contains("fn ")));
+        assert_eq!(PKEXEC, "/usr/bin/pkexec");
+    }
 
     fn update() -> Update {
         Update {

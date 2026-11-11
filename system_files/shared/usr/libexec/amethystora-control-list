@@ -136,10 +136,14 @@ USAGE=""
 
 # A choice of a setting: its value, its words, whether it opens a terminal, and the command that sets it
 choice() {
+    # The separators in a field would shift the fields that follow: they are taken out of every one, since
+    # the fifth on is the command the window runs
+    local -a fields=("$@")
+    fields=("${fields[@]//[$'\x1e\x1f']/}")
     local IFS=$'\x1f'
     # One record for item()'s jq to make the object of, its fields apart by the unit separator: a jq of its
     # own for every choice made the list slow
-    CHOICES+=("$*")
+    CHOICES+=("${fields[*]}")
 }
 
 # An entry of the list, with the choices made for it since the last one.
@@ -148,9 +152,15 @@ item() {
     [[ -n "${extra}" ]] || extra='{}'
     # A record of its fields apart by the record separator, then how many choices, the choices and the
     # command's words, which items_json makes the objects of, with one jq for the whole list
+    # Neither separator may be in a field or a command word (the choices were cleaned as they were made, and
+    # hold the unit separator on purpose)
+    local -a own=("${page}" "${id}" "${kind}" "${GROUP}" "${title}" "${text}" "${state}" "${DETAIL}" "${REASON}"
+        "${manual}" "${USAGE}" "${BUTTON}" "${TERMINAL}" "${extra}")
+    local -a words=("${COMMAND[@]}")
+    own=("${own[@]//[$'\x1e\x1f']/}")
+    words=("${words[@]//[$'\x1e\x1f']/}")
     local IFS=$'\x1e'
-    local fields=("${page}" "${id}" "${kind}" "${GROUP}" "${title}" "${text}" "${state}" "${DETAIL}" "${REASON}"
-        "${manual}" "${USAGE}" "${BUTTON}" "${TERMINAL}" "${extra}" "${#CHOICES[@]}" "${CHOICES[@]}" "${COMMAND[@]}")
+    local fields=("${own[@]}" "${#CHOICES[@]}" "${CHOICES[@]}" "${words[@]}")
     ITEMS+=("${fields[*]}")
     CHOICES=()
     COMMAND=()

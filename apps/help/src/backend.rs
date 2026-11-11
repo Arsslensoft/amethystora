@@ -90,11 +90,38 @@ pub struct Undone {
 }
 
 /// An `ame` command the window will run: `ame` first, then plain words a recipe takes. Refuses a helper's answer that is
-/// anything else, whatever made it so.
+/// anything else, whatever made it so, and any `ame security` command (`security::x` is the same group): security stays in
+/// Security.
 pub fn fix_allowed(command: &[String]) -> bool {
     command.first().is_some_and(|word| word == "ame")
         && command.len() >= 2
+        && !in_security(&command[1])
         && command.iter().all(|word| !word.is_empty() && !word.starts_with('-') && word.chars().all(|c| c.is_ascii_alphanumeric() || "_.:-".contains(c)))
+}
+
+/// The old flat names (`00-entry.just`) of recipes in the security group, which a test keeps equal to that file
+const SECURITY_ALIASES: [&str; 15] = [
+    "blocked-addresses",
+    "blocked-connections",
+    "enroll-secure-boot-key",
+    "security-audit",
+    "security-events",
+    "security-settings",
+    "security-status",
+    "setup-browser-protection",
+    "setup-disk-unlock",
+    "setup-input-remapper",
+    "setup-ransomware-protection",
+    "setup-security-key",
+    "setup-usb-protection",
+    "toggle-tpm2",
+    "virus-scan",
+];
+
+/// Whether a command's first word is the security group (`security::x` too), anything starting with `security`, or an old name of
+/// one of its recipes
+fn in_security(word: &str) -> bool {
+    word.starts_with("security") || SECURITY_ALIASES.contains(&word)
 }
 
 pub fn security_allowed(page: &str) -> bool {
@@ -180,9 +207,34 @@ mod tests {
             &["ame", "system", "printer", "resume", "a b"],
             &["ame", ""],
             &["/usr/bin/ame", "update"],
+            &["ame", "security", "scan", "now"],
+            &["ame", "security"],
+            &["ame", "security::scan"],
+            &["ame", "security-audit"],
+            &["ame", "security-events"],
+            &["ame", "enroll-secure-boot-key"],
+            &["ame", "blocked-addresses"],
+            &["ame", "virus-scan", "now"],
         ] {
             assert!(!fix_allowed(&words(bad)), "{bad:?}");
         }
+    }
+
+    /// Every alias of `00-entry.just` that stands for a security recipe is refused (skips where the source tree is not there)
+    #[test]
+    fn refuses_every_old_name_of_a_security_recipe() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../system_files/shared/usr/share/amethystora/just/00-entry.just");
+        let Ok(entry) = std::fs::read_to_string(path) else { return };
+        let mut found = 0;
+        for line in entry.lines() {
+            let Some(rest) = line.trim().strip_prefix("alias ") else { continue };
+            let Some((name, target)) = rest.split_once(":=") else { continue };
+            if target.trim().starts_with("security::") {
+                found += 1;
+                assert!(!fix_allowed(&words(&["ame", name.trim()])), "{name}");
+            }
+        }
+        assert_eq!(found, SECURITY_ALIASES.len());
     }
 
     #[test]

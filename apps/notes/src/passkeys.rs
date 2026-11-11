@@ -52,13 +52,18 @@ fn clean(text: &str) -> String {
     text.replace(['\r', '\n'], "")
 }
 
+/// Where a tool is: the tests' stand-in folder, else /usr/bin, never a search of the PATH
+fn program_path(tools: &Option<PathBuf>, tool: &str) -> String {
+    match tools {
+        Some(dir) => dir.join(tool).to_string_lossy().into_owned(),
+        None => format!("/usr/bin/{tool}"),
+    }
+}
+
 /// The lines one of the tools prints, given these on stdin; the PIN, when it asks for one. Fails with what
 /// the tool said.
 pub async fn fido(tools: Option<PathBuf>, tool: &str, args: &[&str], lines: &[String], pin: &str, cancel: Option<gio::Cancellable>) -> Result<Vec<String>, String> {
-    let program = match &tools {
-        Some(dir) => dir.join(tool).to_string_lossy().into_owned(),
-        None => tool.to_string(),
-    };
+    let program = program_path(&tools, tool);
     let mut argv: Vec<&std::ffi::OsStr> = vec![std::ffi::OsStr::new(&program)];
     argv.extend(args.iter().map(std::ffi::OsStr::new));
     let launcher = gio::SubprocessLauncher::new(gio::SubprocessFlags::STDIN_PIPE | gio::SubprocessFlags::STDOUT_PIPE | gio::SubprocessFlags::STDERR_PIPE);
@@ -396,5 +401,13 @@ mod tests {
         assert_eq!(plain_words("FIDO_ERR_PIN_AUTH_BLOCKED"), t!("Too many wrong PINs. Unplug the security key, plug it back in and try again."));
         assert_eq!(plain_words("fido2-assert: fido_dev_get_assert: FIDO_ERR_NO_CREDENTIALS"), t!("This security key is not one that opens your notes."));
         assert_eq!(plain_words("something else"), "something else");
+    }
+
+    #[test]
+    fn the_tools_are_never_found_through_the_path() {
+        for tool in ["fido2-token", "fido2-cred", "fido2-assert"] {
+            assert_eq!(program_path(&None, tool), format!("/usr/bin/{tool}"));
+        }
+        assert_eq!(program_path(&Some(PathBuf::from("/x")), "fido2-token"), PathBuf::from("/x").join("fido2-token").to_string_lossy());
     }
 }

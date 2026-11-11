@@ -50,6 +50,8 @@ pub const SIGNATURE_AGE: &str = "/usr/libexec/amethystora-clamav-signature-age";
 pub const SECURITY_CONFIG: &str = "/usr/libexec/amethystora-security-config";
 pub const HARDENING: &str = "/usr/libexec/amethystora-hardening";
 pub const AME: &str = "/usr/bin/ame";
+/// Root's door, by its full path: never found through the PATH
+pub const PKEXEC: &str = "/usr/bin/pkexec";
 pub const QUARANTINE: &str = "/usr/libexec/amethystora-quarantine";
 pub const CLAMD_CONFIG: &str = "/etc/clamd.d/scan.conf";
 pub const CLAMD_SOCKET: &str = "/run/clamd.scan/clamd.sock";
@@ -1016,7 +1018,7 @@ pub async fn act(entry: &mut Entry) {
     args.extend(entry.found.iter().map(|item| item.path.clone()));
     let mut argv: Vec<&str> = vec![QUARANTINE];
     argv.extend(args.iter().map(String::as_str));
-    let output = run_for("pkexec", &argv, 600).await;
+    let output = run_for(PKEXEC, &argv, 600).await;
     let outcomes = parse_outcomes(&output.stdout);
     // pkexec: 126 when the password was not given, 127 when it was refused
     let nobody = if output.code == 126 || output.code == 127 { "declined" } else { "failed" };
@@ -1112,7 +1114,7 @@ pub async fn allow_rule(rule: &str) -> RuleOutcome {
     if !digits || !known {
         return RuleOutcome::Error(t!("That rule is not one network protection used on this machine."));
     }
-    let output = run_for("pkexec", &[IPS, "allow", rule], 600).await;
+    let output = run_for(PKEXEC, &[IPS, "allow", rule], 600).await;
     match output.code {
         0 => RuleOutcome::Allowed,
         // pkexec: 126 when the password was not given, 127 when it was refused
@@ -1398,7 +1400,7 @@ pub async fn plugin_take(list: &[Plugin], id: &str, block: bool) -> Result<(), S
     let Some(entry) = list.iter().find(|p| p.id == id && if block { has_network(p) && !p.blocked } else { !p.granted.is_empty() }) else {
         return Err(t!("That plugin is not one the list can change."));
     };
-    let output = process::run("pkexec", &[PLUGIN_ROOT, if block { "block" } else { "revoke" }, &entry.id]).await;
+    let output = process::run(PKEXEC, &[PLUGIN_ROOT, if block { "block" } else { "revoke" }, &entry.id]).await;
     if output.code == 0 { Ok(()) } else { Err(stopped("amethystora-plugin-root", &output)) }
 }
 
@@ -1456,6 +1458,13 @@ pub async fn set_network(list: &[App], id: &str, allow: bool) -> Result<(), Stri
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn root_is_asked_by_its_full_path() {
+        let needle = format!("({q}pkexec{q}", q = '"');
+        assert!(!include_str!("backend.rs").lines().filter(|l| !l.trim_start().starts_with("//")).any(|l| l.contains(&needle) && !l.contains("fn ")));
+        assert_eq!(PKEXEC, "/usr/bin/pkexec");
+    }
 
     #[test]
     fn reads_plugins_and_leaves_drafts_and_odd_ids_out() {

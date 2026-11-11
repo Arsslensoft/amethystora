@@ -115,7 +115,7 @@ pub struct Backend {
     pub pending_backup: Option<Value>,
     /// Cancels the security key's tool that waits to be touched, while a passkey is used or added
     pub touching: Option<gio::Cancellable>,
-    /// Where fido2-token and the others are, for the tests' stand-ins; the PATH otherwise
+    /// Where fido2-token and the others are, for the tests' stand-ins; /usr/bin otherwise
     pub tools: Option<PathBuf>,
     pub hooks: Hooks,
     save_timer: Option<glib::SourceId>,
