@@ -43,6 +43,13 @@ int main(int argc, char **argv)
         return 2;
     if (seccomp_rule_add(ctx, SCMP_ACT_ERRNO(ENOSYS), SCMP_SYS(clone3), 0) < 0)
         return 2;
+    /* Socket families the network namespace does not keep apart: vsock reaches the hypervisor and any vsock listener on this machine
+     * (systemd's SSH over vsock when it is not masked), and Bluetooth sockets the paired devices. A plugin has loopback and its proxy */
+    static const int FAMILIES[] = { 40 /* AF_VSOCK */, 31 /* AF_BLUETOOTH */ };
+    for (unsigned i = 0; i < sizeof FAMILIES / sizeof *FAMILIES; i++)
+        if (seccomp_rule_add(ctx, SCMP_ACT_ERRNO(EAFNOSUPPORT), SCMP_SYS(socket), 1, SCMP_A0(SCMP_CMP_EQ, FAMILIES[i])) < 0 ||
+            seccomp_rule_add(ctx, SCMP_ACT_ERRNO(EAFNOSUPPORT), SCMP_SYS(socketpair), 1, SCMP_A0(SCMP_CMP_EQ, FAMILIES[i])) < 0)
+            return 2;
     /* Typing into the terminal that runs it */
     if (seccomp_rule_add(ctx, SCMP_ACT_ERRNO(EPERM), SCMP_SYS(ioctl), 1, SCMP_A1(SCMP_CMP_MASKED_EQ, 0xffffffff, TIOCSTI)) < 0)
         return 2;

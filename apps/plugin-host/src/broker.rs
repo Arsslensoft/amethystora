@@ -9,7 +9,7 @@
 //!   {"op":"notify","title":"...","body":"..."} needs notify, once a minute at most; with "action" (one of the manifest's) and
 //!                                              "label", the notice has that button, and pressing it is a click that runs the action
 //!   {"op":"open","url":"https://..."}          needs open, and a click; the shell says the address
-//!   {"op":"clipboard","text":"..."}            needs clipboard-write, and a click; there is no clipboard read
+//!   {"op":"clipboard","text":"..."}            needs clipboard-write, and a click; the broker has no clipboard read (a panel, a Wayland client, can read what a focused window is offered: it never has the network)
 //!   {"op":"change","entry":"...","value":"..."} needs change=ENTRY, and a click: Control's entry set as the agent's change sets it
 //!                                              (amethystora-agent-tools plugin-change: no terminal, the never list, recorded)
 //!   {"op":"event"}                             needs events=NAME: what started this run, {"name","value"}, or null for a run of the timer
@@ -174,8 +174,9 @@ impl Broker {
         }
     }
 
+    /// "Plugin NAME": a plugin names itself in a notice or a chooser, so that a manifest called "Software Update" never passes for the system
     fn name_of(&self) -> String {
-        crate::host::load(&self.env, &self.id).map(|l| l.manifest.name).unwrap_or_else(|_| self.id.clone())
+        format!("Plugin {}", crate::host::load(&self.env, &self.id).map(|l| l.manifest.name).unwrap_or_else(|_| self.id.clone()))
     }
 
     /// `pick`: the file handed over, or one the person chooses now, read here (a plain file, never past PICK_BYTES). The run's click

@@ -63,6 +63,7 @@ case "${PLUGIN_ACTION:-}" in
         probe name-lookup getent hosts example.org
         probe raw-socket python3 -c 'import socket; socket.socket(socket.AF_INET, socket.SOCK_RAW, 1)'
         probe netlink ip addr add 10.9.9.9/24 dev lo
+        probe vsock python3 -c 'import socket; socket.socket(socket.AF_VSOCK, socket.SOCK_STREAM)'
         card net
         ;;
     proc)

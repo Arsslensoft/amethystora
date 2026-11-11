@@ -51,7 +51,20 @@ done
 # One kept answer, the plan's only one: commit-dev, which the helper holds to one plugin and no more than it has
 [[ "$(grep -c '_keep' "${POLICY}")" == 1 ]] && sed -n '/<action id="org.amethystora.plugins.commit-dev">/,/<\/action>/p' "${POLICY}" | grep -q 'auth_admin_keep' ||
     fail "an answer is kept for an action other than commit-dev"
-grep -q 'Some("commit-dev") if rest.len() == 1 => self.commit_updates' "${SRC}/plugin-host/src/rootcmd.rs" || fail "commit-dev is not the checks of an update, for one plugin"
+grep -q 'Some("commit-dev") if rest.len() == 1 => self.dev_gate(uid, &rest\[0\]).and_then(|_| self.commit_updates' "${SRC}/plugin-host/src/rootcmd.rs" ||
+    fail "commit-dev is not the checks of an update, for the one plugin being made"
+# What polkit keeps for five minutes covers no other plugin than the one written down in the account's folder (audit 2026-11-10, commit-dev)
+grep -q 'fn dev_gate' "${SRC}/plugin-host/src/rootcmd.rs" && grep -q 'const DEV_HOLD: u64 = 360' "${SRC}/plugin-host/src/rootcmd.rs" || fail "commit-dev is not held to one plugin"
+# An account's folder of the store is its own to read, and nobody else's (and the accounts folder cannot be listed)
+grep -qE '^d /var/lib/amethystora/plugins/accounts 0711 root root' /usr/lib/tmpfiles.d/amethystora-plugins.conf || fail "the accounts folder of the store can be listed"
+grep -q 'fn seal_account' "${SRC}/plugin-host/src/store.rs" && grep -q '0o750' "${SRC}/plugin-host/src/store.rs" && grep -q 'self.store.seal_account(uid)' "${SRC}/plugin-host/src/rootcmd.rs" ||
+    fail "an account's folder of the store is not closed to the other accounts"
+# A `files` place is bound from the descriptor it was opened on, never by the name a link could be put under while the sandbox starts
+grep -q '"--bind-fd"' "${SRC}/plugin-host/src/sandbox.rs" && grep -q 'files::open(' "${SRC}/plugin-host/src/host.rs" || fail "a files place is mounted by its name"
+# The filter refuses the socket families the network namespace does not keep apart
+grep -q 'AF_VSOCK' "${SRC}/plugin-host/seccomp/gen.c" || fail "the filter lets a plugin open a vsock"
+# A window cannot be asked for with the network: it can read what was copied
+grep -q 'never asked for together' "${SRC}/plugin-host/src/manifest.rs" || fail "a manifest may ask for a window and the network"
 if sed '/<action id="org.amethystora.plugins.commit-dev">/,/<\/action>/d' "${POLICY}" | grep -qE '_keep|<allow_active>(yes|no)</allow_active>|<allow_any>(auth|yes)|<allow_inactive>(auth|yes)'; then
     fail "the policy keeps an answer, or lets someone through, or asks someone who is not at the machine"
 fi

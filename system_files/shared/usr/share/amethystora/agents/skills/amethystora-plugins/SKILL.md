@@ -42,7 +42,7 @@ or `amethystora-plugin-root`: they are refused, and they are the person's. A plu
   `dock` (a number in `text` is the badge, `progress` the bar, on the app named), `today` (a card in the calendar menu), `menu` (a line in the logo menu; its `click` runs),
   `files-menu` (`{"action": "x"}`: Files' Give to a plugin hands the file the person picks to that action, which reads it with `plugin pick`; needs `pick`), `key`
   (`{"action": "x", "accel": "<Super><Alt>g"}`: Super, or Control and Alt both; never one already bound; needs `key`), `panel` (`{"action": "x"}`: that action opens a window
-  of its own, GTK 4 in Python is in the image, drawn in software, open until closed; needs `window`) and `tool` (`{"action": "x", "description": "..."}`: the AI agent's
+  of its own, GTK 4 in Python is in the image, drawn in software, open until closed; needs `window`, which can never be asked for with `network`) and `tool` (`{"action": "x", "description": "..."}`: the AI agent's
   `plugin` tool runs it, no click, and gets what it printed as data). One format, every place.
 - `needs` is **what it reaches**, each with a `why` the person reads: `network` (named hosts only, `*.example.org` allowed, never an address), `files` (`~/Documents/x`, read-only
   unless `"mode": "rw"`, no dot-folders), `state` (`{"names": ["clock","disk","media","do-not-disturb"], "why"}`), `control` (`media`, `do-not-disturb`; only after a click), `notify`,

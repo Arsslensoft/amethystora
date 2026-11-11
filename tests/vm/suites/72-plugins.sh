@@ -82,6 +82,10 @@ refused "the account cannot write the store" as_tester sh -c "echo x >> '${FOLDE
 refused "the account cannot add a file to a plugin's folder" as_tester touch "${FOLDER}/added"
 refused "the account cannot write grants.json" as_tester sh -c "echo '{}' > '${STORE}/accounts/${UID_TEST}/grants.json'"
 refused "the account cannot write the history" as_tester sh -c "echo '{}' >> '${STORE}/accounts/${UID_TEST}/history.jsonl'"
+helper inspect 00 >/dev/null 2>&1 || true # any verb seals the account's folder (the helper does it after each)
+check "the account reads its own grants" as_tester cat "${STORE}/accounts/${UID_TEST}/grants.json"
+refused "another account cannot read the grants of this one" runuser -u nobody -- cat "${STORE}/accounts/${UID_TEST}/grants.json"
+refused "another account cannot read the history of this one" runuser -u nobody -- cat "${STORE}/accounts/${UID_TEST}/history.jsonl"
 refused "the account cannot make a ticket of its own in the quarantine" as_tester mkdir "${STORE}/quarantine/mine"
 refused "the account cannot even list the quarantine" as_tester ls "${STORE}/quarantine"
 # commit and unblock through pkexec, as the account would from a script with no password and no agent to answer
@@ -149,7 +153,7 @@ hostile() { # hostile ACTION COUNT
 }
 hostile fs 12
 hostile bus 8
-hostile net 6
+hostile net 7
 hostile proc 10
 [[ ! -e "${HOME_TEST}/leaked" && ! -e "${HOME_TEST}/leaked2" && ! -e /usr/leaked && ! -e /etc/leaked ]] && ok "nothing was written outside the sandbox" || not_ok "a file the plugin made is on the machine"
 # A fork bomb stays within its 64 tasks, and a memory bomb ends the run

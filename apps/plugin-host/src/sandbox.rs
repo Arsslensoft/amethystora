@@ -21,6 +21,8 @@ pub const BROKER_DIR: &str = "/broker";
 pub const BIN_DIR: &str = "/plugin-bin";
 /// The pipe a plugin's settings come on (and nothing else does): read once, `read -r -u 10 settings`
 pub const SETTINGS_FD: i32 = 10;
+/// The descriptors of the `files` permissions' places come on from here (at most eight, the manifest's limit), in the order of the list
+pub const FILE_FD_BASE: i32 = 11;
 pub const SHIM_PORT: u16 = 3128;
 /// Where a panel finds the Wayland socket
 pub const WAYLAND_DIR: &str = "/run/wayland";
@@ -34,8 +36,9 @@ pub struct Spec<'a> {
     /// The account's state folder for the plugin
     pub state: &'a Path,
     pub command: &'a [String],
-    /// A file or folder of the home, already resolved, and whether it may be written
-    pub files: &'a [(PathBuf, bool)],
+    /// A file or folder of the home, already resolved, whether it may be written, and the descriptor it was opened on, which the
+    /// sandbox's starter holds under that number (FILE_FD_BASE and up) and bubblewrap binds from: what is mounted is what was checked
+    pub files: &'a [(PathBuf, bool, i32)],
     /// The folder the host's proxy socket is in; given only to a plugin that holds a network permission
     pub proxy_dir: Option<&'a Path>,
     /// The folder the host's broker socket is in; given to a plugin that may ask for anything, and to a draft (which is answered from samples)
@@ -79,8 +82,8 @@ pub fn bwrap_args(spec: &Spec) -> Vec<String> {
     a.extend(["--ro-bind".into(), p(spec.passwd), "/etc/passwd".into()]);
     a.extend(["--size".into(), s(TMP_BYTES), "--tmpfs".into(), "/tmp".into(), "--proc".into(), "/proc".into(), "--dev".into(), "/dev".into()]);
     a.extend(["--ro-bind".into(), p(spec.folder), s(PLUGIN_DIR), "--bind".into(), p(spec.state), s(STATE_DIR), "--chdir".into(), s(PLUGIN_DIR)]);
-    for (path, writable) in spec.files {
-        a.extend([if *writable { "--bind" } else { "--ro-bind" }.into(), p(path), p(path)]);
+    for (path, writable, fd) in spec.files {
+        a.extend([if *writable { "--bind-fd" } else { "--ro-bind-fd" }.into(), fd.to_string(), p(path)]);
     }
     let mut env: Vec<(String, String)> = vec![
         (s("PATH"), format!("{BIN_DIR}:/usr/bin")),
@@ -157,7 +160,7 @@ pub fn command_line(spec: &Spec) -> Vec<String> {
 mod tests {
     use super::*;
 
-    fn spec<'a>(command: &'a [String], files: &'a [(PathBuf, bool)], proxy: Option<&'a Path>, env: &'a [(String, String)], action: Option<&'a str>) -> Spec<'a> {
+    fn spec<'a>(command: &'a [String], files: &'a [(PathBuf, bool, i32)], proxy: Option<&'a Path>, env: &'a [(String, String)], action: Option<&'a str>) -> Spec<'a> {
         Spec {
             id: "dev.example.t",
             folder: Path::new("/var/lib/amethystora/plugins/store/abc"),
@@ -221,11 +224,12 @@ mod tests {
     #[test]
     fn permissions_are_mounts_and_a_proxy() {
         let command = vec!["./run.sh".to_string(), "a".to_string()];
-        let files = vec![(PathBuf::from("/home/a/Documents/ci"), false), (PathBuf::from("/home/a/Pictures"), true)];
+        let files = vec![(PathBuf::from("/home/a/Documents/ci"), false, 11), (PathBuf::from("/home/a/Pictures"), true, 12)];
         let env = vec![("LANG".to_string(), "fr_FR.UTF-8".to_string())];
         let a = bwrap_args(&spec(&command, &files, Some(Path::new("/run/user/1000/amethystora/plugins/dev.example.t")), &env, Some("open-page")));
-        assert!(has(&a, &["--ro-bind", "/home/a/Documents/ci", "/home/a/Documents/ci"]));
-        assert!(has(&a, &["--bind", "/home/a/Pictures", "/home/a/Pictures"]));
+        // By descriptor, never by a name that a link could be put under while the sandbox starts
+        assert!(has(&a, &["--ro-bind-fd", "11", "/home/a/Documents/ci"]) && has(&a, &["--bind-fd", "12", "/home/a/Pictures"]));
+        assert!(!has(&a, &["--ro-bind", "/home/a/Documents/ci", "/home/a/Documents/ci"]) && !has(&a, &["--bind", "/home/a/Pictures", "/home/a/Pictures"]));
         assert!(has(&a, &["--setenv", "PLUGIN_ACTION", "open-page"]) && has(&a, &["--setenv", "LANG", "fr_FR.UTF-8"]));
         assert!(has(&a, &["--setenv", "HTTPS_PROXY", "http://127.0.0.1:3128"]));
         assert!(has(&a, &["--", "/usr/libexec/amethystora-plugin-host", "shim", "/proxy/proxy.sock", "--", "./run.sh", "a"]));

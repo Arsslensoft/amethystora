@@ -360,6 +360,10 @@ impl Manifest {
         if places.contains_key("panel") && !needs.iter().any(|n| n.perm == "window") {
             return Err("\"panel\" is a window of its own, which needs \"window\" in \"needs\"".into());
         }
+        // A window is an ordinary Wayland client, and one that has the focus is offered what was copied last: it must have no way to send it on
+        if needs.iter().any(|n| n.perm == "window") && needs.iter().any(|n| n.perm.starts_with("network")) {
+            return Err("\"window\" and \"network\" are never asked for together: a window that has the focus can read what was copied, and the network could take it away".into());
+        }
         if places.contains_key("key") && !needs.iter().any(|n| n.perm == "key") {
             return Err("\"key\" takes a shortcut, which needs \"key\" in \"needs\"".into());
         }
@@ -638,6 +642,23 @@ mod tests {
         assert!(files(false, "open-page").is_err(), "without pick");
         assert!(files(true, "not-declared").is_err(), "an action the manifest does not declare");
         assert!(files(true, "Bad Action").is_err());
+    }
+
+    #[test]
+    fn a_window_and_the_network_are_never_asked_for_together() {
+        let window = |network: bool, local: bool| {
+            Manifest::parse(&with(|v| {
+                v["needs"]["window"] = serde_json::json!({"why": "Shows a panel"});
+                if !network {
+                    v["needs"].as_object_mut().unwrap().remove("network");
+                }
+                if local {
+                    v["needs"]["network-local"] = serde_json::json!([{"host": "192.168.1.5", "port": 80, "why": "Reads the hub"}]);
+                }
+            }))
+        };
+        assert!(window(false, false).is_ok());
+        assert!(window(true, false).is_err() && window(false, true).is_err());
     }
 
     #[test]

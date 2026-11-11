@@ -13,7 +13,7 @@ A plugin reaches only what it asked for and you allowed, and you can see, check 
 | `events` | Runs when the network, the power, the screen's lock, the light or dark style, or (asked for on its own) the app in front changes |
 | `network-local` | One service on your home network, by name and port, only while you are on a network you named home |
 | `change` | Settings of Control's it names, after a click, each recorded with its way back as the agent's changes are |
-| `window` | A window of its own, over Wayland only: no X11, no screen or sound capture, no portals |
+| `window` | A window of its own, over Wayland only: no X11, no screen or sound capture, no portals. It is an ordinary window, so it can read what you copied last while it has the focus, and can look like any other window. A plugin that asks for a window cannot also ask for the network, but what it reads can reach any other plugin that shares a folder with it |
 | `key` | One shortcut, which never takes one already in use |
 
 Never grantable: root, a raw bus, the whole home, another plugin's data, the keyring, the screen or microphone, and input.

@@ -68,6 +68,32 @@ impl Store {
         self.root.join("accounts").join(uid.to_string())
     }
 
+    /// An account's folder and what the helper keeps in it are readable by that account and root alone: the folder is `root:GROUP 0750` and
+    /// each file `root:GROUP 0640`, GROUP being the account's primary group (a private one on Fedora: which plugins an account has, which hosts
+    /// and folders each may reach, and when, is its own business). The account cannot write there, the owner stays root, and an account
+    /// that is unknown here keeps what it had. Called after every verb, so that folders made before this also come right
+    pub fn seal_account(&self, uid: u32) {
+        use std::os::unix::ffi::OsStrExt;
+        let Some(gid) = crate::audit::account_gid(uid) else { return };
+        let chown_mode = |path: &Path, mode: u32| {
+            if let Ok(c) = std::ffi::CString::new(path.as_os_str().as_bytes()) {
+                // SAFETY: c is a NUL-terminated path; (uid_t)-1 leaves the owner as it is
+                unsafe {
+                    libc::chown(c.as_ptr(), u32::MAX, gid);
+                    libc::chmod(c.as_ptr(), mode);
+                }
+            }
+        };
+        let dir = self.account_dir(uid);
+        for entry in std::fs::read_dir(&dir).into_iter().flatten().flatten() {
+            // Only what the helper keeps, and never through a link
+            if entry.file_type().is_ok_and(|t| t.is_file()) {
+                chown_mode(&entry.path(), 0o640);
+            }
+        }
+        chown_mode(&dir, 0o750);
+    }
+
     pub fn quarantine(&self) -> PathBuf {
         self.root.join("quarantine")
     }

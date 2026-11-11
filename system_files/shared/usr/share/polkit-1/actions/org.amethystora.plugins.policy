@@ -40,7 +40,8 @@
   </action>
 
   <!-- The one kept approval (plans/done/PLAN-plugins.md): `ame plugin dev`, where an author tries each change of a plugin that holds
-       permissions. The helper commits one plugin with no more than it holds, so what is kept for five minutes cannot widen anything -->
+       permissions. The helper commits one plugin with no more than it holds (a higher byte limit counts as more), and only the plugin
+       it wrote down as the one being made, so what is kept for five minutes cannot widen anything or reach another plugin -->
   <action id="org.amethystora.plugins.commit-dev">
     <description>Install a new version of a plugin you are making, with no more than it has</description>
     <message>Install the new version of the plugin you are making, with no more than it has, and keep this approval five minutes: $(command_line)</message>

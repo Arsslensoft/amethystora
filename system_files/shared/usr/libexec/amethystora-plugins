@@ -249,6 +249,7 @@ consent() {
         echo
         case "${perm}" in
             network=*) gettext "  A host it may reach is a way for anything it knows to leave this computer."; echo ;;
+            window) gettext "  A window can read whatever you copied last while it has the focus, and can look like any other window, a password prompt included; what it reads can reach any other plugin that shares a folder with it."; echo ;;
         esac
         if grep -qxF -- "${perm}" <<<"${previous}"; then
             gettext "  You allowed this before."
@@ -322,7 +323,7 @@ remember_source() {
 # asks for more is left for `ame plugin update ID ADDRESS`, alone, where each new permission is read and answered
 update_all() {
     need_terminal
-    local id source out digest installed batch=() names=() more
+    local id source out digest installed batch=() names=() more inspected
     while IFS=$'\t' read -r id source; do
         valid_id "${id}" && [[ "${source}" == https://* ]] || continue
         installed="$("${HOST}" show "${id}" 2>/dev/null | field digest)" || continue
@@ -332,8 +333,12 @@ update_all() {
         if [[ "${digest}" == "${installed}" || "$(field id <<<"${out}")" != "${id}" ]]; then
             continue
         fi
-        more="$(comm -23 <(pkexec "${ROOT}" inspect "$(field ticket <<<"${out}")" | awk -F'\t' '$1 == "perm" { print $2 }' | sort) \
+        inspected="$(pkexec "${ROOT}" inspect "$(field ticket <<<"${out}")")"
+        more="$(comm -23 <(awk -F'\t' '$1 == "perm" { print $2 }' <<<"${inspected}" | sort) \
             <("${HOST}" show "${id}" | awk -F'\t' '$1 == "granted" { print $2 }' | sort))"
+        # A higher byte limit for a host is more asked for too (1 MiB an hour is what a host without a limit of its own has)
+        more+="$(awk -F'\t' 'NR == FNR { if ($1 == "limit") have[$2] = $3; next } $1 == "limit" && $3 + 0 > (($2 in have) ? have[$2] : 1048576) + 0 { print $2 }' \
+            <("${HOST}" show "${id}") - <<<"${inspected}")"
         if [[ -n "${more}" ]]; then
             export id source
             eval_gettext "\${id} asks for more than you allowed. Update it on its own: ame plugin update \${id} \${source}"

@@ -26,6 +26,8 @@ use crate::store::{Grant, Store, now};
 use crate::tree::{self, MAX_BYTES, MAX_ENTRIES};
 
 const TICKET_LIFE: u64 = 3600;
+/// Longer than the five minutes polkit keeps an approval
+const DEV_HOLD: u64 = 360;
 const MAX_TICKETS: usize = 4;
 const QUOTA: u64 = 3 * MAX_BYTES;
 
@@ -117,14 +119,14 @@ impl Ctx {
         // The quarantine first and the account second, always, so that two verbs cannot wait on each other
         let _quarantine = self.store.lock(&self.store.quarantine())?;
         let _account = self.store.lock(&self.store.account_dir(uid))?;
-        match args.first().map(String::as_str) {
+        let done = match args.first().map(String::as_str) {
             Some("prepare") => self.prepare(uid, stdin, out),
             Some("inspect") => self.inspect(uid, ticket_arg(rest.first())?, out),
             Some("commit") => self.commit(uid, id_arg(rest.first(), false)?, digest_arg(rest.get(1))?, perm_args(rest.get(2..).unwrap_or(&[]))?),
             Some("commit-shipped") => self.commit_shipped(uid, id_arg(rest.first(), true)?),
             Some("commit-updates") => self.commit_updates(uid, rest),
             // The author's loop: one plugin, never more than it holds, so that the kept approval cannot widen anything
-            Some("commit-dev") if rest.len() == 1 => self.commit_updates(uid, rest),
+            Some("commit-dev") if rest.len() == 1 => self.dev_gate(uid, &rest[0]).and_then(|_| self.commit_updates(uid, rest)),
             Some("grant") => self.grant(uid, id_arg(rest.first(), false)?, digest_arg(rest.get(1))?, perm_args(rest.get(2..).unwrap_or(&[]))?),
             Some("revoke") => self.revoke(uid, id_arg(rest.first(), true)?, perm_args(rest.get(1..).unwrap_or(&[]))?),
             Some(verb @ ("block" | "unblock")) => {
@@ -138,7 +140,10 @@ impl Ctx {
             Some("remove") => self.remove(uid, id_arg(rest.first(), true)?),
             Some("rollback") => self.rollback(uid, id_arg(rest.first(), true)?),
             _ => return Err("usage: amethystora-plugin-root prepare|inspect|commit|commit-updates|commit-shipped|grant|revoke|block|unblock|remove|rollback".into()),
-        }?;
+        };
+        // The account's folder is its own to read and nobody else's, also after a verb that failed, and for folders made before this
+        self.store.seal_account(uid);
+        done?;
         writeln!(out, "ok").map_err(|e| e.to_string())
     }
 
@@ -187,6 +192,10 @@ impl Ctx {
         for need in &m.needs {
             text += &format!("perm\t{}\t{}\n", need.perm, need.why);
         }
+        // A byte limit a host's entry names, so that an update that raises one is told from one that does not (`ame plugin update --all`)
+        for (host, bytes) in &m.limits {
+            text += &format!("limit\t{host}\t{bytes}\n");
+        }
         for e in entries.iter().filter(|e| !e.dir) {
             text += &format!("file\t{}\t{}\n", e.data.len(), e.path);
         }
@@ -195,6 +204,20 @@ impl Ctx {
 
     fn commit(&self, uid: u32, id: &str, digest: &str, perms: Vec<String>) -> Result<(), String> {
         self.commit_as(uid, id, digest, perms, self.approval_off)
+    }
+
+    /// The approval of `commit-dev` is kept by polkit for the session for five minutes, whatever plugin it names: so the plugin the author is
+    /// making is written down (`dev.json`, root's), and while it was last committed less than DEV_HOLD ago no other plugin goes through this
+    /// verb. What a program of the account could do with the kept approval is only to update that one plugin, which the author is editing
+    fn dev_gate(&self, uid: u32, arg: &str) -> Result<(), String> {
+        let id = arg.split_once('=').map(|(id, _)| id).ok_or("each update is ID=DIGEST")?;
+        let file = self.store.account_dir(uid).join("dev.json");
+        let held: serde_json::Value = std::fs::read_to_string(&file).ok().and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default();
+        if held["id"].as_str().is_some_and(|other| other != id) && now().saturating_sub(held["at"].as_u64().unwrap_or(0)) < DEV_HOLD {
+            return Err(format!("another plugin ({}) was being made a moment ago: update {id} on its own with ame plugin update, or wait a few minutes", held["id"].as_str().unwrap_or("?")));
+        }
+        let temp = file.with_extension("json.new");
+        std::fs::write(&temp, json!({"id": id, "at": now()}).to_string()).and_then(|_| std::fs::rename(&temp, &file)).map_err(|e| e.to_string())
     }
 
     /// Several updates, one approval (plans/done/PLAN-plugins.md, How a person approves): every one is checked before any is written, so that
@@ -220,6 +243,10 @@ impl Ctx {
                 return Err(format!("{id} asks for {more}, which it was not given: update it on its own, so that you read what it asks"));
             }
             let keep: Vec<String> = grant.perms.iter().filter(|p| asked.contains(*p)).cloned().collect();
+            // A higher byte limit is more asked for too: it is the one bound on what a granted host is sent
+            if let Some((host, _)) = manifest.limits.iter().find(|(h, n)| keep.contains(&format!("network={h}")) && *n > grant.limits.get(h).copied().unwrap_or(crate::manifest::DEFAULT_LIMIT)) {
+                return Err(format!("{id} now sends more to {host} than it was allowed: update it on its own, so that you read what it asks"));
+            }
             plan.push((id.to_string(), digest.to_string(), keep));
         }
         for (id, digest, keep) in plan {
@@ -467,6 +494,52 @@ mod tests {
         // Nor what is not installed, nor a shape that is not ID=DIGEST
         assert!(call(&ctx, &format!("commit-updates dev.example.other={digest2}"), b"").is_err());
         assert!(call(&ctx, "commit-updates dev.example.t", b"").is_err());
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn an_update_that_raises_a_byte_limit_asks_for_more() {
+        let (ctx, dir) = setup("limit");
+        let net = |limit: Option<u64>, version: &str| {
+            let l = limit.map(|n| format!(r#","limit":{n}"#)).unwrap_or_default();
+            manifest_with(&format!(r#"{{"network":[{{"host":"api.example.com","why":"Reads"{l}}}]}}"#)).replace("1.0.0", version)
+        };
+        let first = call(&ctx, "prepare", &archive(&net(Some(2 << 20), "1.0.0"))).unwrap();
+        call(&ctx, &format!("commit dev.example.t {} network=api.example.com", field(&first, "digest")), b"").unwrap();
+        let again = call(&ctx, "prepare", &archive(&net(Some(2 << 20), "1.0.1"))).unwrap();
+        assert!(call(&ctx, &format!("inspect {}", field(&again, "ticket")), b"").unwrap().contains("limit\tapi.example.com\t2097152"));
+        // The same limit, a lower one and none (the default is lower than 2 MiB) pass; a higher one never does in a batch
+        for (limit, version, passes) in [(Some(2u64 << 20), "1.1.0", true), (Some(1 << 20), "1.2.0", true), (None, "1.3.0", true), (Some(8 << 20), "1.4.0", false)] {
+            let out = call(&ctx, "prepare", &archive(&net(limit, version))).unwrap();
+            let r = call(&ctx, &format!("commit-updates dev.example.t={}", field(&out, "digest")), b"");
+            assert_eq!(r.is_ok(), passes, "{limit:?}");
+        }
+        assert_eq!(ctx.store.grants(1000).unwrap().plugins["dev.example.t"].limits.get("api.example.com"), None, "the default's last passing version kept none");
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn commit_dev_goes_to_the_plugin_being_made_and_no_other() {
+        let (ctx, dir) = setup("dev");
+        let needs = r#"{"notify":{"why":"Says"}}"#;
+        let install = |id: &str| {
+            let m = manifest_with(needs).replace("dev.example.t", id);
+            let out = call(&ctx, "prepare", &archive(&m)).unwrap();
+            call(&ctx, &format!("commit {id} {} notify", field(&out, "digest")), b"").unwrap();
+            m
+        };
+        let (a, b) = (install("dev.example.a"), install("dev.example.b"));
+        let update = |id: &str, m: &str, v: &str| {
+            let out = call(&ctx, "prepare", &archive(&m.replace("1.0.0", v))).unwrap();
+            call(&ctx, &format!("commit-dev {id}={}", field(&out, "digest")), b"")
+        };
+        assert!(update("dev.example.a", &a, "1.1.0").is_ok());
+        assert!(update("dev.example.a", &a, "1.2.0").is_ok(), "the plugin being made goes on");
+        // Within the time polkit keeps the approval, another plugin does not go through it
+        assert!(update("dev.example.b", &b, "1.1.0").unwrap_err().contains("another plugin"));
+        // The note is root's and says which; an update on its own (commit-updates) is not held by it
+        let out = call(&ctx, "prepare", &archive(&b.replace("1.0.0", "1.3.0"))).unwrap();
+        assert!(call(&ctx, &format!("commit-updates dev.example.b={}", field(&out, "digest")), b"").is_ok());
         std::fs::remove_dir_all(&dir).unwrap();
     }
 

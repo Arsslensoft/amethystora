@@ -33,7 +33,10 @@ and words marked **private** hide while your screen is shared.
 - **A shortcut** that runs one of its actions, with Super, or Control and Alt both. A shortcut that anything already uses, yours included,
   is never taken: the plugin goes without, and you are told once.
 - **A window of its own**, which opens when you click its action and stays until you close it (eight hours at most), with the same limits
-  as any run. It is an ordinary window, drawn without the graphics card, that can see nothing of yours but what it was given.
+  as any run. It is an ordinary window, drawn without the graphics card, that can see nothing of yours but what it was given, except what
+  you copied last while the window has the focus: it can read that, and can look like any other window. So a plugin with a window never
+  has the network, and the system refuses a plugin that asks for both. What the window reads can still reach any other plugin that shares
+  a folder with it.
 - **The AI agent's tools**: while the agent may make changes, it can run a tool a plugin offers, asking you each time, and reads what the
   plugin printed as data.
 

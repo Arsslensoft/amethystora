@@ -241,11 +241,13 @@ impl Drop for Running<'_> {
 }
 
 /// A block the limit made is kept in the store like a person's: amethystora-plugin-root block, which needs no password for the person at the machine
-/// TODO(phase 0): confirm pkexec from this user service counts as the active session for 50-amethystora-plugins.rules
+/// The host's unit has NoNewPrivileges=yes, so the setuid pkexec cannot gain root from here and this write does not happen: a block the
+/// limit made holds in the host's memory only, and goes with the host (the last plugin turned off, a restart). It is kept for a host
+/// that runs without that setting; a block that must stay is the person's (Security's Apps page, `ame plugin block`)
 fn persist_block(id: &str, host: &str) {
     let (id, host) = (id.to_string(), host.to_string());
     let _ = std::thread::Builder::new().spawn(move || {
-        let _ = Command::new("pkexec").args(["/usr/libexec/amethystora-plugin-root", "block", &id, &host]).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).status();
+        let _ = Command::new("/usr/bin/pkexec").args(["/usr/libexec/amethystora-plugin-root", "block", &id, &host]).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).status();
     });
 }
 
@@ -339,7 +341,7 @@ impl Runner {
 
     /// The command line for one run, and nothing started (also what `sandbox` prints)
     pub fn command_line(&self, loaded: &Loaded, action: Option<&str>, with_proxy: bool) -> Result<Vec<String>, String> {
-        self.command_line_for(loaded, action, with_proxy, false)
+        self.command_line_for(loaded, action, with_proxy, false).map(|(line, _)| line)
     }
 
     /// The session's Wayland socket, for a panel: WAYLAND_DISPLAY as a path, or a name in the session's runtime folder
@@ -349,7 +351,8 @@ impl Runner {
         std::fs::symlink_metadata(&path).is_ok_and(|m| std::os::unix::fs::FileTypeExt::is_socket(&m.file_type())).then_some(path)
     }
 
-    pub fn command_line_for(&self, loaded: &Loaded, action: Option<&str>, with_proxy: bool, window: bool) -> Result<Vec<String>, String> {
+    /// The command line, and the descriptors of the places `files` gives (in order, to be FILE_FD_BASE and up in the child: the line names them)
+    pub fn command_line_for(&self, loaded: &Loaded, action: Option<&str>, with_proxy: bool, window: bool) -> Result<(Vec<String>, Vec<std::os::fd::OwnedFd>), String> {
         let env = &self.env;
         let state = env.state_dir(&loaded.id);
         std::fs::create_dir_all(&state).map_err(|e| e.to_string())?;
@@ -359,9 +362,13 @@ impl Runner {
         }
         let perms = loaded.perms();
         let mut mounts = Vec::new();
+        let mut held = Vec::new();
         for perm in perms.iter().filter_map(|p| p.strip_prefix("files=")) {
             let (path, mode) = perm.rsplit_once(':').ok_or("a files permission has a mode")?;
-            mounts.push((files::resolve(&env.home, path, mode == "rw")?, mode == "rw"));
+            // Opened once, link by link: bubblewrap binds this descriptor, not the name (a link swapped in while it starts leads nowhere)
+            let opened = files::open(&env.home, path, mode == "rw")?;
+            mounts.push((opened.path, mode == "rw", sandbox::FILE_FD_BASE + held.len() as i32));
+            held.push(opened.fd);
         }
         let has_network = perms.iter().any(|p| p.starts_with("network=") || p.starts_with("network-local="));
         let proxy_dir = if has_network && with_proxy { Some(self.proxy_dir(&loaded.id)?) } else if has_network { Some(env.runtime.join(&loaded.id)) } else { None };
@@ -397,7 +404,7 @@ impl Runner {
             action,
             wayland: wayland.as_deref(),
         };
-        Ok(sandbox::command_line(&spec))
+        Ok((sandbox::command_line(&spec), held))
     }
 
     /// One run: the sandbox, its budgets, 30 seconds, and what it printed, checked
@@ -438,7 +445,7 @@ impl Runner {
             }
             last.insert(id.to_string(), Instant::now());
         }
-        let line = self.command_line_for(&loaded, action, true, panel)?;
+        let (line, places) = self.command_line_for(&loaded, action, true, panel)?;
         // A person's click is what lets a run change anything outside the sandbox; the next run on the timer has none
         let _click = ClickGuard(if panel { None } else { self.brokers.lock().unwrap().get(id).cloned() });
         if let Some(b) = &_click.0 {
@@ -461,6 +468,9 @@ impl Runner {
         let settings_high = settings.as_ref().map(|f| high(f.as_raw_fd())).transpose()?;
         let fd = filter_high.as_raw_fd();
         let settings_fd = settings_high.as_ref().map(|f| f.as_raw_fd());
+        // The places of `files`, each to be FILE_FD_BASE + its place in the list in the child, which the command line's --bind-fd names
+        let places_high = places.iter().map(|f| high(f.as_raw_fd())).collect::<Result<Vec<_>, _>>()?;
+        let place_fds: Vec<i32> = places_high.iter().map(|f| f.as_raw_fd()).collect();
         // SAFETY: only dup2 and fcntl, which are async-signal-safe, between fork and exec
         unsafe {
             command.pre_exec(move || {
@@ -475,6 +485,11 @@ impl Runner {
                 }
                 if let Some(read) = settings_fd {
                     if libc::dup2(read, sandbox::SETTINGS_FD) < 0 {
+                        return Err(std::io::Error::last_os_error());
+                    }
+                }
+                for (i, place) in place_fds.iter().enumerate() {
+                    if libc::dup2(*place, sandbox::FILE_FD_BASE + i as i32) < 0 {
                         return Err(std::io::Error::last_os_error());
                     }
                 }

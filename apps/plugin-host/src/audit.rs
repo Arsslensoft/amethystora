@@ -43,9 +43,19 @@ pub fn account_name(uid: u32) -> Option<String> {
     name.bytes().all(|b| b.is_ascii_alphanumeric() || b"._-".contains(&b)).then_some(name)
 }
 
+/// The account's primary group (a private one on Fedora), which may read its folder of the store
+pub fn account_gid(uid: u32) -> Option<u32> {
+    let mut buf = vec![0u8; 4096];
+    let mut pwd: libc::passwd = unsafe { std::mem::zeroed() };
+    let mut out: *mut libc::passwd = std::ptr::null_mut();
+    // SAFETY: getpwuid_r writes into the buffers given, and `out` is null or points at `pwd`
+    let rc = unsafe { libc::getpwuid_r(uid, &mut pwd, buf.as_mut_ptr().cast(), buf.len(), &mut out) };
+    (rc == 0 && !out.is_null()).then_some(pwd.pw_gid)
+}
+
 /// What the helper itself leaves in an account's folder
 fn helper_file(name: &str) -> bool {
-    matches!(name, "grants.json" | "history.jsonl" | ".lock") || name.starts_with(".grants.json.new.")
+    matches!(name, "grants.json" | "history.jsonl" | ".lock" | "dev.json") || name.starts_with(".grants.json.new.")
 }
 
 /// Every entry of the store, never through a link: whose it is and who may write it
