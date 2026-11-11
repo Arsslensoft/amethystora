@@ -22,9 +22,14 @@ import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js'
 
 import {buttonRow, cardButton, retire} from '../pill/clock.js';
 import {plain} from '../pill/text.js';
-import {ANSWER_KEPT, QUESTION_KEPT, TEXT_READ, aboutFiles, askInput, isId, outcome, parseQuestion, pictureEnd} from './askmodel.js';
+import {ANSWER_KEPT, PICTURE_MAX, QUESTION_KEPT, TEXT_READ, aboutFiles, askInput, isId, outcome, parseQuestion, pictureEnd} from './askmodel.js';
+// The clipboard history's own header check, a copy of its file (another extension's files cannot be imported; 20-tests.sh holds the two the same)
+import {pictureFits} from './pictures.js';
 
 const AGENT = 'amethystora-agent';
+const TOOLS = '/usr/libexec/amethystora-agent-tools';
+// The start of a picture file read to judge its header: a JPEG's size may come after metadata
+const PICTURE_HEAD = 1024 * 1024;
 const PATH = '/org/amethystora/Agent';
 const INTERFACE = `
 <node>
@@ -123,6 +128,23 @@ export class AgentAsk {
         }
     }
 
+    // Whether PID is one of this account's tool servers: its program the tools', `mcp` its only word, run by this account. The
+    // server's number comes from a file the account can write, so it counts only for a process that really is one (changes.js
+    // reads the sessions' files the same way)
+    _isToolServer(pid) {
+        try {
+            if (!Number.isInteger(pid) || pid <= 1 || GLib.file_read_link(`/proc/${pid}/exe`) !== TOOLS)
+                return false;
+            const [, cmdline] = GLib.file_get_contents(`/proc/${pid}/cmdline`);
+            if (new TextDecoder().decode(cmdline) !== `${TOOLS}\0mcp\0`)
+                return false;
+            const own = Gio.File.new_for_path('/proc/self').query_info('unix::uid', Gio.FileQueryInfoFlags.NONE, null).get_attribute_uint32('unix::uid');
+            return Gio.File.new_for_path(`/proc/${pid}`).query_info('unix::uid', Gio.FileQueryInfoFlags.NONE, null).get_attribute_uint32('unix::uid') === own;
+        } catch {
+            return false;
+        }
+    }
+
     // The tool server asks, by the id of its hand-off: the question is in a file of the account's own runtime folder, written by
     // the server, so that the command a person reads is never made of a bus message. The reply is the person's click.
     async AskAsync([id, digest], invocation) {
@@ -143,7 +165,7 @@ export class AgentAsk {
         // What is read is what the tool server wrote (its digest comes in its own call's arguments), and the call is the server's
         // own child's: a file rewritten between the two, or a question from anywhere else, is not shown
         if (question && (GLib.compute_checksum_for_data(GLib.ChecksumType.SHA256, bytes) !== digest ||
-            !question.server || await this._callerParent(invocation.get_sender()) !== question.server))
+            !question.server || !this._isToolServer(question.server) || await this._callerParent(invocation.get_sender()) !== question.server))
             question = null;
         // The extension may have stopped while the file was read
         if (!this._dbus || !this._host.questionsOn) {
@@ -293,6 +315,25 @@ export class AgentAsk {
             return;
         }
         const subject = {kind: picked.kind, name: plain(picked.name, 60), size: picked.size, file};
+        if (picked.kind === 'picture') {
+            // What its header declares is judged before anything decodes it: a small file can declare a picture of gigabytes, and
+            // the card draws it through GdkPixbuf. A header that cannot be read in the start of the file is refused too.
+            let fits = false;
+            try {
+                const stream = await file.read_async(GLib.PRIORITY_DEFAULT, cancellable);
+                const bytes = await stream.read_bytes_async(PICTURE_HEAD, GLib.PRIORITY_DEFAULT, cancellable);
+                await stream.close_async(GLib.PRIORITY_DEFAULT, cancellable);
+                fits = pictureFits(bytes.toArray());
+            } catch {
+                fits = false;
+            }
+            if (!this._host.on)
+                return;
+            if (!fits) {
+                this._host.pill?.notice?.(_('That picture is too large to send'), 'dialog-question-symbolic', 4);
+                return;
+            }
+        }
         if (picked.kind === 'text') {
             // The start of it, as text, read now to show what would go: nothing else of the file
             try {
@@ -314,6 +355,11 @@ export class AgentAsk {
             return;
         if (this._host.pill?.sharing?.()) {
             this._host.pill.notice?.(_('Not while your screen is shared'), 'dialog-question-symbolic', 4);
+            return;
+        }
+        // Its header is judged before the card decodes it, as a dropped file's is
+        if (bytes.get_size() > PICTURE_MAX || !pictureFits(bytes.toArray())) {
+            this._host.pill?.notice?.(_('That picture is too large to send'), 'dialog-question-symbolic', 4);
             return;
         }
         this._confirm({kind: 'picture', name: _('The picture you copied'), size: bytes.get_size(), bytes});

@@ -123,6 +123,11 @@ impl Server {
             });
         }
         let why = self.checks_off.get_or_init(|| {
+            // The mark is in this server's own environment, which the agent's entry for it gave
+            let own: Vec<String> = std::env::vars_os().map(|(name, value)| format!("{}={}", name.to_string_lossy(), value.to_string_lossy())).collect();
+            if let Err(why) = checks::launched_by_launcher(std::process::id(), Some(&own)) {
+                return Some(why);
+            }
             let reader = run::run(&["/usr/libexec/amethystora-security-reader", "agent-config"], Duration::from_secs(25));
             checks::checks_off(std::process::id(), &checks::config_findings(&reader.stdout))
         });

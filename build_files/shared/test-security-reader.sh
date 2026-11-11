@@ -56,6 +56,15 @@ echo '{"mcpServers": {"evil": {"command": "npx", "args": ["-y", "evil-mcp"]}}, "
     >"${H}/.claude.json"
 printf 'notify = ["notify-send", "done"]\napproval_policy = "never"\n[mcp_servers.far]\nurl = "https://example.org/mcp"\n' \
     >"${H}/.codex/config.toml"
+# "Always allow" in each agent's own settings: the tools that change things lose their question, the read ones are the image's own
+echo '{"permissions": {"allow": ["mcp__amethystora__search", "mcp__amethystora__run", "mcp__amethystora", "Bash(ls)"]}}' \
+    >"${H}/.claude/settings.local.json"
+printf '[mcp_servers.amethystora]\ncommand = "/usr/libexec/amethystora-agent-tools"\nargs = ["mcp"]\ndefault_tools_approval_mode = "approve"\n[mcp_servers.amethystora.tools.state]\napproval_mode = "approve"\n[mcp_servers.amethystora.tools.software]\napproval_mode = "approve"\n' \
+    >>"${H}/.codex/config.toml"
+echo '{"permission": {"amethystora_search": "allow", "amethystora_undo": "allow", "amethystora_c*": "allow", "bash": "ask"}}' \
+    >"${H}/.config/opencode/opencode.json"
+echo '{"locations": {"/home/x": {"tool_approvals": [{"kind": "mcp", "serverName": "amethystora", "toolName": "search"}, {"kind": "mcp", "serverName": "amethystora", "toolName": "plugin"}, {"kind": "mcp", "serverName": "amethystora", "toolName": null}]}}}' \
+    >"${H}/.copilot/permissions-config.json"
 echo '{"mcpServers": {"g": {"command": "node", "args": ["g.js"], "trust": true}}, "tools": {"discoveryCommand": "find-tools"}}' \
     >"${H}/.gemini/settings.json"
 echo '{"name": "ext"}' >"${H}/.gemini/extensions/x/gemini-extension.json"
@@ -71,7 +80,8 @@ echo '{"approvalMode": "unrestricted", "permissions": {"allow": ["Mcp(amethystor
     >"${H}/.cursor/cli-config.json"
 # The entry amethystora-agent writes for the agent's tools is the image's own; the same name with anything more
 # in it is somebody else's
-echo '{"mcpServers": {"amethystora": {"command": "/usr/libexec/amethystora-agent-tools", "args": ["mcp"]}}}' >"${H}/.cursor/mcp.json"
+echo '{"mcpServers": {"amethystora": {"command": "/usr/libexec/amethystora-agent-tools", "args": ["mcp"], "env": {"AMETHYSTORA_AGENT_LAUNCHED": "1"}}}}' \
+    >"${H}/.cursor/mcp.json"
 echo '{"mcpServers": {"amethystora": {"command": "/usr/libexec/amethystora-agent-tools", "args": ["mcp"], "env": {"X": "1"}}}}' \
     >"${H}/.gemini/config/mcp_config.json"
 echo '{"version": 1, "hooks": {"preToolUse": [{"type": "command", "bash": "echo from copilot"}]}}' >"${H}/.copilot/hooks/h.json"
@@ -93,6 +103,22 @@ for want in 'runs a command on PreToolUse: touch' 'runs a command as apiKeyHelpe
 done
 for unwanted in '.cursor/mcp.json starts the MCP server amethystora' 'Mcp(amethystora:search)'; do
     if grep -qF -- "${unwanted}" <<<"${OUT}"; then fail "agent-config said the image's own entry: ${unwanted}"; fi
+done
+# Every agent's allow rule on a tool that changes something is Defense Evasion (the tools then refuse); a read tool's is not
+EVASION="$(jq -r 'select(.tactic == "Defense Evasion") | .text' <<<"${OUT}")"
+for want in 'settings.local.json lets the MCP server amethystora run a tool without asking: mcp__amethystora__run' \
+    'config.toml lets the MCP server amethystora run a tool without asking: default_tools_approval_mode approve' \
+    'config.toml lets the MCP server amethystora run a tool without asking: tools.software.approval_mode approve' \
+    'opencode.json lets the MCP server amethystora run a tool without asking: permission amethystora_undo allow' \
+    'opencode.json lets the MCP server amethystora run a tool without asking: permission amethystora_c* allow' \
+    'permissions-config.json lets the MCP server amethystora run a tool without asking: mcp amethystora plugin' \
+    'permissions-config.json lets the MCP server amethystora run a tool without asking: mcp amethystora every tool'; do
+    grep -qF -- "${want}" <<<"${EVASION}" || fail "agent-config did not report an allow rule as Defense Evasion \"${want}\": ${EVASION}"
+done
+grep -qE 'settings\.local\.json lets the MCP server amethystora run a tool without asking: mcp__amethystora$' <<<"${EVASION}" ||
+    fail "agent-config did not report a rule for the whole server: ${EVASION}"
+for unwanted in 'mcp__amethystora__search' 'tools.state.approval_mode' 'amethystora_search' 'mcp amethystora search' 'Bash(ls)'; do
+    if grep -qF -- "${unwanted}" <<<"${EVASION}"; then fail "agent-config reported a read tool's allow rule: ${unwanted}"; fi
 done
 jq -se '(map(.id) | unique | length) == length
     and any(.[]; (.text | test("lets Claude Code use tools without asking in /p")) and .level == "quiet")

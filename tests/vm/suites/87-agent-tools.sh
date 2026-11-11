@@ -317,6 +317,17 @@ answer "${out}" change | grep -q "dangerously-skip-permissions" && ok "an agent 
     not_ok "the checks-off refusal" "$(answer "${out}" change)"
 failed "${out}" state && not_ok "level 1 still works for it" || ok "level 1 still works for it"
 
+# A tool server that no agent of the launcher stands above (a program started it itself) gets no change and no root: its own
+# environment without AMETHYSTORA_AGENT_LAUNCHED (the entry the launcher gives each agent carries it), or no agent above it
+for how in --unmarked --bare; do
+    out="$(user_bus env WAYLAND_DISPLAY=wayland-0 python3 "${OWN}/mcp.py" "${how}" \
+        'change {"id": "transition", "value": "fade"}' 'run {"argv": ["true"], "reason": "x", "root": true}' 'state {"topic": "units"}' 2>/dev/null)"
+    answer "${out}" change | grep -q "Changes are refused" && answer "${out}" run | grep -q "Changes are refused" &&
+        ok "${how}: a tool server not started by an agent of the launcher gets no change and no root" ||
+        not_ok "${how}: the launcher refusal" "$(answer "${out}" change) / $(answer "${out}" run)"
+    failed "${out}" state && not_ok "${how}: level 1 still works" || ok "${how}: level 1 still works"
+done
+
 # --- The health check --------------------------------------------------------------------------------------
 
 user_bus systemd-run --user --unit=vmlab-broken --quiet false >/dev/null 2>&1

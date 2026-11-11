@@ -118,7 +118,7 @@ dev_hooks() {
 # the account's own Python, its .pth files included, runs inside it; and it parses, never runs, what it reads.
 agent_config() {
     timeout 20 python3 -I - <<'PY'
-import glob, hashlib, json, os, re, sys
+import fnmatch, glob, hashlib, json, os, re, sys
 
 try:
     import tomllib
@@ -218,18 +218,27 @@ def own(name, server):
     # The one entry amethystora-agent writes for Cursor CLI and Antigravity CLI, which take no launch option for
     # it: exactly it, under its name. Anything more (an environment, an address, a trust flag), or another
     # command under the same name, is somebody else's and is said like any server.
-    return (name == "amethystora" and set(server) <= {"command", "args", "type", "disabled"}
+    # Its environment is the launcher's mark for the tool server (checks.rs), exactly that or none
+    return (name == "amethystora" and set(server) <= {"command", "args", "type", "disabled", "env"}
+            and server.get("env", {"AMETHYSTORA_AGENT_LAUNCHED": "1"}) in ({}, {"AMETHYSTORA_AGENT_LAUNCHED": "1"})
             and server.get("command") == OWN_TOOLS and server.get("args") == ["mcp"]
             and server.get("type", "stdio") in ("stdio", "local") and server.get("disabled", False) is False)
 
 
+def allowed_tool(path, tool, detail):
+    # TOOL is the tool a rule names, None for every tool of the server
+    if tool not in READ_TOOLS:
+        emit(path, "lets the MCP server amethystora run a tool without asking", detail, tactic="Defense Evasion")
+
+
 def pre_allowed(path, rules, pattern):
     # A rule that has an agent use one of Amethystora's tools without asking: only the read-only ones are the
-    # image's own; one that changes something must always ask
+    # image's own; one that changes something must always ask. A group the pattern leaves unmatched (the whole
+    # server) is every tool.
     for rule in rules if isinstance(rules, list) else []:
         found = re.fullmatch(pattern, rule) if isinstance(rule, str) else None
-        if found and found.group(1) not in READ_TOOLS:
-            emit(path, "lets the MCP server amethystora run a tool without asking", rule, tactic="Defense Evasion")
+        if found:
+            allowed_tool(path, found.group(1), rule)
 
 
 def servers(path, table, key="command"):
@@ -273,6 +282,11 @@ if isinstance(data, dict):
         off(path, "turns Claude Code's checks off", "permissions.defaultMode bypassPermissions")
     if data.get("enableAllProjectMcpServers") is True:
         off(path, "starts every project's MCP servers without asking", "enableAllProjectMcpServers")
+# The launcher starts Claude Code in the home folder, so "don't ask again" lands in ~/.claude/settings.local.json
+for path in (f"{HOME}/.claude/settings.json", f"{HOME}/.claude/settings.local.json"):
+    data = load(path)
+    if isinstance(data, dict) and isinstance(data.get("permissions"), dict):
+        pre_allowed(path, data["permissions"].get("allow"), r"mcp__amethystora(?:__([^()]*))?")
 path = f"{HOME}/.claude.json"
 # Claude Code rewrites the rest of this file all the time: only its servers and project permissions count
 data = load(path, limit=16 << 20)
@@ -282,6 +296,7 @@ if isinstance(data, dict):
         if isinstance(settings, dict):
             servers(path, settings.get("mcpServers"))
             trusted(path, f"lets Claude Code use tools without asking in {project}", settings.get("allowedTools"))
+            pre_allowed(path, settings.get("allowedTools"), r"mcp__amethystora(?:__([^()]*))?")
 
 # Codex
 path = f"{HOME}/.codex/config.toml"
@@ -290,6 +305,14 @@ if isinstance(data, dict):
     if data.get("notify"):
         emit(path, "runs a command when a turn ends", words(data["notify"]))
     servers(path, data.get("mcp_servers"))
+    mine = (data.get("mcp_servers") or {}).get("amethystora") if isinstance(data.get("mcp_servers"), dict) else None
+    if isinstance(mine, dict):
+        # Per-tool and server-wide approval: the launcher gives only the read tools "approve", on its command line
+        if mine.get("default_tools_approval_mode") == "approve":
+            allowed_tool(path, None, "default_tools_approval_mode approve")
+        for tool, setting in (mine.get("tools") or {}).items() if isinstance(mine.get("tools"), dict) else []:
+            if isinstance(setting, dict) and setting.get("approval_mode") == "approve":
+                allowed_tool(path, tool, f"tools.{tool}.approval_mode approve")
     hooks(path, data.get("hooks"))
     if data.get("sandbox_mode") == "danger-full-access" or data.get("default_permissions") == ":danger-full-access":
         off(path, "turns Codex's sandbox off", "danger-full-access")
@@ -351,7 +374,10 @@ for base in (f"{HOME}/.gemini/config", f"{HOME}/.gemini/antigravity-cli"):
         emit(path.rstrip("/"), "is a plugin Antigravity CLI loads", os.path.basename(path.rstrip("/")))
 
 # Opencode
-for path in (f"{HOME}/.config/opencode/{name}" for name in ("config.json", "opencode.json", "opencode.jsonc")):
+CHANGE_TOOLS = ("change", "software", "run", "undo", "plugin")
+# The launcher starts Opencode in the home folder, which reads its project files from there too
+for path in [f"{HOME}/.config/opencode/{name}" for name in ("config.json", "opencode.json", "opencode.jsonc")] + [
+        f"{HOME}/{name}" for name in ("opencode.json", "opencode.jsonc", ".opencode/opencode.json", ".opencode/opencode.jsonc")]:
     data = load(path, "jsonc")
     if not isinstance(data, dict):
         continue
@@ -363,6 +389,12 @@ for path in (f"{HOME}/.config/opencode/{name}" for name in ("config.json", "open
     permission = data.get("permission")
     if permission == "allow" or (isinstance(permission, dict) and permission.get("*") == "allow"):
         off(path, "has Opencode never ask", "permission allow")
+    # An MCP tool's permission is its name, server_tool, or a pattern for it; the launcher's own are in the environment
+    for key, value in permission.items() if isinstance(permission, dict) else []:
+        if value == "allow" and key != "*":
+            for tool in CHANGE_TOOLS:
+                if fnmatch.fnmatchcase(f"amethystora_{tool}", key):
+                    allowed_tool(path, tool, f"permission {key} allow")
 for path in sorted(glob.glob(f"{HOME}/.config/opencode/plugin*/*") + glob.glob(f"{HOME}/.config/opencode/tool*/*")):
     if os.path.isfile(path) and re.search(r"\.(js|ts|mjs)$", path):
         body = read(path) or ""
@@ -392,6 +424,17 @@ for path in sorted(glob.glob(f"{HOME}/.copilot/hooks/*.json")):
     data = load(path)
     if isinstance(data, dict):
         hooks(path, data.get("hooks"))
+# What "always allow" saves, by location: {kind: "mcp", serverName, toolName (null is every tool of the server)}
+data = load(f"{HOME}/.copilot/permissions-config.json")
+for location in (data.get("locations") or {}).values() if isinstance(data, dict) and isinstance(data.get("locations"), dict) else []:
+    for approval in (location.get("tool_approvals") or []) if isinstance(location, dict) and isinstance(location.get("tool_approvals"), list) else []:
+        if isinstance(approval, dict) and approval.get("kind") == "mcp" and approval.get("serverName") == "amethystora":
+            allowed_tool(f"{HOME}/.copilot/permissions-config.json", approval.get("toolName"), f"mcp amethystora {approval.get('toolName') or 'every tool'}")
+for path in (f"{HOME}/.copilot/config.json", f"{HOME}/.copilot/settings.json"):
+    data = load(path)
+    for key in ("allowedTools", "allowed_tools"):
+        if isinstance(data, dict):
+            pre_allowed(path, data.get(key), r"amethystora(?:\(([^)]*)\))?")
 data = load(f"{HOME}/.copilot/config.json")
 if isinstance(data, dict):
     trusted(f"{HOME}/.copilot/config.json", "trusts", data.get("trustedFolders") or data.get("trusted_folders"))

@@ -12,7 +12,8 @@ Written for AI agents, so that the agent can explain to the user what it may do 
   AI agent page or with those commands. The agent never turns its own levels on.
 - The tools exist only while the agent was started through `amethystora-agent` or `ame agent` (or, for Cursor CLI and
   Antigravity CLI, while the features are on). An agent started with its own checks off gets no tool that
-  changes anything.
+  changes anything, nor does one that was not started through `amethystora-agent`, nor one whose own settings
+  allow a tool that changes things without asking: remove that rule from the agent's settings.
 
 ## Root commands
 

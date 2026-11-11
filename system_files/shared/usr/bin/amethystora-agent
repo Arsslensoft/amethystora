@@ -73,7 +73,10 @@ CHOICE="${CONFIG_DIR}/agent"
 # Amethystora's tools, an MCP server each agent starts (plans/done/PLAN-agentic-os.md), the entry naming it, and the
 # ones that only read, which every agent is told it may use without asking
 TOOLS=/usr/libexec/amethystora-agent-tools
-TOOLS_ENTRY="{\"command\": \"${TOOLS}\", \"args\": [\"mcp\"]}"
+# The environment is the launcher's mark, which the tools that change things and the root helper look for in the tool server's own
+# environment (not the agent's, which a program that cannot be read, as a non-dumpable agent is, would hide): checks.rs LAUNCHED
+LAUNCHED=AMETHYSTORA_AGENT_LAUNCHED
+TOOLS_ENTRY="{\"command\": \"${TOOLS}\", \"args\": [\"mcp\"], \"env\": {\"${LAUNCHED}\": \"1\"}}"
 READ_TOOLS=(search read state logs history)
 # The agents with a non-interactive way to ask that changes nothing, as their own --help describes it (Claude Code, read on 2026-11-06).
 # Another agent joins only after its options are read the same way: until then the pill opens it in a terminal, as `ask` does
@@ -176,7 +179,7 @@ agent() {
 installer() {
     local name="$1" url="$2" script
     shift 2
-    script="$(curl -fsSL "${url}")" || die "could not download the $(title "${name}") installer"
+    script="$(curl --proto '=https' --tlsv1.2 -fsSL "${url}")" || die "could not download the $(title "${name}") installer"
     bash -c "${script}" install.sh "$@"
 }
 
@@ -288,7 +291,8 @@ tools_options() {
             done
             ;;
         codex)
-            AGENT_OPTIONS=(-c "mcp_servers.amethystora.command=\"${TOOLS}\"" -c 'mcp_servers.amethystora.args=["mcp"]')
+            AGENT_OPTIONS=(-c "mcp_servers.amethystora.command=\"${TOOLS}\"" -c 'mcp_servers.amethystora.args=["mcp"]'
+                -c "mcp_servers.amethystora.env.${LAUNCHED}=\"1\"")
             for tool in "${READ_TOOLS[@]}"; do
                 AGENT_OPTIONS+=(-c "mcp_servers.amethystora.tools.${tool}.approval_mode=\"approve\"")
             done
@@ -298,7 +302,7 @@ tools_options() {
             # it finds no permission for, so the tools that change something are named too
             if [[ -z ${OPENCODE_CONFIG_CONTENT:-} ]]; then
                 OPENCODE_CONFIG_CONTENT="$(jq -nc --argjson entry "${TOOLS_ENTRY}" --arg change "${CHANGE_TOOLS[*]}" '{mcp: {amethystora: {type: "local",
-                    command: ([$entry.command] + $entry.args)}}, permission: (($ARGS.positional | map({key: "amethystora_\(.)",
+                    command: ([$entry.command] + $entry.args), environment: $entry.env}}, permission: (($ARGS.positional | map({key: "amethystora_\(.)",
                     value: "allow"})) + ($change | split(" ") | map({key: "amethystora_\(.)", value: "ask"})) | from_entries)}' --args "${READ_TOOLS[@]}")"
                 export OPENCODE_CONFIG_CONTENT
             fi
@@ -356,7 +360,8 @@ sync_tools() {
         fi
         return 0
     fi
-    local mine='if .mcpServers.amethystora == $entry then del(.mcpServers.amethystora) else . end'
+    # The entry as it is now, or as an earlier image wrote it (no environment)
+    local mine='if .mcpServers.amethystora == $entry or .mcpServers.amethystora == ($entry | del(.env)) then del(.mcpServers.amethystora) else . end'
     local allowed='if (.permissions.allow | type) == "array" then .permissions.allow -= $ARGS.positional else . end'
     edit_json "${HOME}/.cursor/mcp.json" "${mine}" --argjson entry "${TOOLS_ENTRY}"
     edit_json "${HOME}/.cursor/cli-config.json" "${allowed}" --args "${cursor_allow[@]}"
@@ -508,7 +513,7 @@ here_command() {
             # The tool server is told to offer no tool that changes things in its own settings, which it gets whatever environment the
             # agent hands its servers (AMETHYSTORA_READ_ONLY only ever lowers the level). The file is this question's own
             AGENT_OPTIONS[1]="$(runtime_file claude-mcp-here.json "$(jq -nc --argjson entry "${TOOLS_ENTRY}" \
-                '{mcpServers: {amethystora: ($entry + {env: {AMETHYSTORA_READ_ONLY: "1"}})}}')")"
+                '{mcpServers: {amethystora: ($entry * {env: {AMETHYSTORA_READ_ONLY: "1"}})}}')")"
             if [[ -n ${picture} ]]; then
                 # The picture is one more thing it may read, by its own path (// is how a rule names an absolute one): the last
                 # option is --allowedTools' list

@@ -56,6 +56,19 @@ def main(calls):
 
 if __name__ == "__main__":
     args = sys.argv[1:]
+    # An agent the launcher started: the tools that change things serve only a tool server with an agent above it (found by its
+    # name) and the launcher's mark in its own environment, which the agent's entry for it gives (the server inherits it here).
+    # --unmarked is an agent whose entry gave no mark, --bare a program that started the server itself. The second stage
+    # (--client, started again under the agent's name) keeps the environment it was given.
+    if "--client" not in args:
+        if args[:1] == ["--unmarked"]:
+            args = ["--as-agent", "claude", "--"] + args[1:]
+        elif args[:1] == ["--bare"]:
+            args = ["--client"] + args[1:]
+        else:
+            os.environ["AMETHYSTORA_AGENT_LAUNCHED"] = "1"
+            if args[:1] != ["--as-agent"]:
+                args = ["--as-agent", "claude", "--"] + args
     if args[:1] == ["--as-agent"]:
         # Started again as a program of the agent's name (Python, through a link of that name), with the agent's
         # arguments after the script's path, which /proc/PID/cmdline then shows as the watcher reads them

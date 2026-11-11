@@ -158,6 +158,10 @@ fn main() -> ExitCode {
     if std::fs::symlink_metadata(config.join("agentic")).is_err() || std::fs::symlink_metadata(config.join("agent-tools")).is_err() {
         return refuse("the account has not let the agent make changes");
     }
+    // Only a tool server that an agent started through the launcher is served, not one a program started itself
+    if let Err(why) = checks::launched_by_launcher(parent, checks::environment_of(parent).as_deref()) {
+        return refuse(&why);
+    }
     // The agent above the tool server, with its own checks off, is refused everything
     let flags = std::fs::read_to_string(checks::FLAGS).unwrap_or_default();
     if let Some((agent, Some(flag))) = checks::agent_above(parent, &flags) {

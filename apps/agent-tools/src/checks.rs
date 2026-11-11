@@ -143,6 +143,12 @@ pub fn flag_of(flags: &str, agent: &str, process: &Process) -> Option<String> {
 /// The agent above this process, at most a few processes up, and the flag that turns its checks off, if it
 /// has one. None when no agent is found: the tools were started by a person or a script.
 pub fn agent_above(start: u32, flags: &str) -> Option<(String, Option<String>)> {
+    let (agent, process) = find_agent(start)?;
+    let flag = flag_of(flags, agent, &process);
+    Some((agent.to_string(), flag))
+}
+
+fn find_agent(start: u32) -> Option<(&'static str, Process)> {
     let mut pid = Process::parent_of(start)?;
     for _ in 0..6 {
         if pid <= 1 {
@@ -150,12 +156,42 @@ pub fn agent_above(start: u32, flags: &str) -> Option<(String, Option<String>)> 
         }
         if let Some(process) = Process::read(pid) {
             if let Some(agent) = agent_of(&process) {
-                return Some((agent.to_string(), flag_of(flags, agent, &process)));
+                return Some((agent, process));
             }
         }
         pid = Process::parent_of(pid)?;
     }
     None
+}
+
+/// What amethystora-agent puts in the environment of the tool server, through the MCP server entry it gives each
+/// agent (the entry's `env`). It is read from the tool server's own environment, never from the agent's, which a
+/// non-dumpable agent keeps unreadable. The tools that change things, and the root helper, serve only a tool server
+/// that has it with an agent above it: a program that starts the tool server itself is refused. It is a check against
+/// that, not a lock: a program of the same account can set a variable and name itself like an agent, so the person's
+/// own answer (the agent's question, the password polkit asks) is what stops it.
+pub const LAUNCHED: &str = "AMETHYSTORA_AGENT_LAUNCHED";
+
+/// The tool server `pid`'s environment as /proc has it, None when it cannot be read
+pub fn environment_of(pid: u32) -> Option<Vec<String>> {
+    std::fs::read(format!("/proc/{pid}/environ")).ok().map(|bytes| nul_separated(&bytes))
+}
+
+/// Whether the tool server at `server` was started by an agent through amethystora-agent, else why not.
+/// `environment` is the tool server's own environment, None when it could not be read.
+pub fn launched_by_launcher(server: u32, environment: Option<&[String]>) -> Result<(), String> {
+    let Some((agent, _)) = find_agent(server) else {
+        return Err("no AI agent started these tools".into());
+    };
+    match environment {
+        None => Err("the tool server's environment could not be read, so it cannot be told who started it".into()),
+        Some(environment) if marked(environment) => Ok(()),
+        Some(_) => Err(format!("{agent} did not start these tools through amethystora-agent")),
+    }
+}
+
+fn marked(environment: &[String]) -> bool {
+    environment.iter().any(|entry| entry == &format!("{LAUNCHED}=1"))
 }
 
 /// Why the tools that change things refuse, or None when the agent's checks are on. `config` is what the
@@ -218,6 +254,19 @@ mod tests {
         // Another agent's flag, or the flag inside an argument, is not this one's
         assert_eq!(flag("cursor-agent", &["cursor-agent", "--fix"], &[]), None);
         assert_eq!(flag("claude", &["claude", "-f"], &[]), None);
+    }
+
+    #[test]
+    fn only_the_launchers_mark_counts() {
+        let env = |entries: &[&str]| entries.iter().map(|entry| entry.to_string()).collect::<Vec<_>>();
+        assert!(marked(&env(&["HOME=/home/a", "AMETHYSTORA_AGENT_LAUNCHED=1"])));
+        assert!(!marked(&env(&["HOME=/home/a"])));
+        assert!(!marked(&env(&["AMETHYSTORA_AGENT_LAUNCHED=0", "X_AMETHYSTORA_AGENT_LAUNCHED=1"])));
+        // Nothing above a process that has no parent to find: refused, with or without a mark
+        assert!(launched_by_launcher(1, Some(&env(&["AMETHYSTORA_AGENT_LAUNCHED=1"]))).is_err());
+        assert!(launched_by_launcher(1, None).is_err());
+        // This process's own environment can be read
+        assert!(environment_of(std::process::id()).is_some());
     }
 
     #[test]
