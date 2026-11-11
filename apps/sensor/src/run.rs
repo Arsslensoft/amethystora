@@ -29,6 +29,13 @@ const LOG_DIR: &str = "/var/log/amethystora-sensor";
 const LOG_MAX: u64 = 32 * 1024 * 1024;
 /// A watched folder's inode (its kernel pointer) is held open, so the map can only hold so many.
 const MAX_FOLDERS: u32 = 60000;
+/// What one watched tree may register when the sensor starts, and what one account's own mkdirs inside the
+/// watched trees may register while it runs: a folder is held open and never freed, so without a bound one
+/// account's thousands of empty folders would use the whole table and blind every folder made after them.
+const BOOT_TREE_FOLDERS: u32 = 4096;
+const ACCOUNT_FOLDERS: u32 = 4096;
+/// Where the sensor says a table that could not take a folder, one line each, for the watcher to report.
+const FULL_FILE: &str = "full";
 /// How deep a watched tree is walked when registering it.
 const MAX_DEPTH: u32 = 64;
 /// SDIR_HAS_FILES in sensor.h: the folder holds single watched files, matched by name.
@@ -60,6 +67,7 @@ pub fn run(probe: bool) -> Result<(), Box<dyn Error>> {
     // left it after a restart within the same boot.
     let ready = plan::run_dir().join("ready");
     let _ = fs::remove_file(&ready);
+    let _ = fs::remove_file(plan::run_dir().join(FULL_FILE));
     // systemd holds the logins until the sensor says it is watching (Type=notify, before
     // systemd-user-sessions.service), so that nothing an account does goes unrecorded; never past LOGIN_WAIT.
     std::thread::spawn(|| {
@@ -226,14 +234,42 @@ struct Registry {
     folders: HashMap<u32, FolderRec>,
     fds: Vec<OwnedFd>,
     next_id: u32,
+    /// How many more new folders the registration under way may take, and for whom (the account whose mkdir it
+    /// answers; none at start-up).
+    budget: u32,
+    owner: Option<u32>,
+    /// New folders registered for each account while running.
+    per_account: HashMap<u32, u32>,
+    /// What could not be registered, said in `full` (a line each: `table`, `tree`, `uid N`).
+    full: std::collections::BTreeSet<String>,
 }
 
 impl Registry {
     fn new() -> Self {
-        Registry { by_inode: HashMap::new(), folders: HashMap::new(), fds: Vec::new(), next_id: 1 }
+        Registry {
+            by_inode: HashMap::new(),
+            folders: HashMap::new(),
+            fds: Vec::new(),
+            next_id: 1,
+            budget: BOOT_TREE_FOLDERS,
+            owner: None,
+            per_account: HashMap::new(),
+            full: Default::default(),
+        }
+    }
+
+    /// A folder that could not be registered is not watched, and nothing in it would be recorded: say so once,
+    /// in the run directory, where the watcher reads it.
+    fn note_full(&mut self, why: String) {
+        if self.full.insert(why) {
+            let text: String = self.full.iter().map(|l| format!("{l}\n")).collect();
+            let _ = fs::write(plan::run_dir().join(FULL_FILE), text);
+        }
     }
 
     fn add_watch(&mut self, w: &plan::Watch, dirs: &Map, files: &Map, bss: &Map) {
+        self.budget = BOOT_TREE_FOLDERS;
+        self.owner = None;
         let path = w.path.as_os_str().as_bytes().to_vec();
         let bit = 1u32 << w.key_bit;
         match w.kind {
@@ -309,9 +345,6 @@ impl Registry {
     /// Registers one folder: open it (which the BPF sees and leaves its inode in .bss), then hold the
     /// descriptor and record the folder under that inode in the map. Returns the folder's id and inode.
     fn register_folder(&mut self, path: &[u8], w: u32, r: u32, e: u32, flags: u32, dirs: &Map, bss: &Map) -> Option<(u32, u64)> {
-        if self.next_id >= MAX_FOLDERS {
-            return None;
-        }
         let (fd, inode) = open_folder(path, bss)?;
 
         let id = if let Some(&id) = self.by_inode.get(&inode) {
@@ -322,6 +355,16 @@ impl Registry {
             rec.flags |= flags;
             id
         } else {
+            if self.next_id >= MAX_FOLDERS {
+                self.note_full("table".to_string());
+                return None;
+            }
+            if self.budget == 0 {
+                let why = self.owner.map_or("tree".to_string(), |uid| format!("uid {uid}"));
+                self.note_full(why);
+                return None;
+            }
+            self.budget -= 1;
             let id = self.next_id;
             self.next_id += 1;
             self.by_inode.insert(inode, id);
@@ -361,7 +404,18 @@ impl Registry {
         let mut child = parent.path.clone();
         child.push(b'/');
         child.extend_from_slice(name);
+        // What one account's folders may take of the table: root's own are not an account's to fill, so only
+        // the table itself bounds them
+        let uid = ev.head.uid;
+        let used = self.per_account.get(&uid).copied().unwrap_or(0);
+        self.budget = if uid == 0 { MAX_FOLDERS } else { ACCOUNT_FOLDERS.saturating_sub(used) };
+        self.owner = Some(uid);
+        let before = self.budget;
         self.register_tree(&child, w, r, e, 0, MAX_DEPTH, dirs, bss);
+        if uid != 0 {
+            *self.per_account.entry(uid).or_insert(0) += before - self.budget;
+        }
+        self.owner = None;
     }
 
     /// The folder a numbered id names, empty when none.

@@ -39,6 +39,8 @@ TimeoutStartSec=30
 ProtectSystem=strict
 ReadWritePaths=/etc -/var/home -/var/lib/amethystora
 RuntimeDirectory=amethystora/sensor
+# What it watches, and which secrets, is not for the accounts to read; everything that reads it is root
+RuntimeDirectoryMode=0700
 RuntimeDirectoryPreserve=yes
 PrivateTmp=disconnected
 NoNewPrivileges=yes

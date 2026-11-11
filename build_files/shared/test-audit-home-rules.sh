@@ -86,4 +86,22 @@ grep -qxF -- "-w ${A}/.config/mimeapps.list -p wa -k user-programs" "${RULES}"
 grep -qF -- "mimeapps.list -p wa -k persistence" "${RULES}" && { echo "mimeapps.list is said as persistence"; false; }
 [[ "$(stat -c %a "${RULES}")" == 600 ]]
 
+# With CREDENTIALS on and the sensor in use, one home holding thousands of browser profiles cannot cost the run: its
+# secrets stop at a bound and its UID is said in `skipped`, and the homes after it are read. The plan and the watch
+# list are the sensor's alone to read.
+account bulk 4203
+account omega 4204
+as 4203 bash -c 'cd "$1" && for i in $(seq 350); do mkdir -p ".config/chromium/p$i"; : >".config/chromium/p$i/Cookies"; done' _ "${R}/var/home/bulk"
+as 4204 touch "${R}/var/home/omega/.npmrc"
+printf 'CREDENTIALS=on\n' >"${T}/security.conf"
+AMETHYSTORA_SECURITY_CONF="${T}/security.conf" AMETHYSTORA_SENSOR_FORCE=sensor bash "${GENERATOR}"
+RUN="${R}/run/amethystora/sensor"
+grep -qx 4203 "${RUN}/skipped" || { echo "a home that cost too much was not said"; false; }
+grep -qx 4204 "${RUN}/skipped" && { echo "a home that cost little was said"; false; }
+[[ "$(grep -c "^read-file credentials ${R}/var/home/bulk/" "${RUN}/watch.list")" -le 300 ]] || { echo "one home was not bounded"; false; }
+grep -qx "read-file credentials ${R}/var/home/omega/.npmrc" "${RUN}/watch.list" || { echo "the home after it was not read"; false; }
+grep -qx 'identity sensor' "${RUN}/plan"
+[[ "$(stat -c %a "${RUN}/watch.list")" == 600 && "$(stat -c %a "${RUN}/plan")" == 600 ]] ||
+    { echo "the plan or the watch list can be read by anyone"; false; }
+
 echo "test-audit-home-rules: every check passed"

@@ -111,6 +111,8 @@ export AMETHYSTORA_WATCH_READER="${T}/reader" AMETHYSTORA_WATCH_ACCOUNTS=4500
 cat >"${T}/reader" <<EOF
 #!/usr/bin/bash
 [[ "\$(id -u)" == 4500 && "\${HOME}" == "${R}/var/home/alice" && "\$1" == app-permissions ]] || exit 1
+# Its standard input is nothing: the pipe the accounts are read from is not for an account's programs
+[[ "\$(readlink /proc/\$\$/fd/0)" == /dev/null ]] || exit 1
 cat "${T}/read"
 EOF
 chmod 0755 "${T}/reader"
@@ -141,6 +143,24 @@ rm -f "${T}/notified"
 timeout 120 "${WATCH}" >/dev/null || fail "the reader's third run failed"
 [[ -e "${T}/notified" ]] && fail "what the owner allowed was said"
 jq -se 'any(.[]; .text == "allowed" and .level == "quiet")' "${HISTORY}" >/dev/null || fail "what the owner allowed was not recorded"
+
+# An account's own programs can stop or kill its reader: a run that was ended is not one that found nothing. The
+# second in a row is a finding of its own, said once; a run that ends well starts the count again
+cp "${T}/reader" "${T}/reader.ok"
+printf '#!/usr/bin/bash\nkill -9 $$\n' >"${T}/reader"
+for run in 1 2 3; do
+    before="$(wc -l <"${HISTORY}")"
+    timeout 120 "${WATCH}" >/dev/null || fail "a run with a killed reader failed"
+    cut="$(tail -n +"$((before + 1))" "${HISTORY}" | jq -c 'select(.key == "app-permissions" and (.text | test("did not finish")))')"
+    case "${run}" in
+        2) jq -se 'length == 1 and .[0].account == "alice" and .[0].level == "normal"' <<<"${cut}" >/dev/null ||
+               fail "a reader killed twice was not said: ${cut}" ;;
+        *) [[ -z "${cut}" ]] || fail "a reader killed (run ${run}) was said: ${cut}" ;;
+    esac
+done
+cp "${T}/reader.ok" "${T}/reader"
+timeout 120 "${WATCH}" >/dev/null || fail "a run with the reader back failed"
+[[ ! -e "${R}/var/lib/amethystora/security/accounts/4500/app-permissions.cut" ]] || fail "a good run did not start the count again"
 
 # --- What the app integrity check found ------------------------------------------------------------------------
 
@@ -454,6 +474,21 @@ jq -se 'length == 3
     and any(.[]; .level == "normal" and (.text | test("autostart/watch-hidden-link[.]desktop using")))' \
     <<<"${FOUND}" >/dev/null || fail "autostart entries turned off: ${FOUND}"
 rm -f "${R}/var/home/alice/.config/autostart"/watch-hidden*.desktop "${T}/watch-hidden-elsewhere.desktop"
+
+# A program whose own path spells the end of systemd's ("x.wants/ using /usr/lib/systemd/systemd") is not systemd:
+# the sentence has two " using ", cannot say where the file ends and the program begins, and is not quietened by it
+STEP=330
+FORGED="$(printf '%s' "/var/home/alice/x.wants/ using /usr/lib/systemd/systemd" | od -An -tx1 | tr -d ' \n' | tr a-f A-F)"
+{
+    opened 1301 81 "${FORGED}" /var/home/alice/.config/autostart/watch-forged.desktop persistence |
+        sed 's/exe="\([0-9A-F]*\)"/exe=\1/'
+    close 1399
+} >>"${AMETHYSTORA_WATCH_AUDIT}"
+before="$(wc -l <"${HISTORY}")"
+timeout 120 "${WATCH}" >/dev/null || fail "the run with a program named like systemd failed"
+FOUND="$(tail -n +"$((before + 1))" "${HISTORY}" | jq -c 'select(.key == "persistence" and (.text | test("watch-forged")))')"
+jq -se 'length == 1 and .[0].level == "normal" and (.[0] | has("allow") | not)' <<<"${FOUND}" >/dev/null ||
+    fail "a program whose path spells systemd's was taken for it: ${FOUND}"
 echo "PERSISTENCE=off" >>"${AMETHYSTORA_SECURITY_CONF}"
 
 # Programs that accept connections, from a stand-in ss: the image's own passim is recorded, and one nobody
@@ -463,13 +498,15 @@ cat >"${T}/ss-bin/ss" <<'EOF'
 #!/usr/bin/bash
 echo 'LISTEN 0 4096 0.0.0.0:27500 0.0.0.0:* users:(("passimd",pid=900,fd=8))'
 echo 'LISTEN 0 4096 0.0.0.0:4444 0.0.0.0:* users:(("watch-nc",pid=901,fd=3))'
+echo 'LISTEN 0 4096 0.0.0.0:4445 0.0.0.0:* users:(("wa*tch",pid=902,fd=3))'
 EOF
 chmod 0755 "${T}/ss-bin/ss"
 echo "LISTENERS=on" >>"${AMETHYSTORA_SECURITY_CONF}"
 before="$(wc -l <"${HISTORY}")"
 PATH="${T}/ss-bin:${PATH}" timeout 120 "${WATCH}" >/dev/null || fail "the run with listeners failed"
 FOUND="$(tail -n +"$((before + 1))" "${HISTORY}" | jq -c 'select(.key == "listeners")')"
-jq -se 'length == 2
+jq -se 'length == 3
+    and any(.[]; .allow == "wa\\*tch 4445")
     and any(.[]; .level == "quiet" and .allow == "passimd 27500" and .allowed == "yes")
     and any(.[]; .level == "normal" and .allow == "watch-nc 4444" and (.text | startswith("watch-nc accepts connections on port 4444")))' \
     <<<"${FOUND}" >/dev/null || fail "programs that accept connections: ${FOUND}"
@@ -611,6 +648,23 @@ jq -e '.sensor.drops == 7 and .sensor.active == true and any(.sensor.covered[]; 
 before="$(wc -l <"${HISTORY}")"
 timeout 120 "${WATCH}" >/dev/null || fail "the second run reading the sensor failed"
 tail -n +"$((before + 1))" "${HISTORY}" | grep -qE 'exec-watch|file-watch sensor' && fail "the sensor's findings were said twice"
+
+# Folders the sensor could not register (an account used up its share, the table is full), and a home the generator
+# stopped short: what is written there is not recorded, and each is said once
+printf 'uid 4500\ntable\n' >"${AMETHYSTORA_SENSOR_RUN}/full"
+printf '4500\n' >"${AMETHYSTORA_SENSOR_RUN}/skipped"
+before="$(wc -l <"${HISTORY}")"
+timeout 120 "${WATCH}" >/dev/null || fail "the run with a full folder table failed"
+FOUND="$(tail -n +"$((before + 1))" "${HISTORY}" | jq -c 'select(.key == "hardening")')"
+jq -se 'length == 3
+    and any(.[]; .level == "normal" and (.text | test("Account 4500 made so many folders")))
+    and any(.[]; .level == "normal" and (.text | test("table of folders is full")))
+    and any(.[]; .level == "critical" and (.text | test("Account 4500 holds so many files")))' <<<"${FOUND}" >/dev/null || fail "what the sensor could not watch: ${FOUND}"
+jq -e '.sensor.full == true' "${R}/var/lib/amethystora/security/status.json" >/dev/null || fail "the status does not say the table is full"
+before="$(wc -l <"${HISTORY}")"
+timeout 120 "${WATCH}" >/dev/null || fail "the second run with a full folder table failed"
+tail -n +"$((before + 1))" "${HISTORY}" | grep -qE 'so many (folders|files)|table of folders' && fail "a full table was said twice"
+rm -f "${AMETHYSTORA_SENSOR_RUN}/full" "${AMETHYSTORA_SENSOR_RUN}/skipped"
 
 # Reaching into another program's memory, as the sensor records it, with the program reached and both mount
 # namespaces: a write into another program, a read of its memory, an open of /proc/PID/mem to read, and a try

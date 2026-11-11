@@ -302,6 +302,38 @@ found "a file of the account's own app replaced" $'^bob:file:account:app/org.exa
 # Not looked at again until it changes or a day has gone by, and what it found is still said
 found "what the account's run found, kept" "^bob:file:account:"
 
+# The account's own programs can stop or kill its run. It then ends without an answer, and the last run's findings
+# stand: the second run in a row that did not end is a finding of its own, so that it does not look like a run that
+# found nothing, and a run that ends well starts the count again
+mkdir "${T}/cut-bin"
+cat >"${T}/cut-bin/timeout" <<STANDIN
+#!/usr/bin/bash
+[[ "\$1" == 300 ]] && exec /usr/bin/timeout "\$@"
+exit 137
+STANDIN
+chmod 0755 "${T}/cut-bin/timeout"
+OLD_PATH="${PATH}"
+export PATH="${T}/cut-bin:${PATH}"
+# A run that fails every time by itself (a broken installation) is not one something stopped
+sed -i 's/^exit 137$/exit 1/' "${T}/cut-bin/timeout"
+for _ in 1 2 3; do
+    touch "${BOB}/.local/share/flatpak/.changed"
+    check
+    grep -q "^bob:check-cut" <<<"${FOUND}" && fail "a run that failed by itself was said to be stopped: ${FOUND}"
+done
+sed -i 's/^exit 1$/exit 137/' "${T}/cut-bin/timeout"
+touch "${BOB}/.local/share/flatpak/.changed"
+check
+grep -q "^bob:check-cut" <<<"${FOUND}" && fail "a run that did not end was said at once: ${FOUND}"
+grep -q "^bob:file:account:" <<<"${FOUND}" || fail "the findings of the last run were lost: ${FOUND}"
+touch "${BOB}/.local/share/flatpak/.changed"
+check
+grep -q "^bob:check-cut" <<<"${FOUND}" || fail "a run that did not end twice was not said: ${FOUND}"
+export PATH="${OLD_PATH}"
+touch "${BOB}/.local/share/flatpak/.changed"
+check
+grep -q "^bob:check-cut" <<<"${FOUND}" && fail "a run that ended well still said it: ${FOUND}"
+
 # --- The program in the image itself -------------------------------------------------------------------------------
 
 python3 -I -c 'import sqlite3, gi; gi.require_version("OSTree", "1.0"); from gi.repository import OSTree'

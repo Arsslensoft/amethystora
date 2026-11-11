@@ -1074,8 +1074,26 @@ def check_account(uid, name, gid, home, trusted):
             else:
                 apply(store, op, base)
     if proc.returncode != 0:
+        # The account's own programs can stop or kill this run, and a run that does not end leaves the last one's
+        # findings standing: the second one in a row is a finding of its own, so that a check that cannot finish
+        # does not look like one that found nothing
         con.rollback()
-        return json.loads(store.meta("findings", "[]")), json.loads(store.meta("counts", "null"))
+        kept = json.loads(store.meta("findings", "[]"))
+        # Only an end by a signal or by timeout's own limit counts (as the watcher's readers do): a run that fails
+        # every time, such as a broken installation, is not something that stopped it
+        ended = proc.returncode < 0 or proc.returncode == 124 or proc.returncode >= 128
+        cut = 0
+        if ended:
+            cut = int(store.meta("cut", "0")) + 1 if (store.meta("cut", "0") or "0").isdigit() else 1
+            store.set_meta("cut", str(cut))
+            con.commit()
+        if cut >= 2:
+            kept = kept + [{"id": f"{name}:check-cut", "level": "normal", "tactic": "Execution", "account": name,
+                            "installation": "user",
+                            "text": f"The check of {name}'s own Flatpak installation did not finish {cut} times running"
+                                    " (something stopped it, or it took too long): its changes are not being read"}]
+        return kept, json.loads(store.meta("counts", "null"))
+    store.set_meta("cut", "0")
     store.tidy()
     store.set_meta("checked", str(time.time()))
     store.set_meta("findings", json.dumps(findings))

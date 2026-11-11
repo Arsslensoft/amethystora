@@ -108,7 +108,10 @@ case "$1" in
     add | remove)
         [[ $# -eq 3 ]] || usage
         ENTRY="$3"
-        [[ "${ENTRY}" != *$'\n'* && "${ENTRY}" =~ ${SHAPE[${FEATURE}]} ]] ||
+        # A finding gives its entry with \ * ? [ escaped, so that it matches only what it names (the watcher's
+        # glob_safe): a pair like that is one plain character here, for the shape's sake
+        CHECK="${ENTRY//\\[\\*?[]/a}"
+        [[ "${ENTRY}" != *$'\n'* && "${CHECK}" =~ ${SHAPE[${FEATURE}]} ]] ||
             { echo "Not an entry ${FEATURE} takes: ${ENTRY}" | /usr/libexec/amethystora-security-text >&2; exit 64; }
         [[ "${EUID}" -eq 0 ]] || { echo "Changing an allowlist needs root." >&2; exit 77; }
         mkdir -p -m 0755 "${MACHINE}"

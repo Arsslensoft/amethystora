@@ -134,8 +134,19 @@ done < <(/usr/libexec/amethystora-security-config --all)
 FINDINGS=()
 MODE=on
 ALLOWED_HIT=0
+# An entry made of somebody else's words, kept as the allowlist would match it: \ * ? [ stand for themselves. The
+# one wildcard on purpose is the trailing " *" of "this program, any file" (the credentials chain's).
+glob_safe() {
+    local v="$1" tail=""
+    [[ "${v}" == *" *" ]] && { tail=" *"; v="${v% \*}"; }
+    v="${v//\\/\\\\}"
+    v="${v//\*/\\*}"
+    v="${v//\?/\\?}"
+    v="${v//[/\\[}"
+    printf '%s%s' "${v}" "${tail}"
+}
 add() {
-    local level="$1" key="$2" account="$3" tactic="$4" text fact facts=()
+    local level="$1" key="$2" account="$3" tactic="$4" text fact facts=() value
     [[ "${MODE}" == record ]] && level=quiet
     [[ "${account}" =~ ^[A-Za-z0-9_][A-Za-z0-9_.@-]*$ && "${account}" != unset ]] || account=-
     text="$("${TEXT}" "$5")"
@@ -144,7 +155,11 @@ add() {
         # A fact that would not be shown as it is, is not kept: an entry has to be one the allowlist takes
         [[ "${fact}" =~ ^(allow|at|tell)=([^[:cntrl:]]{1,1024})$ ]] || continue
         [[ "${BASH_REMATCH[1]}" != allow ]] || allowlist_feature "${key}" || continue
-        facts+=(--arg "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}")
+        value="${BASH_REMATCH[2]}"
+        # The entry is what a click on Allow… adds to the allowlist, and an allowlist entry is a glob: words an
+        # account chose (a path, a program's name, a library) must only ever match themselves
+        [[ "${BASH_REMATCH[1]}" != allow ]] || value="$(glob_safe "${value}")"
+        facts+=(--arg "${BASH_REMATCH[1]}" "${value}")
     done
     # What the owner allowed is kept, marked, and builds no chain of steps (CHAINS)
     [[ "${ALLOWED_HIT}" == 1 ]] && facts+=(--arg allowed yes)
@@ -294,6 +309,8 @@ audit_events() {
             line = $0
             sub(/^At [^ ]+ [^ ]+ /, "", line)
             if (line ~ / successfully (add|remove)_rule [^ ]+ using [^ ]*auditctl$/) next
+            # An autostart entry carries its time ("-@1760000000"): whether it was turned off is judged against it
+            if (line ~ /\/\.config\/autostart\//) mark = mark "@" when
             print mark " " line
         }' <<<"${output}" | sort | uniq -c
 }
@@ -302,19 +319,22 @@ audit_events() {
 # "Hidden=true", each with its line end and nothing else: an entry turned off, which starts nothing. Read as the home
 # folders are read here: a plain file only, never through a link anywhere on its way, small, under a time limit.
 hidden_autostart() {
-    local path="$1" file root text
+    local path="$1" when="${2:-}" file root text
     [[ "${path}" =~ ^/[^[:cntrl:]]*/\.config/autostart/[^/[:cntrl:]]+\.desktop$ && "${path}" != *"/../"* ]] || return 1
     file="${ROOT}${path}"
     [[ -f "${file}" && ! -L "${file}" ]] || return 1
     root="$(realpath -e -- "${ROOT:-/}" 2>/dev/null)" || return 1
     [[ "$(realpath -e -- "${file}" 2>/dev/null)" == "${root%/}${path}" ]] || return 1
     [[ "$(stat -c %s -- "${file}" 2>/dev/null)" -le 64 ]] || return 1
+    # Turned off by that write, not by one after it: an implant that swaps a hidden stand-in in while the watcher
+    # runs and the real entry back after changed the file later than the event, which its change time shows
+    [[ ! "${when}" =~ ^[0-9]+$ || "$(stat -c %Z -- "${file}" 2>/dev/null)" -le $((when + 2)) ]] || return 1
     text="$(timeout 5 head -c 64 -- "${file}" 2>/dev/null; echo .)"
     [[ "${text}" == $'[Desktop Entry]\nHidden=true\n.' || "${text}" == $'[Desktop Entry]\r\nHidden=true\r\n.' ]]
 }
 
 read_audit() {
-    local key count mark event exe level text object
+    local key count mark event exe level text object ambiguous when
     for key in "${AUDIT_KEYS[@]}"; do
         [[ "${AUDIT_OWN}" == *" ${key} "* ]] && continue
         MODE="${SETTING[$(tr 'a-z-' 'A-Z_' <<<"${key}")]:-on}"
@@ -326,8 +346,14 @@ read_audit() {
         fi
         while read -r count mark event; do
             [[ -n "${event}" ]] || continue
-            exe=""
-            [[ "${event}" == *" using "* ]] && exe="${event##* using }"
+            when=""
+            [[ "${mark}" == *@* ]] && { when="${mark#*@}"; mark="${mark%%@*}"; }
+            exe="" ambiguous=0
+            if [[ "${event}" == *" using "* ]]; then
+                # " using " twice means a path holds it: the sentence cannot say where the object ends and the
+                # program begins, and a program whose path spells a trusted one's tail must not be taken for it
+                [[ "${event#* using }" == *" using "* ]] && ambiguous=1 || exe="${event##* using }"
+            fi
             case "${key}" in
                 identity) [[ -n "${exe}" && "${ACCOUNT_TOOLS}" == *" ${exe} "* ]] && level=quiet || level=normal ;;
                 privilege | modules) level=critical ;;
@@ -343,6 +369,7 @@ read_audit() {
                     ;;
                 *) level=normal ;;
             esac
+            [[ "${ambiguous}" == 1 && "${level}" == quiet ]] && level=normal
             # "tester, acting as root, ..." for sudo, "system, acting as root, ..." for a service, "root ..." for root's
             # own login; "tester ..." is a program of the account's own
             [[ "${mark}" == noted && ( "${event}" == *", acting as root, "* || "${event}" == "root "* ) ]] && level=quiet
@@ -354,17 +381,19 @@ read_audit() {
             # What it was done to: "..., successfully opened-file /etc/sudoers using /usr/bin/vim". A path the
             # owner allowed, or a program, is recorded and not said.
             object=""
-            [[ "${event}" =~ successfully\ [a-z-]+\ (/.+)\ using\  ]] && object="${BASH_REMATCH[1]}"
-            # ...of a change of mode or owner, the file alone: "to 0750" is what it became, and a mode set through
-            # a relative path (chmod -R) comes out as a number that is different every time
-            [[ "${event}" =~ successfully\ changed-file-(permissions|ownership)-of\ (/.+)\ to\ [^\ ]+\ using\  ]] &&
-                object="${BASH_REMATCH[2]}"
+            if [[ "${ambiguous}" == 0 ]]; then
+                [[ "${event}" =~ successfully\ [a-z-]+\ (/.+)\ using\  ]] && object="${BASH_REMATCH[1]}"
+                # ...of a change of mode or owner, the file alone: "to 0750" is what it became, and a mode set through
+                # a relative path (chmod -R) comes out as a number that is different every time
+                [[ "${event}" =~ successfully\ changed-file-(permissions|ownership)-of\ (/.+)\ to\ [^\ ]+\ using\  ]] &&
+                    object="${BASH_REMATCH[2]}"
+            fi
             if { [[ -n "${object}" ]] && allowed "${key}" "${object}"; } || { [[ -n "${exe}" ]] && allowed "${key}" "${exe}"; }; then
                 level=quiet ALLOWED_HIT=1
             fi
             # An autostart entry turned off the way GNOME has always let an account do it (Control's Starting with
             # you, amethystora-startup): a file of exactly that shape starts nothing, and is recorded only
-            [[ "${key}" == persistence && -n "${object}" ]] && hidden_autostart "${object}" && level=quiet
+            [[ "${key}" == persistence && -n "${object}" ]] && hidden_autostart "${object}" "${when}" && level=quiet
             # The systemd manager reflecting a unit's enable state: a .wants/.requires/.upholds symlink, or the
             # directory that holds it, made or removed under the user's or the system's unit tree. This churns
             # at every login as units enable and disable themselves (the plugin host writes its own each
@@ -372,7 +401,7 @@ read_audit() {
             # enablement is recorded only, never announced. A unit file written straight into the tree, or a
             # link made by anything other than the manager, is still said.
             [[ "${key}" == persistence && "${exe}" == /usr/lib/systemd/systemd &&
-                "${event}" =~ \.(wants|requires|upholds)(/|$|[[:space:]]) ]] && level=quiet
+                "${event% using *}" =~ \.(wants|requires|upholds)(/|$|[[:space:]]) ]] && level=quiet
             text="${AUDIT_WHAT[${key}]}: ${event}"
             [[ "${count}" -gt 1 ]] && text+=" (${count} times)"
             # The first run has no "since": it only makes the checkpoints
@@ -1186,7 +1215,7 @@ read_processes() {
             add "${level}" processes "${user}" Persistence "Every program started in ${user}'s session now loads ${path} (${variable})" \
                 "allow=${variable} ${path}"
         done < <(timeout 10 setpriv --reuid="${uid}" --regid="${gid}" --clear-groups -- /usr/bin/env -i \
-            XDG_RUNTIME_DIR="/run/user/${uid}" PATH=/usr/bin:/usr/sbin "${SYSTEMCTL}" --user show-environment 2>/dev/null)
+            XDG_RUNTIME_DIR="/run/user/${uid}" PATH=/usr/bin:/usr/sbin "${SYSTEMCTL}" --user show-environment 2>/dev/null </dev/null)
     done < <(accounts)
 }
 
@@ -1846,13 +1875,66 @@ audit_status() {
 # events its BPF could not write since it started (the ring buffer full in a burst), which it keeps in its
 # run directory, as audit's lost events are counted
 sensor_status() {
-    local covered active=false drops
+    local covered active=false drops full=false
+    [[ -s "${SENSOR_RUN}/full" ]] && full=true
     covered="$(tr ' ' '\n' <<<"${SENSOR_COVERS}" | grep . | jq -R . | jq -sc . 2>/dev/null)"
     "${SYSTEMCTL}" is-active --quiet amethystora-sensor.service 2>/dev/null && active=true
     drops="$(cat "${SENSOR_RUN}/dropped" 2>/dev/null)"
     [[ "${drops}" =~ ^[0-9]+$ ]] || drops=0
-    jq -nc --argjson covered "${covered:-[]}" --argjson active "${active}" --argjson drops "${drops}" \
-        '{$covered, $active, $drops}'
+    jq -nc --argjson covered "${covered:-[]}" --argjson active "${active}" --argjson drops "${drops}" --argjson full "${full}" \
+        '{$covered, $active, $drops, $full}'
+}
+
+# Folders the sensor could not register (its table holds so many, and an account's share of it is bounded): what is
+# made in them is not recorded, and nothing else says so. It names each cause once in `full`: `uid N` (that account
+# made more folders in the watched trees than it may), `tree` (a watched tree held more than start-up registers)
+# or `table`. Said once per boot and cause, since the sensor does not free a folder until it starts again.
+once_per_boot() {
+    local said="${STATE}/$1" boot last_boot=""
+    boot="$(cat /proc/sys/kernel/random/boot_id 2>/dev/null)"
+    [[ -r "${said}" ]] && read -r last_boot <"${said}"
+    [[ "${last_boot}" == "${boot}" ]] || echo "${boot}" >"${said}"
+    grep -qxF -- "$2" "${said}" 2>/dev/null && return 1
+    echo "$2" >>"${said}"
+}
+sensor_full() {
+    local line uid who text
+    [[ -s "${SENSOR_RUN}/full" ]] || return 0
+    while read -r line uid; do
+        who=""
+        case "${line}" in
+            uid) [[ "${uid}" =~ ^[0-9]+$ ]] || continue
+                who="$(getent passwd "${uid}" | cut -d: -f1)"
+                text="Account ${who:-${uid}} made so many folders inside the watched places that the file-watch sensor stopped watching new ones for it: what is written in a folder made after that is not recorded for anyone until the next start" ;;
+            tree) text="A watched folder holds so many folders that the file-watch sensor did not register all of them: what is written in the ones it left out is not recorded" ;;
+            table) text="The file-watch sensor's table of folders is full: what is written in a folder made from now on is not recorded until the next start" ;;
+            *) continue ;;
+        esac
+        once_per_boot sensor-full-said "${line} ${uid}" || continue
+        # Normal, not critical: an account's own work (npm install under a watched folder) can make that many
+        add normal hardening "${who:--}" "Defense Evasion" "${text}"
+    done <"${SENSOR_RUN}/full"
+}
+
+# What the boot-time generator of the audit rules and the sensor's watch list (amethystora-audit-home-rules) could not
+# do: it ran out of its time or failed, so some homes are not watched this boot, or it left a home's secrets out
+# (`skipped`, one UID a line) because one home held more of them than it may cost. Said once per boot. Silent
+# with the audit log off, when the generator does not run.
+rules_status() {
+    local uid who
+    if [[ "$("${SYSTEMCTL}" is-failed amethystora-audit-rules.service 2>/dev/null)" == failed ]] &&
+        once_per_boot rules-said failed; then
+        add critical hardening - "Defense Evasion" \
+            "The audit rules for the home folders were not made at this start (the generator failed or ran out of time): changes inside some homes are not being recorded. journalctl -u amethystora-audit-rules.service"
+    fi
+    [[ -s "${SENSOR_RUN}/skipped" ]] || return 0
+    while read -r uid; do
+        [[ "${uid}" =~ ^[0-9]+$ ]] || continue
+        once_per_boot rules-said "skipped ${uid}" || continue
+        who="$(getent passwd "${uid}" | cut -d: -f1)"
+        add critical hardening "${who:--}" "Defense Evasion" \
+            "Account ${who:-${uid}} holds so many files in the places where secrets are kept that watching them was cut short at this start: reads of the rest are not recorded for it until the next"
+    done <"${SENSOR_RUN}/skipped"
 }
 
 # A stop worth saying: the plan gives the sensor keys, yet it is not running, so the kernel records nothing
@@ -1869,6 +1951,7 @@ sensor_watch() {
             "The file-watch sensor is not running, and the audit rules are off in its place: changes to accounts, sudo, what starts by itself and the security settings are not being recorded. Start amethystora-sensor, or keep the audit rules with: ame security audit-locked on"
         return 0
     fi
+    sensor_full
     boot="$(cat /proc/sys/kernel/random/boot_id 2>/dev/null)"
     restarts="$("${SYSTEMCTL}" show -p NRestarts --value amethystora-sensor.service 2>/dev/null)"
     [[ -r "${STATE}/sensor-restarts" ]] && read -r last_boot last_restarts <"${STATE}/sensor-restarts"
@@ -1883,7 +1966,9 @@ sensor_watch() {
         echo "${boot} ${restarts}" >"${STATE}/sensor-restarts"
     fi
     while read -r count mark event; do
-        [[ -n "${event}" && "${event}" != *" using /usr/lib/systemd/systemd" ]] || continue
+        # systemd's own, by the one " using " the sentence holds: a path that spells it is not systemd
+        [[ -n "${event}" ]] || continue
+        [[ "${event}" == *" using /usr/lib/systemd/systemd" && "${event% using *}" != *" using "* ]] && continue
         times=""
         [[ "${count}" -gt 1 ]] && times=" (${count} times)"
         add "$([[ "${mark}" == noted ]] && echo quiet || echo critical)" hardening - "Defense Evasion" \
@@ -1963,7 +2048,7 @@ active_accounts() {
 }
 
 read_accounts() {
-    local key="$1" mode="${READERS[$1]}" feature user uid gid home groups out seen first new id level tactic text allow within
+    local key="$1" mode="${READERS[$1]}" feature user uid gid home groups out seen first new id level tactic text allow within rc cut
     feature="$(tr "A-Z_" "a-z-" <<<"${key}")"
     while IFS=: read -r user _ uid gid _ home _; do
         [[ " ${ACTIVE} " == *" ${uid} "* ]] || continue
@@ -1973,9 +2058,26 @@ read_accounts() {
         # A domain's account has its groups once SSSD answers; one nothing can look up gets none
         groups=--init-groups
         id -nu "${uid}" >/dev/null 2>&1 || groups=--clear-groups
+        # No stdin: it would be the pipe this loop reads the accounts from, which the account's own programs can
+        # open through /proc and drain, and every account after it would be skipped
+        rc=0
         out="$(timeout 60 setpriv --reuid="${uid}" --regid="${gid}" "${groups}" -- /usr/bin/env -i HOME="${home}" \
-            USER="${user}" LOGNAME="${user}" PATH=/usr/bin:/usr/sbin LANG=C.UTF-8 "${READER}" "${mode}" 2>/dev/null)" ||
+            USER="${user}" LOGNAME="${user}" PATH=/usr/bin:/usr/sbin LANG=C.UTF-8 "${READER}" "${mode}" 2>/dev/null </dev/null)" ||
+            rc=$?
+        # The account's own programs can stop or kill its reader. A run that ran out of time or was ended by a
+        # signal is not a run that found nothing: the second in a row is said, once, as a finding of its own
+        if [[ "${rc}" -eq 124 || "${rc}" -ge 128 ]]; then
+            cut="$(cat "${STATE}/accounts/${uid}/${mode}.cut" 2>/dev/null)"
+            [[ "${cut}" =~ ^[0-9]+$ ]] || cut=0
+            mkdir -p -m 0700 "${STATE}/accounts/${uid}"
+            echo "$((cut + 1))" >"${STATE}/accounts/${uid}/${mode}.cut"
+            [[ "${cut}" -eq 1 ]] &&
+                add normal "${feature}" "${user}" "Defense Evasion" "The ${feature} check of ${user}'s account did not finish twice running: it was stopped or took too long, so what it reads is not being checked" \
+                    "tell=${user}"
             continue
+        fi
+        rm -f "${STATE}/accounts/${uid}/${mode}.cut"
+        [[ "${rc}" -eq 0 ]] || continue
         # One line each, its fields apart by the unit separator, which no field keeps: a tab is whitespace to
         # read, which would run an empty field into the next
         out="$(jq -rc 'select(type == "object" and (.id | type == "string") and (.text | type == "string"))
@@ -2271,6 +2373,7 @@ if [[ "${SETTING[AUDIT_LOG]:-on}" != off ]]; then
     timed INJECTION switched INJECTION read_injection
     # The sensor stands in for the audit rules where it covers a key; say when it should be recording but is
     # not (MODE is on here, set back by the last switched call, so the stop is said)
+    rules_status
     sensor_watch
 fi
 timed HARDENING switched HARDENING read_settings

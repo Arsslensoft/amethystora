@@ -255,6 +255,16 @@ mkdir -p "${RUNDIR}"
 mv "${SYSTEM_RULES}.new" "${SYSTEM_RULES}"
 chmod 0600 "${SYSTEM_RULES}"
 restorecon "${SYSTEM_RULES}" 2>/dev/null || true
+# The plan and the system's half of the watch list stand from here, before any home is read: in sensor mode the
+# system rules above hold only `-a never,task`, and a run that goes no further (the unit's time, a home that
+# takes long) must not leave the sensor with no plan and the machine unwatched. The homes' lines join them at the end.
+cp "${WATCHLIST}.new" "${WATCHLIST}.part"
+chmod 0600 "${WATCHLIST}.part" "${PLAN}.new"
+mv "${WATCHLIST}.part" "${WATCHLIST}"
+mv "${PLAN}.new" "${PLAN}"
+# The homes a bound stopped short, one UID a line, for the watcher to say
+: >"${RUNDIR}/skipped.new"
+chmod 0600 "${RUNDIR}/skipped.new"
 
 PERSISTENCE=false
 wanted persistence && PERSISTENCE=true
@@ -300,6 +310,16 @@ CREDENTIAL_INODES=(.config/{google-chrome,chromium,BraveSoftware/Brave-Browser,m
 # of base64 begins with this, which is how this script knows its own decoy from a key of the account's.
 DECOY_FILE=.ssh/id_backup
 DECOY_MARK=YW1ldGh5c3RvcmEtZGVjb3k6
+
+# One home's secrets may cost this many matches or this many seconds; past either, the rest are left out and the
+# account's UID is written to `skipped` (the security watcher says it). Run in the pipeline that sorts them.
+HOME_MATCHES=300
+HOME_SECONDS=5
+over_bound() {
+    (( ++CHECKED > HOME_MATCHES || SECONDS - HOME_BEGAN > HOME_SECONDS )) || return 1
+    grep -qxF -- "$1" "${RUNDIR}/skipped.new" 2>/dev/null || echo "$1" >>"${RUNDIR}/skipped.new"
+    return 0
+}
 
 # A rule on reading a file, or the files in a folder, by the account's own logins
 read_rule() { echo "-a always,exit -F arch=b64 -F $1=$2 -F perm=r -F auid>=1000 -F auid!=unset -k $3"; }
@@ -422,9 +442,14 @@ download_dir() {
         # any file of an account's: plain, never through a link, and no more than a little of it.
         if [[ "${CREDENTIALS}" == true ]]; then
             {
+                # What one home may cost: each match is a few programs started, and an account can make
+                # tens of thousands of them. Past the bound the rest of the home's secrets are left out
+                # (said by the watcher), and the other homes and the boot go on.
+                HOME_BEGAN="${SECONDS}" CHECKED=0
                 for pattern in "${CREDENTIAL_FILES[@]}"; do
                     for file in "${home}"/${pattern}; do
                         [[ -f "${file}" && "${file}" != *.pub ]] || continue
+                        over_bound "${uid}" && break 2
                         if real="$(inside "${home}" "${file#"${home}/"}")"; then
                             emit read-file credentials "${real}"
                         fi
@@ -437,7 +462,9 @@ download_dir() {
                 done
                 for pattern in "${CREDENTIAL_INODES[@]}"; do
                     for file in "${home}"/${pattern}; do
-                        [[ -f "${file}" && "$(realpath -e -- "${file}" 2>/dev/null)" == "${file}" ]] || continue
+                        [[ -f "${file}" ]] || continue
+                        over_bound "${uid}" && break 2
+                        [[ "$(realpath -e -- "${file}" 2>/dev/null)" == "${file}" ]] || continue
                         # The sensor matches "Login Data" by folder and name (a space and all), so it needs
                         # no inode; audit cannot hold the space, so there it stays an inode rule.
                         if [[ "${USE_SENSOR}" == true ]]; then
@@ -491,8 +518,9 @@ chmod 0600 "${RULES}"
 restorecon "${RULES}" 2>/dev/null || true
 
 # The sensor's plan and watch list, written together with the rules from the one set of decisions above.
-mv "${WATCHLIST}.new" "${WATCHLIST}" && chmod 0644 "${WATCHLIST}"
-mv "${PLAN}.new" "${PLAN}" && chmod 0644 "${PLAN}"
+chmod 0600 "${WATCHLIST}.new"
+mv "${WATCHLIST}.new" "${WATCHLIST}"
+mv "${RUNDIR}/skipped.new" "${RUNDIR}/skipped"
 
 # Nothing to load here in the normal case: this runs before every file in /etc/audit/rules.d is loaded
 # at boot, by audit-rules.service once auditd has started (audit 4.2 and later; auditd itself before).

@@ -223,11 +223,21 @@ for bus in /run/user/*/bus; do
             -- "${SUMMARY}" "${MARKUP_BODY}" || true
         continue
     fi
+    offered=" "
+    for entry in "${labels[@]}"; do
+        entry="${entry#--action=}"
+        offered+="${entry%%=*} "
+    done
     # Each in the background, all answered in whatever order the people at the machine get to them
     {
         answer="$(runuser -u "${user}" -- env "DBUS_SESSION_BUS_ADDRESS=unix:path=${bus}" \
             notify-send --app-name=Amethystora --urgency="${URGENCY}" --icon=dialog-information --wait \
             "${labels[@]}" -- "${SUMMARY}" "${MARKUP_BODY}" 2>/dev/null)"
+        # notify-send is the account's own process, and the pipe its answer comes through can be written to by
+        # any program of that account (through /proc): only the first line, and only the key of an action that
+        # was offered, is an answer. A second line would be read by the caller as another account's.
+        answer="${answer%%$'\n'*}"
+        [[ "${offered}" == *" ${answer} "* ]] || answer=""
         printf '%s %s\n' "${user}" "${answer}"
     } &
 done

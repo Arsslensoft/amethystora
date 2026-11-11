@@ -81,9 +81,10 @@ pci_name() {
 if [[ -n "${AMETHYSTORA_DRIVERS_LOG:-}" ]]; then
     LOG="$(cat "${AMETHYSTORA_DRIVERS_LOG}")"
 else
-    # The kernel's own lines, and systemd's when it could not load a module, this boot
+    # The kernel's own lines, and systemd's when it could not load a module, this boot. By the fields the journal
+    # sets itself (the unit's cgroup, root), never SYSLOG_IDENTIFIER, which any account's logger names as it likes
     LOG="$(timeout 30 journalctl -b -o cat --no-pager --grep 'firmware|rejected|Lockdown|Failed to insert module' \
-        _TRANSPORT=kernel + SYSLOG_IDENTIFIER=systemd-modules-load 2>/dev/null)"
+        _TRANSPORT=kernel + _SYSTEMD_UNIT=systemd-modules-load.service _UID=0 2>/dev/null)"
 fi
 if [[ -n "${AMETHYSTORA_DRIVERS_MOK:-}" ]]; then
     MOK="$(cat "${AMETHYSTORA_DRIVERS_MOK}")"
