@@ -8,8 +8,9 @@
 #
 # The published image of IMAGE:TAG says which commit it was built from (org.opencontainers.image.revision, which
 # `just build` sets) or, for one from before, when it was built (org.opencontainers.image.created), and what its notes
-# were. The subjects of the commits since go to build-whats-new.py, never an author. Without git, jq, skopeo, python3
-# or the registry (offline, a pull request with no published image), it writes nothing and exits 0: the build then has
+# were, read from a digest cosign checked against cosign.pub. The subjects of the commits since go to
+# build-whats-new.py, never an author. Without git, jq, skopeo, cosign, python3 or the registry (offline, a pull request
+# with no published image, an image whose signature does not check), it writes nothing and exits 0: the build then has
 # no notes. It never fails a build.
 set -uo pipefail
 
@@ -17,12 +18,22 @@ image="${1:?image}" tag="${2:?tag}" version="${3:?version}"
 org="${REPO_ORGANIZATION:-arsslensoft}"
 here="$(dirname "$0")"
 
-for tool in git jq skopeo python3 timeout; do
+for tool in git jq skopeo python3 timeout cosign; do
     command -v "${tool}" >/dev/null || exit 0
 done
 git rev-parse --verify -q HEAD >/dev/null 2>&1 || exit 0
 
-labels="$(timeout 60 skopeo inspect --retry-times 2 --no-tags "docker://ghcr.io/${org}/${image}:${tag}" 2>/dev/null |
+# The labels are read from a digest that cosign accepted against Amethystora's key, never from a tag anyone with write
+# access to the package could point at an image of their own: an unsigned image gives no notes. A registry that cannot
+# be reached gives none either
+ref="docker://ghcr.io/${org}/${image}"
+digest="$(timeout 60 skopeo inspect --retry-times 2 --no-tags "${ref}:${tag}" 2>/dev/null | jq -r '.Digest // empty' 2>/dev/null)" || exit 0
+[[ "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]] || exit 0
+timeout 120 cosign verify --key "${here}/../../cosign.pub" "ghcr.io/${org}/${image}@${digest}" >/dev/null 2>&1 || {
+    echo "release-commits: ${image}:${tag} is not signed with cosign.pub (or cannot be checked): no notes from it" >&2
+    exit 0
+}
+labels="$(timeout 60 skopeo inspect --retry-times 2 --no-tags "${ref}@${digest}" 2>/dev/null |
     jq -c '.Labels // {}' 2>/dev/null)" || exit 0
 [[ -n "${labels}" ]] || exit 0
 from="$(jq -r '.["org.opencontainers.image.version"] // empty' <<<"${labels}")"

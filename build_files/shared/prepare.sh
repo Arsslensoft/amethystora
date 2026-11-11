@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 # The first step of the kernel layer (layers/kernel.Containerfile, plans/done/PLAN-build-layers.md): what comes before
-# the kernel. The kernel and its modules are a step of their own, the only one the module signing key is mounted
-# for. system_files is copied in by build.sh, over the packages.
+# the kernel. The kernel and its modules are a step of their own, with no module signing key: evdi is signed by the
+# step after it, the only one the key is mounted for. system_files is copied in by build.sh, over the packages.
 
 set -eoux pipefail
 

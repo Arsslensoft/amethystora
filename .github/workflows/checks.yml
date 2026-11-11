@@ -74,6 +74,9 @@ jobs:
           node build_files/shared/check-translations.js --po po system_files/shared
           node build_files/shared/check-manual.js system_files/shared/usr/share/amethystora/manual
 
+      - name: The release chain's invariants
+        run: bash build_files/shared/test-ci-chain.sh
+
       # The run blocks' shell is left to ShellCheck; the runner labels actionlint does not know yet are in
       # .github/actionlint.yaml
       - name: actionlint

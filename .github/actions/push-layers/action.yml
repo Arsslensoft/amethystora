@@ -1,8 +1,10 @@
 name: Push layers
 description: >-
   Pushes every layer the build made (/tmp/amethystora-layers-built, layers/lib.sh) to GHCR, signs it by digest with
-  the images' cosign key and checks the tag's signature against cosign.pub, as the images' own push does. Each is
-  pushed once: the layers are not rechunked, which is what makes a first push change the digest (podman#27796).
+  the images' cosign key and checks the tag's signature against cosign.pub, as the images' own push does. The signature
+  carries the annotation org.amethystora.layer=NAME:TAG, which layers/lib.sh requires: it binds a signed digest to the
+  layer it was made for. Each is pushed once: the layers are not rechunked, which is what makes a first push
+  change the digest (podman#27796).
 
 inputs:
   token:
@@ -42,7 +44,7 @@ runs:
             sleep 15
           done
           digest="$(cat "${digest_file}")"
-          cosign sign -y --key env://COSIGN_PRIVATE_KEY "${REGISTRY}/${name}@${digest}"
-          cosign verify --key cosign.pub "${dest}" > /dev/null
+          cosign sign -y --key env://COSIGN_PRIVATE_KEY -a "org.amethystora.layer=${name}:${tag}" "${REGISTRY}/${name}@${digest}"
+          cosign verify --key cosign.pub -a "org.amethystora.layer=${name}:${tag}" "${dest}" > /dev/null
           echo "::notice::pushed and signed ${dest} (${digest})"
         done 3< /tmp/amethystora-layers-built

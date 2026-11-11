@@ -26,14 +26,18 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ inputs.brand_name}}-${{ inputs.stream_name }}
   cancel-in-progress: true
 
-permissions: {}
-
+# No top-level permissions, on purpose: the token's access is the caller's. Each caller (build-image-*.yml) has two jobs,
+# one for a run that publishes (PUBLISH below) with packages, id-token and attestations write, and one for every other
+# run (pull requests, dispatches from other branches) with read access alone, and a called workflow may only lower what
+# its caller grants, so a job here that asked for more would stop the pull request's run before it starts. The jobs that
+# need nothing say so.
 jobs:
   # The packages layers' epoch (layers/lib.sh), worked out once so that every job of the run agrees on it: the UTC
   # date on latest and beta, the run on stable
   plan:
     name: plan
     runs-on: ubuntu-latest
+    permissions: {}
     outputs:
       epoch: ${{ steps.epoch.outputs.epoch }}
     steps:
@@ -60,9 +64,6 @@ jobs:
       (inputs.stream_name == 'beta' && github.ref == 'refs/heads/beta')) }}
     runs-on: ubuntu-26.04
     environment: release
-    permissions:
-      contents: read
-      packages: write
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -117,9 +118,6 @@ jobs:
       (inputs.stream_name == 'beta' && github.ref == 'refs/heads/beta')) }}
     runs-on: ubuntu-26.04
     environment: release
-    permissions:
-      contents: read
-      packages: write
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -174,9 +172,6 @@ jobs:
       (inputs.stream_name == 'beta' && github.ref == 'refs/heads/beta')) }}
     runs-on: ubuntu-26.04
     environment: release
-    permissions:
-      contents: read
-      packages: write
     strategy:
       fail-fast: false
       matrix:
@@ -232,12 +227,6 @@ jobs:
     needs: [plan, layers-shared, layers-flavor]
     if: ${{ !cancelled() && needs.plan.result == 'success' }}
     runs-on: ubuntu-26.04
-    permissions:
-      contents: read
-      packages: write
-      id-token: write
-      attestations: write
-      artifact-metadata: write
     continue-on-error: false
     # The keys are the release environment's, which admits only main, beta and the merge queue's branches,
     # so a branch that changes PUBLISH in its own copy still gets none. The condition is PUBLISH's
@@ -675,6 +664,7 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     needs: [layers-fprintd, layers-shared, layers-flavor, build_container]
+    permissions: {}
     steps:
       - name: Check Jobs
         env:

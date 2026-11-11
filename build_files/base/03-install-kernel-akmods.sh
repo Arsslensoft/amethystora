@@ -88,34 +88,20 @@ dnf5 -y install --enablerepo=fedora-multimedia --setopt=tsflags=noscripts \
     akmod-evdi \
     displaylink \
     libevdi
-# Secure Boot only loads evdi when it is signed with a key enrolled in MOK (ame security secure-boot).
-# akmods signs with the key found at these paths. The release key's certificate is the one the image
-# ships; a build without that key (a pull request, a local build) gets a throwaway key from the Justfile
-# with a certificate of its own, so that the signing is still tested, and evdi is then rejected by any
-# machine with Secure Boot on. This step is the only one the key is mounted for (Containerfile).
-AKMODS_CERT=/etc/pki/akmods/certs/amethystora-modules.der
-SIGNING_CERT="${AKMODS_CERT}"
-if [[ -s /run/secrets/AKMODS_CERT ]]; then
-    SIGNING_CERT=/run/secrets/AKMODS_CERT
-fi
-if [[ -s /run/secrets/AKMODS_PRIVKEY ]]; then
-    install -Dm644 /run/secrets/AKMODS_PRIVKEY /etc/pki/akmods/private/private_key.priv
-    install -Dm644 "${SIGNING_CERT}" /etc/pki/akmods/certs/public_key.der
-else
-    echo "WARNING: no AKMODS_PRIVKEY secret, evdi will not load with Secure Boot on"
-fi
+# Secure Boot only loads evdi when it is signed with a key enrolled in MOK (ame security secure-boot). The signing key
+# is not in this step, which runs third-party packages and scripts with the network on: a key they could read would
+# sign kernel code for every machine that enrolled its certificate. akmods builds evdi unsigned (kmodtool's own
+# switch, off for this build only) and 03-sign-evdi.sh, a step of its own with no network, signs the result
+# (Containerfile).
+printf '%%_kmodtool_signmodules 0\n' | install -Dpm0644 /dev/stdin /etc/rpm/macros.zz-amethystora-nosign
 CFLAGS="-fno-pie -no-pie" akmods --force --kernels "${KERNEL_VERSION}" --kmod evdi
+rm -f /etc/rpm/macros.zz-amethystora-nosign
 EVDI_KO="/usr/lib/modules/${KERNEL_VERSION}/extra/evdi/evdi.ko.xz"
 modinfo "${EVDI_KO}" >/dev/null ||
     { find /var/cache/akmods/evdi/ -name '*.log' -print -exec cat {} \; && exit 1; }
-if [[ -s /run/secrets/AKMODS_PRIVKEY ]]; then
-    # sign-file names the signing certificate by its serial number, which modinfo reports as sig_key
-    # (colon separated, where openssl prints plain hex; both may differ by leading zeros)
-    [[ "$(modinfo -F sig_key "${EVDI_KO}" | tr -d ':' | sed 's/^0*//')" == \
-        "$(openssl x509 -inform DER -in "${SIGNING_CERT}" -noout -serial | cut -d= -f2 | sed 's/^0*//')" ]]
-fi
 dnf5 -y remove akmod-evdi
-# The signing key used for the build (and any akmods generated): never ship it
+# Any key akmods made on its own: never ship it
+AKMODS_CERT=/etc/pki/akmods/certs/amethystora-modules.der
 find /etc/pki/akmods -type f -o -type l 2>/dev/null | while read -r file; do
     [[ "${file}" == "${AKMODS_CERT}" ]] || rpm -qf "${file}" >/dev/null 2>&1 || rm -f "${file}"
 done

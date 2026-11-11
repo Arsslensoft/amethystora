@@ -23,8 +23,13 @@ on:
 permissions: {}
 
 jobs:
+  # A run that publishes (reusable-build.yml's PUBLISH, the same condition) holds a token that can write packages,
+  # attest and sign in. Every other run (a pull request, a dispatch from another branch) is build-image-beta-unpublished,
+  # below, with read access alone: a called workflow may only lower its caller's token, so two jobs are how a pull
+  # request gets less
   build-image-beta:
     name: Build Beta Images
+    if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.event.merge_group.base_ref == 'refs/heads/main' || github.ref == 'refs/heads/beta') }}
     uses: ./.github/workflows/reusable-build.yml
     permissions:
       contents: read
@@ -41,9 +46,26 @@ jobs:
       brand_name: ${{ matrix.brand_name }}
       stream_name: beta
 
+  build-image-beta-unpublished:
+    name: Build Beta Images
+    if: ${{ !(github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.event.merge_group.base_ref == 'refs/heads/main' || github.ref == 'refs/heads/beta')) }}
+    uses: ./.github/workflows/reusable-build.yml
+    permissions:
+      contents: read
+    secrets: inherit
+    strategy:
+      fail-fast: false
+      matrix:
+        brand_name: ["amethystora"]
+    with:
+      brand_name: ${{ matrix.brand_name }}
+      stream_name: beta
+
   generate-release:
     name: Generate Release
-    needs: [build-image-beta]
+    needs: [build-image-beta, build-image-beta-unpublished]
+    # Whichever of the two builds ran, and it passed
+    if: ${{ !cancelled() && contains(needs.*.result, 'success') && !contains(needs.*.result, 'failure') }}
     permissions:
       contents: write
     secrets: inherit

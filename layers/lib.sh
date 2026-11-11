@@ -45,7 +45,10 @@ layer_key() {
     printf '%s\n' "${tree}" "$@" | sha256sum | cut -c1-16
 }
 
-# layer_find NAME TAG - is localhost/NAME:TAG here, or on GHCR with Amethystora's signature (then pulled and tagged)
+# layer_find NAME TAG - is localhost/NAME:TAG here, or on GHCR with Amethystora's signature (then pulled and tagged).
+# The signature names the layer (the annotation org.amethystora.layer=NAME:TAG, which push-layers signs with): a digest
+# Amethystora signed for another layer or tag, or one signed before the annotation, is not this layer's, so that a
+# tag someone points at an older signed layer is built here instead
 layer_find() {
     local name="$1" tag="$2" digest
     if ${PODMAN} image exists "localhost/${name}:${tag}"; then
@@ -57,8 +60,8 @@ layer_find() {
         layer_log "${name}:${tag} is not on ${LAYER_REGISTRY}"
         return 1
     fi
-    if ! cosign verify --key cosign.pub "${LAYER_REGISTRY}/${name}@${digest}" >/dev/null 2>&1; then
-        echo "::warning::${LAYER_REGISTRY}/${name}:${tag} does not carry Amethystora's signature, so it is built here" >&2
+    if ! cosign verify --key cosign.pub -a "org.amethystora.layer=${name}:${tag}" "${LAYER_REGISTRY}/${name}@${digest}" >/dev/null 2>&1; then
+        echo "::warning::${LAYER_REGISTRY}/${name}:${tag} does not carry Amethystora's signature for that layer, so it is built here" >&2
         return 1
     fi
     ${PODMAN} pull --retry 3 "${LAYER_REGISTRY}/${name}@${digest}" >&2 || return 1
