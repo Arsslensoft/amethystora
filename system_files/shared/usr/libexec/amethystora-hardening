@@ -437,13 +437,29 @@ home_zones() {
     return 0
 }
 
+# Whether the saved connection is a Wi-Fi network with no password (or one that only encrypts, OWE, and proves nothing about
+# who is on the other end). NetworkManager joins a saved profile to any access point with the same name and security, so
+# anyone can set one up where the machine is, and it would be treated as home
+open_wifi() {
+    [[ "$(nmcli -g connection.type connection show "$1" 2>/dev/null)" == 802-11-wireless ]] || return 1
+    case "$(nmcli -g 802-11-wireless-security.key-mgmt connection show "$1" 2>/dev/null)" in
+        "" | owe) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 # The given saved connections become the networks named home, in place of the ones before, which go back
-# to the default zone if they are still in the home one
+# to the default zone if they are still in the home one. An open Wi-Fi network is never named home.
 set_home() {
     local uuid
     local -a homes=()
     for uuid in "$@"; do
-        [[ "${uuid}" =~ ^[0-9a-fA-F-]{36}$ ]] && homes+=("${uuid}")
+        [[ "${uuid}" =~ ^[0-9a-fA-F-]{36}$ ]] || continue
+        if open_wifi "${uuid}"; then
+            echo "Not named home: $(nmcli -g connection.id connection show "${uuid}" 2>/dev/null || echo "${uuid}") has no password. An access point set up anywhere with that name would join it, and what is open at home would follow." >&2
+            continue
+        fi
+        homes+=("${uuid}")
     done
     while read -r uuid; do
         [[ " ${homes[*]} " == *" ${uuid} "* ]] && continue
@@ -986,8 +1002,14 @@ pick_homes() {
     local -a lines=() picked=() args=(--no-limit --header "$1")
     mapfile -t lines < <(nmcli -t -f UUID,TYPE,NAME connection show 2>/dev/null |
         awk -F: '$2 ~ /wireless|ethernet/ { print $1 "  " substr($0, index($0, $3)) ($2 ~ /ethernet/ ? "  (wired: every wired network)" : "") }')
+    # An open Wi-Fi network cannot be home (see open_wifi), so it is not offered
+    local -a offered=()
+    for line in "${lines[@]}"; do
+        open_wifi "${line%%  *}" || offered+=("${line}")
+    done
+    lines=("${offered[@]}")
     if [[ ${#lines[@]} -eq 0 ]]; then
-        echo "There is no saved network yet: connect to yours, then run this again." >&2
+        echo "There is no saved network yet, or none with a password: connect to yours, then run this again." >&2
         return 1
     fi
     for line in "${lines[@]}"; do

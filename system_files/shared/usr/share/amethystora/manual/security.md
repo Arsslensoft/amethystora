@@ -67,7 +67,9 @@ restart). `ame security firewall-away on` answers nothing at all on networks you
 The phone link, which pairs your phone, is open only on the networks you name home, and closed on every
 other, a café's or a new one included. `ame security home-networks` names them, from the networks this
 machine has joined. A wired connection is used on every wired network the machine is plugged into, so
-name it home only if the machine is plugged in nowhere else. The same networks keep the machine's real
+name it home only if the machine is plugged in nowhere else. A Wi-Fi network with no password cannot be named
+home: any access point set up with its name would join it, so a home Wi-Fi is only as private as its password. The
+same networks keep the machine's real
 address when `ame security mac away` is on
 ([A different address on each network](network-security.md#a-different-address-on-each-network)).
 

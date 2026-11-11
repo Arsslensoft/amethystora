@@ -1,0 +1,38 @@
+[Unit]
+Description=Keep a network's search domains from taking names back from encrypted DNS
+Documentation=file:///usr/share/amethystora/manual/security.md
+# Only while encrypted DNS is on: `ame security dns` starts it when it turns it on and stops it when it turns it off
+ConditionPathExists=/etc/systemd/resolved.conf.d/60-amethystora-dns.conf
+After=NetworkManager.service systemd-resolved.service
+
+[Service]
+Type=exec
+ExecStart=/usr/libexec/amethystora-dns domains-watch
+Restart=on-failure
+RestartSec=10
+# It asks NetworkManager and systemd-resolved over their sockets (resolvectl lists a link by its name over netlink) and changes nothing on disk
+CPUWeight=20
+IOWeight=20
+MemoryHigh=30M
+MemoryMax=60M
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectHostname=yes
+ProtectClock=yes
+RestrictAddressFamilies=AF_UNIX AF_NETLINK
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+NoNewPrivileges=yes
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

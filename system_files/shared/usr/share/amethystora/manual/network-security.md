@@ -89,9 +89,14 @@ place, so choose one you trust.
 
 - Names on the network itself, such as a printer's, still go to the network's own servers, and so does the check of
   whether a network reaches the internet.
-- Which names count as the network's own is the network's to say (its search domains): one that claims a whole domain,
-  such as `com`, has every name in it asked of its own servers, in plain text. `resolvectl domain` shows what each
-  network claimed.
+- A network can claim a whole domain, such as `com`, with its search domains, and every name in it would then be asked
+  of its own servers, in plain text. So while encrypted DNS is on, the search domains that a Wi-Fi or wired network
+  handed out (its DHCP domain name and search list, or a router advertisement) are taken off it within a few seconds of
+  connecting, except names only a network has (`.local`, `.lan`, `.home`, `.home.arpa`, `.internal`, `.intranet`,
+  `.private`, `.corp`, `.localdomain`). A VPN's or Tailscale's domains are never touched. To keep one a network hands
+  out, say it yourself in that connection's DNS search domains (in Settings, or `ipv4.dns-search` and
+  `ipv6.dns-search`), written with a `~` in front to send only its names there (`~corp.example.com`), or plain to also
+  complete short names. `resolvectl domain` shows what each network has now.
 - A VPN's own names keep working, and Tailscale's.
 - Firefox asks the same resolver, since its own DNS-over-HTTPS is off as Fedora builds it. Turned on in Firefox's
   settings (**Privacy & Security**, **DNS over HTTPS**), it sends Firefox's lookups to the provider chosen there

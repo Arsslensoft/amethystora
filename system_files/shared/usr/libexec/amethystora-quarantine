@@ -77,7 +77,7 @@ act_on() {
 }
 
 act() {
-    local mode path output line file outcome
+    local mode path output line file outcome mode_for_file
     local -a files=() errors=()
     local -A found=()
     mode="$(/usr/libexec/amethystora-security-config ON_DETECTION)"
@@ -114,7 +114,11 @@ act() {
             printf '%s\t-\t%s\n' "${outcome}" "${file}"
             continue
         fi
-        case "${mode}" in
+        # A match that comes from a downloaded YARA rule (amethystora-yara) is only ever reported: those rules are fetched from
+        # moving branches with nothing but TLS to vouch for them, and a poisoned one that matches every file must not be able to
+        # quarantine or delete them all, nor will this scan agree with it a second time, since it reads the same rules
+        [[ "${found[${file}]}" =~ ^YARA\..+\.UNOFFICIAL$ ]] && mode_for_file=report || mode_for_file="${mode}"
+        case "${mode_for_file}" in
             quarantine) act_on quarantine "${file}" "${found[${file}]}" && line=quarantined || line=failed ;;
             delete) act_on delete "${file}" "${found[${file}]}" && line=deleted || line=failed ;;
             *) line=reported ;;

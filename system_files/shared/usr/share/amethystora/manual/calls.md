@@ -20,8 +20,10 @@ lower your sound.
 ## Another screen from what you have
 
 `ame desktop second-screen on` turns an old laptop or tablet into a **second screen** next to this one, over your home
-network, with GNOME's own remote desktop. It shows a **new eight-digit code** and the address to type into any RDP app
-on the other computer, and a virtual monitor then appears next to yours.
+network, with GNOME's own remote desktop. It shows a **new twelve-character code**, the address to type into any RDP app
+on the other computer and the certificate's fingerprint, and a virtual monitor then appears next to yours. The other
+computer has never seen the certificate and says so: compare the fingerprint it shows with the one printed here before
+you accept it, and only then type the code.
 
 ### Before you start
 
@@ -36,7 +38,7 @@ on the other computer, and a virtual monitor then appears next to yours.
 ### How long it lasts
 
 It makes a certificate for this alone and starts the service for this session only. The code stays valid until you
-turn it off, **lock the screen**, or eight hours pass. `ame desktop second-screen off` ends it and puts the settings
+turn it off, **lock the screen**, or two hours pass. `ame desktop second-screen off` ends it and puts the settings
 back, and the code no longer works. Across the internet it cannot work, because that needs a relay, and Amethystora
 runs none: use it at home.
 

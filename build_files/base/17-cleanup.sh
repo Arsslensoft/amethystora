@@ -141,6 +141,8 @@ systemctl enable amethystora-ips-rules.timer
 systemctl disable suricata.service
 # Odd names in DNS, the same way: enabled, and skipped while DNS_NAMES=off
 systemctl enable amethystora-dns-names.service
+# Encrypted DNS's keeping of a network's search domains from taking names back; it runs only while that is on
+systemctl enable amethystora-dns-domains.service
 # YARA rules for the virus scanner, daily, skipped while every YARA_* switch is off
 systemctl enable amethystora-yara.timer
 # Installed apps and the system's files checked against their updates, daily and after each change to the

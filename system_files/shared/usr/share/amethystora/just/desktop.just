@@ -2142,7 +2142,7 @@ second-screen STATE="":
             ;;
         on)
             "${helper}" check || exit 1
-            echo "$(gettext "The other computer's keyboard and pointer will be able to use this whole computer, every window on it, not only its own screen. The code stays valid until you turn this off, lock the screen, or eight hours pass. It works on the networks you named home; across the internet it cannot work: that needs a relay, which Amethystora does not run.")"
+            echo "$(gettext "The other computer's keyboard and pointer will be able to use this whole computer, every window on it, not only its own screen. The code stays valid until you turn this off, lock the screen, or two hours pass. It works on the networks you named home; across the internet it cannot work: that needs a relay, which Amethystora does not run.")"
             ask_replace
             gum confirm "$(gettext "Turn it on now?")" || exit 1
             # shellcheck disable=SC2086

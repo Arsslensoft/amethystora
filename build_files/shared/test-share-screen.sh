@@ -57,6 +57,7 @@ for name in systemd-run notify-send; do printf '#!/usr/bin/bash\necho "%s $*" >>
 printf '#!/usr/bin/bash\necho 192.168.1.20\n' >"${T}/bin/hostname"
 cat >"${T}/bin/openssl" <<'EOS'
 #!/usr/bin/bash
+[[ "$1" != x509 ]] || { echo "sha256 Fingerprint=AB:CD:EF:01:23"; exit 0; }
 while [[ $# -gt 0 ]]; do case "$1" in -keyout) echo key >"$2" ;; -out) echo cert >"$2" ;; esac; shift; done
 EOS
 # A bus that says the screen locked, and then stays quiet as the real one does until the unlock: the watcher must not wait for more
@@ -104,7 +105,8 @@ output="$("${HELPER}" second-screen on)"
 grep -qx "gsettings set screen-share-mode extend" "${LOG}" || fail "not extended: $(cat "${LOG}")"
 grep -qx "gsettings set view-only false" "${LOG}" || fail "a second screen takes input from the other side"
 code="$(sed -n 's/^Code: //p' <<<"${output}")"
-[[ "${code}" =~ ^[0-9]{8}$ ]] || fail "the code is not eight digits: ${output}"
+[[ "${code}" =~ ^[0-9a-hjkmnp-tv-z]{12}$ ]] || fail "the code is not twelve characters of the alphabet: ${output}"
+grep -q '^Certificate (SHA-256).*: AB:CD:EF:01:23$' <<<"${output}" || fail "the certificate's fingerprint is not shown beside the code: ${output}"
 [[ "$(cat "${CREDENTIALS}")" == "${code}" ]] || fail "the code shown is not the one set"
 grep -qx "grdctl rdp set-credentials amethystora" "${LOG}" || fail "the credentials were not set as the user alone: $(grep credentials "${LOG}")"
 grep -q "${code}" "${LOG}" && fail "the code is on a command line"
@@ -167,7 +169,7 @@ GRDCTL_ENABLE_FAILS=1 "${HELPER}" help on >/dev/null 2>&1 && fail "it went on wi
 [[ "$(sort "${SETTINGS}" | paste -sd' ')" == "${SETTINGS_BEFORE}" ]] || fail "settings stayed changed after a failure: $(cat "${SETTINGS}")"
 jq -e '.mode == "off"' <<<"$("${HELPER}" status)" >/dev/null || fail "mode after a failure"
 
-# A lock ends a help within a second, though the bus has nothing more to say until the unlock; the hour (eight for a second screen) is the limit
+# A lock ends a help within a second, though the bus has nothing more to say until the unlock; the hour (two for a second screen) is the limit
 : >"${LOG}"
 "${HELPER}" help on >/dev/null
 : >"${LOG}"
@@ -181,7 +183,7 @@ jq -e '.mode == "off"' <<<"$("${HELPER}" status)" >/dev/null || fail "mode after
 "${HELPER}" second-screen on >/dev/null
 : >"${LOG}"
 "${HELPER}" watch second-screen
-grep -qx "timeout 28800" "${LOG}" || fail "a second screen is limited to eight hours"
+grep -qx "timeout 7200" "${LOG}" || fail "a second screen is limited to two hours"
 
 # What a restart left (the login hook runs `end`): the share is over, everything put back
 "${HELPER}" help on >/dev/null

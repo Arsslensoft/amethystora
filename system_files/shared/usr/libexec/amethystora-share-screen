@@ -5,7 +5,7 @@
 #   amethystora-share-screen check                   whether sharing may be turned on at all: says why not, and ends 3
 #   amethystora-share-screen second-screen on|off    an old laptop or tablet as a second screen: its own virtual monitor
 #                                                    next to this one (`screen-share-mode extend`); its keyboard and pointer
-#                                                    can use this whole computer; ends on lock, or after eight hours
+#                                                    can use this whole computer; ends on lock, or after two hours
 #   amethystora-share-screen help on|off             someone you trust sees this screen (`mirror-primary`, view only); ends on
 #                                                    lock, or after an hour
 #   amethystora-share-screen help control on|off    let them use the mouse and keyboard too, or take that back
@@ -16,7 +16,7 @@
 # What it does, and no more. The port is NOT opened here: it is the Security switch `remote-screen` (ame security remote-screen on),
 # off as the image ships, that puts the remote desktop service in the firewall's home zone, and this refuses to start while that is off
 # or while the firewall's default zone is not an Amethystora one (firewall off). Then: a certificate made here for this alone, a user name
-# and a new eight-digit code every time (set through grdctl's standard input, never its command line, and shown to the person at this
+# and a new twelve-character code every time (set through grdctl's standard input, never its command line, and shown to the person at this
 # computer, who says it to the other), the remote desktop service started for this session only (never enabled), and every setting
 # put back when it ends. The username and password the person set in GNOME Settings' Remote Desktop, if any, cannot be kept
 # (they live in the keyring): this says so and asks before it replaces them. Across the internet it cannot work without a relay, which
@@ -39,7 +39,7 @@ PORT=3389
 USER_NAME=amethystora
 # How long a share lasts at most, in seconds
 LIMIT_HELP=3600
-LIMIT_SECOND=28800
+LIMIT_SECOND=7200
 # The settings this changes, kept to put back
 KEEP=(screen-share-mode view-only enable negotiate-port port tls-cert tls-key auth-methods)
 # Set once everything is on, so that a failure on the way puts everything back
@@ -52,11 +52,21 @@ usage() {
 
 mode() { cat "${STATE}/mode" 2>/dev/null || echo off; }
 
-# Eight digits from the kernel's random numbers, said by the person at this computer to the other
+# Twelve characters (60 bits, so that neither an online guess nor one made offline from an intercepted login gets anywhere) from the
+# kernel's random numbers, said by the person at this computer to the other. The alphabet has 32 characters, so that a byte's
+# remainder is unbiased, and leaves out the letters that look like digits when read out (i, l, o, u)
 new_code() {
-    local number
-    number="$(od -An -N4 -tu4 /dev/urandom | tr -d ' ')"
-    printf '%08d' "$((number % 100000000))"
+    local alphabet=0123456789abcdefghjkmnpqrstvwxyz bytes byte out=''
+    bytes="$(od -An -N12 -tu1 /dev/urandom)"
+    for byte in ${bytes}; do out+="${alphabet:$((byte % 32)):1}"; done
+    printf '%s' "${out}"
+}
+
+# The SHA-256 fingerprint of the certificate this makes, shown beside the code: the other computer's RDP app has never seen
+# the certificate and says so, and the person compares what it shows with this before accepting. Nothing here can see failed
+# logins (grdctl and gnome-remote-desktop's journal say nothing a program can rely on), so the time a share lasts is the limit
+fingerprint() {
+    openssl x509 -in "${KEYS}/rdp.crt" -noout -fingerprint -sha256 2>/dev/null | sed -n 's/^.*Fingerprint=//p' || true
 }
 
 # The certificate RDP needs, made once for this and nothing else
@@ -166,6 +176,9 @@ start() { # MODE VIEW_ONLY(true|false) [overwrite]
     echo "$(eval_gettext "Connect with an RDP client to one of \${addresses} port \${port}.")"
     echo "$(eval_gettext "User name: \${USER_NAME}")"
     echo "$(eval_gettext "Code: \${code}")"
+    local fingerprint
+    fingerprint="$(fingerprint)"
+    [[ -z "${fingerprint}" ]] || echo "$(eval_gettext "Certificate (SHA-256), to compare with what the other computer's RDP app shows before it accepts: \${fingerprint}")"
 }
 
 status() {

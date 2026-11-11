@@ -399,6 +399,8 @@ export NMCLI_PROPS="${T}/props"
 THREE=33333333-3333-3333-3333-333333333333
 printf '%s connection.type 802-3-ethernet\n%s connection.type 802-11-wireless\n%s connection.type 802-11-wireless\n' \
     "${ONE}" "${TWO}" "${THREE}" >"${NMCLI_PROPS}"
+# The Wi-Fi networks have a password: an open one cannot be named home
+printf '%s 802-11-wireless-security.key-mgmt wpa-psk\n%s 802-11-wireless-security.key-mgmt wpa-psk\n' "${TWO}" "${THREE}" >>"${NMCLI_PROPS}"
 export AMETHYSTORA_MAC_ROOT="${T}/mac"
 MAC=/usr/libexec/amethystora-mac
 MAC_HOMES="${AMETHYSTORA_MAC_ROOT}/etc/amethystora/firewall-home"
@@ -450,6 +452,15 @@ PATH="${T}/stubs-mac:${PATH}" AMETHYSTORA_MAC_ROOT="${AMETHYSTORA_MAC_ROOT}" AME
     "${HARDENING}" home "${THREE}" || fail "naming a home network while away"
 [[ "$(prop "${THREE}" 802-11-wireless.cloned-mac-address)" == permanent ]] || fail "naming a network home did not give it the hardware address"
 [[ -z "$(prop "${ONE}" ipv4.dhcp-send-hostname)" ]] || fail "a network no longer named home kept what was given"
+# An open Wi-Fi network is never named home, since any access point with its name would join it (an OWE one proves nothing either),
+# and it is said why; a wired network and a protected Wi-Fi one still are
+OPEN=44444444-4444-4444-4444-444444444444 OWE=55555555-5555-5555-5555-555555555555
+printf '%s connection.type 802-11-wireless\n%s connection.type 802-11-wireless\n%s 802-11-wireless-security.key-mgmt owe\n' \
+    "${OPEN}" "${OWE}" "${OWE}" >>"${NMCLI_PROPS}"
+out="$(PATH="${T}/stubs-mac:${PATH}" AMETHYSTORA_MAC_ROOT="${AMETHYSTORA_MAC_ROOT}" AMETHYSTORA_HARDENING_ROOT="${AMETHYSTORA_MAC_ROOT}" \
+    "${HARDENING}" home "${ONE}" "${OPEN}" "${THREE}" "${OWE}" 2>&1)" || fail "naming home networks with an open one among them: ${out}"
+grep -q "Not named home: .*has no password" <<<"${out}" || fail "an open Wi-Fi network was refused without saying why: ${out}"
+[[ "$(cat "${MAC_HOMES}")" == "${ONE}"$'\n'"${THREE}" ]] || fail "an open Wi-Fi network was named home: $(cat "${MAC_HOMES}")"
 mac_run off
 unset AMETHYSTORA_MAC_ROOT NMCLI_PROPS
 

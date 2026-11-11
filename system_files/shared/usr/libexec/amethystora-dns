@@ -13,6 +13,10 @@
 #   amethystora-dns resume                 as root: end a pause
 #   amethystora-dns watch                  as the user, in the session: offer a pause on a network that
 #                                          wants a login first (amethystora-dns-portal.service, a user unit)
+#   amethystora-dns domains                as root: take the search domains a Wi-Fi or wired network
+#                                          handed out off it, but those only a network can have (see below)
+#   amethystora-dns domains-watch          as root: `domains` again whenever NetworkManager reports a change
+#                                          (amethystora-dns-domains.service, started by `on`, stopped by `off`)
 #
 # The switch is two files, and nothing in /etc/amethystora/security.conf:
 #
@@ -23,6 +27,17 @@
 #       what still goes to them: names on that network (a printer's), a VPN's own names, and
 #       NetworkManager's connectivity check, which asks each network's servers and would otherwise find
 #       every network offline. Tailscale sets the same on its own interface.
+#
+# What a network hands out over DHCP or in a router advertisement (its domain name and search list) reaches
+# systemd-resolved as that network's search domains, and a search domain is also a routing domain: a name goes to
+# the network whose domain matches it with the most labels, and the global "~." matches with none. A hostile
+# network that hands out "com", or the name of a bank, would take every lookup under it back, in plain text, and
+# answer it. NetworkManager has no setting that drops a lease's domains and keeps its servers (ignore-auto-dns
+# drops both, and the servers are what the connectivity check and a login page's pause need), and a dispatcher
+# script is not used here, so `domains` (run by a root service that wakes on `nmcli monitor`, as the portal's
+# watcher does) takes the search domains a lease or router advertisement gave a Wi-Fi or wired network off it, but those under a name
+# only a network has (DOMAINS_KEPT). Never touched: a VPN's or Tailscale's, the connection's own DNS search domains
+# (ipv4.dns-search, ipv6.dns-search) and a domain routed on purpose, which begins with "~".
 #
 # A pause is a third file, in /run, after the first in order and so over it: it empties the servers and
 # the route-only domain, and amethystora-dns-resume.timer takes it away again after ten minutes, as a
@@ -44,7 +59,7 @@ cloudflare	Cloudflare	Cloudflare, Inc., in the United States	-	1.1.1.1#cloudflar
 google	Google	Google LLC, in the United States	Google keeps the address each lookup came from for a day or two.	8.8.8.8#dns.google 8.8.4.4#dns.google 2001:4860:4860::8888#dns.google 2001:4860:4860::8844#dns.google"
 
 usage() {
-    echo "usage: ${0##*/} status|name|list|paused|on RESOLVER|on custom ADDRESS#NAME...|off|pause|resume|watch" >&2
+    echo "usage: ${0##*/} status|name|list|paused|on RESOLVER|on custom ADDRESS#NAME...|off|pause|resume|watch|domains|domains-watch" >&2
     exit 64
 }
 
@@ -117,6 +132,56 @@ offer_pause() {
     systemd-run --user --collect --quiet /usr/libexec/amethystora-in-terminal ame security dns pause
 }
 
+# What only a network can have for a name: those the standards keep out of the public DNS, and what routers and offices use
+DOMAINS_KEPT='(^|\.)(local|lan|home|home\.arpa|internal|intranet|private|corp|localdomain|in-addr\.arpa|ip6\.arpa)$'
+
+# The search domains of each connected Wi-Fi and wired network that came from its lease or router advertisement, but those under
+# a name only a network has: see the top. Not a VPN's or Tailscale's (other kinds of device), nor those the connection itself
+# lists in its DNS search domains (ipv4.dns-search, ipv6.dns-search), nor the ones routed on purpose, which begin with "~".
+# Idempotent, and quiet when there is nothing to take off; resolved keeps what is set until the network goes away or
+# NetworkManager sets its domains again, which is when the watcher runs this once more.
+domains() {
+    local device type state uuid line own domain regex='^Link [0-9]+ \(([^)]+)\):(.*)$' all kept current
+    command -v resolvectl >/dev/null || return 0
+    command -v nmcli >/dev/null || return 0
+    while IFS=: read -r device type state uuid; do
+        [[ "${state}" == connected && "${type}" =~ ^(ethernet|wifi)$ && -n "${uuid}" ]] || continue
+        # What the connection itself lists, one domain to a word, whatever separates them
+        own=" $(nmcli -g ipv4.dns-search,ipv6.dns-search connection show "${uuid}" 2>/dev/null | tr ',\n' '  ' | tr '[:upper:]' '[:lower:]') "
+        # `--` so that nothing a network or a connection names is taken for an option
+        current="$(resolvectl domain -- "${device}")" || { echo "Could not read the search domains of ${device}" >&2; continue; }
+        line="$(grep -m1 -E "${regex}" <<<"${current}" || true)"
+        [[ "${line}" =~ ${regex} ]] || continue
+        read -ra all <<<"${BASH_REMATCH[2]}"
+        kept=()
+        for domain in "${all[@]}"; do
+            if [[ "${domain}" == "~"* || "${domain,,}" =~ ${DOMAINS_KEPT} || "${own}" == *" ${domain,,} "* ]]; then kept+=("${domain}"); fi
+        done
+        ((${#kept[@]} < ${#all[@]})) || continue
+        # An empty string clears the list
+        if ((${#kept[@]})); then resolvectl domain -- "${device}" "${kept[@]}"; else resolvectl domain -- "${device}" ""; fi ||
+            echo "Could not take the search domains off ${device}" >&2
+    done < <(nmcli -t -f DEVICE,TYPE,STATE,CON-UUID device 2>/dev/null)
+}
+
+# As root, from amethystora-dns-domains.service. NetworkManager sets a network's domains just before it reports the network
+# connected, and again at its next change, so each event is followed by two passes, one second and four seconds after it.
+domains_watch() {
+    local _
+    command -v nmcli >/dev/null || exit 0
+    while read -r _; do
+        [[ -e "${RESOLVED_DROP_IN}" ]] || exit 0
+        sleep 1
+        domains
+        sleep 3
+        domains
+        # What came in meanwhile is the same change
+        while read -r -t 0.2 _; do :; done
+    done < <(LC_ALL=C nmcli monitor 2>/dev/null)
+    # nmcli monitor ends only when it fails, and the unit starts this again
+    exit 1
+}
+
 case "${1:-}" in
     status)
         if [[ -e "${RESOLVED_DROP_IN}" ]]; then echo on; else echo off; fi
@@ -166,8 +231,12 @@ EOF
         chmod 0644 "${RESOLVED_DROP_IN}.new"
         mv "${RESOLVED_DROP_IN}.new" "${RESOLVED_DROP_IN}"
         apply_resolved
+        # Restarted, it takes the domains of the networks connected now off at once
+        systemctl restart amethystora-dns-domains.service 2>/dev/null || true
         ;;
     off)
+        # Stopped first: the changes below make NetworkManager give each network's own domains back, which it must not take off again
+        systemctl stop amethystora-dns-domains.service 2>/dev/null || true
         # A reload forgets the servers but not the route-only domain, which only an empty Domains= clears
         mkdir -p "${RESOLVED_DROP_IN%/*}"
         printf '[Resolve]\nDomains=\n' >"${RESOLVED_DROP_IN}"
@@ -198,6 +267,12 @@ EOF
         rm -f "${PAUSE}"
         systemctl stop amethystora-dns-resume.timer 2>/dev/null || true
         apply_resolved
+        ;;
+    domains) domains ;;
+    domains-watch)
+        [[ -e "${RESOLVED_DROP_IN}" ]] || exit 0
+        domains
+        domains_watch
         ;;
     watch)
         # As the user, in the graphical session (amethystora-dns-portal.service, a user unit): every change

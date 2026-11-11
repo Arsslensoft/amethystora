@@ -16,7 +16,7 @@
 # The rules are Emerging Threats Open, which suricata-update downloads for this Suricata's version, less
 # the families in /usr/share/amethystora/ips/disable.conf and the rules allowed on this machine
 # (/etc/amethystora/ips-allowed, one rule number a line). Only with NETWORK=block do the families in
-# drop.conf drop; otherwise every rule alerts, and nothing is blocked. --offline builds from the last
+# drop.conf drop; otherwise every rule alerts, a source's own drop and reject rules too (modify-watch.conf), and nothing is blocked. --offline builds from the last
 # download, which is what allow and block do, so that neither needs the network.
 #
 # NETWORK_FEEDS adds abuse.ch's command-server lists, daily or hourly, which reach new campaigns in hours
@@ -90,7 +90,7 @@ due() {
 
 rules() {
     local -a args=(--quiet --no-reload --suricata-conf "${SHARE}/suricata.yaml"
-        --disable-conf "${WORK}/disable.conf" --modify-conf "${SHARE}/modify.conf")
+        --disable-conf "${WORK}/disable.conf" --modify-conf "${WORK}/modify.conf")
     local used
     need_root rules
     install -d -m 0700 "${WORK}"
@@ -105,6 +105,12 @@ rules() {
         fi
         grep -xE '[0-9]+' "${ALLOWED}" 2>/dev/null
     } >"${WORK}/disable.conf"
+    # The rules' own changes, and unless blocking, the one that makes a rule a source ships as drop or reject alert: inline in
+    # watch too, Suricata would cut off whatever such a rule matched
+    {
+        cat "${SHARE}/modify.conf"
+        [[ "$(mode)" == block ]] || cat "${SHARE}/modify-watch.conf"
+    } >"${WORK}/modify.conf"
     [[ "$(mode)" == block ]] && args+=(--drop-conf "${SHARE}/drop.conf")
     [[ "${1:-}" == --offline ]] && args+=(--offline)
     sources

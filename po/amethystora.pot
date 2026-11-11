@@ -8263,6 +8263,11 @@ msgid "Code: ${code}"
 msgstr ""
 
 #: usr/libexec/amethystora-share-screen
+#, sh-format
+msgid "Certificate (SHA-256), to compare with what the other computer's RDP app shows before it accepts: ${fingerprint}"
+msgstr ""
+
+#: usr/libexec/amethystora-share-screen
 msgid "Sharing ended"
 msgstr ""
 
@@ -9230,6 +9235,10 @@ msgstr ""
 
 #: usr/libexec/amethystora-plugins
 msgid "  A host it may reach is a way for anything it knows to leave this computer."
+msgstr ""
+
+#: usr/libexec/amethystora-plugins
+msgid "  A window can read whatever you copied last while it has the focus, and can look like any other window, a password prompt included; what it reads can reach any other plugin that shares a folder with it."
 msgstr ""
 
 #: usr/libexec/amethystora-plugins
@@ -11981,7 +11990,7 @@ msgid "Second screen: off."
 msgstr ""
 
 #: usr/share/amethystora/just/desktop.just
-msgid "The other computer's keyboard and pointer will be able to use this whole computer, every window on it, not only its own screen. The code stays valid until you turn this off, lock the screen, or eight hours pass. It works on the networks you named home; across the internet it cannot work: that needs a relay, which Amethystora does not run."
+msgid "The other computer's keyboard and pointer will be able to use this whole computer, every window on it, not only its own screen. The code stays valid until you turn this off, lock the screen, or two hours pass. It works on the networks you named home; across the internet it cannot work: that needs a relay, which Amethystora does not run."
 msgstr ""
 
 #: usr/share/amethystora/just/desktop.just

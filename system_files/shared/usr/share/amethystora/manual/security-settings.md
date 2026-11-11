@@ -55,7 +55,9 @@ structure, where a hash signature misses a variant:
   their author's name.
 
 They are downloaded on this machine daily, not on a metered connection, and each rule ClamAV cannot load
-is left out. A match names the rule and its author. The weekly scan, with them or not, waits for mains
+is left out. A match names the rule and its author. **A file only a YARA rule matched is always just reported**,
+whatever you chose for acting on what scans find: the rules come from places that change, so they never
+quarantine or delete anything. The weekly scan, with them or not, waits for mains
 power on a laptop; a scan you start does not.
 
 ## Network protection, audits and the audit log

@@ -31,6 +31,7 @@ cat >"${T}/bin/clamdscan" <<'EOF'
 [[ "$1" == --reload ]] && exit 0
 for arg in "$@"; do
     [[ "${arg}" == *.bad ]] && echo "${arg}: Test.Signature FOUND"
+    [[ "${arg}" == *.yarabad ]] && echo "${arg}: YARA.Poisoned_Rule.UNOFFICIAL FOUND"
 done
 [[ -n "${SWAP:-}" ]] && bash -c "${SWAP}"
 exit 1
@@ -74,6 +75,18 @@ for mode in quarantine delete; do
     out="$("${HELPER}" act "${M}/dir/evil.bad")"
     [[ "${out}" == "${mode/%e/ed}"* || "${out}" == quarantined* ]] || fail "${mode}: a found file was not ${mode}d: ${out}"
     [[ ! -e "${M}/dir/evil.bad" ]] || fail "${mode}: the found file is still there"
+done
+
+# A match that comes only from a downloaded YARA rule is reported and nothing more, whatever ON_DETECTION says: a poisoned
+# rule that matches every file must not be able to quarantine or delete them
+for mode in quarantine delete; do
+    echo "ON_DETECTION=${mode}" >"${AMETHYSTORA_SECURITY_CONF}"
+    echo document >"${M}/dir/mine.yarabad"
+    chown 4400:4400 "${M}/dir/mine.yarabad"
+    out="$("${HELPER}" act "${M}/dir/mine.yarabad")"
+    [[ "${out}" == reported$'\t'YARA.Poisoned_Rule.UNOFFICIAL$'\t'* ]] || fail "${mode}: a YARA-only match was not just reported: ${out}"
+    [[ -f "${M}/dir/mine.yarabad" ]] || fail "${mode}: a file matched only by a YARA rule was moved or deleted"
+    rm -f "${M}/dir/mine.yarabad"
 done
 
 # A restore into a folder that became a link is refused, and the file stays in quarantine
