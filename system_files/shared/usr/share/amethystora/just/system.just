@@ -100,7 +100,8 @@ devmode ACTION="":
     set -e
     # shellcheck source=/dev/null
     source gettext.sh
-    IMAGE_INFO_FILE="${IMAGE_INFO_FILE:-/usr/share/amethystora/image-info.json}"
+    # The image's own file, never one the environment names: the image it rebases to is read from it
+    IMAGE_INFO_FILE=/usr/share/amethystora/image-info.json
     IMAGE_NAME="$(jq -rc '."image-name"' "${IMAGE_INFO_FILE}")"
     IMAGE_REF="$(jq -rc '."image-ref"' "${IMAGE_INFO_FILE}" | sed "s/.*ghcr/ghcr/")"
     CURRENT_IMAGE="${IMAGE_REF}:$(jq -rc '."image-tag"' "${IMAGE_INFO_FILE}")"

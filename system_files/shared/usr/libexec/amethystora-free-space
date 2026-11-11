@@ -209,7 +209,7 @@ def trash_days():
 
 def trash_entries(days):
     """(info file, what it holds, whether it may go) of each thing in the account's trash. An info file with no name before its
-    .trashinfo would name the whole of Trash/files, so it names nothing."""
+    .trashinfo would name the whole of Trash/files, and one named "." or ".." the folder itself or the Trash, so it names nothing."""
     base = f"{GLib.get_user_data_dir()}/Trash"
     oldest = None if days is None else time.time() - days * 86400
     found = []
@@ -219,7 +219,8 @@ def trash_entries(days):
         return found
     for name in names:
         stem = name[:-len(".trashinfo")] if name.endswith(".trashinfo") else ""
-        if not stem:
+        # "." and ".." (info files named "..trashinfo" and "...trashinfo") would name Trash/files itself or the Trash folder
+        if not stem or stem in (".", "..") or "/" in stem:
             continue
         info = f"{base}/info/{name}"
         when = None

@@ -53,7 +53,8 @@ and is gone when you close it.
 **Undo** adds back and never deletes:
 
 - **A file** comes out of the trash to where it was, or beside what now has its name, when that is in
-  your own files and not a place that starts programs or holds keys; Files puts it back from anywhere else.
+  your own files and not in a hidden folder (a place that starts programs or holds keys) or under `~/bin`;
+  Files puts it back from anywhere else.
   A file gone from your usual folders and not in the trash comes back from an hourly snapshot, if the
   snapshots are on and one held it.
 - **An app** is installed again from where it came from, in a terminal, and finds what it had saved. An app

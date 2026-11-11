@@ -180,6 +180,9 @@ export AMETHYSTORA_UNUSED_RUNTIMES="${T}/unused.json"
 echo '[{"installation": "system", "size": 5000000000}, {"installation": "user", "size": 1000000}]' >"${AMETHYSTORA_UNUSED_RUNTIMES}"
 # A file named exactly .trashinfo, which any program of the account can leave there: dated long ago, it must not name all of Trash/files
 printf '[Trash Info]\nPath=/somewhere/x\nDeletionDate=2020-01-01T00:00:00\n' >"${TRASH}/info/.trashinfo"
+# ...and "..trashinfo" and "...trashinfo", whose stems are "." and ".." (Trash/files itself, and the Trash folder)
+printf '[Trash Info]\nPath=/somewhere/x\nDeletionDate=2020-01-01T00:00:00\n' >"${TRASH}/info/..trashinfo"
+printf '[Trash Info]\nPath=/somewhere/x\nDeletionDate=2020-01-01T00:00:00\n' >"${TRASH}/info/...trashinfo"
 # Homebrew and podman, as the helper asks them
 export AMETHYSTORA_BREW="${T}/bin/brew"
 cat >"${T}/bin/brew" <<'EOF'
@@ -277,6 +280,7 @@ grep -qx 'brew cleanup' "${FLATPAK_LOG}" || fail "Homebrew's old versions stayed
 grep -qE '^podman .*(-a|volume)' "${FLATPAK_LOG}" && fail "a clear went beyond unnamed layers"
 grep -E 'flatpak uninstall' "${FLATPAK_LOG}" | grep -q -- '--delete-data' && fail "clear deleted an app's data"
 [[ -d "${TRASH}/files" && -e "${TRASH}/info/.trashinfo" ]] || fail "a file named exactly .trashinfo took the whole trash, or went itself"
+[[ -e "${TRASH}/info/..trashinfo" && -e "${TRASH}/info/...trashinfo" && -d "${TRASH}/info" ]] || fail "an info file named for . or .. took the trash folder"
 [[ ! -e "${TRASH}/files/long-gone" && ! -e "${TRASH}/info/long-gone.trashinfo" ]] || fail "the old trash stayed"
 [[ -e "${TRASH}/files/yesterday" && -e "${TRASH}/info/yesterday.trashinfo" ]] || fail "the trash's last days went"
 [[ -e "${TRASH}/files/no-date" ]] || fail "a trash entry with no date went"

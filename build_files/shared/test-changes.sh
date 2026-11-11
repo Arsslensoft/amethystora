@@ -146,6 +146,15 @@ trash 'through-link.txt' "${HOME}/linkout/through-link.txt"
 trash 'dotdot.txt' "${HOME}/Documents/../../../../outside/dotdot.txt"
 trash 'bashrc' "${HOME}/.bashrc"
 trash 'bashrc.d' "${HOME}/.bashrc.d/evil.sh"
+# Places the old deny list missed: an allow list refuses every hidden folder or file in the path, and ~/bin
+trash 'user-unit.service' "${HOME}/.local/share/systemd/user/default.target.wants/x.service"
+trash 'dbus.service' "${HOME}/.local/share/dbus-1/services/org.example.service"
+trash 'overrides' "${HOME}/.local/share/flatpak/overrides/org.example.App"
+trash 'kitty.conf' "${HOME}/.config/kitty/kitty.conf"
+trash 'gitconfig' "${HOME}/.gitconfig"
+trash 'zsh-start.zsh' "${HOME}/.zsh/evil.zsh"
+trash 'path-bin' "${HOME}/bin/ls"
+trash 'hidden-in-documents' "${HOME}/Documents/.hidden/under.txt"
 # A name that is not text, as the file manager writes it: percent-encoded bytes
 printf 'canary\n' >"${TRASH}/files/$(printf 'caf\xe9.txt')"
 printf '[Trash Info]\nPath=%s\nDeletionDate=%s\n' "${HOME}/Documents/caf%E9.txt" "$(date '+%Y-%m-%dT%H:%M:%S')" >"${TRASH}/info/$(printf 'caf\xe9.txt').trashinfo"
@@ -195,6 +204,10 @@ has '.items | any(.id == "trash:dotdot.txt.trashinfo" and .undo == null)' "a Pat
 has '.items | any(.id == "trash:autostart.desktop.trashinfo" and .undo == null)' "a Path= in the autostart folder has no Undo"
 has '.items | any(.id == "trash:bashrc.trashinfo" and .undo == null)' "a Path= that is a shell's start file has no Undo"
 has '.items | any(.id == "trash:bashrc.d.trashinfo" and .undo == null)' "a Path= in a folder a start file reads (~/.bashrc.d) has no Undo"
+for planted in user-unit.service dbus.service overrides kitty.conf gitconfig zsh-start.zsh path-bin hidden-in-documents; do
+    has ".items | any(.id == \"trash:${planted}.trashinfo\" and .undo == null)" "a Path= in a place that starts programs has no Undo: ${planted}"
+done
+has '.items | any(.id == "trash:report.odt.trashinfo" and .undo != null)' "an ordinary place keeps its Undo"
 has '.items | any(.kind == "security" and .undo == null and .security.page == "settings")' "a security line opens Security"
 has '[.items[] | tostring | test("duress"; "i")] | any | not' "the report's silent feature is never named"
 has '.items | all(.kind != "security" or (.detail | contains("not a setting") | not))' "only the watcher's settings lines"
@@ -215,10 +228,11 @@ refused "app:org.not.Listed" "an app it did not list was brought back"
 refused "agent:11111111" "the record of an undoing was undone"
 refused "agent:ef567890" "a change undone already was undone again"
 refused "agent:22222222" "an app the agent installed was removed"
-for planted in escape.txt absolute.txt autostart.desktop through-link.txt dotdot.txt bashrc; do
+for planted in escape.txt absolute.txt autostart.desktop through-link.txt dotdot.txt bashrc user-unit.service dbus.service overrides kitty.conf gitconfig zsh-start.zsh path-bin hidden-in-documents; do
     refused "trash:${planted}.trashinfo" "a planted Path= was put back: ${planted}"
 done
 [[ -z "$(find "${OUTSIDE}" -mindepth 1 -print -quit)" && ! -e "${HOME}/.config/autostart/evil.desktop" && ! -e "${HOME}/.bashrc" ]] || fail "a planted Path= wrote outside the places a file is put back"
+[[ ! -e "${HOME}/.local/share/systemd" && ! -e "${HOME}/.local/share/dbus-1" && ! -e "${HOME}/.zsh" && ! -e "${HOME}/bin" && ! -e "${HOME}/.gitconfig" && ! -e "${HOME}/.config/kitty" ]] || fail "a planted Path= in a place that starts programs was written"
 [[ -e "${TRASH}/files/escape.txt" ]] || fail "a refused file left the trash"
 # A parent that is a file, or a folder that cannot be made, is an answer and not a crash
 touch "${HOME}/Documents/blocked"

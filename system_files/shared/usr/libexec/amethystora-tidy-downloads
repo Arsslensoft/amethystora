@@ -22,6 +22,7 @@ import gettext
 import json
 import os
 import re
+import stat
 import subprocess
 import sys
 import time
@@ -92,39 +93,80 @@ def save(data):
         os.replace(target + ".new", target)
 
 
-def move(source, target):
-    # A link, then the old name taken away: the move fails rather than replace a file of the same name
-    os.link(source, target, follow_symlinks=False)
-    os.unlink(source)
+DIR_FLAGS = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
 
 
-def trash(path, when):
+def open_dir(name, parent=None, create=False):
+    # One folder, opened without following a link and relative to its parent's descriptor: a folder a Flatpak with
+    # Downloads or Trash access swapped for a link is refused, and nothing is resolved again later by path
+    try:
+        return os.open(name, DIR_FLAGS, dir_fd=parent)
+    except FileNotFoundError:
+        if not create:
+            raise
+    os.mkdir(name, 0o700, dir_fd=parent)
+    return os.open(name, DIR_FLAGS, dir_fd=parent)
+
+
+def open_trash(sub, create=False):
+    # Trash/<sub> in the account's data folder (the data folder is the account's own, its parts below are walked)
+    base = os.path.realpath(data_home())
+    if create:
+        os.makedirs(base, mode=0o700, exist_ok=True)
+    fd = os.open(base, DIR_FLAGS)
+    try:
+        for part in ("Trash", sub):
+            child = open_dir(part, fd, create)
+            os.close(fd)
+            fd = child
+    except OSError:
+        os.close(fd)
+        raise
+    return fd
+
+
+def move(source_fd, source, target_fd, target):
+    # A link, then the old name taken away: the move fails rather than replace a file of the same name. Both names are
+    # in folders held by descriptor, so no link in a path is followed at the moment of moving
+    os.link(source, target, src_dir_fd=source_fd, dst_dir_fd=target_fd, follow_symlinks=False)
+    os.unlink(source, dir_fd=source_fd)
+
+
+def is_file(name, fd):
+    try:
+        return stat.S_ISREG(os.stat(name, dir_fd=fd, follow_symlinks=False).st_mode)
+    except OSError:
+        return False
+
+
+def trash(dfd, name, path, when, st):
     # The freedesktop Trash in the account's data folder: the .trashinfo first, under a name nobody has, then the file
-    root = os.path.join(data_home(), "Trash")
-    files, info = os.path.join(root, "files"), os.path.join(root, "info")
-    os.makedirs(files, mode=0o700, exist_ok=True)
-    os.makedirs(info, mode=0o700, exist_ok=True)
-    if os.stat(files).st_dev != os.stat(path).st_dev:
+    try:
+        ffd, ifd = open_trash("files", True), open_trash("info", True)
+    except OSError:
         return None
-    name = os.path.basename(path)
+    if os.fstat(ffd).st_dev != st.st_dev:
+        return None
     stem, dot, ext = name.partition(".")
     for n in range(1, 1000):
         candidate = name if n == 1 else f"{stem}.{n}{dot}{ext}"
-        info_path = os.path.join(info, candidate + ".trashinfo")
+        info_name = candidate + ".trashinfo"
         try:
-            fd = os.open(info_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            fd = os.open(info_name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600, dir_fd=ifd)
         except FileExistsError:
             continue
+        except OSError:
+            return None
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             f.write("[Trash Info]\nPath=%s\nDeletionDate=%s\n" % (
                 urllib.parse.quote(path), time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(when))))
-        target = os.path.join(files, candidate)
         try:
-            move(path, target)
+            move(dfd, name, ffd, candidate)
         except OSError:
-            os.unlink(info_path)
+            os.unlink(info_name, dir_fd=ifd)
             return None
-        return target, info_path
+        data = os.path.join(data_home(), "Trash")
+        return os.path.join(data, "files", candidate), os.path.join(data, "info", info_name)
     return None
 
 
@@ -136,19 +178,21 @@ def run():
     data = {"version": 1, "at": int(at), "moves": [], "made": []}
     trashed = filed = 0
     try:
-        names = sorted(os.listdir(folder))
+        dfd = os.open(folder, DIR_FLAGS)
+        names = sorted(os.listdir(dfd))
     except OSError:
         return 0
+    months = {}
     for name in names:
         lower = name.lower()
         if name.startswith(".") or lower.endswith(ARRIVING) or len(data["moves"]) >= KEPT:
             continue
         path = os.path.join(folder, name)
         try:
-            st = os.lstat(path)
+            st = os.stat(name, dir_fd=dfd, follow_symlinks=False)
         except OSError:
             continue
-        if not os.path.isfile(path) or os.path.islink(path):
+        if not stat.S_ISREG(st.st_mode):
             continue
         last = max(st.st_atime, st.st_mtime)
         if last > at:
@@ -156,28 +200,34 @@ def run():
         if lower.endswith(INSTALLERS):
             if at - last < INSTALLER_DAYS * DAY:
                 continue
-            done = trash(path, at)
+            done = trash(dfd, name, path, at, st)
             if done:
                 data["moves"].append({"from": path, "to": done[0], "info": done[1]})
                 trashed += 1
             continue
         if at - last < OTHER_DAYS * DAY:
             continue
-        month = os.path.join(folder, time.strftime("%Y-%m", time.localtime(st.st_mtime)))
-        if os.path.lexists(month) and (os.path.islink(month) or not os.path.isdir(month)):
-            continue
-        if not os.path.exists(month):
+        label = time.strftime("%Y-%m", time.localtime(st.st_mtime))
+        if label not in months:
+            # The month folder is opened once, without following a link, and every file of that month goes in through
+            # that descriptor; one that is not a plain folder is skipped
+            months[label] = None
             try:
-                os.mkdir(month, 0o755)
-                data["made"].append(month)
+                try:
+                    os.stat(label, dir_fd=dfd, follow_symlinks=False)
+                except FileNotFoundError:
+                    os.mkdir(label, 0o755, dir_fd=dfd)
+                    data["made"].append(os.path.join(folder, label))
+                months[label] = open_dir(label, dfd)
             except OSError:
-                continue
-        target = os.path.join(month, name)
+                pass
+        if months[label] is None:
+            continue
         try:
-            move(path, target)
+            move(dfd, name, months[label], name)
         except OSError:
             continue
-        data["moves"].append({"from": path, "to": target})
+        data["moves"].append({"from": path, "to": os.path.join(folder, label, name)})
         filed += 1
     if not data["moves"]:
         return 0
@@ -189,24 +239,60 @@ def run():
 def undo():
     data = load()
     back = 0
+    folder = downloads()
+    try:
+        dfd = os.open(folder, DIR_FLAGS) if folder else None
+    except OSError:
+        dfd = None
+    if dfd is None:
+        data = {"moves": [], "made": [], "at": data.get("at", 0)}
+    trash_files = os.path.join(data_home(), "Trash", "files")
+    trash_info = os.path.join(data_home(), "Trash", "info")
+    held = {}
+
+    def folder_fd(path):
+        # The descriptor of a record's folder, which has to be Downloads' own month folder or the Trash's, opened
+        # without following a link: the state file is a plain file, so what it names is checked again here
+        if path not in held:
+            held[path] = None
+            try:
+                if os.path.dirname(path) == folder and MONTH.match(os.path.basename(path)):
+                    held[path] = open_dir(os.path.basename(path), dfd)
+                elif path == trash_files:
+                    held[path] = open_trash("files")
+                elif path == trash_info:
+                    held[path] = open_trash("info")
+            except OSError:
+                pass
+        return held[path]
+
     for entry in reversed(data["moves"]):
         source, target = entry.get("from"), entry.get("to")
-        if not (isinstance(source, str) and isinstance(target, str)):
+        if not (isinstance(source, str) and isinstance(target, str)) or os.path.dirname(source) != folder:
             continue
-        if os.path.lexists(source) or not os.path.isfile(target) or os.path.islink(target):
+        tfd = folder_fd(os.path.dirname(target))
+        sname, tname = os.path.basename(source), os.path.basename(target)
+        if tfd is None or not is_file(tname, tfd):
             continue
         try:
-            move(target, source)
+            os.stat(sname, dir_fd=dfd, follow_symlinks=False)
+            continue
+        except OSError:
+            pass
+        try:
+            move(tfd, tname, dfd, sname)
         except OSError:
             continue
         back += 1
         info = entry.get("info")
-        if isinstance(info, str) and info.endswith(".trashinfo") and os.path.isfile(info):
-            os.unlink(info)
+        if isinstance(info, str) and info.endswith(".trashinfo"):
+            ifd = folder_fd(os.path.dirname(info))
+            if ifd is not None and is_file(os.path.basename(info), ifd):
+                os.unlink(os.path.basename(info), dir_fd=ifd)
     for month in data.get("made", []):
-        if isinstance(month, str) and MONTH.match(os.path.basename(month)):
+        if isinstance(month, str) and MONTH.match(os.path.basename(month)) and os.path.dirname(month) == folder:
             try:
-                os.rmdir(month)
+                os.rmdir(os.path.basename(month), dir_fd=dfd)
             except OSError:
                 pass
     save({"version": 1, "at": data.get("at", 0), "moves": [], "made": []})

@@ -49,11 +49,11 @@ SNAPSHOTS = HOMES + ".snapshots"
 OWN_DAYS = 30
 MOST_ITEMS = 200
 SECONDS = 15
-# Where a file comes back to only from Files: places that start programs or hold keys, which a line planted in the trash's
-# list must never write to, relative to the home
-NOT_PUT_BACK_HERE = (".config/autostart", ".config/systemd", ".config/environment.d", ".config/fish", ".local/bin", ".local/share/applications",
-                     ".local/share/gnome-shell", ".ssh", ".gnupg", ".bashrc", ".bash_profile", ".bash_login", ".profile", ".zshrc", ".zshenv",
-                     ".zprofile", ".zlogin", ".pam_environment", ".xprofile", ".xinitrc", ".xsessionrc")
+# Where a file comes back to from here: the ordinary places of the home, which is every path with no hidden folder or file in
+# it (a dot name is where programs keep what they start, read or hold keys in: autostart, systemd's and D-Bus's user units, the
+# shell's and git's files, Flatpak's overrides, .ssh) and not under the folders a shell puts on its PATH. A line planted in the
+# trash's list must never write anywhere else; Files puts those back. Relative to the home.
+NOT_PUT_BACK_UNDER = ("bin",)
 
 # The settings a person would miss, by dconf's path, with what to say when one changed. Nothing here is a security
 # setting, and none of them can hold a command.
@@ -198,16 +198,16 @@ def trashed():
 
 
 def restorable(target):
-    """Whether a file may be put back at that path: inside the home, going through no link out of it, and not in a place
-    that starts programs or holds keys. A trash entry's Path= is text, and the trash could have held only what was in the
-    account's own files; what it names elsewhere is left to Files."""
+    """Whether a file may be put back at that path: inside the home, going through no link out of it, and in an ordinary
+    place (see NOT_PUT_BACK_UNDER: an allow list, since the places that start programs are too many to name). A trash
+    entry's Path= is text anybody could have written; what it names elsewhere is left to Files."""
     home = os.path.realpath(HOME)
     parent = os.path.realpath(os.path.dirname(target))
     relative = os.path.relpath(os.path.join(parent, os.path.basename(target)), home)
     if relative == "." or relative == ".." or relative.startswith("../") or os.path.isabs(relative):
         return False
-    # A name that goes on from one of them is kept out too: ~/.bashrc.d is read by Fedora's ~/.bashrc, and others are alike
-    return not any(relative == place or relative.startswith((place + "/", place + ".")) for place in NOT_PUT_BACK_HERE)
+    parts = relative.split("/")
+    return not any(part.startswith(".") for part in parts) and parts[0] not in NOT_PUT_BACK_UNDER
 
 
 def trash_items(apps=()):

@@ -72,8 +72,13 @@ signature() {
     local output subject publisher
     output="$(osslsigncode verify -in "$1" 2>&1)"
     # Its words for each kind of file: a PE's, an MSI's and an APPX's
-    if grep -q "MISMATCH\|Signature verification: failed\|Signature hash verification failed\|Hash signature does not match" <<<"${output}" &&
-        ! grep -q "^Signer's certificate:" <<<"${output}"; then
+    # A digest that is not the one signed is the file changed, whatever else the output says (osslsigncode 2.13 prints
+    # "Calculated message digest : ... MISMATCH!!!" and no signer then; other versions print the signer too, which must not
+    # hide it): so the digests are compared as well as read. A generic failure counts only when no signer was printed, since an
+    # untrusted or expired certificate also says "failed"
+    if grep -q "MISMATCH\|Signature hash verification failed\|Hash signature does not match" <<<"${output}" ||
+        awk -F: '{gsub(/[ \t\r]+/, "", $2)} /^Current message digest/ {c=$2} /^Calculated message digest/ {if (c != "" && $2 != c) bad=1; c=""} END {exit !bad}' <<<"${output}" ||
+        { grep -q "Signature verification: failed" <<<"${output}" && ! grep -q "^Signer's certificate:" <<<"${output}"; }; then
         say "$(gettext "Signature: it does NOT match the program: the file was changed after it was signed.")"
         return 1
     fi
