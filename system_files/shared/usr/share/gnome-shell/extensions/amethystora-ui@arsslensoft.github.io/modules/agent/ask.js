@@ -131,15 +131,16 @@ export class AgentAsk {
     // Whether PID is one of this account's tool servers: its program the tools', `mcp` its only word, run by this account. The
     // server's number comes from a file the account can write, so it counts only for a process that really is one (changes.js
     // reads the sessions' files the same way)
-    _isToolServer(pid) {
+    async _isToolServer(pid) {
         try {
             if (!Number.isInteger(pid) || pid <= 1 || GLib.file_read_link(`/proc/${pid}/exe`) !== TOOLS)
                 return false;
-            const [, cmdline] = GLib.file_get_contents(`/proc/${pid}/cmdline`);
+            const [cmdline] = await Gio.File.new_for_path(`/proc/${pid}/cmdline`).load_contents_async(null);
             if (new TextDecoder().decode(cmdline) !== `${TOOLS}\0mcp\0`)
                 return false;
-            const own = Gio.File.new_for_path('/proc/self').query_info('unix::uid', Gio.FileQueryInfoFlags.NONE, null).get_attribute_uint32('unix::uid');
-            return Gio.File.new_for_path(`/proc/${pid}`).query_info('unix::uid', Gio.FileQueryInfoFlags.NONE, null).get_attribute_uint32('unix::uid') === own;
+            const uid = async path => (await Gio.File.new_for_path(path).query_info_async('unix::uid',
+                Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, null)).get_attribute_uint32('unix::uid');
+            return await uid(`/proc/${pid}`) === await uid('/proc/self');
         } catch {
             return false;
         }
@@ -165,7 +166,7 @@ export class AgentAsk {
         // What is read is what the tool server wrote (its digest comes in its own call's arguments), and the call is the server's
         // own child's: a file rewritten between the two, or a question from anywhere else, is not shown
         if (question && (GLib.compute_checksum_for_data(GLib.ChecksumType.SHA256, bytes) !== digest ||
-            !question.server || !this._isToolServer(question.server) || await this._callerParent(invocation.get_sender()) !== question.server))
+            !question.server || !await this._isToolServer(question.server) || await this._callerParent(invocation.get_sender()) !== question.server))
             question = null;
         // The extension may have stopped while the file was read
         if (!this._dbus || !this._host.questionsOn) {
