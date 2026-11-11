@@ -247,6 +247,12 @@ fn which_items_share_a_password_is_said_with_no_password() {
     }
     // Not all of a kind's items need be well made: one that does not read is left out
     ok(running.ask(json!({"op": "put", "kind": "password", "id": "d", "name": "d", "value": 5})));
+    // Only items a program could read with no question take part: a, b and c are said yes to, a new guess is not
+    for id in ["a", "b", "c"] {
+        ok(running.ask(json!({"op": "get", "kind": "password", "id": id})));
+    }
+    ok(running.ask(json!({"op": "put", "kind": "password", "id": "guess", "name": "guess", "value": {"password": "other-password"}})));
+    ok(running.ask(json!({"op": "put", "kind": "password", "id": "guess2", "name": "guess2", "value": {"password": "same-password"}})));
     let before = running.outside.asked();
     let answer = ok(running.ask(json!({"op": "password-reused"})));
     let mut group: Vec<&str> = answer["groups"][0].as_array().unwrap().iter().map(|id| id.as_str().unwrap()).collect();

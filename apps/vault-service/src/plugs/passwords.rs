@@ -1,7 +1,7 @@
 //! Passwords. They are put and got through the generic `put` and `get`, whose value this does not read: only making one, handing
 //! over the current one alone, and saying which items share one are here.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use serde_json::{json, Value};
@@ -55,14 +55,19 @@ pub fn copy(service: &mut Service, peer: &Rc<Peer>, body: &Value) -> Result<Next
     }))
 }
 
-/// Which items of the open vaults hold one password, for the window's warning. No password leaves, so it asks nobody. A program
-/// of the account learns that two items match, and nothing of what they hold.
+/// Which items of the open vaults hold one password, for the window's warning, among the items a program could read with no
+/// question (set to never ask, or already said yes to while the vault is open). It asks nobody and tells nothing a program could
+/// not read: over every item it would be an equality oracle, since a program may put a guess as a new item with no question and
+/// see whether it joins an existing one's group. A new item asks on its first read, so a guess never takes part. The warning
+/// therefore covers the items the person has used this time the vault was open.
 pub fn reused(service: &mut Service, peer: &Rc<Peer>, _: &Value) -> Result<Next, Refusal> {
     let uid = peer.uid;
     must_be_open(service, uid)?;
+    let readable: HashSet<(String, String)> = service.readable_unasked(uid, KIND_PASSWORD).into_iter().collect();
     let mut held: HashMap<String, Vec<String>> = HashMap::new();
     for store in service.open_stores(uid) {
-        let ids: Vec<String> = store.entries().filter(|entry| entry.kind == KIND_PASSWORD).map(|entry| entry.id.clone()).collect();
+        let vault = store.id().to_string();
+        let ids: Vec<String> = store.entries().filter(|entry| entry.kind == KIND_PASSWORD).map(|entry| entry.id.clone()).filter(|id| readable.contains(&(vault.clone(), id.clone()))).collect();
         for id in ids {
             let Some(item) = store.get(KIND_PASSWORD, &id).ok().and_then(|value| serde_json::from_value::<Password>(value).ok()) else { continue };
             if !item.password.is_empty() {

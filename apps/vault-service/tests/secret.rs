@@ -1821,7 +1821,7 @@ fn a_variable_that_steers_programs_is_never_given_a_secret() {
     // Chosen by the item's name, or by the person
     assert_eq!(person.says(&["run", "path", "--", "true"]).0, 22);
     assert_eq!(person.says(&["run", "ld preload", "--", "true"]).0, 22);
-    for variable in ["LD_PRELOAD", "PATH", "BASH_ENV", "IFS", "NODE_OPTIONS", "PYTHONPATH", "GCONV_PATH", "XDG_CONFIG_HOME"] {
+    for variable in ["LD_PRELOAD", "PATH", "BASH_ENV", "IFS", "NODE_OPTIONS", "PYTHONPATH", "GCONV_PATH", "XDG_CONFIG_HOME", "LUA_INIT", "ZDOTDIR", "OPENSSL_CONF", "VIMINIT"] {
         assert_eq!(person.says(&["run", &format!("{variable}=api"), "--", "true"]).0, 22, "{variable}");
     }
     // Refused before anybody is asked

@@ -3,6 +3,7 @@
 
 pub mod alloc;
 pub mod bus;
+pub mod confine;
 pub mod desktop;
 pub mod outside;
 pub mod peer;

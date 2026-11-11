@@ -1132,6 +1132,23 @@ impl Service {
         session.vaults.iter().rev().flat_map(|store| store.entries().filter(|entry| entry.kind == kind)).collect()
     }
 
+    /// The `(vault, id)` of every item of this kind that a program of the account could read now with no question: set to never ask,
+    /// or asked once while the vault is open and said yes to. What compares only these tells a program nothing it could not read.
+    pub(crate) fn readable_unasked(&self, uid: u32, kind: &str) -> Vec<(String, String)> {
+        let Some(session) = self.sessions.get(&uid) else { return Vec::new() };
+        let now = Instant::now();
+        let mut found = Vec::new();
+        for store in &session.vaults {
+            for entry in store.entries().filter(|entry| entry.kind == kind) {
+                let remembered = || session.approved.get(&format!("{}/{kind}.{}", store.id(), entry.id)).is_some_and(|until| until.is_none_or(|until| now < until));
+                if entry.approval == Approval::Never || (entry.approval == Approval::WhileOpen && remembered()) {
+                    found.push((store.id().to_string(), entry.id.clone()));
+                }
+            }
+        }
+        found
+    }
+
     /// The first vault, if it is open
     pub fn first_vault(&mut self, uid: u32) -> Option<String> {
         self.first_open(uid).map(|store| store.id().to_string())
