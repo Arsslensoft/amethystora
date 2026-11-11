@@ -1,0 +1,50 @@
+#!/usr/bin/python3 -I
+# Says, for udev, whether a hidraw node belongs to a HID interface that is the maker's own channel and not a
+# keyboard: its report descriptor uses vendor-defined usage pages (0xFF00 to 0xFFFF) only. Run by
+# 71-amethystora-keyboard-interfaces.rules as `IMPORT{program}` with the node's sysfs path, it prints
+# AMETHYSTORA_HID_VENDOR_ONLY=1 for such an interface and nothing for any other, or for one it cannot read.
+# An interface that also uses the generic desktop, keyboard or consumer pages (the keys typed on it, whether in the
+# boot protocol or NKRO) is never "vendor only", whatever else it carries.
+
+import os
+import sys
+
+
+def pages(data):
+    """Every Usage Page the descriptor's items set (a global item, prefix 0x04, one to four bytes)."""
+    found = []
+    i = 0
+    while i < len(data):
+        prefix = data[i]
+        if prefix == 0xFE:  # a long item: its size is the next byte
+            if i + 1 >= len(data):
+                return None
+            i += 3 + data[i + 1]
+            continue
+        size = (0, 1, 2, 4)[prefix & 3]
+        if i + 1 + size > len(data):
+            return None
+        if prefix & 0xFC == 0x04:
+            found.append(int.from_bytes(data[i + 1:i + 1 + size], "little"))
+        i += 1 + size
+    return found
+
+
+def main():
+    if len(sys.argv) != 2:
+        return
+    path = os.path.realpath(os.path.join(sys.argv[1], "device", "report_descriptor"))
+    if not path.startswith("/sys/devices/") or not path.endswith("/report_descriptor"):
+        return
+    try:
+        with open(path, "rb") as handle:
+            data = handle.read(4096)
+    except OSError:
+        return
+    found = pages(data)
+    if found and all(0xFF00 <= page <= 0xFFFF for page in found):
+        print("AMETHYSTORA_HID_VENDOR_ONLY=1")
+
+
+if __name__ == "__main__":
+    main()

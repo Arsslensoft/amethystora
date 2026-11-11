@@ -1,0 +1,23 @@
+# Amethystora: a keyboard configurator is given the keyboard's configuration channel, never the keys. 50-zsa.rules and
+# 70-wooting.rules give ZSA's, Wooting's and the V-USB/Teensy keyboards' devices to the user at the seat (uaccess) so
+# that Oryx, Keymapp, Wally and Wootility can flash and configure them, but what a keyboard types goes through its
+# keyboard interface (the boot protocol, or NKRO on a protocol-0 interface of its own or a shared endpoint), and an
+# app with --device=all (a Flatpak that asks for it) could read the lock-screen and sudo passwords from its hidraw
+# node, or from the USB device's node through usbfs, which lets it detach the HID driver.
+#
+# So the grant is positive. A hidraw node of these makers keeps uaccess only where its interface's report descriptor
+# sets vendor-defined usage pages (0xFF00 to 0xFFFF) and nothing else, which is how QMK's raw HID (Oryx, Keymapp,
+# Vial), Wooting's configuration and analog interfaces and the Teensy bootloader describe themselves, and where the
+# device is in a bootloader (Wooting's update mode). The USB device nodes themselves are granted in 50-zsa.rules and
+# 70-wooting.rules only to the bootloaders the flashing tools open (Teensy's HalfKay, STM32's DFU, a ZSA DFU
+# interface). A keyboard that put its keys and its configuration in one interface gets neither, and its
+# configurator is kept from it. Wooting's analog interface still shows which keys are down, which its analog
+# features need.
+#
+# This file runs after both and before 73-seat-late.rules, which turns the uaccess tag into a grant, and only ever
+# takes a grant away.
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="16c0|3297|03eb|31e3", IMPORT{program}="/usr/bin/python3 /usr/libexec/amethystora-hid-vendor-only %S%p"
+# Wooting's update mode: a bootloader, not a keyboard
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="03eb", ATTRS{idProduct}=="2402|2403", ENV{AMETHYSTORA_HID_VENDOR_ONLY}="1"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="31e3", ATTRS{idProduct}=="1[23][0-3]f", ENV{AMETHYSTORA_HID_VENDOR_ONLY}="1"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="16c0|3297|03eb|31e3", ENV{AMETHYSTORA_HID_VENDOR_ONLY}!="1", TAG-="uaccess", MODE="0600"

@@ -438,7 +438,10 @@ fi
 grep -qx "DenyUsers amethystora-guest" /etc/ssh/sshd_config.d/60-amethystora-guest.conf && ok "G25 sshd denies the guest by name" || not_ok "G25 sshd does not deny the guest"
 # A session of the guest's own (systemd's user manager, as a login starts it): the home is a tmpfs, and a file written
 # there is gone after
+mkdir -p /var/lib/systemd/linger && : >/var/lib/systemd/linger/amethystora-guest
 systemctl start "user@${GUEST_UID}.service"
+same "G26 a linger the guest had is taken away as its manager starts" \
+    "$(test -e /var/lib/systemd/linger/amethystora-guest && echo lingers || echo no)" no
 same "G26 the guest's home is a tmpfs while its user manager runs" "$(findmnt -n -o FSTYPE /var/home/amethystora-guest)" tmpfs
 same "G26 ...answered as GNOME's first run" "$(cat /var/home/amethystora-guest/.config/gnome-initial-setup-done 2>/dev/null)" yes
 runuser -u amethystora-guest -- sh -c 'echo secret >/var/home/amethystora-guest/left.txt; echo t >/tmp/vmlab69-guest-left'

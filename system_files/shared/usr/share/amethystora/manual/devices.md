@@ -19,7 +19,8 @@ older laser printers are included for the rest. Add a printer in **Settings → 
 ### Keyboard configurators
 
 VIA, Vial, Keychron Launcher, ZSA's Oryx and Keymapp, and Wootility reach Keychron, Lemokey, ZSA, Vial and Wooting
-keyboards for whoever is at the machine. Other keyboards are kept from them and from every other program, because what a
+keyboards for whoever is at the machine, through the keyboard's configuration channel, never the one its keys are typed
+on. Other keyboards are kept from them and from every other program, because what a
 configurator reads is every key typed. To configure another one, give it to whoever is at the machine with its vendor ID
 from `lsusb`, then plug it in again:
 

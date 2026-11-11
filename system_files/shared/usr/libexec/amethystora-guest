@@ -169,6 +169,8 @@ prepare() {
     uid="$(uid_of)"
     gid="$(gid_of)"
     mountpoint -q "${HOME_DIR}" || { echo "${HOME_DIR} is not mounted: the guest does not log in." >&2; return 1; }
+    # The guest never lingers (polkit refuses it too): a lingering manager would keep this home and never run cleanup
+    rm -f "${ROOT}/var/lib/systemd/linger/${USER_NAME}"
     install -d -o "${uid}" -g "${gid}" -m 0700 "${HOME_DIR}/.config" "${HOME_DIR}/.local" "${HOME_DIR}/.local/state" \
         "${HOME_DIR}/.local/state/amethystora"
     install -o "${uid}" -g "${gid}" -m 0600 /dev/null "${HOME_DIR}/.config/gnome-initial-setup-done"
@@ -184,6 +186,7 @@ cleanup() {
     local uid
     uid="$(uid_of)"
     [[ "${uid}" =~ ^[0-9]+$ ]] || return 0
+    rm -f "${ROOT}/var/lib/systemd/linger/${USER_NAME}"
     find /tmp /var/tmp /dev/shm -xdev -mindepth 1 -user "${uid}" -delete 2>/dev/null
     # The journal keeps what an account's programs logged in a file of its own, user-UID: closed, then deleted
     journalctl --rotate >/dev/null 2>&1

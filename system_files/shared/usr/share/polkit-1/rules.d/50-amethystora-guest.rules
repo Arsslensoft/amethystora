@@ -1,0 +1,13 @@
+// The guest login (ame security guest-login) forgets: its home is kept in memory by the guest's user manager, which
+// stops when the session ends. systemd lets the person in a session switch their own linger on without a password
+// (org.freedesktop.login1.set-self-linger), and a lingering manager is never stopped: the home would stay mounted
+// with everything the visitor put in it, and the visitor's own services would go on running and read what the next
+// visitor types. The guest may not turn it on, for itself or through set-user-linger.
+polkit.addRule(function (action, subject) {
+    if ((action.id == "org.freedesktop.login1.set-self-linger" ||
+         action.id == "org.freedesktop.login1.set-user-linger") &&
+        subject.user == "amethystora-guest") {
+        return polkit.Result.NO;
+    }
+    return polkit.Result.NOT_HANDLED;
+});

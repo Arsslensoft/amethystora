@@ -130,7 +130,7 @@ on, in case one is why something stopped working.
 | `ame security no-coredumps` | No copy of a crashed program's memory on disk | Crashes cannot be diagnosed from one |
 | `ame security package-cooldown` | npm, pnpm and uv refuse versions published in the last 3 days; `strict` waits 7 and runs no install scripts, and `on` goes back to 3. From new terminals, and for apps from your next login | A fix published today waits too; strict breaks packages that build native code |
 | `ame security brew-attestations` | Homebrew checks each bottle's build attestation | `gh` and `gh auth login` on every account, or `brew install` fails |
-| `ame security locked-poweroff` | The machine powers off once every desktop session has stayed locked for 18 hours, so that the disk keys leave memory | Whatever was open and not saved |
+| `ame security locked-poweroff` | The machine powers off once every desktop session has stayed locked for 18 hours, so that the disk keys leave memory. It goes by what the session reports, which a program already running as your account can reset | Whatever was open and not saved |
 | `ame security audit-locked` | The kernel's audit log records what the file-watch sensor would, locked until the next restart, so that stopping the sensor cannot stop them | Every program a little slower. From the next restart |
 | `ame security boot-password` | A password before anyone edits a boot entry or opens the boot menu's command line; `off` takes it away | Forget it and only a USB stick changes it. Not on a sealed image |
 | `ame security vscodium-extensions` | VSCodium updates no extension by itself, and with names in `/etc/amethystora/vscodium-extensions` installs only those | Updates by hand. Developer mode only |
