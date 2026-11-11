@@ -173,6 +173,8 @@ pub struct Link {
     pub peer_der: Vec<u8>,
     pub peer_spki: Vec<u8>,
     pub caller: bool,
+    /// When the connection came up: the oldest unpaired one is the first to go when the slots run out
+    pub since: std::time::Instant,
     /// Whether the first packet of an unpaired device has been answered already (spec-protocol.md 5.9)
     pub told_unpaired: Cell<bool>,
     out: mpsc::UnboundedSender<Vec<u8>>,
@@ -214,6 +216,7 @@ impl Link {
             peer_der: opened.peer_der,
             peer_spki: spki,
             caller: opened.caller,
+            since: std::time::Instant::now(),
             told_unpaired: Cell::new(false),
             out,
             socket: opened.socket,

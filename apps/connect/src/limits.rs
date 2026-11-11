@@ -53,6 +53,9 @@ pub const ATTEMPTS_AT_ONCE: usize = 4;
 pub const LINKS_PER_DEVICE: usize = 3;
 /// Devices that are connected and not paired, at any moment
 pub const UNPAIRED_DEVICES: usize = 8;
+/// Unpaired devices with a connection from one source (an IPv4 address, or an IPv6 /64), so that one neighbour cannot hold every slot.
+/// Beyond it, or beyond `UNPAIRED_DEVICES`, the oldest unpaired connection with no pairing waiting is closed for the new one.
+pub const UNPAIRED_PER_SOURCE: usize = 2;
 
 pub const PAYLOAD_ACCEPT_WAIT: Duration = Duration::from_secs(60);
 pub const PAYLOAD_IDLE: Duration = Duration::from_secs(60);

@@ -43,6 +43,13 @@ impl Service {
         if self.cfg.verbose {
             self.log(&format!("{} sent {}", dev.id, packet.kind));
         }
+        // A paired device is spoken for by its pin: a connection under its id that does not present it (one made before
+        // the pairing, by anyone who read the id) is closed, and nothing it sent is taken, a pair packet included
+        if dev.paired() && !self.pin_of(&dev.id).is_some_and(|pin| *pin == link.peer_der) {
+            self.log(&format!("{}: a packet on a connection that does not hold the pairing's certificate; closed", dev.id));
+            link.close();
+            return;
+        }
         let tap = self.tap.borrow().clone();
         if let Some(tap) = tap {
             tap(&dev.id, &packet);

@@ -100,6 +100,18 @@ impl Config {
     }
 }
 
+/// The source a connection counts against: an IPv4 address (an IPv4-mapped one as that), an IPv6 address by its /64
+fn source_of(ip: IpAddr) -> IpAddr {
+    match ip.to_canonical() {
+        IpAddr::V6(v6) => {
+            let mut octets = v6.octets();
+            octets[8..].fill(0);
+            IpAddr::V6(octets.into())
+        }
+        v4 => v4,
+    }
+}
+
 /// What the account's settings say
 #[derive(Debug, Clone, Default)]
 pub struct Settings {
@@ -822,9 +834,6 @@ impl Service {
             return;
         }
         let known = self.device(&found.device_id);
-        if known.is_none() && self.unpaired_count() >= limits::UNPAIRED_DEVICES {
-            return;
-        }
         if let Some(dev) = &known {
             if dev.st.borrow().links.iter().any(|l| !l.is_closed() && l.peer.0 == ip) {
                 return;
@@ -852,7 +861,7 @@ impl Service {
     }
 
     fn unpaired_count(&self) -> usize {
-        self.devices.borrow().values().filter(|d| !d.paired()).count()
+        self.devices.borrow().values().filter(|d| !d.paired() && d.connected()).count()
     }
 
     /// Calls a peer: the TCP connection, our identity in plain text, TLS as the server
@@ -1005,11 +1014,27 @@ impl Service {
             return;
         }
 
+        // One neighbour cannot hold every slot of the unpaired ones: so many devices that are not paired from one address
+        // When the slots are full the oldest unpaired connection with no pairing waiting makes room, so that a phone that
+        // sits connected and silent is kept as long as nobody needs its place; with none to close, this one is let go
+        if !paired {
+            let source = source_of(opened.peer.0);
+            while self.unpaired_from(source, &id) >= limits::UNPAIRED_PER_SOURCE {
+                if !self.evict_unpaired(&id, Some(source)) {
+                    self.log(&format!("{id}: too many unpaired devices from {}; let go", opened.peer.0));
+                    opened.close();
+                    return;
+                }
+            }
+        }
         let (dev, is_new) = match self.device(&id) {
             Some(dev) => (dev, false),
             None => {
-                if self.unpaired_count() >= limits::UNPAIRED_DEVICES {
-                    return;
+                while self.unpaired_count() >= limits::UNPAIRED_DEVICES {
+                    if !self.evict_unpaired(&id, None) {
+                        opened.close();
+                        return;
+                    }
                 }
                 (self.make_device(&id, &name, &kind, protocol), true)
             }
@@ -1086,6 +1111,38 @@ impl Service {
         }
         let service = self.clone();
         self.spawn_task(async move { service.read_loop(dev, link, reader).await });
+    }
+
+    /// Devices that are not paired with a connection open from this source, other than `except`
+    fn unpaired_from(&self, source: IpAddr, except: &str) -> usize {
+        let devices = self.devices.borrow();
+        devices.values().filter(|d| d.id != except && !d.paired() && d.st.borrow().links.iter().any(|l| !l.is_closed() && source_of(l.peer.0) == source)).count()
+    }
+
+    /// Closes the connections of the unpaired device whose newest one is the oldest, and that has no pairing going on
+    /// (from one source only, when `from` says so). False when there is none.
+    fn evict_unpaired(&self, except: &str, from: Option<IpAddr>) -> bool {
+        let victim = {
+            let devices = self.devices.borrow();
+            devices
+                .values()
+                .filter(|d| d.id != except && !d.paired())
+                .filter_map(|d| {
+                    let st = d.st.borrow();
+                    let open: Vec<&Rc<Link>> = st.links.iter().filter(|l| !l.is_closed()).collect();
+                    let newest = open.iter().map(|l| l.since).max()?;
+                    (st.machine.is_idle() && from.is_none_or(|s| open.iter().any(|l| source_of(l.peer.0) == s))).then(|| (newest, d.clone()))
+                })
+                .min_by_key(|(newest, _)| *newest)
+                .map(|(_, d)| d)
+        };
+        let Some(victim) = victim else { return false };
+        self.log(&format!("{}: no slot left for a new device; this one, the oldest that is not pairing, let go", victim.id));
+        let links: Vec<Rc<Link>> = victim.st.borrow().links.clone();
+        for link in links {
+            link.close();
+        }
+        true
     }
 
     /// What is kept of a paired phone is kept up to date: its name, what it can do, where it was
@@ -1380,6 +1437,7 @@ impl Service {
                         self.notifier.close(&pair_key(&dev.id, lid));
                     }
                     self.log(&format!("{} paired", dev.id));
+                    self.close_unpinned(dev);
                     crate::dbus::props_changed(self, dev);
                     self.on_connected(dev);
                 }
@@ -1403,6 +1461,17 @@ impl Service {
                     });
                 }
             }
+        }
+    }
+
+    /// A paired device talks over connections that present its pin and no others: any other connection under its id, made
+    /// before it was paired, is closed
+    fn close_unpinned(&self, dev: &Rc<Device>) {
+        let Some(pin) = self.pin_of(&dev.id) else { return };
+        let others: Vec<Rc<Link>> = dev.st.borrow().links.iter().filter(|l| *l.peer_der != *pin).cloned().collect();
+        for link in others {
+            self.log(&format!("{}: a connection that does not hold the pairing's certificate; closed", dev.id));
+            link.close();
         }
     }
 
@@ -1753,4 +1822,18 @@ impl Ended for glib::JoinHandle<()> {
 /// belongs to the connection that made the request, and goes when it goes
 pub fn pair_key(device: &str, link: u64) -> String {
     format!("pair:{device}:{link}")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::source_of;
+
+    #[test]
+    fn a_source_is_an_ipv4_address_or_an_ipv6_64() {
+        let ip = |s: &str| s.parse::<std::net::IpAddr>().unwrap();
+        assert_eq!(source_of(ip("fe80::1:2:3:4")), source_of(ip("fe80::ffff:ffff:ffff:ffff")), "one /64 is one source");
+        assert_ne!(source_of(ip("fe80:0:0:1::1")), source_of(ip("fe80:0:0:2::1")));
+        assert_eq!(source_of(ip("::ffff:192.168.1.5")), ip("192.168.1.5"), "an IPv4-mapped address counts as the IPv4 one");
+        assert_ne!(source_of(ip("192.168.1.5")), source_of(ip("192.168.1.6")));
+    }
 }

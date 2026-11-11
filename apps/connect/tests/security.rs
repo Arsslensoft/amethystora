@@ -79,6 +79,8 @@ fn what_the_review_found() {
         a_second_connection_leaves_the_first_open(&root).await;
         a_phone_cannot_queue_files_without_end(&root).await;
         a_stalled_connection_does_not_starve_a_payload(&root).await;
+        a_connection_that_is_not_the_pin_is_closed_when_the_phone_is_paired(&root).await;
+        one_address_cannot_hold_the_unpaired_slots(&root).await;
         over_the_bus(&root).await;
     });
     let _ = std::fs::remove_dir_all(&root);
@@ -717,4 +719,88 @@ fn a_code_reaches_the_module_alone_and_the_texts_never_do() {
     // And the shell still reads no text: neither the call nor the signal that a text came
     assert!(!method_allowed(Role::Module, "ListMessages") && !method_allowed(Role::Module, "ListConversations"));
     assert!(!audience(Role::Module, "MessagesChanged", None) && !audience(Role::Module, "ConversationsChanged", None));
+}
+
+// --- A connection made under a phone's id before it was paired holds no pairing --------------------------------
+
+async fn a_connection_that_is_not_the_pin_is_closed_when_the_phone_is_paired(root: &Path) {
+    let computer = make(root, "Pin holder", "laptop", false, false);
+    let port = computer.port();
+
+    // Someone who read the phone's id from its broadcast connects first, with a certificate of its own, and says nothing
+    let mut attacker = raw_phone(port, X, "Sam phone", None).await.unwrap();
+    until("the attacker's connection", || computer.service.device(X).is_some_and(|d| d.connected())).await;
+    // The phone connects, asks, and the person accepts
+    let honest = raw_phone(port, X, "Sam phone", None).await.unwrap();
+    send(&honest, pair_request(0)).await;
+    until("the prompt", || prompt_of(&computer, X).is_some()).await;
+    assert!(computer.device(X).st.borrow().links.iter().any(|l| l.peer_der == attacker.der), "until then it is one of the device's connections");
+    computer.notices.press(&prompt_of(&computer, X).unwrap().key, "accept");
+    until("the pairing", || computer.device(X).paired()).await;
+
+    // Paired: the pin is the phone's, and the other connection is closed, not left to speak for it
+    assert_eq!(computer.service.store.borrow().paired.get(X).map(|p| p.pin.clone()).as_deref(), Some(&honest.der[..]));
+    let answer = net::timed(Duration::from_secs(3), attacker.reader.next(65536)).await;
+    assert!(!matches!(answer, Err(net::Error::Timeout)) && !matches!(answer, Ok(Some(_))), "the attacker's connection was closed: {answer:?}");
+    until("only the pinned connection to remain", || computer.device(X).st.borrow().links.iter().all(|l| !l.is_closed() && l.peer_der == honest.der)).await;
+    // What it sends now is taken by nothing
+    send(&attacker, Packet::new("kdeconnect.ping", json!({ "message": "from the attacker" }))).await;
+    pause(300).await;
+    assert!(computer.saw("kdeconnect.ping").iter().all(|p| p.body["message"] != "from the attacker"));
+
+    // And a connection whose certificate is not the pin of a paired device is closed at its first packet, whatever got it there
+    computer.service.store.borrow_mut().paired.get_mut(X).unwrap().pin = vec![1, 2, 3];
+    send(&honest, Packet::new("kdeconnect.ping", json!({ "message": "after the pin changed" }))).await;
+    until("the connection to be closed", || !computer.device(X).connected()).await;
+    assert!(computer.saw("kdeconnect.ping").iter().all(|p| p.body["message"] != "after the pin changed"));
+}
+
+// --- One neighbour cannot hold every slot of the unpaired ones ----------------------------------------------------
+
+async fn one_address_cannot_hold_the_unpaired_slots(root: &Path) {
+    let computer = make(root, "Slots", "laptop", false, false);
+    let port = computer.port();
+    let up = |id: &String| computer.service.device(id).is_some_and(|d| d.connected());
+    let all = ids(6);
+
+    // Five silent devices from one address: each makes room for the next by closing the oldest, so the newest are held,
+    // and nothing is closed for being silent while there is room
+    let mut kept = Vec::new();
+    for id in &all[..5] {
+        kept.push(raw_phone(port, id, "Pixel 8", None).await.unwrap());
+
+        pause(150).await;
+    }
+    let held: Vec<bool> = all[..5].iter().map(&up).collect();
+    assert_eq!(held, vec![false, false, false, true, true], "the oldest are let go, the newest {} kept", limits::UNPAIRED_PER_SOURCE);
+    // Another address is not shut out by it
+    let other = "7".repeat(32);
+    let _elsewhere = raw_phone(port, &other, "Pixel 9", Some("127.0.0.9")).await.unwrap();
+    until("the other address's phone", || up(&other)).await;
+    pause(300).await;
+    assert!(up(&all[3]) && up(&all[4]), "and what it takes costs this address nothing");
+
+    // A device whose pairing waits is not the one to go: with two asking, a third from the same address is the one let go
+    send(&kept[3], pair_request(0)).await;
+    send(&kept[4], pair_request(1)).await;
+    until("both prompts", || prompt_of(&computer, &all[3]).is_some() && prompt_of(&computer, &all[4]).is_some()).await;
+    let third = raw_phone(port, &all[5], "Pixel 8", None).await.unwrap();
+    pause(500).await;
+    assert!(!up(&all[5]), "no silent connection to close: the new one is refused");
+    assert!(up(&all[3]) && up(&all[4]), "the pairings that wait are kept");
+    drop(third);
+
+    // The same across addresses: nine devices from nine addresses, never more than eight held, the oldest let go
+    let computer = make(root, "Slots many", "laptop", false, false);
+    let port = computer.port();
+    let mut kept = Vec::new();
+    let many: Vec<String> = (0..9).map(|n| format!("{:0>32}", format!("c{n}"))).collect();
+    for (n, id) in many.iter().enumerate() {
+        kept.push(raw_phone(port, id, "Pixel 8", Some(&format!("127.0.1.{}", 1 + n))).await.unwrap());
+        pause(150).await;
+    }
+    let held = many.iter().filter(|id| computer.service.device(id).is_some_and(|d| d.connected())).count();
+    assert_eq!(held, limits::UNPAIRED_DEVICES);
+    assert!(!computer.service.device(&many[0]).is_some_and(|d| d.connected()), "the oldest made room for the newest");
+    assert!(computer.service.device(&many[8]).is_some_and(|d| d.connected()));
 }
