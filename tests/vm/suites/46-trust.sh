@@ -52,7 +52,9 @@ has_arg() { grep -qw 'lockdown=integrity' /proc/cmdline; }
 # The kernel arguments of the deployment the next restart starts
 next_args() { rpm-ostree kargs 2>/dev/null; }
 booted() { bootc status --format=json | jq -r "$1"; }
-origin_file() { echo "$(readlink -f "/sysroot$(sed -n 's/.*ostree=\([^ ]*\).*/\1/p' /proc/cmdline)").origin"; }
+# The booted deployment by bootc's word: the /ostree/boot.N link the kernel was started with is gone once a suite
+# before this one has cleaned up its deployments
+origin_file() { booted '.status.booted.ostree | "/sysroot/ostree/deploy/\(.stateroot)/deploy/\(.checksum).\(.deploySerial).origin"'; }
 rw_sysroot() { unshare -m sh -c 'mount -o remount,rw /sysroot && "$@"' sh "$@"; }
 
 # --- Phase 1: the origin, the groups, then lockdown off ---------------------------------------------------------
