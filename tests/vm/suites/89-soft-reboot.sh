@@ -132,7 +132,15 @@ if [[ "${SUITE_PHASE}" == 2 ]]; then
     out="$(stage driver)" || not_ok "staging the update with the driver changed" "${out}"
     says "an update that changes a loaded driver" driver "driver"
     out="$(stage quick)" || not_ok "staging the update with a file added" "${out}"
-    same "bootc says the update with a file added can be soft rebooted into" "$(bootc_json '.status.staged.softRebootCapable')" true
+    capable="$(bootc_json '.status.staged.softRebootCapable')"
+    if [[ "${capable}" == true ]]; then
+        ok "bootc says the update with a file added can be soft rebooted into"
+    else
+        # What bootc compares: the two entries' options, and what the kernel started with
+        not_ok "bootc says the update with a file added cannot be soft rebooted into (${capable})" \
+            "running: $(cat /proc/cmdline)" "$(grep -H '^options' /boot/loader/entries/*.conf 2>&1)" \
+            "$(rpm-ostree status 2>&1 | head -n 20)"
+    fi
     next="$(bootc_json '.status.staged.ostree | "/sysroot/ostree/deploy/\(.stateroot)/deploy/\(.checksum).\(.deploySerial)"')"
     file="$(modinfo -F filename "${DRIVER}")"
     if cmp -s "${file}" "${next}/usr/lib/modules/$(uname -r)/${file#*/modules/"$(uname -r)"/}"; then
