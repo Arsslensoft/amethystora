@@ -24,7 +24,7 @@ This document provides essential information for coding agents working with the 
 - `.pre-commit-config.yaml` - Pre-commit hooks for basic validation
 - `image-versions.yml` - Image version configurations
 - `cosign.pub` - Container signing public key
-- `keys/` - Upstream's public keys, kept here rather than fetched from a branch that can move: Universal Blue's cosign key (`ublue-os-cosign.pub`, which `just verify-container` checks the base, akmods and brew images with) and the two akmods certificates `just secureboot` checks the kernel against
+- `keys/` - Upstream's public keys, kept here rather than fetched from a branch that can move: Universal Blue's cosign key (`ublue-os-cosign.pub`, which `just verify-container` checks the base, akmods and brew images with) and the akmods certificate `just secureboot` checks the kernel against (the 2024 key; upstream retired the 2023 one on 2026-11-11)
 - `SECURITY.md` - How to report a vulnerability (privately, through the repository's Security tab)
 
 ### Key Directories

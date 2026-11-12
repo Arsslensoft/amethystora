@@ -687,10 +687,10 @@ secureboot $image="amethystora" $tag="latest" $flavor="main":
     ${PODMAN} cp "$TMP":/usr/lib/modules/"${kernel_release}"/vmlinuz /tmp/vmlinuz
     ${PODMAN} rm "$TMP"
 
-    # The public certificates, ublue-os/akmods' certs/public_key.der and public_key_2.der, kept in the
-    # repository (keys/) rather than fetched from a branch that can move
+    # The public certificate, ublue-os/akmods' certs/public_key.der (its 2024 key), kept in the repository (keys/)
+    # rather than fetched from a branch that can move. Its 2023 key was retired on 2026-11-11 (ublue-os/akmods#632):
+    # kernels no longer carry that signature
     openssl x509 -in keys/ublue-os-kernel-sign.der -out /tmp/kernel-sign.crt
-    openssl x509 -in keys/ublue-os-akmods.der -out /tmp/akmods.crt
 
     # Make sure we have sbverify
     CMD="$(command -v sbverify)"
@@ -700,7 +700,6 @@ secureboot $image="amethystora" $tag="latest" $flavor="main":
             --entrypoint /bin/sh \
             --volume /tmp/vmlinuz:/tmp/vmlinuz:z \
             --volume /tmp/kernel-sign.crt:/tmp/kernel-sign.crt:z \
-            --volume /tmp/akmods.crt:/tmp/akmods.crt:z \
             --name ${temp_name} \
             {{ fedora_image }}
         ${PODMAN} exec ${temp_name} dnf -y install sbsigntools
@@ -710,7 +709,7 @@ secureboot $image="amethystora" $tag="latest" $flavor="main":
     # Confirm that Signatures Are Good
     $CMD --list /tmp/vmlinuz
     returncode=0
-    if ! $CMD --cert /tmp/kernel-sign.crt /tmp/vmlinuz || ! $CMD --cert /tmp/akmods.crt /tmp/vmlinuz; then
+    if ! $CMD --cert /tmp/kernel-sign.crt /tmp/vmlinuz; then
         echo "Secureboot Signature Failed...."
         returncode=1
     fi
