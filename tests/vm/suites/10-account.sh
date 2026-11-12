@@ -55,7 +55,11 @@ check "GNOME Shell runs in it" wait_for 120 pgrep -u "${TEST_USER}" -x gnome-she
 # keyboard from it, and without a mouse there was no way past it
 shows_welcome() { user_bus python3 "$(dirname "$0")/atspi.py" gnome-shell has "Welcome to"; }
 # By its own button: the overview behind it shows the Manual's window, whose caption is "Welcome to Amethystora" too
-welcome_gone() { ! user_bus python3 "$(dirname "$0")/atspi.py" gnome-shell has "Take Tour"; }
+# A read of the shell that failed is no answer: `has` says 1 for that too, which once passed with the dialog still up
+welcome_gone() {
+    local said
+    said="$(user_bus python3 "$(dirname "$0")/atspi.py" gnome-shell text)" && [[ -n "${said}" ]] && ! grep -qF "Take Tour" <<<"${said}"
+}
 if wait_for 120 shows_welcome; then
     # Pressed once the dialog has had time to take the keyboard at the end of its opening, and once more when the
     # first came before it had (as in one round): a keyboard taken from it fails both

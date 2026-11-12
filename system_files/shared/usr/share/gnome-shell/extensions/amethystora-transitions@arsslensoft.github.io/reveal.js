@@ -167,7 +167,9 @@ export class Reveal {
     }
 
     _leaveOverview() {
-        if (!Main.overview.visible) {
+        // A dialog over the overview (GNOME's welcome of a first login) keeps it: the overview hiding under the dialog takes
+        // the keyboard from it, and no key reaches the dialog after that
+        if (!Main.overview.visible || Main.modalCount > 1) {
             this._play();
             return;
         }
