@@ -1,5 +1,6 @@
 #!/usr/bin/bash
 # vmlab-vm: installer
+# vmlab-order: last
 # What the machine trusts, and who may become root:
 # - Signature-checked updates from the first boot: the installers' own command (a kickstart's %post) rewrites
 #   the origin in place with no network, and the machine then takes updates only signed; after a plain
@@ -211,9 +212,8 @@ if [[ "${SUITE_PHASE}" == 3 ]]; then
         fi
     fi
     same "the report says so" "$(record lockdown | jq -r .state)" ok
-    # The lockdown switches made a deployment each: the one left to roll back to goes, as suites 76 and 89, which run
-    # after this one on the same machine, expect the machine to have only the deployment it started from
+    # Last on its machine (vmlab-order): switching lockdown off and on moves the argument to the end of the kernel
+    # options, and bootc then counts no update as one a soft reboot can start, which suite 89 needs
     rpm-ostree cleanup -r >/dev/null 2>&1
-    same "the machine is left with one deployment" "$(rpm-ostree status --json | jq '.deployments | length')" 1
 fi
 finish
