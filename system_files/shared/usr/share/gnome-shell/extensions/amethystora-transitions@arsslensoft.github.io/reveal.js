@@ -173,8 +173,22 @@ export class Reveal {
             this._play();
             return;
         }
-        Main.overview.connectObject('hidden', () => this._play(), this);
+        Main.overview.connectObject('hidden', () => {
+            this._giveDialogTheKeyboard();
+            this._play();
+        }, this);
         Main.overview.hide();
+    }
+
+    // A dialog that opened while the overview was leaving (the welcome dialog comes a moment after start-up) lost the
+    // keyboard to the overview's unmapping at its end: the dialog on top has it back, as it had when it opened
+    _giveDialogTheKeyboard() {
+        const dialog = Main.layoutManager.modalDialogGroup.get_children().filter(d => d.visible && d.dialogLayout).at(-1);
+        const focus = global.stage.key_focus;
+        if (!dialog || (focus && dialog.contains(focus)))
+            return;
+        console.log('Amethystora Transitions: the keyboard goes back to the dialog the overview left under');
+        (dialog._initialKeyFocus ?? dialog.dialogLayout.initialKeyFocus ?? dialog).grab_key_focus();
     }
 
     _play() {
