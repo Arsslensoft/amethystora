@@ -211,5 +211,9 @@ if [[ "${SUITE_PHASE}" == 3 ]]; then
         fi
     fi
     same "the report says so" "$(record lockdown | jq -r .state)" ok
+    # The lockdown switches made a deployment each: the one left to roll back to goes, as suites 76 and 89, which run
+    # after this one on the same machine, expect the machine to have only the deployment it started from
+    rpm-ostree cleanup -r >/dev/null 2>&1
+    same "the machine is left with one deployment" "$(rpm-ostree status --json | jq '.deployments | length')" 1
 fi
 finish
