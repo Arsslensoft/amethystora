@@ -215,8 +215,11 @@ def switch(state):
     try:
         with open(entry, encoding="utf-8") as current:
             ours = current.read() == HIDDEN
+    except FileNotFoundError:
+        # Missing when looked at is ours, even if another switch writes it a moment later; a dangling link is the person's
+        ours = not os.path.islink(entry)
     except OSError:
-        ours = not os.path.lexists(entry)
+        ours = False
     # A launcher of the person's own under this name is theirs
     if not ours:
         return 1
