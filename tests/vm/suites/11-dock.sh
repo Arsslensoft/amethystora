@@ -415,10 +415,11 @@ keys esc >/dev/null
 skip "AT-SPI reading the fan's menu items: GNOME Shell's menus are checked by 27-amethystora-ui.sh"
 
 # Progress: the launcher protocol's progress on a pinned app, from a sender that stays on the bus (the dock forgets what
-# an app said once it leaves, and gdbus emit leaves at once), for 8 s
+# an app said once it leaves, and gdbus emit leaves at once), for 8 s. Its height is its allocation's: the actor's height
+# property also counts the bottom margin the icon's holder gives it
 user_bus gjs -m "${HOME_DIR}/.local/share/vmlab-dock/entry.js" org.mozilla.firefox.desktop 0.5 8 >/dev/null 2>&1 &
 sleep 1.5
-progress="$(ev "(() => { const d = ${DOCK}.docks[0].dash; const s = [...d._items.values()].find(s => s.key.get_id?.() === 'org.mozilla.firefox.desktop'); const p = s.badge.progress; const f = p.get_first_child(); const icon = s.button.icon.icon; return [p.visible, Math.round(p.height), Math.round(f.width / (p.width - 2 * 0) * 100), Math.round(icon.width - p.width)].join(' '); })()")"
+progress="$(ev "(() => { const d = ${DOCK}.docks[0].dash; const s = [...d._items.values()].find(s => s.key.get_id?.() === 'org.mozilla.firefox.desktop'); const p = s.badge.progress; const f = p.get_first_child(); const icon = s.button.icon.icon; return [p.visible, Math.round(p.get_allocation_box().get_height()), Math.round(f.width / (p.width - 2 * 0) * 100), Math.round(icon.width - p.width)].join(' '); })()")"
 check "progress: a 5 px bar at half, 4 px in from each side of the icon" test "${progress}" == "true 5 50 8"
 
 # An app Flatpak is updating goes grey, from the two things a real update leaves on disk (dock/flatpak.js; the real ones
@@ -611,9 +612,9 @@ ev "${DOCK}.hideNumbers(); 1" >/dev/null
 sleep 0.25
 check "hidden within 200 ms" test "$(ev "[...${DOCK}.docks[0].dash._items.values()].filter(s => s.marks?.numberShown).length")" == 0
 in_session "ame desktop dock folder Pair" >/dev/null
-keys alt+3 >/dev/null
+keys ctrl+alt+3 >/dev/null
 sleep 3
-check "Alt+3 opens the app numbered 3" test "$(ev "imports.gi.Shell.AppSystem.get_default().lookup_app('amethystora-manual.desktop').state")" -gt 0
+check "Ctrl+Alt+3 opens the app numbered 3" test "$(ev "imports.gi.Shell.AppSystem.get_default().lookup_app('amethystora-manual.desktop').state")" -gt 0
 ev "global.get_window_actors().map(a => a.meta_window).filter(w => w.get_wm_class()?.includes('Manual')).forEach(w => w.delete(global.display.get_current_time_roundtrip())); 1" >/dev/null
 
 # --- Where the dock lives --------------------------------------------------------------------------------------------

@@ -21,7 +21,7 @@
 source "$(dirname "$0")/lib.sh"
 
 HERE="$(dirname "$0")"
-FIXTURES="${HERE}/../fixtures/hostile"
+FIXTURES="${HERE}/fixtures/hostile"
 HOST=/usr/libexec/amethystora-plugin-host
 ROOT=/usr/libexec/amethystora-plugin-root
 STORE=/var/lib/amethystora/plugins
@@ -200,7 +200,8 @@ refused "the account cannot put the byte back" as_tester sh -c "echo x > '${STOR
 # ...and the watcher's audit says so, with a grants.json root changed by hand that the history does not record (PLUGINS)
 grants="${STORE}/accounts/$(id -u "${TEST_USER}")/grants.json"
 cp -a "${grants}" "${WORK}/grants.json.kept"
-sed -i 's/"perms": \[/"perms": ["notify", /' "${grants}"
+# An empty list becomes ["notify"], a list with something in it gets "notify" first: the file stays JSON
+sed -i -E 's/"perms": \[\]/"perms": ["notify"]/; t; s/"perms": \[/"perms": ["notify", /' "${grants}"
 audit="$("${HOST}" audit --json)"
 jq -e '.findings | any(.id | startswith("plugin-files:"))' <<<"${audit}" >/dev/null && ok "the audit finds the changed files" ||
     not_ok "the audit missed the changed files" "${audit}"

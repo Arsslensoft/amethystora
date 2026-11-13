@@ -95,9 +95,10 @@ start_dnsmasq() {
         --dhcp-authoritative --bind-interfaces --interface=lan0 --interface=vpn0 --except-interface=lo \
         --log-queries --log-dhcp --log-facility="${DIR}/dnsmasq.log" --dhcp-leasefile="${DIR}/leases" \
         --dhcp-range=10.99.0.50,10.99.0.150,255.255.255.0,1h --dhcp-option=option:router,10.99.0.1 \
-        --dhcp-option=option:dns-server,10.99.0.1 --domain=portal.test \
+        --dhcp-option=option:dns-server,10.99.0.1 --domain=portal.lan \
+        --dhcp-option=option:domain-search,portal.lan,example.org \
         --enable-ra --dhcp-range=fd99::100,fd99::1ff,slaac,64,1h --dhcp-option=option6:dns-server,[fd99::1] \
-        --address=/printer.portal.test/10.99.0.9 --address=/corp.test/10.98.0.7 --address=/#/10.99.0.1
+        --address=/printer.portal.lan/10.99.0.9 --address=/corp.test/10.98.0.7 --address=/#/10.99.0.1
     wait_for 20 grep -q started "${DIR}/dnsmasq.log"
 }
 
@@ -361,6 +362,10 @@ same "ame security dns quad9 turns it on, after a yes and the password (exit sta
 check "resolved's drop-in: Quad9's servers, DNS-over-TLS, every name" grep -qzP \
     'DNS=9\.9\.9\.9#dns\.quad9\.net[^\n]*\nDNSOverTLS=yes\nDomains=~\.' "${RESOLVED_DROP_IN}"
 check "NetworkManager's drop-in: each network's own servers in plain text" grep -qx 'connection.dns-over-tls=0' "${NM_DNS_DROP_IN}"
+# The network's lease names two search domains: its own (portal.lan, under a name only a network has) stays, and one it
+# could take public names back with (example.org) is taken off by amethystora-dns-domains.service
+domains_taken() { local d; d="$(resolvectl domain "${WAN}")"; [[ "${d}" == *portal.lan* && "${d}" != *example.org* ]]; }
+check "a search domain the network hands out is taken off, the network's own name kept" wait_for 20 domains_taken
 same "DNS-over-TLS everywhere but on the networks' own links" \
     "$(resolvectl dnsovertls | sed -n "s/^Global: //p;s/^Link [0-9]* (${MAIN}): //p;s/^Link [0-9]* (${WAN}): //p" | paste -sd ' ')" "yes no no"
 # What crosses the machine's own link while a name is looked up (resolvectl names the link an answer came in on,
@@ -378,11 +383,11 @@ fi
 query www.example.org >/dev/null
 if queried www.example.org; then not_ok "the network made here was asked for www.example.org" "$(cat "${DIR}/dnsmasq.log")"; else ok "the network was not asked for it"; fi
 same "the connectivity check still finds the internet (it asks each network's own servers)" "$(connectivity)" full
-out="$(query printer.portal.test)"
-if [[ "${out}" == *10.99.0.9* && "${out}" == *"link: ${WAN}"* ]] && queried printer.portal.test; then
+out="$(query printer.portal.lan)"
+if [[ "${out}" == *10.99.0.9* && "${out}" == *"link: ${WAN}"* ]] && queried printer.portal.lan; then
     ok "a name on the network's own domain (its printer) is asked of the network's own servers"
 else
-    not_ok "printer.portal.test did not go to the network made here" "${out}"
+    not_ok "printer.portal.lan did not go to the network made here" "${out}"
 fi
 out="$(query git.corp.test)"
 if [[ "${out}" == *10.98.0.7* && "${out}" == *"link: ${VPN}"* ]]; then ok "a VPN's names still go to its own server"; else not_ok "git.corp.test did not go to the VPN's server" "${out}"; fi

@@ -110,6 +110,7 @@ push-diff)
 suite | suites)
     shift
     tar -c -C tests/vm/suites . | docker exec -i amevm sh -c "rm -rf ${LAB}/suites && mkdir -p ${LAB}/suites && tar -x -C ${LAB}/suites"
+    tar -c -C tests/vm/fixtures . | docker exec -i amevm sh -c "rm -rf ${LAB}/fixtures && mkdir -p ${LAB}/fixtures && tar -x -C ${LAB}/fixtures"
     failed=0
     for name in "${@:?suite NAME...}"; do lab suite "${name}" || failed=1; done
     exit "${failed}"

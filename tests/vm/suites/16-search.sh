@@ -190,9 +190,9 @@ gs set org.gnome.desktop.search-providers disabled "['org.mozilla.firefox.deskto
 # --- 1: the providers, in order -------------------------------------------------------------------------------------
 same "1 the search is not degraded" "$(q .degraded)" false
 # Times anywhere and Remind me (the time group) are on as the image ships; bookmarks, notes and meaning are off
-same "1 the overview's controller holds Amethystora's eleven, in their places" \
+same "1 the overview's controller holds Amethystora's thirteen, in their places" \
     "$(ev "Main.overview.searchController._searchResults._providers.map(p => p.id).filter(id => id.startsWith('amethystora-')).join(' ')")" \
-    "amethystora-clipboard amethystora-answers amethystora-times amethystora-remind amethystora-words amethystora-timer amethystora-settings amethystora-windows amethystora-remembered amethystora-manual amethystora-agent"
+    "amethystora-clipboard amethystora-answers amethystora-times amethystora-remind amethystora-words amethystora-timer amethystora-put-away amethystora-settings amethystora-windows amethystora-remembered amethystora-plugins amethystora-manual amethystora-agent"
 
 # --- 2: place and width, at scale 1 and 2 ---------------------------------------------------------------------------
 place_ok() {
@@ -340,12 +340,14 @@ user_bus systemctl --user stop 'vmlab-16-*' >/dev/null 2>&1
 as_user "amethystora-agent off" >/dev/null 2>&1
 search "rolling back"
 check "11 the manual's section answers rolling back" test -n "$(section_rows amethystora-manual)"
-same "11 its first row" "$(q '[.sections[] | select(.id == "amethystora-manual")][0].rows[0].title')" "Updates › Rolling back"
+# The manual's pages are small since 2026-11-07: Rolling back is a page of its own, Night Light a section of another page
+same "11 its first row is on the Rolling back page" \
+    "$(q '[.sections[] | select(.id == "amethystora-manual")][0].rows[0].title | split(" › ")[0]')" "Rolling back"
 search "why does my screen turn yellow at night"
-same "11 the spec's question finds Night Light" "$(q '[.sections[] | select(.id == "amethystora-manual")][0].rows[0].title')" \
-    "Getting around › Night Light and the screen's colour"
+same "11 the spec's question finds Night Light" \
+    "$(q '[.sections[] | select(.id == "amethystora-manual")][0].rows[0].title | split(" › ")[-1]')" "Night Light and the screen's colour"
 search "rolling back"
-place="$(q '[.sections[].rows[]] | map(.title) | index("Updates › Rolling back")')"
+place="$(q '[.sections[].rows[]] | map(.title | startswith("Rolling back")) | index(true)')"
 manual_open() { [[ "$(ev "global.display.get_tab_list(0, null).some(w => w.get_wm_class() === 'org.amethystora.Manual')")" == true ]]; }
 if [[ "${place}" =~ ^[0-9]+$ ]] && ((place < 9)); then
     open_before="$(q .open)"
@@ -357,7 +359,7 @@ if [[ "${place}" =~ ^[0-9]+$ ]] && ((place < 9)); then
             "$(pgrep -af amethystora-manual || echo 'no amethystora-manual process')"
     fi
 else
-    not_ok "11 Ctrl+N opens the Manual" "Updates › Rolling back is result '${place}', not one of the nine" "$(shell_state)"
+    not_ok "11 Ctrl+N opens the Manual" "Rolling back is result '${place}', not one of the nine" "$(shell_state)"
 fi
 ev "global.display.get_tab_list(0, null).filter(w => w.get_wm_class() === 'org.amethystora.Manual').forEach(w => w.delete(0)); 'closed'" >/dev/null
 

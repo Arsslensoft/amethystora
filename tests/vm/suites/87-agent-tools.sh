@@ -122,7 +122,7 @@ out="$(mcp 'change {"id": "transition", "value": "fade"}')"
 answer "${out}" change | grep -q "Changes are off" && ok "level 2 refuses while changes are off" || not_ok "change before level 2" "$(answer "${out}" change)"
 tester_ame "ame agent tools on" >/dev/null
 out="$(mcp list)"
-same "level 2 adds the four tools that change things" "$(listed "${out}")" "search read state logs history change software run undo"
+same "level 2 adds the five tools that change things" "$(listed "${out}")" "search read state logs history change software run undo plugin"
 
 # A setting changed as Control changes it, and undone
 style="$(user_bus gsettings get org.gnome.shell.extensions.amethystora-transitions style 2>/dev/null | tr -d "'")"
@@ -290,7 +290,9 @@ for mode in minutes each; do
 done
 "${TOOLS}" conf root terminal >/dev/null
 out="$(mcp 'run {"argv": ["true"], "reason": "in a terminal", "root": true}')"
-answer "${out}" run | grep -q "Opened in a terminal" && ok "the terminal mode opens a terminal with sudo" || not_ok "the terminal mode" "$(answer "${out}" run)"
+# Put to the person (the pill's card or a terminal, round 7), who also types their password for sudo
+answer "${out}" run | grep -q "Put to the user, who reads it and says yes .* and types their password" &&
+    ok "the terminal mode puts the command to the person, with sudo's password" || not_ok "the terminal mode" "$(answer "${out}" run)"
 pkill -u "${TEST_USER}" -f 'amethystora-in-terminal' 2>/dev/null
 "${TOOLS}" conf root session >/dev/null
 

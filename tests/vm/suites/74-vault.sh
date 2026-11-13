@@ -71,15 +71,41 @@ terminal() {
         DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/${UID_T}/bus" LC_ALL=en_US.UTF-8 LANGUAGE=en \
         systemd-run --user --pty --wait --quiet --collect -- /usr/bin/bash -lc "$*"
 }
-# av SECONDS [EXPECT SEND]... -- WORDS: `ame vault WORDS` in that terminal, with polkit's own text agent registered for its shell, which
-# prints what polkit asks (the sentence, as polkit made it from the service's, and what is asked) and takes the account's password: the
-# questions of GNOME's dialog, put where a suite can read them. `$$$$` is systemd-run's escape for `$$`, `$$?` for `$?`
+# polkit 127 puts a question only to an agent registered for the very process it is about (one registered for the terminal's shell is
+# not asked about its children), and the service asks about the program that connected to it. So for this suite, and only in the lab,
+# the vault's command is a wrapper bound over it: with VMLAB_AGENT set it becomes agent-exec, which registers polkit's own text agent for
+# its own process and waits until polkit has it, then becomes the command, the same process. ssh goes through agent-exec the same way.
+CLI=/usr/libexec/amethystora-vault-cli
+agent_exec_install() {
+    install -d -m 0755 "${WORK}" "${WORK}/cli"
+    findmnt -n "${CLI}" >/dev/null && return 0
+    cp "${CLI}" "${WORK}/cli/amethystora-vault-cli"
+    cat >"${WORK}/agent-exec" <<'EOF'
+#!/usr/bin/bash
+# agent-exec ARGV0 PROGRAM ARGS...: polkit's text agent for this process, on its terminal, then PROGRAM as this same process
+ready="$(mktemp -u "${XDG_RUNTIME_DIR:-/tmp}/vmlab-agent.XXXXXX")"
+mkfifo -m 0600 "${ready}"
+pkttyagent --process "$$" --notify-fd 3 3>"${ready}" &
+read -r -t 10 _ <"${ready}"
+rm -f "${ready}"
+exec -a "$1" "${@:2}"
+EOF
+    printf '#!/usr/bin/bash\n[[ -n "${VMLAB_AGENT:-}" ]] && exec %s %s %s "$@"\nexec -a %s %s "$@"\n' "${WORK}/agent-exec" "${CLI}" \
+        "${WORK}/cli/amethystora-vault-cli" "${CLI}" "${WORK}/cli/amethystora-vault-cli" >"${WORK}/cli-wrapper"
+    chmod 0755 "${WORK}/agent-exec" "${WORK}/cli-wrapper" "${WORK}/cli/amethystora-vault-cli"
+    mount --bind "${WORK}/cli-wrapper" "${CLI}"
+}
+agent_exec_install
+trap 'umount "${CLI}" 2>/dev/null' EXIT
+# av SECONDS [EXPECT SEND]... -- WORDS: `ame vault WORDS` in that terminal, with polkit's own text agent registered for the vault's
+# command, which prints what polkit asks (the sentence, as polkit made it from the service's, and what is asked) and takes the account's
+# password: the questions of GNOME's dialog, put where a suite can read them. `$$?` is systemd-run's escape for `$?`
 av() {
     local seconds="$1" steps=()
     shift
     while [[ $# -gt 0 && "$1" != -- ]]; do steps+=("$1"); shift; done
     shift
-    terminal "${seconds}" "${steps[@]}" -- 'pkttyagent --process $$$$ & sleep 1; cd; ame vault '"$*"'; s=$$?; kill %1; exit $$s'
+    terminal "${seconds}" "${steps[@]}" -- 'export VMLAB_AGENT=1; cd; ame vault '"$*"'; s=$$?; pkill -u "$$USER" -x pkttyagent; exit $$s'
 }
 asked() { grep -c 'AUTHENTICATING FOR' <<<"$1"; }
 # The vault opened by its password, typed in a terminal (no polkit question: it is the password that opens it)
@@ -114,8 +140,10 @@ if [[ "$(cli status | awk -F'\t' '$1 == "set-up" { print $2 }')" == yes ]]; then
 fi
 check "the Vault's socket is listening" systemctl is-active amethystora-vault.socket
 check "the SSH agent's socket is listening" systemctl is-active amethystora-vault-ssh.socket
+# systemd calls a unit whose [Install] only names others with Also= indirect (Fedora 45), disabled before
 same "both are enabled, and the service itself is not" \
-    "$(systemctl is-enabled amethystora-vault.socket amethystora-vault-ssh.socket "${SERVICE}" 2>&1 | paste -sd ' ')" "enabled enabled disabled"
+    "$(systemctl is-enabled amethystora-vault.socket amethystora-vault-ssh.socket "${SERVICE}" 2>&1 | sed 's/^indirect$/disabled/' | paste -sd ' ')" \
+    "enabled enabled disabled"
 if wait_for 90 service_gone; then
     ok "nothing runs while no vault is open: the service has gone"
 else
@@ -186,7 +214,8 @@ sys.exit(0 if libc.ptrace(0x4206, int(sys.argv[1]), 0, 0) == 0 else 1)' "${SERVI
 else
     ok "the account cannot attach to the service"
 fi
-same "the service is not dumpable (its /proc entries are root's)" "$(stat -c %U "/proc/${SERVICE_PID}")" root
+# Its entries, not the folder: from 7.3 the kernel leaves /proc/PID itself to the process's own user
+same "the service is not dumpable (its /proc entries are root's)" "$(stat -c %U "/proc/${SERVICE_PID}/mem" "/proc/${SERVICE_PID}/environ" | sort -u)" root
 same "no core file is ever written (the limit is 0 and 0)" "$(awk '/Max core file size/ { print $5, $6 }' "/proc/${SERVICE_PID}/limits")" "0 0"
 same "no capability is held" "$(awk '/^CapEff/ { print $2 }' "/proc/${SERVICE_PID}/status")" 0000000000000000
 same "the service has no network: its own, with only a loopback" "$(nsenter -t "${SERVICE_PID}" -n ip -o link | wc -l)" 1
@@ -514,10 +543,10 @@ if [[ -n "${PUBLIC}" ]]; then
     like "the agent lists the public key" "${LISTING}" "$(cut -d' ' -f2 <<<"${PUBLIC}")"
     unlike "...and never a private one" "${LISTING}" "PRIVATE"
     SSH=(ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o PasswordAuthentication=no -o LogLevel=ERROR -o ConnectTimeout=20 "${TEST_USER}@127.0.0.1" true)
-    printf '#!/usr/bin/bash\nexport SSH_AUTH_SOCK=%s\nexec %s\n' "${AGENT}" "${SSH[*]}" >"${WORK}/ssh-login.sh"
+    printf '#!/usr/bin/bash\nexport SSH_AUTH_SOCK=%s\nexec %s ssh %s\n' "${AGENT}" "${WORK}/agent-exec" "${SSH[*]}" >"${WORK}/ssh-login.sh"
     chmod a+rx "${WORK}/ssh-login.sh"
-    # ssh asks for a signature, and the prompt names it. The text agent is registered for the terminal's shell, which runs ssh
-    out="$(terminal 120 "${PW[@]}" -- 'pkttyagent --process $$$$ & sleep 1; bash '"${WORK}"'/ssh-login.sh; s=$$?; kill %1; exit $$s')"
+    # ssh asks for a signature, and the prompt names it. The text agent is registered for ssh, the program that asks
+    out="$(terminal 120 "${PW[@]}" -- 'bash '"${WORK}"'/ssh-login.sh; s=$$?; pkill -u "$$USER" -x pkttyagent; exit $$s')"
     rc=$?
     if ((rc == 0)); then ok "ssh logs in to a real sshd with the key that only the vault holds"; else not_ok "ssh did not log in with the vault's key (${rc})" "$(tail -n 8 <<<"${out}")"; fi
     like "...and the prompt names ssh" "${out}" "A program calling itself ssh"
@@ -562,7 +591,7 @@ if [[ ! -e "${CREDENTIALS}" ]]; then
     out="$(av 120 "${PW[@]}" -- run "${CREDENTIALS}" -- cat "${CREDENTIALS}")"
     like "what the command wrote is sealed, and the next command reads it" "${out}" "more"
     # While the command runs, other programs of the account can reach what it holds: the manual says so, and here it is looked at
-    terminal 120 "${PW[@]}" -- 'pkttyagent --process $$$$ & sleep 1; ame vault run '"${CREDENTIALS}"' -- sleep 25; kill %1' >/dev/null 2>&1 &
+    terminal 120 "${PW[@]}" -- 'VMLAB_AGENT=1 ame vault run '"${CREDENTIALS}"' -- sleep 25; pkill -u "$$USER" -x pkttyagent' >/dev/null 2>&1 &
     runner=$!
     sleep 14
     holder="$(pgrep -u "${TEST_USER}" -n -x sleep)"

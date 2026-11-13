@@ -437,7 +437,19 @@ async function install(vm) {
     const answer = await agent(vm, { op: 'write', path: `${GUEST_DIR}/${name}`, data, mode: '0755' });
     if (answer.rc !== 0) throw new Error(`could not write ${name} into the VM: ${answer.error}`);
   }
+  // The suites' fixtures (72's hostile plugin), beside them as fixtures/
+  for (const file of fixtureFiles()) {
+    const target = `${GUEST_DIR}/fixtures/${file}`;
+    await agent(vm, { op: 'exec', command: `mkdir -p ${path.dirname(target)}` });
+    const answer = await agent(vm, { op: 'write', path: target, data: fs.readFileSync(`${FIXTURES}/${file}`).toString('base64'), mode: '0755' });
+    if (answer.rc !== 0) throw new Error(`could not write fixtures/${file} into the VM: ${answer.error}`);
+  }
 }
+
+// Every file under tests/vm/fixtures, by its path there
+const FIXTURES = `${HERE}/fixtures`;
+const fixtureFiles = (dir = '') => (fs.existsSync(`${FIXTURES}/${dir}`) ? fs.readdirSync(`${FIXTURES}/${dir}`, { withFileTypes: true })
+  .flatMap((e) => (e.isDirectory() ? fixtureFiles(path.join(dir, e.name)) : [path.join(dir, e.name)])) : []);
 
 // The live captions' speech model (suite 67), when the lab keeps a copy: handed to the guest once, in pieces the agent
 // takes, so that a run neither downloads 39 MiB each time nor fails offline

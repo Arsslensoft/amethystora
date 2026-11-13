@@ -120,7 +120,7 @@ trap cleanup EXIT
 # --- 1-2: the schemas, and off as shipped ----------------------------------------------------------------------------
 same "1 the agent's keys and their defaults" \
     "$(in_session "gsettings list-recursively ${AGENT_UI}" | sort | cut -d' ' -f2- | paste -sd ';')" \
-    "ask-selection ['<Super><Shift>a'];pill true"
+    "ask-about false;ask-here ['<Super>slash'];ask-questions true;ask-selection ['<Super><Shift>a'];doing true;pill true;routines true"
 same "1 force quit's keys and their defaults" \
     "$(in_session "gsettings list-recursively ${QUIT_UI}" | sort | cut -d' ' -f2- | paste -sd ';')" \
     "force-quit ['<Super><Control><Shift>Escape'];frozen-dialog true"

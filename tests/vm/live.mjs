@@ -291,6 +291,11 @@ async function suite(name) {
     await root(`rm -rf ${GUEST} && mkdir -p ${GUEST}`);
     await send(fs.readdirSync(`${DIR}/suites`).filter((f) => fs.statSync(`${DIR}/suites/${f}`).isFile())
       .map((f) => ({ target: `${GUEST}/${f}`, data: lf(fs.readFileSync(`${DIR}/suites/${f}`)), mode: '0755' })));
+    // The suites' fixtures, beside them as fixtures/, as run.mjs puts them
+    if (fs.existsSync(`${DIR}/fixtures`)) {
+      await send(fs.readdirSync(`${DIR}/fixtures`, { recursive: true }).filter((f) => fs.statSync(`${DIR}/fixtures/${f}`).isFile())
+        .map((f) => ({ target: `${GUEST}/fixtures/${f}`, data: lf(fs.readFileSync(`${DIR}/fixtures/${f}`)), mode: '0755' })));
+    }
   };
   await install();
   fs.mkdirSync(`${DIR}/runs`, { recursive: true });
