@@ -1458,8 +1458,9 @@ reach the lock screen), and no extension of the image ships a `stylesheet.css`, 
 (theirs are `styles.css`, which `extension.js` loads; `20-tests.sh` holds both). A class changed on a mapped widget restyles
 it and everything under it at once: give a widget its classes before it is shown (`glass/popups.js` wraps
 `PopupMenu.open`), and change several of them in one call (`theme/classes.js`). Starting a program forks the shell (some 14 ms frozen): `quickspawn.js` makes every
-`Gio.Subprocess.new` use `posix_spawn` (`INHERIT_FDS`), and a module that makes a `Gio.SubprocessLauncher` passes that flag
-itself. The glass's paint runs in JS on every frame: keep it free of settings reads, St lookups and uniforms sent unchanged
+`Gio.Subprocess.new` use `posix_spawn` (`INHERIT_FDS`), but one that merges its errors into its output (`STDERR_MERGE`: GLib 2.90's
+`posix_spawn` path leaves such a child's standard output unwritable), and a module that makes a `Gio.SubprocessLauncher` passes that flag
+itself, never with `STDERR_MERGE`. The glass's paint runs in JS on every frame: keep it free of settings reads, St lookups and uniforms sent unchanged
 (`shader.update`), and keep a pane's inside on `glass_interior()`, whose terms must stay what `glass_color()` draws there
 (`insets()` in `glass/effect.js` says where; suite 13 compares the two within one level). **The glass's paint is native**
 (phase 3): `apps/glass` (Rust, `libamethystora_glass.so` in `/usr/lib64/amethystora`) is an `AmethystoraGlass.Pane` GObject

@@ -15,7 +15,12 @@ const spawn = Gio.Subprocess.new;
 
 if (!Gio.Subprocess.new.amethystoraQuick) {
     Gio.Subprocess.new = function (argv, flags) {
-        return spawn.call(this, argv, (flags ?? Gio.SubprocessFlags.NONE) | INHERIT);
+        flags ??= Gio.SubprocessFlags.NONE;
+        // GLib's posix_spawn() path breaks a child whose errors are merged into its output (GLib 2.90: writing to its standard
+        // output fails with EBADF), so a merge keeps the fork
+        if (!(flags & Gio.SubprocessFlags.STDERR_MERGE))
+            flags |= INHERIT;
+        return spawn.call(this, argv, flags);
     };
     Gio.Subprocess.new.amethystoraQuick = true;
 }
