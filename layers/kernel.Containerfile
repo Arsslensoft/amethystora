@@ -26,7 +26,7 @@ COPY /system_files/shared/usr/lib/sysusers.d/amethystora-vault-net.conf /system_
 
 FROM ${BASE_IMAGE}:${FEDORA_MAJOR_VERSION}@${BASE_IMAGE_SHA} AS kernel
 
-ARG AKMODS_FLAVOR="coreos-stable"
+ARG AKMODS_FLAVOR="main"
 ARG AKMODS_DIGEST=""
 ARG AKMODS_NVIDIA_DIGEST=""
 ARG BASE_IMAGE_NAME="silverblue"

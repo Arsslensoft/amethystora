@@ -5,10 +5,6 @@ images:
   # `silverblue-main-${fedora_version}`; add a new one at each Fedora rollover,
   # and remove the one no stream resolves to any more, so that nothing can fall
   # back to a base that has stopped receiving updates.
-  - name: silverblue-main-44
-    image: ghcr.io/ublue-os/silverblue-main
-    tag: "44"
-    digest: sha256:29dd581b5adac78a105bd7b3a39ba8991c55cfa830547d421470808360b6c6b2
   - name: silverblue-main-45
     image: ghcr.io/ublue-os/silverblue-main
     tag: "45"

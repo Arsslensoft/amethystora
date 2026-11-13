@@ -9,7 +9,7 @@ update is checked against Amethystora's signature before it is installed.
 
 | Tag | What you get |
 | --- | --- |
-| `stable` | Built every week, with the kernel held back to Fedora CoreOS's, which lags a little behind Fedora's so that kernel regressions are caught first. For everyone. |
+| `stable` | Built every week, on the same Fedora release and kernel as `latest`. For everyone. |
 | `stable-daily` | The same, rebuilt whenever Amethystora changes rather than weekly |
 | `latest` | The newest Fedora and kernel, rebuilt whenever Amethystora changes |
 | `beta` | What comes next. Expect rough edges. |

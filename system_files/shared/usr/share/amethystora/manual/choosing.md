@@ -24,7 +24,7 @@ The tag after the colon sets the stream:
 
 | Tag | For |
 | --- | --- |
-| `stable` | Everyone. Built weekly, with the kernel held back to Fedora CoreOS's, which lags a little behind Fedora's so that kernel regressions are caught first. |
+| `stable` | Everyone. Built weekly, on the same Fedora release and kernel as `latest`. |
 | `latest` | The newest Fedora has, rebuilt whenever Amethystora changes. |
 | `beta` | Testing what comes next. Expect rough edges. |
 

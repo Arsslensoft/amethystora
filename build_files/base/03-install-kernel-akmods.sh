@@ -76,7 +76,7 @@ install -Dpm0644 /usr/lib/modprobe.d/xone.conf /usr/share/amethystora/xone/xone.
 rm -f /usr/lib/modprobe.d/xone.conf
 
 # DisplayLink (USB docks and adapters): the prebuilt evdi kmod is only published in akmods-extra, which is
-# not built for the main or coreos-stable kernels. Build it here against the image kernel from negativo17's
+# not built for the main kernel. Build it here against the image kernel from negativo17's
 # akmod, the same way akmods-extra does, then drop the build tooling.
 KERNEL_VERSION="$(rpm -q kernel-core --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')"
 dnf5 -y install akmods

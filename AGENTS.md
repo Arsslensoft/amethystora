@@ -2376,7 +2376,7 @@ tags: stable, latest, beta
 
 **Version Detection:**
 - `just fedora_version <image> <tag> <flavor>` - Dynamically detects Fedora version from upstream base images
-- For `stable`: Checks `quay.io/fedora/fedora-coreos:stable` (CoreOS does not use cosign)
+- For `stable`: Checks `ghcr.io/ublue-os/base-main:latest`, and builds with the `main` akmods and Fedora's kernel as `latest` does (it followed Fedora CoreOS until 2026-11-12)
 - For `latest`/`beta`/`gts`: Checks `ghcr.io/ublue-os/base-main:<tag>`
 - A `kernel_pin` overrides the result, taking the version from the `fcNN` portion of the kernel
 - Returns the Fedora major version (e.g., 43, 44)
@@ -2476,7 +2476,7 @@ and every entry in it is load-bearing. `just build` reads each digest with `yq`
 and passes it into the Containerfile, which builds `FROM image:tag@digest`.
 
 Base image entries are keyed by Fedora major version and must be named
-`<base_image_name>-main-<fedora_version>`, for example `silverblue-main-44`.
+`<base_image_name>-main-<fedora_version>`, for example `silverblue-main-45`.
 The key is the version `just fedora_version` resolves at build time, not the
 stream name, so the pinned digest can never disagree with the version the
 kernel and akmods were resolved for.

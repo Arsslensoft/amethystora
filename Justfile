@@ -123,11 +123,9 @@ build $image="amethystora" $tag="latest" $flavor="main" rechunk="0" ghcr="0" pip
     # AKMODS Flavor and Kernel Version
     if [[ "${flavor}" =~ hwe ]]; then
         akmods_flavor="bazzite"
-    elif [[ "${tag}" =~ stable ]]; then
-        akmods_flavor="coreos-stable"
-    elif [[ "${tag}" =~ beta ]]; then
-        akmods_flavor="main"
     else
+        # Every stream takes Fedora's own kernel. Stable followed Fedora CoreOS's until 2026-11-12, which held it on an
+        # old Fedora until CoreOS and Universal Blue's coreos-stable akmods both moved
         akmods_flavor="main"
     fi
 
@@ -720,12 +718,12 @@ fedora_version image="amethystora" tag="latest" flavor="main" $kernel_pin="":
     set -eou pipefail
     {{ just }} validate {{ image }} {{ tag }} {{ flavor }}
     if [[ ! -f /tmp/manifest.json ]]; then
+        # Stable is on the Fedora release Universal Blue calls latest, which moves some days after a release
+        upstream_tag="{{ tag }}"
         if [[ "{{ tag }}" =~ stable ]]; then
-            # CoreOS does not uses cosign
-            skopeo inspect --retry-times 3 docker://quay.io/fedora/fedora-coreos:stable > /tmp/manifest.json
-        else
-            skopeo inspect --retry-times 3 docker://ghcr.io/ublue-os/base-main:"{{ tag }}" > /tmp/manifest.json
+            upstream_tag="latest"
         fi
+        skopeo inspect --retry-times 3 docker://ghcr.io/ublue-os/base-main:"${upstream_tag}" > /tmp/manifest.json
     fi
     fedora_version=$(jq -r '.Labels["org.opencontainers.image.version"]' < /tmp/manifest.json | grep -oP '^[0-9]+')
     if [[ -n "${kernel_pin:-}" ]]; then

@@ -11,7 +11,7 @@ on:
 # built from, and before the base image now pinned in image-versions.yml (bump-base-images.yml moves it).
 # The base brings most packages, and the build installs the rest fresh, so that is when a rebuild has the
 # fix; each update starts at most one rebuild, since the next image's base is newer than it. The kernel is
-# left out: it follows CoreOS's stream through Universal Blue's akmods, not Fedora's updates. It reads,
+# left out: it comes through Universal Blue's akmods, rebuilt for each kernel, and waits for the weekly build. It reads,
 # and dispatches that one workflow; it changes nothing else.
 
 permissions: {}
