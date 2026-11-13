@@ -7,7 +7,6 @@ without taking a file with it.
   lets the TPM unlock the disk at boot instead of you typing the passphrase
   ([Security](disk-encryption.md#unlock-the-disk-with-the-tpm)).
 - **Several disks** can keep copies of each other: [Pools of disks](#pools-of-disks-raid).
-- **ZFS** is available on the `stable` stream.
 - **Apple's USB SuperDrive** is woken up as it is plugged in, as a Mac would, so that it reads discs.
 
 ## When a disk may be failing

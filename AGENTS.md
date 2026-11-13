@@ -2460,7 +2460,7 @@ The `Containerfile` is the image's own build, once per commit, on the layers the
 
 **Build Arguments:**
 - `PACKAGES_IMAGE`, `APPS_IMAGE`, `ASSETS_IMAGE` - The layers the image builds on (see Build layers)
-- `AKMODS_DIGEST`, `AKMODS_ZFS_DIGEST`, `AKMODS_NVIDIA_DIGEST` - The kernel layer's: the kernel and module images, resolved to a digest and checked with cosign by the Justfile once; step 03 copies them by that digest
+- `AKMODS_DIGEST`, `AKMODS_NVIDIA_DIGEST` - The kernel layer's: the kernel and module images, resolved to a digest and checked with cosign by the Justfile once; step 03 copies them by that digest
 - `BASE_IMAGE_CREATED` - When the base image was built (seconds since the epoch), which `00-image-info.sh` writes into `image-info.json` as `base-created` for the report's image-age check
 - `BASE_IMAGE_NAME` - Upstream base (silverblue/kinoite)
 - `BASE_IMAGE_SHA` - The layers': digest of the base image, resolved from `image-versions.yml`
@@ -2529,7 +2529,7 @@ Fedora's generic ones, as its trademark guidelines ask of a remix: `fedora-logos
 and the `fedora-release` packages for `generic-release` in the package database only, their files
 staying in place.
 In the kernel layer:
-1. `03-install-kernel-akmods.sh` (then `03-sign-evdi.sh`, the only step with the module key) - Installs the kernel and the kmods beside it: v4l2loopback, xpadneo and xone from Universal Blue's `akmods` image, evdi built here, ZFS on stable, and on the NVIDIA images the driver of `akmods-nvidia-open` or `akmods-nvidia-lts` (see Drivers)
+1. `03-install-kernel-akmods.sh` (then `03-sign-evdi.sh`, the only step with the module key) - Installs the kernel and the kmods beside it: v4l2loopback, xpadneo and xone from Universal Blue's `akmods` image, evdi built here, and on the NVIDIA images the driver of `akmods-nvidia-open` or `akmods-nvidia-lts` (see Drivers)
 In the packages layer:
 2. `04-packages.sh` - Installs Fedora and COPR packages
 3. `05-override-install.sh` - Overrides base image packages. Among them the multimedia stack: the base image installs negativo17's FFmpeg, built with `--enable-nonfree` and labelled by FFmpeg itself "nonfree and unredistributable", and its `pipewire-libs-extra`, whose LC3plus plugin links `liblc3plus`, which has no licence to redistribute. Both are replaced with Fedora's `ffmpeg-free` and `fdk-aac-free`, RPM Fusion's `libavcodec-freeworld`, and RPM Fusion's aptX plugin. negativo17's repository is `fedora-multimedia` in the base image and outranks Fedora's, so `17-cleanup.sh` turns it off; do not install FFmpeg, codec or PipeWire packages from it. `20-tests.sh` fails on any FFmpeg library that reports itself unredistributable. The script also deletes `/usr/share/doc`, after moving the licence, copyright and NOTICE files that some 120 packages keep only there into `/usr/share/licenses`, and installs Starship from a pinned release checked against its published checksum (the pin is bumped by Renovate)

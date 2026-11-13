@@ -166,11 +166,6 @@ build $image="amethystora" $tag="latest" $flavor="main" rechunk="0" ghcr="0" pip
     akmods_tag="${akmods_flavor}-${fedora_version}-${kernel_release}"
     akmods_sha="$(skopeo inspect --retry-times 3 "docker://ghcr.io/ublue-os/akmods:${akmods_tag}" | jq -r .Digest)"
     {{ just }} verify-container "akmods@${akmods_sha}"
-    akmods_zfs_sha=""
-    if [[ "${akmods_flavor}" =~ coreos ]]; then
-        akmods_zfs_sha="$(skopeo inspect --retry-times 3 "docker://ghcr.io/ublue-os/akmods-zfs:${akmods_tag}" | jq -r .Digest)"
-        {{ just }} verify-container "akmods-zfs@${akmods_zfs_sha}"
-    fi
     # akmods-nvidia-open or akmods-nvidia-lts, the image the flavor is named after (03-install-kernel-akmods.sh)
     akmods_nvidia_sha=""
     if [[ "${flavor}" =~ ^nvidia-(open|lts)$ ]]; then
@@ -190,7 +185,6 @@ build $image="amethystora" $tag="latest" $flavor="main" rechunk="0" ghcr="0" pip
     KERNEL_LAYER_ARGS=(
         --build-arg "AKMODS_FLAVOR=${akmods_flavor}"
         --build-arg "AKMODS_DIGEST=${akmods_sha}"
-        --build-arg "AKMODS_ZFS_DIGEST=${akmods_zfs_sha}"
         --build-arg "AKMODS_NVIDIA_DIGEST=${akmods_nvidia_sha}"
         --build-arg "BASE_IMAGE_NAME=${base_image_name}"
         --build-arg "KERNEL=${kernel_release}"

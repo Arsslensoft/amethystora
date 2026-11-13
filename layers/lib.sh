@@ -13,7 +13,7 @@
 # Every layer built is added to /tmp/amethystora-layers-built, "NAME TAG" a line, for CI to push and sign.
 #
 # Reads the build recipe's variables: image, tag, flavor, fedora_version, base_image_name, base_image_sha,
-# akmods_flavor, akmods_sha, akmods_zfs_sha, akmods_nvidia_sha, kernel_release, LAYER_REGISTRY, REPO_ORGANIZATION,
+# akmods_flavor, akmods_sha, akmods_nvidia_sha, kernel_release, LAYER_REGISTRY, REPO_ORGANIZATION,
 # PODMAN, and the module key's KERNEL_LAYER_ARGS and MODULE_KEY (release or throwaway).
 
 LAYERS_BUILT=/tmp/amethystora-layers-built
@@ -167,7 +167,7 @@ layers_epoch() {
 layers_tags() {
     local kind="$1" kernel_key packages_key prefix="${flavor}-${tag}-${fedora_version}"
     kernel_key="$(layer_key layers/kernel.Containerfile "base=${base_image_sha}" "akmods=${akmods_sha}" \
-        "zfs=${akmods_zfs_sha}" "nvidia=${akmods_nvidia_sha}" "akmods-flavor=${akmods_flavor}" "kernel=${kernel_release}" \
+        "nvidia=${akmods_nvidia_sha}" "akmods-flavor=${akmods_flavor}" "kernel=${kernel_release}" \
         "stream=${tag}" "image=${FLAVOR_NAME}" "module-key=${kind}" "epoch=${EPOCH}")" || return 1
     packages_key="$(layer_key layers/packages.Containerfile "kernel=${kernel_key}" "fprintd=${FPRINTD_REF##*:}")" || return 1
     KERNEL_TAG="${prefix}-${kernel_key}"

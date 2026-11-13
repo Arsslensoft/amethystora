@@ -148,36 +148,7 @@ kargs = ["rd.driver.blacklist=nouveau", "modprobe.blacklist=nouveau", "nvidia-dr
 EOF
 fi
 
-# ZFS for stable
-if [[ ${AKMODS_FLAVOR} =~ coreos ]]; then
-    # Fetch ZFS RPMs
-    skopeo copy --retry-times 3 docker://ghcr.io/ublue-os/akmods-zfs@"${AKMODS_ZFS_DIGEST:?checked by the Justfile}" dir:/tmp/akmods-zfs
-    ZFS_TARGZ=$(jq -r '.layers[].digest' </tmp/akmods-zfs/manifest.json | cut -d : -f 2)
-    tar -xvzf /tmp/akmods-zfs/"$ZFS_TARGZ" -C /tmp/
-    mv /tmp/rpms/* /tmp/akmods-zfs/
-
-    # Declare ZFS RPMs
-    ZFS_RPMS=(
-        /tmp/akmods-zfs/kmods/zfs/kmod-zfs-"${KERNEL}"-*.rpm
-        /tmp/akmods-zfs/kmods/zfs/libnvpair[0-9]-*.rpm
-        /tmp/akmods-zfs/kmods/zfs/libuutil[0-9]-*.rpm
-        /tmp/akmods-zfs/kmods/zfs/libzfs[0-9]-*.rpm
-        /tmp/akmods-zfs/kmods/zfs/libzpool[0-9]-*.rpm
-        /tmp/akmods-zfs/kmods/zfs/python3-pyzfs-*.rpm
-        /tmp/akmods-zfs/kmods/zfs/zfs-*.rpm
-        pv
-    )
-
-    # Install
-    dnf5 -y install "${ZFS_RPMS[@]}"
-
-    # Depmod. Not loaded at every boot: OpenZFS's own udev rule loads the module once a disk with ZFS on it
-    # appears, before its import units run, and zpool loads it when asked. Loaded everywhere, it put its
-    # /dev/zfs, open to every account, on every machine, most of which have no pool.
-    depmod -a -v "${KERNEL}"
-fi
-
 # This is a step of its own (Containerfile): what it unpacked stays out of its layer
-rm -rf /tmp/akmods /tmp/akmods-rpms /tmp/akmods-zfs /tmp/kernel-rpms /tmp/rpms
+rm -rf /tmp/akmods /tmp/akmods-rpms /tmp/kernel-rpms /tmp/rpms
 
 echo "::endgroup::"
