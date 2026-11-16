@@ -1065,7 +1065,11 @@ mod tests {
 
     /// A home of the test's own, never under /tmp, which a sandbox replaces and so never takes a project from
     fn temp(name: &str) -> PathBuf {
-        let base = std::env::var_os("HOME").map(PathBuf::from).filter(|home| !home.starts_with("/tmp")).unwrap_or_else(|| PathBuf::from("/var/lib/amethystora-test"));
+        // HOME only where it is a real folder: in the image's build it is /root, a link to a /var/roothome that is not there
+        let base = std::env::var_os("HOME")
+            .map(PathBuf::from)
+            .filter(|home| home.is_dir() && !home.starts_with("/tmp"))
+            .unwrap_or_else(|| PathBuf::from("/var/lib/amethystora-test"));
         let dir = base.join(format!("amethystora-sandbox-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
