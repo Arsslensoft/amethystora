@@ -1360,7 +1360,7 @@ fn keep_entry(from: &OwnedFd, to: &OwnedFd, name: &str, shown: String, keeping: 
     }
 }
 
-/// Where the usual credentials are, from the watcher's own list (`CREDENTIAL_FILES` in `amethystora-audit-home-rules`, and a test holds
+/// Where the usual credentials are, from the watcher's own list (`/usr/share/amethystora/credential-files`, which `amethystora-audit-home-rules` reads, and a test holds
 /// the two together). What a browser keeps is left out: a browser that is running holds those open, and no command is started for it.
 pub const USUAL: &[&str] = &[
     ".ssh/id_*",
@@ -1582,10 +1582,14 @@ mod tests {
             eprintln!("AMETHYSTORA_ROOT is not set: the watcher's list was not compared");
             return;
         };
-        let script = std::fs::read_to_string(Path::new(&root).join("usr/libexec/amethystora-audit-home-rules")).unwrap();
-        let start = script.find("CREDENTIAL_FILES=(").unwrap() + "CREDENTIAL_FILES=(".len();
-        let list = &script[start..start + script[start..].find(')').unwrap()];
-        let theirs: Vec<&str> = list.split_whitespace().filter(|entry| !entry.contains(".mozilla") && !entry.starts_with(".var/app") && !entry.contains("google-chrome")).collect();
+        // The watcher's list, one with an agent's sandbox's (plans/PLAN-agent-sandbox.md), less the browsers' cookies and passwords
+        let list = std::fs::read_to_string(Path::new(&root).join("usr/share/amethystora/credential-files")).unwrap();
+        let theirs: Vec<&str> = list
+            .lines()
+            .map(str::trim)
+            .filter(|entry| !entry.is_empty() && !entry.starts_with('#'))
+            .filter(|entry| !entry.contains(".mozilla") && !entry.starts_with(".var/app") && !entry.ends_with("Cookies"))
+            .collect();
         assert_eq!(theirs.len(), USUAL.len(), "{theirs:?}");
         for entry in theirs {
             assert!(USUAL.contains(&entry), "{entry} is in the watcher's list and not here");

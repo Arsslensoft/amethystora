@@ -14,7 +14,7 @@ use super::{Page, Vault};
 use crate::rpc::Trouble;
 use crate::widgets::{self, btn};
 
-/// The usual places, from the watcher's own list (`CREDENTIAL_FILES` in `amethystora-audit-home-rules`): whatever is a file of its
+/// The usual places, from the watcher's own list (`/usr/share/amethystora/credential-files`, which `amethystora-audit-home-rules` reads): whatever is a file of its
 /// own and holds a login, not the browsers' profiles, which a browser has to keep open itself
 const USUAL: &[&str] = &[
     ".npmrc",

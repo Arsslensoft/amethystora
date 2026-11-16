@@ -16,7 +16,7 @@ COPY /build_files/shared/build-apps.sh /build_files/shared/build-apps.sh
 # plugin host's). A test that reads another file of system_files needs its line here
 COPY /system_files/shared/usr/lib/amethystora/theme/palette.awk /system_files/shared/usr/lib/amethystora/theme/palette.awk
 COPY /system_files/shared/usr/share/amethystora/themes /system_files/shared/usr/share/amethystora/themes
-COPY /system_files/shared/usr/libexec/amethystora-audit-home-rules /system_files/shared/usr/libexec/amethystora-audit-home-rules
+COPY /system_files/shared/usr/share/amethystora/credential-files /system_files/shared/usr/share/amethystora/credential-files
 COPY /system_files/shared/usr/share/amethystora/just/vault.just /system_files/shared/usr/share/amethystora/just/vault.just
 COPY /system_files/shared/usr/share/amethystora/plugins /system_files/shared/usr/share/amethystora/plugins
 COPY /system_files/shared/usr/share/amethystora/plugin-examples /system_files/shared/usr/share/amethystora/plugin-examples
