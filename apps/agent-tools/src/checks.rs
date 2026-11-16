@@ -209,6 +209,19 @@ pub fn checks_off(start: u32, config: &[String]) -> Option<String> {
     config.first().map(|finding| format!("an agent's own settings turn its checks off: {finding}"))
 }
 
+/// The reader's findings that concern an agent on PROFILE: the home's, and that profile's own (plans/PLAN-agent-accounts.md). A
+/// finding in another profile's folder (its text starts with the folder, as the reader says paths) is another account's
+pub fn for_profile(findings: Vec<String>, profile: Option<&str>) -> Vec<String> {
+    const PROFILES: &str = "~/.local/share/amethystora/agent-profiles/";
+    findings
+        .into_iter()
+        .filter(|finding| match finding.strip_prefix(PROFILES) {
+            None => true,
+            Some(rest) => profile.is_some_and(|profile| rest.split('/').next() == Some(profile)),
+        })
+        .collect()
+}
+
 /// What the security reader says about the agents' own settings that turns their checks off: its findings in
 /// the tactic Defense Evasion, which is how it marks a mode that never asks
 pub fn config_findings(reader_output: &str) -> Vec<String> {
@@ -279,5 +292,14 @@ mod tests {
         let out = "{\"id\":\"a\",\"tactic\":\"Defense Evasion\",\"text\":\"~/.claude/settings.json turns Claude Code's checks off: x\"}\n\
                    {\"id\":\"b\",\"tactic\":\"Persistence\",\"text\":\"hook\"}\nnot json\n";
         assert_eq!(config_findings(out), vec!["~/.claude/settings.json turns Claude Code's checks off: x".to_string()]);
+        // The home's always count; a profile's only for an agent on it
+        let found = vec![
+            "~/.claude/settings.json turns x".to_string(),
+            "~/.local/share/amethystora/agent-profiles/work/.claude/settings.json turns y".to_string(),
+            "~/.local/share/amethystora/agent-profiles/workshop/.claude/settings.json turns z".to_string(),
+        ];
+        assert_eq!(for_profile(found.clone(), None).len(), 1);
+        assert_eq!(for_profile(found.clone(), Some("work")), found[..2].to_vec());
+        assert_eq!(for_profile(found, Some("default")).len(), 1);
     }
 }

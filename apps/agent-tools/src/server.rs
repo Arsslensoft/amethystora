@@ -140,7 +140,10 @@ impl Server {
                 }
             }
             let reader = run::run(&["/usr/libexec/amethystora-security-reader", "agent-config"], Duration::from_secs(25));
-            checks::checks_off(std::process::id(), &checks::config_findings(&reader.stdout))
+            // The home's own settings always count, and those of the profile this server's agent runs on: another profile's are
+            // another account of the agent, which this one does not read
+            let findings = checks::for_profile(checks::config_findings(&reader.stdout), crate::history::launched_for().1.as_deref());
+            checks::checks_off(std::process::id(), &findings)
         });
         why.as_ref().map(|why| format!("Changes are refused: {why}. Start the agent through amethystora-agent, with its own checks on."))
     }
