@@ -25,9 +25,13 @@ grep -q 'agent-profiles/\*/' /usr/libexec/amethystora-audit-home-rules || fail "
 test -s /usr/share/amethystora/agent-sandbox.bpf || fail "the sandbox's seccomp filter is missing"
 test -x /usr/bin/bwrap || fail "bubblewrap is missing"
 
-# A stand-in home, outside /tmp (which a sandbox has its own of, and never takes a project from)
-H="$(mktemp -d -p /var/lib agent-sandbox-test.XXXXXX)"
-trap 'rm -rf "${H}"' EXIT
+# A stand-in home, outside /tmp (which a sandbox has its own of, and never takes a project from). The image's build has no
+# /var/lib yet: what this makes there is taken away again, /var/lib with it, so that nothing is left in /var
+[[ -d /var/lib ]] && MADE_VAR_LIB=false || MADE_VAR_LIB=true
+BASE=/var/lib/amethystora-agent-sandbox-test
+mkdir -p "${BASE}"
+H="$(mktemp -d -p "${BASE}" home.XXXXXX)"
+trap 'rm -rf "${BASE}"; [[ ${MADE_VAR_LIB} == false ]] || rmdir /var/lib 2>/dev/null' EXIT
 export HOME="${H}" XDG_CONFIG_HOME="${H}/.config" XDG_STATE_HOME="${H}/.local/state" XDG_CACHE_HOME="${H}/.cache" XDG_RUNTIME_DIR="${H}/run"
 unset AMETHYSTORA_AGENT_PROFILE AMETHYSTORA_AGENT_PROFILE_PIN CLAUDE_CONFIG_DIR CODEX_HOME
 mkdir -p "${H}/run" "${H}/work/api" "${H}/workshop" "${H}/code/site/.git/hooks" "${H}/code/site/src" "${H}/.ssh" "${H}/.cursor" "${H}/.config/x"
