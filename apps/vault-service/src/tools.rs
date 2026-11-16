@@ -189,7 +189,11 @@ pub fn get(args: &Args) -> Result<(), u8> {
 /// `run` takes what comes after `--` as it is, so it reads the arguments itself rather than the options `Args` makes of them
 fn run_words() -> Option<(OsString, Vec<OsString>)> {
     let raw: Vec<OsString> = std::env::args_os().skip(1).collect();
-    let start = raw.iter().position(|arg| arg == "run")? + 1;
+    let mut start = raw.iter().position(|arg| arg == "run")? + 1;
+    // run --shared NAME -- COMMAND: several commands on one protected file (run_shared)
+    if raw.get(start).is_some_and(|arg| arg == "--shared") {
+        start += 1;
+    }
     let split = start + raw[start..].iter().position(|arg| arg == "--")?;
     if split != start + 1 || split + 1 >= raw.len() {
         return None;
@@ -277,7 +281,10 @@ fn run_started(args: &Args, started: &mut bool) -> Result<(), u8> {
     if variable.is_none()
         && let Some(item) = find_protected(&name)?
     {
-        return run_protected(args, &item, &command, started);
+        if args.option("shared").is_some() {
+            return run_shared(args, &item, &command, started);
+        }
+        return run_protected(args, &item, &command, started, None, None);
     }
     run_with_variable(args, variable, &name, &command)
 }
@@ -428,15 +435,20 @@ fn lock_item(id: &str) -> Result<OwnedFd, u8> {
     Ok(held)
 }
 
-fn run_protected(args: &Args, item: &Value, command: &[OsString], started: &mut bool) -> Result<(), u8> {
+fn run_protected(args: &Args, item: &Value, command: &[OsString], started: &mut bool, held: Option<(OwnedFd, Value)>, shared: Option<&Shared>) -> Result<(), u8> {
     let (id, name) = (id_of(item)?, item["name"].as_str().ok_or(6u8)?.to_string());
     let path = item["meta"]["path"].as_str().ok_or(6u8)?.to_string();
     let home_path = home()?;
     let home_fd = protect::open_home(&home_path).map_err(why)?;
     // Another command running on it, or an unprotect, comes first: nothing is asked
-    let _lock = lock_item(&id)?;
-    // The person says yes first: nothing is set up for a no
-    let answer = call(json!({"op": "get", "kind": KIND, "id": id}))?;
+    // The person says yes first: nothing is set up for a no. A shared run asked already, in the process the person started
+    let (_lock, answer) = match held {
+        Some(held) => held,
+        None => {
+            let lock = lock_item(&id)?;
+            (lock, call(json!({"op": "get", "kind": KIND, "id": id}))?)
+        }
+    };
     // The vault it came from, which what the command leaves goes back to: with several open, the first is not necessarily this one
     let vault = answer["vault"].as_str().ok_or(6u8)?.to_string();
     let tree = Tree::from_value(&answer["value"]).map_err(why)?;
@@ -453,8 +465,43 @@ fn run_protected(args: &Args, item: &Value, command: &[OsString], started: &mut 
         return Err(why(trouble));
     }
     eprintln!("{}", args.say("say-exposed", "While this command runs, other programs of this account can read this file and the command's memory."));
+    if shared.is_some() {
+        SHARED_KEEPER.store(true, std::sync::atomic::Ordering::Relaxed);
+        eprintln!("{}", args.say("say-shared-open", "Another command of yours on this file shares it, and it is sealed again when the last has ended."));
+    }
     *started = true;
-    let status = supervise(command);
+    let status = match shared {
+        Some(shared) => supervise_shared(command, shared),
+        None => supervise(command),
+    };
+    let status = match shared {
+        Some(shared) => {
+            // No session comes in from here: what they left is read and sealed, by the worst end of any of them
+            let _ = std::fs::remove_file(&shared.door_path);
+            // SAFETY: a live descriptor and a value the kernel fills in
+            let noted = unsafe {
+                let mut meta = std::mem::zeroed::<libc::stat>();
+                libc::fstat(shared.sessions.as_raw_fd(), &raw mut meta) == 0 && meta.st_size > 0
+            };
+            // The keeper's own command's terminal has its prompt back, or is gone: nothing more is written to it (a write to a
+            // terminal that hung up would end this process before the place is put back)
+            // SAFETY: descriptors of this process
+            unsafe {
+                if libc::isatty(2) == 1 {
+                    let null = libc::open(c"/dev/null".as_ptr(), libc::O_WRONLY | libc::O_CLOEXEC);
+                    if null >= 0 {
+                        libc::dup2(null, 2);
+                        libc::close(null);
+                    }
+                }
+            }
+            match status {
+                Ok(0) if noted => Ok(1),
+                other => other,
+            }
+        }
+        None => status,
+    };
     // The command has ended, one way or another. The old copy stays sealed until the new one is.
     let code = status.unwrap_or_else(i32::from);
     let mut sealed = Ok(());
@@ -581,6 +628,7 @@ fn seal_back(args: &Args, id: &str, name: &str, vault: &str, item: &Value, after
 
 /// One put of what the command left, asked again for as long as the person wants: what it holds exists nowhere else
 fn put_asking(args: &Args, request: &Value) -> Result<(), u8> {
+    let mut asked = 0;
     loop {
         match call(request.clone()) {
             Ok(_) => return Ok(()),
@@ -591,7 +639,14 @@ fn put_asking(args: &Args, request: &Value) -> Result<(), u8> {
                 } else {
                     "That was refused, and what the command left is only here. Press Enter to be asked again, or type no to lose it: "
                 };
-                if !ask_again(&args.say(question, default)) {
+                // A shared run's keeper seals after its own command's terminal has its prompt back (or is gone): it never reads
+                // that terminal, it says so on the desktop and waits
+                let again = if SHARED_KEEPER.load(std::sync::atomic::Ordering::Relaxed) {
+                    ask_again_shared(args, code == CLOSED, &mut asked)
+                } else {
+                    ask_again(&args.say(question, default))
+                };
+                if !again {
                     return Err(code);
                 }
             }
@@ -607,6 +662,368 @@ fn ask_again(question: &str) -> bool {
     eprint!("{question}");
     let mut line = String::new();
     std::io::stdin().read_line(&mut line).is_ok_and(|count| count > 0) && line.trim().is_empty()
+}
+
+// --- One protected file, several commands at once (plans/PLAN-agent-accounts.md, "A protected login, shared") -------------------
+//
+// `run --shared NAME -- COMMAND`, which amethystora-agent uses for an agent's login: the first command on a protected file makes
+// its private place as `run` does, and its keeper stays for as long as any command uses it. A later command finds the lock held,
+// is asked for as every use is (a join is a use, never quieter than a first run), enters the keeper's namespaces and starts
+// there. What the commands left is read once, at the end, from the one place, and sealed once.
+//
+//   the shell's process   waits for the first command's end, which is its own, and gives the terminal back
+//   the keeper            holds the lock, the place and the door; seals when the last command has ended
+//   the first process     of the namespace: starts the first command, then stays until no session holds the sessions file
+//   a later command       holds the sessions file shared, enters the namespaces through the door, runs, and lets go
+//
+// A session that dies lets go of the sessions file with its last process, so the kernel counts it out. Plain `run` is untouched.
+
+/// Whether this process is the keeper of a shared run, which may outlive its terminal
+static SHARED_KEEPER: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Come back in a moment: the keeper is ending, or not yet at its door
+const AGAIN: u8 = 250;
+
+/// What the keeper holds beyond a plain run: where the first command's end is told, the sessions' file and the door
+struct Shared {
+    report: OwnedFd,
+    sessions: OwnedFd,
+    door: std::os::unix::net::UnixListener,
+    door_path: PathBuf,
+}
+
+fn run_folder() -> Result<PathBuf, u8> {
+    // SAFETY: getuid cannot fail
+    let runtime = std::env::var_os("XDG_RUNTIME_DIR").map(PathBuf::from).unwrap_or_else(|| PathBuf::from(format!("/run/user/{}", unsafe { libc::getuid() })));
+    let folder = runtime.join("amethystora-vault-run");
+    std::fs::DirBuilder::new().recursive(true).mode(0o700).create(&folder).map_err(|_| 6u8)?;
+    Ok(folder)
+}
+
+/// The file every session on an item holds shared while it runs, and the first process takes alone when none is left
+fn sessions_file(id: &str) -> Result<OwnedFd, u8> {
+    let file = std::fs::OpenOptions::new().write(true).create(true).truncate(false).mode(0o600).custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
+        .open(run_folder()?.join(format!("{id}.sessions"))).map_err(|_| 6u8)?;
+    Ok(OwnedFd::from(file))
+}
+
+fn run_shared(args: &Args, item: &Value, command: &[OsString], started: &mut bool) -> Result<(), u8> {
+    let id = id_of(item)?;
+    // A keeper that is ending lets go within moments; one that is sealing with the vault closed does not, and that is said
+    for _ in 0..40 {
+        match lock_item(&id) {
+            Ok(lock) => return keep(args, item, command, started, lock, &id),
+            Err(14) => match join(args, &id, command, started) {
+                Err(AGAIN) => std::thread::sleep(Duration::from_millis(250)),
+                other => return other,
+            },
+            Err(code) => return Err(code),
+        }
+    }
+    Err(why(Why::InUse))
+}
+
+/// The first command: this process waits for its end and answers the shell with it; the keeper, its child, does everything a plain run does
+/// and stays for the sessions that join.
+fn keep(args: &Args, item: &Value, command: &[OsString], started: &mut bool, lock: OwnedFd, id: &str) -> Result<(), u8> {
+    let mut ends = [0 as libc::c_int; 2];
+    // SAFETY: a live array of two; the descriptors are then owned
+    if unsafe { libc::pipe2(ends.as_mut_ptr(), libc::O_CLOEXEC) } != 0 {
+        return Err(6);
+    }
+    // SAFETY: both are open and nobody else's
+    let (read_end, write_end) = unsafe { (<OwnedFd as std::os::fd::FromRawFd>::from_raw_fd(ends[0]), <OwnedFd as std::os::fd::FromRawFd>::from_raw_fd(ends[1])) };
+    let door_path = run_folder()?.join(format!("{id}.door"));
+    // The person says yes here, to the process they started: the keeper, its child, is given what the vault answered
+    let answer = call(json!({"op": "get", "kind": KIND, "id": id}))?;
+    // What the vault answered is nobody else's to read from here (not before: polkit looks the asking process up in /proc)
+    // SAFETY: a flag of this process, which has one thread
+    unsafe { libc::prctl(libc::PR_SET_DUMPABLE, 0, 0, 0, 0) };
+    // SAFETY: this process has one thread
+    match unsafe { libc::fork() } {
+        -1 => Err(6),
+        0 => {
+            drop(read_end);
+            let _ = std::fs::remove_file(&door_path);
+            let result = sessions_file(id).and_then(|sessions| {
+                // Empty at the start: a later command that does not end well writes into it
+                // SAFETY: a live descriptor
+                unsafe { libc::ftruncate(sessions.as_raw_fd(), 0) };
+                let door = std::os::unix::net::UnixListener::bind(&door_path).map_err(|_| 6u8)?;
+                door.set_nonblocking(true).map_err(|_| 6u8)?;
+                let shared = Shared { report: write_end, sessions, door, door_path: door_path.clone() };
+                run_protected(args, item, command, started, Some((lock, answer)), Some(&shared))
+            });
+            let _ = std::fs::remove_file(&door_path);
+            if let (Err(code), false) = (&result, *started) {
+                say_why_not(args, *code);
+            }
+            std::process::exit(result.err().map_or(0, i32::from));
+        }
+        keeper => {
+            drop(write_end);
+            drop(lock);
+            drop(answer);
+            // The terminal's Ctrl+C is the command's to answer: this process only waits for it
+            // SAFETY: plain dispositions
+            unsafe {
+                libc::signal(libc::SIGINT, libc::SIG_IGN);
+                libc::signal(libc::SIGQUIT, libc::SIG_IGN);
+            }
+            let mut code = [0u8; 4];
+            let mut from = std::fs::File::from(read_end);
+            if from.read_exact(&mut code).is_ok() {
+                // The command has ended; the keeper stays for the other sessions, and seals when the last has ended
+                std::process::exit(i32::from_le_bytes(code));
+            }
+            // The keeper ended before any command did: its answer is this one's
+            let mut status = 0;
+            // SAFETY: a value the kernel fills in
+            unsafe { libc::waitpid(keeper, &raw mut status, 0) };
+            std::process::exit(exit_code(status));
+        }
+    }
+}
+
+/// The first process of a shared namespace: as `init_process`, but the command's end is told to the shell's process, and this one
+/// stays, reaping, until no session holds the sessions file. Its exit is the first command's.
+fn init_shared(command: &[OsString], set: &libc::sigset_t, shared: &Shared) -> ! {
+    // SAFETY: as init_process
+    unsafe {
+        libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGKILL);
+        if libc::unshare(libc::CLONE_NEWNS) == 0 {
+            libc::mount(std::ptr::null(), c"/".as_ptr(), std::ptr::null(), libc::MS_REC | libc::MS_PRIVATE, std::ptr::null());
+            libc::mount(c"proc".as_ptr(), c"/proc".as_ptr(), c"proc".as_ptr(), libc::MS_NOSUID | libc::MS_NODEV | libc::MS_NOEXEC, std::ptr::null());
+        }
+    }
+    let mut start = Command::new(&command[0]);
+    start.args(&command[1..]);
+    // SAFETY: sigprocmask only, between fork and exec
+    unsafe {
+        start.pre_exec(|| {
+            let mut none = std::mem::zeroed::<libc::sigset_t>();
+            libc::sigemptyset(&raw mut none);
+            libc::sigprocmask(libc::SIG_SETMASK, &raw const none, std::ptr::null_mut());
+            Ok(())
+        });
+    }
+    let child = match start.spawn() {
+        Ok(child) => child.id() as i32,
+        Err(error) => {
+            eprintln!("{}: {error}", command[0].to_string_lossy());
+            // SAFETY: ends this process
+            unsafe { libc::_exit(127) }
+        }
+    };
+    let mut ended: Option<i32> = None;
+    let wait = libc::timespec { tv_sec: 0, tv_nsec: 500_000_000 };
+    loop {
+        // SAFETY: a live set, a value the kernel fills in, and a time to wait
+        let (signal, code) = unsafe {
+            let mut info = std::mem::zeroed::<libc::siginfo_t>();
+            (libc::sigtimedwait(set, &raw mut info, &raw const wait), info.si_code)
+        };
+        if signal == libc::SIGCHLD || signal < 0 {
+            loop {
+                let mut status = 0;
+                // SAFETY: a value the kernel fills in
+                let done = unsafe { libc::waitpid(-1, &raw mut status, libc::WNOHANG) };
+                if done <= 0 {
+                    break;
+                }
+                if done == child && ended.is_none() {
+                    let code = exit_code(status);
+                    ended = Some(code);
+                    // SAFETY: a live descriptor and four bytes of this function's
+                    unsafe {
+                        libc::write(shared.report.as_raw_fd(), code.to_le_bytes().as_ptr().cast(), 4);
+                        libc::close(shared.report.as_raw_fd());
+                    }
+                }
+            }
+        } else if signal > 0 && code != libc::SI_KERNEL && ended.is_none() {
+            // SAFETY: the command has not been waited for, so its number is still its own
+            unsafe { libc::kill(child, signal) };
+        }
+        if let Some(code) = ended {
+            // No session left: taken alone, so that one arriving now waits for the next keeper
+            // SAFETY: a live descriptor
+            if unsafe { libc::flock(shared.sessions.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } == 0 {
+                // SAFETY: ends this process, and with it the namespace
+                unsafe { libc::_exit(code) };
+            }
+        }
+    }
+}
+
+/// The keeper's wait in a shared run: as `supervise`, and between signals it answers its door, handing a session of this account the
+/// namespaces to enter.
+fn supervise_shared(command: &[OsString], shared: &Shared) -> Result<i32, u8> {
+    let set = signals();
+    // SAFETY: as supervise
+    let init = unsafe {
+        libc::sigprocmask(libc::SIG_BLOCK, &raw const set, std::ptr::null_mut());
+        libc::fork()
+    };
+    match init {
+        -1 => Err(why(Why::NoNamespace)),
+        0 => init_shared(command, &set, shared),
+        init => {
+            // Only now, with its first process made, is the process namespace one a session can enter without becoming that process
+            let spaces: Vec<std::fs::File> = ["user", "mnt", "pid_for_children"].iter().filter_map(|name| std::fs::File::open(format!("/proc/self/ns/{name}")).ok()).collect();
+            let wait = libc::timespec { tv_sec: 0, tv_nsec: 200_000_000 };
+            loop {
+                // SAFETY: a live set, a value the kernel fills in, and a time to wait
+                let (signal, code) = unsafe {
+                    let mut info = std::mem::zeroed::<libc::siginfo_t>();
+                    (libc::sigtimedwait(&raw const set, &raw mut info, &raw const wait), info.si_code)
+                };
+                if signal == libc::SIGCHLD || signal < 0 {
+                    let mut status = 0;
+                    // SAFETY: a value the kernel fills in
+                    if unsafe { libc::waitpid(init, &raw mut status, libc::WNOHANG) } == init {
+                        return Ok(exit_code(status));
+                    }
+                } else if signal > 0 && code != libc::SI_KERNEL {
+                    // SAFETY: the first process has not been waited for
+                    unsafe { libc::kill(init, signal) };
+                }
+                for _ in 0..8 {
+                    let Ok((stream, _)) = shared.door.accept() else { break };
+                    if spaces.len() == 3 {
+                        hand_over(&stream, &spaces);
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Hands the three namespaces to whoever is at the door, when it is this account: the folder is this account's alone already, and the
+/// kernel says who connected
+fn hand_over(stream: &UnixStream, spaces: &[std::fs::File]) {
+    // SAFETY: a live socket and a value the kernel fills in
+    let same = unsafe {
+        let mut peer = std::mem::zeroed::<libc::ucred>();
+        let mut size = std::mem::size_of::<libc::ucred>() as libc::socklen_t;
+        libc::getsockopt(stream.as_raw_fd(), libc::SOL_SOCKET, libc::SO_PEERCRED, (&raw mut peer).cast(), &raw mut size) == 0 && peer.uid == libc::getuid()
+    };
+    if !same {
+        return;
+    }
+    let fds: [libc::c_int; 3] = [spaces[0].as_raw_fd(), spaces[1].as_raw_fd(), spaces[2].as_raw_fd()];
+    // SAFETY: a message of one byte with three descriptors beside it, every buffer this function's own
+    unsafe {
+        let mut byte = [1u8];
+        let mut iov = libc::iovec { iov_base: byte.as_mut_ptr().cast(), iov_len: 1 };
+        let mut control = [0u64; 8];
+        let mut message = std::mem::zeroed::<libc::msghdr>();
+        message.msg_iov = &raw mut iov;
+        message.msg_iovlen = 1;
+        message.msg_control = control.as_mut_ptr().cast();
+        message.msg_controllen = libc::CMSG_SPACE(std::mem::size_of_val(&fds) as u32) as _;
+        let header = libc::CMSG_FIRSTHDR(&raw const message);
+        (*header).cmsg_level = libc::SOL_SOCKET;
+        (*header).cmsg_type = libc::SCM_RIGHTS;
+        (*header).cmsg_len = libc::CMSG_LEN(std::mem::size_of_val(&fds) as u32) as _;
+        std::ptr::copy_nonoverlapping(fds.as_ptr().cast::<u8>(), libc::CMSG_DATA(header), std::mem::size_of_val(&fds));
+        libc::sendmsg(stream.as_raw_fd(), &raw const message, libc::MSG_NOSIGNAL);
+    }
+}
+
+/// The three namespaces the keeper hands over, in the order it sends them: user, mount, processes
+fn take_spaces(stream: &UnixStream) -> Option<[OwnedFd; 3]> {
+    let _ = stream.set_read_timeout(Some(Duration::from_secs(5)));
+    // SAFETY: a message of one byte with room for three descriptors; what arrives is then owned
+    unsafe {
+        let mut byte = [0u8];
+        let mut iov = libc::iovec { iov_base: byte.as_mut_ptr().cast(), iov_len: 1 };
+        let mut control = [0u64; 8];
+        let mut message = std::mem::zeroed::<libc::msghdr>();
+        message.msg_iov = &raw mut iov;
+        message.msg_iovlen = 1;
+        message.msg_control = control.as_mut_ptr().cast();
+        message.msg_controllen = std::mem::size_of_val(&control) as _;
+        if libc::recvmsg(stream.as_raw_fd(), &raw mut message, libc::MSG_CMSG_CLOEXEC) != 1 {
+            return None;
+        }
+        let header = libc::CMSG_FIRSTHDR(&raw const message);
+        if header.is_null() || (*header).cmsg_level != libc::SOL_SOCKET || (*header).cmsg_type != libc::SCM_RIGHTS
+            || (*header).cmsg_len as usize != libc::CMSG_LEN(12) as usize
+        {
+            return None;
+        }
+        let mut fds = [0 as libc::c_int; 3];
+        std::ptr::copy_nonoverlapping(libc::CMSG_DATA(header), fds.as_mut_ptr().cast::<u8>(), 12);
+        use std::os::fd::FromRawFd;
+        Some([OwnedFd::from_raw_fd(fds[0]), OwnedFd::from_raw_fd(fds[1]), OwnedFd::from_raw_fd(fds[2])])
+    }
+}
+
+/// A later command on a file that is open already: counted in, asked for, let into the keeper's namespaces, run, and counted out
+fn join(args: &Args, id: &str, command: &[OsString], started: &mut bool) -> Result<(), u8> {
+    let sessions = sessions_file(id)?;
+    // Held shared for as long as this command runs. A keeper whose sessions have all ended holds it alone: it is ending
+    // SAFETY: a live descriptor
+    if unsafe { libc::flock(sessions.as_raw_fd(), libc::LOCK_SH | libc::LOCK_NB) } != 0 {
+        return Err(AGAIN);
+    }
+    let door = run_folder()?.join(format!("{id}.door"));
+    // No door yet: the first command is still being asked for, or a plain `run` has the file, which serves one command (the wait
+    // then ends as a file in use). The door is no wall of its own: it hands the namespaces to this account's programs, which can reach a
+    // running command's already (the manual says so of every run). What asks the person is the vault, below.
+    if !door.exists() {
+        return Err(AGAIN);
+    }
+    // The person says yes to this command too, as to every use: a join is never quieter than a first run
+    drop(call(json!({"op": "get", "kind": KIND, "id": id}))?);
+    // Asked once: from here a keeper that does not answer is a file in use, never a reason to ask again
+    let stream = UnixStream::connect(&door).map_err(|_| why(Why::InUse))?;
+    let spaces = take_spaces(&stream).ok_or(why(Why::InUse))?;
+    let here = std::env::current_dir().ok();
+    // SAFETY: live descriptors of namespaces this account's keeper made; this process has one thread
+    let entered = unsafe {
+        libc::setns(spaces[0].as_raw_fd(), libc::CLONE_NEWUSER) == 0
+            && libc::setns(spaces[1].as_raw_fd(), libc::CLONE_NEWNS) == 0
+            && libc::setns(spaces[2].as_raw_fd(), libc::CLONE_NEWPID) == 0
+    };
+    if !entered {
+        return Err(why(Why::NoNamespace));
+    }
+    // Entering a mount namespace puts a process at its root: back to where the command was started
+    if let Some(here) = here {
+        let _ = std::env::set_current_dir(here);
+    }
+    eprintln!("{}", args.say("say-joined", "This file is open for another command too, and this one shares it: other programs of this account can read it and the memory of each command while any of them runs, and it is sealed again when the last has ended."));
+    *started = true;
+    let code = supervise(command)?;
+    if code != 0 {
+        // Noted for the keeper, which seals by the worst end of any command: one that did not end well may have left half a file
+        let mut note = std::fs::File::from(sessions.try_clone().map_err(|_| 6u8)?);
+        let _ = note.write_all(b"x");
+    }
+    drop(sessions);
+    if code == 0 { Ok(()) } else { Err(code.clamp(1, 255) as u8) }
+}
+
+/// What the keeper does where a plain run would ask at its terminal and the terminal is gone: says it on the desktop, and waits. With the
+/// vault closed, for as long as it takes (what the commands left exists nowhere else); refused, it asks three times more.
+fn ask_again_shared(args: &Args, closed: bool, asked: &mut u32) -> bool {
+    *asked += 1;
+    if *asked == 1 {
+        let body = if closed {
+            args.say("say-shared-closed", "A protected file is waiting to be sealed again, and the vault is closed. Open it with: ame vault open")
+        } else {
+            args.say("say-shared-refused", "Sealing a protected file again was refused, and what was left of it is only in memory. You will be asked again.")
+        };
+        let _ = Command::new("notify-send").args(["--app-name=Amethystora Vault", "--urgency=critical", "--icon=amethystora-vault", "Amethystora Vault"]).arg(body)
+            .stdin(std::process::Stdio::null()).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null()).status();
+    }
+    if !closed && *asked > 3 {
+        return false;
+    }
+    std::thread::sleep(Duration::from_secs(if closed { 5 } else { 20 }));
+    true
 }
 
 // --- Protected files --------------------------------------------------------------------------------------------------------------

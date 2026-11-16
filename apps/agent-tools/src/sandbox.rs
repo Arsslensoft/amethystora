@@ -25,6 +25,13 @@ pub const BWRAP: &str = "/usr/bin/bwrap";
 pub const FILTER: &str = "/usr/share/amethystora/agent-sandbox.bpf";
 pub const SANDBOX_VAR: &str = "AMETHYSTORA_AGENT_SANDBOX";
 pub const PROJECT_VAR: &str = "AMETHYSTORA_AGENT_SANDBOX_PROJECT";
+/// This program, as the sandbox sees it: the forwarder that stands in front of a command held to a list of hosts
+const TOOLS: &str = "/usr/libexec/amethystora-agent-tools";
+/// Where the sandbox sees its proxy's socket, and the loopback port programs are told (HTTPS_PROXY)
+const PROXY_INSIDE: &str = "/run/amethystora-agent-proxy.sock";
+pub const SHIM_PORT: u16 = 3128;
+/// Connections open at once through the proxy: a package install opens many
+const PROXY_CONNECTIONS: usize = 256;
 /// The descriptor the filter is handed to bubblewrap on, as the plugins' is
 const FILTER_FD: i32 = 9;
 
@@ -67,6 +74,8 @@ pub enum Permission {
     SshAgent,
     /// The graphics card's devices
     Gpu,
+    /// One more host (or *.name) the sandbox may reach while its network is held to a list
+    Network(String),
 }
 
 impl Permission {
@@ -78,7 +87,15 @@ impl Permission {
             "gpu" => return Ok(Permission::Gpu),
             _ => {}
         }
-        let (kind, path) = text.split_once('=').ok_or_else(|| format!("{text} is not a permission: write=PATH, show=PATH, ssh-agent or gpu"))?;
+        let (kind, path) = text.split_once('=').ok_or_else(|| format!("{text} is not a permission: write=PATH, show=PATH, network=HOST, ssh-agent or gpu"))?;
+        if kind == "network" {
+            // A name, or the subdomains of one: never an address, a port or a path
+            return if amethystora_net_proxy::valid_host(path) {
+                Ok(Permission::Network(path.to_string()))
+            } else {
+                Err(format!("{path} is not a host's name: example.org, or *.example.org for its subdomains"))
+            };
+        }
         let path = match path.strip_prefix("~/") {
             Some(rest) => home.join(rest),
             None => PathBuf::from(path),
@@ -103,6 +120,7 @@ impl Permission {
             Permission::Show(path) => format!("show={}", path.display()),
             Permission::SshAgent => "ssh-agent".into(),
             Permission::Gpu => "gpu".into(),
+            Permission::Network(host) => format!("network={host}"),
         }
     }
 
@@ -113,6 +131,7 @@ impl Permission {
             Permission::Show(path) => format!("The agent can read {}, which is hidden from it otherwise, and send what it reads.", path.display()),
             Permission::SshAgent => "The agent can log in, as you, with every key your ssh agent holds (git push, ssh to servers), without reading the keys.".into(),
             Permission::Gpu => "The agent's programs can use the graphics card, as any program of yours can.".into(),
+            Permission::Network(host) => format!("While this folder's network is held to a list, the agent can also reach {host} over HTTPS, and send it whatever it can read."),
         }
     }
 }
@@ -196,6 +215,15 @@ pub struct Request {
     pub run: PathBuf,
     /// Where the agent starts
     pub dir: PathBuf,
+    /// The network held to a list: the hosts it may reach over HTTPS, through the launch's proxy. None is the machine's network
+    pub hosts: Option<Vec<String>>,
+}
+
+/// The launch's proxy's socket: in the account's runtime folder, which no sandbox sees (its /run is its own), so that one sandbox
+/// cannot use another launch's proxy and its list
+fn proxy_socket(request: &Request) -> PathBuf {
+    let name = request.run.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default();
+    crate::history::sessions_dir().with_file_name("agent-proxy").join(format!("{name}.sock"))
 }
 
 /// Something made before the launch, where it is not there already
@@ -325,6 +353,10 @@ pub fn recipe(table: &Table, request: &Request) -> Result<Recipe, String> {
     // No bus, no display, no keyring, no agent: an empty /run but for the resolver, and a runtime folder of its own
     push(&["--tmpfs", "/run", "--ro-bind-try", "/run/systemd/resolve", "/run/systemd/resolve", "--perms", "0700", "--dir", &runtime]);
     recipe.args.extend(["--bind".into(), s(&tmp), "/tmp".into(), "--bind".into(), s(&vartmp), "/var/tmp".into()]);
+    if request.hosts.is_some() {
+        // A network of its own with nothing but loopback: the one way out is the launch's proxy, on a socket bound in
+        recipe.args.extend(["--unshare-net".into(), "--bind".into(), s(&proxy_socket(request)), PROXY_INSIDE.into()]);
+    }
 
     // Hidden: the machine's own secret places always; in an open sandbox the home's secrets, the other agents' folders and
     // the other profiles (all of them: this launch's own is bound in again below)
@@ -545,6 +577,17 @@ pub fn recipe(table: &Table, request: &Request) -> Result<Recipe, String> {
     if std::env::var("TMPDIR").is_ok_and(|dir| !dir.starts_with("/tmp") && !dir.starts_with("/var/tmp")) {
         env.push(("TMPDIR".into(), None));
     }
+    if request.hosts.is_some() {
+        let proxy = format!("http://127.0.0.1:{SHIM_PORT}");
+        for name in ["HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy"] {
+            env.push((name.into(), Some(proxy.clone())));
+        }
+        for name in ["NO_PROXY", "no_proxy"] {
+            env.push((name.into(), Some("localhost,127.0.0.1,::1".into())));
+        }
+        env.push(("ALL_PROXY".into(), None));
+        env.push(("all_proxy".into(), None));
+    }
     env.push(("XDG_RUNTIME_DIR".into(), Some(runtime)));
     env.push((SANDBOX_VAR.into(), Some(request.mode.word().into())));
     env.push((PROJECT_VAR.into(), Some(s(&project.top))));
@@ -706,9 +749,32 @@ pub fn run(recipe: &Recipe, request: &Request, command: &[String]) -> Result<i32
         session_file(&json!({"pid": crate::history::host_pid(), "started": crate::history::now(), "agent": request.agent, "profile": request.profile,
             "sandboxed": request.mode.word(), "project": request.project.as_ref().map(|project| s(&project.top)), "now": null, "recent": []}))
     }).flatten();
+    // The network held to a list: the proxy listens on a socket of the launch's folder, which the recipe binds in, and the
+    // command starts behind the forwarder that takes the sandbox's loopback to it
+    let mut inside: Vec<String> = Vec::new();
+    if let Some(hosts) = &request.hosts {
+        let socket = proxy_socket(request);
+        if let Some(folder) = socket.parent() {
+            let _ = std::fs::DirBuilder::new().recursive(true).mode(0o700).create(folder);
+        }
+        let _ = std::fs::remove_file(&socket);
+        let listener = std::os::unix::net::UnixListener::bind(&socket).map_err(|error| {
+            take_back(&request.run);
+            let _ = std::fs::remove_dir_all(&request.run);
+            format!("the sandbox's proxy could not listen ({error}), so nothing starts")
+        })?;
+        let hosts = hosts.clone();
+        let proxy = amethystora_net_proxy::proxy::Proxy::system(
+            Box::new(move || amethystora_net_proxy::proxy::Policy { allowed: hosts.clone(), unlimited: true, ..Default::default() }),
+            Box::new(|_| {}),
+        );
+        proxy.max_connections.store(PROXY_CONNECTIONS, Ordering::Relaxed);
+        std::thread::spawn(move || proxy.serve(listener));
+        inside = vec![TOOLS.into(), "net-shim".into(), PROXY_INSIDE.into(), "--".into()];
+    }
     let watched: Vec<PathBuf> = recipe.watched.iter().filter(|path| std::fs::symlink_metadata(path).is_err()).cloned().collect();
     let mut child = Command::new(BWRAP);
-    child.args(&recipe.args).arg("--").args(command);
+    child.args(&recipe.args).arg("--").args(&inside).args(command);
     for (name, value) in &recipe.env {
         match value {
             Some(value) => child.env(name, value),
@@ -751,6 +817,9 @@ pub fn run(recipe: &Recipe, request: &Request, command: &[String]) -> Result<i32
     };
     take_back(&request.run);
     let _ = std::fs::remove_dir_all(&request.run);
+    if request.hosts.is_some() {
+        let _ = std::fs::remove_file(proxy_socket(request));
+    }
     if let Some(path) = &session {
         let _ = std::fs::remove_file(path);
     }
@@ -759,6 +828,31 @@ pub fn run(recipe: &Recipe, request: &Request, command: &[String]) -> Result<i32
         eprintln!("The sandboxed agent made {}, which an agent reads when it next starts in this project, outside a sandbox: read it first.", path.display());
     }
     Ok(code)
+}
+
+/// "amethystora-agent-tools net-shim SOCKET -- COMMAND...", inside a sandbox whose network is held to a list: takes the
+/// sandbox's loopback port to the proxy's socket, then runs the command and waits for it. With no forwarder nothing runs.
+pub fn net_shim(args: &[String]) -> i32 {
+    let (Some(socket), Some("--"), Some(program)) = (args.first(), args.get(1).map(String::as_str), args.get(2)) else {
+        eprintln!("usage: amethystora-agent-tools net-shim SOCKET -- COMMAND...");
+        return 64;
+    };
+    if let Err(error) = amethystora_net_proxy::shim::listen(socket, SHIM_PORT) {
+        eprintln!("the sandbox's way to its list of hosts could not be set up ({error}), so nothing starts");
+        return 2;
+    }
+    let spawned = Command::new(program).args(&args[3..]).spawn();
+    // Ctrl+C is the command's to answer; this waits for it (ignored only once it is started, or it would inherit that)
+    for signal in [libc::SIGINT, libc::SIGQUIT] {
+        unsafe { libc::signal(signal, libc::SIG_IGN) };
+    }
+    match spawned.and_then(|mut child| child.wait()) {
+        Ok(status) => status.code().unwrap_or_else(|| 128 + std::os::unix::process::ExitStatusExt::signal(&status).unwrap_or(1)),
+        Err(error) => {
+            eprintln!("{program}: {error}");
+            127
+        }
+    }
 }
 
 // --- What a launch gets ----------------------------------------------------------------------------------------------------
@@ -771,6 +865,8 @@ pub struct Asked {
     /// open, closed, no, or None for the folder's rule
     pub sandbox: Option<String>,
     pub dir: Option<PathBuf>,
+    /// list for this launch, or None for the folder's rule
+    pub network: Option<String>,
 }
 
 /// The decision for one launch, worked out when it starts and belonging to it alone
@@ -796,6 +892,8 @@ impl Plan {
             "sandbox": (request.mode != Mode::Profile).then(|| request.mode.word()),
             "project": request.project.as_ref().map(|project| s(&project.top)),
             "allow": request.allow.iter().map(Permission::word).collect::<Vec<_>>(),
+            "network": if request.mode == Mode::Profile { Value::Null } else if request.hosts.is_some() { json!("list") } else { json!("open") },
+            "hosts": request.hosts,
             "wrapped": self.wrapped,
             "login": login,
             "env": agents::environment(table, &request.home, &request.agent, &request.profile).into_iter()
@@ -806,6 +904,11 @@ impl Plan {
 
 /// The folder's sandbox rule, if it has one: its mode and what it was allowed
 pub fn rule_of(home: &Path, dir: &Path) -> Result<Option<(String, Mode, Vec<Permission>)>, String> {
+    Ok(rule_with_network(home, dir)?.map(|(folder, mode, allow, _)| (folder, mode, allow)))
+}
+
+/// The same, with whether the rule holds the network to a list
+pub fn rule_with_network(home: &Path, dir: &Path) -> Result<Option<(String, Mode, Vec<Permission>, bool)>, String> {
     let map = Map::read(&agents::sandbox_map_path())?;
     let dir = std::fs::canonicalize(dir).unwrap_or_else(|_| dir.to_path_buf());
     let Some((folder, rule)) = map.find(&dir) else { return Ok(None) };
@@ -820,7 +923,19 @@ pub fn rule_of(home: &Path, dir: &Path) -> Result<Option<(String, Mode, Vec<Perm
         .transpose()
         .map_err(|why| format!("{}: {why}", agents::sandbox_map_path().display()))?
         .unwrap_or_default();
-    Ok(Some((folder.to_string(), mode, allow)))
+    Ok(Some((folder.to_string(), mode, allow, rule.get("network").and_then(Value::as_str) == Some("list"))))
+}
+
+/// The hosts a sandbox held to a list may reach: the shipped ones for its agent and for everyone, and the folder's own
+pub fn hosts_for(agent: &str, allow: &[Permission]) -> Vec<String> {
+    let mut hosts = agents::network_hosts(agent);
+    hosts.extend(allow.iter().filter_map(|permission| match permission {
+        Permission::Network(host) => Some(host.clone()),
+        _ => None,
+    }));
+    hosts.sort();
+    hosts.dedup();
+    hosts
 }
 
 /// Works out a launch: its profile, whether it is sandboxed and how, from what was asked, the terminal's pin, the folder's
@@ -845,7 +960,8 @@ pub fn plan(table: &Table, asked: &Asked) -> Result<Plan, String> {
         return Err(format!("{} has no profiles: it keeps its login in the keyring, which no folder isolates", agents::title(&asked.agent)));
     }
     let always = policy::Conf::read(Path::new(policy::CONF)).sandbox_always;
-    let rule = rule_of(&home, &dir)?;
+    let rule = rule_with_network(&home, &dir)?;
+    let rule_list = rule.as_ref().is_some_and(|(_, _, _, list)| *list);
     let has_project = project_of(&dir, &home).is_ok();
     let (mode, allow) = match asked.sandbox.as_deref() {
         Some("no") if always && has_project => {
@@ -854,19 +970,26 @@ pub fn plan(table: &Table, asked: &Asked) -> Result<Plan, String> {
         Some("no") => (Mode::Profile, Vec::new()),
         Some(word) => {
             let mode = Mode::parse(word).ok_or_else(|| format!("{word} is not a sandbox: open or closed"))?;
-            (mode, rule.map(|(_, _, allow)| allow).unwrap_or_default())
+            (mode, rule.map(|(_, _, allow, _)| allow).unwrap_or_default())
         }
         None => match rule {
-            Some((_, mode, allow)) => (mode, allow),
+            Some((_, mode, allow, _)) => (mode, allow),
             None if always && has_project => (Mode::Open, Vec::new()),
             None => (Mode::Profile, Vec::new()),
         },
     };
     let project = if mode == Mode::Profile { None } else { Some(project_of(&dir, &home)?) };
+    // Held to a list by the folder's rule, or for this launch; never loosened by a launch where the rule says list
+    let list = match asked.network.as_deref() {
+        Some("list") => true,
+        Some("open") | None => rule_list,
+        Some(word) => return Err(format!("{word} is not a network: list or open")),
+    };
+    let hosts = (mode != Mode::Profile && list).then(|| hosts_for(&asked.agent, &allow));
     let wrapped = mode != Mode::Profile || (profile != DEFAULT && matches!(table.agent(&asked.agent)?.way, Some(Way::Mount)));
     let run = runs_dir(&home).join(format!("{}-{}", std::process::id(), crate::history::new_id()));
     Ok(Plan {
-        request: Request { agent: asked.agent.clone(), profile, mode, project, allow, home, uid: unsafe { libc::getuid() }, run, dir },
+        request: Request { agent: asked.agent.clone(), profile, mode, project, allow, home, uid: unsafe { libc::getuid() }, run, dir, hosts },
         why,
         wrapped,
     })
@@ -891,7 +1014,13 @@ pub fn say(plan: &Plan) -> Vec<String> {
     } else {
         "Your keys and logins, the other agents' folders and the bus are hidden from it; the rest of your home it can only read.".into()
     });
-    lines.push("The network is open: it can still send what it reads. Nothing in it can become root.".into());
+    lines.push(match &request.hosts {
+        Some(hosts) => format!(
+            "The network is held to a list of {} hosts over HTTPS (its maker, the package registries, the code hosts): a program that uses no proxy reaches nothing, and this machine's own services (localhost) are out of reach. It can still send what it reads to an account on one of those hosts. Nothing in it can become root.",
+            hosts.len()
+        ),
+        None => "The network is open: it can still send what it reads. Nothing in it can become root.".into(),
+    });
     for permission in &request.allow {
         lines.push(format!("This folder allows it more: {}", permission.word()));
     }
@@ -982,6 +1111,7 @@ fn asked_of(options: &[String]) -> Result<Asked, String> {
             "--profile" => asked.profile = Some(value()?),
             "--sandbox" => asked.sandbox = Some(value()?),
             "--dir" => asked.dir = Some(PathBuf::from(value()?)),
+            "--network" => asked.network = Some(value()?),
             "--quiet" => {
                 at += 1;
                 continue;
@@ -1028,7 +1158,10 @@ pub fn agent_plan(args: &[String], show: bool) -> i32 {
         value["refused"] = json!(why);
     }
     if let Some(Ok(recipe)) = &recipe {
-        let command = if command.is_empty() { vec![plan.request.agent.clone()] } else { command };
+        let mut command = if command.is_empty() { vec![plan.request.agent.clone()] } else { command };
+        if plan.request.hosts.is_some() {
+            command.splice(0..0, [TOOLS.to_string(), "net-shim".into(), PROXY_INSIDE.into(), "--".into()]);
+        }
         value["hidden"] = json!(recipe.hidden.iter().map(|path| s(path)).collect::<Vec<_>>());
         value["writable"] = json!(recipe.writable.iter().map(|path| s(path)).collect::<Vec<_>>());
         value["command"] = json!(command_line(recipe, &command));
@@ -1049,7 +1182,7 @@ pub fn agent_plan(args: &[String], show: bool) -> i32 {
         println!("Not sandboxed: the agent starts as it always does here.");
         return 0;
     }
-    for (title, key) in [("Writable", "writable"), ("Hidden", "hidden")] {
+    for (title, key) in [("Writable", "writable"), ("Hidden", "hidden"), ("Hosts it may reach, over HTTPS", "hosts")] {
         println!("{title}:");
         for path in value[key].as_array().into_iter().flatten().filter_map(Value::as_str) {
             println!("  {path}");
@@ -1102,6 +1235,7 @@ mod tests {
             uid: 1000,
             run: home.join(".cache/amethystora/agent-sandbox/1-x"),
             dir: project.to_path_buf(),
+            hosts: None,
         }
     }
 
@@ -1230,6 +1364,30 @@ mod tests {
         assert!(Permission::parse("network=any", &home).is_err());
         assert!(Permission::parse("show=~/missing", &home).is_err());
         assert!(Permission::SshAgent.cost().contains("every key"));
+        std::fs::remove_dir_all(&home).unwrap();
+    }
+
+    #[test]
+    fn a_network_held_to_a_list_has_one_way_out() {
+        let home = temp("network");
+        std::fs::create_dir_all(home.join("code/a")).unwrap();
+        let project = home.join("code/a");
+        let mut held = request(&home, &project, Mode::Open, DEFAULT, "claude");
+        held.hosts = Some(vec!["api.anthropic.com".into()]);
+        let recipe = recipe(&table(), &held).unwrap();
+        assert!(recipe.args.contains(&"--unshare-net".to_string()));
+        assert!(at(&recipe, "--bind", Path::new(PROXY_INSIDE)).is_some(), "the proxy's socket bound in");
+        assert!(recipe.env.contains(&("HTTPS_PROXY".into(), Some("http://127.0.0.1:3128".into()))));
+        // Open, it keeps the machine's network and is told of no proxy
+        let open = super::recipe(&table(), &request(&home, &project, Mode::Open, DEFAULT, "claude")).unwrap();
+        assert!(!open.args.contains(&"--unshare-net".to_string()) && !open.env.iter().any(|(name, _)| name == "HTTPS_PROXY"));
+        // A folder's own host is a name, never an address, a port or a path
+        assert_eq!(Permission::parse("network=*.example.org", &home).unwrap(), Permission::Network("*.example.org".into()));
+        for bad in ["network=10.0.0.1", "network=example.org:22", "network=localhost", "network=example.org/x", "network=any"] {
+            assert!(Permission::parse(bad, &home).is_err(), "{bad}");
+        }
+        assert_eq!(hosts_for("none", &[Permission::Network("b.example.org".into()), Permission::Gpu]), vec!["b.example.org".to_string()]);
+        assert_eq!(agents::hosts_in("# c\nclaude api.anthropic.com\ncodex api.openai.com\n- github.com\n- 10.0.0.1\nclaude a b\n", "claude"), vec!["api.anthropic.com".to_string(), "github.com".to_string()]);
         std::fs::remove_dir_all(&home).unwrap();
     }
 

@@ -226,8 +226,9 @@ pub fn sandbox_cmd(args: &[String]) -> i32 {
             for (folder, rule) in &map.folders {
                 let allow: Vec<&str> = rule["allow"].as_array().into_iter().flatten().filter_map(Value::as_str).collect();
                 println!(
-                    "{folder}: {}{}",
+                    "{folder}: {}{}{}",
                     rule["mode"].as_str().unwrap_or("open"),
+                    if rule["network"] == "list" { ", network held to a list" } else { "" },
                     if allow.is_empty() { String::new() } else { format!(", allowed {}", allow.join(", ")) }
                 );
             }
@@ -274,11 +275,21 @@ pub fn sandbox_cmd(args: &[String]) -> i32 {
             }
             Ok(format!("{folder}'s sandbox no longer allows {permission}"))
         })),
+        // The network held to a list of hosts (the shipped ones and the folder's own), or the machine's again
+        ["network", folder, "list"] => out(change(folder, &|rule| {
+            rule.insert("network".into(), json!("list"));
+            rule.entry("mode").or_insert(json!("open"));
+            Ok(format!("Agents started in {folder} reach only their list of hosts, over HTTPS: ame agent sandbox show says which"))
+        })),
+        ["network", folder, "open"] => out(change(folder, &|rule| {
+            rule.remove("network");
+            Ok(format!("Agents started in {folder} have the machine's network again"))
+        })),
         // What a permission gives away, for the recipe to say before it asks
         ["cost", permission] => out(Permission::parse(permission, &home).map(|permission| permission.cost())),
         ["show", rest @ ..] => sandbox::agent_plan(&rest.iter().map(|word| word.to_string()).collect::<Vec<_>>(), true),
         _ => {
-            eprintln!("usage: amethystora-agent-tools sandbox list|use|off|allow|disallow|cost|show ...");
+            eprintln!("usage: amethystora-agent-tools sandbox list|use|off|network|allow|disallow|cost|show ...");
             64
         }
     }

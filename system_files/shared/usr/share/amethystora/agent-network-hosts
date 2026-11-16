@@ -1,0 +1,66 @@
+# The hosts an AI agent's sandbox may reach while its folder holds the network to a list (ame agent sandbox network FOLDER
+# list; plans/PLAN-agent-sandbox.md, "The network"): HTTPS only (port 443), by name, through the sandbox's proxy
+# (amethystora-agent-tools, sandbox.rs). One line each: AGENT HOST, AGENT - for every agent and for `ame agent sandbox run`.
+# A HOST is a name or *.name (its subdomains); never an address. A folder adds its own with ame agent sandbox allow FOLDER
+# network=HOST. The agents' own hosts are from their makers' documentation as remembered on 2026-11-16 (unverified with a
+# signed-in agent): an agent that cannot reach its maker says so at once, and the missing host is added here. Names, not
+# wide wildcards: a host that stores anything for anyone (a cloud's storage) is a way out. The list does not stop sending to an
+# account on a code host, a registry or a maker's own service, which the manual says: the proxy sees a host's name, nothing more.
+
+# Each agent's maker
+claude          api.anthropic.com
+claude          *.anthropic.com
+claude          claude.ai
+claude          *.claude.ai
+claude          *.claude.com
+codex           api.openai.com
+codex           *.openai.com
+codex           chatgpt.com
+codex           *.chatgpt.com
+opencode        opencode.ai
+opencode        *.opencode.ai
+opencode        models.dev
+opencode        api.anthropic.com
+opencode        api.openai.com
+opencode        openrouter.ai
+agy             antigravity.google
+agy             generativelanguage.googleapis.com
+agy             cloudcode-pa.googleapis.com
+agy             www.googleapis.com
+agy             accounts.google.com
+agy             oauth2.googleapis.com
+copilot         api.github.com
+copilot         github.com
+copilot         api.githubcopilot.com
+copilot         *.githubcopilot.com
+cursor-agent    *.cursor.com
+cursor-agent    *.cursor.sh
+
+# Where code is kept
+-               github.com
+-               api.github.com
+-               codeload.github.com
+-               objects.githubusercontent.com
+-               raw.githubusercontent.com
+-               gitlab.com
+-               bitbucket.org
+-               codeberg.org
+
+# Where packages come from
+-               registry.npmjs.org
+-               registry.yarnpkg.com
+-               pypi.org
+-               files.pythonhosted.org
+-               crates.io
+-               index.crates.io
+-               static.crates.io
+-               static.rust-lang.org
+-               proxy.golang.org
+-               sum.golang.org
+-               repo.maven.apache.org
+-               repo1.maven.org
+-               plugins.gradle.org
+-               rubygems.org
+-               jsr.io
+-               deno.land
+-               nodejs.org

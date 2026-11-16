@@ -108,6 +108,26 @@ fi
 pkill -u "${TEST_USER}" -f 'sleep 300' 2>/dev/null || true
 wait 2>/dev/null || true
 
+# The network held to a list: an allowed host answers, another is refused by the proxy, and nothing goes round it
+out="$(user_script network <<EOF
+${TOOLS} sandbox use ~/vmlab-code >/dev/null; ${TOOLS} sandbox network ~/vmlab-code list >/dev/null
+cd ~/vmlab-code/site && ${TOOLS} agent-run --agent claude --quiet -- bash -c '
+echo "allowed=\$(curl -s -o /dev/null -m 25 -w %{http_code} https://api.github.com/zen)"
+echo "denied=\$(curl -s -o /dev/null -m 25 -w %{http_code} https://example.com/)"
+echo "direct=\$(curl -s --noproxy "*" -o /dev/null -m 8 -w %{http_code} https://api.github.com/zen)"
+echo "plain=\$(curl -s -o /dev/null -m 10 -w %{http_code} http://example.com/)"'
+${TOOLS} sandbox off ~/vmlab-code >/dev/null
+EOF
+)"
+if curl -s -o /dev/null -m 15 https://api.github.com/zen; then
+    expect allowed 200 "held to a list: a host on the list answers"
+    expect denied 000 "held to a list: a host off it is refused"
+    expect direct 000 "held to a list: nothing goes round the proxy"
+    expect plain 403 "held to a list: plain HTTP is refused"
+else
+    skip "the lab has no network, so the list of hosts was not tried"
+fi
+
 # No namespaces: the launch is refused, and the command never runs plain
 before="$(sysctl -n user.max_user_namespaces)"
 sysctl -q -w user.max_user_namespaces=0

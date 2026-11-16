@@ -84,8 +84,9 @@ agent-profile        # say which
 - **An agent never changes account by itself.** It cannot make, pick or switch a profile, and cannot set
   `CLAUDE_CONFIG_DIR` or `CODEX_HOME` for itself: Amethystora's tools refuse it. It may say which profile a folder uses
   (`ame agent profile which`).
-- **A login protected in the [Vault](vault.md) opens in one terminal at a time.** A second terminal on the same login is
-  told so, and may start without it, when the agent asks you to sign in again.
+- **A login protected in the [Vault](vault.md) is shared by the terminals that use it.** Each terminal asks you, as the
+  first did. The login stays open for as long as any of them runs, and is sealed again when the last has ended, which may be after the first terminal has its prompt back. If the
+  vault is closed by then, a notice says so and the login waits in memory until you open it.
 - **Nothing of it is in the [setup file](setup.md):** a profile holds logins, which a shared file must not.
 
 [Security](security.md) reads every profile's agent settings as it reads the home's, and a finding names the profile in

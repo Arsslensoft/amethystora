@@ -3303,12 +3303,13 @@ EXTRA="${ jq -c --arg open "${ gettext "Open"; }" --arg closed "${ gettext "Clos
     --arg t_open "${ gettext "The agent writes in the project and its own folder, and sees nothing of your logins and keys."; }" \
     --arg t_closed "${ gettext "The agent sees only the project, its own folder and the toolchains, and nothing else of your home."; }" \
     --arg t_off "${ gettext "Agents started here start as they always do."; }" \
-    --arg allowed "${ gettext "Also allowed: %s"; }" --arg a_remove "${ gettext "Remove the rule"; }" '
+    --arg held "${ gettext "Its network is held to a list of hosts."; }"     --arg allowed "${ gettext "Also allowed: %s"; }" --arg a_remove "${ gettext "Remove the rule"; }" '
     [(.folders // {}) | to_entries[] | select((.key | startswith("/")) and (.key | test("[\u0000-\u001f]") | not))
         | (.value.mode // "open") as $mode | ((.value.allow // []) | map(select(type == "string")) | join(", ")) as $list | {
         id: .key,
         title: .key,
         text: ([(if $mode == "closed" then $t_closed elif $mode == "off" then $t_off else $t_open end),
+                (if .value.network == "list" then $held else empty end),
                 (if $list != ""
                     then ($allowed | sub("%s"; $list)) else empty end)] | join(" ")),
         state: "plain",

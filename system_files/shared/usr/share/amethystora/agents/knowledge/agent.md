@@ -64,11 +64,14 @@ sudo, no session bus and no keyring inside. The person turns it on for a folder,
 `ame agent sandbox show [FOLDER]` (what an agent started there is given) and `ame agent sandbox list`. The rest is the person's:
 
 - `ame agent sandbox use [FOLDER] [open|closed]`, `ame agent sandbox off [FOLDER]`, `ame agent sandbox allow FOLDER PERMISSION` and
-  `ame agent sandbox disallow FOLDER PERMISSION`, where a permission is `write=PATH`, `show=PATH`, `ssh-agent` or `gpu`, each asked for in a
-  terminal after it says what it gives away; `ame agent sandbox run -- COMMAND` holds any command the same way; `ame agent sandbox always on|off`
+  `ame agent sandbox disallow FOLDER PERMISSION`, where a permission is `write=PATH`, `show=PATH`, `network=HOST`, `ssh-agent` or `gpu`, each asked for in a
+  terminal after it says what it gives away; `ame agent sandbox network FOLDER list|open` holds the sandbox's network to a list of hosts over
+  HTTPS (the agent's maker, the package registries, the code hosts, and each `network=HOST`), through a proxy, or gives the machine's back; `ame agent sandbox run -- COMMAND` holds any command the same way; `ame agent sandbox always on|off`
   is an administrator's.
 - It is not a virtual machine, does not make what you wrote safe to run (a changed build script runs as the person when they run it), and
   does not hide the project's own `.env`. Codex must have run once outside a sandbox; Copilot CLI needs its token in `COPILOT_GITHUB_TOKEN` or `GH_TOKEN`.
+- While the network is the machine's, a sandboxed agent still reaches what listens on the machine (`localhost`, X11) and can send what it reads;
+  held to a list, a program that ignores `HTTPS_PROXY` (git over SSH) reaches nothing, and `localhost` outside the sandbox is out of reach.
 - Inside one, `AMETHYSTORA_AGENT_SANDBOX` is set. A read-only file system outside the project, a missing login or key, no session bus and no sudo are
   the sandbox: say so, name the permission, and look for no way round (`references/sandbox.md` of the amethystora skill).
 

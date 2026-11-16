@@ -101,6 +101,23 @@ command="$(jq -r .command <<<"${shown}")"
 ! "${TOOLS}" sandbox allow "${H}/code" network=any 2>/dev/null || fail "an unknown permission"
 "${TOOLS}" sandbox allow "${H}/code" gpu >/dev/null
 [[ "$("${TOOLS}" sandbox show --agent claude --dir "${H}/code/site" --json | jq -r .command)" == *"--dev-bind-try /dev/dri /dev/dri "* ]] || fail "gpu"
+# The network held to a list: a network of its own, the proxy's socket bound in, the command behind the forwarder, the shipped hosts
+# for the agent and the folder's own, each a name and never an address
+"${TOOLS}" sandbox network "${H}/code" list >/dev/null
+! "${TOOLS}" sandbox allow "${H}/code" network=10.0.0.1 2>/dev/null || fail "an address as a host"
+"${TOOLS}" sandbox allow "${H}/code" "network=*.example.org" >/dev/null
+held="$("${TOOLS}" sandbox show --agent claude --dir "${H}/code/site" --json)"
+jq -e '.network == "list" and (.hosts | index("api.anthropic.com")) and (.hosts | index("github.com")) and (.hosts | index("*.example.org"))
+    and (.hosts | index("api.openai.com") | not)' <<<"${held}" >/dev/null || fail "the hosts of a held network: ${held}"
+command="$(jq -r .command <<<"${held}")"
+[[ ${command} == *" --unshare-net "* && ${command} == *" /run/amethystora-agent-proxy.sock "* ]] || fail "a held network is not its own"
+[[ ${command} == *"-- /usr/libexec/amethystora-agent-tools net-shim /run/amethystora-agent-proxy.sock -- claude" ]] || fail "the forwarder in front of the command"
+while read -r who host; do
+    [[ ${host} =~ ^(\*\.)?[a-z0-9-]+(\.[a-z0-9-]+)+$ && ! ${host} =~ ^[0-9.]+$ ]] || fail "${host} in agent-network-hosts is not a name"
+    [[ ${who} == - || " ${agents[*]} " == *" ${who} "* ]] || fail "${who} in agent-network-hosts is not an agent"
+done < <(grep -v -e "^#" -e "^[[:space:]]*$" /usr/share/amethystora/agent-network-hosts)
+"${TOOLS}" sandbox network "${H}/code" open >/dev/null
+jq -e '.network == "open"' <<<"$("${TOOLS}" sandbox show --agent claude --dir "${H}/code/site" --json)" >/dev/null || fail "the network given back"
 "${TOOLS}" sandbox off "${H}/code" >/dev/null
 jq -e '.wrapped == false' <<<"$("${TOOLS}" agent-plan --agent claude --dir "${H}/code/site")" >/dev/null || fail "a rule taken off"
 echo "test-agent-sandbox: ok"

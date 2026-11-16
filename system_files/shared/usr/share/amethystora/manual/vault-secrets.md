@@ -38,7 +38,9 @@ never mounted into your account, since a mount is open to every program of yours
 
 A tool reaches it through `ame vault run NAME -- COMMAND`: after you approve, the file appears at its path for that command alone,
 and is sealed again when the command ends, since tools rewrite their logins (an AI agent refreshing its token). The window and the
-AI agent launcher do this for you.
+AI agent launcher do this for you. A second command on the same file is told it is in use, unless both are started with
+`ame vault run --shared NAME -- COMMAND`, as the agent launcher does: then each is asked for, they share the file, and it is
+sealed once, when the last has ended.
 
 ### What protecting does not do
 

@@ -464,6 +464,10 @@ run *ARGS:
         --say-file-there="$(gettext 'Something else is already there, and it was left as it is.')" \
         --say-in-use="$(gettext 'Another command has that file open.')" \
         --say-no-namespace="$(gettext 'This system gives a command no namespace of its own, so the file stays sealed.')" \
+        --say-shared-open="$(gettext 'Another command of yours on this file shares it, and it is sealed again when the last has ended.')" \
+        --say-joined="$(gettext 'This file is open for another command too, and this one shares it: other programs of this account can read it and the memory of each command while any of them runs, and it is sealed again when the last has ended.')" \
+        --say-shared-closed="$(gettext 'A protected file is waiting to be sealed again, and the vault is closed. Open it with: ame vault open')" \
+        --say-shared-refused="$(gettext 'Sealing a protected file again was refused, and what was left of it is only in memory. You will be asked again.')" \
         run "$@"
 
 # Take a file or folder out of your home and into the vault, sealed. It says first what that cannot do

@@ -19,6 +19,11 @@ sandbox working, not faults on the machine. Do this:
 - **Never look for a way round.** No other path to the same file, no copying it somewhere you can write, no second agent, no other program
   or container to do it, no editing the launcher or a setting. Whatever it was held back from, the person decides.
 
+If `HTTPS_PROXY` points at `127.0.0.1:3128`, the sandbox's network is held to a list of hosts: your maker, the package registries and the
+code hosts, over HTTPS. A `403` from the proxy, a name that does not resolve, `git` over SSH that hangs or a `localhost` service that is
+not there are the list, not a fault. Say which host you needed; the person may run `ame agent sandbox allow FOLDER network=HOST`, or use an
+HTTPS address for a git remote. Never try another route out.
+
 A file that stays read-only inside the project (`.git/hooks`, `.git/config`, `.claude`, `.mcp.json`, `.codex`, `opencode.json`...) is held on
 purpose: tell the person what you would have changed and let them make it. A script you changed runs as them when they run it: say which, so
 they read the diff.

@@ -196,6 +196,7 @@ pub fn policy_of(env: &Env, id: &str) -> Policy {
         blocked_hosts: grant.blocked_hosts,
         limits: grant.limits,
         machine_off: conf.block_network || conf.allow == Allow::Off,
+        unlimited: false,
     }
 }
 

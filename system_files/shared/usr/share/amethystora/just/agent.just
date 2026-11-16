@@ -357,7 +357,7 @@ profile VERB="list" *ARGS:
             ;;
     esac
 
-# An AI agent that can change its project and nothing else: started in a folder with a rule, it writes in its project, its own folder and the build caches, never sees your keys and logins, and cannot become root (VERB: list, use [FOLDER] [open|closed], off [FOLDER], allow FOLDER PERMISSION, disallow FOLDER PERMISSION, show [FOLDER], run -- COMMAND, always on|off, hook on|off; without one, lists the rules)
+# An AI agent that can change its project and nothing else: started in a folder with a rule, it writes in its project, its own folder and the build caches, never sees your keys and logins, and cannot become root (VERB: list, use [FOLDER] [open|closed], off [FOLDER], network FOLDER list|open, allow FOLDER PERMISSION, disallow FOLDER PERMISSION, show [FOLDER], run -- COMMAND, always on|off, hook on|off; without one, lists the rules)
 [no-cd]
 [positional-arguments]
 sandbox VERB="list" *ARGS:
@@ -372,9 +372,14 @@ sandbox VERB="list" *ARGS:
             exec amethystora-agent sandbox use "${folder}" "${3:-open}"
             ;;
         off) exec amethystora-agent sandbox off "${2:-${PWD}}" ;;
+        # The network held to a list of hosts (its maker, the registries, the git hosts, and the folder's own), or the machine's again
+        network)
+            [[ -n ${2:-} && ${3:-} =~ ^(list|open)$ ]] || { echo "usage: ame agent sandbox network FOLDER list|open"; exit 64; }
+            exec amethystora-agent sandbox network "$2" "$3"
+            ;;
         # What a permission gives away is said, and asked, before it is given: never by a --yes
         allow)
-            [[ -n ${2:-} && -n ${3:-} ]] || { echo "usage: ame agent sandbox allow FOLDER write=PATH|show=PATH|ssh-agent|gpu"; exit 64; }
+            [[ -n ${2:-} && -n ${3:-} ]] || { echo "usage: ame agent sandbox allow FOLDER write=PATH|show=PATH|network=HOST|ssh-agent|gpu"; exit 64; }
             folder="$2"
             amethystora-agent sandbox cost "$3"
             read -rp "$(eval_gettext "Allow it for agents started in \${folder}? [y/N] ")" answer
@@ -393,7 +398,7 @@ sandbox VERB="list" *ARGS:
             ;;
         hook) shift; exec ame agent hook "$@" ;;
         *)
-            echo "usage: ame agent sandbox list | use [FOLDER] [open|closed] | off [FOLDER] | allow FOLDER PERMISSION | disallow FOLDER PERMISSION | show [FOLDER] | run -- COMMAND | always on|off | hook on|off"
+            echo "usage: ame agent sandbox list | use [FOLDER] [open|closed] | off [FOLDER] | network FOLDER list|open | allow FOLDER PERMISSION | disallow FOLDER PERMISSION | show [FOLDER] | run -- COMMAND | always on|off | hook on|off"
             exit 64
             ;;
     esac

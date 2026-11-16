@@ -33,6 +33,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 sha2 = { workspace = true }
 amethystora-vault-client = { workspace = true }
+amethystora-net-proxy = { workspace = true }
 
 [dev-dependencies]
 base64 = { workspace = true }

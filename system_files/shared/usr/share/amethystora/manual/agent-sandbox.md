@@ -52,7 +52,11 @@ If a sandbox cannot be made, nothing starts, and the sentence says why.
   when it next starts outside a sandbox.
 - It does not hide the project's own secrets, such as a `.env` in it.
 - It does not hold an agent that an editor's extension starts.
-- The network is the machine's: it can still send what it can read.
+- The network is the machine's unless you [hold it to a list](#the-network): it can still send what it can read.
+- **It can still talk to programs of yours that listen.** A program that listens on a socket in your home, such as an editor's
+  server, can be reached there, since connecting needs no writing. While the network is the machine's it can also reach
+  what listens on this computer (`localhost`) and the display server of older apps (X11), which can watch and type into
+  those apps. Holding the network to a list closes the last two.
 
 ## Allowing more
 
@@ -63,10 +67,32 @@ ame agent sandbox allow ~/code/api write=~/data/exports   # a second place it ma
 ame agent sandbox allow ~/code/api show=~/.config/tool    # a hidden place, shown read-only
 ame agent sandbox allow ~/code/api ssh-agent              # log in with the ssh agent's keys, for git push
 ame agent sandbox allow ~/code/api gpu
+ame agent sandbox allow ~/code/api network=api.example.org   # one more host, while the network is held to a list
 ame agent sandbox disallow ~/code/api gpu
 ```
 
 `ssh-agent` lets the agent use every key the ssh agent holds, without reading one.
+
+## The network
+
+As it starts, a sandbox has your computer's network. A folder can hold it to a list instead:
+
+```bash
+ame agent sandbox network ~/code/api list   # only the hosts on the list
+ame agent sandbox network ~/code/api open   # the computer's network again
+ame agent sandbox show ~/code/api           # says which hosts
+```
+
+The list is the agent's own maker, the package registries (npm, PyPI, crates.io, Go, Maven) and the code hosts (GitHub,
+GitLab, Bitbucket, Codeberg), plus what you allow with `network=HOST`. Only HTTPS, and only by name. Everything else is
+refused: another site, an address, plain HTTP, and anything on this computer or your home network.
+
+It works through a proxy, which most tools use by themselves (the agents, `git` over HTTPS, `npm`, `pip`, `cargo`,
+`curl`). **A program that ignores the proxy reaches nothing**, and `git` over SSH is one: use an HTTPS address for the
+remote. A development server or database on `localhost` outside the sandbox cannot be reached; one started inside can.
+**A list narrows where things can go; it does not stop them.** The proxy sees a host's name and nothing of what is sent, so
+an agent that was talked into it can still send what it reads to its maker, or to somebody's account on a code host or a
+package registry on the list.
 
 ## A closed sandbox
 

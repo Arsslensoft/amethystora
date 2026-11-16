@@ -629,6 +629,55 @@ if [[ ! -e "${CREDENTIALS}" ]]; then
     wait "${runner}" 2>/dev/null
     av 90 "${PW[@]}" -- run "${CREDENTIALS}" -- sudo -n true >/dev/null
     if (($? != 0)); then ok "there is no sudo inside a run"; else not_ok "sudo worked inside a run"; fi
+    # Several commands at once on one protected file (run --shared, which amethystora-agent uses for an agent's login in several
+    # terminals): the second is asked for like the first, finds the file, and what both wrote is sealed once, when the last has ended.
+    # The first command's terminal has its prompt back when its own command ends, while the second still runs.
+    as_tester rm -f "${HOME_DIR}/vmlab-shared-first"
+    terminal 150 "${PW[@]}" -- 'VMLAB_AGENT=1 ame vault run --shared '"${CREDENTIALS}"' -- sh -c "sleep 12; echo fromA >>'"${CREDENTIALS}"'"; date +%s >'"${HOME_DIR}"'/vmlab-shared-first; sleep 60; pkill -u "$$USER" -x pkttyagent' >/dev/null 2>&1 &
+    first=$!
+    # The keeper is the first command's own child, there once its question was answered. What it asks at the end (the file changed) is
+    # put to an agent for its own process, which only the lab has to register by hand: on a desktop GNOME's dialog answers for any
+    keeper=""
+    for _ in {1..30}; do
+        shell_side="$(pgrep -o -f 'amethystora-vault-cli.* run --shared ')"
+        [[ -n "${shell_side}" ]] && keeper="$(pgrep -P "${shell_side}" -f 'amethystora-vault-cli' | head -n 1)"
+        [[ -n "${keeper}" ]] && break
+        sleep 1
+    done
+    if [[ -n "${keeper}" ]]; then
+        terminal 120 "${PW[@]}" -- "pkttyagent --process ${keeper}" >/dev/null 2>&1 &
+        began="$(date +%s)"
+        out="$(terminal 120 "${PW[@]}" -- 'export VMLAB_AGENT=1; ame vault run --shared '"${CREDENTIALS}"' -- sh -c "cat '"${CREDENTIALS}"'; sleep 25; echo fromB >>'"${CREDENTIALS}"'"; s=$$?; pkill -u "$$USER" -n -x pkttyagent; exit $$s')"
+        like "a second command on a protected file that is open finds it at its path" "${out}" "AKIAVMLAB"
+        same "...after being asked for, as the first was" "$(asked "${out}")" 1
+        like "...and is told that it shares it" "${out}" "this one shares it"
+        ended="$(cat "${HOME_DIR}/vmlab-shared-first" 2>/dev/null || echo 0)"
+        if ((ended > 0 && ended < began + 22)); then
+            ok "the first command's terminal has its prompt back when its own command ends, the second still running"
+        else
+            not_ok "the first command's terminal waited for the second" "ended ${ended}, the second began ${began}"
+        fi
+        # The keeper seals once the second has ended
+        wait_for 60 sh -c "! pgrep -f 'amethystora-vault-cli.* run --shared ' >/dev/null"
+        if [[ ! -e "${CREDENTIALS}" ]]; then ok "...and when the last has ended the file is out of the home again"; else not_ok "the file stayed in the home after a shared run"; fi
+        out="$(av 120 "${PW[@]}" -- run "${CREDENTIALS}" -- cat "${CREDENTIALS}")"
+        if [[ "${out}" == *fromA* && "${out}" == *fromB* ]]; then
+            ok "what both commands wrote is sealed, once"
+        else
+            not_ok "a shared run lost what one of its commands wrote" "$(tail -n 6 <<<"${out}")"
+        fi
+    else
+        not_ok "a shared run's keeper did not start" "$(pgrep -af amethystora-vault-cli)"
+    fi
+    pkill -u "${TEST_USER}" -x pkttyagent 2>/dev/null
+    wait "${first}" 2>/dev/null
+    as_tester rm -f "${HOME_DIR}/vmlab-shared-first"
+    # A plain run still serves one command: a second is told the file is in use
+    terminal 60 "${PW[@]}" -- 'VMLAB_AGENT=1 ame vault run '"${CREDENTIALS}"' -- sleep 20; pkill -u "$$USER" -x pkttyagent' >/dev/null 2>&1 &
+    plain=$!
+    sleep 10
+    like "a plain run still serves one command at a time" "$(av 30 -- run "${CREDENTIALS}" -- true 2>&1)" "Another command has that file open"
+    wait "${plain}" 2>/dev/null
     # To use it, then to remove it
     av 90 "${PW[@]}" "${PW[@]}" -- unprotect "${CREDENTIALS}" >/dev/null
     as_tester rm -rf "${HOME_DIR}/.aws"

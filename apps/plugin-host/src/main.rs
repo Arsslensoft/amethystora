@@ -367,7 +367,7 @@ fn main() -> ExitCode {
         Some("pack") => cmd_pack(rest),
         Some("audit") => cmd_audit(json_out),
         Some("shim") => match rest.iter().position(|a| a == "--") {
-            Some(at) if at == 1 && rest.len() > 2 => ExitCode::from(shim::run(&rest[0], &rest[at + 1..]).clamp(0, 255) as u8),
+            Some(at) if at == 1 && rest.len() > 2 => ExitCode::from(shim::run(&rest[0], amethystora_plugin_host::sandbox::SHIM_PORT, &rest[at + 1..]).clamp(0, 255) as u8),
             _ => usage(),
         },
         Some(cmd @ ("list" | "show" | "verify" | "history" | "sandbox" | "try" | "enable" | "disable" | "settings" | "setting-set" | "discard" | "forget")) => {

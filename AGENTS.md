@@ -453,15 +453,23 @@ sandbox hides. A new agent, or a new place an agent writes, gets its lines there
   `CODEX_HOME`, seen on Claude Code 2.1.311 and Codex 0.169.0) or its own mount namespace (bubblewrap, the profile's folders over
   the home's: Opencode, Cursor CLI, Antigravity CLI, where nothing setuid runs). Copilot CLI has none. Keep it so: a feature that
   wants "the active profile" takes it from a process. The launcher starts an agent where it was opened in a terminal (a diagnosis,
-  a triage and a selection's question still from the home). The Vault's shared run of a protected login was not built: a second
-  terminal on one is told so and may start without it.
+  a triage and a selection's question still from the home). **A protected login in several terminals** is `ame vault run --shared`
+  (`run_shared` in `apps/vault-service/src/tools.rs`, the launcher's only; plain `run` is untouched and still serves one command): the process the
+  person started asks and fetches, its child the keeper holds the lock, the place and a door (a socket of the runtime folder that hands a
+  later command of the same account the keeper's user, mount and process namespaces), the namespace's first process stays until no
+  session holds `ID.sessions`, a later command is asked for as every use is before it enters, and what all of them left is read and
+  sealed once. The keeper outlives its terminal: where sealing would ask there, it says so in a notification and waits. Suite 74 holds it.
 - **The sandbox is one recipe**, `sandbox::recipe`, printed by `ame agent sandbox show` and run by `agent-run` exactly so: bubblewrap
   from the whole machine read-only, the project (a worktree's repository too), the agent's folder and the caches writable, the
   credentials, the other agents' and profiles' folders and `/var/home/.snapshots` hidden, the repository's hooks and settings, the
   agents' settings in the project and their own read-only, a private copy of each file the table's `copy` lines name, `/run`
   and `/tmp` its own, a PID namespace, and the seccomp filter `gen.c --agent` writes (`agent-sandbox.bpf`). It fails closed.
   Amethystora's tools start inside read-only (`AMETHYSTORA_READ_ONLY=1`); a sandbox's runner writes its session's file. The
-  network stays the machine's (the plan's step 6, held to a list, is not built). `SANDBOX=always` in `agent.conf` is the
+  network is the machine's unless the folder holds it to a list (`ame agent sandbox network FOLDER list`): then the sandbox has a
+  network namespace with loopback alone, and the one way out is the plugins' proxy (`apps/net-proxy`, the crate both use) on a socket
+  the runner holds, behind `amethystora-agent-tools net-shim` inside: HTTPS by name to `/usr/share/amethystora/agent-network-hosts`
+  (each agent's maker, the registries, the code hosts) and the folder's `network=HOST`, nothing else, no count of bytes. Known and said
+  in the manual: unix sockets in the home stay reachable, and `localhost` and X11's abstract socket while the network is the machine's. `SANDBOX=always` in `agent.conf` is the
   administrator's; the watcher says an agent run in a project outside a sandbox then, and records quietly one run with its checks
   off inside one. `build_files/shared/test-agent-sandbox.sh` and `tests/vm/suites/77-agent-sandbox.sh` hold all of it.
 
@@ -1916,7 +1924,7 @@ crate (no GTK; only the host's `service.rs` links GLib) with two programs: `amet
   so that other accounts read nothing of its plugins or history; an update that raises a host's byte limit is "asks for more". The
   host reads grants.json again for every run and
   every proxy connection, so a revoke or block applies at once.
-- **The network is a proxy** (`proxy.rs`): the sandbox has only loopback, so a plugin with a `network=` permission gets a socket
+- **The network is a proxy** (`proxy.rs`, in `apps/net-proxy`, the crate an AI agent's sandbox uses too): the sandbox has only loopback, so a plugin with a `network=` permission gets a socket
   bound at `/proxy/proxy.sock` and `amethystora-plugin-host shim` (started inside the sandbox) forwards `HTTPS_PROXY`'s connections to
   it. It takes `CONNECT host:443` for granted, unblocked hosts, resolves the name itself and refuses if any address is private,
   loopback, link-local or reserved (`forbidden_ip`, IPv4-in-IPv6 judged by the IPv4 it carries), counts bytes sent per allowed entry, so a wildcard's hosts share one allowance (default

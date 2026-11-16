@@ -284,9 +284,9 @@ launch() {
 vault_run() {
     local login="$1" started="${SECONDS}" code=0 answer
     shift
-    /usr/bin/ame vault run "${login}" -- "$@" || code=$?
-    if [[ ${code} -eq 14 && $((SECONDS - started)) -lt 10 ]]; then
-        echo "This login is open in another terminal, and the Vault gives a protected login to one session at a time." >&2
+    /usr/bin/ame vault run --shared "${login}" -- "$@" || code=$?
+    if [[ ${code} -eq 14 && $((SECONDS - started)) -lt 30 ]]; then
+        echo "This login is in use: a command has it to itself, or it is being sealed back into the Vault." >&2
         echo "Started without it, the agent asks you to sign in, and that new login stays in your home, not in the Vault." >&2
         read -rp "Start without the login? [y/N] " answer
         [[ ${answer,,} == y* ]] || exit 0

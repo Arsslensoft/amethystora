@@ -59,6 +59,7 @@ name = "amethystora-agent-tools"
 version = "1.0.0"
 dependencies = [
  "amethystora-control-core",
+ "amethystora-net-proxy",
  "amethystora-vault-client",
  "base64",
  "icu_normalizer",
@@ -200,6 +201,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "amethystora-net-proxy"
+version = "1.0.0"
+
+[[package]]
 name = "amethystora-notes"
 version = "1.0.0"
 dependencies = [
@@ -230,6 +235,7 @@ dependencies = [
 name = "amethystora-plugin-host"
 version = "1.0.0"
 dependencies = [
+ "amethystora-net-proxy",
  "amethystora-vault-client",
  "base64",
  "futures-channel",

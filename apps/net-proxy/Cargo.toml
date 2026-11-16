@@ -1,0 +1,12 @@
+# The way out of a sandbox that has no network of its own: an HTTPS proxy on a unix socket that takes CONNECT for the hosts
+# it was told and nothing else, and the forwarder that runs inside the sandbox. The plugin host stands it between a plugin and
+# the network (plans/done/PLAN-plugins.md), and the AI agent's sandbox between an agent and the network when a folder holds
+# it to a list (plans/PLAN-agent-sandbox.md, "The network"). The standard library only: no GTK, no GLib.
+[package]
+name = "amethystora-net-proxy"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]

@@ -6036,6 +6036,10 @@ msgid "Agents started here start as they always do."
 msgstr ""
 
 #: usr/libexec/amethystora-control-list
+msgid "Its network is held to a list of hosts."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
 msgid "Also allowed: %s"
 msgstr ""
 
@@ -16740,6 +16744,22 @@ msgstr ""
 
 #: usr/share/amethystora/just/vault.just
 msgid "What the command left is gone. The file is as it was before it ran."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Another command of yours on this file shares it, and it is sealed again when the last has ended."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "This file is open for another command too, and this one shares it: other programs of this account can read it and the memory of each command while any of them runs, and it is sealed again when the last has ended."
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "A protected file is waiting to be sealed again, and the vault is closed. Open it with: ame vault open"
+msgstr ""
+
+#: usr/share/amethystora/just/vault.just
+msgid "Sealing a protected file again was refused, and what was left of it is only in memory. You will be asked again."
 msgstr ""
 
 #: usr/share/amethystora/just/vault.just

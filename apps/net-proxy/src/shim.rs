@@ -7,8 +7,6 @@ use std::net::{Shutdown, TcpListener, TcpStream};
 use std::os::unix::net::UnixStream;
 use std::process::Command;
 
-use crate::sandbox::SHIM_PORT;
-
 fn pipe(mut from: impl Read, mut to: impl std::io::Write) {
     let _ = std::io::copy(&mut from, &mut to);
 }
@@ -24,16 +22,9 @@ fn forward(client: TcpStream, socket: String) {
     let _ = client.shutdown(Shutdown::Both);
 }
 
-/// Binds the port, then starts the plugin and waits for it: its exit code is ours
-pub fn run(socket: &str, command: &[String]) -> i32 {
-    let Some(program) = command.first() else { return 64 };
-    let listener = match TcpListener::bind(("127.0.0.1", SHIM_PORT)) {
-        Ok(l) => l,
-        Err(e) => {
-            eprintln!("amethystora-plugin-host shim: {e}");
-            return 1;
-        }
-    };
+/// Binds the port and forwards each connection to the proxy's socket, from a thread, for as long as this process lives
+pub fn listen(socket: &str, port: u16) -> std::io::Result<()> {
+    let listener = TcpListener::bind(("127.0.0.1", port))?;
     let socket = socket.to_string();
     std::thread::spawn(move || {
         for client in listener.incoming().flatten() {
@@ -41,6 +32,16 @@ pub fn run(socket: &str, command: &[String]) -> i32 {
             std::thread::spawn(move || forward(client, socket));
         }
     });
+    Ok(())
+}
+
+/// Binds the port, then starts the plugin and waits for it: its exit code is ours
+pub fn run(socket: &str, port: u16, command: &[String]) -> i32 {
+    let Some(program) = command.first() else { return 64 };
+    if let Err(e) = listen(socket, port) {
+        eprintln!("amethystora-plugin-host shim: {e}");
+        return 1;
+    }
     match Command::new(program).args(&command[1..]).status() {
         Ok(status) => status.code().unwrap_or(1),
         Err(e) => {

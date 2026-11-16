@@ -30,6 +30,7 @@ regex.workspace = true
 # same ICU4X the apps already build with
 icu_normalizer = { version = "2", default-features = false, features = ["compiled_data"] }
 icu_properties = { version = "2", default-features = false, features = ["compiled_data"] }
+amethystora-net-proxy = { workspace = true }
 
 [dev-dependencies]
 base64.workspace = true

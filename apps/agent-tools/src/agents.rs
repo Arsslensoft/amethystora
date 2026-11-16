@@ -185,6 +185,25 @@ impl Table {
     }
 }
 
+pub const NETWORK_HOSTS: &str = "/usr/share/amethystora/agent-network-hosts";
+
+/// The shipped hosts a sandbox held to a list may reach, for AGENT and for every agent: names and *.names only
+pub fn network_hosts(agent: &str) -> Vec<String> {
+    hosts_in(&std::fs::read_to_string(NETWORK_HOSTS).unwrap_or_default(), agent)
+}
+
+pub fn hosts_in(text: &str, agent: &str) -> Vec<String> {
+    text.lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .filter_map(|line| {
+            let mut words = line.split_whitespace();
+            let (who, host) = (words.next()?, words.next()?);
+            (words.next().is_none() && (who == "-" || who == agent) && amethystora_net_proxy::valid_host(host)).then(|| host.to_string())
+        })
+        .collect()
+}
+
 /// The credential files' globs (credential-files), one list with the security watcher's
 pub fn credential_globs() -> Vec<String> {
     std::fs::read_to_string(CREDENTIALS)

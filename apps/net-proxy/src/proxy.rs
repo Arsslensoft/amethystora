@@ -15,7 +15,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use crate::manifest::{DEFAULT_LIMIT, host_matches, valid_host};
+use crate::{DEFAULT_LIMIT, host_matches, valid_host};
 
 /// Whether an address is one a plugin may never be taken to: this machine's, a private network's, a reserved range
 pub fn forbidden_ip(ip: IpAddr) -> bool {
@@ -71,6 +71,8 @@ pub struct Policy {
     pub limits: BTreeMap<String, u64>,
     /// `BLOCK_NETWORK=yes` in plugins.conf: no plugin on the machine reaches the network
     pub machine_off: bool,
+    /// No count of what goes out: an AI agent held to a list of hosts sends its work to its maker, however much that is
+    pub unlimited: bool,
 }
 
 impl Policy {
@@ -92,6 +94,9 @@ impl Policy {
     }
 
     pub fn limit_for(&self, host: &str) -> u64 {
+        if self.unlimited {
+            return u64::MAX;
+        }
         self.allowed.iter().filter(|e| host_matches(e, host)).find_map(|e| self.limits.get(e)).copied().unwrap_or(DEFAULT_LIMIT)
     }
 }
@@ -162,6 +167,8 @@ pub struct Proxy {
     /// The last few refusals, for a log: a plugin that is refused over and over must not grow the host
     pub refused: Mutex<Vec<String>>,
     active: AtomicUsize,
+    /// Connections open at once: more are refused, never queued (16 for a plugin; an agent's builds open many more)
+    pub max_connections: AtomicUsize,
 }
 
 /// Connections open at once for one plugin: more are refused, never queued, so that threads and descriptors stay within the unit's limits
@@ -184,6 +191,7 @@ impl Proxy {
             home: Box::new(|_| false),
             refused: Mutex::new(Vec::new()),
             active: AtomicUsize::new(0),
+            max_connections: AtomicUsize::new(MAX_CONNECTIONS),
         })
     }
 
@@ -237,7 +245,7 @@ impl Proxy {
 
     /// Answers one connection from the sandbox's forwarder, to the end
     pub fn handle(self: &Arc<Self>, mut client: UnixStream) {
-        if self.active.fetch_add(1, Ordering::SeqCst) >= MAX_CONNECTIONS {
+        if self.active.fetch_add(1, Ordering::SeqCst) >= self.max_connections.load(Ordering::Relaxed) {
             self.active.fetch_sub(1, Ordering::SeqCst);
             self.note_refused("too many connections".into());
             let _ = client.write_all(b"HTTP/1.1 403 Forbidden
