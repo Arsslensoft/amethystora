@@ -1265,6 +1265,9 @@ done
 )
 grep -q -- '--approved) APPROVED=true' /usr/libexec/amethystora-in-terminal
 bash /ctx/build_files/shared/test-agent-ask-here.sh
+# Several accounts of one agent, and an agent held to its project: the table, the maps, the recipe as it is printed, the
+# hook and the readers (tests/vm/suites/77-agent-sandbox.sh runs the sandbox itself)
+bash /ctx/build_files/shared/test-agent-sandbox.sh
 [[ "$(GSETTINGS_BACKEND=memory gsettings list-keys "${QUIT_UI}" | sort | paste -sd ' ')" == "force-quit frozen-dialog" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${QUIT_UI}" force-quit)" == "['<Super><Control><Shift>Escape']" ]]
 [[ "$(GSETTINGS_BACKEND=memory gsettings get "${QUIT_UI}" frozen-dialog)" == true ]]

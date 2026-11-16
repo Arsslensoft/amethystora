@@ -56,6 +56,11 @@ same('a command with a direction override is not shown in a card', parseQuestion
 same('nor one with a line break in a word', parseQuestion(ask({command: ['echo', 'a\nb']}))?.tooLong, true);
 same('nor a zero-width character', parseQuestion(ask({command: ['echo', `a${chr(0x200b)}b`]}))?.tooLong, true);
 same('a plain one is', parseQuestion(ask({command: ['echo', 'a b']}))?.tooLong, false);
+same('which agent and profile ask', [parseQuestion(ask({agent: 'codex', profile: 'work'}))?.agent, parseQuestion(ask({agent: 'codex', profile: 'work'}))?.profile], ['codex', 'work']);
+same('none named is none', [parseQuestion(ask({}))?.agent, parseQuestion(ask({}))?.profile], [null, null]);
+same('an agent or profile of the wrong shape is dropped, the question stays',
+    [parseQuestion(ask({agent: 'evil', profile: '<b>x</b>'}))?.agent, parseQuestion(ask({agent: 'evil', profile: '<b>x</b>'}))?.profile,
+        parseQuestion(ask({agent: 'evil', profile: '<b>x</b>'}))?.line], [null, null, 'ls -l']);
 same('an id is eight hex digits', [isId('ab12cd34'), isId('AB12CD34'), isId('../../etc'), isId('ab12cd3'), isId(12345678)], [true, false, false, false, false]);
 
 // --- What goes to the launcher ----------------------------------------------------------------------------------------------------
