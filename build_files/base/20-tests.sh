@@ -821,7 +821,7 @@ fi
 grep -A1 -h "custom-keybindings/custom5\]" /etc/dconf/db/distro.d/02-amethystora-keybindings | grep -qx "binding='<Control><Alt>space'"
 test -s /usr/share/amethystora/user-setup.hooks.d/23-emoji-key.sh
 # Ask the agent hands the question as one argument after --, and refuses one that reads as an option
-grep -q 'exec xdg-terminal-exec "$0" ask -- "$@"' /usr/bin/amethystora-agent
+grep -qF 'exec xdg-terminal-exec "$0" "${RAW_OPTS[@]}" ask -- "$@"' /usr/bin/amethystora-agent
 grep -q 'a question cannot be empty or start with' /usr/bin/amethystora-agent
 [[ "$(GSETTINGS_BACKEND=memory gsettings get org.gnome.desktop.wm.keybindings switch-input-source)" == "['<Shift><Super>space']" ]]
 # App search keeps Parental Controls' filter, as GNOME's own does
