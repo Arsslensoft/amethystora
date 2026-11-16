@@ -167,6 +167,23 @@ pub fn sessions_dir() -> PathBuf {
 /// it (an agent's terminal closed sends SIGHUP, an agent or systemd stopping it SIGTERM)
 pub struct Session(Option<PathBuf>);
 
+/// This process's number as the machine's /proc says it, which is what the pill and Stop look for: inside `ame vault run`'s
+/// namespace getpid() is the namespace's own, while /proc is still the machine's
+pub fn host_pid() -> u32 {
+    std::fs::read_link("/proc/self")
+        .ok()
+        .and_then(|link| link.to_str().and_then(|pid| pid.parse().ok()))
+        .unwrap_or_else(std::process::id)
+}
+
+/// Which agent and which of its profiles this tool server was started for, as the launcher gives them (agents::AGENT_VAR,
+/// agents::PROFILE_VAR), each held to its shape: a name from the fixed list, a profile's name
+pub fn launched_for() -> (Option<String>, Option<String>) {
+    let agent = std::env::var(crate::agents::AGENT_VAR).ok().filter(|agent| crate::agents::agent_name(agent));
+    let profile = std::env::var(crate::agents::PROFILE_VAR).ok().filter(|profile| crate::agents::profile_name(profile));
+    (agent, profile)
+}
+
 static SESSION_FILE: std::sync::OnceLock<std::ffi::CString> = std::sync::OnceLock::new();
 
 // Only what may run in a signal handler: unlink and _exit
@@ -185,6 +202,8 @@ struct Notes {
     started: u64,
     now: Option<Value>,
     recent: Vec<Value>,
+    agent: Option<String>,
+    profile: Option<String>,
 }
 
 static NOTES: Mutex<Option<Notes>> = Mutex::new(None);
@@ -192,7 +211,8 @@ static NOTES: Mutex<Option<Notes>> = Mutex::new(None);
 const RECENT: usize = 3;
 
 fn write_notes(notes: &Notes) -> std::io::Result<()> {
-    let body = json!({"pid": std::process::id(), "started": notes.started, "now": notes.now, "recent": notes.recent});
+    let body = json!({"pid": host_pid(), "started": notes.started, "agent": notes.agent, "profile": notes.profile, "now": notes.now,
+        "recent": notes.recent});
     let new = notes.path.with_extension("new");
     let mut file = std::fs::OpenOptions::new().create(true).truncate(true).write(true).mode(0o600).open(&new)?;
     writeln!(file, "{body}")?;
@@ -231,14 +251,15 @@ pub fn worked() {
 impl Session {
     pub fn start() -> Session {
         let dir = sessions_dir();
-        let path = dir.join(std::process::id().to_string());
+        let path = dir.join(host_pid().to_string());
         let started = now();
+        let (agent, profile) = launched_for();
         let written = std::fs::DirBuilder::new().recursive(true).mode(0o700).create(&dir).and_then(|_| {
             let mut file = std::fs::OpenOptions::new().create(true).truncate(true).write(true).mode(0o600).open(&path)?;
-            writeln!(file, "{}", json!({"pid": std::process::id(), "started": started, "now": null, "recent": []}))
+            writeln!(file, "{}", json!({"pid": host_pid(), "started": started, "agent": agent, "profile": profile, "now": null, "recent": []}))
         });
         if written.is_ok() {
-            *NOTES.lock().expect("not poisoned") = Some(Notes { path: path.clone(), started, now: None, recent: Vec::new() });
+            *NOTES.lock().expect("not poisoned") = Some(Notes { path: path.clone(), started, now: None, recent: Vec::new(), agent, profile });
             if let Ok(name) = std::ffi::CString::new(path.as_os_str().as_encoded_bytes()) {
                 let _ = SESSION_FILE.set(name);
                 for signal in [libc::SIGTERM, libc::SIGHUP, libc::SIGINT] {
@@ -262,7 +283,11 @@ impl Drop for Session {
 
 /// A record of a change as it starts
 pub fn started(id: &str, tool: &str, fields: Value) -> Value {
-    let mut entry = json!({"id": id, "time": now(), "tool": tool, "result": "running", "server": std::process::id()});
+    let mut entry = json!({"id": id, "time": now(), "tool": tool, "result": "running", "server": host_pid()});
+    // Which of the agent's accounts made it, when it was started on a profile (several tool servers write to the one file)
+    if let (_, Some(profile)) = launched_for() {
+        entry["profile"] = json!(profile);
+    }
     if let (Some(entry), Some(fields)) = (entry.as_object_mut(), fields.as_object()) {
         for (key, value) in fields {
             entry.insert(key.clone(), value.clone());
@@ -296,11 +321,12 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("amethystora-notes-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("4242");
-        *NOTES.lock().unwrap() = Some(Notes { path: path.clone(), started: 7, now: None, recent: Vec::new() });
+        *NOTES.lock().unwrap() = Some(Notes { path: path.clone(), started: 7, now: None, recent: Vec::new(), agent: Some("claude".into()), profile: None });
         let read = || serde_json::from_str::<Value>(&std::fs::read_to_string(&path).unwrap()).unwrap();
         // A topic outside the list, and a tool that changes things, are never written: only fixed names are
         working("state", Some("drivers; rm"));
         assert_eq!(read()["now"]["tool"], "state");
+        assert_eq!(read()["agent"], "claude");
         assert_eq!(read()["now"]["topic"], Value::Null);
         working("state", Some("updates"));
         assert_eq!(read()["now"]["topic"], "updates");

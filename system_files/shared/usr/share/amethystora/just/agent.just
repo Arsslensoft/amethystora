@@ -2,12 +2,14 @@
 
 # No default-list here: `ame agent`, alone, opens the agent as amethystora-agent does (`ame --list agent` lists the group)
 
-# Open the AI agent in a terminal, as Super+Ctrl+Shift+A does (`ame agent`, alone, runs this)
+# Open the AI agent in a terminal, as Super+Ctrl+Shift+A does (`ame agent`, alone, runs this). In a project's folder it works there, on the folder's profile and in its sandbox
 [default]
+[no-cd]
 open:
     @amethystora-agent
 
 # Open the AI agent with a first question
+[no-cd]
 [positional-arguments]
 ask +QUESTION:
     @amethystora-agent ask -- "$@"
@@ -317,6 +319,109 @@ routines VERB="list" *ARGS:
             ;;
         *)
             echo "usage: ame agent routines list | show ID | check FILE | add FILE | pause|resume|remove|run|undo ID | on|off"
+            exit 64
+            ;;
+    esac
+
+# Several accounts of the same AI agent side by side, each a profile with its own login and history, picked by the folder an agent starts in (VERB: list, add NAME, login NAME [AGENT], use NAME [FOLDER], which [FOLDER], terminal NAME [FOLDER], running, ask NAME, remove NAME, hook on|off; without one, lists them)
+[no-cd]
+[positional-arguments]
+profile VERB="list" *ARGS:
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    tools=/usr/libexec/amethystora-agent-tools
+    case "${1:-list}" in
+        list | add | login | use | which | terminal | running | ask) exec amethystora-agent profile "$@" ;;
+        hook) shift; exec ame agent hook "$@" ;;
+        remove)
+            name="${2:-}"
+            [[ -n ${name} && ${name} != default ]] || { echo "usage: ame agent profile remove NAME"; exit 64; }
+            root="$("${tools}" profile root "${name}")" || { echo "$(eval_gettext "There is no profile \${name}.")"; exit 1; }
+            # A running agent never changes account: its profile stays while it runs
+            if "${tools}" profile in-use "${name}" >/dev/null; then
+                echo "$(eval_gettext "An agent runs on the profile \${name} now. Close it first.")"
+                exit 1
+            fi
+            echo "$(eval_gettext "The profile \${name} holds its agents' logins and history. It goes to the trash, where you can still take it back.")"
+            read -rp "$(gettext "Remove it? [y/N] ")" answer
+            [[ ${answer,,} == y* ]] || exit 0
+            gio trash -- "${root}"
+            "${tools}" profile forget "${name}"
+            echo "$(eval_gettext "Profile \${name} removed. Its folders follow the home's profile again.")"
+            ;;
+        *)
+            echo "usage: ame agent profile list | add NAME | login NAME [AGENT] | use NAME [FOLDER] | which [FOLDER] | terminal NAME [FOLDER] | running | ask NAME | remove NAME | hook on|off"
+            exit 64
+            ;;
+    esac
+
+# An AI agent that can change its project and nothing else: started in a folder with a rule, it writes in its project, its own folder and the build caches, never sees your keys and logins, and cannot become root (VERB: list, use [FOLDER] [open|closed], off [FOLDER], allow FOLDER PERMISSION, disallow FOLDER PERMISSION, show [FOLDER], run -- COMMAND, always on|off, hook on|off; without one, lists the rules)
+[no-cd]
+[positional-arguments]
+sandbox VERB="list" *ARGS:
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    case "${1:-list}" in
+        list | show | disallow | run) exec amethystora-agent sandbox "$@" ;;
+        use)
+            folder="${2:-${PWD}}"
+            exec amethystora-agent sandbox use "${folder}" "${3:-open}"
+            ;;
+        off) exec amethystora-agent sandbox off "${2:-${PWD}}" ;;
+        # What a permission gives away is said, and asked, before it is given: never by a --yes
+        allow)
+            [[ -n ${2:-} && -n ${3:-} ]] || { echo "usage: ame agent sandbox allow FOLDER write=PATH|show=PATH|ssh-agent|gpu"; exit 64; }
+            folder="$2"
+            amethystora-agent sandbox cost "$3"
+            read -rp "$(eval_gettext "Allow it for agents started in \${folder}? [y/N] ")" answer
+            [[ ${answer,,} == y* ]] || exit 0
+            exec amethystora-agent sandbox allow "$2" "$3"
+            ;;
+        # Every agent started in a project sandboxed, for every account: an administrator's setting
+        always)
+            case "${2:-}" in
+                on) setting=always ;;
+                off) setting=asked ;;
+                *) echo "usage: ame agent sandbox always on|off"; exit 64 ;;
+            esac
+            echo "$(gettext "This is an administrator's setting, and asks for an administrator's password.")"
+            sudo /usr/libexec/amethystora-agent-tools conf sandbox "${setting}"
+            ;;
+        hook) shift; exec ame agent hook "$@" ;;
+        *)
+            echo "usage: ame agent sandbox list | use [FOLDER] [open|closed] | off [FOLDER] | allow FOLDER PERMISSION | disallow FOLDER PERMISSION | show [FOLDER] | run -- COMMAND | always on|off | hook on|off"
+            exit 64
+            ;;
+    esac
+
+# The shells (bash, zsh, fish) follow your folder for the AI agent: claude and codex typed there start on the folder's profile, and every agent's command goes through the folder's sandbox (ACTION: on or off; without it, it flips)
+[positional-arguments]
+hook ACTION="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    # shellcheck source=/dev/null
+    source gettext.sh
+    marker="${XDG_CONFIG_HOME:-${HOME}/.config}/amethystora/agent-hook"
+    state="${1:-}"
+    if [[ -z ${state} ]]; then
+        if [[ -e ${marker} ]]; then state=off; else state=on; fi
+    fi
+    case "${state}" in
+        on)
+            mkdir -p "${marker%/*}"
+            : >"${marker}"
+            echo "$(gettext "The shells follow your folder for the AI agent: on, in each terminal opened from now on.")"
+            ;;
+        off)
+            rm -f "${marker}"
+            echo "$(gettext "The shells follow your folder for the AI agent: off, in each terminal opened from now on.")"
+            ;;
+        *)
+            echo "usage: ame agent hook on|off"
             exit 64
             ;;
     esac

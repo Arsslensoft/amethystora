@@ -1,0 +1,209 @@
+# Where each AI agent that amethystora-agent offers keeps its things, for profiles (several accounts of one agent) and
+# the sandbox (an agent that can change its project and nothing else): plans/PLAN-agent-accounts.md and
+# plans/PLAN-agent-sandbox.md. Read by amethystora-agent-tools (agents.rs, sandbox.rs), amethystora-agent (the logins),
+# the security watcher's credential rules (amethystora-audit-home-rules) and 20-tests.sh, which holds every agent to the
+# launcher's AGENTS. One line each, words split by blanks: KIND AGENT PATH [MORE]. AGENT is - for a line of every agent.
+# A PATH is relative to the home (or to a profile's folder, which has the home's layout), never with ..
+#
+#   way     AGENT var NAME PATH   a profile points the agent at its own copy of PATH with the variable NAME
+#   way     AGENT mount           a profile binds its own copy of each dir over the home's (bubblewrap)
+#   way     AGENT none            the agent has no profile: it keeps its login where no folder isolates it
+#   dir     AGENT PATH            a folder of the agent's own: a profile has its copy; writable in a sandbox
+#   login   AGENT PATH            its login, which the watcher watches and the Vault may protect
+#   copy    AGENT PATH            a file it rewrites that names commands: a sandbox gives it a private copy, never written back
+#   ro      AGENT PATH            in its folder, a file or folder that starts commands or loosens its checks: read-only in a sandbox
+#   project AGENT PATH            the same in the project (- for every agent); .git's hooks and config are always read-only
+#   program AGENT PATH            the agent's own program, where its installer puts it inside its folder: always the home's,
+#                                 read-only in a sandbox (the next plain launch runs it) and there when the folder is hidden
+#   env     AGENT NAME            a variable whose name says secret that the agent itself needs: kept in a sandbox
+#   cache   - PATH                a build cache: writable in a sandbox
+#   hidden  - PATH                hidden in a sandbox (an empty folder or file in its place), with every credential-files pattern;
+#                                 an absolute PATH is the machine's
+#   tool    - PATH                read-only in a closed sandbox, which has nothing else of the home
+#
+# Facts marked (unverified) are from the agents' own documentation as remembered on 2026-11-14, not seen on a machine.
+
+# Claude Code. CLAUDE_CONFIG_DIR moves ~/.claude, and with it the file ~/.claude.json and its backups, which then live
+# inside it (seen with Claude Code 2.1.311, 2026-11-16)
+way     claude          var CLAUDE_CONFIG_DIR .claude
+dir     claude          .claude
+login   claude          .claude/.credentials.json
+copy    claude          .claude.json
+copy    claude          .claude/.claude.json
+ro      claude          .claude/settings.json
+ro      claude          .claude/settings.local.json
+ro      claude          .claude/hooks
+ro      claude          .claude/commands
+ro      claude          .claude/agents
+ro      claude          .claude/plugins
+ro      claude          .claude/skills
+ro      claude          .claude/output-styles
+ro      claude          .claude/CLAUDE.md
+project claude          .claude
+project claude          .mcp.json
+env     claude          ANTHROPIC_API_KEY
+env     claude          ANTHROPIC_AUTH_TOKEN
+env     claude          CLAUDE_CODE_OAUTH_TOKEN
+tool    -               .local/share/claude
+
+# Codex: CODEX_HOME is ~/.codex, all but its program, which its installer keeps in ~/.codex/packages (Codex 0.169.0, 2026-11-16).
+# Its first start installs its background server there too, which a sandbox cannot: it says "Read-only file system" until
+# Codex has been started once outside one
+way     codex           var CODEX_HOME .codex
+dir     codex           .codex
+program codex           .codex/packages
+login   codex           .codex/auth.json
+login   codex           .codex/.credentials.json
+ro      codex           .codex/config.toml
+ro      codex           .codex/hooks.json
+ro      codex           .codex/rules
+ro      codex           .codex/AGENTS.md
+ro      codex           .codex/skills
+ro      codex           .codex/prompts
+project codex           .codex
+env     codex           OPENAI_API_KEY
+env     codex           CODEX_API_KEY
+
+# Opencode, which keeps its things in the XDG folders (unverified: no variable of its own moves them all)
+way     opencode        mount
+dir     opencode        .local/share/opencode
+dir     opencode        .local/state/opencode
+dir     opencode        .cache/opencode
+dir     opencode        .config/opencode
+login   opencode        .local/share/opencode/auth.json
+login   opencode        .local/share/opencode/mcp-auth.json
+ro      opencode        .config/opencode
+project opencode        opencode.json
+project opencode        opencode.jsonc
+project opencode        .opencode
+env     opencode        ANTHROPIC_API_KEY
+env     opencode        OPENAI_API_KEY
+env     opencode        OPENROUTER_API_KEY
+tool    -               .opencode
+
+# Antigravity CLI, in Gemini CLI's folder
+way     agy             mount
+dir     agy             .gemini
+login   agy             .gemini/antigravity-cli/antigravity-oauth-token
+login   agy             .gemini/oauth_creds.json
+login   agy             .gemini/gemini-credentials.json
+login   agy             .gemini/mcp-oauth-tokens.json
+copy    agy             .gemini/antigravity-cli/settings.json
+ro      agy             .gemini/settings.json
+ro      agy             .gemini/config
+ro      agy             .gemini/extensions
+ro      agy             .gemini/antigravity-cli/plugins
+ro      agy             .gemini/antigravity-cli/skills
+project agy             .gemini
+env     agy             GEMINI_API_KEY
+env     agy             GOOGLE_API_KEY
+
+# Copilot CLI keeps its login in the keyring, one for the account (unverified: no variable or folder option moves it)
+way     copilot         none
+dir     copilot         .copilot
+copy    copilot         .copilot/config.json
+copy    copilot         .copilot/permissions-config.json
+ro      copilot         .copilot/settings.json
+ro      copilot         .copilot/mcp-config.json
+ro      copilot         .copilot/hooks
+project copilot         .copilot
+env     copilot         COPILOT_GITHUB_TOKEN
+env     copilot         GH_TOKEN
+env     copilot         GITHUB_TOKEN
+
+# Cursor CLI
+way     cursor-agent    mount
+dir     cursor-agent    .cursor
+dir     cursor-agent    .config/cursor
+login   cursor-agent    .config/cursor/auth.json
+copy    cursor-agent    .cursor/cli-config.json
+ro      cursor-agent    .cursor/mcp.json
+ro      cursor-agent    .cursor/hooks.json
+ro      cursor-agent    .cursor/rules
+project cursor-agent    .cursor
+env     cursor-agent    CURSOR_API_KEY
+tool    -               .local/share/cursor-agent
+
+# Build caches, each only where it is there already
+cache   -               .cargo/registry
+cache   -               .cargo/git
+cache   -               .npm
+cache   -               .cache/npm
+cache   -               .cache/yarn
+cache   -               .cache/pnpm
+cache   -               .local/share/pnpm/store
+cache   -               .bun/install/cache
+cache   -               go/pkg
+cache   -               .cache/go-build
+cache   -               .cache/pip
+cache   -               .cache/uv
+cache   -               .cache/pypoetry
+cache   -               .m2/repository
+cache   -               .gradle/caches
+cache   -               .cache/node-gyp
+cache   -               .cache/ms-playwright
+cache   -               .cache/puppeteer
+cache   -               .cache/deno
+
+# Hidden, beyond the credential files: whole folders where the folder is the secret
+hidden  -               .ssh
+hidden  -               .gnupg
+hidden  -               .aws
+hidden  -               .kube
+hidden  -               .docker
+hidden  -               .config/gh
+hidden  -               .config/gcloud
+hidden  -               .config/rclone
+hidden  -               .config/containers/auth.json
+hidden  -               .password-store
+hidden  -               .local/share/keyrings
+hidden  -               .mozilla
+hidden  -               .config/google-chrome
+hidden  -               .config/chromium
+hidden  -               .config/BraveSoftware
+hidden  -               .config/microsoft-edge
+hidden  -               .var/app
+hidden  -               .npmrc
+hidden  -               .pypirc
+hidden  -               .netrc
+hidden  -               .git-credentials
+hidden  -               .local/share/amethystora-notes
+hidden  -               .local/share/amethystora/routines
+hidden  -               .local/share/amethystora/private
+hidden  -               .local/share/amethystora/vault-backup
+hidden  -               .local/share/amethystora/agent-profiles
+hidden  -               .config/amethystora/connect
+hidden  -               .config/amethystora/backup.env
+hidden  -               .config/amethystora/backup-other.env
+hidden  -               .cache/amethystora-restore
+hidden  -               .cache/ibus
+hidden  -               Private
+hidden  -               .bash_history
+hidden  -               .zsh_history
+hidden  -               .zhistory
+hidden  -               .local/share/fish/fish_history
+hidden  -               .python_history
+hidden  -               .node_repl_history
+hidden  -               .psql_history
+hidden  -               .mysql_history
+hidden  -               .lesshst
+# The hourly snapshots of every home (amethystora-home-snapshot), where each home keeps its own permissions
+hidden  -               /var/home/.snapshots
+
+# A closed sandbox's toolchains, read-only, each only where it is there
+tool    -               .gitconfig
+tool    -               .config/git
+tool    -               .local/bin
+tool    -               .cargo/bin
+tool    -               .rustup
+tool    -               go/bin
+tool    -               .nvm
+tool    -               .volta
+tool    -               .local/share/fnm
+tool    -               .local/share/mise
+tool    -               .config/mise
+tool    -               .pyenv
+tool    -               .bun/bin
+tool    -               .deno/bin
+tool    -               .sdkman
+tool    -               .npm-global

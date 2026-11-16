@@ -116,7 +116,18 @@ dev_hooks() {
 # off. ChainDrop (August 2026) planted exactly these. Only the user-level files: a repository's own are read
 # before opening it with an agent, as the manual says. Python reads them, isolated (-I), so that nothing of
 # the account's own Python, its .pth files included, runs inside it; and it parses, never runs, what it reads.
+#
+# Each profile of the agents (plans/PLAN-agent-accounts.md) is read as the home is: its folder has the home's layout, and a
+# finding names it by its path. A profile is never a place this does not look.
 agent_config() {
+    local root
+    for root in "${HOME}" "${HOME}"/.local/share/amethystora/agent-profiles/*/; do
+        [[ -d ${root} && ! -L ${root%/} ]] || continue
+        AMETHYSTORA_SCAN_ROOT="${root%/}" agent_config_of
+    done
+}
+
+agent_config_of() {
     timeout 20 python3 -I - <<'PY'
 import fnmatch, glob, hashlib, json, os, re, sys
 
@@ -125,11 +136,13 @@ try:
 except ImportError:
     tomllib = None
 
-HOME = os.environ["HOME"]
+# The folder read: the home, or an agent profile's (which has the home's layout); paths are said from the real home
+HOME = os.environ.get("AMETHYSTORA_SCAN_ROOT") or os.environ["HOME"]
+REAL_HOME = os.environ["HOME"]
 
 
 def tilde(path):
-    return "~" + path[len(HOME):] if path.startswith(HOME + "/") else path
+    return "~" + path[len(REAL_HOME):] if path.startswith(REAL_HOME + "/") else path
 
 
 def read(path, limit=1 << 20):
@@ -287,16 +300,17 @@ for path in (f"{HOME}/.claude/settings.json", f"{HOME}/.claude/settings.local.js
     data = load(path)
     if isinstance(data, dict) and isinstance(data.get("permissions"), dict):
         pre_allowed(path, data["permissions"].get("allow"), r"mcp__amethystora(?:__([^()]*))?")
-path = f"{HOME}/.claude.json"
-# Claude Code rewrites the rest of this file all the time: only its servers and project permissions count
-data = load(path, limit=16 << 20)
-if isinstance(data, dict):
-    servers(path, data.get("mcpServers"))
-    for project, settings in (data.get("projects") or {}).items():
-        if isinstance(settings, dict):
-            servers(path, settings.get("mcpServers"))
-            trusted(path, f"lets Claude Code use tools without asking in {project}", settings.get("allowedTools"))
-            pre_allowed(path, settings.get("allowedTools"), r"mcp__amethystora(?:__([^()]*))?")
+# ...where a profile's Claude Code keeps it inside its folder (CLAUDE_CONFIG_DIR moves it there)
+for path in (f"{HOME}/.claude.json", f"{HOME}/.claude/.claude.json"):
+    # Claude Code rewrites the rest of this file all the time: only its servers and project permissions count
+    data = load(path, limit=16 << 20)
+    if isinstance(data, dict):
+        servers(path, data.get("mcpServers"))
+        for project, settings in (data.get("projects") or {}).items():
+            if isinstance(settings, dict):
+                servers(path, settings.get("mcpServers"))
+                trusted(path, f"lets Claude Code use tools without asking in {project}", settings.get("allowedTools"))
+                pre_allowed(path, settings.get("allowedTools"), r"mcp__amethystora(?:__([^()]*))?")
 
 # Codex
 path = f"{HOME}/.codex/config.toml"

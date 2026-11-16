@@ -29,7 +29,7 @@
   },
   {
     "section": "The AI agent",
-    "pages": ["ai-agent.md", "agent-desktop.md", "agent-control.md", "routines.md"]
+    "pages": ["ai-agent.md", "agent-profiles.md", "agent-sandbox.md", "agent-desktop.md", "agent-control.md", "routines.md"]
   },
   {
     "section": "Software",

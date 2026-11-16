@@ -18,6 +18,10 @@
 //!                                                    the files nearest to WORDS, as JSON, for the desktop's search
 //!   amethystora-agent-tools routines check FILE | list | show ID | add FILE | pause|resume|remove ID | run ID | undo ID | triggers
 //!                                                    little routines, sealed in the Vault (ame agent routines)
+//!   amethystora-agent-tools agent-run --agent A [--profile P] [--sandbox open|closed|no] [--dir D] [--quiet] -- COMMAND...
+//!                                                    an agent started on its profile, in its sandbox (sandbox.rs)
+//!   amethystora-agent-tools agent-plan (the same options) | profile ... | sandbox ...
+//!                                                    what a launch would get, the profiles and the sandbox rules (agentcli.rs)
 //!   amethystora-agent-tools policy [--json|--level|--ceiling]
 //!                                                    what this account may use, and the administrator's settings
 //!   amethystora-agent-tools conf allow act|know|off|default [ACCOUNT] | conf root MODE
@@ -180,6 +184,12 @@ fn main() -> ExitCode {
             let args = rest.first().map(|id| json!({"id": id, "wait": 0})).unwrap_or(json!({}));
             say(Server::default().call("history", &args))
         }
+        // Profiles and the sandbox (plans/PLAN-agent-accounts.md, plans/PLAN-agent-sandbox.md): a launch, what it would get, and
+        // the account's two maps
+        "agent-run" => ExitCode::from(amethystora_agent_tools::sandbox::agent_run(rest).clamp(0, 255) as u8),
+        "agent-plan" => ExitCode::from(amethystora_agent_tools::sandbox::agent_plan(rest, false).clamp(0, 255) as u8),
+        "profile" => ExitCode::from(amethystora_agent_tools::agentcli::profile(rest).clamp(0, 255) as u8),
+        "sandbox" => ExitCode::from(amethystora_agent_tools::agentcli::sandbox_cmd(rest).clamp(0, 255) as u8),
         // The person's Undo, from the live pill (amethystora-agent undo ID): the tools' own undo, under the same
         // checks as the agent's, and this command waits for it to end, an install or a terminal's answer included
         "undo" if rest.len() == 1 => {

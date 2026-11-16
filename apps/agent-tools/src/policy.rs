@@ -9,6 +9,7 @@
 //!   ALLOW=act|know|off          the most any account may turn on
 //!   ALLOW_FOR=account:level     that account's own ceiling instead, one line each
 //!   ROOT=session|minutes|each|terminal
+//!   SANDBOX=always|asked        always: every agent started in a project is sandboxed (plans/PLAN-agent-sandbox.md)
 //!
 //! The file is read here, by the tool server, the launcher (`amethystora-agent policy`, which runs this) and
 //! the root helper, which runs as root and trusts nothing its caller says. A value it cannot read counts as
@@ -88,12 +89,14 @@ pub struct Conf {
     pub allow: Level,
     pub root: RootMode,
     pub allow_for: BTreeMap<String, Level>,
+    /// Every launch made in a project is sandboxed, and the sandbox cannot be left (SANDBOX=always)
+    pub sandbox_always: bool,
 }
 
 impl Default for Conf {
     /// The image's own defaults, which /usr/etc/amethystora/agent.conf ships too
     fn default() -> Self {
-        Conf { allow: Level::Act, root: RootMode::Session, allow_for: BTreeMap::new() }
+        Conf { allow: Level::Act, root: RootMode::Session, allow_for: BTreeMap::new(), sandbox_always: false }
     }
 }
 
@@ -124,6 +127,8 @@ impl Conf {
             match key.trim() {
                 "ALLOW" => conf.allow = Level::parse(value).unwrap_or(Level::Off),
                 "ROOT" => conf.root = RootMode::parse(value).unwrap_or(RootMode::Terminal),
+                // A value it cannot read is the strictest: always
+                "SANDBOX" => conf.sandbox_always = value != "asked",
                 "ALLOW_FOR" => match value.rsplit_once(':') {
                     Some((name, level)) if account_name(name) => {
                         conf.allow_for.insert(name.to_string(), Level::parse(level).unwrap_or(Level::Off));
@@ -141,7 +146,7 @@ impl Conf {
         match std::fs::read_to_string(path) {
             Ok(text) => Conf::parse(&text),
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => Conf::default(),
-            Err(_) => Conf { allow: Level::Off, root: RootMode::Terminal, allow_for: BTreeMap::new() },
+            Err(_) => Conf { allow: Level::Off, root: RootMode::Terminal, allow_for: BTreeMap::new(), sandbox_always: true },
         }
     }
 
@@ -159,6 +164,9 @@ impl Conf {
         text.push_str(&format!("ALLOW={}\n", self.allow.word()));
         text.push_str("# How the agent's root commands are allowed: session, minutes, each or terminal\n");
         text.push_str(&format!("ROOT={}\n", self.root.word()));
+        if self.sandbox_always {
+            text.push_str("# Every agent started in a project's folder is sandboxed, and cannot be started out of it\nSANDBOX=always\n");
+        }
         if !self.allow_for.is_empty() {
             text.push_str("# One account's own ceiling, in place of ALLOW for it\n");
             for (name, level) in &self.allow_for {
@@ -203,7 +211,9 @@ pub fn change_conf(path: &Path, args: &[String]) -> Result<Conf, String> {
             conf.allow_for.insert(account.to_string(), level);
         }
         ["root", mode] => conf.root = RootMode::parse(mode).ok_or("a root mode is session, minutes, each or terminal")?,
-        _ => return Err("usage: conf allow act|know|off [ACCOUNT] | conf allow default ACCOUNT | conf root session|minutes|each|terminal".into()),
+        ["sandbox", "always"] => conf.sandbox_always = true,
+        ["sandbox", "asked"] => conf.sandbox_always = false,
+        _ => return Err("usage: conf allow act|know|off [ACCOUNT] | conf allow default ACCOUNT | conf root session|minutes|each|terminal | conf sandbox always|asked".into()),
     }
     let next = path.with_extension("conf.new");
     std::fs::write(&next, conf.render()).map_err(|error| format!("{}: {error}", next.display()))?;
@@ -296,6 +306,7 @@ impl Policy {
             "allow_for": allow_for,
             "ceiling": self.ceiling().word(),
             "root": self.conf.root.word(),
+            "sandbox": if self.conf.sandbox_always { "always" } else { "asked" },
             "agentic": self.level1,
             "tools": self.level2,
             "level": self.level().word(),
@@ -324,6 +335,10 @@ mod tests {
         assert_eq!(Conf::parse("ALLOW_FOR=kid:maybe").ceiling("kid"), Level::Off);
         assert_eq!(Conf::parse("UNKNOWN=1").allow, Level::Off);
         assert_eq!(Conf::parse("ALLOW=\"know\"").allow, Level::Know);
+        assert!(!Conf::parse("SANDBOX=asked").sandbox_always && Conf::parse("SANDBOX=always").sandbox_always);
+        assert!(Conf::parse("SANDBOX=maybe").sandbox_always, "what cannot be read is the strictest");
+        let strict = Conf { sandbox_always: true, ..conf.clone() };
+        assert_eq!(Conf::parse(&strict.render()), strict);
         // What it writes reads back the same
         assert_eq!(Conf::parse(&conf.render()), conf);
     }

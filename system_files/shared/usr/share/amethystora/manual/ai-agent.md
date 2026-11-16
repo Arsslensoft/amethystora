@@ -20,7 +20,7 @@ to it. Ask it things in plain language:
 ### Before you say yes
 
 It starts in its normal mode, so it asks before it runs a command or changes a file: read what it proposes before you
-say yes. Opencode's own normal mode asks for almost nothing, so started from here it asks before a command, an edit
+say yes. To hold it to one project, see [An agent held to its project](agent-sandbox.md); for a second login of the same agent, see [Several accounts of one agent](agent-profiles.md). Opencode's own normal mode asks for almost nothing, so started from here it asks before a command, an edit
 and a web fetch, unless your own `~/.config/opencode/opencode.json` sets a `permission`, which then wins.
 
 A repository someone else wrote can tell an agent what to do as it opens. Before you start one in a folder you cloned,

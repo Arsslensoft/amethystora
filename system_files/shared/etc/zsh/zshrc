@@ -221,6 +221,9 @@ if [[ -o interactive && -e "${XDG_CONFIG_HOME:-$HOME/.config}/amethystora/missin
   }
 fi
 
+# The shells follow the folder for the AI agent, while ame agent hook is on (its profile and sandbox, for the prompt too)
+[[ -r /usr/share/amethystora/agent-hook/hook.sh ]] && source /usr/share/amethystora/agent-hook/hook.sh
+
 # Starship
 if type "starship" > /dev/null; then
   # What `starship init zsh` prints, written by the build for this starship (05-override-install.sh)

@@ -5952,6 +5952,121 @@ msgid "Each routine's name and when it runs. Ask the agent to write one, then ke
 msgstr ""
 
 #: usr/libexec/amethystora-control-list
+msgid "Follow my folder in the shell"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "In each new terminal, claude, codex and the other agents start on the profile and in the sandbox of the folder you are in, and the prompt says which. A command typed with command in front goes round it."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Signed in to %s"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "No agent signed in yet"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Used in %s"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Gets the pill's questions"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "The agents' own folders in your home"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/meters.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/privacy.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/stick.js
+msgid "In use"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Open a terminal"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+#, sh-format
+msgid "${count} profile"
+msgid_plural "${count} profiles"
+msgstr[0] ""
+msgstr[1] ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Agent accounts"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Each profile is one more account of the same agent, with its own login and history. A folder picks its profile, and nothing changes for an agent that is running. A profile named default is your home's own."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "How to add one…"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Add an account"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Type ame agent profile add NAME in a terminal, with a name of letters, digits and dashes. Then sign in with ame agent profile login NAME and give it a folder with ame agent profile use NAME."
+msgstr ""
+
+#. Translators: a choice about the private folder, which is closed: open it.
+#: usr/libexec/amethystora-control-list usr/share/amethystora/just/security.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/connect.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/desks.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/focus.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/phone.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/today/year.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/tools/opener.js apps/connect/src/plugins.rs apps/connect/src/transfers.rs
+msgid "Open"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/privacy/shield.js
+msgid "Closed"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "The agent writes in the project and its own folder, and sees nothing of your logins and keys."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "The agent sees only the project, its own folder and the toolchains, and nothing else of your home."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Agents started here start as they always do."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Also allowed: %s"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Remove the rule"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+#, sh-format
+msgid "${count} folder with a rule"
+msgid_plural "${count} folders with a rule"
+msgstr[0] ""
+msgstr[1] ""
+
+#: usr/libexec/amethystora-control-list
+msgid "The agent's sandbox"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "In a folder with a rule, an agent changes its project and nothing else: it cannot see your keys and logins, and it cannot become root. It is not a virtual machine, and what it wrote is yours to read before you run it."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "Add a rule for a folder"
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
+msgid "In a terminal in the project, type ame agent sandbox use, or ame agent sandbox use FOLDER closed for a stricter one. What a folder may be allowed on top, it says first and asks."
+msgstr ""
+
+#: usr/libexec/amethystora-control-list
 msgid "For every account, set by an administrator"
 msgstr ""
 
@@ -10608,6 +10723,43 @@ msgstr ""
 msgid "Routines: off. None runs."
 msgstr ""
 
+#: usr/share/amethystora/just/agent.just
+#, sh-format
+msgid "There is no profile ${name}."
+msgstr ""
+
+#: usr/share/amethystora/just/agent.just
+#, sh-format
+msgid "An agent runs on the profile ${name} now. Close it first."
+msgstr ""
+
+#: usr/share/amethystora/just/agent.just
+#, sh-format
+msgid "The profile ${name} holds its agents' logins and history. It goes to the trash, where you can still take it back."
+msgstr ""
+
+#: usr/share/amethystora/just/agent.just
+msgid "Remove it? [y/N] "
+msgstr ""
+
+#: usr/share/amethystora/just/agent.just
+#, sh-format
+msgid "Profile ${name} removed. Its folders follow the home's profile again."
+msgstr ""
+
+#: usr/share/amethystora/just/agent.just
+#, sh-format
+msgid "Allow it for agents started in ${folder}? [y/N] "
+msgstr ""
+
+#: usr/share/amethystora/just/agent.just
+msgid "The shells follow your folder for the AI agent: on, in each terminal opened from now on."
+msgstr ""
+
+#: usr/share/amethystora/just/agent.just
+msgid "The shells follow your folder for the AI agent: off, in each terminal opened from now on."
+msgstr ""
+
 #: usr/share/amethystora/just/apps.just
 #, sh-format
 msgid "JetBrains Toolbox is installed in ${DEST}, and keeps itself up to date."
@@ -10719,7 +10871,7 @@ msgid "Start"
 msgstr ""
 
 #. Translators: a choice in a menu: to stop Android
-#: usr/share/amethystora/just/apps.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/access/speech.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/capture.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/privacy.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/present.js
+#: usr/share/amethystora/just/apps.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/access/speech.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/ask.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/changes.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/capture.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/privacy.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/present.js
 msgid "Stop"
 msgstr ""
 
@@ -15083,11 +15235,6 @@ msgstr ""
 msgid "Make one"
 msgstr ""
 
-#. Translators: a choice about the private folder, which is closed: open it.
-#: usr/share/amethystora/just/security.just usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/connect.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/desks.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/focus.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/phone.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/today/year.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/tools/opener.js apps/connect/src/plugins.rs apps/connect/src/transfers.rs
-msgid "Open"
-msgstr ""
-
 #: usr/share/amethystora/just/security.just
 msgid "Change its password"
 msgstr ""
@@ -17324,6 +17471,10 @@ msgstr ""
 msgid "History"
 msgstr ""
 
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/changes.js
+msgid "Stop: %s"
+msgstr ""
+
 #. Translators: the heading of the notifications that wait, with how many
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/changes.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/later.js
 msgid "Now"
@@ -17435,6 +17586,10 @@ msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/changes.js
 msgid "It could not be undone."
+msgstr ""
+
+#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
+msgid "sandboxed"
 msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/agent/doingmodel.js
@@ -18793,10 +18948,6 @@ msgstr ""
 #. Translators: a processor's speed, such as "3.4 GHz"
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/meters/format.js
 msgid "%s GHz"
-msgstr ""
-
-#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/meters.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/privacy.js usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/pill/stick.js
-msgid "In use"
 msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/meters.js
@@ -20714,10 +20865,6 @@ msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/privacy/shield.js
 msgid "Open · closes when the screen locks"
-msgstr ""
-
-#: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/privacy/shield.js
-msgid "Closed"
 msgstr ""
 
 #: usr/share/gnome-shell/extensions/amethystora-ui@arsslensoft.github.io/modules/privacy/shield.js

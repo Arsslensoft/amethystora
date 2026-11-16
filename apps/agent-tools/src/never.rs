@@ -51,7 +51,14 @@ const PATHS: &[&str] = &[
     // The backup to another computer and the recovery key (R7-35, R7-55): the keys, the pairing and the way back from nothing are the person's alone
     "amethystora-backup-secret", "amethystora-backup-recovery", "amethystora-backup-pair", "amethystora-backup-store", "amethystora-backup-other",
     "amethystora-start-from-backup", "backup-other/", "backup-store/",
+    // Which account of an agent a project goes through, and the sandbox that holds it (plans/PLAN-agent-accounts.md,
+    // plans/PLAN-agent-sandbox.md): the person's two maps, the profiles' folders and the shells' hook, in any spelling
+    "agent-profiles.json", "agent-sandbox.json", "amethystora/agent-profiles", "amethystora/agent-hook",
 ];
+
+/// The variables that pick an agent's account or move its folders, which no command of the agent's may set in front of
+/// another: an agent that starts another agent hands it its own profile by inheritance, and may not hand it another
+const PROFILE_VARIABLES: &[&str] = &["CLAUDE_CONFIG_DIR", "CODEX_HOME", "AMETHYSTORA_AGENT_PROFILE", "AMETHYSTORA_AGENT_PROFILE_PIN"];
 
 fn base(path: &str) -> &str {
     path.rsplit('/').next().unwrap_or(path)
@@ -77,6 +84,9 @@ pub fn refusal(argv: &[String]) -> Option<String> {
     }
     if program.starts_with("amethystora-agent") {
         return Some("the agent may not run its own tools or change its own lock or root mode".into());
+    }
+    if argv.iter().any(|arg| PROFILE_VARIABLES.iter().any(|name| arg.starts_with(&format!("{name}=")))) {
+        return Some("which of the agent's accounts a command runs on is the user's: the agent may not pick or move it".into());
     }
     // What changed's Undo is the person's button: it rolls back by an id they cannot read, and may roll the system back
     if program == "amethystora-changes" && argv.get(1).map(String::as_str) != Some("list") {
@@ -305,6 +315,17 @@ fn ame_refusal(args: &[String]) -> Option<String> {
         ["agent", "routines", verb, ..] if !matches!(*verb, "list" | "show" | "check" | "pause") => {
             Some("a routine runs by itself later: the agent writes one and checks it, and the user keeps it, runs it and takes it away".into())
         }
+        // Which account pays for and sees a project is the person's choice: the agent may list the profiles, ask which one a
+        // folder gets and see what runs (plans/PLAN-agent-accounts.md)
+        ["agent", "profile", verb, ..] if !matches!(*verb, "list" | "which" | "running") => {
+            Some("which of the agent's accounts a project goes through is the user's choice: the agent may only list them".into())
+        }
+        // The sandbox holds the agent: its rules and what they allow are the person's, and the agent may only show and list them.
+        // `sandbox run` is a wrapper that runs a command out of sight, as any other is
+        ["agent", "sandbox", verb, ..] if !matches!(*verb, "show" | "list") => {
+            Some("the sandbox that holds the agent is the user's to set: the agent may only show and list it".into())
+        }
+        ["agent", "hook", ..] => Some("the shells' hook for the agent's accounts and sandbox is the user's to turn on or off".into()),
         ["apps", "aur", ..] => Some("turning the AUR on is the user's choice alone".into()),
         // Anyone holding the computer reads it at the login and lock screens: its words are chosen by the person
         ["system", "if-found", ..] => Some("the line on the login and lock screens is the user's own words: the user writes it".into()),
@@ -408,6 +429,29 @@ mod tests {
             "cp rule /etc/polkit-1/rules.d/00.rules",
             "sed -i s/act/off/ /etc/amethystora/agent.conf",
             "ame agent lock act",
+            // Which account a project goes through, and the sandbox that holds the agent, are the person's
+            "ame agent profile add work",
+            "ame agent profile use work /home/a/work",
+            "ame agent profile login work claude",
+            "ame agent profile terminal personal",
+            "ame agent profile ask work",
+            "ame agent profile remove work",
+            "ame agent profile hook on",
+            "ame -- agent profile use work",
+            "ame agent sandbox use /home/a/code",
+            "ame agent sandbox off /home/a/code",
+            "ame agent sandbox allow /home/a/code ssh-agent",
+            "ame agent sandbox hook on",
+            "ame agent sandbox always on",
+            "ame agent sandbox run -- npm install",
+            "ame agent hook off",
+            "CLAUDE_CONFIG_DIR=/home/a/.local/share/amethystora/agent-profiles/work/.claude claude",
+            "CODEX_HOME=/tmp/x codex",
+            "AMETHYSTORA_AGENT_PROFILE_PIN=work bash",
+            "tee /home/a/.config/amethystora/agent-profiles.json",
+            "rm /home/a/.config/amethystora/agent-sandbox.json",
+            "cp x /home/a/.local/share/amethystora/agent-profiles/work/.claude/settings.json",
+            "touch /home/a/.config/amethystora/agent-hook",
             "ame agent root each",
             "ame agent tools on",
             "ame apps aur on",
@@ -656,6 +700,13 @@ mod tests {
     #[test]
     fn hands_over_the_rest() {
         for words in [
+            "ame agent profile",
+            "ame agent profile list",
+            "ame agent profile which /home/a/work",
+            "ame agent profile running",
+            "ame agent sandbox",
+            "ame agent sandbox list",
+            "ame agent sandbox show /home/a/code",
             "git commit -m credential",
             "git -C /tmp status",
             "rpm-ostree install htop",

@@ -42,6 +42,36 @@ amethystora-agent-root`). A command that asks questions always opens in a termin
   open, unless its background key is on (it needs a TPM). A routine's `ame` words are resolved first: a private alias of an `agent`, `security`, `vault`
   or `plugin` recipe is refused like the recipe.
 
+## Several accounts of one agent
+
+A profile is another login of the same agent (a work account of Claude Code beside the user's own), with its own history and settings, in
+`~/.local/share/amethystora/agent-profiles/NAME/`; `default` is the home's own folders. The person sets it up; you never do:
+
+- `ame agent profile add NAME`, `ame agent profile login NAME [AGENT]` (a terminal), `ame agent profile use NAME [FOLDER]` (a folder and everything
+  under it uses it), `ame agent profile terminal NAME [FOLDER]`, `ame agent profile remove NAME` and `ame agent profile hook on|off`.
+- You may run `ame agent profile list`, `ame agent profile which [FOLDER]` (which account an agent started in that folder gets) and
+  `ame agent profile running` (the sessions running now). Everything else of it is refused to you.
+- A launch gets `--profile NAME`, else the terminal's pin, else the folder's profile, else `default`. The folder's rule is the person's own file;
+  nothing is read from a repository, so a project cannot pick one. A running agent never changes account, and you never set `CLAUDE_CONFIG_DIR`,
+  `CODEX_HOME` or `AMETHYSTORA_AGENT_PROFILE_PIN`: the tools refuse it.
+- Copilot CLI has no profiles (its login is in the keyring). A profile does not share one subscription between people. Nothing of profiles is in the
+  setup file.
+
+## An agent held to its project
+
+A sandbox lets the agent write in its project, its own folder and the build caches, and hides the person's keys and logins from it; there is no
+sudo, no session bus and no keyring inside. The person turns it on for a folder, and nothing is read from the repository. You may run
+`ame agent sandbox show [FOLDER]` (what an agent started there is given) and `ame agent sandbox list`. The rest is the person's:
+
+- `ame agent sandbox use [FOLDER] [open|closed]`, `ame agent sandbox off [FOLDER]`, `ame agent sandbox allow FOLDER PERMISSION` and
+  `ame agent sandbox disallow FOLDER PERMISSION`, where a permission is `write=PATH`, `show=PATH`, `ssh-agent` or `gpu`, each asked for in a
+  terminal after it says what it gives away; `ame agent sandbox run -- COMMAND` holds any command the same way; `ame agent sandbox always on|off`
+  is an administrator's.
+- It is not a virtual machine, does not make what you wrote safe to run (a changed build script runs as the person when they run it), and
+  does not hide the project's own `.env`. Codex must have run once outside a sandbox; Copilot CLI needs its token in `COPILOT_GITHUB_TOKEN` or `GH_TOKEN`.
+- Inside one, `AMETHYSTORA_AGENT_SANDBOX` is set. A read-only file system outside the project, a missing login or key, no session bus and no sudo are
+  the sandbox: say so, name the permission, and look for no way round (`references/sandbox.md` of the amethystora skill).
+
 ## The lock
 
 An administrator sets the most any account may turn on (`ame agent lock act|know|off`), or one account's own

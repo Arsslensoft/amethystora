@@ -1,6 +1,8 @@
 // The pill's questions to the agent (R7-11, R7-12, R7-14), the parts that need no screen: the words an answer is shown in, a
 // command as the person reads it, and the checks of what a hand-off asks. No imports: Node reads this file in
-// build_files/shared/test-agent-ask.mjs.
+// build_files/shared/test-agent-ask.mjs. Its one import is the other model's two shape checks, which has none of its own.
+
+import {agentOf, profileOf} from './doingmodel.js';
 
 // The most of an answer the card shows, and of a typed question
 export const ANSWER_SHOWN = 1200;
@@ -69,6 +71,9 @@ export function parseQuestion(text) {
         reason: tidy(typeof body.reason === 'string' ? body.reason : '', 600),
         title: tidy(typeof body.title === 'string' ? body.title : '', 120),
         server: Number.isInteger(body.server) ? body.server : 0,
+        // Which agent and profile ask, held to the shapes of the fixed list and of a profile's name (doingmodel.js)
+        agent: agentOf(body.agent),
+        profile: profileOf(body.profile),
     };
 }
 

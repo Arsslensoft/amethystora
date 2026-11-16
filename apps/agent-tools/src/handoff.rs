@@ -108,9 +108,12 @@ pub fn reply(stdout: &str) -> Option<bool> {
 /// Puts the question to the pill and waits for the person. The `gdbus` call dies with this thread (PDEATHSIG), so that a tool
 /// server that ends does not leave a question behind that nobody can answer.
 fn ask_pill(id: &str, dir: &std::path::Path, question: &Question, reason: &str) -> Pill {
+    // Which agent and which of its accounts asks, since several may ask in the same minute (plans/PLAN-agent-accounts.md); the
+    // server by the machine's own process number, which the shell checks it against
+    let (agent, profile) = crate::history::launched_for();
     let file = json!({
         "kind": question.kind, "command": question.command, "root": question.root, "title": question.title,
-        "reason": text::field(reason, 600), "server": std::process::id(),
+        "reason": text::field(reason, 600), "server": crate::history::host_pid(), "agent": agent, "profile": profile,
     });
     let bytes = file.to_string();
     let written = std::fs::OpenOptions::new()

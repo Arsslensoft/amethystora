@@ -102,6 +102,11 @@ fn glob(pattern: &[char], text: &[char]) -> bool {
     }
 }
 
+/// Whether TEXT matches the glob PATTERN as bash would: * and ? and [...] classes
+pub fn matches(pattern: &str, text: &str) -> bool {
+    glob(&pattern.chars().collect::<Vec<_>>(), &text.chars().collect::<Vec<_>>())
+}
+
 /// The first of the agent's flags that the process carries, as the watcher matches them
 pub fn flag_of(flags: &str, agent: &str, process: &Process) -> Option<String> {
     let mut joined = String::from(" ");

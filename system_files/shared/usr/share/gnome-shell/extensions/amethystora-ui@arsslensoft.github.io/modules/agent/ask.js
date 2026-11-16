@@ -23,6 +23,7 @@ import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js'
 import {buttonRow, cardButton, retire} from '../pill/clock.js';
 import {plain} from '../pill/text.js';
 import {ANSWER_KEPT, PICTURE_MAX, QUESTION_KEPT, TEXT_READ, aboutFiles, askInput, isId, outcome, parseQuestion, pictureEnd} from './askmodel.js';
+import {AGENT_TITLES, who} from './doingmodel.js';
 // The clipboard history's own header check, a copy of its file (another extension's files cannot be imported; 20-tests.sh holds the two the same)
 import {pictureFits} from './pictures.js';
 
@@ -610,7 +611,10 @@ export class AgentAsk {
         const title = question.kind === 'change'
             ? _('May I change a setting?')
             : question.root ? _('May I run this as root?') : _('May I run this?');
-        block.add_child(this._head(title, this._host.agentName));
+        block.add_child(this._head(title, AGENT_TITLES[question.agent] ?? this._host.agentName));
+        // Which agent and which profile ask, when the question's file names them in their shapes (a plain agent on the default profile says nothing more)
+        if (question.agent || (question.profile && question.profile !== 'default'))
+            block.add_child(this._text(who({agent: question.agent, profile: question.profile}, this._host.agentName, _), 'amethystora-agent-act-how'));
         if (question.title)
             block.add_child(this._text(question.title, 'amethystora-agent-act-what'));
         block.add_child(this._text(question.root ? `sudo -- ${question.line}` : question.line, 'amethystora-agent-command', {mono: true}));

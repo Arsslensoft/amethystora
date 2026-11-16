@@ -442,6 +442,29 @@ agent cleaned and marked as data. Off costs nothing: no daemon, timer or service
   the maintainer's exception of 2026-10-18 to Security keeping every security setting, since they govern
   the agent, not a security feature.
 
+**Several accounts of one agent, and an agent held to its project** (`plans/PLAN-agent-accounts.md`, `plans/PLAN-agent-sandbox.md`;
+`ame agent profile`, `ame agent sandbox`, `ame agent hook`; manual `agent-profiles.md`, `agent-sandbox.md`). Where each agent keeps
+its folders, login, settings, program and a project's settings is one table, `/usr/share/amethystora/agent-paths` (its header says
+each kind of line), which the launcher, `apps/agent-tools` (`agents.rs`, `sandbox.rs`, `agentcli.rs`), the watcher's credential rules
+and `20-tests.sh` read; the logins and keys are one list, `/usr/share/amethystora/credential-files`, which the watcher watches and a
+sandbox hides. A new agent, or a new place an agent writes, gets its lines there, checked on the installed agent first.
+- **A profile belongs to a launch, never to a file**: worked out when the launch starts (`--profile`, the terminal's pin, the folder's
+  in `~/.config/amethystora/agent-profiles.json`, else `default`, the home's) and kept in its environment (`CLAUDE_CONFIG_DIR`,
+  `CODEX_HOME`, seen on Claude Code 2.1.311 and Codex 0.169.0) or its own mount namespace (bubblewrap, the profile's folders over
+  the home's: Opencode, Cursor CLI, Antigravity CLI, where nothing setuid runs). Copilot CLI has none. Keep it so: a feature that
+  wants "the active profile" takes it from a process. The launcher starts an agent where it was opened in a terminal (a diagnosis,
+  a triage and a selection's question still from the home). The Vault's shared run of a protected login was not built: a second
+  terminal on one is told so and may start without it.
+- **The sandbox is one recipe**, `sandbox::recipe`, printed by `ame agent sandbox show` and run by `agent-run` exactly so: bubblewrap
+  from the whole machine read-only, the project (a worktree's repository too), the agent's folder and the caches writable, the
+  credentials, the other agents' and profiles' folders and `/var/home/.snapshots` hidden, the repository's hooks and settings, the
+  agents' settings in the project and their own read-only, a private copy of each file the table's `copy` lines name, `/run`
+  and `/tmp` its own, a PID namespace, and the seccomp filter `gen.c --agent` writes (`agent-sandbox.bpf`). It fails closed.
+  Amethystora's tools start inside read-only (`AMETHYSTORA_READ_ONLY=1`); a sandbox's runner writes its session's file. The
+  network stays the machine's (the plan's step 6, held to a list, is not built). `SANDBOX=always` in `agent.conf` is the
+  administrator's; the watcher says an agent run in a project outside a sandbox then, and records quietly one run with its checks
+  off inside one. `build_files/shared/test-agent-sandbox.sh` and `tests/vm/suites/77-agent-sandbox.sh` hold all of it.
+
 **The knowledge and the index.** `system_files/shared/usr/share/amethystora/agents/knowledge` is written for
 agents: `architecture.md`, `by-design.md` (each default the image hardens, its symptom, how to confirm it and
 its switch), `desktop.md`, `agent.md`, `playbooks/<symptom>.md` (Symptom, Look, Causes on Amethystora, Fix,

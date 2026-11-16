@@ -12,6 +12,38 @@ export const LINGER = 4;
 // Steps older than this many seconds are not a thing it is doing: a server that died unseen leaves its file behind
 export const STALE = 300;
 
+// The agents a session or a question may name (the launcher's own ids), and their names for people: the makers' product names
+export const AGENT_TITLES = {
+    claude: 'Claude Code', opencode: 'Opencode', codex: 'Codex', agy: 'Antigravity CLI', copilot: 'Copilot CLI',
+    'cursor-agent': 'Cursor CLI',
+};
+
+// An agent id of the fixed list, else null: a file the account can write says it, so nothing else is taken
+export function agentOf(value) {
+    return typeof value === 'string' && Object.hasOwn(AGENT_TITLES, value) ? value : null;
+}
+
+// A profile's name as the tools make them, else null
+export function profileOf(value) {
+    return typeof value === 'string' && /^[a-z0-9-]{1,32}$/.test(value) ? value : null;
+}
+
+// Whether a sandbox is open or closed, else null
+function sandboxOf(value) {
+    return value === 'open' || value === 'closed' ? value : null;
+}
+
+// Who a session or a question is, in a line: the agent's name (`fallback` when the file does not name one), the profile unless
+// it is the default, and "sandboxed". `_` is the shell's gettext.
+export function who({agent, profile, sandboxed}, fallback, _) {
+    const parts = [AGENT_TITLES[agent] ?? fallback];
+    if (profile && profile !== 'default')
+        parts.push(profile);
+    if (sandboxed)
+        parts.push(_('sandboxed'));
+    return parts.join(' · ');
+}
+
 function step(value) {
     if (!value || typeof value !== 'object' || !TOOLS.includes(value.tool))
         return null;
@@ -20,18 +52,28 @@ function step(value) {
         at: Number.isFinite(at) ? at : 0};
 }
 
-// A session file's `now` and `recent`, checked: unknown names, a wrong shape or a broken file give nothing
+// A session file's `now` and `recent`, and who it is (`agent`, `profile`, `sandboxed`), checked: unknown names, a wrong shape or a
+// broken file give nothing. A sandbox's runner writes the same file as a tool server, with `sandboxed` and `project` as well; the
+// project is never read here.
 export function parse(text) {
+    const none = {now: null, recent: [], agent: null, profile: null, sandboxed: null};
     let body;
     try {
         body = JSON.parse(text);
     } catch {
-        return {now: null, recent: []};
+        return none;
     }
     if (!body || typeof body !== 'object')
-        return {now: null, recent: []};
+        return none;
     const recent = (Array.isArray(body.recent) ? body.recent : []).map(step).filter(Boolean).slice(-3);
-    return {now: step(body.now), recent};
+    return {now: step(body.now), recent, agent: agentOf(body.agent), profile: profileOf(body.profile), sandboxed: sandboxOf(body.sandboxed)};
+}
+
+// The sessions the card lists one by one, or none: only when more than one runs, or one is on a profile other than the default, or
+// one is sandboxed. `sessions` is a list of {pid, agent, profile, sandboxed}.
+export function listed(sessions) {
+    const any = sessions.some(s => s.sandboxed || (s.profile && s.profile !== 'default'));
+    return sessions.length > 1 || any ? sessions : [];
 }
 
 // What the pill says: `now` of the session that is running a tool, else the most recent finished step of any session still

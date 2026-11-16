@@ -108,3 +108,6 @@ make the computer mute and open an app when i join the office wifi	skill/amethys
 ask my agent a question without opening a terminal	manual/agent-desktop#asking-in-the-pill*|knowledge/agent#in-the-pill*
 why does the pill ask me allow or not now for a command	manual/agent-desktop#questions-in-the-pill*|knowledge/agent#in-the-pill*
 is intel management engine amt spying on me, can i block it	manual/security#the-chip-under-the-system|manual/security#the-chip-under-the-system~2|manual/security#the-chip-under-the-system~3
+use two accounts of claude code at the same time	manual/agent-profiles#two-at-once|manual/agent-profiles#making-a-profile|knowledge/agent#several-accounts-of-one-agent
+keep the agent inside my project and away from my ssh keys	manual/agent-sandbox#turning-it-on|manual/agent-sandbox#what-it-cannot-see|knowledge/agent#an-agent-held-to-its-project
+the agent says read-only file system	manual/agent-sandbox#when-the-agent-says-read-only-file-system|manual/agent-sandbox#what-it-can-write|knowledge/agent#an-agent-held-to-its-project

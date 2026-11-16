@@ -58,6 +58,8 @@ install -Dpm0755 /apps-stage/out/amethystora-move /usr/libexec/amethystora-move
 install -Dpm0755 /apps-stage/out/amethystora-plugin-host /usr/libexec/amethystora-plugin-host
 install -Dpm0755 /apps-stage/out/amethystora-plugin-root /usr/libexec/amethystora-plugin-root
 install -Dpm0644 /apps-stage/out/seccomp.bpf /usr/share/amethystora/plugins/seccomp.bpf
+# An AI agent's sandbox's filter (plans/PLAN-agent-sandbox.md), which amethystora-agent-tools hands bubblewrap
+install -Dpm0644 /apps-stage/out/agent-sandbox.bpf /usr/share/amethystora/agent-sandbox.bpf
 
 # Amethystora Vault (plans/done/PLAN-vault.md; the window is the app above). The service holds the keys, started by
 # amethystora-vault.socket as its own user; the command line is what `ame vault` runs; the work child is the only one of

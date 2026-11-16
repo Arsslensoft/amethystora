@@ -286,18 +286,12 @@ wanted credentials && CREDENTIALS=true
 DECOY=false
 wanted decoy && DECOY=true
 # Where secrets are kept in a home, each a glob: SSH's keys, the package registries', git's, GitHub's, the
-# clouds', the browsers' passwords and cookies (their Flatpaks' too), and the AI agents' tokens.
-CREDENTIAL_FILES=(.ssh/id_* .npmrc .pypirc .git-credentials .config/gh/hosts.yml .aws/credentials .docker/config.json
-    .kube/config
-    .mozilla/firefox/*/logins.json .mozilla/firefox/*/key4.db .mozilla/firefox/*/cookies.sqlite
-    .var/app/org.mozilla.firefox/.mozilla/firefox/*/logins.json .var/app/org.mozilla.firefox/.mozilla/firefox/*/key4.db
-    .var/app/org.mozilla.firefox/.mozilla/firefox/*/cookies.sqlite
-    .config/{google-chrome,chromium,BraveSoftware/Brave-Browser,microsoft-edge}/*/{Cookies,Network/Cookies}
-    .var/app/{com.google.Chrome/config/google-chrome,org.chromium.Chromium/config/chromium}/*/{Cookies,Network/Cookies}
-    .var/app/{com.brave.Browser/config/BraveSoftware/Brave-Browser,com.microsoft.Edge/config/microsoft-edge}/*/{Cookies,Network/Cookies}
-    .claude/.credentials.json .codex/auth.json .codex/.credentials.json .gemini/oauth_creds.json
-    .gemini/gemini-credentials.json .gemini/mcp-oauth-tokens.json .local/share/opencode/auth.json
-    .local/share/opencode/mcp-auth.json .config/cursor/auth.json .gemini/antigravity-cli/antigravity-oauth-token)
+# clouds', the browsers' passwords and cookies (their Flatpaks' too), and the AI agents' tokens. One list with an agent's
+# sandbox, which hides each of them (/usr/share/amethystora/credential-files); and each agent's login inside every agent
+# profile, whose folder has the home's layout (plans/PLAN-agent-accounts.md): a profile is never a place this does not look.
+mapfile -t CREDENTIAL_FILES < <(grep -v -e '^#' -e '^[[:space:]]*$' /usr/share/amethystora/credential-files)
+mapfile -t -O "${#CREDENTIAL_FILES[@]}" CREDENTIAL_FILES < <(awk '$1 == "login" { print ".local/share/amethystora/agent-profiles/*/" $3 }' \
+    /usr/share/amethystora/agent-paths)
 CREDENTIAL_DIRS=(.local/share/keyrings)
 # Chromium's browsers keep their passwords in "Login Data", whose space no rule's path can hold: each is watched
 # by its inode instead, on the device the kernel knows its filesystem by (findmnt's, which btrfs's stat is not).

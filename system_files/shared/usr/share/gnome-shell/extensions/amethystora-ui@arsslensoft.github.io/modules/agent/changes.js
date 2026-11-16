@@ -20,7 +20,7 @@ import * as Util from 'resource:///org/gnome/shell/misc/util.js';
 
 import {buttonRow, cardButton, retire} from '../pill/clock.js';
 import {plain, timeOfDay} from '../pill/text.js';
-import {lingerLeft, parse, phrase, pick, rows} from './doingmodel.js';
+import {lingerLeft, listed, parse, phrase, pick, rows, who} from './doingmodel.js';
 import {output} from './status.js';
 
 const AGENT = 'amethystora-agent';
@@ -98,6 +98,10 @@ export class AgentChanges {
         this._pending = new Uint8Array(0);
         this._titles = null;
         this._notes = new Map();
+        // Who each running session is (agent, profile, sandboxed), as its file says, and the tool servers that run inside a
+        // sandbox's runner, which the card does not list a second time
+        this._who = new Map();
+        this._inside = new Set();
         this._picked = null;
         this._cancellable = new Gio.Cancellable();
         // Whose processes count as this account's, and when the machine started (a process's start is counted from it)
@@ -221,13 +225,25 @@ export class AgentChanges {
         }
     }
 
-    // When a tool server of this account started (seconds since the epoch), or 0 when the process is not one: its
-    // program the tools', `mcp` its only word, run by this account; the start from the kernel, never from a file
+    // Whether a process is a sandbox's runner: the tools' program, `agent-run` its first word
+    _isRunner(pid) {
+        return decoder.decode(readNow(`/proc/${pid}/cmdline`) ?? new Uint8Array(0)).startsWith(`${TOOLS}\0agent-run\0`);
+    }
+
+    // The parent of a process, from the kernel
+    _parent(pid) {
+        const stat = decoder.decode(readNow(`/proc/${pid}/stat`) ?? new Uint8Array(0));
+        return Number(stat.slice(stat.lastIndexOf(')') + 2).split(' ')[1]) || 0;
+    }
+
+    // When a tool server or a sandbox's runner of this account started (seconds since the epoch), or 0 when the process is
+    // neither: its program the tools', `mcp` its only word or `agent-run` its first, run by this account; the start from the
+    // kernel, never from a file
     _server(pid) {
         try {
             if (GLib.file_read_link(`/proc/${pid}/exe`) !== TOOLS)
                 return 0;
-            if (decoder.decode(readNow(`/proc/${pid}/cmdline`) ?? new Uint8Array(0)) !== `${TOOLS}\0mcp\0`)
+            if (decoder.decode(readNow(`/proc/${pid}/cmdline`) ?? new Uint8Array(0)) !== `${TOOLS}\0mcp\0` && !this._isRunner(pid))
                 return 0;
             if (Gio.File.new_for_path(`/proc/${pid}`).query_info('unix::uid', Gio.FileQueryInfoFlags.NONE, null)
                 .get_attribute_uint32('unix::uid') !== this._uid)
@@ -250,11 +266,9 @@ export class AgentChanges {
         });
     }
 
-    // What each running server says it is doing (R7-13): its file's `now` and `recent`, read off the shell's thread. Only the
-    // tools' own names are taken from it (doingmodel.js)
+    // What each running server says it is doing (R7-13): its file's `now` and `recent`, read off the shell's thread, and who it
+    // is (agent, profile, sandboxed). Only the tools' own names and the fixed shapes are taken from it (doingmodel.js)
     async _readNotes(pids) {
-        if (!this.what.doing)
-            return;
         const cancellable = this._cancellable;
         const serial = this._noteSerial = (this._noteSerial ?? 0) + 1;
         const notes = new Map();
@@ -266,8 +280,13 @@ export class AgentChanges {
         }));
         if (!this._records || serial !== this._noteSerial)
             return;
-        this._notes = notes;
-        this._noted();
+        this._who = new Map([...notes].map(([pid, n]) => [pid, {agent: n.agent, profile: n.profile, sandboxed: n.sandboxed}]));
+        if (this.what.doing) {
+            this._notes = notes;
+            this._noted();
+        } else {
+            this._sync();
+        }
     }
 
     // The line to say now, and the one timer that ends a finished step's tick
@@ -294,16 +313,40 @@ export class AgentChanges {
     // is found gone here, which runs at every change of the folder or the record and when the card opens
     _readSessions() {
         const servers = new Map();
+        const runners = new Set();
         try {
             const children = this._sessions.enumerate_children('standard::name', Gio.FileQueryInfoFlags.NONE, null);
             for (let info = children.next_file(null); info; info = children.next_file(null)) {
                 const pid = info.get_name();
                 const started = /^[0-9]+$/.test(pid) ? this._server(pid) : 0;
-                if (started)
+                if (started) {
                     servers.set(pid, started);
+                    if (this._isRunner(pid))
+                        runners.add(pid);
+                }
             }
             children.close(null);
         } catch {}
+        // A tool server started by a sandbox's runner is part of that session: the card lists the runner alone
+        this._inside = new Set();
+        if (runners.size > 0) {
+            for (const pid of servers.keys()) {
+                if (runners.has(pid))
+                    continue;
+                let at = Number(pid);
+                for (let i = 0; i < 16 && at > 1; i++) {
+                    at = this._parent(at);
+                    if (runners.has(String(at))) {
+                        this._inside.add(pid);
+                        break;
+                    }
+                }
+            }
+        }
+        for (const pid of this._who.keys()) {
+            if (!servers.has(pid))
+                this._who.delete(pid);
+        }
         const before = this._servers.size;
         this._servers = servers;
         this._readNotes([...servers.keys()]);
@@ -565,6 +608,9 @@ export class AgentChanges {
         if (state === 'doing')
             this._fillSteps(body);
 
+        for (const session of this._sessionList())
+            body.add_child(this._sessionRow(session));
+
         const asking = this.asking;
         for (const record of this.changes.filter(r => r !== asking).slice(-ROWS))
             body.add_child(this._row(record));
@@ -589,6 +635,28 @@ export class AgentChanges {
         });
         row.add_child(history);
         body.add_child(row);
+    }
+
+    // The running sessions to list one by one, oldest first, or none when one plain session runs on the default profile
+    _sessionList() {
+        const sessions = [...this._servers.keys()].filter(pid => !this._inside.has(pid)).sort((a, b) => Number(a) - Number(b))
+            .map(pid => ({pid, ...(this._who.get(pid) ?? {agent: null, profile: null, sandboxed: null})}));
+        return listed(sessions);
+    }
+
+    // One running session, as "Claude Code · work · sandboxed", with a Stop that ends it alone
+    _sessionRow(session) {
+        const row = new St.BoxLayout({style_class: 'amethystora-agent-act', x_expand: true});
+        const line = who(session, this._agentTitle(), _);
+        const label = new St.Label({style_class: 'amethystora-agent-act-what', text: line, x_expand: true, y_align: Clutter.ActorAlign.CENTER});
+        label.clutter_text.use_markup = false;
+        label.clutter_text.ellipsize = Pango.EllipsizeMode.END;
+        row.add_child(label);
+        const stop = new St.Button({style_class: 'amethystora-agent-link', label: _('Stop'), can_focus: true, y_align: Clutter.ActorAlign.CENTER});
+        stop.accessible_name = _('Stop: %s').format(line);
+        stop.connect('clicked', () => this._stopOne(session.pid));
+        row.add_child(stop);
+        return row;
     }
 
     // The steps of the read tools, oldest first: what is done says Done, what runs says Now (R7-13)
@@ -761,10 +829,17 @@ export class AgentChanges {
         Util.spawn([AGENT, 'stop']);
     }
 
+    // One session: its tool server, or a sandbox and everything in it. The number is a file's name that is all digits
+    _stopOne(pid) {
+        if (/^[0-9]+$/.test(pid))
+            Util.spawn([AGENT, 'stop', pid]);
+    }
+
     // For the suites: how it stands
     get status() {
         return {
             shown: !!this._shown, state: this.state, text: this._shown ? this.text : '', servers: this._servers?.size ?? 0,
+            sessions: this._servers ? this._sessionList().map(s => who(s, this._agentTitle(), t => t)) : [],
             doing: this._picked ? {running: this._picked.running, tool: this._picked.step.tool, topic: this._picked.step.topic} : null,
             changes: this.changes.map(r => ({id: r.id, what: this._what(r), undo: this._canUndo(r), undone: this._undone(r),
                 said: this._said.get(r.id) ?? null})),

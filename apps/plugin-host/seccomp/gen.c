@@ -1,15 +1,21 @@
-/* The seccomp filter of a plugin's sandbox (plans/done/PLAN-plugins.md, "The sandbox"), written as the BPF program bubblewrap's
- * --seccomp takes. build-apps.sh compiles this with libseccomp, runs it, and 13-apps.sh installs the result as
- * /usr/share/amethystora/plugins/seccomp.bpf. Everything is allowed but what a plugin never needs and an escape would:
- * a system call listed here fails with EPERM, so a program that tries gets an error and goes on.
+/* The seccomp filters of a plugin's sandbox (plans/done/PLAN-plugins.md, "The sandbox") and of an AI agent's
+ * (plans/PLAN-agent-sandbox.md), written as the BPF program bubblewrap's --seccomp takes. build-apps.sh compiles this with
+ * libseccomp, runs it once for each, and 13-apps.sh installs the results as /usr/share/amethystora/plugins/seccomp.bpf and
+ * /usr/share/amethystora/agent-sandbox.bpf. Everything is allowed but what the sandbox's programs never need and an escape
+ * would: a system call listed here fails with EPERM, so a program that tries gets an error and goes on.
  *
- * Usage: gen OUTPUT
+ * An agent's sandbox allows more than a plugin's: its own namespaces and mounts (the agent's own sandbox, a headless
+ * browser's, a test runner's, which the kernel keeps from taking off what bubblewrap hid), ptrace (a debugger in the
+ * project) and io_uring.
+ *
+ * Usage: gen [--agent] OUTPUT
  */
 #define _GNU_SOURCE
 #include <errno.h>
 #include <sched.h>
 #include <seccomp.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/ioctl.h>
 
 static const char *const DENIED[] = {
@@ -22,38 +28,60 @@ static const char *const DENIED[] = {
     "open_by_handle_at", "name_to_handle_at", "acct", "quotactl", "iopl", "ioperm",
 };
 
-int main(int argc, char **argv)
+/* An agent's: the kernel's keyring (another login's keys), BPF and perf (reading the machine), and what only root does */
+static const char *const AGENT_DENIED[] = {
+    "bpf", "perf_event_open", "userfaultfd",
+    "keyctl", "add_key", "request_key",
+    "kexec_load", "kexec_file_load", "init_module", "finit_module", "delete_module", "reboot", "swapon", "swapoff",
+    "open_by_handle_at", "acct", "iopl", "ioperm",
+};
+
+static int deny(scmp_filter_ctx ctx, const char *const *names, unsigned count)
 {
-    if (argc != 2)
-        return 64;
-    scmp_filter_ctx ctx = seccomp_init(SCMP_ACT_ALLOW);
-    if (!ctx)
-        return 1;
-    for (unsigned i = 0; i < sizeof DENIED / sizeof *DENIED; i++) {
-        int nr = seccomp_syscall_resolve_name(DENIED[i]);
+    for (unsigned i = 0; i < count; i++) {
+        int nr = seccomp_syscall_resolve_name(names[i]);
         /* A name this kernel's architecture does not have is nothing to deny */
         if (nr == __NR_SCMP_ERROR)
             continue;
         if (seccomp_rule_add(ctx, SCMP_ACT_ERRNO(EPERM), nr, 0) < 0)
+            return -1;
+    }
+    return 0;
+}
+
+int main(int argc, char **argv)
+{
+    int agent = argc == 3 && strcmp(argv[1], "--agent") == 0;
+    if (argc != 2 && !agent)
+        return 64;
+    const char *output = argv[argc - 1];
+    scmp_filter_ctx ctx = seccomp_init(SCMP_ACT_ALLOW);
+    if (!ctx)
+        return 1;
+    if (agent ? deny(ctx, AGENT_DENIED, sizeof AGENT_DENIED / sizeof *AGENT_DENIED) : deny(ctx, DENIED, sizeof DENIED / sizeof *DENIED))
+        return 2;
+    if (!agent) {
+        /* A new user namespace, by clone: bubblewrap's --disable-userns is the first wall, this is the second. clone3 takes its
+         * flags in a structure a filter cannot read, so it fails as an old kernel's would, and libc falls back to clone */
+        if (seccomp_rule_add(ctx, SCMP_ACT_ERRNO(EPERM), SCMP_SYS(clone), 1, SCMP_A0(SCMP_CMP_MASKED_EQ, CLONE_NEWUSER, CLONE_NEWUSER)) < 0)
+            return 2;
+        if (seccomp_rule_add(ctx, SCMP_ACT_ERRNO(ENOSYS), SCMP_SYS(clone3), 0) < 0)
             return 2;
     }
-    /* A new user namespace, by clone: bubblewrap's --disable-userns is the first wall, this is the second. clone3 takes its flags
-     * in a structure a filter cannot read, so it fails as an old kernel's would, and libc falls back to clone */
-    if (seccomp_rule_add(ctx, SCMP_ACT_ERRNO(EPERM), SCMP_SYS(clone), 1, SCMP_A0(SCMP_CMP_MASKED_EQ, CLONE_NEWUSER, CLONE_NEWUSER)) < 0)
-        return 2;
-    if (seccomp_rule_add(ctx, SCMP_ACT_ERRNO(ENOSYS), SCMP_SYS(clone3), 0) < 0)
-        return 2;
     /* Socket families the network namespace does not keep apart: vsock reaches the hypervisor and any vsock listener on this machine
-     * (systemd's SSH over vsock when it is not masked), and Bluetooth sockets the paired devices. A plugin has loopback and its proxy */
+     * (systemd's SSH over vsock when it is not masked), and Bluetooth sockets the paired devices */
     static const int FAMILIES[] = { 40 /* AF_VSOCK */, 31 /* AF_BLUETOOTH */ };
     for (unsigned i = 0; i < sizeof FAMILIES / sizeof *FAMILIES; i++)
         if (seccomp_rule_add(ctx, SCMP_ACT_ERRNO(EAFNOSUPPORT), SCMP_SYS(socket), 1, SCMP_A0(SCMP_CMP_EQ, FAMILIES[i])) < 0 ||
             seccomp_rule_add(ctx, SCMP_ACT_ERRNO(EAFNOSUPPORT), SCMP_SYS(socketpair), 1, SCMP_A0(SCMP_CMP_EQ, FAMILIES[i])) < 0)
             return 2;
-    /* Typing into the terminal that runs it */
+    /* Typing into the terminal that runs it, which its shell would run once it ends; and, on a text console, the console's own
+     * ioctl, which can paste the selection */
     if (seccomp_rule_add(ctx, SCMP_ACT_ERRNO(EPERM), SCMP_SYS(ioctl), 1, SCMP_A1(SCMP_CMP_MASKED_EQ, 0xffffffff, TIOCSTI)) < 0)
         return 2;
-    FILE *out = fopen(argv[1], "wb");
+    if (agent && seccomp_rule_add(ctx, SCMP_ACT_ERRNO(EPERM), SCMP_SYS(ioctl), 1, SCMP_A1(SCMP_CMP_MASKED_EQ, 0xffffffff, TIOCLINUX)) < 0)
+        return 2;
+    FILE *out = fopen(output, "wb");
     if (!out)
         return 3;
     if (seccomp_export_bpf(ctx, fileno(out)) < 0 || fclose(out) != 0)

@@ -19,6 +19,7 @@ $nodejs\
 $rust\
 $golang\
 $container\
+${env_var.AMETHYSTORA_AGENT_PROMPT}\
 $cmd_duration\
 $line_break\
 $character"""
@@ -99,3 +100,10 @@ style = "info"
 [container]
 style = "muted"
 format = '[$symbol \[$name\]]($style) '
+
+# Which account of the AI agent, and whether its sandbox, an agent started here gets (ame agent hook): set only when it is
+# not the home's plain one, so that work's code is never sent through the personal account unseen
+[env_var.AMETHYSTORA_AGENT_PROMPT]
+variable = "AMETHYSTORA_AGENT_PROMPT"
+style = "fg:alt bold"
+format = '[agent $env_value]($style) '

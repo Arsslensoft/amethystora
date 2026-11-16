@@ -509,16 +509,53 @@ read_exec() {
 # (AGENT_CLIS, from the next boot): said when no terminal started it, which is how an npm install script ran
 # one in the Nx attack, and recorded when one did, which is most likely its user. One line for each agent,
 # flag and starter in a run, however often. Allowed by what started it, or by the agent itself.
+#
+# An agent in an AI agent's sandbox (plans/PLAN-agent-sandbox.md) with its checks off is held to its project: that is what
+# many developers want a sandbox for, so it is recorded, not said, and the finding says it was sandboxed. While an
+# administrator has every agent started in a project sandboxed (SANDBOX=always in /etc/amethystora/agent.conf), an agent
+# that runs in a project outside one is said: the launcher and the shells' hook hold to the setting, but an agent is a file
+# in the home that anyone can run.
+
+# Whether the process PARENT (an agent's parent) is a sandbox's: bubblewrap, whose own starter is the account's
+# amethystora-agent-tools agent-run. A process already gone says nothing either way.
+in_agent_sandbox() {
+    local pid="$1" depth=0
+    while ((depth < 3)) && [[ "$(readlink "/proc/${pid}/exe" 2>/dev/null)" == /usr/bin/bwrap ]]; do
+        pid="$(sed -E 's/^.*\) [A-Za-z] ([0-9]+) .*$/\1/' "/proc/${pid}/stat" 2>/dev/null)"
+        [[ "${pid}" =~ ^[0-9]+$ ]] || return 1
+        depth=$((depth + 1))
+    done
+    ((depth > 0)) && [[ "$(tr '\0' ' ' <"/proc/${pid}/cmdline" 2>/dev/null)" == "/usr/libexec/amethystora-agent-tools agent-run "* ]]
+}
+
+# SANDBOX=always, as the tools read it: present and anything but asked is always
+sandbox_always() {
+    local value
+    value="$(sed -n 's/^[[:space:]]*SANDBOX=//p' /etc/amethystora/agent.conf 2>/dev/null | tail -n 1 | tr -d '"[:space:]')"
+    [[ -n "${value}" && "${value}" != asked ]]
+}
+
 read_agent_clis() {
-    local time pid ppid auid tty exe path ok args flag parent user key level how subject
+    local time pid ppid auid tty exe path ok args flag parent user key level how subject sandboxed cwd home always=false
     local -a argv
-    local -A count=() line=()
+    local -A count=() line=() boxed=() outside=()
+    sandbox_always && always=true
     while IFS=$'\x1f' read -r time pid ppid auid tty exe path ok args; do
         # An agent the system kept from running ran with nothing turned off
         [[ "${ok}" == no ]] && continue
         IFS=$'\x1e' read -ra argv <<<"${args}"
         agent_of "${exe}" "${argv[0]:-}" "${argv[1]:-}"
         [[ -n "${AGENT}" ]] || continue
+        sandboxed=false
+        [[ "${ppid}" =~ ^[0-9]+$ ]] && in_agent_sandbox "${ppid}" && sandboxed=true
+        if [[ "${always}" == true && "${sandboxed}" == false && "${pid}" =~ ^[0-9]+$ ]]; then
+            # Started in a project: a folder of the account's home that is not the home itself or a dot-folder of it
+            cwd="$(readlink "/proc/${pid}/cwd" 2>/dev/null)"
+            home="$(getent passwd "${auid}" | cut -d: -f6)"
+            if [[ -n "${cwd}" && -n "${home}" && "${cwd}" == "${home}"/* && "${cwd#"${home}"/}" != .* ]]; then
+                outside["${AGENT}"$'\x1f'"$(id -nu "${auid}" 2>/dev/null || echo "${auid}")"]="${cwd}"
+            fi
+        fi
         flag="$(printf '%s\n' "${argv[@]:1}" | agent_flag "${AGENT}" "")"
         [[ -n "${flag}" ]] || continue
         # What started it, while it is still there to ask
@@ -529,16 +566,28 @@ read_agent_clis() {
         key="${AGENT}"$'\x1f'"${flag}"$'\x1f'"${parent:-${AGENT_PATH}}"$'\x1f'"${tty}"$'\x1f'"${user}"
         count["${key}"]=$((${count[${key}]:-0} + 1))
         line["${key}"]="${parent}"
+        [[ "${sandboxed}" == true ]] && boxed["${key}"]=1
     done < <(audit_records agent-clis)
     for key in "${!count[@]}"; do
         IFS=$'\x1f' read -r AGENT flag subject tty user <<<"${key}"
         parent="${line[${key}]}"
         level=normal how="with no terminal"
         [[ "${tty}" != "(none)" ]] && { level=quiet; how="at a terminal"; }
+        # Held to its project, the agent with its checks off is recorded, and the finding says so
+        [[ -n "${boxed[${key}]:-}" ]] && { level=quiet; how+=", in a sandbox that held it to its project"; }
         allowed agent-clis "${subject}" && { level=quiet; ALLOWED_HIT=1; }
         [[ -n "${LAST_RUN}" ]] &&
             add "${level}" agent-clis "${user}" Execution "An AI agent ran with its own checks turned off: ${AGENT} ${flag}, started by ${parent:-a process that is gone} ${how}$([[ "${count[${key}]}" -gt 1 ]] && echo " (${count[${key}]} times)")" \
                 "allow=${subject}"
+    done
+    for key in "${!outside[@]}"; do
+        IFS=$'\x1f' read -r AGENT user <<<"${key}"
+        level=normal
+        # Allowed by the project's folder (or a glob of folders), as the allowlist takes a path
+        allowed agent-clis "${outside[${key}]}" && { level=quiet; ALLOWED_HIT=1; }
+        [[ -n "${LAST_RUN}" ]] &&
+            add "${level}" agent-clis "${user}" Execution "An AI agent ran in a project outside a sandbox, while an administrator has every agent sandboxed (SANDBOX=always): ${AGENT} in ${outside[${key}]}" \
+                "allow=${outside[${key}]}"
     done
 }
 

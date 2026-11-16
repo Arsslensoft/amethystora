@@ -390,6 +390,8 @@ read_in_background daylight-index "${NO_BUS[@]}" bash -uo pipefail -c 'source /u
 read_in_background grub amethystora-grub-theme status
 read_in_background agent amethystora-agent status
 read_in_background agents amethystora-agent list
+read_in_background profiles /usr/libexec/amethystora-agent-tools profile list --json
+read_in_background sandbox /usr/libexec/amethystora-agent-tools sandbox list --json
 read_in_background policy amethystora-agent policy --json
 read_in_background plugins /usr/libexec/amethystora-plugins list --json
 read_in_background webapps amethystora-webapp list --json
@@ -3238,6 +3240,99 @@ BUTTON="${ gettext "Show"; }"
 USAGE="ame agent routines list"
 item agent agent-routines-list action "${ gettext "Your routines"; }" \
     "${ gettext "Each routine's name and when it runs. Ask the agent to write one, then keep it with ame agent routines add FILE: it shows what it does and asks first."; }" "" routines
+
+# Several accounts of one agent (profiles) and the sandbox. Both lists are the tools' own, read in a few milliseconds and
+# only as far as the account's own files go; nothing is read from a login file (the tools' answer has none). Neither is
+# held back while the features are off: a profile and a sandbox rule are the launcher's, not the features'
+if [[ -e "${CONFIG_DIR}/agent-hook" ]]; then AGENT_HOOK=on; else AGENT_HOOK=off; fi
+switch_choices false ame agent hook
+USAGE="ame agent hook on|off"
+item agent agent-hook switch "${ gettext "Follow my folder in the shell"; }" \
+    "${ gettext "In each new terminal, claude, codex and the other agents start on the profile and in the sandbox of the folder you are in, and the prompt says which. A command typed with command in front goes round it."; }" \
+    "${AGENT_HOOK}" agent-profiles#in-your-shell
+
+PROFILES_JSON="${ said profiles; }"
+jq -e '.profiles | type == "array"' <<<"${PROFILES_JSON}" >/dev/null 2>&1 || PROFILES_JSON='{"profiles": [], "running": []}'
+# One row for each profile: the agents signed in there and the folders that use it, never a word of a login. The names are
+# checked as ame agent profile checks them, so that nothing else reaches a command
+EXTRA="${ jq -c --arg titles "${ said agents; }" \
+    --arg signed "${ gettext "Signed in to %s"; }" --arg nobody "${ gettext "No agent signed in yet"; }" \
+    --arg folders "${ gettext "Used in %s"; }" --arg pill "${ gettext "Gets the pill's questions"; }" \
+    --arg home "${ gettext "The agents' own folders in your home"; }" --arg busy "${ gettext "In use"; }" \
+    --arg a_terminal "${ gettext "Open a terminal"; }" --arg a_remove "${ gettext "Remove"; }" '
+    ($titles | split("\n") | map(split("\t") | select(length >= 3) | {key: .[0], value: .[2]}) | from_entries) as $t
+    | ((.running // []) | map(.profile)) as $running
+    | [(.profiles // [])[] | select((.name | type) == "string" and (.name | test("^[a-z0-9-]{1,32}$")))
+        | (. + {names: ((.agents // []) | map(if type == "string" then ($t[.] // .) else empty end) | join(", ")),
+                where: ((.folders // []) | map(select(type == "string")) | join(", "))}) as $p | {
+        id: .name,
+        title: .name,
+        text: ([(if (.agents // [] | length) > 0 then ($signed | sub("%s"; $p.names)) else $nobody end),
+                (if (.folders // [] | length) > 0 then ($folders | sub("%s"; $p.where)) else empty end),
+                (if .ask == true then $pill else empty end),
+                (if .name == "default" then $home else empty end)] | join(" · ")),
+        state: "plain",
+        tag: (if ($running | index($p.name)) != null then $busy else null end),
+        actions: ([{id: "terminal", title: $a_terminal, terminal: false, command: ["ame", "agent", "profile", "terminal", .name]}]
+            + (if .name != "default" then [{id: "remove", title: $a_remove, terminal: true, command: ["ame", "agent", "profile", "remove", .name]}] else [] end))
+    }] | {rows: ., count: length}' <<<"${PROFILES_JSON}" 2>/dev/null; }"
+if [[ -n "${EXTRA}" ]]; then
+    count="${EXTRA##*\"count\":}"
+    count="${count%\}}"
+    DETAIL="${ eval_ngettext "\${count} profile" "\${count} profiles" "${count:-0}"; }"
+else
+    EXTRA='{"rows": []}'
+fi
+USAGE="ame agent profile list"
+item agent agent-profiles rows "${ gettext "Agent accounts"; }" \
+    "${ gettext "Each profile is one more account of the same agent, with its own login and history. A folder picks its profile, and nothing changes for an agent that is running. A profile named default is your home's own."; }" \
+    "" agent-profiles#making-a-profile
+# Control has no field to type a name in, so adding a profile is told in a terminal: it shows the profiles and the command
+COMMAND=(ame agent profile list)
+TERMINAL=true
+BUTTON="${ gettext "How to add one…"; }"
+USAGE="ame agent profile add NAME"
+item agent agent-profile-add action "${ gettext "Add an account"; }" \
+    "${ gettext "Type ame agent profile add NAME in a terminal, with a name of letters, digits and dashes. Then sign in with ame agent profile login NAME and give it a folder with ame agent profile use NAME."; }" "" agent-profiles#making-a-profile
+
+SANDBOX_JSON="${ said sandbox; }"
+jq -e '.folders | type == "object"' <<<"${SANDBOX_JSON}" >/dev/null 2>&1 || SANDBOX_JSON='{"folders": {}, "running": []}'
+# One row for each folder with a rule: how closed it is and what it is allowed on top. The folder is an absolute path and
+# never starts with a dash, since it is handed to a command as a word of its own
+EXTRA="${ jq -c --arg open "${ gettext "Open"; }" --arg closed "${ gettext "Closed"; }" --arg off "${ gettext "Off"; }" \
+    --arg t_open "${ gettext "The agent writes in the project and its own folder, and sees nothing of your logins and keys."; }" \
+    --arg t_closed "${ gettext "The agent sees only the project, its own folder and the toolchains, and nothing else of your home."; }" \
+    --arg t_off "${ gettext "Agents started here start as they always do."; }" \
+    --arg allowed "${ gettext "Also allowed: %s"; }" --arg a_remove "${ gettext "Remove the rule"; }" '
+    [(.folders // {}) | to_entries[] | select((.key | startswith("/")) and (.key | test("[\u0000-\u001f]") | not))
+        | (.value.mode // "open") as $mode | ((.value.allow // []) | map(select(type == "string")) | join(", ")) as $list | {
+        id: .key,
+        title: .key,
+        text: ([(if $mode == "closed" then $t_closed elif $mode == "off" then $t_off else $t_open end),
+                (if $list != ""
+                    then ($allowed | sub("%s"; $list)) else empty end)] | join(" ")),
+        state: "plain",
+        tag: (if $mode == "closed" then $closed elif $mode == "off" then $off else $open end),
+        actions: [{id: "off", title: $a_remove, terminal: true, command: ["ame", "agent", "sandbox", "off", .key]}]
+    }] | {rows: ., count: length}' <<<"${SANDBOX_JSON}" 2>/dev/null; }"
+if [[ -n "${EXTRA}" ]]; then
+    count="${EXTRA##*\"count\":}"
+    count="${count%\}}"
+    DETAIL="${ eval_ngettext "\${count} folder with a rule" "\${count} folders with a rule" "${count:-0}"; }"
+else
+    EXTRA='{"rows": []}'
+fi
+USAGE="ame agent sandbox list"
+item agent agent-sandbox rows "${ gettext "The agent's sandbox"; }" \
+    "${ gettext "In a folder with a rule, an agent changes its project and nothing else: it cannot see your keys and logins, and it cannot become root. It is not a virtual machine, and what it wrote is yours to read before you run it."; }" \
+    "" agent-sandbox#turning-it-on
+# Control has no folder chooser either, and the rule is for the folder a terminal is in
+COMMAND=(ame agent sandbox list)
+TERMINAL=true
+BUTTON="${ gettext "How to add one…"; }"
+USAGE="ame agent sandbox use [FOLDER] [open|closed]"
+item agent agent-sandbox-add action "${ gettext "Add a rule for a folder"; }" \
+    "${ gettext "In a terminal in the project, type ame agent sandbox use, or ame agent sandbox use FOLDER closed for a stricter one. What a folder may be allowed on top, it says first and asks."; }" "" agent-sandbox#turning-it-on
 
 # What an administrator sets for every account (/etc/amethystora/agent.conf): how the agent's root commands are
 # allowed, and the lock. Here by the maintainer's choice of 2026-10-18, an exception to Security keeping every
