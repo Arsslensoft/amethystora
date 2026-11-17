@@ -736,9 +736,6 @@ fn keep(args: &Args, item: &Value, command: &[OsString], started: &mut bool, loc
     let door_path = run_folder()?.join(format!("{id}.door"));
     // The person says yes here, to the process they started: the keeper, its child, is given what the vault answered
     let answer = call(json!({"op": "get", "kind": KIND, "id": id}))?;
-    // What the vault answered is nobody else's to read from here (not before: polkit looks the asking process up in /proc)
-    // SAFETY: a flag of this process, which has one thread
-    unsafe { libc::prctl(libc::PR_SET_DUMPABLE, 0, 0, 0, 0) };
     // SAFETY: this process has one thread
     match unsafe { libc::fork() } {
         -1 => Err(6),
@@ -761,6 +758,10 @@ fn keep(args: &Args, item: &Value, command: &[OsString], started: &mut bool, loc
             std::process::exit(result.err().map_or(0, i32::from));
         }
         keeper => {
+            // What the vault answered is nobody else's to read in this process either. Only here, after the fork: the keeper writes
+            // its namespace's maps through /proc, which a process with this flag does not own (enter_namespace sets it after them)
+            // SAFETY: a flag of this process
+            unsafe { libc::prctl(libc::PR_SET_DUMPABLE, 0, 0, 0, 0) };
             drop(write_end);
             drop(lock);
             drop(answer);
