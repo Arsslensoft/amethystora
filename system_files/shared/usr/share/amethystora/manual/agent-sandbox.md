@@ -1,7 +1,7 @@
 # An agent held to its project
 
-A sandbox lets an [agent](ai-agent.md) change its project and nothing else. Started in a folder with a rule, the agent and
-everything it runs can write in the project, never see your keys and logins, and cannot become root. It is off until you
+A sandbox keeps an [agent](ai-agent.md) inside its project and away from your SSH keys and logins. Started in a folder with a rule, the agent and
+everything it runs can write in the project and nothing else, never see your SSH keys, tokens and logins, and cannot become root. It is off until you
 turn it on for a folder, and it costs nothing while off.
 
 ## Turning it on

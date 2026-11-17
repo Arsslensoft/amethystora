@@ -59,7 +59,7 @@ A profile is another login of the same agent (a work account of Claude Code besi
 
 ## An agent held to its project
 
-A sandbox lets the agent write in its project, its own folder and the build caches, and hides the person's keys and logins from it; there is no
+A sandbox keeps the agent inside its project and away from the person's SSH keys and logins: it writes in the project, its own folder and the build caches, and the keys, tokens and logins are hidden from it; there is no
 sudo, no session bus and no keyring inside. The person turns it on for a folder, and nothing is read from the repository. You may run
 `ame agent sandbox show [FOLDER]` (what an agent started there is given) and `ame agent sandbox list`. The rest is the person's:
 
